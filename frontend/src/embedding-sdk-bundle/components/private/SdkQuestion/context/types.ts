@@ -18,13 +18,21 @@ import type {
 import type Question from "metabase-lib/v1/Question";
 import type { CardDisplayType, DashboardId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type {
+  EmbeddingDataPicker,
+  EmbeddingEntityType,
+} from "metabase-types/store/embedding-data-picker";
 
 type SdkQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
-  entityTypes?: ModularEmbeddingEntityType[];
+  entityTypes?: EmbeddingEntityType[];
+
+  /**
+   * Controls the menu for selecting data sources in questions. You can opt for the full data picker by setting `dataPicker = "staged"`.
+   */
+  dataPicker?: EmbeddingDataPicker;
 
   /**
    * Whether to show the save button.
@@ -45,6 +53,11 @@ type SdkQuestionConfig = {
    * Enables the ability to download results in the question.
    */
   withDownloads?: boolean;
+
+  /**
+   * Enables the ability to set up alerts on the question.
+   */
+  withAlerts?: boolean;
 
   /**
    * The collection to save the question to. This will hide the collection picker from the save modal. Only applicable to interactive questions.
@@ -142,6 +155,7 @@ export type SdkQuestionContextType = Omit<
     | "isSaveEnabled"
     | "targetCollection"
     | "withDownloads"
+    | "withAlerts"
     | "backToDashboard"
     | "hiddenParameters"
     | "onVisualizationChange"

@@ -46,9 +46,9 @@ With SSO, Metabase can know who's viewing what, which unlocks a lot of power. Yo
 
 ### Guest embedding
 
-[Guest embeds](./guest-embedding.md) are a secure way to embed charts and dashboards.
+[Guest embeds](./guest-embedding.md) are a secure way to embed charts and dashboards. Guest embedding works on all Metabase plans, including OSS and Starter.
 
-**When to use guest embeds**: simple embedding use cases where you don't want to offer ad-hoc querying or chart drill-through. To filter data relevant to the viewer, you can use guest embeds with [locked parameters](./static-embedding-parameters.md#locked-parameters-limit-the-values-available-to-other-editable-parameters).
+**When to use guest embeds**: simple embedding use cases where you don't want to offer ad-hoc querying or chart drill-through. To filter data relevant to the viewer, you can use guest embeds with [locked parameters](./guest-embedding.md#locked-parameters).
 
 ## Public links and embeds
 

@@ -2,7 +2,7 @@ import type { KeyboardEvent } from "react";
 import { forwardRef, useCallback, useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
-import CollectionDropTarget from "metabase/common/components/dnd/CollectionDropTarget";
+import { CollectionDropTarget } from "metabase/common/components/dnd/CollectionDropTarget";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type {
   ITreeNodeItem,
@@ -77,10 +77,14 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
         }
         switch (event.key) {
           case "ArrowRight":
-            !isExpanded && onToggleExpand();
+            if (!isExpanded) {
+              onToggleExpand();
+            }
             break;
           case "ArrowLeft":
-            isExpanded && onToggleExpand();
+            if (isExpanded) {
+              onToggleExpand();
+            }
             break;
         }
       },

@@ -32,7 +32,7 @@ jest.mock("@uiw/react-codemirror", () => {
   const { forwardRef } = jest.requireActual("react");
 
   const MockEditor = forwardRef((props, ref) => {
-    const { indentWithTab, extensions, ...rest } = props;
+    const { indentWithTab, extensions, basicSetup, editable, ...rest } = props;
     return (
       // @ts-expect-error: some props types are different on CodeMirror
       <textarea
@@ -42,6 +42,7 @@ jest.mock("@uiw/react-codemirror", () => {
         // @ts-expect-error: We cannot provide the update argument to onChange
         onChange={(evt) => props.onChange?.(evt.target.value, undefined)}
         autoFocus
+        disabled={editable === false}
       />
     );
   });

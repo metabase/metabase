@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { BrowseCard } from "metabase/browse/components/BrowseCard";
 import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
@@ -169,7 +169,7 @@ const TableBrowserItemButtons = ({
             onClick={handleEditTableClicked}
             size="sm"
             tooltip={t`Edit this table`}
-            color="text-medium"
+            color="text-secondary"
             aria-label={t`Edit this table`}
             data-testid="edit-table-icon"
           >
@@ -181,7 +181,7 @@ const TableBrowserItemButtons = ({
           to={`/reference/databases/${dbId}/tables/${tableId}`}
           size="sm"
           tooltip={t`Learn about this table`}
-          color="text-medium"
+          color="text-secondary"
           aria-label={t`Learn about this table`}
         >
           <Icon name="reference" />
@@ -193,4 +193,5 @@ const TableBrowserItemButtons = ({
 
 TableBrowserItemButtons.propTypes = itemButtonsPropTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableBrowser;

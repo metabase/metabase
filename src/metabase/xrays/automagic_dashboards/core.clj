@@ -239,7 +239,7 @@
 
 (mu/defn- source-card-id [card-or-question :- [:map
                                                [:dataset_query ::ads/query]]]
-  (lib/source-card-id (:dataset_query card-or-question)))
+  (lib/primary-source-card-id (:dataset_query card-or-question)))
 
 (mu/defn- nested-query?
   "Is this card or question derived from another model or question?"
@@ -962,7 +962,7 @@
 (defn candidate-tables
   "Return a list of tables in database with ID `database-id` for which it makes sense
    to generate an automagic dashboard. Results are grouped by schema and ranked
-   acording to interestingness (both schemas and tables within each schema). Each
+   according to interestingness (both schemas and tables within each schema). Each
    schema contains up to `max-candidate-tables` tables.
 
    Tables are ranked based on how specific dashboard template has been used, and

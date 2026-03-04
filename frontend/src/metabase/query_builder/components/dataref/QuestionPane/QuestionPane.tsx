@@ -7,14 +7,14 @@ import {
   useGetCollectionQuery,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Description,
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { useSelector } from "metabase/lib/redux";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, type IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -100,12 +100,7 @@ export const QuestionPane = ({
             <EmptyDescription>{t`No description`}</EmptyDescription>
           )}
         </Box>
-        <Flex
-          color="var(--mb-color-text-medium)"
-          align="center"
-          p="0.25rem 0.5rem"
-          fw={700}
-        >
+        <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <a
             className={S.QuestionPaneDetailLink}
             href={ML_Urls.getUrl(question)}
@@ -116,12 +111,7 @@ export const QuestionPane = ({
             <NodeListTitleText>{t`See it`}</NodeListTitleText>
           </a>
         </Flex>
-        <Flex
-          color="var(--mb-color-text-medium)"
-          align="center"
-          p="0.25rem 0.5rem"
-          fw={700}
-        >
+        <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <Icon className={S.QuestionPaneIcon} name="label" />
           <Box
             component="span"
@@ -129,12 +119,7 @@ export const QuestionPane = ({
             fw="normal"
           >{t`ID #${question.id()}`}</Box>
         </Flex>
-        <Flex
-          color="var(--mb-color-text-medium)"
-          align="center"
-          p="0.25rem 0.5rem"
-          fw={700}
-        >
+        <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <Icon className={S.QuestionPaneIcon} name="collection" />
           <Box component="span" ml="sm" fw="normal">
             {collection?.name ?? t`Our analytics`}
@@ -142,7 +127,7 @@ export const QuestionPane = ({
         </Flex>
         {question.lastEditInfo() && (
           <Flex
-            color="var(--mb-color-text-medium)"
+            color="text-secondary"
             align="center"
             p="0.25rem 0.5rem"
             fw={700}

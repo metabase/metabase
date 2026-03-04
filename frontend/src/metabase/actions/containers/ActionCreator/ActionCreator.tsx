@@ -5,8 +5,8 @@ import _ from "underscore";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import Modal from "metabase/common/components/Modal";
-import useBeforeUnload from "metabase/common/hooks/use-before-unload";
+import { Modal } from "metabase/common/components/Modal";
+import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import type {
   CreateActionParams,

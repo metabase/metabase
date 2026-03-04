@@ -13,7 +13,7 @@
   width: 100%;
   padding-block: 0.75rem;
   padding-inline: var(--item-padding);
-  border-bottom: 1px solid var(--mb-color-border-secondary);
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .listBody {
@@ -29,11 +29,11 @@
   width: 100%;
   height: 4rem;
   border-bottom: 1px solid var(--mb-color-border-subtle);
-  background: var(--mb-color-bg-white);
+  background: var(--mb-color-background-primary);
   padding-inline: var(--item-padding, var(--mantine-spacing-md));
 
   &:hover {
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-hover);
   }
 
   /* Columns rendering */
@@ -41,7 +41,7 @@
     cursor: inherit;
     padding-inline: var(--mantine-spacing-sm);
     color: var(--mb-color-text-secondary);
-    border-color: var(--mb-color-border-secondary);
+    border-color: var(--mb-color-border);
   }
 }
 
@@ -83,12 +83,12 @@
   align-items: start;
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-md);
-  background: var(--mb-color-bg-white);
+  background: var(--mb-color-background-primary);
   padding: var(--mantine-spacing-md);
 }
 
 .listEntityIcon {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 
   &:hover {
     color: var(--mb-color-brand);
@@ -98,7 +98,7 @@
 .iconMenuButtonContainer {
   width: 3rem;
   height: 3rem;
-  background: var(--mb-color-background-hover-light);
+  background: var(--mb-color-background-brand);
   justify-content: center;
   align-items: center;
   border: 1px dashed var(--mb-color-saturated-blue);

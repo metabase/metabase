@@ -1,4 +1,5 @@
 import querystring from "querystring";
+
 import { useEffect, useMemo } from "react";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";

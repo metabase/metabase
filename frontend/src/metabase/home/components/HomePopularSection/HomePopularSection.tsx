@@ -12,7 +12,7 @@ import { HomeCaption } from "../HomeCaption";
 import { HomeHelpCard } from "../HomeHelpCard";
 import { HomeModelCard } from "../HomeModelCard";
 
-import { SectionBody } from "./HomePopularSection.styled";
+import S from "./HomePopularSection.module.css";
 
 export const HomePopularSection = (): JSX.Element => {
   const {
@@ -28,7 +28,7 @@ export const HomePopularSection = (): JSX.Element => {
   return (
     <div>
       <HomeCaption>{getTitle(popularItems)}</HomeCaption>
-      <SectionBody>
+      <div className={S.SectionBody}>
         {popularItems.map((item, index) => (
           <HomeModelCard
             key={index}
@@ -38,7 +38,7 @@ export const HomePopularSection = (): JSX.Element => {
           />
         ))}
         <HomeHelpCard />
-      </SectionBody>
+      </div>
     </div>
   );
 };

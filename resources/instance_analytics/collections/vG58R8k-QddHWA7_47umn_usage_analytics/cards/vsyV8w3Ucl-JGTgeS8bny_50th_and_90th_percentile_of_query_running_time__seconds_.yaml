@@ -85,13 +85,12 @@ visualization_settings:
   graph.show_values: true
   graph.x_axis.labels_enabled: false
   graph.y_axis.title_text: Running time (seconds)
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: vsyV8w3Ucl-JGTgeS8bny, label: 50th_and_90th_percentile_of_query_running_time__seconds_, model: Card}
 archived_directly: false
 dashboard_id: Glqmoytsnu0n6rfLUjock
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

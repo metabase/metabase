@@ -1,9 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import BaseExternalLink from "metabase/common/components/ExternalLink";
-import Input from "metabase/common/components/Input";
-import Link from "metabase/common/components/Link";
+import { ExternalLink as BaseExternalLink } from "metabase/common/components/ExternalLink";
+import { Input } from "metabase/common/components/Input";
+import { Link } from "metabase/common/components/Link";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 
 export const DisplayLinkCardWrapper = styled.div`
@@ -59,7 +59,7 @@ const searchResultsStyles = `
   min-width: 20rem;
   overflow-y: auto;
 
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   line-height: 24px;
 
   max-height: 400px;

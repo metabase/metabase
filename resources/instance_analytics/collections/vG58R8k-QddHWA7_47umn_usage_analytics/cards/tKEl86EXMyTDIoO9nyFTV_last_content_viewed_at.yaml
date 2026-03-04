@@ -24,7 +24,7 @@ dataset_query:
     - - max
       - - field
         - timestamp
-        - {base-type: type/DateTimeWithLocalTZ, original-temporal-unit: month, inherited-temporal-unit: default, temporal-unit: minute}
+        - {base-type: type/DateTimeWithLocalTZ, temporal-unit: minute, original-temporal-unit: month, inherited-temporal-unit: default}
     breakout:
     - - field
       - entity_qualified_id
@@ -56,13 +56,12 @@ result_metadata:
   semantic_type: type/CreationTimestamp
   source: aggregation
 visualization_settings: {column_settings: null, table.cell_column: max}
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: tKEl86EXMyTDIoO9nyFTV, label: last_content_viewed_at, model: Card}
 archived_directly: false
 dashboard_id: null
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

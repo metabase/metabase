@@ -100,7 +100,7 @@ export const RadioContainerBubble = styled(RadioContainer)`
   font-weight: bold;
   color: ${(props) =>
     props.checked
-      ? color("text-white")
+      ? color("text-primary-inverse")
       : getContrastSchemeColor(props.colorScheme)};
   background-color: ${(props) =>
     props.checked
@@ -133,7 +133,9 @@ export const RadioButton = styled.span<RadioButtonProps>`
   border-radius: 0.75rem;
   box-shadow: 0 0 0 2px
     ${(props) =>
-      props.checked ? getSchemeColor(props.colorScheme) : color("text-medium")};
+      props.checked
+        ? getSchemeColor(props.colorScheme)
+        : color("text-secondary")};
   background-color: ${(props) =>
     props.checked ? getSchemeColor(props.colorScheme) : "transparent"};
 `;

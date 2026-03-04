@@ -9,7 +9,7 @@ interface MetabotResetLongChatButtonProps {
 export const MetabotResetLongChatButton = ({
   onResetConversation,
 }: MetabotResetLongChatButtonProps) => (
-  <Text lh={1} c="text-light" m={0} ta="center">
+  <Text lh={1} c="text-tertiary" m={0} ta="center">
     {jt`This chat is getting long. You can ${(
       <UnstyledButton
         key="reset"

@@ -11,4 +11,8 @@
    [:report-timezone
     {:optional    true
      :description "The timezone the query should be ran in, overriding the default report timezone for the instance."}
-    [:ref ::lib.schema.expression.temporal/timezone-id]]])
+    [:ref ::lib.schema.expression.temporal/timezone-id]]
+   [:include-sensitive-fields
+    {:optional    true
+     :description "Whether to include fields with visibility_type :sensitive when fetching query metadata."}
+    :boolean]])

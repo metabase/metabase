@@ -28,6 +28,7 @@
    :dataset           :model/Card
    :dimension         :model/Dimension
    :document          :model/Document
+   :measure           :model/Measure
    :metric            :model/Card
    :permissions-group :model/PermissionsGroup
    :pulse             :model/Pulse
@@ -36,6 +37,7 @@
    :segment           :model/Segment
    :snippet           :model/NativeQuerySnippet
    :timeline          :model/Timeline
+   :transform         :model/Transform
    :user              :model/User})
 
 (defn- ->model

@@ -13,6 +13,7 @@ import { Box, Group, Tabs, Title } from "metabase/ui";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
 import { EditUserStrategySettingsButton } from "../EditUserStrategySettingsButton";
+import { TenantsDocsButton } from "../TenantsDocsButton";
 import { TenantsListing } from "../components/TenantsListing";
 
 import S from "./TenantsListingApp.module.css";
@@ -63,6 +64,7 @@ export const TenantsListingApp = ({
         <Title order={1}>{t`Tenants`}</Title>
 
         <Group gap="sm">
+          <TenantsDocsButton />
           <EditUserStrategySettingsButton page="tenants" />
         </Group>
       </Group>

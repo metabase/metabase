@@ -37,7 +37,7 @@ function getHeaderVariant({
   return "default";
 }
 
-function SidebarHeader({
+export function SidebarHeader({
   className,
   title,
   icon,
@@ -96,6 +96,3 @@ function SidebarHeader({
     </Flex>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(SidebarHeader);

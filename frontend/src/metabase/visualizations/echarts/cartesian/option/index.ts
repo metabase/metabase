@@ -23,7 +23,7 @@ import type { ChartMeasurements } from "../chart-measurements/types";
 import { CHART_STYLE } from "../constants/style";
 import { getBarSeriesDataLabelKey } from "../model/util";
 
-import { getGoalLineSeriesOption } from "./goal-line";
+import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
 import type { EChartsSeriesOption } from "./types";
 
@@ -113,7 +113,7 @@ export const getCartesianChartOption = (
     renderingContext,
   );
   const goalSeriesOption = getGoalLineSeriesOption(
-    chartModel,
+    getGoalLineParams(chartModel),
     settings,
     renderingContext,
   );
@@ -157,7 +157,8 @@ export const getCartesianChartOption = (
       source: chartModel.trendLinesModel?.dataset as OptionSourceData,
       dimensions: [
         X_AXIS_DATA_KEY,
-        ...chartModel.trendLinesModel?.seriesModels.map((s) => s.dataKey),
+        ...(chartModel.trendLinesModel?.seriesModels?.map((s) => s.dataKey) ??
+          []),
       ],
     });
   }

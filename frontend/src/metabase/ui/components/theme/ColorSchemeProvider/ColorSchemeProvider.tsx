@@ -62,7 +62,7 @@ export function ColorSchemeProvider({
   useEffect(() => {
     // NOTE: The `defaultColorScheme` prop may change in cases where the
     // page hasn't reloaded (therefore embedded user preferences haven't
-    // changed) but a new set of preferences arives from events, such as
+    // changed) but a new set of preferences arrives from events, such as
     // session changes after login/logout.
     //
     // If such new preferences specify a different color scheme, we then

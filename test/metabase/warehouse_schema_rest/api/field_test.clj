@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -882,3 +883,21 @@
         (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
         (is (isa? (:effective_type field) :type/DateTime))
         (is (= "minutes" (-> field :settings :time_enabled)))))))
+
+(deftest field-values-requires-query-permission-test
+  (testing "GET /api/field/:id/values requires query permission (view-data + create-queries)"
+    (mt/with-temp-copy-of-db
+      (t2/update! :model/Field (mt/id :venues :price) {:has_field_values "list"})
+      (testing "User with only view-data permission (no create-queries) cannot access field values"
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "field/%d/values" (mt/id :venues :price)))))))
+      (testing "User with both view-data and create-queries can access field values"
+        (mt/with-temp [:model/PermissionsGroup           {pg-id :id :as pg} {}
+                       :model/PermissionsGroupMembership _                  {:user_id  (mt/user->id :rasta)
+                                                                             :group_id pg-id}]
+          (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-database-permission! pg (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! pg (mt/id) :perms/create-queries :query-builder)
+            (is (= {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price), :has_more_values false}
+                   (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))))))

@@ -7,7 +7,7 @@
    [toucan2.core :as t2]))
 
 ;;; TODO -- we actually do set this so it probably shouldn't be `:setter :none`. `:setter :none` is meant for settings
-;;; whose values are programatically generated -- Cam
+;;; whose values are programmatically generated -- Cam
 (defsetting setup-token
   "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
   launch of Metabase, by the first instance; once used, it is cleared out, never to be used again."

@@ -1,4 +1,4 @@
-import type { StoryFn } from "@storybook/react";
+import type { Meta, StoryFn } from "@storybook/react";
 import type { ComponentProps } from "react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
@@ -23,16 +23,8 @@ export default {
   decorators: [CommonSdkStoryWrapper],
   argTypes: {
     questionId: questionIdArgType,
-    withDownloads: {
-      control: "boolean",
-      defaultValue: false,
-    },
-    withChartTypeSelector: {
-      control: "boolean",
-      defaultValue: false,
-    },
   },
-};
+} satisfies Meta<typeof StaticQuestion>;
 
 const Template: StoryFn<StaticQuestionComponentProps> = (args) => {
   return (
@@ -47,8 +39,8 @@ export const Default = {
 
   args: {
     questionId: QUESTION_ID,
-    isSaveEnabled: true,
     title: false,
+    withAlerts: false,
     withDownloads: false,
     withChartTypeSelector: false,
   },
@@ -60,6 +52,7 @@ export const WithCustomTitle = {
   args: {
     questionId: QUESTION_ID,
     title: "Acme Inc. Sales Report",
+    withAlerts: false,
     withDownloads: false,
     withChartTypeSelector: false,
   },
@@ -71,6 +64,7 @@ export const WithAdditionalElements = {
   args: {
     questionId: QUESTION_ID,
     title: "Acme Inc. Sales Report",
+    withAlerts: false,
     withDownloads: true,
     withChartTypeSelector: true,
   },

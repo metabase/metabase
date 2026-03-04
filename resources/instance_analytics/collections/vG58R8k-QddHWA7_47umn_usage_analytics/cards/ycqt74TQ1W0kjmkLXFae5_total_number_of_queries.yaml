@@ -66,13 +66,12 @@ visualization_settings:
   stackable.stack_type: normalized
   table.cell_column: running_time_seconds
   table.pivot_column: error
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: ycqt74TQ1W0kjmkLXFae5, label: total_number_of_queries, model: Card}
 archived_directly: false
 dashboard_id: Glqmoytsnu0n6rfLUjock
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

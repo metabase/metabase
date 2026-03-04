@@ -73,7 +73,7 @@ export function chatMessages() {
 }
 
 export function lastChatMessage() {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return chatMessages().last();
 }
 

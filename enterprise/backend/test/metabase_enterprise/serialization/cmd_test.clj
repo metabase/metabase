@@ -45,7 +45,7 @@
                          "settings"        true
                          "field_values"    false
                          "duration_ms"     pos?
-                         "count"           11
+                         "count"           12
                          "source"          "cli"
                          "secrets"         false
                          "success"         true
@@ -60,8 +60,8 @@
                          "direction"     "import"
                          "duration_ms"   pos?
                          "source"        "cli"
-                         "models"        "Card,Collection,Setting,TransformJob,TransformTag"
-                         "count"         11
+                         "models"        "Card,Collection,PythonLibrary,Setting,TransformJob,TransformTag"
+                         "count"         12
                          "success"       true
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
@@ -106,5 +106,5 @@
                              "count"         0
                              "success"       false
                              ;; t2/with-transactions re-wraps errors with data about toucan connections
-                             "error_message" "Failed to read file {:path \"Collection DoesNotExist\"}"}
+                             "error_message" #"Collection 'DoesNotExist' was not found.*"}
                             (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))))))))

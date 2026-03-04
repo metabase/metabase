@@ -61,7 +61,6 @@ describe("getLoadingMessage", () => {
     });
 
     const expectedLoadingMessage = "Loading results...";
-    ("");
 
     expect(getLoadingMessage(states)(false)).toBe(expectedLoadingMessage);
   });

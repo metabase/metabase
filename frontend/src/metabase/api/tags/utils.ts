@@ -5,6 +5,8 @@ import type {
   Alert,
   ApiKey,
   Bookmark,
+  BulkTableInfo,
+  BulkTableSelectionInfo,
   Card,
   CardId,
   CardQueryMetadata,
@@ -21,10 +23,13 @@ import type {
   FieldDimension,
   FieldId,
   ForeignKey,
+  GetInspectorLensRequest,
   GetUserKeyValueRequest,
   Group,
   GroupListQuery,
+  InspectorLens,
   LoggerPreset,
+  Measure,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -38,8 +43,13 @@ import type {
   Segment,
   Table,
   Task,
+  TaskRun,
   Timeline,
   TimelineEvent,
+  Transform,
+  TransformJob,
+  TransformRun,
+  TransformTag,
   UserInfo,
   WritebackAction,
 } from "metabase-types/api";
@@ -50,6 +60,8 @@ import {
 } from "metabase-types/api";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 import type { Notification } from "metabase-types/api/notification";
+
+import { getLensKey } from "../utils/transform-inspector-lens";
 
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
@@ -544,6 +556,21 @@ export function provideSegmentTags(
   ];
 }
 
+export function provideMeasureListTags(
+  measures: Measure[],
+): TagDescription<TagType>[] {
+  return [listTag("measure"), ...measures.flatMap(provideMeasureTags)];
+}
+
+export function provideMeasureTags(
+  measure: Measure,
+): TagDescription<TagType>[] {
+  return [
+    idTag("measure", measure.id),
+    ...(measure.table ? provideTableTags(measure.table) : []),
+  ];
+}
+
 export function provideSnippetListTags(
   snippets: NativeQuerySnippet[],
 ): TagDescription<TagType>[] {
@@ -588,6 +615,7 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fields ? provideFieldListTags(table.fields) : []),
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
+    ...(table.measures ? provideMeasureListTags(table.measures) : []),
     ...(table.metrics ? provideCardListTags(table.metrics) : []),
   ];
 }
@@ -602,6 +630,18 @@ export function provideUniqueTasksListTags(): TagDescription<TagType>[] {
 
 export function provideTaskTags(task: Task): TagDescription<TagType>[] {
   return [idTag("task", task.id)];
+}
+
+export function provideTaskRunListTags(
+  taskRuns: TaskRun[],
+): TagDescription<TagType>[] {
+  return [listTag("task-run"), ...taskRuns.flatMap(provideTaskRunTags)];
+}
+
+export function provideTaskRunTags(
+  taskRun: TaskRun,
+): TagDescription<TagType>[] {
+  return [idTag("task-run", taskRun.id)];
 }
 
 export function provideTimelineEventListTags(
@@ -671,4 +711,93 @@ export function provideCommentTags(
   }
 
   return [idTag("comment", comment.id)];
+}
+
+export function provideBulkTableInfoTags(
+  table: BulkTableInfo,
+): TagDescription<TagType>[] {
+  return [idTag("table", table.id)];
+}
+
+export function provideBulkTableSelectionInfoTags({
+  selected_table,
+  published_downstream_tables,
+  unpublished_upstream_tables,
+}: BulkTableSelectionInfo): TagDescription<TagType>[] {
+  return [
+    listTag("table"),
+    ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
+    ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
+    ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
+  ];
+}
+
+export function provideTransformTags(
+  transform: Transform,
+): TagDescription<TagType>[] {
+  return [
+    idTag("transform", transform.id),
+    ...(transform.tag_ids?.flatMap((tag) => idTag("transform-tag", tag)) ?? []),
+  ];
+}
+
+export function provideTransformListTags(
+  transforms: Transform[],
+): TagDescription<TagType>[] {
+  return [listTag("transform"), ...transforms.flatMap(provideTransformTags)];
+}
+
+export function provideTransformRunTags(
+  run: TransformRun,
+): TagDescription<TagType>[] {
+  return [
+    idTag("transform-run", run.id),
+    ...(run.transform ? provideTransformTags(run.transform) : []),
+  ];
+}
+
+export function provideTransformRunListTags(
+  runs: TransformRun[],
+): TagDescription<TagType>[] {
+  return [listTag("transform-run"), ...runs.flatMap(provideTransformRunTags)];
+}
+
+export function provideTransformTagTags(
+  tag: TransformTag,
+): TagDescription<TagType>[] {
+  return [idTag("transform-tag", tag.id)];
+}
+
+export function provideTransformTagListTags(
+  tags: TransformTag[],
+): TagDescription<TagType>[] {
+  return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
+}
+
+export function provideTransformJobTags(
+  job: TransformJob,
+): TagDescription<TagType>[] {
+  return [
+    idTag("transform-job", job.id),
+    ...(job.tag_ids?.map((tagId) => idTag("transform-job-via-tag", tagId)) ??
+      []),
+  ];
+}
+
+export function provideTransformJobListTags(
+  jobs: TransformJob[],
+): TagDescription<TagType>[] {
+  return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
+}
+
+export function provideInspectorLensTags(
+  lens: InspectorLens | undefined,
+  _error: unknown,
+  { transformId, lensParams }: GetInspectorLensRequest,
+): TagDescription<TagType>[] {
+  const lensKey = getLensKey({ id: lens?.id ?? "", params: lensParams });
+  return [
+    idTag("transform", transformId),
+    idTag("transform-inspector-lens", lensKey),
+  ];
 }

@@ -1,11 +1,32 @@
 (ns metabase.request.util-test
   (:require
+   [clj-http.client :as http]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
    [metabase.request.util :as req.util]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [ring.mock.request :as ring.mock]))
+
+(deftest ^:parallel cacheable?-test
+  (testing "JS/CSS with cache-busting hash are cacheable"
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/main.abc123def.js"})))
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/styles.abc123def.css"}))))
+  (testing "Resources in /app/dist/ with hex hash prefix are cacheable"
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/abc123def456.png"}))))
+  (testing "Font files are cacheable"
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/Lato/lato-v16-latin-regular.woff2"})))
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/Lato/lato-v16-latin-regular.woff"})))
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.ttf"})))
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.otf"})))
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.eot"}))))
+  (testing "Non-GET requests are not cacheable"
+    (is (not (req.util/cacheable? {:request-method :post :uri "/app/fonts/Lato/lato.woff2"}))))
+  (testing "Other paths are not cacheable"
+    (is (not (req.util/cacheable? {:request-method :get :uri "/api/dashboard/1"})))
+    (is (not (req.util/cacheable? {:request-method :get :uri "/app/dist/main.js"})))))
 
 (deftest ^:parallel https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
@@ -97,47 +118,77 @@
           (is (= "127.0.0.1"
                  (req.util/ip-address mock-request))))))))
 
-(deftest ^:parallel geocode-ip-addresses-test
-  (are [ip-addresses expected] (malli= [:maybe expected]
-                                       (req.util/geocode-ip-addresses ip-addresses))
-    ;; Google DNS
-    ["8.8.8.8"]
-    [:map
-     ["8.8.8.8" [:map
-                 [:description [:re #"United States"]]
-                 [:timezone    [:= (t/zone-id "America/Chicago")]]]]]
+(def ^:private mock-geojs-responses
+  "Canned GeoJS responses for test IPs. These mock what GeoJS would return."
+  {"8.8.8.8"              {:city "" :region "" :country "United States" :timezone "America/Chicago"}
+   "185.233.100.23"       {:city "Paris" :region "" :country "France" :timezone "Europe/Paris"}
+   "127.0.0.1"            {:city "" :region "" :country "" :timezone nil}
+   "0:0:0:0:0:0:0:1"      {:city "" :region "" :country "" :timezone nil}
+   "52.206.149.9"         {:city "" :region "Virginia" :country "United States" :timezone "America/New_York"}
+   "2001:4860:4860::8844" {:city "" :region "" :country "United States" :timezone "America/Chicago"}})
 
-    ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
-    ["185.233.100.23"]
-    [:map
-     ["185.233.100.23" [:map
-                        [:description [:re #"France"]]
-                        [:timezone    [:= (t/zone-id "Europe/Paris")]]]]]
+(defn- mock-geojs-http-get
+  "Mock HTTP GET that returns canned GeoJS responses for test IPs."
+  [url _opts]
+  (let [ips (-> url (str/split #"\?ip=") second (str/split #","))]
+    {:body (json/encode (mapv #(assoc (get mock-geojs-responses % {}) :ip %) ips))}))
 
-    ["127.0.0.1"]
-    [:map
-     ["127.0.0.1" [:map
-                   [:description [:= "Unknown location"]]
-                   [:timezone    :nil]]]]
+(deftest geocode-ip-addresses-test
+  ;; Not ^:parallel because with-redefs mutates global state
+  (with-redefs [http/get mock-geojs-http-get]
+    (are [ip-addresses expected] (malli= expected
+                                         (req.util/geocode-ip-addresses ip-addresses))
+      ;; Google DNS
+      ["8.8.8.8"]
+      [:map
+       ["8.8.8.8" [:map
+                   [:description [:= "United States"]]
+                   [:timezone    [:= (t/zone-id "America/Chicago")]]]]]
 
-    ["0:0:0:0:0:0:0:1"]
-    [:map
-     ["0:0:0:0:0:0:0:1" [:map
-                         [:description [:= "Unknown location"]]
-                         [:timezone    :nil]]]]
+      ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
+      ["185.233.100.23"]
+      [:map
+       ["185.233.100.23" [:map
+                          [:description [:= "Paris, France"]]
+                          [:timezone    [:= (t/zone-id "Europe/Paris")]]]]]
 
-    ;; multiple addresses at once
-    ;; store.metabase.com, Google DNS
-    ["52.206.149.9" "2001:4860:4860::8844"]
-    [:map
-     ["52.206.149.9"         [:map
-                              [:description [:re #"United States"]]
-                              [:timezone    [:= (t/zone-id "America/New_York")]]]]
-     ["2001:4860:4860::8844" [:map
-                              [:description [:re #"United States"]]
-                              [:timezone    [:= (t/zone-id "America/Chicago")]]]]]
+      ["127.0.0.1"]
+      [:map
+       ["127.0.0.1" [:map
+                     [:description [:= "Unknown location"]]
+                     [:timezone    :nil]]]]
 
-    ["wow"] :nil
-    ["   "] :nil
-    []      :nil
-    nil     :nil))
+      ["0:0:0:0:0:0:0:1"]
+      [:map
+       ["0:0:0:0:0:0:0:1" [:map
+                           [:description [:= "Unknown location"]]
+                           [:timezone    :nil]]]]
+
+      ;; multiple addresses at once
+      ;; store.metabase.com, Google DNS
+      ["52.206.149.9" "2001:4860:4860::8844"]
+      [:map
+       ["52.206.149.9"         [:map
+                                [:description [:= "Virginia, United States"]]
+                                [:timezone    [:= (t/zone-id "America/New_York")]]]]
+       ["2001:4860:4860::8844" [:map
+                                [:description [:= "United States"]]
+                                [:timezone    [:= (t/zone-id "America/Chicago")]]]]]
+
+      ;; invalid inputs - these don't make HTTP calls, filtered before request
+      ["wow"] :nil
+      ["   "] :nil
+      []      :nil
+      nil     :nil)))
+
+(deftest geocode-ip-addresses-metrics-test
+  (testing "increments :metabase-geocoding/requests on successful geocoding"
+    (mt/with-prometheus-system! [_ system]
+      (with-redefs [http/get mock-geojs-http-get]
+        (req.util/geocode-ip-addresses ["8.8.8.8"])
+        (is (= 1.0 (mt/metric-value system :metabase-geocoding/requests))))))
+  (testing "increments :metabase-geocoding/errors on failed geocoding"
+    (mt/with-prometheus-system! [_ system]
+      (with-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
+        (req.util/geocode-ip-addresses ["8.8.8.8"])
+        (is (= 1.0 (mt/metric-value system :metabase-geocoding/errors)))))))

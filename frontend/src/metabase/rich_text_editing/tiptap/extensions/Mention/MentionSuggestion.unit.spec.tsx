@@ -180,6 +180,27 @@ describe("MentionSuggestion", () => {
     expectOptionNotToBePresent(/Dashboard/);
   });
 
+  it("skips model selector and shows entities when only one searchModel is provided", async () => {
+    setup({
+      query: "",
+      searchModels: ["dashboard"],
+      searchItems: [
+        createMockSearchResult({
+          name: "Orders Dashboard",
+          model: "dashboard",
+          id: 20,
+        }),
+      ],
+      recentItems: [],
+      canFilterSearchModels: true,
+      canBrowseAll: false,
+    });
+
+    // should show recent entity results directly, not the model selector
+    await expectOptionToBePresent(/Orders Dashboard/);
+    expectOptionNotToBePresent(/^Dashboard$/);
+  });
+
   it("searches all models when query doesn't match any model name", async () => {
     setup({
       query: "Sales", // Doesn't match any model name

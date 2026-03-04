@@ -12,17 +12,15 @@ export const originalColors = getColors();
 export const aliases: Record<string, (palette: ColorPalette) => string> = {
   dashboard: (palette) => color("brand", palette),
   document: (palette) => color("brand", palette),
-  nav: (palette) => color("bg-white", palette),
-  content: (palette) => color("bg-light", palette),
+  nav: (palette) => color("background-primary", palette),
+  content: (palette) => color("background-secondary", palette),
   database: (palette) => color("accent2", palette),
   pulse: (palette) => color("accent4", palette),
-  "text-primary": (palette) => color("text-dark", palette),
-  "text-secondary": (palette) => color("text-medium", palette),
-  "text-tertiary": (palette) => color("text-light", palette),
+  "text-primary": (palette) => color("text-primary", palette),
+  "text-secondary": (palette) => color("text-secondary", palette),
+  "text-tertiary": (palette) => color("text-tertiary", palette),
   background: (palette) => color("white", palette),
   "background-disbaled": (palette) => color("accent-gray", palette),
-  "brand-light": (palette) => lighten(color("brand", palette), 0.532), // #DDECFA
-  "brand-lighter": (palette) => lighten(color("brand", palette), 0.598), // #EEF6FC for brand
   focus: (palette) => getFocusColor("brand", palette),
 
   "accent0-light": (palette) => tint(color(`accent0`, palette)),
@@ -46,10 +44,10 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
 
 /**
  * @deprecated use CSS variables instead where possible,
- * i.e. `var(--mb-color-text-light)`.
+ * i.e. `var(--mb-color-text-tertiary)`.
  *
  * When the hex values are needed, use the themeColor function
- * from Mantine's theme, i.e. `theme.fn.themeColor("text-light")`
+ * from Mantine's theme, i.e. `theme.fn.themeColor("text-tertiary")`
  */
 export function color(colorName: ColorName, palette?: ColorPalette): ColorName;
 export function color(color: string, palette?: ColorPalette): string;
@@ -72,10 +70,10 @@ export function color(color: any, palette: ColorPalette = colors) {
 
 /**
  * @deprecated use the color-mix method with CSS variables instead
- * where possible, i.e. `color-mix(in srgb, var(--mb-color-bg-light), transparent 10%)`
+ * where possible, i.e. `color-mix(in srgb, var(--mb-color-background-secondary), transparent 10%)`
  *
  * When the hex values are needed, use the themeColor function
- * from Mantine's theme, i.e. `alpha(theme.fn.themeColor("text-light"), 0.1)`
+ * from Mantine's theme, i.e. `alpha(theme.fn.themeColor("text-tertiary"), 0.1)`
  */
 export const alpha = (c: string, a: number) => {
   return Color(color(c)).alpha(a).string();
@@ -83,10 +81,10 @@ export const alpha = (c: string, a: number) => {
 
 /**
  * @deprecated use the color-mix method with CSS variables instead
- * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-light), white 10%)`
+ * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-tertiary), white 10%)`
  *
  * When the hex values are needed, use the themeColor function
- * from Mantine's theme, i.e. `lighten(theme.fn.themeColor("text-light"), 0.1)`
+ * from Mantine's theme, i.e. `lighten(theme.fn.themeColor("text-tertiary"), 0.1)`
  */
 export const lighten = (c: string, f: number = 0.5) => {
   return Color(color(c)).lighten(f).string();
@@ -94,10 +92,10 @@ export const lighten = (c: string, f: number = 0.5) => {
 
 /**
  * @deprecated use the color-mix method with CSS variables instead
- * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-light), black 10%)`
+ * where possible, i.e. `color-mix(in srgb, var(--mb-color-text-tertiary), black 10%)`
  *
  * When the hex values are needed, use the themeColor function
- * from Mantine's theme, i.e. `darken(theme.fn.themeColor("text-light"), 0.1)`
+ * from Mantine's theme, i.e. `darken(theme.fn.themeColor("text-tertiary"), 0.1)`
  */
 export const darken = (c: string, f: number = 0.25) => {
   return Color(color(c)).darken(f).string();
@@ -147,13 +145,14 @@ export const getTextColorForBackground = (
   getColor: ColorGetter = color,
 ) => {
   const whiteTextContrast =
-    Color(getColor(backgroundColor)).contrast(Color(getColor("text-white"))) *
-    whiteTextColorPriorityFactor;
+    Color(getColor(backgroundColor)).contrast(
+      Color(getColor("text-primary-inverse")),
+    ) * whiteTextColorPriorityFactor;
   const darkTextContrast = Color(getColor(backgroundColor)).contrast(
-    Color(getColor("text-dark")),
+    Color(getColor("text-primary")),
   );
 
   return whiteTextContrast > darkTextContrast
-    ? getColor("text-white")
-    : getColor("text-dark");
+    ? getColor("text-primary-inverse")
+    : getColor("text-primary");
 };

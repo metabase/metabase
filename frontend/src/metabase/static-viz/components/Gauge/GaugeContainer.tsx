@@ -89,7 +89,7 @@ export default function GaugeContainer({
           ],
           textAnchor: "middle",
           value: valueFormatter(segmentValue),
-          color: getColor("text-medium"),
+          color: getColor("text-secondary"),
         };
       }
 
@@ -101,7 +101,7 @@ export default function GaugeContainer({
           ],
           textAnchor: "middle",
           value: valueFormatter(segmentValue),
-          color: getColor("text-medium"),
+          color: getColor("text-secondary"),
         };
       }
 
@@ -109,7 +109,7 @@ export default function GaugeContainer({
         position: calculateSegmentLabelPosition(segmentValueAngle),
         textAnchor: calculateSegmentLabelTextAnchor(segmentValueAngle),
         value: valueFormatter(segmentValue),
-        color: getColor("text-medium"),
+        color: getColor("text-secondary"),
       };
     });
 
@@ -138,7 +138,7 @@ export default function GaugeContainer({
             weight: CHAR_SIZES_FONT_WEIGHT,
           },
         ),
-        color: getColor("text-dark"),
+        color: getColor("text-primary"),
       };
     });
 

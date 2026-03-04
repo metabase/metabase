@@ -3,13 +3,13 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -32,27 +32,26 @@
 
 (def data-layers
   "Valid values for `Table.data_layer`.
-  :gold   - highest quality, fully visible, synced
-  :silver - high quality, visible, synced
-  :bronze - acceptable quality, visible, synced
-  :copper - low quality, hidden, not synced"
-  #{:gold :silver :bronze :copper})
+  :final     - tables published for downstream consumption
+  :internal  - acceptable quality, visible, synced
+  :hidden    - low quality, hidden, not synced"
+  #{:final :internal :hidden})
 
 (defn- visibility-type->data-layer
   "Convert legacy visibility_type to data_layer.
   Used when updating via the legacy field."
   [visibility-type]
   (if (contains? #{:hidden :retired :sensitive :technical :cruft} visibility-type)
-    :copper
-    :gold))
+    :hidden
+    :internal))
 
 (defn- data-layer->visibility-type
   "Convert data_layer back to legacy visibility_type.
   Used for rollback compatibility to v56."
   [data-layer]
   (case data-layer
-    :copper :hidden
-    ;; gold, silver, bronze all map to visible (nil)
+    :hidden :hidden
+    ;; internal,final all map to visible (nil)
     nil))
 
 (def field-orderings
@@ -111,10 +110,25 @@
                                :status-code 400}))))
           (some-> value name))})
 
+(def ^:private transform-data-layer
+  {:in  (:in mi/transform-keyword)
+   :out (comp (some-fn data-layers
+                       ;; some databases may retain prior medallion values
+                       ;; this is due to race conditions with migrations (migration runs can contend with running writes)
+                       ;; e.g. we saw the prior values retained for the sync of a new search index table in stats.
+                       ;; we might later have a second migration and risk removing this map or find a better way
+                       ;; to make breaking enum migrations.
+                       {:copper :hidden
+                        :bronze :final
+                        :silver :final
+                        :gold   :final}
+                       identity)
+              (:out mi/transform-keyword))})
+
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-layers))
+   :data_layer      (mi/transform-validator transform-data-layer (partial mi/assert-optional-enum data-layers))
    :field_order     mi/transform-keyword
    :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
@@ -160,7 +174,7 @@
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
-                  :data_layer   :bronze}]
+                  :data_layer   :internal}]
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table
@@ -239,33 +253,124 @@
     (set-new-table-permissions! table)))
 
 (defmethod mi/can-read? :model/Table
+  ;; Check if user can see this table's metadata.
+  ;; True if user has:
+  ;; - Data access permissions (view-data :unrestricted) and either query perms or published-collection access, OR
+  ;; - Metadata management permission (manage-table-metadata :yes), OR
   ([instance]
-   (and (perms/user-has-permission-for-table?
-         api/*current-user-id*
-         :perms/view-data
-         :unrestricted
-         (:db_id instance)
-         (:id instance))
-        (perms/user-has-permission-for-table?
-         api/*current-user-id*
-         :perms/create-queries
-         :query-builder
-         (:db_id instance)
-         (:id instance))))
+   (or
+    ;; Has data access permissions
+    (and (perms/user-has-permission-for-table?
+          api/*current-user-id*
+          :perms/view-data
+          :unrestricted
+          (:db_id instance)
+          (:id instance))
+         (or
+          (perms/user-has-permission-for-table?
+           api/*current-user-id*
+           :perms/create-queries
+           :query-builder
+           (:db_id instance)
+           (:id instance))
+          ;; Can access via published collection (EE feature)
+          (perms/can-access-via-collection? instance)))
+    ;; Has manage-table-metadata permission (allows viewing metadata without data access)
+    (perms/user-has-permission-for-table?
+     api/*current-user-id*
+     :perms/manage-table-metadata
+     :yes
+     (:db_id instance)
+     (:id instance))))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Table pk))))
 
+(defmethod mi/can-query? :model/Table
+  ;; Check if user can execute queries against this table.
+  ;; True if user has:
+  ;; - view-data permission and either create-queries permission or published-collection access (EE feature)
+  ([instance]
+   (boolean
+    ;; Has both view-data and create-queries permissions
+    (and (perms/user-has-permission-for-table?
+          api/*current-user-id*
+          :perms/view-data
+          :unrestricted
+          (:db_id instance)
+          (:id instance))
+         (or
+          (perms/user-has-permission-for-table?
+           api/*current-user-id*
+           :perms/create-queries
+           :query-builder
+           (:db_id instance)
+           (:id instance))
+          ;; Can access via published collection (EE feature)
+          (perms/can-access-via-collection? instance)))))
+  ([_ pk]
+   (mi/can-query? (t2/select-one :model/Table pk))))
+
 (defenterprise current-user-can-write-table?
-  "OSS implementation. Returns a boolean whether the current user can write the given field."
+  "OSS implementation. Returns a boolean whether the current user can write the given table.
+   Checks both that the user is a superuser and that the table is editable (not in a remote-synced
+   collection in read-only mode)."
   metabase-enterprise.advanced-permissions.common
-  [_instance]
-  (mi/superuser?))
+  [instance]
+  (and (remote-sync/table-editable? instance)
+       (mi/superuser?)))
 
 (defmethod mi/can-write? :model/Table
+  ;; Check if user can modify this table's metadata.
+  ;; Requires the manage-table-metadata permission
   ([instance]
    (current-user-can-write-table? instance))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
+  "Batched hydration for :can_write on tables. Pre-fetches collection is_remote_synced values
+   to avoid N+1 queries when checking remote-sync permissions for multiple tables."
+  [_model k tables]
+  (let [;; Get all unique collection IDs (excluding nil)
+        collection-ids (->> tables
+                            (keep :collection_id)
+                            distinct)
+        ;; Batch fetch is_remote_synced for all collections
+        collection-synced-map (if (seq collection-ids)
+                                (into {}
+                                      (map (juxt :id :is_remote_synced))
+                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                {})
+        ;; Associate collection info with each table so table-editable? doesn't need to query
+        tables-with-collection (for [table tables]
+                                 (if-let [coll-id (:collection_id table)]
+                                   (assoc table :collection {:id coll-id
+                                                             :is_remote_synced (get collection-synced-map coll-id false)})
+                                   table))]
+    (mi/instances-with-hydrated-data
+     tables k
+     #(u/index-by :id mi/can-write? tables-with-collection)
+     :id
+     {:default false})))
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :owner]
+  "Add owner (user) to a table. If owner_user_id is set, fetches the user.
+   If owner_email is set instead, returns a map with just the email."
+  [_model _k tables]
+  (if-not (seq tables)
+    tables
+    (let [owner-user-ids (into #{} (keep :owner_user_id) tables)
+          id->owner (when (seq owner-user-ids)
+                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
+                                        :id [:in owner-user-ids]))]
+      (for [table tables]
+        (assoc table :owner
+               (cond
+                 (:owner_user_id table)
+                 (get id->owner (:owner_user_id table))
+
+                 (:owner_email table)
+                 {:email (:owner_email table)}))))))
 
 ;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
 
@@ -273,8 +378,21 @@
   [_                  :- :keyword
    column-or-exp      :- :any
    user-info          :- perms/UserInfo
-   permission-mapping :- perms/PermissionMapping]
-  (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping))
+   permission-mapping :- perms/PermissionMapping
+   & [{:keys [include-published-via-collection?]}]]
+  (let [{:keys [clause with]} (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping)]
+    (if-let [published-clause (and include-published-via-collection?
+                                   (perms/published-table-visible-clause column-or-exp user-info))]
+      {:clause [:or clause
+                [:and
+                 [:in column-or-exp (perms/visible-table-filter-select
+                                     :id
+                                     user-info
+                                     {:perms/view-data :unrestricted})]
+                 published-clause]]
+       :with with}
+      {:clause clause
+       :with with})))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
@@ -348,21 +466,19 @@
 (methodical/defmethod t2/batched-hydrate [:model/Table :transform]
   "Hydrate transforms that created the tables."
   [_model k tables]
-  (if config/ee-available?
-    (mi/instances-with-hydrated-data
-     tables k
-     #(let [table-ids                (map :id tables)
-            table-id->transform-id   (t2/select-fn->fn :from_entity_id :to_entity_id :model/Dependency
-                                                       :from_entity_type "table"
-                                                       :from_entity_id [:in table-ids]
-                                                       :to_entity_type "transform")
-            transform-id->transform  (when-let [transform-ids (seq (vals table-id->transform-id))]
-                                       (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
-        (update-vals table-id->transform-id transform-id->transform))
-     :id
-     {:default nil})
-    ;; EE not available, so no transforms
-    tables))
+  (mi/instances-with-hydrated-data
+   tables k
+   #(let [transform-ids (->> tables (keep :transform_id) distinct)
+          id->transform (when (seq transform-ids)
+                          (t2/select-fn->fn :id identity :model/Transform
+                                            :id [:in transform-ids]))]
+      (into {}
+            (keep (fn [{:keys [id transform_id]}]
+                    (when transform_id
+                      [id (get id->transform transform_id)])))
+            tables))
+   :id
+   {:default nil}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
   [_model k tables]
@@ -389,6 +505,15 @@
   (with-objects :segments
     (fn [table-ids]
       (t2/select :model/Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+    tables))
+
+(mi/define-batched-hydration-method with-measures
+  :measures
+  "Efficiently hydrate the Measures for a collection of `tables`."
+  [tables]
+  (with-objects :measures
+    (fn [table-ids]
+      (t2/select :model/Measure :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -435,6 +560,21 @@
   (cond-> [[{:model "Database" :id db_id}]]
     collection_id (conj [{:model "Collection" :id collection_id}])))
 
+(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
+  (let [fields   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
+                            {["Field" field-id] {"Table" id}}))
+        segments (into {} (for [segment-id (t2/select-pks-set :model/Segment
+                                                              {:where [:and
+                                                                       [:= :table_id id]
+                                                                       (when skip-archived [:not :archived])]})]
+                            {["Segment" segment-id] {"Table" id}}))
+        measures (into {} (for [measure-id (t2/select-pks-set :model/Measure
+                                                              {:where [:and
+                                                                       [:= :table_id id]
+                                                                       (when skip-archived [:not :archived])]})]
+                            {["Measure" measure-id] {"Table" id}}))]
+    (merge fields segments measures)))
+
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
     (filterv some? [{:model "Database" :id db-name}
@@ -465,7 +605,8 @@
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
                :db_id          (serdes/fk :model/Database :name)
-               :collection_id  (serdes/fk :model/Collection)}})
+               :collection_id  (serdes/fk :model/Collection)
+               :transform_id   (serdes/fk :model/Transform)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))

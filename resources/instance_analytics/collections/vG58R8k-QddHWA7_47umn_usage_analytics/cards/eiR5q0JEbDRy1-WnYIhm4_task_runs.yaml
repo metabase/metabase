@@ -1,0 +1,293 @@
+name: Task Runs
+description: Tracks job executions
+entity_id: eiR5q0JEbDRy1-WnYIhm4
+created_at: '2026-01-16T15:59:16.252913Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: 20
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_task_runs]
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    order-by:
+    - - desc
+      - - field
+        - [Internal Metabase Database, public, v_task_runs, started_at]
+        - {base-type: type/DateTimeWithLocalTZ}
+    source-table: [Internal Metabase Database, public, v_task_runs]
+  type: query
+result_metadata:
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_task_runs, id]
+  - null
+  id: [Internal Metabase Database, public, v_task_runs, id]
+  name: id
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  table_id: [Internal Metabase Database, public, v_task_runs]
+  visibility_type: normal
+  lib/deduplicated-name: id
+  lib/desired-column-alias: id
+  lib/original-display-name: ID
+  lib/original-name: id
+  lib/source: source/table-defaults
+  lib/source-column-alias: id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Run Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_task_runs, run_type]
+  - null
+  id: [Internal Metabase Database, public, v_task_runs, run_type]
+  name: run_type
+  position: 1
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_task_runs]
+  visibility_type: normal
+  lib/deduplicated-name: run_type
+  lib/desired-column-alias: run_type
+  lib/original-display-name: Run Type
+  lib/original-name: run_type
+  lib/source: source/table-defaults
+  lib/source-column-alias: run_type
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Entity Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_task_runs, entity_type]
+  - null
+  id: [Internal Metabase Database, public, v_task_runs, entity_type]
+  name: entity_type
+  position: 2
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_task_runs]
+  visibility_type: normal
+  lib/deduplicated-name: entity_type
+  lib/desired-column-alias: entity_type
+  lib/original-display-name: Entity Type
+  lib/original-name: entity_type
+  lib/source: source/table-defaults
+  lib/source-column-alias: entity_type
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_task_runs, entity_id]
+  - null
+  id: [Internal Metabase Database, public, v_task_runs, entity_id]
+  name: entity_id
+  position: 3
+  semantic_type: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_task_runs]
+  visibility_type: normal
+  lib/deduplicated-name: entity_id
+  lib/desired-column-alias: entity_id
+  lib/original-display-name: Entity ID
+  lib/original-name: entity_id
+  lib/source: source/table-defaults
+  lib/source-column-alias: entity_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Entity Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_task_runs, entity_qualified_id]
+  - null
+  id: [Internal Metabase Database, public, v_task_runs, entity_qualified_id]
+  name: entity_qualified_id
+  position: 4
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_task_runs]
+  visibility_type: normal
+  lib/deduplicated-name: entity_qualified_id
+  lib/desired-column-alias: entity_qualified_id
+  lib/original-display-name: Entity Qualified ID
+  lib/original-name: entity_qualified_id
+  lib/source: source/table-defaults
+  lib/source-column-alias: entity_qualified_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Started At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_task_runs, started_at]
+  - null
+  id: [Internal Metabase Database, public, v_task_runs, started_at]
+  name: started_at
+  position: 5
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id: [Internal Metabase Database, public, v_task_runs]
+  visibility_type: normal
+  lib/deduplicated-name: started_at
+  lib/desired-column-alias: started_at
+  lib/original-display-name: Started At
+  lib/original-name: started_at
+  lib/source: source/table-defaults
+  lib/source-column-alias: started_at
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Ended At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_task_runs, ended_at]
+  - null
+  id: [Internal Metabase Database, public, v_task_runs, ended_at]
+  name: ended_at
+  position: 6
+  semantic_type: null
+  source: fields
+  table_id: [Internal Metabase Database, public, v_task_runs]
+  visibility_type: normal
+  lib/deduplicated-name: ended_at
+  lib/desired-column-alias: ended_at
+  lib/original-display-name: Ended At
+  lib/original-name: ended_at
+  lib/source: source/table-defaults
+  lib/source-column-alias: ended_at
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: float8
+  display_name: Duration Seconds
+  effective_type: type/Float
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_task_runs, duration_seconds]
+  - null
+  id: [Internal Metabase Database, public, v_task_runs, duration_seconds]
+  name: duration_seconds
+  position: 7
+  semantic_type: type/Duration
+  source: fields
+  table_id: [Internal Metabase Database, public, v_task_runs]
+  visibility_type: normal
+  lib/deduplicated-name: duration_seconds
+  lib/desired-column-alias: duration_seconds
+  lib/original-display-name: Duration Seconds
+  lib/original-name: duration_seconds
+  lib/source: source/table-defaults
+  lib/source-column-alias: duration_seconds
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Status
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_task_runs, status]
+  - null
+  id: [Internal Metabase Database, public, v_task_runs, status]
+  name: status
+  position: 8
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_task_runs]
+  visibility_type: normal
+  lib/deduplicated-name: status
+  lib/desired-column-alias: status
+  lib/original-display-name: Status
+  lib/original-name: status
+  lib/source: source/table-defaults
+  lib/source-column-alias: status
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Process UUID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_task_runs, process_uuid]
+  - null
+  id: [Internal Metabase Database, public, v_task_runs, process_uuid]
+  name: process_uuid
+  position: 9
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_task_runs]
+  visibility_type: normal
+  lib/deduplicated-name: process_uuid
+  lib/desired-column-alias: process_uuid
+  lib/original-display-name: Process UUID
+  lib/original-name: process_uuid
+  lib/source: source/table-defaults
+  lib/source-column-alias: process_uuid
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Updated At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_task_runs, updated_at]
+  - null
+  id: [Internal Metabase Database, public, v_task_runs, updated_at]
+  name: updated_at
+  position: 10
+  semantic_type: type/UpdatedTimestamp
+  source: fields
+  table_id: [Internal Metabase Database, public, v_task_runs]
+  visibility_type: normal
+  lib/deduplicated-name: updated_at
+  lib/desired-column-alias: updated_at
+  lib/original-display-name: Updated At
+  lib/original-name: updated_at
+  lib/source: source/table-defaults
+  lib/source-column-alias: updated_at
+  qp/implicit-field?: true
+visualization_settings: {column_settings: null, table.cell_column: duration_seconds, table.pivot_column: status}
+card_schema: 23
+serdes/meta:
+- {id: eiR5q0JEbDRy1-WnYIhm4, label: task_runs, model: Card}
+archived_directly: false
+dashboard_id: null
+document_id: null
+embedding_type: null
+source_card_id: null
+type: model

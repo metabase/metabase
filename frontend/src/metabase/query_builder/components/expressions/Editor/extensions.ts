@@ -15,6 +15,7 @@ type Options = {
   query: Lib.Query;
   stageIndex: number;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
   metadata: Metadata;
   extensions?: Extension[];
 };
@@ -38,6 +39,7 @@ export function useExtensions(options: Options): Extension[] {
     query,
     stageIndex,
     availableColumns,
+    availableMetrics,
     metadata,
     extensions: extra = [],
   } = options;
@@ -49,6 +51,7 @@ export function useExtensions(options: Options): Extension[] {
         query,
         stageIndex,
         availableColumns,
+        availableMetrics,
         metadata,
       }),
       expander(),
@@ -57,6 +60,7 @@ export function useExtensions(options: Options): Extension[] {
         stageIndex,
         expressionMode,
         availableColumns,
+        availableMetrics,
         metadata,
       }),
       tooltips({

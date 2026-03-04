@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { Widget } from "../types";
+import type { Widget } from "metabase/visualizations/types";
 
 import type { BaseChartSettingsProps } from "./types";
 
@@ -22,8 +22,9 @@ export const useChartSettingsSections = ({
     const sectionObj: Record<string, Widget[]> = {};
     for (const widget of widgets) {
       if (widget.widget && !widget.hidden) {
-        sectionObj[widget.section] = sectionObj[widget.section] || [];
-        sectionObj[widget.section].push(widget);
+        const section = String(widget.section);
+        sectionObj[section] = sectionObj[section] || [];
+        sectionObj[section].push(widget);
       }
     }
 
@@ -45,6 +46,7 @@ export const useChartSettingsSections = ({
       "display",
       "axes",
       "ranges",
+      "formatting",
       // include all section names so any forgotten sections are sorted to the end
       ...names.map((x) => x.toLowerCase()),
     ];

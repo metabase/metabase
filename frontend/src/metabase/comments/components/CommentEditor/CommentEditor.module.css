@@ -64,7 +64,7 @@
   height: 100%;
   min-height: 1.25rem;
   line-height: 1.5;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
   white-space: pre-wrap;
   word-break: break-word;
@@ -83,8 +83,8 @@
 .content
   :global(.ProseMirror)
   :global(pre):not(:global(.editor-style-boundary) *) {
-  background-color: var(--mb-color-background-light);
-  color: var(--mb-color-text-dark);
+  background-color: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-primary);
   padding: 0.5rem;
   border-radius: var(--mantine-radius-xs);
   overflow-x: auto;
@@ -106,12 +106,12 @@
 .content
   :global(.ProseMirror)
   :global(code):not(:global(.editor-style-boundary) *) {
-  background-color: var(--mb-color-background-light);
+  background-color: var(--mb-color-background-secondary);
   padding: 0.125rem 0.375rem;
   border-radius: var(--mantine-radius-xs);
   font-family: var(--mb-default-monospace-font-family, monospace);
   font-size: 0.875rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   border: 1px solid var(--mb-color-border);
 }
 
@@ -119,11 +119,11 @@
 .content
   :global(.ProseMirror)
   :global(blockquote):not(:global(.editor-style-boundary) *) {
-  border-left: 3px solid var(--mb-color-border-dark);
+  border-left: 3px solid var(--mb-color-border-strong);
   margin: 0 0 0.5rem 0;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-style: italic;
-  background-color: var(--mb-color-background-light);
+  background-color: var(--mb-color-background-secondary);
   padding: 0.5rem;
   padding-left: 0.75rem;
   border-radius: var(--mantine-radius-xs);
@@ -180,7 +180,7 @@
 
 /* Placeholder styling */
 .content :global(.is-empty:first-child:before) {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   content: attr(data-placeholder);
   height: 0;
   pointer-events: none;

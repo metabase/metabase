@@ -4,6 +4,7 @@
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.app-db.connection-pool-setup :as connection-pool-setup]
    [metabase.app-db.env :as mdb.env]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
@@ -163,7 +164,11 @@
         (.setAutoCommit connection false)
         (thunk)
         (finally
-          (.setAutoCommit connection true)))
+          ;; prevent a failing .setAutoCommit call from masking the original exception
+          (try
+            (.setAutoCommit connection true)
+            (catch Throwable t
+              (log/warn t "Failed to reset the connection's autocommit flag to true")))))
       (thunk))))
 
 (comment

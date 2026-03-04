@@ -7,7 +7,6 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -61,7 +60,7 @@
 (def ^:private TopLevelColumnOptions
   [:map
    {:closed true}
-   [:rename-superflous-options? {:optional true} :boolean]])
+   [:rename-superfluous-options? {:optional true} :boolean]])
 
 (mu/defn top-level-column :- [:maybe ::lib.schema.metadata/column]
   "Given a column, returns the \"top-level\" equivalent.
@@ -72,10 +71,10 @@
   Returns nil if the column can't be traced back to the top-level query."
   ([query  :- ::lib.schema/query
     column :- ::lib.schema.metadata/column]
-   (top-level-column query column :rename-superflous-options? true))
+   (top-level-column query column :rename-superfluous-options? true))
   ([query                                  :- ::lib.schema/query
     column                                 :- ::lib.schema.metadata/column
-    & {:keys [rename-superflous-options?]} :- TopLevelColumnOptions]
+    & {:keys [rename-superfluous-options?]} :- TopLevelColumnOptions]
    (let [top-query (top-level-query query)]
      (if (= query top-query)
        column ;; Unchanged if this is already a top-level query. That includes keeping the "superfluous" options!
@@ -83,11 +82,11 @@
               column column]
          (if (= query top-query)
            (cond-> column
-             rename-superflous-options?
+             rename-superfluous-options?
              ;; Once we've found it, rename superfluous options, unless disabled by the caller, because under normal
              ;; circumstances, you will not need them. On the off chance you do need them, they'll still be available.
-             (set/rename-keys {::lib.field/temporal-unit ::temporal-unit
-                               ::lib.field/binning       ::binning}))
+             (set/rename-keys {:lib/temporal-unit ::temporal-unit
+                               :lib/binning       ::binning}))
            (let [prev-cols (for [col (lib.metadata.calculation/returned-columns query -2 (lib.util/previous-stage query -1))]
                              (-> col
                                  lib.field.util/update-keys-for-col-from-previous-stage

@@ -4,6 +4,6 @@
   gap: 0.5rem;
   margin-top: 0.15rem;
   font-weight: 700;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   cursor: pointer;
 }

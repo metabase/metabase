@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
@@ -5,7 +6,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Modal } from "metabase/ui";
 
 import { SlackSetup } from "./SlackSetup";
-import { SlackStatus } from "./SlackStatus";
 
 export const SlackSettingsModal = ({
   isOpen,
@@ -16,6 +16,12 @@ export const SlackSettingsModal = ({
 }) => {
   const { value: isApp, isLoading } = useAdminSetting("slack-app-token");
 
+  useEffect(() => {
+    if (isApp) {
+      onClose();
+    }
+  }, [isApp, onClose]);
+
   return (
     <Modal
       opened={isOpen}
@@ -24,7 +30,7 @@ export const SlackSettingsModal = ({
       padding="xl"
     >
       <LoadingAndErrorWrapper loading={isLoading}>
-        {isApp ? <SlackStatus /> : <SlackSetup />}
+        <SlackSetup />
       </LoadingAndErrorWrapper>
     </Modal>
   );

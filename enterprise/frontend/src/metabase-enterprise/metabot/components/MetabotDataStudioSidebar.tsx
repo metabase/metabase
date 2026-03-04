@@ -15,7 +15,6 @@ export function MetabotDataStudioSidebar() {
       hide={disabled}
       config={{
         preventRetryMessage: true,
-        preventClose: true,
         hideSuggestedPrompts: true,
         emptyText: t`Let's transform your data together!`,
         suggestionModels: ["dataset", "transform", "table", "database"],

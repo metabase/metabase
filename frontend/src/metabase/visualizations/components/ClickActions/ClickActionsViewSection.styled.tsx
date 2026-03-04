@@ -43,5 +43,5 @@ export const SectionWithTitle = styled.div<{
 export const SectionTitle = styled.p`
   margin: 0;
   font-size: 0.875em;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;

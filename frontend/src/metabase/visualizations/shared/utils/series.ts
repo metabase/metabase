@@ -12,7 +12,12 @@ export const getTwoDimensionalChartSeries = (
   columnFormatter: ColumnFormatter,
 ) => {
   const chartColumns = getCartesianChartColumns(data.cols, settings);
-  const unorderedSeries = getSeries(data, chartColumns, columnFormatter);
+  const unorderedSeries = getSeries(
+    data,
+    chartColumns,
+    columnFormatter,
+    settings,
+  );
   const seriesOrder = settings["graph.series_order"];
   const series = getOrderedSeries(unorderedSeries, seriesOrder);
 

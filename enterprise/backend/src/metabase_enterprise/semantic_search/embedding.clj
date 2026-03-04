@@ -280,7 +280,7 @@
   (when (seq texts)
     (let [{:keys [model-name provider vector-dimensions]} embedding-model]
       (u/profile (str "Generating embeddings " {:model model-name
-                                                :dimenions vector-dimensions
+                                                :dimensions vector-dimensions
                                                 :texts (calc-token-metrics texts)})
         (if (= "openai" provider)
           (let [max-tokens-per-batch (semantic-settings/openai-max-tokens-per-batch)

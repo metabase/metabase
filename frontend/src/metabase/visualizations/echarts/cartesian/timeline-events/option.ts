@@ -54,7 +54,7 @@ export const getTimelineEventsSeries = (
         selectedEventsIds.includes(event.id),
       );
 
-      const color = getColor(isSelected ? "brand" : "text-light");
+      const color = getColor(isSelected ? "brand" : "text-tertiary");
       const iconName =
         events.length === 1 ? (events[0].icon as IconName) : "star";
 
@@ -114,7 +114,7 @@ export const getTimelineEventsSeries = (
       symbol: "none",
       lineStyle: {
         type: "solid",
-        // eslint-disable-next-line no-color-literals
+        // eslint-disable-next-line metabase/no-color-literals
         color: "rgba(105, 110, 123, 0.2)",
         width: 2,
       },

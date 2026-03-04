@@ -8,7 +8,7 @@
 }
 
 .ClickIcon {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 
   &.isActive {
     color: unset;
@@ -18,11 +18,11 @@
 .Button {
   border-radius: 8px;
   cursor: pointer;
-  background-color: var(--mb-color-bg-light);
-  color: var(--mb-color-text-medium);
+  background-color: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-secondary);
 
   &.isActive {
     background-color: var(--mb-color-brand);
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 }

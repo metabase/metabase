@@ -1,0 +1,50 @@
+name: Crowdin Context Harvester
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 6 * * 2" # Tuesday at 06:30 UTC, one hour after translation-update.yml
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Harvest and write AI context to Crowdin
+        timeout-minutes: 60
+        env:
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_TOKEN }}
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          OPENAI_KEY: ${{ secrets.CROWDIN_OPENAI_API_KEY }}
+        run: |
+          npx --yes crowdin-context-harvester@latest harvest \
+            --project="$CROWDIN_PROJECT_ID" \
+            --ai="openai" \
+            --model="gpt-5.1" \
+            --croql='not (context contains "✨ AI Context")' \
+            --output="crowdin" \
+            --concurrency=10
+
+      # We only want to trigger pre-translations, not wait for them to finish running upstream.
+      # Weirdly, Crowdin keeps this step running as long as it runs pre-translations on their servers.
+      # Hence, the three minute timeout and continue-on-error.
+      - name: Trigger pre-translations
+        timeout-minutes: 3
+        uses: crowdin/github-action@v2
+        # https://crowdin.github.io/crowdin-cli/commands/crowdin-pre-translate
+        with:
+          command: "pre-translate"
+          command_args: >-
+            --method ai
+            --ai-prompt ${{ secrets.CROWDIN_AI_PROMPT_ID }}
+            --translate-untranslated-only
+            --token ${{ secrets.CROWDIN_TOKEN }}
+            --project-id ${{ secrets.CROWDIN_PROJECT_ID }}
+            --config=locales/crowdin.yml
+            --no-progress
+        continue-on-error: true

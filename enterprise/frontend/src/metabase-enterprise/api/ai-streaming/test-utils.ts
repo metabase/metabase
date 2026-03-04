@@ -1,11 +1,5 @@
 import { defer } from "metabase/lib/promise";
 
-async function delay(timeout: number) {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(undefined), timeout);
-  });
-}
-
 export function createPauses<Count extends number>(count: Count) {
   const pauses = new Array(count).fill(null).map(() => defer());
   return pauses as ReturnType<typeof defer>[] & { length: Count };
@@ -65,20 +59,22 @@ export type MockStreamedEndpointParams =
   | {
       textChunks: string[] | undefined;
       stream?: undefined;
-      initialDelay?: number;
+      waitForResponse?: boolean;
     }
   | {
       textChunks?: undefined;
       stream: ReadableStream<any>;
-      initialDelay?: number;
+      waitForResponse?: boolean;
     };
 
 export function mockStreamedEndpoint(
   url: string,
-  { textChunks, stream, initialDelay = 0 }: MockStreamedEndpointParams,
+  { textChunks, stream, waitForResponse = false }: MockStreamedEndpointParams,
 ) {
-  return mockEndpoint(url, async (init) => {
-    await delay(initialDelay);
+  const responseGate = waitForResponse ? defer() : null;
+
+  const mock = mockEndpoint(url, async (init) => {
+    await responseGate?.promise;
     const body =
       stream ||
       (textChunks && createMockReadableStream(textChunks)) ||
@@ -110,5 +106,9 @@ export function mockStreamedEndpoint(
     }
 
     return { status: 202, ok: true, body } as any;
+  });
+
+  return Object.assign(mock, {
+    sendResponse: () => responseGate?.resolve(),
   });
 }

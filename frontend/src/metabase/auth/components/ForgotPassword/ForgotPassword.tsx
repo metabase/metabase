@@ -2,7 +2,7 @@ import type { Location } from "history";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 
 import { forgotPassword } from "../../actions";

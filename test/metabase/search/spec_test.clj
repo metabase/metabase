@@ -127,7 +127,8 @@
   (is (= #{["table" [:= 123 :this.db_id]]
            ["database" [:= 123 :this.id]]}
          (search.spec/search-models-to-update (t2/instance :model/Database {:id 123 :name "databass"}))))
-  (is (= #{["segment" [:= 321 :this.table_id]]
+  (is (= #{["measure" [:= 321 :this.table_id]]
+           ["segment" [:= 321 :this.table_id]]
            ["table" [:= 321 :this.id]]}
          (search.spec/search-models-to-update (t2/instance :model/Table {:id 321 :name "turn-tables"})))))
 

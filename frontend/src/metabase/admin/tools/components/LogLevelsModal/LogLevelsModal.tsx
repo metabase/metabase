@@ -7,7 +7,7 @@ import {
   useResetLogLevelsMutation,
 } from "metabase/api/logger";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import ModalContent from "metabase/common/components/ModalContent";
+import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormProvider } from "metabase/forms";
 import type { LoggerDurationUnit } from "metabase-types/api";
 

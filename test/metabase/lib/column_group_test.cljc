@@ -6,7 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field.util :as lib.field.util]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli.registry :as mr]))
@@ -281,10 +280,10 @@
                     ::lib.column-group/group-type :group-type/join.explicit
                     ::lib.column-group/columns    [{:name                 "ID"
                                                     :table-id             (meta/id :categories)
-                                                    ::lib.join/join-alias "Cat"}
+                                                    :lib/join-alias "Cat"}
                                                    {:name                 "NAME"
                                                     :table-id             (meta/id :categories)
-                                                    ::lib.join/join-alias "Cat"}]}]
+                                                    :lib/join-alias "Cat"}]}]
                   groups)))
         (testing `lib/display-info
           (is (=? [{:name         "Cat"

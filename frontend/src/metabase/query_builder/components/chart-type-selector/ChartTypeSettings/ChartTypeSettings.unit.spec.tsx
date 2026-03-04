@@ -37,17 +37,41 @@ const setup = ({
 };
 
 describe("ChartTypeSettings", () => {
-  it("renders the sensible and non-sensible visualizations with an `Other charts` label", () => {
+  it("renders the sensible visualizations and a `More charts` toggle", () => {
     setup();
     expect(screen.getByTestId("display-options-sensible")).toBeInTheDocument();
-    expect(screen.getByText("Other charts")).toBeInTheDocument();
+    expect(screen.getByText("More charts")).toBeInTheDocument();
+  });
+
+  it("collapses the More charts section by default when selected viz is sensible", () => {
+    setup({ selectedVisualization: "bar" });
+    expect(
+      screen.getByRole("button", { name: /more charts/i }),
+    ).toBeInTheDocument();
+    expect(getIcon("chevronright")).toBeInTheDocument();
+  });
+
+  it("expands the More charts section by default when selected viz is non-sensible", () => {
+    setup({ selectedVisualization: "pie" });
+    expect(getIcon("chevrondown")).toBeInTheDocument();
     expect(
       screen.getByTestId("display-options-not-sensible"),
     ).toBeInTheDocument();
   });
 
+  it("toggles the More charts section when the header is clicked", async () => {
+    setup({ selectedVisualization: "bar" });
+    expect(getIcon("chevronright")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /more charts/i }));
+    expect(getIcon("chevrondown")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /more charts/i }));
+    expect(getIcon("chevronright")).toBeInTheDocument();
+  });
+
   it("passes correct props to ChartTypeLists", () => {
-    setup();
+    setup({ selectedVisualization: "pie" });
     const sensibleList = screen.getByTestId("display-options-sensible");
     const nonSensibleList = screen.getByTestId("display-options-not-sensible");
 
@@ -74,8 +98,10 @@ describe("ChartTypeSettings", () => {
   });
 
   it("calls onSelectVisualization when a non-sensible visualization is selected", async () => {
-    const { onSelectVisualization } = setup();
-    await userEvent.click(getIcon("pie"));
-    expect(onSelectVisualization).toHaveBeenCalledWith("pie");
+    const { onSelectVisualization } = setup({
+      selectedVisualization: "pie",
+    });
+    await userEvent.click(getIcon("bubble"));
+    expect(onSelectVisualization).toHaveBeenCalledWith("scatter");
   });
 });

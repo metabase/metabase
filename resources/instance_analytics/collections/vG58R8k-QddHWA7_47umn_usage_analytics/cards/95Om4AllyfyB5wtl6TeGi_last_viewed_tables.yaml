@@ -225,13 +225,12 @@ visualization_settings:
     - {base-type: type/Integer, join-alias: Tables - Entity Qualified}
     name: database_id
   table.pivot_column: end_timestamp
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: 95Om4AllyfyB5wtl6TeGi, label: last_viewed_tables, model: Card}
 archived_directly: false
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

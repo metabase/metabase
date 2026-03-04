@@ -1,26 +1,18 @@
 import { useMemo } from "react";
 
+import { ALL_COLOR_NAMES } from "metabase/lib/colors";
 import type { ColorPalette } from "metabase/lib/colors/types";
 import { useMantineTheme } from "metabase/ui";
 
 /**
- * Extracts a color palette from a subset of colors in the Mantine theme.
- *
  * Allows palettes to be overridden by the user, primarily via the React embedding SDK.
  */
 export function usePalette(): ColorPalette {
   const theme = useMantineTheme();
 
   return useMemo(() => {
-    return {
-      white: theme.fn.themeColor("white"),
-      border: theme.fn.themeColor("border"),
-      "text-dark": theme.fn.themeColor("text-dark"),
-      "text-medium": theme.fn.themeColor("text-medium"),
-      "text-light": theme.fn.themeColor("text-light"),
-      "text-white": theme.fn.themeColor("text-white"),
-      "text-primary": theme.fn.themeColor("text-primary"),
-      "bg-white": theme.fn.themeColor("bg-white"),
-    };
+    return Object.fromEntries(
+      ALL_COLOR_NAMES.map((name) => [name, theme.fn.themeColor(name)]),
+    );
   }, [theme]);
 }

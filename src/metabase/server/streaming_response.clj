@@ -23,6 +23,7 @@
    (java.nio ByteBuffer)
    (java.nio.channels ClosedChannelException SocketChannel)
    (java.nio.charset StandardCharsets)
+   (java.util.concurrent Future)
    (java.util.zip GZIPOutputStream)
    (org.eclipse.jetty.ee9.nested Request)
    (org.eclipse.jetty.io EofException SocketChannelEndPoint)))
@@ -47,36 +48,84 @@
   (cond-> (assoc (Throwable->map e) :_status (ex-status-code e))
     (server.settings/hide-stacktraces) (dissoc :via :trace)))
 
+(def ^:dynamic *response*
+  "The `HttpServletResponse` for the current streaming response.
+   Bound automatically inside `streaming-response` bodies in the Jetty async path.
+   Use the helper functions [[committed?]], [[set-status!]], [[set-header!]], and
+   [[set-content-type!]] to interact with it."
+  nil)
+
+(defn- assert-response-bound! []
+  (when-not *response*
+    (throw (ex-info "Cannot call response control functions outside of a streaming-response context"
+                    {}))))
+
+(defn committed?
+  "Returns true if the HTTP response has already been committed (headers sent to client).
+   Raises if called outside a `streaming-response` context."
+  []
+  (assert-response-bound!)
+  (.isCommitted ^HttpServletResponse *response*))
+
+(defn set-status!
+  "Set the HTTP status code on the response. No-op if the response is already committed.
+   Raises if called outside a `streaming-response` context."
+  [code]
+  (assert-response-bound!)
+  (when-not (committed?)
+    (.setStatus ^HttpServletResponse *response* (int code))))
+
+(defn set-header!
+  "Set a header on the HTTP response. No-op if the response is already committed.
+   Raises if called outside a `streaming-response` context."
+  [name value]
+  (assert-response-bound!)
+  (when-not (committed?)
+    (.setHeader ^HttpServletResponse *response* (str name) (str value))))
+
+(defn set-content-type!
+  "Set the Content-Type on the HTTP response. No-op if the response is already committed.
+   Raises if called outside a `streaming-response` context."
+  [ct]
+  (assert-response-bound!)
+  (when-not (committed?)
+    (.setContentType ^HttpServletResponse *response* (str ct))))
+
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
-  [^OutputStream os obj export-format]
-  (cond
-    (some #(instance? % obj)
-          [InterruptedException EofException])
-    (log/trace "Error is an InterruptedException or EofException, not writing to output stream")
+  ([os obj export-format]
+   (write-error! os obj export-format nil))
+  ([^OutputStream os obj export-format status-code]
+   (when (and *response* (not (committed?)))
+     (set-status! (or status-code 500))
+     (set-content-type! "application/json"))
+   (cond
+     (some #(instance? % obj)
+           [InterruptedException EofException])
+     (log/trace "Error is an InterruptedException or EofException, not writing to output stream")
 
-    (instance? Throwable obj)
-    (recur os (format-exception obj) export-format)
+     (instance? Throwable obj)
+     (recur os (format-exception obj) export-format status-code)
 
-    :else
-    (with-open [os os]
-      (log/trace (u/pprint-to-str (list 'write-error! obj)))
-      (try
-        (let [obj (-> (if (not= :api export-format)
-                        (walk/prewalk
-                         (fn [x]
-                           (if (map? x)
-                             (apply dissoc x [:json_query :preprocessed])
-                             x))
+     :else
+     (with-open [os os]
+       (log/trace (u/pprint-to-str (list 'write-error! obj)))
+       (try
+         (let [obj (-> (if (not= :api export-format)
+                         (walk/prewalk
+                          (fn [x]
+                            (if (map? x)
+                              (apply dissoc x [:json_query :preprocessed])
+                              x))
+                          obj)
                          obj)
-                        obj)
-                      (dissoc :export-format)
-                      (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
-          (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-            (json/encode-to obj writer {})))
-        (catch EofException _)
-        (catch Throwable e
-          (log/error e "Error writing error to output stream" obj))))))
+                       (dissoc :export-format)
+                       (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
+           (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+             (json/encode-to obj writer {})))
+         (catch EofException _)
+         (catch Throwable e
+           (log/error e "Error writing error to output stream" obj)))))))
 
 (defn- do-f* [f ^OutputStream os _finished-chan canceled-chan]
   (try
@@ -88,26 +137,46 @@
       (a/>!! canceled-chan ::thread-interrupted)
       nil)))
 
+(defn- start-interrupt-escalation!
+  "If `*thread-interrupt-escalation-timeout-ms*` is set and we receive a cancellation,
+  then cancel the future (ie interrupt the thread) if the finished-chan doesn't complete before the timeout.
+  This is to handle JDBC drivers that deadlock on `(.cancel stmt)`."
+  [^Future fut finished-chan canceled-chan]
+  (when (pos? server.settings/*thread-interrupt-escalation-timeout-ms*)
+    (a/go
+      (when (a/<! canceled-chan)
+        (let [timeout-chan (a/timeout server.settings/*thread-interrupt-escalation-timeout-ms*)
+              [_ port]     (a/alts! [finished-chan timeout-chan])]
+          (when (= port timeout-chan)
+            (log/infof "Task still running %s after cancellation, escalating to thread interruption"
+                       (u/format-milliseconds server.settings/*thread-interrupt-escalation-timeout-ms*))
+            (.cancel fut true)))))))
+
 (defn- do-f-async
   "Runs `f` asynchronously on the streaming response `thread-pool`, returning immediately. When `f` finishes,
   completes (i.e., closes) Jetty `async-context`."
-  [^AsyncContext async-context f ^OutputStream os finished-chan canceled-chan]
+  [^AsyncContext async-context response f ^OutputStream os finished-chan canceled-chan]
   {:pre [(some? os)]}
   (let [task (^:once fn* []
-               (try
-                 (do-f* f os finished-chan canceled-chan)
-                 (catch Throwable e
-                   (log/error e "Caught unexpected Exception in streaming response body")
-                   (a/>!! finished-chan :unexpected-error)
-                   (write-error! os e nil))
-                 (finally
-                   (a/>!! finished-chan (if (a/poll! canceled-chan)
-                                          :canceled
-                                          :completed))
-                   (a/close! finished-chan)
-                   (a/close! canceled-chan)
-                   (.complete async-context))))]
-    (.submit (thread-pool/thread-pool) ^Runnable task)
+               (binding [*response* response]
+                 (try
+                   (do-f* f os finished-chan canceled-chan)
+                   (catch Throwable e
+                     (log/error e "Caught unexpected Exception in streaming response body")
+                     (a/>!! finished-chan :unexpected-error)
+                     (write-error! os e nil))
+                   (finally
+                     ;; Clear the interrupted flag to prevent the thread from
+                     ;; carrying stale interrupted state to the next task.
+                     (Thread/interrupted)
+                     (a/>!! finished-chan (if (a/poll! canceled-chan)
+                                            :canceled
+                                            :completed))
+                     (a/close! finished-chan)
+                     (a/close! canceled-chan)
+                     (.complete async-context)))))
+        fut  (.submit (thread-pool/thread-pool) ^Runnable task)]
+    (start-interrupt-escalation! fut finished-chan canceled-chan)
     nil))
 
 ;; `ring.middleware.gzip` doesn't work on our StreamingResponse class.
@@ -241,7 +310,7 @@
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)
-          (do-f-async async-context f delay-os finished-chan canceled-chan)))
+          (do-f-async async-context response f delay-os finished-chan canceled-chan)))
       (catch Throwable e
         (log/error e "Unexpected exception in do-f-async")
         (try
@@ -312,6 +381,9 @@
   NOTE: `canceled-chan` **IS NOT WORKING**; see `metabase.server.streaming-response-test/canceling-response-2`
   `canceled-chan` can be monitored to see if the request is canceled before results are fully written to the stream.
 
+  Inside the body, [[*response*]] is bound to the `HttpServletResponse`. You can use the helper functions
+  [[set-status!]], [[set-header!]], [[set-content-type!]], and [[committed?]] to interact with the response.
+
   Current options:
 
   *  `:content-type` -- string content type to return in the results. This is required!
@@ -321,3 +393,26 @@
   {:pre [(= (count bindings) 2)]}
   `(-streaming-response (bound-fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
                         ~options))
+
+;;;; Malli schema for StreamingResponse
+
+(defn streaming-response-schema
+  "Malli schema for a streaming HTTP response that will contain JSON matching `content-schema`.
+
+  At runtime, validates that the response is a StreamingResponse instance.
+  WARNING: DOES NOT VALIDATE the actual data being streamed at runtime. For OpenAPI documentation, uses `content-schema`
+  to describe the JSON response body.
+
+  Example:
+    (api.macros/defendpoint :post \"/query\"
+      :- (server/streaming-response-schema
+           [:map
+            [:data [:map [:cols sequential?] [:rows sequential?]]]
+            [:row_count :int]])
+      ...)"
+  [content-schema]
+  [:fn
+   {:openapi/response-schema content-schema
+    :description             "Streaming JSON response"
+    :error/message           "Non-streaming response returned from streaming endpoint"}
+   #(instance? StreamingResponse %)])

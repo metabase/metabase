@@ -3,8 +3,10 @@
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
+   [metabase.channel.email.logo :as email.logo]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.util :as impl.util]
@@ -28,6 +30,11 @@
    [ring.util.codec :as codec]))
 
 (set! *warn-on-reflection* true)
+
+(defmethod prometheus/known-labels :metabase-notification/template-render [_]
+  (for [template-type [:email/handlebars-text :email/handlebars-resource]]
+    {:template-type template-type
+     :channel-type  :channel/email}))
 
 (def ^:private EmailMessage
   [:map
@@ -95,16 +102,22 @@
 
 (defn- render-body
   [{:keys [details] :as _template} payload]
-  (case (keyword (:type details))
-    :email/handlebars-resource
-    (handlebars/render (:path details) payload)
+  (let [template-type (keyword (:type details))]
+    (prometheus/inc! :metabase-notification/template-render
+                     {:template-type template-type
+                      :channel-type  :channel/email})
+    (case template-type
+      :email/handlebars-resource
+      (handlebars/render (:path details) payload)
 
-    :email/handlebars-text
-    (handlebars/render-string (:body details) payload)
+      :email/handlebars-text
+      (do
+        (log/debugf "Rendering user-provided template body=%s" (pr-str (:body details)))
+        (handlebars/render-string (:body details) payload))
 
-    (do
-      (log/warnf "Unknown email template type: %s" (:type details))
-      nil)))
+      (do
+        (log/warnf "Unknown email template type: %s" (:type details))
+        nil))))
 
 (defn- render-message-body
   [template message-context attachments]
@@ -202,7 +215,8 @@
                 card]}     payload
         template           (or template (payload-type->default-template payload_type))
         timezone           (channel.render/defaulted-timezone card)
-        rendered-card      (render-part timezone card_part {:channel.render/include-title? true})
+        rendered-card      (render-part timezone card_part {:channel.render/include-title? true
+                                                            :channel.render/disable-links? (boolean (:disable_links notification_card))})
         icon-attachment    (apply make-message-attachment (icon-bundle :bell))
         card-attachments   (map make-message-attachment (:attachments rendered-card))
         result-attachments (email.result-attachment/result-attachment
@@ -319,8 +333,16 @@
                                      [:template ::models.channel/ChannelTemplate]
                                      [:recipients [:sequential ::models.notification/NotificationRecipient]]]]
   (assert (some? template) "Template is required for system event notifications")
-  [(construct-email (channel.params/substitute-params (-> template :details :subject) notification-payload)
-                    (notification-recipients->emails recipients notification-payload)
-                    [{:type    "text/html; charset=utf-8"
-                      :content (render-body template notification-payload)}]
-                    (-> template :details :recipient-type keyword))])
+  (let [logo-url              (get-in notification-payload [:context :application_logo_url])
+        logo                  (email.logo/logo-bundle logo-url)
+        ;; Update context with the processed logo URL (cid: reference if data URI was converted)
+        updated-payload       (if (:image-src logo)
+                                (assoc-in notification-payload [:context :application_logo_url] (:image-src logo))
+                                notification-payload)
+        logo-attachment       (when (:attachment logo)
+                                [(make-message-attachment (first (:attachment logo)))])
+        attachments           logo-attachment]
+    [(construct-email (channel.params/substitute-params (-> template :details :subject) updated-payload)
+                      (notification-recipients->emails recipients updated-payload)
+                      (render-message-body template updated-payload attachments)
+                      (-> template :details :recipient-type keyword))]))

@@ -14,9 +14,9 @@ import {
   AccordionList,
   type SearchProps,
 } from "metabase/common/components/AccordionList";
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
+import { PopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger";
 import type { SelectButtonProps } from "metabase/common/components/SelectButton";
-import SelectButton from "metabase/common/components/SelectButton";
+import { SelectButton } from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import Uncontrollable from "metabase/hoc/Uncontrollable";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
@@ -208,7 +208,7 @@ class BaseSelect<
         <Icon
           name={icon}
           size={(item as any).iconSize || 16}
-          c={(item as any).iconColor || "text-dark"}
+          c={(item as any).iconColor || "text-primary"}
           style={{ minWidth: MIN_ICON_WIDTH }}
         />
       );
@@ -216,7 +216,11 @@ class BaseSelect<
 
     if (this.itemIsSelected(item)) {
       return (
-        <Icon name="check" c="text-dark" style={{ minWidth: MIN_ICON_WIDTH }} />
+        <Icon
+          name="check"
+          c="text-primary"
+          style={{ minWidth: MIN_ICON_WIDTH }}
+        />
       );
     }
 
@@ -327,10 +331,7 @@ class BaseSelect<
 /**
  * @deprecated: use Select from "metabase/ui"
  */
-const Select = Uncontrollable()(BaseSelect);
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Select;
+export const Select = Uncontrollable()(BaseSelect);
 
 export interface OptionSectionProps {
   name?: string;

@@ -495,7 +495,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills > nulls", ()
     const CANCELLED_AT_INDEX = 9;
 
     H.openTable({ table: ACCOUNTS_ID, limit: 1 });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("gridcell")
       .eq(CANCELLED_AT_INDEX)
       .should("have.text", "")
@@ -511,7 +511,7 @@ describe("scenarios > visualizations > drillthroughs > table_drills > nulls", ()
       "have.text",
       "Canceled At is not empty",
     );
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("gridcell")
       .eq(CANCELLED_AT_INDEX)
       .should("not.have.text", "");

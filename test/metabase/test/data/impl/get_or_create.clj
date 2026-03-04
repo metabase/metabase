@@ -9,6 +9,7 @@
    [metabase.models.humanization :as humanization]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sync.analyze :as sync.analyze]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test.data.interface :as tx]
@@ -116,29 +117,186 @@
 (defonce ^:private reference-sync-durations
   (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
 
+;;; -------------------------------------------------- Fake Sync --------------------------------------------------
+;; For drivers with slow network sync (e.g., Redshift), we can skip sync-database! and directly insert
+;; Table/Field rows from the dbdef. This saves ~10 minutes per test run.
+;;
+;; Architecture: The code is split into two parts for testability:
+;; 1. Pure transformation functions (field-def->row, table-def->rows, dbdef->fake-sync-rows)
+;;    - Convert database definitions into row maps ready for insertion
+;;    - No database side effects, easily testable
+;; 2. Insertion functions (insert-fake-sync-rows!, resolve-fk-relationships!)
+;;    - Actually insert the rows into the app DB
+;;    - Stateful, requires database connection
+
+;; ---------------------- Pure Transformation Functions ----------------------
+
+(defn- field-def->row
+  "Convert a FieldDefinition to a Field row map for fake-sync insertion.
+   Creates the metadata row that would normally come from syncing the database.
+   Handles three forms of base-type:
+   1. {:native \"BINARY(8)\"} - driver-specific native type string
+   2. {:natives {:postgres \"BYTEA\" :redshift \"VARBYTE\"}} - per-driver native types
+   3. :type/Text - standard base type keyword"
+  [driver position {:keys [field-name base-type semantic-type visibility-type
+                           effective-type coercion-strategy field-comment fk pk?]}]
+  (let [database-type    (cond
+                           (and (map? base-type) (contains? base-type :native))
+                           (:native base-type)
+
+                           (and (map? base-type) (contains? base-type :natives))
+                           (get-in base-type [:natives driver])
+
+                           :else
+                           ;; Use fake-sync-database-type to get the type the database reports
+                           ;; (which may differ from the DDL type used to create columns).
+                           ;; E.g., Snowflake: TEXT->VARCHAR, FLOAT->DOUBLE, INTEGER->NUMBER
+                           (tx/fake-sync-database-type driver base-type))
+        actual-base-type (if (map? base-type)
+                           ;; For native types, use effective-type if provided,
+                           ;; otherwise ask the driver what base_type sync would produce
+                           (or effective-type
+                               (tx/fake-sync-native-base-type driver database-type))
+                           ;; Use fake-sync-base-type to get what the database actually reports
+                           ;; E.g., Snowflake: :type/Integer -> :type/Number (since INTEGER->NUMBER)
+                           (tx/fake-sync-base-type driver base-type))
+        semantic-type    (cond
+                           pk?        :type/PK
+                           (some? fk) :type/FK
+                           :else      semantic-type)]
+    {:name              field-name
+     :display_name      (humanization/name->human-readable-name :simple field-name)
+     :database_type     database-type
+     :base_type         actual-base-type
+     :effective_type    (or effective-type actual-base-type)
+     :semantic_type     semantic-type
+     :coercion_strategy coercion-strategy
+     :visibility_type   (or visibility-type :normal)
+     :description       field-comment
+     :position          position
+     :database_position position
+     :active            true}))
+
+(defn- table-def->rows
+  "Convert a TableDefinition to a map of {:table-name, :table-row, :field-rows}.
+   This is a pure function - no database insertion."
+  [driver db-id database-name {:keys [table-name table-comment field-definitions] :as _table-def}]
+  (let [schema          (tx/fake-sync-schema driver)
+        sync-table-name (tx/fake-sync-table-name driver database-name table-name)
+        has-custom-pk? (some :pk? field-definitions)
+        table-row      {:db_id               db-id
+                        :name                sync-table-name
+                        :schema              schema
+                        :display_name        (humanization/name->human-readable-name :simple table-name)
+                        :description         table-comment
+                        :active              true
+                        :visibility_type     nil
+                        :initial_sync_status "complete"
+                        :field_order         "database"}
+        ;; Build field rows: auto PK (if needed) + user-defined fields
+        pk-field-row   (when-not has-custom-pk?
+                         (field-def->row driver 0
+                                         {:field-name "id"
+                                          :base-type  (tx/id-field-type driver)
+                                          :pk?        true}))
+        user-field-rows (map-indexed
+                         (fn [idx field-def]
+                           (field-def->row driver (if has-custom-pk? idx (inc idx)) field-def))
+                         field-definitions)
+        field-rows     (if pk-field-row
+                         (cons pk-field-row user-field-rows)
+                         user-field-rows)]
+    {:table-name  table-name
+     :table-row   table-row
+     :field-rows  (vec field-rows)}))
+
+(defn- dbdef->fake-sync-rows
+  "Convert database definition to table and field rows for fake sync.
+   This is a pure function - no database insertion.
+   Returns a vector of {:table-name, :table-row, :field-rows} maps."
+  [driver db-id {:keys [database-name table-definitions]}]
+  (mapv #(table-def->rows driver db-id database-name %) table-definitions))
+
+;; ---------------------- Insertion Functions ----------------------
+
+(defn- insert-fake-sync-rows!
+  "Insert pre-computed table and field rows into the app DB.
+   Returns map of table-name -> inserted table for FK resolution."
+  [rows]
+  (into {}
+        (for [{:keys [table-name table-row field-rows]} rows]
+          (let [table (first (t2/insert-returning-instances! :model/Table table-row))]
+            (doseq [field-row field-rows]
+              (t2/insert-returning-instances! :model/Field (assoc field-row :table_id (:id table))))
+            [table-name table]))))
+
+(defn- resolve-fk-relationships!
+  "Second pass: resolve FK relationships by setting fk_target_field_id on FK fields."
+  [table-name->table {:keys [table-definitions]}]
+  (doseq [{:keys [table-name field-definitions]} table-definitions
+          :let [table (get table-name->table table-name)]
+          {:keys [field-name fk]} field-definitions
+          :when fk]
+    (let [target-table-name (if (keyword? fk) (name fk) fk)
+          target-table      (get table-name->table target-table-name)
+          target-pk-field   (when target-table
+                              (t2/select-one :model/Field
+                                             :table_id (:id target-table)
+                                             :semantic_type :type/PK))
+          source-field      (t2/select-one :model/Field
+                                           :table_id (:id table)
+                                           :%lower.name (u/lower-case-en field-name))]
+      (when (and source-field target-pk-field)
+        (t2/update! :model/Field (:id source-field)
+                    {:fk_target_field_id (:id target-pk-field)})))))
+
+;; ---------------------- Main Entry Point ----------------------
+
+(defn- fake-sync-database!
+  "Insert Table and Field rows directly from the dbdef instead of calling sync-database!.
+   This skips network calls for metadata sync, which is useful for slow remote databases like Redshift.
+   When scan is :full, also runs fingerprinting to enable fingerprint-dependent tests."
+  [driver {:keys [database-name] :as database-definition} db scan]
+  (log/infof "Using FAKE SYNC for %s Database %s (skipping network calls to database)" driver database-name)
+  (let [rows            (dbdef->fake-sync-rows driver (:id db) database-definition)
+        table-name->tbl (insert-fake-sync-rows! rows)]
+    (resolve-fk-relationships! table-name->tbl database-definition)
+    ;; Only run fingerprinting for :full scan, matching the real sync behavior
+    (when (= scan :full)
+      (log/info "Running real fingerprinting for :full scan after fake sync")
+      (sync.analyze/analyze-db! db))))
+
+;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
+
 (defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
   (assert (= (humanization/humanization-strategy) :simple)
           "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
   (try
     (u/with-timeout sync-timeout-ms
-      (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
-                                   "NONE")
-            full-sync?         (= database-name "test-data")]
-        (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
-                           (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
-          ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-          ;;
-          ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
-          ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
-          ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
-          ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
-          (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
-            (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
-          ;; add extra metadata for fields
-          (try
-            (add-extra-metadata! database-definition db)
-            (catch Throwable e
-              (log/error e "Error adding extra metadata"))))))
+      (let [;; only do "full sync" (with fingerprinting) for test-data, because it can take literally MINUTES on CI.
+            scan (if (= database-name "test-data") :full :schema)]
+        (if (driver/database-supports? driver :test/use-fake-sync nil)
+          ;; Use fake sync - directly insert Table/Field rows from dbdef, skipping network calls
+          (fake-sync-database! driver database-definition db scan)
+          ;; Original sync path - call sync-database! against the actual database
+          (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
+                                       "NONE")
+                full-sync?         (= scan :full)]
+            (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
+                               (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
+            ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
+            ;;
+            ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
+            ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
+            ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
+            ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
+              (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
+                (sync/sync-database! db {:scan scan}))
+            ;; add extra metadata for fields
+              (try
+                (add-extra-metadata! database-definition db)
+                (catch Throwable e
+                  (log/error e "Error adding extra metadata"))))))))
     (catch Throwable e
       (let [message (format "Failed to sync test database %s: %s" (pr-str database-name) (ex-message e))
             e       (ex-info message

@@ -1,5 +1,5 @@
 import { Extension } from "@tiptap/core";
-import Link from "@tiptap/extension-link";
+import { Link } from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import cx from "classnames";

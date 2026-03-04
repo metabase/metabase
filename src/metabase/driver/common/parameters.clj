@@ -14,7 +14,7 @@
 ;;
 ;; `value`" is either:
 ;; * `no-value`
-;; *  A map contianing the value and type info for the value, e.g.
+;; *  A map containing the value and type info for the value, e.g.
 ;;
 ;;    {:type   :date/single
 ;;     :value  #t "2019-09-20T19:52:00.000-07:00"}
@@ -57,6 +57,20 @@
   "Is `x` an instance of the `ReferencedCardQuery` record type?"
   [x]
   (instance? ReferencedCardQuery x))
+
+;; A "ReferencedTableQuery" parameter expands to a query selecting from a specific table, potentially with a filter on a
+;; specific column.
+;;
+;; `table-id` is the id of the table being referenced
+(p.types/defrecord+ ReferencedTableQuery [table-id]
+  pretty/PrettyPrintable
+  (pretty [this]
+    (list (pretty/qualify-symbol-for-*ns* `map->ReferencedTableQuery) (into {} this))))
+
+(defn ReferencedTableQuery?
+  "Is `x` an instance of the `ReferencedTableQuery` record type?"
+  [x]
+  (instance? ReferencedTableQuery x))
 
 ;; A `ReferencedQuerySnippet` expands to the partial query snippet stored in the `NativeQuerySnippet` table in the
 ;; application DB.

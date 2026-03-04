@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import { alpha } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
@@ -49,7 +49,7 @@ export const CardBody = styled.div`
 `;
 
 export const CardTitle = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 1rem;
   line-height: 1.25rem;
   font-weight: bold;
@@ -57,7 +57,7 @@ export const CardTitle = styled.div`
 `;
 
 export const CardDescription = styled(Markdown)`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   margin-top: 0.25rem;
   word-wrap: break-word;
 `;
@@ -69,7 +69,7 @@ export const CardDateInfo = styled.div`
 `;
 
 export const CardCreatorInfo = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin-top: 0.25rem;
   font-size: 0.75rem;
 `;

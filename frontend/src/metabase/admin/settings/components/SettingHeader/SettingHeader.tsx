@@ -20,7 +20,7 @@ export const SettingHeader = ({
       {title}
     </SettingTitle>
     {!!description && (
-      <Text mb="sm" maw="38rem" lh="xl" c="text-medium">
+      <Text mb="sm" maw="38rem" lh="xl" c="text-secondary">
         {description}
       </Text>
     )}
@@ -38,7 +38,7 @@ export const SettingTitle = ({
   <Text
     htmlFor={id}
     component="label"
-    c="text-dark"
+    c="text-primary"
     fw="bold"
     display="inline-block"
     {...props}

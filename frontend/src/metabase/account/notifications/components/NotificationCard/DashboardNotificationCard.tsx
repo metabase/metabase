@@ -3,8 +3,8 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
-import type { DashboardAlertListItem } from "metabase/account/notifications/types";
-import Link from "metabase/common/components/Link";
+import type { DashboardSubscriptionListItem } from "metabase/account/notifications/types";
+import { Link } from "metabase/common/components/Link";
 import { formatTitle } from "metabase/lib/notifications";
 import { canArchiveLegacyAlert, formatChannel } from "metabase/lib/pulse";
 import * as Urls from "metabase/lib/urls";
@@ -19,10 +19,10 @@ import {
 } from "./DashboardNotificationCard.styled";
 
 type Props = {
-  listItem: DashboardAlertListItem;
+  listItem: DashboardSubscriptionListItem;
   user: User;
-  onUnsubscribe: (listItem: DashboardAlertListItem) => void;
-  onArchive: (listItem: DashboardAlertListItem) => void;
+  onUnsubscribe: (listItem: DashboardSubscriptionListItem) => void;
+  onArchive: (listItem: DashboardSubscriptionListItem) => void;
   isEditable: boolean;
 };
 

@@ -10,9 +10,12 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { useLocale } from "metabase/common/hooks";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ColorName } from "metabase/lib/colors/types";
 import { isNotNull } from "metabase/lib/types";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   type DefinedClauseName,
   clausesForMode,
@@ -100,6 +103,8 @@ export function QueryColumnPicker({
   alwaysExpanded,
   disableSearch,
 }: QueryColumnPickerProps) {
+  const tc = useTranslateContent();
+  const { locale } = useLocale();
   const withCustomExpressions = onSelectExpression != null;
   const [isSearching, setIsSearching] = useState(false);
 
@@ -117,12 +122,12 @@ export function QueryColumnPicker({
           type: "column" as const,
           ...columnInfo,
           column,
-          combinedDisplayName: `${columnInfo.table?.displayName ?? ""} ${columnInfo.displayName}`,
+          combinedDisplayName: `${tc(columnInfo.table?.displayName) ?? ""} ${tc(columnInfo.displayName)}`,
         };
       });
 
       return {
-        name: groupInfo.displayName,
+        name: tc(groupInfo.displayName),
         icon: getColumnGroupIcon(groupInfo),
         items,
       };
@@ -162,6 +167,7 @@ export function QueryColumnPicker({
     withCustomExpressions,
     expressionSectionIcon,
     isSearching,
+    tc,
   ]);
 
   const handleSelectSection = useCallback(
@@ -313,6 +319,18 @@ export function QueryColumnPicker({
     [checkIsColumnSelected],
   );
 
+  const renderItemName = useCallback(
+    (item: Item) =>
+      isSearching
+        ? item.displayName
+        : PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+            displayName: item.displayName,
+            tc,
+            locale,
+          }),
+    [tc, locale, isSearching],
+  );
+
   return (
     <DelayGroup>
       <AccordionList<Item, QueryColumnPickerSection>
@@ -360,10 +378,6 @@ function getColumnWithoutBucketing(
     return Lib.withBinning(column, null);
   }
   return column;
-}
-
-function renderItemName(item: Item) {
-  return item.displayName;
 }
 
 function renderItemWrapper(content: ReactNode) {

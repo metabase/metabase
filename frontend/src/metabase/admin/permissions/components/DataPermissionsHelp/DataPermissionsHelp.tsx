@@ -2,9 +2,10 @@ import { jt, t } from "ttag";
 
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Accordion,
@@ -197,8 +198,15 @@ export const DataPermissionsHelp = () => {
               <Text>
                 {jt`${(
                   <strong key="permission">{t`Manage Database (Pro):`}</strong>
-                )} The group can edit database settings for a given database in the “Database” tab of the Admin settings.`}
+                )} The group can edit database settings for a given database in the "Database" tab of the Admin settings.`}
               </Text>
+              {PLUGIN_TRANSFORMS.isEnabled && (
+                <Text>
+                  {jt`${(
+                    <strong key="permission">{t`Transforms (Pro):`}</strong>
+                  )} The group can create, edit, and run Transforms for a given database.`}
+                </Text>
+              )}
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>

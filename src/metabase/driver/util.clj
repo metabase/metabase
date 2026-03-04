@@ -18,6 +18,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -222,8 +223,10 @@
                     [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))))
 
 ;;; this can get called in post-select which doesn't always have ID
-(mu/defn- ensure-lib-database :- [:map
-                                  [:lib/type [:= :metadata/database]]]
+(mu/defn ensure-lib-database :- [:map
+                                 [:lib/type [:= :metadata/database]]]
+  "Ensures the database is in MLv2 metadata format (SnakeHatingMap with kebab-case keys).
+   If passed a Toucan2 instance, converts it. If already MLv2 metadata, returns as-is."
   [database :- [:or
                 [:map
                  [:lib/type [:= :metadata/database]]]
@@ -429,6 +432,124 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
+(defn collect-all-props-by-name
+  "Recursively collect all properties into a flat map by name, including nested group fields.
+  This creates a complete lookup map keyed by property name.
+
+  Groups have :type :group and contain a :fields array with nested properties. This function
+  flattens the structure to make all properties available for lookups and filtering.
+
+  Properties without a :name are skipped."
+  [props]
+  (reduce (fn [acc prop]
+            (cond
+              ;; Group with nested fields - recursively collect from nested fields
+              (= :group (:type prop))
+              (merge acc (collect-all-props-by-name (:fields prop)))
+
+              ;; Regular fields
+              (:name prop)
+              (assoc acc (:name prop) prop)
+
+              ;; This should not happen but let's leave it as a fallback
+              :else
+              acc))
+          {}
+          props))
+
+(defn- resolve-transitive-visible-if
+  "Resolves transitive visible-if dependencies for a property.
+
+  If property x depends on y having a value, but y itself depends on z having a value,
+  then x should be hidden if y is. This function computes the full transitive closure
+  of visible-if dependencies.
+
+  Throws an exception if a cycle is detected in the dependency graph."
+  [prop props-by-name driver]
+  (let [v-ifs*
+        (loop [props* [prop]
+               acc    {}]
+          (if (seq props*)
+            (let [all-visible-ifs  (reduce
+                                    #(reduce-kv (fn [acc prop-name v]
+                                                  (if (or (contains? props-by-name (->str prop-name))
+                                                          ;; If v is false then this depended on a removed :checked-section
+                                                          ;; and the dependency should be dropped.
+                                                          (not (false? v)))
+                                                    (assoc acc prop-name v)
+                                                    acc))
+                                                %1 (:visible-if %2))
+                                    {} props*)
+                  visible-keys     (keys all-visible-ifs)
+                  transitive-props (perf/mapv (comp (partial get props-by-name) ->str) visible-keys)
+                  next-acc         (into acc all-visible-ifs)]
+              (if-not (perf/some #(contains? acc %) visible-keys)
+                (recur transitive-props next-acc)
+                (let [cyclic-props (set/intersection (set visible-keys)
+                                                     (set (keys acc)))]
+                  (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
+                           driver cyclic-props)
+                      (ex-info {:type               qp.error-type/driver
+                                :driver             driver
+                                :cyclic-visible-ifs cyclic-props})
+                      throw))))
+            acc))]
+    (cond-> prop
+      (seq v-ifs*) (assoc :visible-if v-ifs*)
+      (empty? v-ifs*) (dissoc :visible-if))))
+
+(defn- resolve-transitive-visible-if-recursive
+  "Recursively resolve transitive visible-if for properties, including nested groups.
+
+  Groups are processed recursively to maintain their structure while resolving dependencies
+  for all nested fields. This allows dependencies to cross group boundaries - top-level fields
+  can depend on nested fields and vice versa."
+  [prop props-by-name driver]
+  (cond
+    ;; If it's a group, recursively process its nested fields while preserving group structure
+    (= :group (:type prop))
+    (update prop :fields
+            (fn [fields]
+              (mapv #(resolve-transitive-visible-if-recursive % props-by-name driver)
+                    fields)))
+
+    ;; Regular property - resolve its transitive visible-if dependencies
+    :else
+    (resolve-transitive-visible-if prop props-by-name driver)))
+
+(defn- process-connection-prop
+  "Recursively processes a single connection property, handling special types like :secret, :info, :group, etc.
+
+  For :group types, this function:
+  - Flattens any vectors in the :fields array (e.g., ssh-tunnel-preferences)
+  - Recursively processes each nested field
+
+  Returns a vector of processed properties (most types return a single property, some like :secret may expand to multiple)."
+  [conn-prop]
+  (case (keyword (:type conn-prop))
+    :secret
+    (expand-secret-conn-prop conn-prop)
+
+    :info
+    (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
+      [conn-prop']
+      [])
+
+    :checked-section
+    (resolve-checked-section-conn-prop conn-prop)
+
+    :schema-filters
+    (expand-schema-filters-prop conn-prop)
+
+    :group
+    (let [processed-fields (into []
+                                 (comp (mapcat u/one-or-many)
+                                       (mapcat process-connection-prop))
+                                 (:fields conn-prop))]
+      [(assoc conn-prop :fields processed-fields)])
+
+    [conn-prop]))
+
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
 
@@ -440,66 +561,13 @@
    if one was provided."
   {:added "0.42.0"}
   [driver conn-props]
-  (let [final-props
-        (persistent!
-         (reduce (fn [acc conn-prop]
-                   ;; TODO: change this to expanded- and use that as the basis for all calcs below (not conn-prop)
-                   (let [expanded-props (case (keyword (:type conn-prop))
-                                          :secret
-                                          (expand-secret-conn-prop conn-prop)
-
-                                          :info
-                                          (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
-                                            [conn-prop']
-                                            [])
-
-                                          :checked-section
-                                          (resolve-checked-section-conn-prop conn-prop)
-
-                                          :schema-filters
-                                          (expand-schema-filters-prop conn-prop)
-
-                                          [conn-prop])]
-                     (reduce conj! acc expanded-props)))
-                 (transient [])
-                 conn-props))
-        props-by-name (reduce #(assoc %1 (:name %2) %2) {} final-props)]
+  (let [final-props (into [] (mapcat process-connection-prop) conn-props)
+        ;; Build complete props-by-name map including nested fields from groups
+        props-by-name (collect-all-props-by-name final-props)]
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
     ;; dependencies (if property x depends on y having a value, but y itself depends on z having a value, then x
-    ;; should be hidden if y is)
-    (mapv (fn [prop]
-            (let [v-ifs*
-                  (loop [props* [prop]
-                         acc    {}]
-                    (if (seq props*)
-                      (let [all-visible-ifs  (reduce
-                                              #(reduce-kv (fn [acc prop-name v]
-                                                            (if (or (contains? props-by-name (->str prop-name))
-                                                                    ;; If v is false then this depended on a removed :checked-section
-                                                                    ;; and the dependency should be dropped.
-                                                                    (not (false? v)))
-                                                              (assoc acc prop-name v)
-                                                              acc))
-                                                          %1 (:visible-if %2))
-                                              {} props*)
-                            visible-keys     (keys all-visible-ifs)
-                            transitive-props (perf/mapv (comp (partial get props-by-name) ->str) visible-keys)
-                            next-acc         (into acc all-visible-ifs)]
-                        (if-not (perf/some #(contains? acc %) visible-keys)
-                          (recur transitive-props next-acc)
-                          (let [cyclic-props (set/intersection (set visible-keys)
-                                                               (set (keys acc)))]
-                            (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
-                                     driver cyclic-props)
-                                (ex-info {:type               qp.error-type/driver
-                                          :driver             driver
-                                          :cyclic-visible-ifs cyclic-props})
-                                throw))))
-                      acc))]
-              (cond-> prop
-                (seq v-ifs*) (assoc :visible-if v-ifs*)
-                (empty? v-ifs*) (dissoc :visible-if))))
-          final-props)))
+    ;; should be hidden if y is). This works recursively to handle nested groups.
+    (mapv #(resolve-transitive-visible-if-recursive % props-by-name driver) final-props)))
 
 (def data-url-pattern
   "A regex to match data-URL-encoded files uploaded via the frontend"
@@ -663,6 +731,21 @@
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
 
+(defn fields-hidden-for-write-data-connection
+  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
+   when the write-data-connection form marker is true."
+  [driver]
+  (when-some [conn-prop-fn (get-method driver/connection-properties driver)]
+    (let [all-props     (conn-prop-fn driver)
+          resolved      (connection-props-server->client driver all-props)
+          props-by-name (collect-all-props-by-name resolved)]
+      (into #{}
+            (keep (fn [[field-name {:keys [visible-if]}]]
+                    (when (false? (get visible-if "write-data-connection"))
+                      field-name)))
+            props-by-name))))
+
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.
 
@@ -678,3 +761,76 @@
         (auth-provider/fetch-auth auth-provider database-id db-details)
         db-details))
      db-details)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        Workspace Isolation Utilities                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- instance-uuid-slug
+  "Create a slug from the site UUID, taking the first character of each section."
+  [site-uuid-string]
+  (->> (str/split site-uuid-string #"-")
+       (map first)
+       (apply str)))
+
+;; WARNING: Changing this prefix requires backwards compatibility handling for existing workspaces.
+;; The prefix is used to identify isolation namespaces in the database, and existing workspaces
+;; will have namespaces created with the current prefix.
+(def ^:private workspace-isolated-prefix "mb__isolation")
+
+(defn workspace-isolation-namespace-name
+  "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.
+  Uses 'namespace' as the generic term that maps to 'schema' in Postgres, 'database' in ClickHouse, etc."
+  [workspace]
+  (assert (some? (:id workspace)) "Workspace must have an :id")
+  (let [instance-slug      (instance-uuid-slug (str (system/site-uuid)))
+        clean-workspace-id (str/replace (str (:id workspace)) #"[^a-zA-Z0-9]" "_")]
+    (format "%s_%s_%s" workspace-isolated-prefix instance-slug clean-workspace-id)))
+
+(defn workspace-isolation-user-name
+  "Generate username for workspace isolation."
+  [workspace]
+  (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))]
+    (format "%s_%s_%s" workspace-isolated-prefix instance-slug (:id workspace))))
+
+(def ^:private workspace-password-char-sets
+  "Character sets for password generation. Cycles through these to ensure representation from each."
+  ["ABCDEFGHJKLMNPQRSTUVWXYZ"
+   "abcdefghjkmnpqrstuvwxyz"
+   "123456789"
+   "!#$%&*+-="])
+
+(defn random-workspace-password
+  "Generate a random password suitable for most database engines.
+   Ensures the password contains characters from all sets (uppercase, lowercase, digits, special)
+   by cycling through the character sets. Result is shuffled for randomness."
+  []
+  (->> (cycle workspace-password-char-sets)
+       (take (+ 32 (rand-int 32)))
+       (map rand-nth)
+       shuffle
+       (apply str)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Macaw parsing helpers                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; At some point, we may want a way for 3rd party drivers to opt in, but a public API deserves some hammock time.
+(def trusted-for-table-permissions?
+  "Do we trust that Macaw will not give us false negatives for tables referenced by a given query?"
+  #{:h2 :mysql :postgres})
+
+(def ^:const transform-temp-table-prefix
+  "Prefix used for temporary tables created during transform execution."
+  "mb_transform_temp_table")
+
+(defn temp-table-name
+  "Generate a temporary table name with a random suffix for uniqueness.
+
+   Takes a `table` keyword like `:schema/table_name` where the namespace is the schema.
+
+   Format: <prefix>_<random_suffix>"
+  [_driver table]
+  (let [schema (some-> table namespace)
+        rand   (subs (str (random-uuid)) 0 8)]
+    (keyword schema (str transform-temp-table-prefix "_" rand))))

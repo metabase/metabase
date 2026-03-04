@@ -14,7 +14,7 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
@@ -144,6 +144,7 @@ type VisualizationOwnProps = {
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
+  isVisualizer?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
@@ -178,6 +179,8 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
+  /** When true, internal click behaviors (dashboard/question links) are preserved */
+  enableEntityNavigation?: boolean;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -237,7 +240,9 @@ const deriveStateFromProps = (props: VisualizationProps) => {
   const series = transformed?.series ?? null;
 
   const computedSettings = !isLoading(series)
-    ? getComputedSettingsForSeries(series)
+    ? getComputedSettingsForSeries(series, {
+        enableEntityNavigation: props.enableEntityNavigation,
+      })
     : {};
 
   return {
@@ -303,7 +308,8 @@ class Visualization extends PureComponent<
       !equals(
         props.selectedTimelineEventIds,
         state._lastProps?.selectedTimelineEventIds,
-      )
+      ) ||
+      props.enableEntityNavigation !== state._lastProps?.enableEntityNavigation
     ) {
       return {
         ...deriveStateFromProps(props),
@@ -320,6 +326,7 @@ class Visualization extends PureComponent<
           "settings",
           "timelineEvents",
           "selectedTimelineEventIds",
+          "enableEntityNavigation",
         ]),
       };
     }
@@ -522,8 +529,8 @@ class Visualization extends PureComponent<
     )[] = [],
     visualizerRawSeries: RawSeries = [],
   ) {
-    const isVisualizerViz = isVisualizerDashboardCard(dashcard);
-    const lookupSeries = isVisualizerViz ? visualizerRawSeries : rawSeries;
+    const isVisualizerDashCard = isVisualizerDashboardCard(dashcard);
+    const lookupSeries = isVisualizerDashCard ? visualizerRawSeries : rawSeries;
     return (
       lookupSeries.find((series) => series.card.id === cardId)?.card ??
       lookupSeries[0].card
@@ -661,6 +668,7 @@ class Visualization extends PureComponent<
       isShowingDetailsOnlyColumns,
       isShowingSummarySidebar,
       isSlow,
+      isVisualizer,
       isDownloadingToImage,
       metadata,
       mode,
@@ -803,7 +811,7 @@ class Visualization extends PureComponent<
 
     const CardVisualization = visualization as VisualizationType;
 
-    const isVisualizerViz = isVisualizerDashboardCard(dashcard);
+    const isVisualizerDashCard = isVisualizerDashboardCard(dashcard);
 
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
@@ -820,7 +828,7 @@ class Visualization extends PureComponent<
     const canSelectTitle =
       this.props.onChangeCardAndRun &&
       !replacementContent &&
-      (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
+      (!isVisualizerDashCard || React.Children.count(titleMenuItems) === 1);
 
     return (
       <ErrorBoundary
@@ -918,7 +926,8 @@ class Visualization extends PureComponent<
                     isEmbeddingSdk={isEmbeddingSdk}
                     isFullscreen={!!isFullscreen}
                     isMobile={!!isMobile}
-                    isVisualizerViz={isVisualizerViz}
+                    isVisualizer={!!isVisualizer}
+                    isVisualizerCard={isVisualizerDashCard}
                     isObjectDetail={isObjectDetail}
                     isPreviewing={isPreviewing}
                     isRawTable={isRawTable}

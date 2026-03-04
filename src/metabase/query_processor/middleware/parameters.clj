@@ -134,8 +134,8 @@
        (u/update-if-exists stage :template-tags assoc-database-id-in-snippet-tag (:database query))))))
 
 (mu/defn substitute-parameters :- ::lib.schema/query
-  "Substitute Dashboard or Card-supplied parameters in a query, replacing the param placeholers with appropriate values
-  and/or modifiying the query as appropriate. This looks for maps that have the key `:parameters` and/or
+  "Substitute Dashboard or Card-supplied parameters in a query, replacing the param placeholders with appropriate values
+  and/or modifying the query as appropriate. This looks for maps that have the key `:parameters` and/or
   `:template-tags` and removes those keys, splicing appropriate conditions into the queries they affect.
 
   A SQL query with a param like `{{param}}` will have that part of the query replaced with an appropriate snippet as

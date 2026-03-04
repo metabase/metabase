@@ -2,6 +2,10 @@ import cx from "classnames";
 import { type Ref, forwardRef, useMemo } from "react";
 import { t } from "ttag";
 
+import { useLocale } from "metabase/common/hooks";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -33,10 +37,12 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
   }: JoinColumnButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
+  const tc = useTranslateContent();
+  const { locale } = useLocale();
   const expression = isLhsPicker ? lhsExpression : rhsExpression;
   const buttonLabel = useMemo(
-    () => getButtonLabel(query, stageIndex, expression),
-    [query, stageIndex, expression],
+    () => getButtonLabel(query, stageIndex, expression, tc, locale),
+    [query, stageIndex, expression, tc, locale],
   );
   const isEmpty = expression == null;
   const isLiteral =
@@ -60,17 +66,17 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
           display="block"
           fz={11}
           lh={1}
-          c={isEmpty ? "brand" : "text-white"}
+          c={isEmpty ? "brand" : "text-primary-inverse"}
           ta="left"
           fw={400}
         >
-          {tableName}
+          {tc(tableName)}
         </Text>
       )}
       <Text
         className={S.joinCellContent}
         display="block"
-        c={isEmpty ? "brand" : "text-white"}
+        c={isEmpty ? "brand" : "text-primary-inverse"}
         ta="left"
         fw={700}
         lh={1}
@@ -85,6 +91,8 @@ function getButtonLabel(
   query: Lib.Query,
   stageIndex: number,
   expression: Lib.ExpressionClause | undefined,
+  tc: ContentTranslationFunction,
+  locale: string,
 ) {
   if (expression == null) {
     return t`Pick a column…`;
@@ -94,7 +102,11 @@ function getButtonLabel(
     Lib.isJoinConditionLHSorRHSLiteral(expression) ||
     Lib.isJoinConditionLHSorRHSColumn(expression)
   ) {
-    return Lib.displayInfo(query, stageIndex, expression).displayName;
+    return PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+      displayName: Lib.displayInfo(query, stageIndex, expression).displayName,
+      tc,
+      locale,
+    });
   }
 
   return t`Custom expression`;

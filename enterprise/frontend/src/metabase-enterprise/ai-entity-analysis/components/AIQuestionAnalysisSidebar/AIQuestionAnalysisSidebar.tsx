@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { useSelector } from "metabase/lib/redux";
 import type { AIQuestionAnalysisSidebarProps } from "metabase/plugins";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { getIsLoadingComplete } from "metabase/query_builder/selectors";
 import { Box } from "metabase/ui";
 import {
@@ -99,7 +99,7 @@ export function AIQuestionAnalysisSidebar({
     return (
       <CopyButton
         value={analysisData.summary}
-        style={{ color: "var(--mb-color-text-medium)" }}
+        style={{ color: "var(--mb-color-text-secondary)" }}
         aria-label={t`Copy`}
       />
     );

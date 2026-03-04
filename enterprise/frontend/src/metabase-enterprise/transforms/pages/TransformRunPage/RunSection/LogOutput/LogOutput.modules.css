@@ -1,9 +1,0 @@
-.logOutput {
-  background-color: var(--mb-color-bg-light);
-  font-family: var(--mb-default-monospace-font-family);
-  white-space: pre;
-  padding: 1rem;
-  overflow: auto;
-  line-height: 1.4;
-  border-top: 1px solid var(--mb-color-border);
-}

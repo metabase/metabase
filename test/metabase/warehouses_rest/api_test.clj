@@ -40,6 +40,8 @@
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api :as api.database]
+   [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -153,7 +155,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :schedules))
+                   (dissoc :details :write_data_details :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules :can_upload)))))
       (testing "Superusers should see DB details"
@@ -623,6 +625,57 @@
                                                {:settings {:database-enable-actions true}})
                          [:settings :database-enable-actions]))))))
 
+(deftest update-database-settings-only-validates-changed-settings-test
+  (testing "PUT /api/database/:id only validates settings that are being changed"
+    (testing "should not validate existing settings that aren't being changed"
+      ;; api-test-disabled-for-database is always disabled, so it would fail validation if we tried to validate it
+      ;; Here we create a database with that setting already set, then update a different setting.
+      ;; If validation happens on all settings, it would fail. If it only validates changed settings, it should succeed.
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true
+                                                             :database-enable-actions        false}}]
+        (is (= {:api-test-disabled-for-database true
+                :database-enable-actions        true}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:database-enable-actions true}}))))))
+
+    (testing "should not validate settings where the value hasn't changed"
+      ;; Same setup, but we set the same value as before - should skip validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {:api-test-disabled-for-database true}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database true}}))))))
+
+    (testing "should still validate settings that are actually being changed to a new value"
+      ;; If we try to change api-test-disabled-for-database to a different value, it should fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database false}}]
+        (is (= "Setting api-test-disabled-for-database is not enabled for this database"
+               (:message (mt/user-http-request :crowberto :put 400
+                                               (format "database/%s" db-id)
+                                               {:settings {:api-test-disabled-for-database true}}))))))
+
+    (testing "should not validate settings being reset to nil (default)"
+      ;; Resetting a setting to nil should always be allowed, even if the setting would fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database nil}}))))))
+
+    (testing "should not validate settings being reset to default value (literally)"
+      ;; Resetting a setting to default should always be allowed, even if the setting would fail validation
+      (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                  :settings {:api-test-disabled-for-database true}}]
+        (is (= {:api-test-disabled-for-database false}
+               (:settings (mt/user-http-request :crowberto :put 200
+                                                (format "database/%s" db-id)
+                                                {:settings {:api-test-disabled-for-database false}}))))))))
+
 (deftest update-database-enable-actions-open-connection-test
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
     (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
@@ -661,7 +714,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -673,7 +726,7 @@
                                      :display_name        "Categories"
                                      :entity_type         "entity/GenericTable"
                                      :initial_sync_status "complete"
-                                     :data_layer          "copper"
+                                     :data_layer          "hidden"
                                      :fields              [(merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
@@ -908,9 +961,9 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute}
+        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
-                                (disj :details))]
+                                (disj :details :write_data_details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
@@ -1556,7 +1609,7 @@
 
 (defn- test-connection-details! [engine details]
   (with-redefs [driver.settings/*allow-testing-h2-connections* true]
-    (#'api.database/test-connection-details engine details)))
+    (warehouses/test-connection-details engine details)))
 
 (deftest validate-database-test
   (testing "POST /api/database/validate"
@@ -1600,12 +1653,12 @@
     (let [call-count (atom 0)
           ssl-values (atom [])
           valid?     (atom false)]
-      (with-redefs [api.database/test-database-connection (fn [_ details & _]
-                                                            (swap! call-count inc)
-                                                            (swap! ssl-values conj (:ssl details))
-                                                            (if @valid? nil {:valid false}))]
+      (with-redefs [warehouses.util/test-database-connection (fn [_ details & _]
+                                                               (swap! call-count inc)
+                                                               (swap! ssl-values conj (:ssl details))
+                                                               (if @valid? nil {:valid false}))]
         (testing "with SSL enabled, do not allow non-SSL connections"
-          (#'api.database/test-connection-details "postgres" {:ssl true})
+          (#'warehouses.util/test-connection-details "postgres" {:ssl true})
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))
 
@@ -1613,7 +1666,7 @@
         (reset! ssl-values [])
 
         (testing "with SSL disabled, try twice (once with, once without SSL)"
-          (#'api.database/test-connection-details "postgres" {:ssl false})
+          (#'warehouses.util/test-connection-details "postgres" {:ssl false})
           (is (= 2 @call-count))
           (is (= [true false] @ssl-values)))
 
@@ -1621,7 +1674,7 @@
         (reset! ssl-values [])
 
         (testing "with SSL unspecified, try twice (once with, once without SSL)"
-          (#'api.database/test-connection-details "postgres" {})
+          (#'warehouses.util/test-connection-details "postgres" {})
           (is (= 2 @call-count))
           (is (= [true nil] @ssl-values)))
 
@@ -1631,7 +1684,7 @@
 
         (testing "with SSL disabled, but working try once (since SSL work we don't try without SSL)"
           (is (= {:ssl true}
-                 (#'api.database/test-connection-details "postgres" {:ssl false})))
+                 (#'warehouses.util/test-connection-details "postgres" {:ssl false})))
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))))))
 
@@ -1742,13 +1795,14 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
 
-      (testing "should return a 403 if there are no perms for any schema"
+      (testing "returns empty list when user has no create-queries perms for any schema"
         (mt/with-full-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :no)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t2) :perms/create-queries :no)
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id)))))))
+          ;; User can access the endpoint but sees no schemas since they have no query perms
+          (is (= []
+                 (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" db-id)))))))
 
     (testing "should exclude schemas for which the user has no perms"
       (mt/with-temp [:model/Database {database-id :id} {}
@@ -2371,7 +2425,21 @@
                       driver/can-connect? (constantly false)]
           (is (= {:status "error"
                   :message "Failed to connect to Database"}
-                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))))
+                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
+    (testing "connection-type passed and configured"
+      (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
+                                               :write_data_details {:host "write"}}]
+        (with-redefs [driver/available? (constantly true)
+                      driver/can-connect? (constantly true)]
+          (is (= {:status "ok"}
+                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))
+    (testing "connection-type passed but not configured returns 400"
+      (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}}]
+        (with-redefs [driver/available? (constantly true)]
+          (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=write-data"))))))
+    (testing "invalid connection-type value returns 400"
+      (mt/with-temp [:model/Database {id :id} {}]
+        (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=invalid")))))))
 
 (setting/defsetting api-test-missing-premium-feature
   "A feature used for testing /settings-available (1)"
@@ -2389,6 +2457,7 @@
 (setting/defsetting api-test-disabled-for-database
   "A feature used for testing /settings-available (3)"
   :type :boolean
+  :default false
   :database-local :only
   :enabled-for-db? (constantly false))
 
@@ -2450,3 +2519,316 @@
                                           :api-test-disabled-for-database
                                           :api-test-disabled-for-custom-reasons
                                           :api-test-disabled-for-multiple-reasons])))))))))
+
+;;; ---------------------------------------- workspace permissions endpoint tests ----------------------------------------
+
+(deftest workspace-permission-endpoint-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "POST /api/database/:id/permission/workspace/check"
+      (testing "returns cached status when available"
+        ;; First call to populate cache
+        (mt/user-http-request :crowberto :post 200
+                              (format "database/%d/permission/workspace/check" (mt/id))
+                              {:cached false})
+        ;; Second call should return cached result
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id)))]
+          (is (= "ok" (:status response)))
+          (is (some? (:checked_at response)))
+          (is (nil? (:error response)))))
+
+      (testing "runs permission check when no cache exists"
+        ;; Clear the cache
+        (t2/update! :model/Database (mt/id) {:workspace_permissions_status nil})
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id)))]
+          (is (= "ok" (:status response)))
+          (is (some? (:checked_at response)))
+          ;; Verify it was cached
+          (let [db (t2/select-one :model/Database (mt/id))]
+            (is (= "ok" (:status (:workspace_permissions_status db)))))))
+
+      (testing "cached=false forces permission check"
+        ;; Set a stale cache value
+        (t2/update! :model/Database (mt/id) {:workspace_permissions_status {:status "stale" :checked_at "2020-01-01T00:00:00Z"}})
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id))
+                                             {:cached false})]
+          (is (= "ok" (:status response)))
+          ;; Verify cache was updated
+          (let [db (t2/select-one :model/Database (mt/id))]
+            (is (= "ok" (:status (:workspace_permissions_status db)))))))
+
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403
+                                     (format "database/%d/permission/workspace/check" (mt/id)))))))))
+
+(deftest workspace-permission-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "returns failed status when permissions check fails"
+      (mt/with-dynamic-fn-redefs [driver/check-isolation-permissions
+                                  (fn [_driver _database _table]
+                                    "permission denied")]
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/permission/workspace/check" (mt/id))
+                                             {:cached false})]
+          (is (= "failed" (:status response)))
+          (is (= "permission denied" (:error response))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         can-query filter tests                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;; Note: can-write-metadata tests are in metabase-enterprise.advanced-permissions.common-test since they require
+;; enterprise features (:perms/manage-table-metadata permission)
+
+(deftest list-databases-can-query-filter-test
+  (testing "GET /api/database with can-query=true filters to only queryable databases"
+    (mt/with-temp [:model/Database {db-1-id :id} {:name "Queryable DB"}
+                   :model/Database {db-2-id :id} {:name "Not Queryable DB"}
+                   :model/Table    _             {:db_id db-1-id :name "table1" :active true}
+                   :model/Table    _             {:db_id db-2-id :name "table2" :active true}
+                   :model/PermissionsGroup {pg-id :id :as pg} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
+      (t2/delete! :model/DataPermissions :db_id db-1-id)
+      (t2/delete! :model/DataPermissions :db_id db-2-id)
+      ;; Grant full permissions to db-1 (queryable)
+      (data-perms/set-database-permission! pg db-1-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-1-id :perms/create-queries :query-builder)
+      ;; Grant only view-data to db-2 (not queryable)
+      (data-perms/set-database-permission! pg db-2-id :perms/view-data :unrestricted)
+
+      (let [response (->> (mt/user-http-request :rasta :get 200 "database" :can-query true)
+                          :data
+                          (filter #(#{db-1-id db-2-id} (:id %))))]
+        (is (= 1 (count response)))
+        (is (= "Queryable DB" (-> response first :name)))))))
+
+(deftest list-schemas-can-query-filter-test
+  (testing "GET /api/database/:id/schemas with can-query=true filters to only schemas with queryable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    t1 {:db_id db-id :schema "queryable_schema" :name "t1" :active true}
+                   :model/Table    _ {:db_id db-id :schema "not_queryable_schema" :name "t2" :active true}]
+      (mt/with-no-data-perms-for-all-users!
+        ;; Grant view-data at database level (required for accessing the endpoint)
+        (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+        ;; Grant create-queries only to t1 (queryable)
+        (data-perms/set-table-permission! (perms-group/all-users) t1 :perms/create-queries :query-builder)
+
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id) :can-query true)]
+          (is (= ["queryable_schema"] response)))))))
+
+(deftest list-schema-tables-can-query-filter-test
+  (testing "GET /api/database/:id/schema/:schema with can-query=true filters to only queryable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    t1 {:db_id db-id :schema "test_schema" :name "queryable_table" :active true}
+                   :model/Table    _ {:db_id db-id :schema "test_schema" :name "not_queryable_table" :active true}]
+      (mt/with-no-data-perms-for-all-users!
+        ;; Grant view-data at database level (required for accessing the endpoint)
+        (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+        ;; Grant create-queries only to t1 (queryable)
+        (data-perms/set-table-permission! (perms-group/all-users) t1 :perms/create-queries :query-builder)
+
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "test_schema") :can-query true)]
+          (is (= 1 (count response)))
+          (is (= "queryable_table" (-> response first :name))))))))
+
+(deftest list-databases-includes-manage-permissions-test
+  (testing "GET /api/database includes databases where user has manage-database permission (details :yes)"
+    (mt/with-temp [:model/Database {db-1-id :id} {:name "Query DB"}
+                   :model/Database {db-2-id :id} {:name "Manage DB"}
+                   :model/Database {db-3-id :id} {:name "No Access DB"}
+                   :model/Table    _             {:db_id db-1-id :name "table1" :active true}
+                   :model/Table    _             {:db_id db-2-id :name "table2" :active true}
+                   :model/Table    _             {:db_id db-3-id :name "table3" :active true}
+                   :model/PermissionsGroup {pg-id :id :as pg} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
+      (t2/delete! :model/DataPermissions :db_id db-1-id)
+      (t2/delete! :model/DataPermissions :db_id db-2-id)
+      (t2/delete! :model/DataPermissions :db_id db-3-id)
+      ;; Grant query permissions to db-1 (queryable)
+      (data-perms/set-database-permission! pg db-1-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-1-id :perms/create-queries :query-builder)
+      ;; Grant only manage-database (details) permission to db-2 (no query access)
+      (data-perms/set-database-permission! pg db-2-id :perms/manage-database :yes)
+      ;; No permissions for db-3
+
+      (let [response (->> (mt/user-http-request :rasta :get 200 "database")
+                          :data
+                          (filter #(#{db-1-id db-2-id db-3-id} (:id %)))
+                          (map :name)
+                          set)]
+        (testing "Both query-accessible and manage-accessible databases should be included"
+          (is (contains? response "Query DB"))
+          (is (contains? response "Manage DB")))
+        (testing "Database with no permissions should not be included"
+          (is (not (contains? response "No Access DB"))))))))
+
+;;; ----------------------------------------- write_data_details tests -----------------------------------------
+
+(deftest ^:parallel upsert-sensitive-fields-write-data-details-test
+  (testing "upsert-sensitive-fields works with :write_data_details key"
+    (is (= {:host "localhost"
+            :port 5432
+            :password "new-password"}
+           (#'api.database/upsert-sensitive-fields
+            {:engine :h2
+             :id (mt/id)
+             :details {:host "localhost" :port 5432 :password "main-pass"}
+             :write_data_details {:host "localhost" :port 5432 :password "write-pass"}}
+            {:host "localhost"
+             :port 5432
+             :password "new-password"}
+            :write_data_details)))
+    (testing "protected passwords are replaced from original"
+      (is (= {:host "localhost"
+              :port 5432
+              :password "write-pass"}
+             (#'api.database/upsert-sensitive-fields
+              {:engine :h2
+               :id (mt/id)
+               :details {:host "localhost" :port 5432 :password "main-pass"}
+               :write_data_details {:host "localhost" :port 5432 :password "write-pass"}}
+              {:host "localhost"
+               :port 5432
+               :password secret/protected-password}
+              :write_data_details))))))
+
+(deftest get-database-write-data-details-test
+  (testing "GET /api/database/:id"
+    (testing "Superusers see write_data_details with sensitive fields redacted"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :write_data_details {:host "write-host"
+                                                                       :password "secret-write-pass"}}]
+        (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+          (is (some? (:write_data_details response)))
+          (is (= "write-host" (get-in response [:write_data_details :host])))
+          (is (= secret/protected-password (get-in response [:write_data_details :password]))))))
+    (testing "Regular users do not see write_data_details"
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                  :details {:host "localhost"}
+                                                  :write_data_details {:host "write-host"}}]
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
+          (is (not (contains? response :write_data_details)))
+          (is (not (contains? response :details))))))))
+
+(deftest update-database-write-data-details-test
+  (testing "PUT /api/database/:id with write_data_details"
+    (testing "Superusers can set write_data_details"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (let [response (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                                 {:write_data_details {:host "write-host"
+                                                                       :password "write-pass"
+                                                                       :write-data-connection true}})]
+              (is (= "write-host" (get-in response [:write_data_details :host])))
+              (is (= secret/protected-password (get-in response [:write_data_details :password])))
+              (let [db (t2/select-one :model/Database :id db-id)]
+                (is (= {:host "write-host" :password "write-pass" :write-data-connection true}
+                       (:write_data_details db)))))))))
+    (testing "Superusers can clear write_data_details by setting it to nil"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}
+                                                    :write_data_details {:host "write-host"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                  {:write_data_details nil})
+            (let [db (t2/select-one :model/Database :id db-id)]
+              (is (nil? (:write_data_details db))))))))
+    (testing "Sensitive fields are preserved when protected-password is sent"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}
+                                                    :write_data_details {:host "write-host"
+                                                                         :password "original-pass"}}]
+          (with-redefs [driver/can-connect? (constantly true)]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                  {:write_data_details {:host "new-write-host"
+                                                        :password secret/protected-password
+                                                        :write-data-connection true}})
+            (let [db (t2/select-one :model/Database :id db-id)]
+              (is (= "new-write-host" (get-in db [:write_data_details :host])))
+              (is (= "original-pass" (get-in db [:write_data_details :password]))))))))
+    (testing "Returns 402 without :advanced-permissions feature"
+      (with-redefs [premium-features/has-feature? (constantly false)]
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2
+                                                    :details {:host "localhost"}}]
+          (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)
+                                {:write_data_details {:host "write-host"}}))))))
+
+(deftest put-validates-write-data-details-connection-test
+  (testing "PUT /api/database/:id returns 400 when write connection test fails"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                  :details {:host "localhost"}}]
+        (with-redefs [driver/can-connect? (fn [_engine details]
+                                            (if (:write-data-connection details)
+                                              (throw (Exception. "Write connection failed"))
+                                              true))]
+          (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                               {:write_data_details {:host "totally-bogus-host"
+                                                                     :write-data-connection true}})]
+            (is (= "Write connection failed" (:message response)))))))))
+
+(deftest write-data-details-guardrails-test
+  (testing "PUT /api/database/:id write_data_details guardrails"
+    (testing "write-data-connection must not be truthy in details"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "write-data-connection must not be set in details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:details {:host                  "localhost"
+                                                  :write-data-connection true}}))))))
+    (testing "write-data-connection must be truthy in write_data_details"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "write-data-connection must be set in write_data_details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:write_data_details {:host "write-host"}}))))))
+    (testing "Destination-database must be false in write_data_details"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (= "destination-database must be false in write_data_details"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                       {:write_data_details {:host                  "write-host"
+                                                             :write-data-connection true
+                                                             :destination-database  true}}))))))
+    (testing "Fields hidden for write connections must not be in write_data_details"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (is (str/includes?
+               (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                     {:write_data_details {:host                  "write-host"
+                                                           :write-data-connection true
+                                                           :auto_run_queries      true}})
+               "write_data_details must not contain fields hidden for write connections")))))
+    (testing "Cannot set write_data_details on a destination database"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
+                                                        :details {:host "localhost"}}
+                       :model/Database {dest-id :id} {:engine             :h2
+                                                      :details            {:host "localhost"}
+                                                      :router_database_id router-id}]
+          (is (= "Cannot configure a write connection on a destination database"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
+                                       {:write_data_details {:host                  "write-host"
+                                                             :write-data-connection true}}))))))
+    (testing "Cannot set write_data_details on a router database"
+      (mt/with-premium-features #{:advanced-permissions}
+        (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
+                                                        :details {:host "localhost"}}
+                       :model/Database {_dest-id :id} {:engine :h2
+                                                       :details {:host "localhost"}
+                                                       :router_database_id router-id}]
+          (is (= "Cannot configure a write connection on a router database"
+                 (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
+                                       {:write_data_details {:host "write-host"
+                                                             :write-data-connection true}}))))))))

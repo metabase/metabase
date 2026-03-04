@@ -17,7 +17,7 @@
         ["card" "dashboard" "collection" "document"]))
 
 (def BookmarkOrderings
-  "Schema for an ordered of boomark orderings"
+  "Schema for an ordered of bookmark orderings"
   [:sequential [:map
                 [:type Models]
                 [:item_id ms/PositiveInt]]])

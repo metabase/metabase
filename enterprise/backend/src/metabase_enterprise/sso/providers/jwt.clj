@@ -39,6 +39,9 @@
 (def ^:private ^{:arglists '([])} jwt-attribute-tenant
   (comp keyword sso-settings/jwt-attribute-tenant))
 
+(def ^:private ^{:arglists '([])} jwt-attribute-tenant-attributes
+  (comp keyword sso-settings/jwt-attribute-tenant-attributes))
+
 (def ^:private registered-claims
   "Registered claims in the JWT standard which we should not interpret as login attributes."
   [:iss :iat :sub :aud :exp :nbf :jti])
@@ -52,8 +55,16 @@
                                (jwt-attribute-lastname)
                                (jwt-attribute-groups)]
                               (when (setting/get :use-tenants)
-                                [(jwt-attribute-tenant)]))]
+                                [(jwt-attribute-tenant)
+                                 (jwt-attribute-tenant-attributes)]))]
     (sso-utils/stringify-valid-attributes (apply dissoc jwt-data excluded-keys))))
+
+(defn- extract-tenant-attributes
+  "Extract and stringify tenant attributes from JWT data. Returns nil if not a map."
+  [jwt-data]
+  (let [attrs (get jwt-data (jwt-attribute-tenant-attributes))]
+    (when (map? attrs)
+      (sso-utils/stringify-valid-attributes attrs))))
 
 (defn- decode-and-verify-jwt
   "Decode and verify a JWT token. Returns the JWT data if valid, throws on error."
@@ -91,6 +102,7 @@
                                         (integer? <>))
                             (throw (ex-info "Value of `@tenant` must be a string" {:status-code 400
                                                                                    :error :invalid-tenant}))))
+            tenant-attributes (extract-tenant-attributes jwt-data)
             user-attributes (jwt-data->user-attributes jwt-data)]
         (when-not email
           (throw (ex-info (tru "JWT token missing email claim")
@@ -99,6 +111,7 @@
         (log/infof "Successfully authenticated JWT token for: %s %s" first-name last-name)
         {:success? true
          :tenant-slug (some-> tenant-slug str)
+         :tenant-attributes tenant-attributes
          :user-data (->> {:email email
                           :first_name first-name
                           :last_name last-name
@@ -134,27 +147,21 @@
     ;; Authentication succeeded - check account creation policy
     ;; TODO(edpaget): 2025/11/11 this should return an error condition instead of throwing
     :else
-    (do (when-not (and (:user request) (get-in request [:user :is_active]))
-          (sso-utils/check-user-provisioning :jwt))
-        ;; If the user was deactivated but user provisioning is allowed reactive the user
-        (next-method provider (assoc-in request [:user-data :is_active] true)))))
+    (let [provisioning-enabled? (sso-settings/jwt-user-provisioning-enabled?)]
+      (when-not (and (:user request) (get-in request [:user :is_active]))
+        (sso-utils/check-user-provisioning :jwt))
+      ;; If the user was deactivated but user provisioning is allowed reactive the user
+      ;; Pass provisioning status for tenant reactivation logic
+      (next-method provider (-> request
+                                (assoc-in [:user-data :is_active] true)
+                                (assoc :user-provisioning-enabled? provisioning-enabled?))))))
 
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
   [group-names]
   (if-let [name-mappings (not-empty (sso-settings/jwt-group-mappings))]
-    (set
-     (mapcat name-mappings
-             (map keyword group-names)))
+    (sso-utils/group-names->ids group-names name-mappings)
     (t2/select-pks-set :model/PermissionsGroup :name [:in group-names])))
-
-(defn- all-mapped-group-ids
-  "Returns the set of all MB group IDs that have configured mappings"
-  []
-  (-> (sso-settings/jwt-group-mappings)
-      vals
-      flatten
-      set))
 
 (methodical/defmethod auth-identity/login! :after :provider/jwt
   "Sync JWT group memberships after successful login.
@@ -173,4 +180,4 @@
               (sso/sync-group-memberships! user (group-names->ids group-names))
               (sso/sync-group-memberships! user
                                            (group-names->ids group-names)
-                                           (all-mapped-group-ids)))))))))
+                                           (sso-utils/all-mapped-group-ids (sso-settings/jwt-group-mappings))))))))))

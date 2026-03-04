@@ -1,17 +1,17 @@
 import { Avatar, rem } from "@mantine/core";
 
-import { color } from "metabase/ui/utils/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 
-const avatarColors = [
-  "var(--mb-color-brand)",
-  "var(--mb-color-error)",
-  color("accent1"),
-  color("accent2"),
-  color("accent3"),
-  color("accent4"),
-  color("accent5"),
-  color("accent6"),
-  color("accent7"),
+const avatarColors: ColorName[] = [
+  "brand",
+  "error",
+  "accent1",
+  "accent2",
+  "accent3",
+  "accent4",
+  "accent5",
+  "accent6",
+  "accent7",
 ];
 
 export const avatarOverrides = {

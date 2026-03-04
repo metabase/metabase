@@ -73,7 +73,7 @@
 
 (defmulti fallback-metadata-query
   "SELECT columns from a given table so we can get column metadata. By default doesn't return any rows. This can be
-  overriden because SQLite is silly and only returns column information for views if the query returns a non-zero
+  overridden because SQLite is silly and only returns column information for views if the query returns a non-zero
   number of rows.
 
     (fallback-metadata-query :postgres \"my_database\" \"public\" \"my_table\")

@@ -129,7 +129,7 @@ Note that your full app embed must be compatible with Safari to run on _any_ bro
 
 If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
 
-You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
+You can set session cookie's SameSite value in **Admin** > **Embedding** > **Security** > **SameSite cookie setting**.
 
 SameSite values include:
 
@@ -233,6 +233,10 @@ Additionally, each person within a single customer account could also be a membe
 ## Showing or hiding Metabase UI components
 
 See [full app UI components](./full-app-ui-components.md). For more granular control over embedded components, consider using [Modular embedding](./modular-embedding.md) instead.
+
+## Metabot in full-app embeds
+
+See [Embedded Metabot settings](../ai/settings.md#enable-metabot).
 
 ## Reference apps
 

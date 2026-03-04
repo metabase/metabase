@@ -35,7 +35,7 @@ describe("issue 10803", () => {
 
     it(`should format the date properly for ${fileType} in unsaved questions`, () => {
       // Add a space at the end of the query to make it "dirty"
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
       H.NativeEditor.focus().type("{movetoend} ");
 
@@ -166,9 +166,9 @@ describe("issue 18440", () => {
     it(`export should include a column with remapped values for ${fileType} (metabase#18440-1)`, () => {
       H.visitQuestionAdhoc(questionDetails);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Product ID");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Awesome Concrete Shoes");
 
       H.downloadAndAssert({ fileType });
@@ -218,9 +218,9 @@ describe("issue 18573", () => {
   it("for the remapped columns, it should preserve renamed column name in exports for xlsx (metabase#18573)", () => {
     H.visitQuestionAdhoc(questionDetails);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Foo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Awesome Concrete Shoes");
 
     H.downloadAndAssert({ fileType: "xlsx" });
@@ -288,21 +288,21 @@ describe("issue 19889", () => {
     });
 
     // Reorder columns a and b
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("column a").trigger("mousedown", 0, 0).wait(100); //Don't force the first interaction. This ensures things are actually visible to start moving
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("column a")
       .trigger("mousemove", 10, 10, { force: true })
       .wait(100);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("column a")
       .trigger("mousemove", 100, 0, { force: true })
       .wait(100);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("column a")
       .trigger("mouseup", 100, 0, { force: true })
       .wait(100);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Started from").click(); // Give DOM some time to update
   });
 
@@ -320,7 +320,7 @@ describe("issue 19889", () => {
     });
 
     it("should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
       H.NativeEditor.focus().type(
         '{selectall}select 1 "column x", 2 "column y", 3 "column c"',

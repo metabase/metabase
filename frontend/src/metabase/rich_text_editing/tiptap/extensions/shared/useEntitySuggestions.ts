@@ -1,9 +1,10 @@
 import type { Editor, Range } from "@tiptap/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
+import type { DocumentLinkedEntityPickerItemValue } from "metabase/rich_text_editing/tiptap/extensions/shared/LinkedEntityPickerModal/types";
 import type {
   MentionableUser,
   RecentItem,
@@ -15,7 +16,7 @@ import {
   entityToUrlableModel,
   getBrowseAllItemIndex,
 } from "./suggestionUtils";
-import type { SuggestionModel } from "./types";
+import type { SuggestionModel, SuggestionPickerModalType } from "./types";
 import { type EntitySearchOptions, useEntitySearch } from "./useEntitySearch";
 
 interface UseEntitySuggestionsOptions {
@@ -42,7 +43,7 @@ interface UseEntitySuggestionsResult {
   isLoading: boolean;
   searchResults: SearchResult[];
   selectedIndex: number;
-  modal: "question-picker" | null;
+  modal: SuggestionPickerModalType;
   totalItems: number;
   selectedSearchModelName?: string;
   handlers: {
@@ -51,7 +52,7 @@ interface UseEntitySuggestionsResult {
     downHandler: () => void;
     enterHandler: () => void;
     onKeyDown: (props: { event: KeyboardEvent }) => boolean;
-    handleModalSelect: (item: QuestionPickerValueItem) => void;
+    handleModalSelect: (item: DocumentLinkedEntityPickerItemValue) => void;
     handleModalClose: () => void;
     openModal: () => void;
     hoverHandler: (index: number) => void;
@@ -73,9 +74,24 @@ export function useEntitySuggestions({
   onTriggerCreateNewQuestion,
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [modal, setModal] = useState<"question-picker" | null>(null);
+  const [modal, setModal] = useState<SuggestionPickerModalType>(null);
   const [selectedSearchModel, setSelectedSearchModel] =
-    useState<SuggestionModel | null>(null);
+    useState<SuggestionModel | null>(
+      searchModels?.length === 1 ? searchModels[0] : null,
+    );
+
+  // sync selectedSearchModel when searchModels changes
+  useEffect(() => {
+    if (searchModels?.length === 1) {
+      setSelectedSearchModel(searchModels[0]);
+    } else if (
+      selectedSearchModel &&
+      !searchModels?.includes(selectedSearchModel)
+    ) {
+      // Reset if current selection is no longer valid
+      setSelectedSearchModel(null);
+    }
+  }, [searchModels, selectedSearchModel]);
 
   const handleRecentSelect = useCallback(
     (item: RecentItem) => {
@@ -162,7 +178,16 @@ export function useEntitySuggestions({
   const hasSearchModels = (searchModels?.length ?? 0) > 0;
   const hasMatchingFilteredModels = (filteredSearchModels?.length ?? 0) > 0;
   const isInModelSelectionMode =
-    !selectedSearchModel && hasSearchModels && hasMatchingFilteredModels;
+    !selectedSearchModel &&
+    hasSearchModels &&
+    hasMatchingFilteredModels &&
+    (searchModels?.length ?? 0) > 1;
+
+  const shouldFetchRecents =
+    enabled &&
+    query.length === 0 &&
+    !isInModelSelectionMode &&
+    !selectedSearchModel;
 
   const {
     menuItems: entityMenuItems,
@@ -174,11 +199,7 @@ export function useEntitySuggestions({
     onSelectSearchResult: handleSearchResultSelect,
     onSelectUser: handleUserSelect,
     enabled: enabled && !isInModelSelectionMode,
-    shouldFetchRecents:
-      enabled &&
-      query.length === 0 &&
-      !isInModelSelectionMode &&
-      !selectedSearchModel,
+    shouldFetchRecents,
     searchModels: effectiveSearchModels,
     searchOptions,
   });
@@ -264,7 +285,11 @@ export function useEntitySuggestions({
   );
 
   const handleModalSelect = useCallback(
-    (item: QuestionPickerValueItem) => {
+    (item: OmniPickerItem) => {
+      if (item.model === "snippet" || item.model === "schema") {
+        console.error(`Cannot select ${item.model}`);
+        return;
+      }
       onSelectEntity({
         id: item.id,
         model: item.model,

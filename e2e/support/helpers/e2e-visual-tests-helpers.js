@@ -60,7 +60,7 @@ export function getXYTransform(element) {
 export function echartsIcon(name, isSelected = false) {
   const iconSvg = setSvgColor(
     Icons[name].source,
-    getColor(isSelected ? "brand" : "text-light"),
+    getColor(isSelected ? "brand" : "text-tertiary"),
   );
   const dataUri = svgToDataUri(iconSvg);
 
@@ -86,6 +86,7 @@ export function chartPathsWithFillColors(colors) {
 }
 
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
+const DIAMOND_PATH = "M0 -1L1 0L0 1L-1 0Z";
 export function cartesianChartCircle() {
   return echartsContainer()
     .find(`path[d="${CIRCLE_PATH}"]`)
@@ -195,7 +196,7 @@ export function assertTooltipRow(
   name,
   { color, value, secondaryValue, index } = {},
 ) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByText(name)
     .eq(index ?? 0)
     .parent("tr")
@@ -261,3 +262,17 @@ export function assertEChartsTooltipNotContain(rows) {
     });
   });
 }
+
+export const BoxPlot = {
+  getBoxes() {
+    return echartsContainer().find('path[fill-opacity="0.15"][stroke]');
+  },
+
+  getPoints() {
+    return echartsContainer().find(`path[d="${CIRCLE_PATH}"]`);
+  },
+
+  getMeanMarkers() {
+    return echartsContainer().find(`path[d="${DIAMOND_PATH}"]`);
+  },
+};

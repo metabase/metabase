@@ -48,19 +48,21 @@
   suitable for Metabot. Takes a map with :id and :source keys."
   [{:keys [id source]}]
   (try
-    (let [transform-to-check (api/check-404 (t2/select-one :model/Transform :id id))]
-      (api/read-check transform-to-check)
-      (let [result (if (= (keyword (:type source)) :query)
-                     (let [database-id       (-> source :query :database)
-                           base-provider     (lib-be/application-database-metadata-provider database-id)
-                           metadata          (lib-be/instance->metadata transform-to-check :metadata/transform)
-                           updated-metadata  (cond-> metadata
-                                               source (assoc :source source))
-                           edits             {:transform [updated-metadata]}
-                           breakages         (dependencies/errors-from-proposed-edits base-provider edits)]
-                       (format-broken-transforms id breakages))
-                     ;; If this is a non-SQL query, we don't do any checks yet, so just return success
-                     {:success true :bad_transforms []})]
-        {:structured_output result}))
+    (let [transform-to-check (api/check-404 (t2/select-one :model/Transform :id id))
+          _                  (api/read-check transform-to-check)
+          result             (if (= (keyword (:type source)) :query)
+                               (let [database-id      (-> source :query :database)
+                                     base-provider    (lib-be/application-database-metadata-provider database-id)
+                                     metadata         (lib-be/instance->metadata transform-to-check :metadata/transform)
+                                     updated-metadata (cond-> metadata
+                                                        source (assoc :source source))
+                                     edits            {:transform [updated-metadata]}
+                                     breakages        (dependencies/errors-from-proposed-edits edits
+                                                                                               :base-provider base-provider
+                                                                                               :include-native? true)]
+                                 (format-broken-transforms id breakages))
+                               ;; If this is a non-SQL query, we don't do any checks yet, so just return success
+                               {:success true :bad_transforms []})]
+      {:structured_output result})
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))

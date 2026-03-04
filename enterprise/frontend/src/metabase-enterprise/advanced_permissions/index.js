@@ -21,11 +21,13 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
+import { WritableConnectionInfoSection } from "./components/WritableConnectionInfoSection";
 import {
   shouldRestrictNativeQueryPermissions,
   upgradeViewPermissionsIfNeeded,
 } from "./graph";
 import { advancedPermissionsSlice, getImpersonatedPostAction } from "./reducer";
+import { getWritableConnectionInfoRoutes } from "./routes";
 import { getImpersonations } from "./selectors";
 
 const IMPERSONATED_PERMISSION_OPTION = {
@@ -157,6 +159,11 @@ export function initializePlugin() {
       upgradeViewPermissionsIfNeeded;
     PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions =
       shouldRestrictNativeQueryPermissions;
+
+    PLUGIN_ADVANCED_PERMISSIONS.getWritableConnectionInfoRoutes =
+      getWritableConnectionInfoRoutes;
+    PLUGIN_ADVANCED_PERMISSIONS.WritableConnectionInfoSection =
+      WritableConnectionInfoSection;
   }
 }
 

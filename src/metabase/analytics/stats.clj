@@ -180,6 +180,31 @@
                                   {:total 1
                                    :archived (true? (:archived document))}))})
 
+(defn- library-stats
+  "Get metrics for Library usage."
+  []
+  (letfn [(collection-and-descendant-ids [type]
+            ;; Get collection and build location prefix for descendants (location like "<parent-location><id>/%")
+            (when-let [{:keys [id location]} (t2/select-one [:model/Collection :id :location] :type type)]
+              (let [children-location (str location id "/")
+                    descendant-ids    (t2/select-pks-set :model/Collection :location [:like (str children-location "%")])]
+                (conj (or descendant-ids #{}) id))))]
+    (let [library-data-ids    (collection-and-descendant-ids "library-data")
+          library-metrics-ids (collection-and-descendant-ids "library-metrics")]
+      {:library_data    (if (seq library-data-ids)
+                          (t2/count :model/Table
+                                    {:where [:and
+                                             [:= :is_published true]
+                                             [:in :collection_id library-data-ids]]})
+                          0)
+       :library_metrics (if (seq library-metrics-ids)
+                          (t2/count :model/Card
+                                    {:where [:and
+                                             [:= :type "metric"]
+                                             [:= :archived false]
+                                             [:in :collection_id library-metrics-ids]]})
+                          0)})))
+
 (defn- group-metrics
   "Get metrics based on groups:
   TODO characterize by # w/ sql access, # of users, no self-serve data access"
@@ -497,7 +522,8 @@
                       :system     (system-metrics)
                       :table      (table-metrics)
                       :user       (user-metrics)
-                      :document   (document-metrics)}}))
+                      :document   (document-metrics)
+                      :library    (library-stats)}}))
 
 (defn- ^:deprecated send-stats-deprecated!
   "Send stats to Metabase tracking server."
@@ -647,25 +673,39 @@
      :values (mapv (fn [[k v]] {:group k :value v}) eid-translations-24h)
      :tags ["embedding"]}]))
 
+(defn- ee-transform-metrics'
+  "OSS fallback for transform metrics. Returns zeros since transforms are an enterprise feature."
+  []
+  {:transforms               0
+   :transform_runs_last_24h  0})
+
+(defenterprise ee-transform-metrics
+  "Returns transform usage metrics for the Snowplow stats ping."
+  metabase-enterprise.analytics.stats
+  []
+  (ee-transform-metrics'))
+
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
   []
   (let [one-day-ago (->one-day-ago)
         total-translation-count (:total (get-translation-count))]
-    {:models                          (t2/count :model/Card :type :model :archived false)
-     :new_embedded_dashboards         (t2/count :model/Dashboard
-                                                :enable_embedding true
-                                                :archived false
-                                                :created_at [:>= one-day-ago])
-     :new_users_last_24h              (t2/count :model/User
-                                                :is_active true
-                                                :date_joined [:>= one-day-ago])
-     :pivot_tables                    (t2/count :model/Card :display :pivot :archived false)
-     :query_executions_last_24h       (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
-     :entity_id_translations_last_24h total-translation-count
-     :scim_users_last_24h             (t2/count :model/User :sso_source :scim
-                                                :is_active true
-                                                :date_joined [:>= one-day-ago])}))
+    (merge
+     {:models                          (t2/count :model/Card :type :model :archived false)
+      :new_embedded_dashboards         (t2/count :model/Dashboard
+                                                 :enable_embedding true
+                                                 :archived false
+                                                 :created_at [:>= one-day-ago])
+      :new_users_last_24h              (t2/count :model/User
+                                                 :is_active true
+                                                 :date_joined [:>= one-day-ago])
+      :pivot_tables                    (t2/count :model/Card :display :pivot :archived false)
+      :query_executions_last_24h       (t2/count :model/QueryExecution :started_at [:>= one-day-ago])
+      :entity_id_translations_last_24h total-translation-count
+      :scim_users_last_24h             (t2/count :model/User :sso_source :scim
+                                                 :is_active true
+                                                 :date_joined [:>= one-day-ago])}
+     (ee-transform-metrics))))
 
 (mu/defn- snowplow-metrics
   [stats metric-info :- [:map
@@ -674,7 +714,9 @@
                          [:new_users_last_24h :int]
                          [:pivot_tables :int]
                          [:query_executions_last_24h :int]
-                         [:entity_id_translations_last_24h :int]]]
+                         [:entity_id_translations_last_24h :int]
+                         [:transforms :int]
+                         [:transform_runs_last_24h :int]]]
   (mapv
    (fn [[k v tags]]
      (assert (every? string? tags) "Tags must be strings in snowplow metrics.")
@@ -695,6 +737,8 @@
     [:embedded_questions              (get-in stats [:stats :question :embedded :total] 0)            #{"questions" "embedding"}]
     [:entity_id_translations_last_24h (:entity_id_translations_last_24h metric-info 0)                #{"embedding"}]
     [:first_time_only_alerts          (get-in stats [:stats :alert :first_time_only] 0)               #{"alerts"}]
+    [:library_data                    (get-in stats [:stats :library :library_data] 0)               #{"library"}]
+    [:library_metrics                 (get-in stats [:stats :library :library_metrics] 0)            #{"library"}]
     [:metabase_fields                 (get-in stats [:stats :field :fields] 0)                        #{"fields"}]
     [:metrics                         (get-in stats [:stats :metric :metrics] 0)                      #{"metrics"}]
     [:models                          (:models metric-info 0)                                         #{}]
@@ -713,6 +757,8 @@
     [:questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)     #{"questions"}]
     [:segments                        (get-in stats [:stats :segment :segments] 0)                    #{"segments"}]
     [:tables                          (get-in stats [:stats :table :tables] 0)                        #{"tables"}]
+    [:transform_runs_last_24h         (:transform_runs_last_24h metric-info 0)                        #{"transforms"}]
+    [:transforms                      (:transforms metric-info 0)                                     #{"transforms"}]
     [:users                           (get-in stats [:stats :user :users :total] 0)                   #{"users"}]]))
 
 (defn- whitelabeling-in-use?
@@ -753,7 +799,7 @@
 
 (defn- ee-snowplow-features-data'
   []
-  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list :semantic-search]]
+  (let [features [:sso-jwt :sso-saml :sso-slack :scim :sandboxes :email-allow-list :semantic-search]]
     (map
      (fn [feature]
        {:name      feature
@@ -903,7 +949,10 @@
     :enabled   (premium-features/enable-dependencies?)}
    {:name      :support-users
     :available (premium-features/enable-support-users?)
-    :enabled   (premium-features/enable-support-users?)}])
+    :enabled   (premium-features/enable-support-users?)}
+   {:name      :workspaces
+    :available (premium-features/enable-workspaces?)
+    :enabled   (premium-features/enable-workspaces?)}])
 
 (defn- snowplow-features
   []

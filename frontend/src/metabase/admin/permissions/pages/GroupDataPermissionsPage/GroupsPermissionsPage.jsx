@@ -75,7 +75,7 @@ const propTypes = {
   editorError: PropTypes.string,
 };
 
-function GroupsPermissionsPage({
+function GroupsPermissionsPageInner({
   sidebar,
   params,
   children,
@@ -202,8 +202,8 @@ function GroupsPermissionsPage({
   );
 }
 
-GroupsPermissionsPage.propTypes = propTypes;
+GroupsPermissionsPageInner.propTypes = propTypes;
 
-export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
-  GroupsPermissionsPage,
-);
+export const GroupsPermissionsPage = _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+)(GroupsPermissionsPageInner);

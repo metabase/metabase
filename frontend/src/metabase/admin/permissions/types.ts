@@ -47,6 +47,7 @@ export enum DataPermission {
   DOWNLOAD = "download",
   DATA_MODEL = "data-model",
   DETAILS = "details",
+  TRANSFORMS = "transforms",
 }
 
 export enum DataPermissionType {
@@ -55,6 +56,7 @@ export enum DataPermissionType {
   DETAILS = "details",
   DOWNLOAD = "download",
   DATA_MODEL = "data-model",
+  TRANSFORMS = "transforms",
 }
 
 export enum DataPermissionValue {
@@ -78,6 +80,8 @@ export enum DataPermissionValue {
 }
 
 export type PermissionSubject = "schemas" | "tables" | "fields";
+
+export type SpecialGroupType = "admin" | "analyst" | "external" | null;
 
 export type PermissionSectionConfig = {
   permission: DataPermission;

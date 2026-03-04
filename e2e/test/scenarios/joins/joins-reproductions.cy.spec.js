@@ -192,7 +192,7 @@ describe("issue 15342", { tags: "@external" }, () => {
     H.getNotebookStep("join").findByLabelText("Right column").click();
     H.popover().findByText("Product ID").click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.icon("join_left_outer").last().click();
     H.miniPicker().within(() => {
       cy.findByText(MYSQL_DB_NAME).click();
@@ -314,7 +314,7 @@ describe("issue 17767", () => {
 
     H.openNotebook();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
 
     // Join "Previous results" with
@@ -327,7 +327,7 @@ describe("issue 17767", () => {
       expect(response.body.error).to.not.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("xavier");
   });
 });
@@ -349,7 +349,7 @@ describe("issue 17968", () => {
       .click();
     H.popover().findByText("Created At").click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
     H.miniPicker().within(() => {
       cy.findByText("Sample Database").click();
@@ -395,16 +395,16 @@ describe("issue 18502", () => {
     H.startNewQuestion();
     H.selectSavedQuestionsToJoin("18502#1", "18502#2");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At: Month").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Birth Date: Month").click();
 
     H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("April 2022");
   });
 });
@@ -470,7 +470,7 @@ describe("issue 18512", () => {
       expect(response.body.error).to.not.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Products → Created At: Month");
   });
 });
@@ -506,7 +506,7 @@ describe("issue 18589", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2,860,368");
   });
 });
@@ -646,7 +646,7 @@ describe("issue 20519", () => {
 
   // Tightly related issue: metabase#17767
   it("should allow subsequent joins and nested query after summarizing on the implicit joins (metabase#20519)", () => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByLabelText("Custom column").last().click();
 
     H.enterCustomColumnDetails({
@@ -664,9 +664,9 @@ describe("issue 20519", () => {
       expect(response.body.error).not.to.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Doohickey");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Two");
   });
 });
@@ -803,7 +803,6 @@ describe("issue 23293", () => {
       .findByLabelText(/Where do you want to save this/)
       .click();
     H.pickEntity({
-      tab: "Browse",
       path: ["Our analytics"],
     });
     H.entityPickerModal().findByText("Select this collection").click();
@@ -844,12 +843,12 @@ describe("issue 23293", () => {
         "contain",
         "Orders → Category is Doohickey",
       );
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("header-cell")
         .last()
         .should("have.text", "Product → Category");
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByRole("grid")
         .last()
         .as("tableResults")
@@ -889,9 +888,9 @@ describe("issue 27380", () => {
     );
 
     // Doesn't really matter which 'circle" we click on the graph
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.cartesianChartCircle().last().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See this month by week").click();
     cy.wait("@dataset");
 
@@ -900,9 +899,9 @@ describe("issue 27380", () => {
     H.echartsContainer().findByText("Count");
 
     H.openNotebook();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product → Created At: Week");
   });
 });
@@ -1232,7 +1231,7 @@ describe("issue 27521", () => {
   });
 
   function assertTableHeader(index, name) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 });

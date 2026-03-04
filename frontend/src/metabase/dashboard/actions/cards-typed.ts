@@ -273,7 +273,9 @@ export const replaceCard =
     await dispatch(loadMetadataForCard(card));
     dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
 
-    dashboardId && trackQuestionReplaced(dashboardId);
+    if (dashboardId) {
+      trackQuestionReplaced(dashboardId);
+    }
   };
 
 export const addCardWithVisualization =
@@ -514,7 +516,7 @@ export const removeCardFromDashboard = createThunkAction(
     },
 );
 
-const undoRemoveCardFromDashboard = createThunkAction(
+export const undoRemoveCardFromDashboard = createThunkAction(
   UNDO_REMOVE_CARD_FROM_DASH,
   ({ dashcardId, originalParameters }) =>
     (dispatch, getState) => {

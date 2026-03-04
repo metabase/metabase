@@ -175,7 +175,7 @@
         (log-info (assoc info :async-status (name result)))))))
 
 (defn- logged-response
-  "Log an API response. Returns resonse, possibly modified (i.e., core.async channels will be wrapped); this value
+  "Log an API response. Returns response, possibly modified (i.e., core.async channels will be wrapped); this value
   should be passed to the normal `respond` function."
   [{{:keys [body], :as response} :response, :as info}]
   (condp instance? body

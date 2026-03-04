@@ -5,7 +5,7 @@ import { lighten } from "metabase/lib/colors";
 
 export const BreadcrumbsSeparator = styled.div`
   display: inline-block;
-  color: var(--mb-color-bg-dark);
+  color: var(--mb-color-background-tertiary-inverse);
   position: relative;
   margin: 0 6px;
   top: 2px;

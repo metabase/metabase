@@ -26,6 +26,8 @@ export type ChannelSpec = {
   error?: any;
 };
 
+export type ChannelSpecs = Record<ChannelType, ChannelSpec>;
+
 export type ChannelDetails = {
   url: string;
   "auth-method": NotificationAuthMethods;
@@ -91,8 +93,8 @@ export interface ChannelApiResponse {
 export type ChannelType = keyof ChannelApiResponse["channels"];
 
 export type Channel = {
-  channel_type: string;
-  details?: Record<string, string>;
+  channel_type: ChannelType;
+  details?: Record<string, string | boolean>;
   enabled?: boolean;
   recipients?: User[];
   channel_id?: number;

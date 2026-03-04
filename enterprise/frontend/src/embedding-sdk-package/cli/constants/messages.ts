@@ -58,7 +58,7 @@ export const getMetabaseInstanceSetupCompleteMessage = (
   email: string,
   password: string,
 ) =>
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- link for the CLI message
   `
   Metabase is running at ${blue(instanceUrl)}
 
@@ -118,5 +118,5 @@ export const CONTINUE_SETUP_ON_WARNING_MESSAGE = `Do you want to continue setup?
 
 export const LINK_TO_NEXT_JS_SAMPLE = `https://github.com/metabase/metabase-nextjs-sdk-embedding-sample`;
 
-// eslint-disable-next-line no-unconditional-metabase-links-render -- this is for the cli
+// eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- this is for the cli
 export const LINK_TO_NEXT_JS_GUIDE = `https://www.metabase.com/docs/latest/embedding/sdk/next-js`;

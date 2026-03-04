@@ -1,0 +1,242 @@
+import { useCallback, useState } from "react";
+import { replace } from "react-router-redux";
+import { t } from "ttag";
+
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
+import { useMetadataToasts } from "metabase/metadata/hooks";
+import {
+  useLazyGetWorkspaceTablesQuery,
+  useMergeWorkspaceMutation,
+  useRunWorkspaceTransformMutation,
+  useUpdateWorkspaceMutation,
+} from "metabase-enterprise/api";
+import type {
+  ExternalTransform,
+  Workspace,
+  WorkspaceTransformListItem,
+} from "metabase-types/api";
+
+import {
+  type OpenTable,
+  type WorkspaceTab,
+  useWorkspace,
+} from "./WorkspaceProvider";
+
+type UseWorkspaceActionsParams = {
+  workspaceId: number;
+  workspace: Workspace | undefined;
+  onOpenTab: (tabId: string) => void;
+  workspaceTransforms: WorkspaceTransformListItem[];
+  availableTransforms: ExternalTransform[];
+};
+
+export function useWorkspaceActions({
+  workspaceId,
+  workspace,
+  onOpenTab,
+  workspaceTransforms,
+  availableTransforms,
+}: UseWorkspaceActionsParams) {
+  const dispatch = useDispatch();
+  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+
+  const { addOpenedTab, addOpenedTransform, setActiveTransformRef } =
+    useWorkspace();
+  const [mergeWorkspace, { isLoading: isMerging }] =
+    useMergeWorkspaceMutation();
+  const [updateWorkspace] = useUpdateWorkspaceMutation();
+  const [runTransform] = useRunWorkspaceTransformMutation();
+  const [runningTransforms, setRunningTransforms] = useState<Set<string>>(
+    new Set(),
+  );
+  const [getWorkspaceTables] = useLazyGetWorkspaceTablesQuery();
+
+  const handleMergeWorkspace = useCallback(
+    async (commitMessage: string) => {
+      try {
+        const response = await mergeWorkspace({
+          id: workspaceId,
+          commit_message: commitMessage,
+        }).unwrap();
+
+        if (response.errors && response.errors.length > 0) {
+          sendErrorToast(
+            t`Failed to merge workspace: ${response.errors.map((e: any) => e.error).join(", ")}`,
+          );
+          return;
+        }
+        dispatch(replace(Urls.transformList()));
+        sendSuccessToast(
+          t`Workspace '${response.workspace.name}' merged successfully`,
+        );
+      } catch (error) {
+        sendErrorToast(t`Failed to merge workspace`);
+        throw error;
+      }
+    },
+    [workspaceId, mergeWorkspace, sendErrorToast, dispatch, sendSuccessToast],
+  );
+
+  const handleWorkspaceNameChange = useCallback(
+    async (newName: string) => {
+      if (!workspace || newName.trim() === workspace.name.trim()) {
+        return;
+      }
+
+      try {
+        await updateWorkspace({
+          id: workspaceId,
+          name: newName.trim(),
+        }).unwrap();
+        sendSuccessToast(t`Workspace renamed successfully`);
+      } catch (error) {
+        sendErrorToast(t`Failed to update workspace name`);
+      }
+    },
+    [workspace, workspaceId, updateWorkspace, sendErrorToast, sendSuccessToast],
+  );
+
+  const handleTableSelect = useCallback(
+    (table: OpenTable) => {
+      const tableTab: WorkspaceTab = {
+        id: `table-${table.tableId}`,
+        name: table.schema ? `${table.schema}.${table.name}` : table.name,
+        type: "table",
+        table,
+      };
+      addOpenedTab(tableTab);
+      onOpenTab(tableTab.id);
+    },
+    [addOpenedTab, onOpenTab],
+  );
+
+  const handleRunTransformAndShowPreview = useCallback(
+    async (transform: WorkspaceTransformListItem) => {
+      setRunningTransforms((prev) => new Set(prev).add(transform.ref_id));
+
+      try {
+        const result = await runTransform({
+          workspaceId,
+          transformId: transform.ref_id,
+        }).unwrap();
+
+        if (result.status === "failed") {
+          sendErrorToast(t`Transform run failed`);
+          return;
+        }
+
+        const { data: updatedTables, error } = await getWorkspaceTables(
+          workspaceId,
+          true,
+        );
+        const updatedOutput = updatedTables?.outputs.find(
+          (t) => t.isolated.transform_id === transform.ref_id,
+        );
+
+        if (error) {
+          sendErrorToast(t`Failed to fetch workspace tables`);
+        } else if (updatedOutput?.isolated.table_id) {
+          handleTableSelect({
+            tableId: updatedOutput.isolated.table_id,
+            name: updatedOutput.global.table,
+            schema: updatedOutput.global.schema,
+            transformId: transform.ref_id,
+          });
+        }
+      } catch (error) {
+        sendErrorToast(t`Failed to run transform`);
+      } finally {
+        setRunningTransforms((prev) => {
+          const next = new Set(prev);
+          next.delete(transform.ref_id);
+          return next;
+        });
+      }
+    },
+    [
+      workspaceId,
+      runTransform,
+      getWorkspaceTables,
+      handleTableSelect,
+      sendErrorToast,
+    ],
+  );
+
+  const handleTransformClick = useCallback(
+    async (workspaceTransform: WorkspaceTransformListItem) => {
+      addOpenedTransform({
+        type: "workspace-transform",
+        ref_id: workspaceTransform.ref_id,
+        name: workspaceTransform.name,
+      });
+    },
+    [addOpenedTransform],
+  );
+
+  // Callback to navigate to a transform (used by metabot reactions and URL param)
+  const handleNavigateToTransform = useCallback(
+    async (targetTransformId: number | string) => {
+      const transform = [...workspaceTransforms, ...availableTransforms].find(
+        (transform) => {
+          if ("global_id" in transform) {
+            return (
+              transform.global_id === targetTransformId ||
+              transform.ref_id === targetTransformId
+            );
+          }
+          return transform.id === targetTransformId;
+        },
+      );
+
+      const isWsTransform = !!transform && "global_id" in transform;
+
+      if (transform && !isWsTransform) {
+        addOpenedTransform({
+          type: "transform",
+          id: transform.id,
+          name: transform.name,
+        });
+        setActiveTransformRef({
+          type: "transform",
+          id: transform.id,
+          name: transform.name,
+        });
+        onOpenTab(String(targetTransformId));
+      } else if (transform && isWsTransform) {
+        addOpenedTransform({
+          type: "workspace-transform",
+          ref_id: transform.ref_id,
+          name: transform.name,
+        });
+        setActiveTransformRef({
+          type: "workspace-transform",
+          ref_id: transform.ref_id,
+          name: transform.name,
+        });
+        onOpenTab(String(targetTransformId));
+      } else {
+        sendErrorToast(`Transform ${targetTransformId} not found`);
+      }
+    },
+    [
+      workspaceTransforms,
+      availableTransforms,
+      addOpenedTransform,
+      setActiveTransformRef,
+      onOpenTab,
+      sendErrorToast,
+    ],
+  );
+
+  return {
+    isMerging,
+    runningTransforms,
+    handleMergeWorkspace,
+    handleWorkspaceNameChange,
+    handleTableSelect,
+    handleRunTransformAndShowPreview,
+    handleTransformClick,
+    handleNavigateToTransform,
+  };
+}

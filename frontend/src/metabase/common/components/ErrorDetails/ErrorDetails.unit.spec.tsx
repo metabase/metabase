@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 
-import ErrorDetails from "./ErrorDetails";
+import { ErrorDetails } from "./ErrorDetails";
 
 const setup = (propOverrides?: object) => {
   render(<ErrorDetails details={{ message: "uhoh" }} {...propOverrides} />);

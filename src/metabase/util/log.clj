@@ -3,6 +3,8 @@
 
   The interface is the same as [[clojure.tools.logging]]."
   (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
@@ -103,35 +105,79 @@
   `(with-thread-context-fn ~context-map
      (fn [] ~@body)))
 
+(let [config (-> (if (config/jar?)
+                   (io/resource "metabase/config/modules.edn")
+                   (io/file ".clj-kondo/config/modules/config.edn"))
+                 slurp edn/read-string :metabase/modules)
+      first-segment (fn first-segment [ns-sym]
+                      (-> (str/split (name ns-sym) #"\.") second))
+      chop (fn chop [ns-sym]
+             (if (str/starts-with? (name ns-sym) "metabase-enterprise")
+               (symbol "enterprise" (first-segment ns-sym))
+               (symbol (first-segment ns-sym))))]
+  (defn ns->team*
+    "Chops the namespace symbol to look up which team owns this namespace in the module config. Assumes that the first
+  segment of the namespace is a module. Should be memoized for speed."
+    [ns-sym]
+    (if ('#{metabase.server.middleware.log} ns-sym)
+      ::skip
+      (-> ns-sym chop config :team))))
+
+(let [attribution (if (config/config-bool :mb-log-team-attribution)
+                    (memoize ns->team*)
+                    (constantly nil))]
+  (defn ns->team
+    "Returns a string of the team for a namespace symbol, or nil. We skip a few chatty namespaces like
+  `metabase.server.middleware.log` which logs requests."
+    [logger-ns]
+    (let [team (attribution logger-ns)]
+      (when (and team (not (identical? team ::skip)))
+        team))))
+
 (defn- tools-logp
   "Macro helper for [[logp]] in CLJ."
   [logger-ns level x more]
-  `(let [logger# (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* ~logger-ns)]
+  `(let [logger-ns# ~logger-ns
+         logger# (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* ~logger-ns)]
      (when (clojure.tools.logging.impl/enabled? logger# ~level)
-       (let [x# ~x]
-         (if (instance? Throwable x#)
-           (let [d# (get-exception-data x#)]
-             (with-thread-context d#
-               (clojure.tools.logging/log* logger# ~level x#  ~(if (nil? more)
-                                                                 ""
-                                                                 `(print-str ~@more)))))
-           (clojure.tools.logging/log* logger# ~level nil (print-str x# ~@more)))))))
+       (let [team# (ns->team (ns-name logger-ns#))]
+         (try
+           (when team#
+             (ThreadContext/put "mb-team" team#)) ;; <---- new
+           (let [x# ~x]
+             (if (instance? Throwable x#)
+               (let [d# (get-exception-data x#)]
+                 (with-thread-context d#
+                   (clojure.tools.logging/log* logger# ~level x#  ~(if (nil? more)
+                                                                     ""
+                                                                     `(print-str ~@more)))))
+               (clojure.tools.logging/log* logger# ~level nil (print-str x# ~@more))))
+           (finally (when team# (ThreadContext/remove "mb-team"))))))))      ;; <------ new cleanup
 
 (defn- tools-logf
   "Macro helper for [[logf]] in CLJ."
   [logger-ns level x more]
   (if (and (instance? String x) (nil? more))
     ;; Simple case: just a String and no args.
-    `(let [logger# (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* ~logger-ns)]
+    `(let [logger-ns# ~logger-ns
+           logger# (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* logger-ns#)]
        (when (clojure.tools.logging.impl/enabled? logger# ~level)
-         (clojure.tools.logging/log* logger# ~level nil ~x)))
-    ;; Full case, with formatting.
-    `(let [logger# (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* ~logger-ns)]
+         (let [team# (ns->team (ns-name logger-ns#))]
+           (try
+             (when team# (ThreadContext/put "mb-team" team#))
+             (clojure.tools.logging/log* logger# ~level nil ~x)
+             (finally (when team# (ThreadContext/remove "mb-team"))))))) ;; Full case, with formatting.
+    `(let [logger-ns# ~logger-ns
+           logger# (clojure.tools.logging.impl/get-logger clojure.tools.logging/*logger-factory* logger-ns#)]
        (when (clojure.tools.logging.impl/enabled? logger# ~level)
-         (let [x# ~x]
-           (if (instance? Throwable x#)
-             (clojure.tools.logging/log* logger# ~level x#  (format ~@more))
-             (clojure.tools.logging/log* logger# ~level nil (format x# ~@more))))))))
+         (let [x# ~x
+               team# (ns->team (ns-name logger-ns#))]
+           (try
+             (when team# (ThreadContext/put "mb-team" team#))
+             (if (instance? Throwable x#)
+               (clojure.tools.logging/log* logger# ~level x#  (format ~@more))
+               (clojure.tools.logging/log* logger# ~level nil (format x# ~@more)))
+             (finally (when team# (ThreadContext/remove "mb-team")))))))))
 
 ;;; ------------------------------------------------ Internal macros -------------------------------------------------
 (defmacro logp

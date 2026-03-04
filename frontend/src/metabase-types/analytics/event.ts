@@ -6,6 +6,7 @@ import type {
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
+  ConcreteTableId,
   Engine,
   RelatedDashboardXRays,
   TransformId,
@@ -95,7 +96,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "indexed-entity"
     | "snippet"
     | "document"
-    | "table";
+    | "table"
+    | "transform";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
@@ -106,6 +108,25 @@ export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
 export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
   event: "error_diagnostic_modal_submitted";
   event_detail: "download-diagnostics" | "submit-report";
+}>;
+
+export type DependencyEntitySelected = ValidateEvent<{
+  event: "dependency_entity_selected";
+  triggered_from:
+    | "dependency-graph"
+    | "diagnostics-broken-list"
+    | "diagnostics-unreferenced-list"
+    | "data-structure"
+    | "transform-run-list";
+  event_detail?: string;
+  target_id: number;
+}>;
+
+export type DependencyDiagnosticsEntitySelected = ValidateEvent<{
+  event: "dependency_diagnostics_entity_selected";
+  triggered_from: "broken" | "unreferenced";
+  target_id: number;
+  event_detail?: string;
 }>;
 
 export type GsheetsConnectionClickedEvent = ValidateEvent<{
@@ -279,6 +300,46 @@ export type TransformCreatedEvent = ValidateEvent<{
   target_id: number;
 }>;
 
+export type TransformRunTagsUpdated = ValidateEvent<{
+  event: "transform_tags_updated";
+  result: "success" | "failure";
+  triggered_from: "transform_run_page";
+  event_detail: "tag_added" | "tag_removed";
+  target_id: number;
+}>;
+
+export type TransformInspectLensLoadedEvent = ValidateEvent<{
+  event: "transform_inspect_lens_loaded";
+  target_id: TransformId;
+  event_detail: string;
+  duration_ms: number;
+}>;
+
+export type TransformInspectDrillLensClickedEvent = ValidateEvent<{
+  event: "transform_inspect_drill_lens_clicked";
+  target_id: TransformId;
+  event_detail: string;
+  triggered_from: "card_drills" | "join_analysis";
+}>;
+
+export type TransformInspectAlertClickedEvent = ValidateEvent<{
+  event: "transform_inspect_alert_clicked";
+  target_id: TransformId;
+  event_detail: string;
+}>;
+
+export type TransformInspectDrillLensClosedEvent = ValidateEvent<{
+  event: "transform_inspect_drill_lens_closed";
+  target_id: TransformId;
+  event_detail: string;
+}>;
+
+export type TransformInspectEvent =
+  | TransformInspectLensLoadedEvent
+  | TransformInspectDrillLensClickedEvent
+  | TransformInspectAlertClickedEvent
+  | TransformInspectDrillLensClosedEvent;
+
 export type DocumentCreatedEvent = ValidateEvent<{
   event: "document_created";
   target_id: number;
@@ -301,6 +362,11 @@ export type DocumentAddSmartLinkEvent = ValidateEvent<{
 
 export type DocumentReplaceCardEvent = ValidateEvent<{
   event: "document_replace_card";
+  target_id: number | null;
+}>;
+
+export type DocumentDuplicatedEvent = ValidateEvent<{
+  event: "document_duplicated";
   target_id: number | null;
 }>;
 
@@ -495,7 +561,7 @@ export type RemoteSyncPushChangesEvent = ValidateEvent<{
 
 export type RemoteSyncSettingsChangedEvent = ValidateEvent<{
   event: "remote_sync_settings_changed";
-  triggered_from: "admin-settings";
+  triggered_from: "admin-settings" | "data-studio";
 }>;
 
 export type RemoteSyncDeactivatedEvent = ValidateEvent<{
@@ -520,6 +586,11 @@ export type BookmarkEvent =
   | BookmarkCollectionEvent
   | BookmarkDocumentEvent;
 
+export type DataStudioOpenedEvent = ValidateEvent<{
+  event: "data_studio_opened";
+  triggered_from: "nav_menu";
+}>;
+
 export type DataStudioLibraryCreatedEvent = ValidateEvent<{
   event: "data_studio_library_created";
   target_id: number | null;
@@ -527,7 +598,7 @@ export type DataStudioLibraryCreatedEvent = ValidateEvent<{
 
 export type DataStudioTablePublishedEvent = ValidateEvent<{
   event: "data_studio_table_published";
-  target_id: number | null;
+  target_id: ConcreteTableId | undefined;
 }>;
 
 export type DataStudioGlossaryCreatedEvent = ValidateEvent<{
@@ -545,12 +616,108 @@ export type DataStudioGlossaryDeletedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type DataStudioTablePickerFiltersAppliedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_filters_applied";
+}>;
+
+export type DataStudioTablePickerFiltersClearedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_filters_cleared";
+}>;
+
+export type DataStudioTablePickerSearchPerformedEvent = ValidateEvent<{
+  event: "data_studio_table_picker_search_performed";
+}>;
+
+export type DataStudioTableUnpublishedEvent = ValidateEvent<{
+  event: "data_studio_table_unpublished";
+  target_id: ConcreteTableId | undefined;
+}>;
+
+export type DataStudioBulkSyncSettingsClickedEvent = ValidateEvent<{
+  event: "data_studio_bulk_sync_settings_clicked";
+}>;
+
+export type DataStudioBulkAttributeUpdatedEvent = ValidateEvent<{
+  event: "data_studio_bulk_attribute_updated";
+  event_detail: "owner" | "layer" | "entity_type" | "data_source";
+  result: "success" | "failure";
+}>;
+
+export type DataStudioTableSchemaSyncedEvent = ValidateEvent<{
+  event: "data_studio_table_schema_sync_started";
+  result: "success" | "failure";
+}>;
+
+export type DataStudioTableFieldsRescannedEvent = ValidateEvent<{
+  event: "data_studio_table_fields_rescan_started";
+  result: "success" | "failure";
+}>;
+
+export type DataStudioTableFieldValuesDiscardedEvent = ValidateEvent<{
+  event: "data_studio_table_field_values_discard_started";
+  result: "success" | "failure";
+}>;
+
+export type MeasureCreateStartedEvent = ValidateEvent<{
+  event: "measure_create_started";
+  triggered_from: "data_studio_measures_list";
+  target_id: number;
+}>;
+
+export type MeasureCreatedEvent = ValidateEvent<{
+  event: "measure_created";
+  triggered_from: "data_studio_measures";
+  result: "success" | "failure";
+  target_id: number | null;
+}>;
+
+export type SegmentCreateStartedEvent = ValidateEvent<{
+  event: "segment_create_started";
+  triggered_from: "data_studio_segments" | "admin_datamodel_segments";
+  target_id: number | null;
+}>;
+
+export type SegmentCreatedEvent = ValidateEvent<{
+  event: "segment_created";
+  triggered_from: "data_studio_segments" | "admin_datamodel_segments";
+  result: "success" | "failure";
+  target_id: number | null;
+}>;
+
+export type MetricCreateStartedEvent = ValidateEvent<{
+  event: "metric_create_started";
+  triggered_from: "browse_metrics" | "data_studio_library" | "command_palette";
+}>;
+
+export type MetricCreatedEvent = ValidateEvent<{
+  event: "metric_created";
+  triggered_from: "data_studio" | "main_app";
+  result: "success" | "failure";
+  target_id: number | null;
+}>;
+
 export type DataStudioEvent =
+  | DataStudioOpenedEvent
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
   | DataStudioGlossaryCreatedEvent
   | DataStudioGlossaryEditedEvent
-  | DataStudioGlossaryDeletedEvent;
+  | DataStudioGlossaryDeletedEvent
+  | DataStudioTablePickerFiltersAppliedEvent
+  | DataStudioTablePickerFiltersClearedEvent
+  | DataStudioTablePickerSearchPerformedEvent
+  | DataStudioTableUnpublishedEvent
+  | DataStudioBulkSyncSettingsClickedEvent
+  | DataStudioBulkAttributeUpdatedEvent
+  | DataStudioTableSchemaSyncedEvent
+  | DataStudioTableFieldsRescannedEvent
+  | DataStudioTableFieldValuesDiscardedEvent
+  | MeasureCreateStartedEvent
+  | MeasureCreatedEvent
+  | SegmentCreateStartedEvent
+  | SegmentCreatedEvent
+  | MetricCreateStartedEvent
+  | MetricCreatedEvent;
 
 export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   event: "unsaved_changes_warning_displayed";
@@ -564,6 +731,8 @@ export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
   | DatabaseEngineSelectedEvent
+  | DependencyEntitySelected
+  | DependencyDiagnosticsEntitySelected
   | NewIFrameCardCreatedEvent
   | NewsletterToggleClickedEvent
   | OnboardingChecklistOpenedEvent
@@ -593,12 +762,15 @@ export type SimpleEvent =
   | TransformJobTriggerManualRunEvent
   | TransformCreatedEvent
   | TransformCreateEvent
+  | TransformRunTagsUpdated
+  | TransformInspectEvent
   | DocumentAddCardEvent
   | DocumentAddSmartLinkEvent
   | DocumentAddSupportingTextEvent
   | DocumentAskMetabotEvent
   | DocumentCreatedEvent
   | DocumentReplaceCardEvent
+  | DocumentDuplicatedEvent
   | DocumentUpdatedEvent
   | DocumentPrintEvent
   | DatabaseHelpClickedEvent

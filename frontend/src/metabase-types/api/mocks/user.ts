@@ -21,6 +21,7 @@ export const createMockUser = (opts?: Partial<User>): User => {
     is_active: true,
     is_qbnewb: false,
     is_superuser: false,
+    is_data_analyst: false,
     is_installer: false,
     has_invited_second_user: false,
     has_question_and_dashboard: false,

@@ -27,7 +27,7 @@ export const EmbeddingUpsell = ({ campaign }: Props) => {
       buttonLink={upgradeUrl}
       campaign={campaign}
       location={UTM_LOCATION}
-      /* eslint-disable-next-line no-literal-metabase-strings -- Button text */
+      /* eslint-disable-next-line metabase/no-literal-metabase-strings -- Button text */
       buttonText={t`Upgrade to Metabase Pro`}
       fullWidth
       maxWidth="initial"

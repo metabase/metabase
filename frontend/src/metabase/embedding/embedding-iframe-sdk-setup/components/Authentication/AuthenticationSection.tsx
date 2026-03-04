@@ -1,23 +1,33 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { TooltipWarning } from "metabase/embedding/embedding-iframe-sdk-setup/components/Common/TooltipWarning";
+import { SdkIframeStepEnableEmbeddingSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeStepEnableEmbeddingSection";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import {
   DEFAULT_EXPERIENCE,
   useHandleExperienceChange,
 } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-handle-experience-change";
 import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
+import { isQuestionOrDashboardExperience } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-experience";
+import { isStepWithResource } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-step-with-resource";
 import { Card, Radio, Stack, Text } from "metabase/ui";
+
+import { getResourceTypeFromExperience } from "../../utils/get-resource-type-from-experience";
+
+import { DatabaseRoutingWarning } from "./DatabaseRoutingWarning";
 
 export const AuthenticationSection = () => {
   const {
+    experience,
     isSimpleEmbedFeatureAvailable,
     isFirstStep,
+    currentStep,
     settings,
     updateSettings,
+    resource,
   } = useSdkIframeEmbedSetupContext();
   const handleEmbedExperienceChange = useHandleExperienceChange();
+
+  const resourceType = getResourceTypeFromExperience(experience);
 
   if (!isFirstStep) {
     return null;
@@ -29,8 +39,13 @@ export const AuthenticationSection = () => {
     const isGuest = value === "guest-embed";
     const isSso = value === "sso";
 
-    if (isGuest) {
-      // Reset experience to default when switching to guest embeds
+    // Reset experience to default when switching to guest embeds from non-supported experience
+    const shouldSwitchExperience =
+      isGuest &&
+      !isStepWithResource(currentStep) &&
+      !isQuestionOrDashboardExperience(experience);
+
+    if (shouldSwitchExperience) {
       handleEmbedExperienceChange(DEFAULT_EXPERIENCE);
     }
 
@@ -49,46 +64,28 @@ export const AuthenticationSection = () => {
 
         <Radio.Group value={authType} onChange={handleAuthTypeChange}>
           <Stack gap="sm">
-            <WithGuestEmbedsDisabledWarning>
-              {({ disabled }) => (
-                <Radio
-                  disabled={disabled}
-                  value="guest-embed"
-                  label={t`Guest`}
-                />
-              )}
-            </WithGuestEmbedsDisabledWarning>
+            <Radio value="guest-embed" label={t`Guest`} />
 
             <Radio
               value="sso"
               label={
-                // eslint-disable-next-line no-literal-metabase-strings -- Public Facing string
+                // eslint-disable-next-line metabase/no-literal-metabase-strings -- Public Facing string
                 t`Metabase account (SSO)`
               }
               disabled={!isSimpleEmbedFeatureAvailable}
             />
           </Stack>
         </Radio.Group>
+
+        {authType === "guest-embed" && resource && resourceType && (
+          <DatabaseRoutingWarning
+            resource={resource}
+            resourceType={resourceType}
+          />
+        )}
+
+        <SdkIframeStepEnableEmbeddingSection />
       </Stack>
     </Card>
-  );
-};
-
-const WithGuestEmbedsDisabledWarning = ({
-  children,
-}: {
-  children: (data: { disabled: boolean }) => ReactNode;
-}) => {
-  const { isGuestEmbedsEnabled } = useSdkIframeEmbedSetupContext();
-
-  const disabled = !isGuestEmbedsEnabled;
-
-  return (
-    <TooltipWarning
-      tooltip={t`Disabled in the admin settings`}
-      disabled={disabled}
-    >
-      {children}
-    </TooltipWarning>
   );
 };

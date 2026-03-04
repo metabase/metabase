@@ -9,7 +9,10 @@ import { useCheckSnippetDependencies } from "./hooks/use-check-snippet-dependenc
 import { useCheckTransformDependencies } from "./hooks/use-check-transform-dependencies";
 import { useGetDependenciesCount } from "./hooks/use-get-dependencies-count";
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
-import { getDataStudioDependencyRoutes } from "./routes";
+import {
+  getDataStudioDependencyDiagnosticsRoutes,
+  getDataStudioDependencyRoutes,
+} from "./routes";
 
 /**
  * Initialize dependencies plugin features that depend on hasPremiumFeature.
@@ -19,6 +22,8 @@ export function initializePlugin() {
     PLUGIN_DEPENDENCIES.isEnabled = true;
     PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes =
       getDataStudioDependencyRoutes;
+    PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes =
+      getDataStudioDependencyDiagnosticsRoutes;
     PLUGIN_DEPENDENCIES.DependencyGraphPage = DependencyGraphPage;
     PLUGIN_DEPENDENCIES.CheckDependenciesForm = CheckDependenciesForm;
     PLUGIN_DEPENDENCIES.CheckDependenciesModal = CheckDependenciesModal;

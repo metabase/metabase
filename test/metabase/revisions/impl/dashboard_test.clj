@@ -697,3 +697,99 @@
                  :visualization_settings {:text "Metabase"}}}
               (t2/select-fn-set #(select-keys % [:card_id :visualization_settings])
                                 :model/DashboardCard :dashboard_id dashboard-id))))))
+
+(deftest revert-dashboard-with-deleted-parameter-card-source-test
+  (testing "revert should clean up parameters that reference deleted or archived cards (metabase#UXW-2494)"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name       "A dashboard"
+                                                        :parameters []}
+                   :model/Card      {value-source-card :id} {:name "Value source question"}
+                   :model/Card      {will-remain-card :id}  {:name "Will remain question"}]
+      ;; 0. create initial dashboard revision
+      (create-dashboard-revision! dashboard-id true)
+
+      ;; 1. add two parameters - one with a card that will be deleted, one with a card that stays
+      (t2/update! :model/Dashboard dashboard-id
+                  {:parameters [{:id                    "deleted-source"
+                                 :name                  "Filter with deleted source"
+                                 :slug                  "deleted_source"
+                                 :type                  "category"
+                                 :values_source_type    "card"
+                                 :values_source_config  {:card_id     value-source-card
+                                                         :value_field [:field 1 nil]}}
+                                {:id                    "valid-source"
+                                 :name                  "Filter with valid source"
+                                 :slug                  "valid_source"
+                                 :type                  "category"
+                                 :values_source_type    "card"
+                                 :values_source_config  {:card_id     will-remain-card
+                                                         :value_field [:field 2 nil]}}
+                                {:id   "no-source"
+                                 :name "Filter without card source"
+                                 :slug "no_source"
+                                 :type "category"}]})
+      (create-dashboard-revision! dashboard-id false)
+
+      ;; 2. remove the parameters (simulating user changing the filter settings)
+      (t2/update! :model/Dashboard dashboard-id {:parameters []})
+      (create-dashboard-revision! dashboard-id false)
+
+      ;; 3. delete one card and archive another scenario - here we just delete
+      (t2/delete! :model/Card value-source-card)
+
+      ;; 4. revert to the revision that had parameters referencing the now-deleted card
+      (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
+
+      (let [reverted-params (:parameters (t2/select-one :model/Dashboard :id dashboard-id))]
+        (testing "parameter with deleted card source should have its source config removed"
+          (let [deleted-source-param (first (filter #(= "deleted-source" (:id %)) reverted-params))]
+            (is (some? deleted-source-param) "Parameter should still exist")
+            (is (nil? (:values_source_type deleted-source-param)) "values_source_type should be removed")
+            (is (nil? (:values_source_config deleted-source-param)) "values_source_config should be removed")))
+
+        (testing "parameter with valid card source should remain unchanged"
+          (let [valid-source-param (first (filter #(= "valid-source" (:id %)) reverted-params))]
+            (is (some? valid-source-param) "Parameter should exist")
+            (is (= :card (:values_source_type valid-source-param)) "values_source_type should be preserved")
+            (is (= will-remain-card (get-in valid-source-param [:values_source_config :card_id]))
+                "card_id should be preserved")))
+
+        (testing "parameter without card source should remain unchanged"
+          (let [no-source-param (first (filter #(= "no-source" (:id %)) reverted-params))]
+            (is (some? no-source-param) "Parameter should exist")
+            (is (nil? (:values_source_type no-source-param)) "values_source_type should remain nil")))))))
+
+(deftest revert-dashboard-with-archived-parameter-card-source-test
+  (testing "revert should also clean up parameters that reference archived cards"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name       "A dashboard"
+                                                        :parameters []}
+                   :model/Card      {will-be-archived-card :id} {:name "Will be archived"}]
+      ;; 0. create initial dashboard revision
+      (create-dashboard-revision! dashboard-id true)
+
+      ;; 1. add a parameter with a card source
+      (t2/update! :model/Dashboard dashboard-id
+                  {:parameters [{:id                    "archived-source"
+                                 :name                  "Filter with archived source"
+                                 :slug                  "archived_source"
+                                 :type                  "category"
+                                 :values_source_type    "card"
+                                 :values_source_config  {:card_id     will-be-archived-card
+                                                         :value_field [:field 1 nil]}}]})
+      (create-dashboard-revision! dashboard-id false)
+
+      ;; 2. remove the parameters
+      (t2/update! :model/Dashboard dashboard-id {:parameters []})
+      (create-dashboard-revision! dashboard-id false)
+
+      ;; 3. archive the card
+      (t2/update! :model/Card will-be-archived-card {:archived true})
+
+      ;; 4. revert to the revision that had parameters referencing the now-archived card
+      (revert-to-previous-revision! :model/Dashboard dashboard-id 2)
+
+      (let [reverted-params (:parameters (t2/select-one :model/Dashboard :id dashboard-id))]
+        (testing "parameter with archived card source should have its source config removed"
+          (let [archived-source-param (first reverted-params)]
+            (is (some? archived-source-param) "Parameter should still exist")
+            (is (nil? (:values_source_type archived-source-param)) "values_source_type should be removed")
+            (is (nil? (:values_source_config archived-source-param)) "values_source_config should be removed")))))))

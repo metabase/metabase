@@ -47,3 +47,48 @@ export function getSubpathSafeUrl(url: string) {
 export const openInNewTab = (url: string) => {
   window.open(url, "_blank");
 };
+
+export function parseStringParam(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+export function parseNumberParam(value: unknown): number | undefined {
+  if (typeof value === "string") {
+    const number = parseFloat(value);
+    return Number.isFinite(number) ? number : undefined;
+  }
+}
+
+export function parseBooleanParam(value: unknown): boolean | undefined {
+  switch (value) {
+    case "true":
+      return true;
+    case "false":
+      return false;
+    default:
+      return undefined;
+  }
+}
+
+export function parseEnumParam<T extends string>(
+  value: unknown,
+  items: readonly T[],
+): T | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const item = items.find((item) => item === value);
+  return item != null ? item : undefined;
+}
+
+export function parseListParam<T>(
+  value: unknown,
+  parseItem: (item: unknown) => T | undefined,
+): T[] | undefined {
+  if (value != null) {
+    const array = Array.isArray(value) ? value : [value];
+    return array.map(parseItem).filter((item) => item != null);
+  } else {
+    return undefined;
+  }
+}

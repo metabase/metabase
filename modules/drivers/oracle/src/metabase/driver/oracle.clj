@@ -621,7 +621,7 @@
 (defmethod sql-jdbc.sync/excluded-schemas :oracle
   [_]
   #{"ANONYMOUS"
-    ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
+    ;; TODO - are there other APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
     "APEX_040200"
     "APPQOSSYS"
     "AUDSYS"
@@ -757,3 +757,6 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :oracle
   [_ ^SQLException e]
   (= (.getErrorCode e) 942))
+
+(defmethod driver/llm-sql-dialect-resource :oracle [_]
+  "llm/prompts/dialects/oracle.md")

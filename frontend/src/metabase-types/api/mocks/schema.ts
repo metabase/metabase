@@ -42,6 +42,7 @@ export const createMockNormalizedTable = ({
   fields,
   fks,
   segments,
+  measures,
   metrics,
   ...opts
 }: Partial<NormalizedTable> = {}): NormalizedTable => ({
@@ -51,6 +52,7 @@ export const createMockNormalizedTable = ({
   fields,
   fks,
   segments,
+  measures,
   metrics,
 });
 

@@ -1,17 +1,18 @@
 import { renderHook } from "@testing-library/react";
 
-import type { DatePickerValue } from "metabase/querying/filters/types";
+import type { DatePickerValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
   columnFinder,
-  createQuery,
-  createQueryWithClauses,
 } from "metabase-lib/test-helpers";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { useDateFilter } from "./use-date-filter";
 
 describe("useDateFilter", () => {
-  const defaultQuery = createQuery();
+  const defaultQuery = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const stageIndex = 0;
   const availableColumns = Lib.filterableColumns(defaultQuery, stageIndex);
   const defaultColumn = columnFinder(defaultQuery, availableColumns)(
@@ -61,7 +62,7 @@ describe("useDateFilter", () => {
     },
   );
 
-  it("should return available operators and units for a regular column", () => {
+  it("should return available units for a regular column", () => {
     const { result } = renderHook(() =>
       useDateFilter({
         query: defaultQuery,
@@ -70,26 +71,34 @@ describe("useDateFilter", () => {
       }),
     );
 
-    const { availableOperators, availableUnits } = result.current;
-    expect(availableOperators.length).toBeGreaterThan(0);
+    const { availableUnits } = result.current;
     expect(availableUnits.length).toBeGreaterThan(0);
   });
 
-  it("should return available operators and units for a custom column", () => {
-    const query = createQueryWithClauses({
-      query: defaultQuery,
-      expressions: [
+  it("should return available units for a custom column", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
         {
-          name: "CustomDate",
-          operator: "=",
-          args: [defaultColumn],
+          source: { type: "table", id: ORDERS_ID },
+          expressions: [
+            {
+              name: "CustomDate",
+              value: {
+                type: "operator",
+                operator: "=",
+                args: [
+                  { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
+                ],
+              },
+            },
+          ],
         },
       ],
     });
     const column = columnFinder(
       query,
       Lib.filterableColumns(query, stageIndex),
-    )("ORDERS", "CustomDate");
+    )(null, "CustomDate");
 
     const { result } = renderHook(() =>
       useDateFilter({
@@ -99,8 +108,7 @@ describe("useDateFilter", () => {
       }),
     );
 
-    const { availableOperators, availableUnits } = result.current;
-    expect(availableOperators.length).toBeGreaterThan(0);
+    const { availableUnits } = result.current;
     expect(availableUnits.length).toBe(0);
   });
 });

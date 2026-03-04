@@ -9,6 +9,7 @@ import {
 } from "metabase/api";
 import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { useToast } from "metabase/common/hooks/use-toast";
 import {
   canEditMembership,
   getGroupNameLocalized,
@@ -17,7 +18,6 @@ import {
 } from "metabase/lib/groups";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
-import { addUndo } from "metabase/redux/undo";
 import { Box, Button, Text } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
@@ -36,6 +36,7 @@ export const GroupDetail = ({
   currentUser,
 }: GroupDetailProps) => {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const [createMembership] = useCreateMembershipMutation();
   const [updateMembership] = useUpdateMembershipMutation();
@@ -82,7 +83,7 @@ export const GroupDetail = ({
     } else {
       const { error } = await updateMembership(membership);
       if (error) {
-        dispatch(addUndo({ message: t`Failed to update user` }));
+        sendToast({ message: t`Failed to update user` });
       }
     }
   };
@@ -108,7 +109,7 @@ export const GroupDetail = ({
     } else {
       const { error } = await deleteMembership(membership);
       if (error) {
-        dispatch(addUndo({ message: t`Failed to remove user from group` }));
+        sendToast({ message: t`Failed to remove user from group` });
       }
     }
   };
@@ -119,7 +120,7 @@ export const GroupDetail = ({
         title={
           <Fragment>
             {getGroupNameLocalized(group ?? {})}
-            <Box component="span" c="text-light" ms="sm">
+            <Box component="span" c="text-tertiary" ms="sm">
               {ngettext(
                 msgid`${group.members.length} member`,
                 `${group.members.length} members`,

@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
 import { Flex, Icon } from "metabase/ui";
 

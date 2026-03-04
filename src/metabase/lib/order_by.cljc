@@ -26,7 +26,7 @@
   [query stage-number _k]
   (when-let [order-bys (not-empty (:order-by (lib.util/query-stage query stage-number)))]
     (i18n/tru "Sorted by {0}"
-              (lib.util/join-strings-with-conjunction
+              (i18n/join-strings-with-conjunction
                (i18n/tru "and")
                (for [order-by order-bys]
                  (lib.metadata.calculation/display-name query stage-number order-by :long))))))
@@ -189,8 +189,8 @@
   ([query :- ::lib.schema/query
     current-order-by :- ::lib.schema.order-by/order-by]
    (let [lib-uuid (lib.options/uuid current-order-by)]
-     (lib.util.match/replace query
-       [direction (_ :guard #(= (:lib/uuid %) lib-uuid)) _]
+     (lib.util.match/replace-lite query
+       [direction {:lib/uuid (uuid :guard (= uuid lib-uuid))} _]
        (assoc &match 0 (opposite-direction direction))))))
 
 (mu/defn remove-all-order-bys :- ::lib.schema/query

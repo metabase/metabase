@@ -1,11 +1,11 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
-import Tab from "../Tab";
-import TabList from "../TabList";
-import TabPanel from "../TabPanel";
+import { Tab } from "../Tab";
+import { TabList } from "../TabList";
+import { TabPanel } from "../TabPanel";
 
-import TabContent from "./TabContent";
+import { TabContent } from "./TabContent";
 
 export default {
   title: "Deprecated/Components/TabContent",

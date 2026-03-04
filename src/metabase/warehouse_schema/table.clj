@@ -31,20 +31,12 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
-(defenterprise can-access-via-collection?
-  "Returns true if the user can access this published table via collection read permissions.
-  OSS returns false (published tables don't grant access).
-  Enterprise checks collection permissions for published tables."
-  metabase-enterprise.data-studio.permissions.published-tables
-  [_table]
-  false)
-
 (defn- can-access-table-for-query-metadata?
   "Returns true if the current user can access this table for query metadata.
-  Checks collection permissions for published tables, data permissions for unpublished tables."
+  Uses can-read? which checks data permissions, metadata management permissions,
+  and collection permissions for published tables."
   [table]
-  (or (can-access-via-collection? table)
-      (mi/can-read? table)))
+  (mi/can-read? table))
 
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
@@ -55,7 +47,7 @@
     (api/write-check table)
     (api/check-403 (can-access-table-for-query-metadata? table)))
   (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                                [:segments :definition_description] :metrics :collection]
+                                [:segments :definition_description] [:measures :definition_description] :metrics :collection]
                          (premium-features/has-feature? :transforms) (conj :transform))]
     (-> table
         (update :collection nil-if-unreadable)
@@ -70,21 +62,28 @@
                                             true)))))))
 
 (defn batch-fetch-query-metadatas*
-  "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`."
-  [ids]
-  (when (seq ids)
-    (let [tables (->> (t2/select :model/Table :id [:in ids])
-                      (filter can-access-table-for-query-metadata?))
-          tables (t2/hydrate tables
-                             [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                             :segments
-                             :metrics)]
-      (for [table tables]
-        (-> table
-            (m/dissoc-in [:db :details])
-            format-fields-for-response
-            present-table
-            (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %)))))))
+  "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`.
+  Options:
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+  ([ids]
+   (batch-fetch-query-metadatas* ids nil))
+  ([ids {:keys [include-sensitive-fields?]}]
+   (when (seq ids)
+     (let [tables (->> (t2/select :model/Table :id [:in ids])
+                       (filter can-access-table-for-query-metadata?))
+           tables (t2/hydrate tables
+                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
+                              :segments
+                              :measures
+                              :metrics)
+           excluded-visibility-types (cond-> #{:hidden}
+                                       (not include-sensitive-fields?) (conj :sensitive))]
+       (for [table tables]
+         (-> table
+             (m/dissoc-in [:db :details])
+             format-fields-for-response
+             present-table
+             (update :fields #(remove (comp excluded-visibility-types :visibility_type) %))))))))
 
 (defenterprise fetch-table-query-metadata
   "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,
@@ -94,10 +93,12 @@
   (fetch-query-metadata* (t2/select-one :model/Table :id id) opts))
 
 (defenterprise batch-fetch-table-query-metadatas
-  "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`."
+  "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
+  Options:
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   metabase-enterprise.sandbox.api.table
-  [ids]
-  (batch-fetch-query-metadatas* ids))
+  [ids opts]
+  (batch-fetch-query-metadatas* ids opts))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
@@ -118,7 +119,7 @@
                       :id            (or col-id
                                          ;; TODO -- what????
                                          [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
-                      ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make
+                      ;; Assoc semantic_type at least temporarily. We need the correct semantic type in place to make
                       ;; decisions about what kind of dimension options should be added. PK/FK values will be removed
                       ;; after we've added the dimension options
                       :semantic_type (keyword (:semantic_type col)))

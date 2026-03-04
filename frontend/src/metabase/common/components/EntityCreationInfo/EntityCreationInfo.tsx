@@ -1,15 +1,16 @@
 import { c, t } from "ttag";
 
-import DateTime from "metabase/common/components/DateTime";
-import { getUserName } from "metabase/lib/user";
+import { DateTime } from "metabase/common/components/DateTime";
+import CS from "metabase/css/core/index.css";
+import { type NamedUser, getUserName } from "metabase/lib/user";
 import { Box, FixedSizeIcon, Group, Stack, Title } from "metabase/ui";
-import type { LastEditInfo, UserInfo } from "metabase-types/api";
 
 type EntityCreationInfoProps = {
   createdAt?: string | null;
-  creator?: UserInfo | null;
+  creator?: NamedUser | null;
   lastEditedAt?: string | null;
-  lastEditor?: LastEditInfo | null;
+  lastEditor?: NamedUser | null;
+  withTitle?: boolean;
 };
 
 export function EntityCreationInfo({
@@ -17,6 +18,7 @@ export function EntityCreationInfo({
   creator,
   lastEditedAt,
   lastEditor,
+  withTitle = true,
 }: EntityCreationInfoProps) {
   const hasCreatedInfo = createdAt != null && creator != null;
   const hasEditedInfo = lastEditedAt != null && lastEditor != null;
@@ -27,11 +29,15 @@ export function EntityCreationInfo({
 
   return (
     <Stack gap="sm" lh="1rem">
-      <Title order={6}>{t`Creator and last editor`}</Title>
+      {withTitle && <Title order={6}>{t`Creator and last editor`}</Title>}
       {createdAt != null && creator != null && (
-        <Group gap="sm" wrap="nowrap">
+        <Group
+          gap="sm"
+          wrap="nowrap"
+          data-testid="entity-creation-info-created"
+        >
           <FixedSizeIcon name="ai" />
-          <Box>
+          <Box className={CS.textWrap}>
             {c(
               "Describes when an entity was created. {0} is a date/time and {1} is a person's name",
             ).jt`${(
@@ -41,9 +47,9 @@ export function EntityCreationInfo({
         </Group>
       )}
       {lastEditedAt != null && lastEditor != null && (
-        <Group gap="sm" wrap="nowrap">
+        <Group gap="sm" wrap="nowrap" data-testid="entity-creation-info-edited">
           <FixedSizeIcon name="pencil" />
-          <Box>
+          <Box className={CS.textWrap}>
             {c(
               "Describes when an entity was last edited. {0} is a date/time and {1} is a person's name",
             ).jt`${(

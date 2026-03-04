@@ -253,7 +253,7 @@
   Boolean (->number [this] (if this 1 0))
   Number (->number [this] this)
   String (->number [this]
-           ;; faster to be optimistic and fail than to explicitely test and dispatch
+           ;; faster to be optimistic and fail than to explicitly test and dispatch
            (or (parse-long this)
                (parse-double this))))
 

@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Input from "metabase/common/components/Input";
-import Link from "metabase/common/components/Link";
+import { Input } from "metabase/common/components/Input";
+import { Link } from "metabase/common/components/Link";
 
 export const ModalRoot = styled.div`
   display: flex;

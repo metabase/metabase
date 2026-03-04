@@ -12,9 +12,9 @@ available-timezones: null
 breakout-bins-num: null
 custom-formatting: null
 custom-geojson: null
+custom-geojson-enabled: null
 custom-homepage: null
 custom-homepage-dashboard: null
-custom-geojson-enabled: null
 default-maps-enabled: null
 disable-cors-on-localhost: null
 email-max-recipients-per-second: null
@@ -30,6 +30,8 @@ enable-xrays: null
 gsheets: null
 hide-embed-branding?: null
 humanization-strategy: null
+embedded-metabot-enabled?: null
+metabot-enabled?: null
 landing-page: null
 landing-page-illustration: null
 landing-page-illustration-custom: null

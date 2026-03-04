@@ -15,7 +15,7 @@
 }
 
 .modalFooter {
-  background: var(--mb-color-bg-white);
+  background: var(--mb-color-background-primary);
   position: sticky;
   bottom: 0;
 }

@@ -124,13 +124,12 @@ visualization_settings:
   graph.show_values: true
   table.cell_column: model_id
   table.pivot_column: end_timestamp
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: p8ZML2ebd3ItzCyWsKXLa, label: weekly_active_users, model: Card}
 archived_directly: false
 dashboard_id: vFnGZMNN2K_KW1I0B52bq
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

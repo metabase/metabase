@@ -19,6 +19,12 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 - **[docs-write](.claude/skills/docs-write/SKILL.md)** - Documentation writing with Metabase style guide
 - **[docs-review](.claude/skills/docs-review/SKILL.md)** - Documentation review checklist
 
+## Frontend
+
+- **[analytics-events](.claude/skills/analytics-events/SKILL.md)** - Add product analytics events to track user interactions
+
+**Important**: When working with frontend code, read [frontend/CLAUDE.md](frontend/CLAUDE.md) for project-specific guidelines on component preferences, styling, TypeScript migration, testing requirements, and available scripts.
+
 ## Tool Preferences
 
 If `clojure-mcp` tools are available, prefer them over shell-based alternatives for Clojure development.

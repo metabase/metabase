@@ -21,11 +21,17 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn make-mock-stream-response [chunks usage :- ::metabot-v3.client.schema/usage]
+(mu/defn- make-mock-stream-response* [part-prefix finish-reason chunks usage :- ::metabot-v3.client.schema/usage]
   (str (->> chunks
-            (map #(str "0:" (json/encode %) "\n"))
+            (map #(str part-prefix (json/encode %) "\n"))
             (str/join))
-       "d:" (json/encode {:finishReason "stop" :usage usage})))
+       "d:" (json/encode {:finishReason finish-reason :usage usage})))
+
+(mu/defn make-mock-text-stream-response [chunks usage :- ::metabot-v3.client.schema/usage]
+  (make-mock-stream-response* "0:" "stop" chunks usage))
+
+(mu/defn make-mock-error-stream-response [chunks usage :- ::metabot-v3.client.schema/usage]
+  (make-mock-stream-response* "3:" "error" chunks usage))
 
 (defn mock-post! [^String body & [{:keys [delay-ms]
                                    :or   {delay-ms 0}}]]
@@ -60,7 +66,7 @@
 (deftest client-test
   (mt/with-premium-features #{:metabot-v3}
     (let [input         ["a1" "a2" "a3"]
-          mock-response (make-mock-stream-response input {"some-model" {:prompt 8 :completion 2}})
+          mock-response (make-mock-text-stream-response input {"some-model" {:prompt 8 :completion 2}})
           cid           (str (random-uuid))
           req           {:context         {:some "context"}
                          :message         {:role :user :content "stuff"}
@@ -78,6 +84,29 @@
             (is (string? body))
             (is (=? [{:_type :TEXT :content "a1a2a3"}
                      {:_type :FINISH_MESSAGE :finish_reason "stop"}]
+                    (metabot-v3.util/aisdk->messages :assistant (str/split-lines body))))))))))
+
+(deftest client-error-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [input         ["oof " "bad " "error!"]
+          mock-response (make-mock-error-stream-response input {"some-model" {:prompt 8 :completion 2}})
+          cid           (str (random-uuid))
+          req           {:context         {:some "context"}
+                         :message         {:role :user :content "stuff"}
+                         :history         []
+                         :profile-id      "test-profile"
+                         :conversation-id cid
+                         :session-id      "test-session"
+                         :state           {:some "state"}}]
+      (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [res  (metabot-v3.client/streaming-request req)
+                body (consume-streaming-response res)]
+            (is (instance? StreamingResponse res))
+            (is (= "text/event-stream; charset=utf-8" (:content-type (.options ^StreamingResponse res))))
+            (is (string? body))
+            (is (=? [{:_type :ERROR :content "oof bad error!"}
+                     {:_type :FINISH_MESSAGE :finish_reason "error"}]
                     (metabot-v3.util/aisdk->messages :assistant (str/split-lines body))))))))))
 
 (deftest streaming-request-error-excludes-headers-test

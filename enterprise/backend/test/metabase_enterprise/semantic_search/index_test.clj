@@ -339,7 +339,7 @@
                  (semantic.tu/upsert-index! (semantic.tu/mock-documents))))
           (is (= 2.0 (mt/metric-value system :metabase-search/semantic-index-size))))))))
 
-(deftest ^:syncronized semantic-search-analytics-test
+(deftest ^:synchronized semantic-search-analytics-test
   (mt/with-premium-features #{:semantic-search}
     (with-open [_ (semantic.tu/open-temp-index!)]
       (semantic.tu/upsert-index! (semantic.tu/mock-documents))

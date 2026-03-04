@@ -11,7 +11,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import CollapseSection from "metabase/common/components/CollapseSection";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
@@ -68,7 +68,7 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
 }
 
 function getBookmarkModel(bookmark: Bookmark) {
-  // we should reall fix this on the backend
+  // we should really fix this on the backend
   return bookmark.card_type === "model" ? "dataset" : bookmark.type;
 }
 

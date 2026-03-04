@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
 
 import { UPSELL_CAMPAIGN_EXPERIENCE } from "../analytics";
@@ -9,7 +9,6 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 import { useHandleExperienceChange } from "../hooks/use-handle-experience-change";
 import type { SdkIframeEmbedSetupExperience } from "../types";
 
-import { AuthenticationSection } from "./Authentication/AuthenticationSection";
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
 
 export const SelectEmbedExperienceStep = () => {
@@ -17,7 +16,7 @@ export const SelectEmbedExperienceStep = () => {
     useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuest;
-  const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
+  const isMetabotAvailable = useMetabotEnabledEmbeddingAware();
 
   const handleEmbedExperienceChange = useHandleExperienceChange();
 
@@ -27,8 +26,6 @@ export const SelectEmbedExperienceStep = () => {
 
   return (
     <>
-      <AuthenticationSection />
-
       <Card p="md" mb="md">
         <Text size="lg" fw="bold" mb="md">
           {t`Select your embed experience`}

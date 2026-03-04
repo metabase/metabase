@@ -2,6 +2,7 @@ import type { HTMLAttributes } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
@@ -31,6 +32,7 @@ export function QueryBuilderBackButton({
   const stateParent = useSelector(getParentEntity);
   const parent = parentOverride ?? stateParent;
   const dispatch = useDispatch();
+  const tc = useTranslateContent();
 
   const handleClick = () => {
     if (parent.model === "dashboard") {
@@ -45,7 +47,7 @@ export function QueryBuilderBackButton({
     return null;
   }
 
-  const label = t`Back to ${parent.name}`;
+  const label = t`Back to ${tc(parent.name)}`;
 
   return (
     <Tooltip label={label}>

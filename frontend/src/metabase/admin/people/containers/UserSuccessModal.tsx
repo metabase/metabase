@@ -6,9 +6,9 @@ import { jt, t } from "ttag";
 
 import { useGetUserQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import PasswordReveal from "metabase/common/components/PasswordReveal";
+import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
@@ -40,7 +40,9 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
 
   const handleClose = () => {
     dispatch(
-      isExternalUser ? push("/admin/tenants/people") : push("/admin/people"),
+      isExternalUser
+        ? push("/admin/people/tenants/people")
+        : push("/admin/people"),
     );
   };
 
@@ -52,7 +54,7 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
 
   useEffect(() => {
     if (isExternalUser && !temporaryPassword) {
-      dispatch(replace("/admin/tenants/people"));
+      dispatch(replace("/admin/people/tenants/people"));
     }
   }, [isExternalUser, temporaryPassword, dispatch]);
 

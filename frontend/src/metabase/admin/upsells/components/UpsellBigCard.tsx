@@ -1,18 +1,17 @@
 import cx from "classnames";
 import { useMount } from "react-use";
-import { P, match } from "ts-pattern";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
 
+import { useUpgradeAction } from "./UpgradeModal";
 import S from "./UpsellBigCard.module.css";
 import StylesUpsellCtaLink from "./UpsellCta.module.css";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
-import { useUpsellLink } from "./use-upsell-link";
 
 export type UpsellBigCardProps = React.PropsWithChildren<{
   title: string;
@@ -33,7 +32,7 @@ export type UpsellBigCardProps = React.PropsWithChildren<{
       }
   );
 
-export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
+export const UpsellBigCardInner: React.FC<UpsellBigCardProps> = ({
   title,
   buttonText,
   buttonLink,
@@ -44,10 +43,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   children,
   ...props
 }: UpsellBigCardProps) => {
-  const url = useUpsellLink({
-    // The fallback url only applies when the button opens a modal instead of
-    // navigating to an external url. The value is not used otherwise. It is
-    // there only because we cannot conditionally skip the hook.
+  const { onClick: upgradeOnClick, url: upgradeUrl } = useUpgradeAction({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
     location,
@@ -62,11 +58,39 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
     StylesUpsellCtaLink.Large,
   );
 
+  // Use onClick if provided, otherwise use upgrade action
+  const handleClick = onClick ?? upgradeOnClick;
+
+  const renderCta = () => {
+    if (handleClick) {
+      return (
+        <Box
+          component="button"
+          className={ctaClassnames}
+          onClick={handleClick}
+          onClickCapture={() => trackUpsellClicked({ location, campaign })}
+        >
+          {buttonText}
+        </Box>
+      );
+    }
+
+    return (
+      <ExternalLink
+        className={ctaClassnames}
+        href={upgradeUrl}
+        onClickCapture={() => trackUpsellClicked({ location, campaign })}
+      >
+        {buttonText}
+      </ExternalLink>
+    );
+  };
+
   return (
     <Box
       data-testid="upsell-big-card"
       className={S.UpsellBigCardComponent}
-      bg="bg-white"
+      bg="background-primary"
       {...props}
     >
       <Flex px="xl" py="md">
@@ -78,30 +102,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
           <Text lh="xl" mb="lg">
             {children}
           </Text>
-          {match(onClick)
-            .with(P.nonNullable, () => (
-              <Box
-                component="button"
-                className={ctaClassnames}
-                onClickCapture={() =>
-                  trackUpsellClicked({ location, campaign })
-                }
-                onClick={onClick}
-              >
-                {buttonText}
-              </Box>
-            ))
-            .otherwise(() => (
-              <ExternalLink
-                className={ctaClassnames}
-                href={url}
-                onClickCapture={() =>
-                  trackUpsellClicked({ location, campaign })
-                }
-              >
-                {buttonText}
-              </ExternalLink>
-            ))}
+          {renderCta()}
         </Stack>
       </Flex>
       {illustrationSrc && (
@@ -111,4 +112,4 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
   );
 };
 
-export const UpsellBigCard = UpsellWrapper(_UpsellBigCard);
+export const UpsellBigCard = UpsellWrapper(UpsellBigCardInner);

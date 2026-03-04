@@ -191,11 +191,9 @@ describe("scenarios > browse > metrics", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
       cy.visit("/browse/metrics");
 
-      const macOSX = Cypress.platform === "darwin";
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click({
-        metaKey: macOSX,
-        ctrlKey: !macOSX,
-      });
+      findMetric(ORDERS_SCALAR_METRIC.name)
+        .should("be.visible")
+        .click(H.holdMetaKey);
 
       cy.get("@open").should("have.been.calledOnce");
       cy.get("@open").should(
@@ -485,7 +483,7 @@ function findMetric(name: string) {
 }
 
 function getMetricsTableItem(index: number) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return metricsTable().findAllByTestId("metric-name").eq(index);
 }
 

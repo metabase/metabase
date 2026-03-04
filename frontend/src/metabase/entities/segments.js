@@ -49,8 +49,6 @@ export const Segments = createEntity({
         dispatch,
         segmentApi.endpoints.updateSegment,
       ),
-    delete: ({ id }, dispatch) =>
-      entityCompatibleQuery(id, dispatch, segmentApi.endpoints.deleteSegment),
   },
 
   objectActions: {

@@ -1,7 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button, {
+import {
+  Button,
   type ButtonProps,
 } from "metabase/common/components/Button/Button";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";

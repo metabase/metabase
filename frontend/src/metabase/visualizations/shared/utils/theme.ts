@@ -15,7 +15,7 @@ function getPieBorderColor(
     return dashboardCardBg;
   }
   if (questionBg === "transparent") {
-    return "var(--mb-color-bg-white)";
+    return "var(--mb-color-background-primary)";
   }
   return questionBg;
 }
@@ -61,7 +61,7 @@ export function getVisualizationTheme({
     },
     pie: {
       borderColor: isStaticViz
-        ? Color(color("text-white")).hex()
+        ? Color(color("text-primary-inverse")).hex()
         : getPieBorderColor(
             dashboard.card.backgroundColor,
             question.backgroundColor,

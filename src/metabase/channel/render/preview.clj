@@ -153,8 +153,8 @@
 (defn style-tag-nonce-middleware
   "Constructs a middleware handler function that adds the generated nonce to an html string.
   This is only designed to be used with an endpoint that returns an html string response containing
-  a style tag with an attribute 'nonce=%NONCE%'. Specifcally, this was designed to be used with the
-  endpoint `api/pulse/preview_dashboard/:id`."
+  a style tag with an attribute 'nonce=%NONCE%'. Specifically, this was designed to be used with the
+  endpoint `dev/preview/preview-dashboard/:id`."
   [only-this-uri handler]
   (fn [request respond raise]
     (let [{:keys [uri]} request]

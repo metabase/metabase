@@ -285,13 +285,12 @@ result_metadata:
   lib/source-column-alias: sso_source
   qp/implicit-field?: true
 visualization_settings: {column_settings: null}
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: uEf4gbDzXkj9q1uvkaTny, label: person_detail, model: Card}
 archived_directly: false
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: 0wVIfjBJWclD0lKeABYYl
 type: question

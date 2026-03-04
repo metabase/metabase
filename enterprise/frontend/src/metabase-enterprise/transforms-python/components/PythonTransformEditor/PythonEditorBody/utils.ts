@@ -1,3 +1,6 @@
+import type { EditorView } from "@codemirror/view";
+import type { SyntaxNodeRef } from "@lezer/common";
+
 export function insertImport(source: string, path: string) {
   const lines = source.split("\n");
 
@@ -31,3 +34,23 @@ export function hasImport(source: string, path: string) {
   const regex = libImportRegex(path);
   return regex.test(source);
 }
+
+export const createPythonImportTokenLocator =
+  (moduleName: string) =>
+  (view: EditorView, node: SyntaxNodeRef): boolean => {
+    if (node.type.name !== "VariableName") {
+      return false;
+    }
+    const variableName = view.state.doc.sliceString(node.from, node.to);
+    if (variableName !== moduleName) {
+      return false;
+    }
+    let cur: SyntaxNodeRef | null = node;
+    while (cur) {
+      if (cur.type.name === "ImportStatement") {
+        return true;
+      }
+      cur = cur.node.parent;
+    }
+    return false;
+  };

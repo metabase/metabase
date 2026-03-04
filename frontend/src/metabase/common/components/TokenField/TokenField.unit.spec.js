@@ -6,7 +6,7 @@ import { Component } from "react";
 import { act, fireEvent, render, screen, within } from "__support__/ui";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
-import TokenField from "./TokenField";
+import { TokenField } from "./TokenField";
 
 const DEFAULT_OPTIONS = ["Doohickey", "Gadget", "Gizmo", "Widget"];
 

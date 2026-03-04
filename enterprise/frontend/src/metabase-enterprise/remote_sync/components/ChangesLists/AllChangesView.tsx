@@ -1,6 +1,5 @@
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
@@ -15,6 +14,14 @@ import {
   Title,
 } from "metabase/ui";
 import {
+  type CollectionGroup,
+  TRANSFORMS_ROOT_ID,
+  buildNamespaceCollectionMap,
+  findLibraryCollectionId,
+  getGroupIcon,
+  groupEntitiesByCollection,
+} from "metabase-enterprise/remote_sync/displayGroups";
+import {
   buildCollectionMap,
   getCollectionPathSegments,
   getSyncStatusColor,
@@ -25,13 +32,6 @@ import type { RemoteSyncEntity } from "metabase-types/api";
 import { CollectionPath } from "./CollectionPath";
 import { EntityLink } from "./EntityLink";
 
-const SYNC_STATUS_ORDER: RemoteSyncEntity["sync_status"][] = [
-  "create",
-  "update",
-  "touch",
-  "delete",
-];
-
 interface AllChangesViewProps {
   entities: RemoteSyncEntity[];
   title?: string;
@@ -39,18 +39,49 @@ interface AllChangesViewProps {
 
 export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
   const isUsingTenants = useSetting("use-tenants");
+  const isTransformsSyncEnabled = useSetting("remote-sync-transforms");
   const { data: collectionTree = [] } = useListCollectionsTreeQuery({
     namespaces: [
       "",
       "analytics",
       ...(isUsingTenants ? ["shared-tenant-collection"] : []),
+      ...(isTransformsSyncEnabled ? ["transforms"] : []),
     ],
     "include-library": true,
   });
 
+  // Fetch snippets namespace collections separately
+  const { data: snippetCollectionTree = [] } = useListCollectionsTreeQuery({
+    namespace: "snippets",
+  });
+
+  // Build namespace-to-collection-ids map in a single pass
+  const namespaceCollectionMap = useMemo(
+    () =>
+      buildNamespaceCollectionMap([
+        ...collectionTree,
+        ...snippetCollectionTree,
+      ]),
+    [collectionTree, snippetCollectionTree],
+  );
+
+  // Find the Transforms root entity (id=-1) if it exists
+  const transformsRootEntity = useMemo(() => {
+    return entities.find(
+      (e) => e.model === "collection" && e.id === TRANSFORMS_ROOT_ID,
+    );
+  }, [entities]);
+
+  // Find the library collection ID for placing snippets without a collection_id
+  const libraryCollectionId = useMemo(
+    () => findLibraryCollectionId(collectionTree),
+    [collectionTree],
+  );
+
   const collectionMap = useMemo(() => {
-    return buildCollectionMap(collectionTree);
-  }, [collectionTree]);
+    // Merge regular collections with snippet collections
+    return buildCollectionMap([...collectionTree, ...snippetCollectionTree]);
+  }, [collectionTree, snippetCollectionTree]);
 
   const hasRemovals = useMemo(() => {
     return (
@@ -60,44 +91,24 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
     );
   }, [entities]);
 
-  const groupedData = useMemo(() => {
-    const byCollection = _.groupBy(entities, (e) => e.collection_id || 0);
-
-    return Object.entries(byCollection)
-      .map(([collectionId, items]) => {
-        const collectionEntity = items.find(
-          (item) =>
-            item.model === "collection" && item.id === Number(collectionId),
-        );
-        const nonCollectionItems = items.filter(
-          (item) =>
-            !(item.model === "collection" && item.id === Number(collectionId)),
-        );
-
-        return {
-          pathSegments: getCollectionPathSegments(
-            Number(collectionId) || undefined,
-            collectionMap,
-          ),
-          collectionId: Number(collectionId) || undefined,
-          collectionEntity,
-          items: nonCollectionItems.sort((a, b) => {
-            const statusOrderA = SYNC_STATUS_ORDER.indexOf(a.sync_status);
-            const statusOrderB = SYNC_STATUS_ORDER.indexOf(b.sync_status);
-            if (statusOrderA !== statusOrderB) {
-              return statusOrderA - statusOrderB;
-            }
-            return a.name.localeCompare(b.name);
-          }),
-        };
-      })
-      .sort((a, b) =>
-        a.pathSegments
-          .map((s) => s.name)
-          .join(" / ")
-          .localeCompare(b.pathSegments.map((s) => s.name).join(" / ")),
-      );
-  }, [entities, collectionMap]);
+  const groupedData: CollectionGroup[] = useMemo(
+    () =>
+      groupEntitiesByCollection({
+        entities,
+        transformsRootEntity,
+        namespaceCollectionMap,
+        collectionMap,
+        libraryCollectionId,
+        getCollectionPathSegments,
+      }),
+    [
+      entities,
+      collectionMap,
+      namespaceCollectionMap,
+      libraryCollectionId,
+      transformsRootEntity,
+    ],
+  );
 
   return (
     <Box>
@@ -118,50 +129,97 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
         }}
       >
         <Stack gap={0}>
-          {groupedData.map((group, groupIndex) => (
-            <Fragment key={group.collectionId}>
-              {groupIndex > 0 && <Divider />}
-              <Box p="md">
-                <Group
-                  p="sm"
-                  gap="sm"
-                  mb={group.items.length > 0 ? "0.75rem" : 0}
-                  bg="bg-light"
-                  bdrs="md"
-                >
-                  <Icon name="synced_collection" size={16} c="text-secondary" />
-                  <CollectionPath segments={group.pathSegments} />
-                  {group.collectionEntity && (
-                    <Icon
-                      name={getSyncStatusIcon(
-                        group.collectionEntity.sync_status,
-                      )}
-                      size={16}
-                      c={getSyncStatusColor(group.collectionEntity.sync_status)}
-                      ml="auto"
-                    />
-                  )}
-                </Group>
-                {group.items.length > 0 && (
-                  <Stack
-                    gap="0.75rem"
-                    ml="md"
-                    pl="xs"
-                    style={{
-                      borderLeft: "2px solid var(--mb-color-border)",
-                    }}
+          {groupedData.map((group, groupIndex) => {
+            const hasItems =
+              group.items.length > 0 || group.tableGroups.length > 0;
+
+            return (
+              <Fragment key={group.collectionId}>
+                {groupIndex > 0 && <Divider />}
+                <Box p="md">
+                  <Group
+                    p="sm"
+                    gap="sm"
+                    mb={hasItems ? "0.75rem" : 0}
+                    bg="background-secondary"
+                    bdrs="md"
                   >
-                    {group.items.map((entity) => (
-                      <EntityLink
-                        key={`${entity.model}-${entity.id}`}
-                        entity={entity}
+                    <Icon
+                      name={getGroupIcon(group.spec)}
+                      size={16}
+                      c="text-secondary"
+                    />
+                    <CollectionPath segments={group.pathSegments} />
+                    {group.collectionEntity && (
+                      <Icon
+                        name={getSyncStatusIcon(
+                          group.collectionEntity.sync_status,
+                        )}
+                        size={16}
+                        c={getSyncStatusColor(
+                          group.collectionEntity.sync_status,
+                        )}
+                        ml="auto"
                       />
-                    ))}
-                  </Stack>
-                )}
-              </Box>
-            </Fragment>
-          ))}
+                    )}
+                  </Group>
+                  {hasItems && (
+                    <Stack
+                      gap="0.75rem"
+                      ml="md"
+                      pl="xs"
+                      style={{
+                        borderLeft: "2px solid var(--mb-color-border)",
+                      }}
+                    >
+                      {/* Render table groups (both dirty tables and orphan children) */}
+                      {group.tableGroups.map((tableGroup) => (
+                        <Box key={`table-${tableGroup.tableId}`}>
+                          {tableGroup.table ? (
+                            <EntityLink entity={tableGroup.table} />
+                          ) : (
+                            <Group gap="sm" wrap="nowrap" px="sm">
+                              <Icon name="table" size={16} c="text-secondary" />
+                              <Text size="sm" c="text-secondary">
+                                {tableGroup.tableName}
+                              </Text>
+                            </Group>
+                          )}
+                          {tableGroup.children.length > 0 && (
+                            <Stack
+                              gap="0.75rem"
+                              ml="md"
+                              pl="xs"
+                              mt="0.75rem"
+                              style={{
+                                borderLeft:
+                                  "2px solid var(--mb-color-border-subtle)",
+                              }}
+                            >
+                              {tableGroup.children.map((child) => (
+                                <EntityLink
+                                  key={`${child.model}-${child.id}`}
+                                  entity={child}
+                                />
+                              ))}
+                            </Stack>
+                          )}
+                        </Box>
+                      ))}
+
+                      {/* Render other non-table items */}
+                      {group.items.map((entity) => (
+                        <EntityLink
+                          key={`${entity.model}-${entity.id}`}
+                          entity={entity}
+                        />
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+              </Fragment>
+            );
+          })}
         </Stack>
       </Paper>
       {hasRemovals && (

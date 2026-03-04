@@ -220,6 +220,7 @@ export const setup = async (
       collection: {
         id: 789,
         name: "Misc Metrics",
+        archived: false,
       },
     }),
     createMockSearchResult({
@@ -231,10 +232,22 @@ export const setup = async (
       collection: {
         id: 7891,
         name: "Misc Tables",
+        archived: false,
       },
     }),
     createMockSearchResult({ id: 304, model: "document", name: "Wickham" }),
     createMockSearchResult({ id: 305, model: "collection", name: "Reynolds" }),
+    createMockSearchResult({
+      id: 306,
+      model: "metric",
+      name: "Fanny",
+      collection: {
+        // @ts-expect-error - can be null in search results
+        id: null,
+        // @ts-expect-error - can be null in search results
+        name: null,
+      },
+    }),
     createMockSearchResult({
       id: 401,
       model: "table",
@@ -244,7 +257,8 @@ export const setup = async (
       collection: {
         // @ts-expect-error - can be null in search results
         id: null,
-        name: "",
+        // @ts-expect-error - can be null in search results
+        name: null,
       },
     }),
   ]);

@@ -124,6 +124,7 @@
            :scalar
            :pie
            :scatter
+           :boxplot
            :waterfall
            :row
            :line
@@ -234,7 +235,7 @@
    (:content (render-pulse-card :inline timezone-id card nil results options))))
 
 (mu/defn render-pulse-section :- ::body/RenderedPartCard
-  "Render a single Card section of a Pulse to a Hiccup form (representating HTML)."
+  "Render a single Card section of a Pulse to a Hiccup form (representing HTML)."
   ([timezone-id part]
    (render-pulse-section timezone-id part {}))
 

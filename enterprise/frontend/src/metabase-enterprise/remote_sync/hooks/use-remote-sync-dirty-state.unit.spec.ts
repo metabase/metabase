@@ -1,67 +1,77 @@
-import fetchMock from "fetch-mock";
-
+import {
+  setupPropertiesEndpoints,
+  setupRemoteSyncDirtyEndpoint,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-
-// Mock the useGitSyncVisible hook before importing useRemoteSyncDirtyState
-const mockUseGitSyncVisible = jest.fn(() => ({
-  isVisible: true,
-  currentBranch: "main",
-}));
-jest.mock("./use-git-sync-visible", () => ({
-  useGitSyncVisible: () => mockUseGitSyncVisible(),
-}));
+import type { RemoteSyncEntity } from "metabase-types/api";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { useRemoteSyncDirtyState } from "./use-remote-sync-dirty-state";
 
-const createMockDirtyEntity = (overrides: Record<string, unknown> = {}) => ({
+const createMockDirtyEntity = (
+  overrides: Partial<RemoteSyncEntity> = {},
+): RemoteSyncEntity => ({
   id: 1,
   name: "Test Entity",
-  description: null,
-  created_at: "2024-01-01T00:00:00Z",
-  updated_at: null,
-  model: "card" as const,
-  sync_status: "update" as const,
+  model: "card",
+  sync_status: "update",
   collection_id: 1,
   ...overrides,
 });
 
-const setupEndpoints = ({
-  dirty = [],
-  changedCollections = {},
-}: {
-  dirty?: Array<ReturnType<typeof createMockDirtyEntity>>;
-  changedCollections?: Record<number, boolean>;
-} = {}) => {
-  fetchMock.get("path:/api/ee/remote-sync/dirty", {
-    dirty,
-    changedCollections,
-  });
+/**
+ * Compute changedCollections map from dirty entities.
+ * This mirrors what the backend does - marking collections that contain dirty entities.
+ */
+const computeChangedCollections = (
+  dirty: RemoteSyncEntity[],
+): Record<number, boolean> => {
+  const changedCollections: Record<number, boolean> = {};
+  for (const entity of dirty) {
+    if (entity.collection_id != null) {
+      changedCollections[entity.collection_id] = true;
+    }
+  }
+  return changedCollections;
 };
 
 const setup = ({
   isGitSyncVisible = true,
   dirty = [],
-  changedCollections = {},
 }: {
   isGitSyncVisible?: boolean;
-  dirty?: Array<ReturnType<typeof createMockDirtyEntity>>;
-  changedCollections?: Record<number, boolean>;
+  dirty?: RemoteSyncEntity[];
 } = {}) => {
-  mockUseGitSyncVisible.mockReturnValue({
-    isVisible: isGitSyncVisible,
-    currentBranch: "main",
+  const settings = createMockSettings({
+    "remote-sync-enabled": isGitSyncVisible,
+    "remote-sync-branch": isGitSyncVisible ? "main" : null,
+    "remote-sync-type": "read-write",
   });
-  setupEndpoints({ dirty, changedCollections });
 
-  return renderHookWithProviders(() => useRemoteSyncDirtyState(), {});
+  const changedCollections = computeChangedCollections(dirty);
+
+  setupPropertiesEndpoints(settings);
+  setupSettingsEndpoints([]);
+  setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
+
+  const storeInitialState = createMockState({
+    currentUser: createMockUser({ is_superuser: true }),
+    settings: mockSettings({
+      "remote-sync-enabled": isGitSyncVisible,
+      "remote-sync-branch": isGitSyncVisible ? "main" : null,
+      "remote-sync-type": "read-write",
+    }),
+  });
+
+  return renderHookWithProviders(() => useRemoteSyncDirtyState(), {
+    storeInitialState,
+  });
 };
 
 describe("useRemoteSyncDirtyState", () => {
-  beforeEach(() => {
-    fetchMock.removeRoutes();
-    fetchMock.clearHistory();
-  });
-
   describe("isDirty", () => {
     it("returns false when no dirty entities exist", async () => {
       const { result } = setup({ dirty: [] });
@@ -84,7 +94,6 @@ describe("useRemoteSyncDirtyState", () => {
 
   describe("isCollectionDirty", () => {
     it("returns false for collection without dirty items", async () => {
-      // changedCollections is built from dirty entities' collection_id
       const { result } = setup({
         dirty: [createMockDirtyEntity({ collection_id: 1 })],
       });
@@ -97,7 +106,6 @@ describe("useRemoteSyncDirtyState", () => {
     });
 
     it("returns true for collection with dirty items", async () => {
-      // changedCollections is built from dirty entities' collection_id
       const { result } = setup({
         dirty: [createMockDirtyEntity({ collection_id: 1 })],
       });
@@ -110,7 +118,6 @@ describe("useRemoteSyncDirtyState", () => {
     });
 
     it("returns false for non-numeric collection id", async () => {
-      // changedCollections is built from dirty entities' collection_id
       const { result } = setup({
         dirty: [createMockDirtyEntity({ collection_id: 1 })],
       });
@@ -126,12 +133,10 @@ describe("useRemoteSyncDirtyState", () => {
 
   describe("hasAnyCollectionDirty", () => {
     it("returns false when no collections in set are dirty", async () => {
-      // changedCollections is built from dirty entities' collection_id
       const { result } = setup({
         dirty: [createMockDirtyEntity({ collection_id: 1 })],
       });
 
-      // Wait for data to be populated
       await waitFor(() => {
         expect(result.current.dirty.length).toBeGreaterThan(0);
       });
@@ -140,7 +145,6 @@ describe("useRemoteSyncDirtyState", () => {
     });
 
     it("returns true when any collection in set is dirty", async () => {
-      // changedCollections is built from dirty entities' collection_id
       const { result } = setup({
         dirty: [
           createMockDirtyEntity({ id: 1, collection_id: 1 }),
@@ -148,7 +152,6 @@ describe("useRemoteSyncDirtyState", () => {
         ],
       });
 
-      // Wait for data to be populated
       await waitFor(() => {
         expect(result.current.dirty.length).toBeGreaterThan(0);
       });
@@ -157,12 +160,10 @@ describe("useRemoteSyncDirtyState", () => {
     });
 
     it("works with array input", async () => {
-      // changedCollections is built from dirty entities' collection_id
       const { result } = setup({
         dirty: [createMockDirtyEntity({ collection_id: 1 })],
       });
 
-      // Wait for data to be populated
       await waitFor(() => {
         expect(result.current.dirty.length).toBeGreaterThan(0);
       });
@@ -173,12 +174,10 @@ describe("useRemoteSyncDirtyState", () => {
 
   describe("hasDirtyInCollectionTree", () => {
     it("returns false when no collections in tree are dirty", async () => {
-      // changedCollections is built from dirty entities' collection_id
       const { result } = setup({
         dirty: [createMockDirtyEntity({ collection_id: 100 })],
       });
 
-      // Wait for data to be populated
       await waitFor(() => {
         expect(result.current.dirty.length).toBeGreaterThan(0);
       });
@@ -189,12 +188,10 @@ describe("useRemoteSyncDirtyState", () => {
     });
 
     it("returns true when a collection in tree has dirty children", async () => {
-      // changedCollections is built from dirty entities' collection_id
       const { result } = setup({
         dirty: [createMockDirtyEntity({ collection_id: 2 })],
       });
 
-      // Wait for data to be populated
       await waitFor(() => {
         expect(result.current.dirty.length).toBeGreaterThan(0);
       });
@@ -210,12 +207,11 @@ describe("useRemoteSyncDirtyState", () => {
           createMockDirtyEntity({
             id: 2,
             model: "collection",
-            collection_id: null,
+            collection_id: undefined,
           }),
         ],
       });
 
-      // Wait for dirty to be populated
       await waitFor(() => {
         expect(result.current.dirty.length).toBeGreaterThan(0);
       });
@@ -231,12 +227,11 @@ describe("useRemoteSyncDirtyState", () => {
           createMockDirtyEntity({
             id: 100,
             model: "collection",
-            collection_id: null,
+            collection_id: undefined,
           }),
         ],
       });
 
-      // Wait for dirty to be populated
       await waitFor(() => {
         expect(result.current.dirty.length).toBeGreaterThan(0);
       });
@@ -244,6 +239,48 @@ describe("useRemoteSyncDirtyState", () => {
       expect(result.current.hasDirtyInCollectionTree(new Set([1, 2, 3]))).toBe(
         false,
       );
+    });
+  });
+
+  describe("hasRemovedItems", () => {
+    it("returns false when no entities have removed status", async () => {
+      const { result } = setup({
+        dirty: [
+          createMockDirtyEntity({ sync_status: "update" }),
+          createMockDirtyEntity({ id: 2, sync_status: "create" }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current.dirty.length).toBeGreaterThan(0);
+      });
+
+      expect(result.current.hasRemovedItems).toBe(false);
+    });
+
+    it("returns true when any entity has removed status", async () => {
+      const { result } = setup({
+        dirty: [
+          createMockDirtyEntity({ sync_status: "update" }),
+          createMockDirtyEntity({ id: 2, sync_status: "removed" }),
+        ],
+      });
+
+      await waitFor(() => {
+        expect(result.current.dirty.length).toBeGreaterThan(0);
+      });
+
+      expect(result.current.hasRemovedItems).toBe(true);
+    });
+
+    it("returns false when dirty list is empty", async () => {
+      const { result } = setup({ dirty: [] });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.hasRemovedItems).toBe(false);
     });
   });
 
@@ -258,6 +295,7 @@ describe("useRemoteSyncDirtyState", () => {
         expect(result.current.dirty).toEqual([]);
       });
       expect(result.current.isDirty).toBe(false);
+      expect(result.current.hasRemovedItems).toBe(false);
     });
   });
 });

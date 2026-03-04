@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { addLocale, useLocale } from "ttag";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
@@ -28,7 +27,7 @@ export async function loadLocalization(locale) {
             "plural-forms": "nplurals=2; plural=(n != 1);",
           },
           translations: {
-            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Not a user facing string
             "": { Metabase: { msgid: "Metabase", msgstr: ["Metabase"] } },
           },
         };
@@ -37,17 +36,16 @@ export async function loadLocalization(locale) {
   return translationsObject;
 }
 
-// Tell moment.js and dayjs to use the value of the start-of-week Setting for its current locale
-// Moment.js dow range Sunday (0) - Saturday (6)
+// Tell dayjs to use the value of the start-of-week Setting for its current locale
+// range Sunday (0) - Saturday (6)
 export function updateStartOfWeek(startOfWeekDayName) {
   const startOfWeekDay = getStartOfWeekDay(startOfWeekDayName);
   if (startOfWeekDay != null) {
-    moment.updateLocale(moment.locale(), { week: { dow: startOfWeekDay } });
     dayjs.updateLocale(dayjs.locale(), { weekStart: startOfWeekDay });
   }
 }
 
-// if the start of week Setting is updated, update the moment start of week
+// if the start of week Setting is updated, update the dayjs start of week
 MetabaseSettings.on("start-of-week", updateStartOfWeek);
 
 function setLanguage(translationsObject) {
@@ -65,27 +63,11 @@ const ARABIC_LOCALES = ["ar", "ar-sa"];
 export function setLocalization(translationsObject) {
   const language = translationsObject.headers.language;
   setLanguage(translationsObject);
-  updateMomentLocale(language);
   updateDayjsLocale(language);
   updateStartOfWeek(MetabaseSettings.get("start-of-week"));
 
   if (ARABIC_LOCALES.includes(language)) {
-    preverseLatinNumbersInMomentLocale(language);
-    preverseLatinNumbersInDayjsLocale(language);
-  }
-}
-
-function updateMomentLocale(language) {
-  const locale = getLocale(language);
-
-  try {
-    if (locale !== "en") {
-      require(`moment/locale/${locale}.js`);
-    }
-    moment.locale(locale);
-  } catch (e) {
-    console.warn(`Could not set moment.js locale to ${locale}`);
-    moment.locale("en");
+    preserveLatinNumbersInDayjsLocale(language);
   }
 }
 
@@ -93,18 +75,10 @@ function updateMomentLocale(language) {
  * Ensures that we consistently use latin numbers in Arabic locales.
  * See https://github.com/metabase/metabase/issues/34271
  */
-function preverseLatinNumbersInMomentLocale(locale) {
-  moment.updateLocale(locale, {
+function preserveLatinNumbersInDayjsLocale(locale) {
+  dayjs.updateLocale(locale, {
     // Preserve latin numbers, but still replace commas.
     // See https://github.com/moment/moment/blob/000ac1800e620f770f4eb31b5ae908f6167b0ab2/locale/ar.js#L185
-    postformat: (string) =>
-      string.replace(/\d/g, (match) => match).replace(/,/g, "،"),
-  });
-}
-
-// a copy of moment function
-function preverseLatinNumbersInDayjsLocale(locale) {
-  dayjs.updateLocale(locale, {
     postformat(string) {
       return string.replace(/,/g, "،");
     },

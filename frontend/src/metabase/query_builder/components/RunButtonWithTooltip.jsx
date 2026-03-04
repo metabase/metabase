@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { duration } from "metabase/lib/formatting";
 import { Tooltip } from "metabase/ui";
 
-import RunButton from "./RunButton";
+import { RunButton } from "./RunButton";
 
 const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
 
@@ -19,7 +19,7 @@ const defaultGetTooltip = ({ isDirty, result }) => {
     : null;
 };
 
-export default function RunButtonWithTooltip({
+export function RunButtonWithTooltip({
   getTooltip = defaultGetTooltip,
   ...props
 }) {

@@ -1,7 +1,11 @@
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 
+export type SearchSettingsWidgetProps = {
+  statusPollingInterval?: number;
+};
+
 const getDefaultPluginSemanticSearch = () => ({
-  SearchSettingsWidget: PluginPlaceholder,
+  SearchSettingsWidget: PluginPlaceholder<SearchSettingsWidgetProps>,
 });
 
 export const PLUGIN_SEMANTIC_SEARCH = getDefaultPluginSemanticSearch();

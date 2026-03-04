@@ -170,7 +170,7 @@
         (throw e)))))
 
 (defn user-transform
-  "Tranformation from slack api user to our own internal representation."
+  "Transformation from slack api user to our own internal representation."
   [member]
   {:display-name (str \@ (:name member))
    :type         "user"
@@ -226,7 +226,7 @@
 (defn bug-report-channel
   "Looks in [[slack-cached-channels-and-usernames]] to check whether a channel exists with the expected name from the
   [[slack-bug-report-channel]] setting with an # prefix. If it does, returns the channel details as a map. If it doesn't,
-  throws an error that advices an admin to create it."
+  throws an error that advises an admin to create it."
   []
   (let [channel-name (channel.settings/slack-bug-report-channel)]
     (if (channel-exists? channel-name)

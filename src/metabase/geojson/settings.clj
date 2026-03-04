@@ -95,13 +95,26 @@
   (every? (fn [[_ {:keys [url]}]] (valid-geojson-url? url))
           geojson))
 
+(defn- entries-with-new-or-changed-urls
+  "Returns a subset of `new-geojson` containing only entries whose URL is new or different from the stored value.
+  This allows us to skip re-validating URLs that were previously saved and haven't changed."
+  [new-geojson current-geojson]
+  (into {}
+        (filter (fn [[k {:keys [url]}]]
+                  (let [current-url (get-in current-geojson [k :url])]
+                    (not= url current-url)))
+                new-geojson)))
+
 (defn- validate-geojson
-  "Throws a 400 if the supplied `geojson` is poorly structured or has an illegal URL/path"
-  [geojson]
+  "Throws a 400 if the supplied `geojson` is poorly structured or has an illegal URL/path.
+  Validates structure of all entries, but only validates URLs for entries in `entries-to-validate-urls`.
+  If `entries-to-validate-urls` is nil, validates URLs for all entries."
+  [geojson entries-to-validate-urls]
   (when-not (CustomGeoJSONValidator geojson)
     (throw (ex-info (tru "Invalid custom GeoJSON") {:status-code 400})))
-  (or (valid-geojson-urls? geojson)
-      (throw (ex-info (invalid-location-msg) {:status-code 400}))))
+  (when (seq entries-to-validate-urls)
+    (or (valid-geojson-urls? entries-to-validate-urls)
+        (throw (ex-info (invalid-location-msg) {:status-code 400})))))
 
 (defsetting custom-geojson
   (deferred-tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
@@ -110,9 +123,13 @@
   :getter     (fn [] (merge (setting/get-value-of-type :json :custom-geojson) (builtin-geojson)))
   :setter     (fn [new-value]
                 ;; remove the built-in keys you can't override them and we don't want those to be subject to validation.
-                (let [new-value (not-empty (reduce dissoc new-value (keys (builtin-geojson))))]
+                (let [new-value      (not-empty (reduce dissoc new-value (keys (builtin-geojson))))
+                      current-value  (setting/get-value-of-type :json :custom-geojson)
+                      ;; Only validate URLs for entries that are new or have changed URLs.
+                      changed-entries (when new-value
+                                        (entries-with-new-or-changed-urls new-value current-value))]
                   (when new-value
-                    (validate-geojson new-value))
+                    (validate-geojson new-value changed-entries))
                   (setting/set-value-of-type! :json :custom-geojson new-value)))
   :visibility :public
   :export?    true

@@ -15,7 +15,7 @@ describe("parameters/utils/parameter-type", () => {
       expect(getParameterType({ type: "category" })).toEqual("category");
     });
 
-    it("should prefer using a sectionId for determing the type if it exists", () => {
+    it("should prefer using a sectionId for determining the type if it exists", () => {
       expect(
         getParameterType({ sectionId: "location", type: "string/=" }),
       ).toEqual("location");

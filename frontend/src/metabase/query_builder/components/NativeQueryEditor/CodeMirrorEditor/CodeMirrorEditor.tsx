@@ -15,6 +15,7 @@ import {
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
 import { isEventOverElement } from "metabase/lib/dom";
+import { useLlmSqlGenerationEnabled } from "metabase/metabot/hooks";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
 
@@ -41,6 +42,7 @@ export type CodeMirrorEditorProps = {
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
   onSelectionChange?: (range: SelectionRange[]) => void;
+  onBlur?: () => void;
 };
 
 export interface CodeMirrorEditorRef {
@@ -56,7 +58,7 @@ export const CodeMirrorEditor = forwardRef<
     query,
     proposedQuery,
     highlightedLineNumbers,
-    placeholder = getPlaceholderText(Lib.engine(query)),
+    placeholder: placeholderProp,
     readOnly,
     extensions: customExtensions,
     onChange,
@@ -65,10 +67,14 @@ export const CodeMirrorEditor = forwardRef<
     onRightClickSelection,
     onCursorMoveOverCardTag,
     onFormatQuery,
+    onBlur,
   },
   ref,
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
+  const isLlmEnabled = useLlmSqlGenerationEnabled();
+  const placeholder =
+    placeholderProp ?? getPlaceholderText(Lib.engine(query), isLlmEnabled);
   const baseExtensions = useExtensions({
     query,
     diff: !!proposedQuery,
@@ -165,6 +171,7 @@ export const CodeMirrorEditor = forwardRef<
       placeholder={placeholder}
       highlightRanges={highlightedRanges}
       onFormat={onFormatQuery}
+      onBlur={onBlur}
     />
   );
 });

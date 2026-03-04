@@ -1,6 +1,16 @@
+import type { DatasetQuery } from "./query";
+
 export type RevisionId = number;
 
-export type FieldDiff = { before?: unknown; after?: unknown };
+export type FieldDiff = {
+  before?: unknown;
+  after?: unknown;
+};
+
+export type QueryDiff = {
+  before?: DatasetQuery;
+  after?: DatasetQuery;
+};
 
 export type SegmentRevisionDiff = {
   name?: FieldDiff;
@@ -14,6 +24,10 @@ export type CardOrDashboardRevisionDiff = {
 };
 
 export type RevisionDiff = SegmentRevisionDiff | CardOrDashboardRevisionDiff;
+
+export type RevisionDiffKey =
+  | keyof SegmentRevisionDiff
+  | keyof CardOrDashboardRevisionDiff;
 
 export interface Revision {
   id: RevisionId;
@@ -32,13 +46,21 @@ export interface Revision {
   };
 }
 
+export type RevisionEntityType =
+  | "card"
+  | "dashboard"
+  | "segment"
+  | "measure"
+  | "document"
+  | "transform";
+
 export interface ListRevisionRequest {
-  entity: "card" | "dashboard" | "segment" | "document" | "transform";
+  entity: RevisionEntityType;
   id: number | string;
 }
 
 export interface RevertRevisionRequest {
-  entity: "card" | "dashboard" | "segment" | "document" | "transform";
+  entity: RevisionEntityType;
   id: number | string;
   revision_id: number;
 }

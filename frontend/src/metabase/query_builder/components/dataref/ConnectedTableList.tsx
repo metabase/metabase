@@ -17,7 +17,7 @@ interface ConnectedTableListProps {
   onTableClick: (table: Table) => void;
 }
 
-const ConnectedTableList = ({
+export const ConnectedTableList = ({
   tables,
   onTableClick,
 }: ConnectedTableListProps) => (
@@ -36,6 +36,3 @@ const ConnectedTableList = ({
     ))}
   </NodeListContainer>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ConnectedTableList;

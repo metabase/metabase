@@ -3,9 +3,9 @@ import { useState } from "react";
 
 import { render, screen } from "__support__/ui";
 
-import Tab from "../Tab";
+import { Tab } from "../Tab";
 
-import TabList from "./TabList";
+import { TabList } from "./TabList";
 
 const TestTabList = () => {
   const [value, setValue] = useState(1);

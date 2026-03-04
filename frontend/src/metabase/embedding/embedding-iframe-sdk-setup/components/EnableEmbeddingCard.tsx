@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
-import { Button, Card, Group, HoverCard, Icon, Stack, Text } from "metabase/ui";
+import { Button, Group, HoverCard, Icon, Stack, Text } from "metabase/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 interface EmbeddingControlCardProps {
@@ -85,53 +85,52 @@ export const EnableEmbeddingCard = ({
   const { title, buttonCaption } = data;
 
   return (
-    <Card p="md" mb="md" data-testid="enable-embedding-card">
-      <Stack gap={0}>
-        <Text fz="md" c="text-dark">
-          {title}
-          {!termsAccepted && (
-            <HoverCard position="bottom" withArrow>
-              <HoverCard.Target>
-                <Icon
-                  name="info"
-                  size={14}
-                  c="text-medium"
-                  ml="sm"
-                  style={{ verticalAlign: "middle" }}
-                />
-              </HoverCard.Target>
+    <Stack gap={0} data-testid="enable-embedding-card">
+      <Text fz="md" c="text-primary">
+        {title}
 
-              <HoverCard.Dropdown>
-                <Stack maw={340} p="md" gap="md">
-                  <Text fz="sm" lh="lg">
-                    {/* eslint-disable-next-line no-literal-metabase-strings -- User facing text */}
-                    {t`When you embed charts or dashboards from Metabase in your
+        {!termsAccepted && (
+          <HoverCard position="bottom" withArrow>
+            <HoverCard.Target>
+              <Icon
+                name="info"
+                size={14}
+                c="text-secondary"
+                ml="sm"
+                style={{ verticalAlign: "middle" }}
+              />
+            </HoverCard.Target>
+
+            <HoverCard.Dropdown>
+              <Stack maw={340} p="md" gap="md">
+                <Text fz="sm" lh="lg">
+                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- User facing text */}
+                  {t`When you embed charts or dashboards from Metabase in your
                     own application that application isn't subject to the Affero
                     General Public License that covers the rest of Metabase,
                     provided you keep the Metabase logo and the "Powered by
                     Metabase" visible on those embeds.`}
-                  </Text>
+                </Text>
 
-                  <Text fz="sm" lh="lg">
-                    {t`You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`}
-                  </Text>
-                </Stack>
-              </HoverCard.Dropdown>
-            </HoverCard>
-          )}
-        </Text>
+                <Text fz="sm" lh="lg">
+                  {t`You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`}
+                </Text>
+              </Stack>
+            </HoverCard.Dropdown>
+          </HoverCard>
+        )}
+      </Text>
 
-        <Group justify="flex-end" mt="md">
-          <Button
-            variant={isAccepted ? "default" : "filled"}
-            onClick={handleEnableEmbedding}
-            disabled={isAccepted}
-            leftSection={isAccepted && <Icon name="check" />}
-          >
-            {isAccepted ? "Enabled" : buttonCaption}
-          </Button>
-        </Group>
-      </Stack>
-    </Card>
+      <Group justify="flex-end" mt="md">
+        <Button
+          variant={isAccepted ? "default" : "filled"}
+          onClick={handleEnableEmbedding}
+          disabled={isAccepted}
+          leftSection={isAccepted && <Icon name="check" />}
+        >
+          {isAccepted ? "Enabled" : buttonCaption}
+        </Button>
+      </Group>
+    </Stack>
   );
 };

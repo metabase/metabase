@@ -4,8 +4,8 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import Revision from "metabase/admin/datamodel/components/revisions/Revision";
-import EmptyState from "metabase/common/components/EmptyState";
+import { Revision } from "metabase/admin/datamodel/components/revisions/Revision";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
@@ -127,4 +127,5 @@ class SegmentRevisions extends Component {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(SegmentRevisions);

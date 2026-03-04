@@ -1,29 +1,27 @@
 import { useFormikContext } from "formik";
-import { type JSX, useMemo } from "react";
+import type { JSX } from "react";
 import { match } from "ts-pattern";
 
 import type {
   DatabaseFormConfig,
   FormLocation,
 } from "metabase/databases/types";
-import { getVisibleFields } from "metabase/databases/utils/schema";
 import { Box } from "metabase/ui";
 import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
 
 import { DatabaseConnectionStringField } from "../DatabaseConnectionUri";
-import { DatabaseDetailField } from "../DatabaseDetailField";
 import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
 import { DatabaseFormError } from "../DatabaseFormError";
 import { DatabaseNameField } from "../DatabaseNameField";
 
+import { DatabaseFormBodyDetails } from "./DatabaseFormBodyDetails";
 import { useHasConnectionError } from "./utils";
 
 interface DatabaseFormBodyProps {
   engine: Engine | undefined;
   engineKey: EngineKey | undefined;
   engines: Record<string, Engine>;
-  engineFieldState?: "default" | "hidden" | "disabled";
   autofocusFieldName?: string;
   isAdvanced: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
@@ -36,7 +34,6 @@ export const DatabaseFormBody = ({
   engine,
   engineKey,
   engines,
-  engineFieldState = "default",
   autofocusFieldName,
   isAdvanced,
   onEngineChange,
@@ -44,12 +41,9 @@ export const DatabaseFormBody = ({
   showSampleDatabase = false,
   location,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, setValues } = useFormikContext<DatabaseData>();
+  const { setValues } = useFormikContext<DatabaseData>();
   const hasConnectionError = useHasConnectionError();
-
-  const fields = useMemo(() => {
-    return engine ? getVisibleFields(engine, values, isAdvanced) : [];
-  }, [engine, values, isAdvanced]);
+  const { engine: engineFieldConfig, name: nameFieldConfig } = config;
 
   const px = match(location)
     .with("setup", () => "sm")
@@ -61,14 +55,14 @@ export const DatabaseFormBody = ({
 
   return (
     <Box mah={mah} mb="md" px={px} style={{ overflowY: "auto" }}>
-      {engineFieldState !== "hidden" && (
+      {engineFieldConfig?.fieldState !== "hidden" && (
         <>
           <DatabaseEngineField
             engineKey={engineKey}
             engines={engines}
             isAdvanced={isAdvanced}
             onChange={onEngineChange}
-            disabled={engineFieldState === "disabled"}
+            disabled={engineFieldConfig?.fieldState === "disabled"}
             showSampleDatabase={showSampleDatabase}
           />
           <DatabaseEngineWarning
@@ -83,23 +77,20 @@ export const DatabaseFormBody = ({
         location={location}
         setValues={setValues}
       />
-      {engine && (
+      {engine && nameFieldConfig?.fieldState !== "hidden" && (
         <DatabaseNameField
           engine={engine}
           config={config}
           autoFocus={autofocusFieldName === "name"}
         />
       )}
-      {fields.map((field) => (
-        <DatabaseDetailField
-          key={field.name}
-          field={field}
-          autoFocus={autofocusFieldName === field.name}
-          data-kek={field.name}
-          engineKey={engineKey}
-          engine={engine}
-        />
-      ))}
+      <DatabaseFormBodyDetails
+        fields={engine?.["details-fields"] ?? []}
+        autofocusFieldName={autofocusFieldName}
+        engineKey={engineKey}
+        engine={engine}
+        isAdvanced={isAdvanced}
+      />
       {isAdvanced && hasConnectionError && <DatabaseFormError />}
     </Box>
   );

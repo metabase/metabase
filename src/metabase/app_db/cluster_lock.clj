@@ -24,7 +24,7 @@
   (or (instance? SQLIntegrityConstraintViolationException e)
       (instance? SQLIntegrityConstraintViolationException (ex-cause e))
       ;; Postgres does just uses PSQLException, so we need to fall back to checking the message.
-      (str/includes? (ex-message e) "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\"")
+      (some-> (ex-message e) (str/includes? "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\""))
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (def ^:private default-retry-config
@@ -91,7 +91,7 @@
                   (throw e)))))))
 
 (defmacro with-cluster-lock
-  "Run `body` in a tranactions that tries to take a lock from the metabase_cluster_lock table of
+  "Run `body` in a transaction that tries to take a lock from the metabase_cluster_lock table of
   the specified name to coordinate concurrency with other metabase instances sharing the appdb."
   ([lock-options & body]
    `(do-with-cluster-lock ~lock-options (fn [] ~@body))))

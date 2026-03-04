@@ -142,7 +142,7 @@
     clojure -M:migrate rollback id \"v40.00.001\" ;; rollback to a specific migration with id
     clojure -M:migrate rollback last-deployment   ;; rollback the last deployment
     clojure -M:migrate status                     ;; print the latest migration id
-    clojure -M:migrate reset-checksums.           ;; sets the checkums to what they would be if migrated from the current changelog"
+    clojure -M:migrate reset-checksums.           ;; sets the checksums to what they would be if migrated from the current changelog"
 
   [& args]
   (let [[cmd & migration-args] args]

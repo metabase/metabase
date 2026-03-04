@@ -1,0 +1,13 @@
+.filter {
+  color: var(--mb-color-filter);
+  background-color: color-mix(in srgb, var(--mb-color-filter) 14%, transparent);
+  border-radius: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.aggregation {
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-summarize);
+  border-radius: 1rem;
+  overflow-wrap: anywhere;
+}

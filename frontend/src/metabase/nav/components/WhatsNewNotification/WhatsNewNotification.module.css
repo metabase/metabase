@@ -1,0 +1,7 @@
+.DismissIconButtonWrapper {
+  color: var(--mb-color-background-tertiary);
+}
+
+.DismissIconButtonWrapper:hover {
+  color: var(--mb-color-text-secondary);
+}

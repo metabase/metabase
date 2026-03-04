@@ -2,9 +2,8 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
-import Link from "metabase/common/components/Link";
-import { MoveModal } from "metabase/common/components/MoveModal";
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
+import { Link } from "metabase/common/components/Link";
+import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Dashboards } from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
@@ -33,16 +32,20 @@ function DashboardMoveModal({
     options: any,
   ) => void;
 }) {
-  const recentsAndSearchFilter = (item: CollectionPickerItem) =>
-    item.model === "collection" && item.id === dashboard.collection_id;
-
   return (
     <MoveModal
       title={t`Move dashboard to…`}
       onClose={onClose}
-      initialCollectionId={dashboard.collection_id ?? "root"}
       canMoveToDashboard={false}
-      entityType="dashboard"
+      movingItem={{
+        ...dashboard,
+        collection: {
+          id: dashboard.collection?.id || "root",
+          name: dashboard.collection?.name || "",
+          namespace: dashboard.collection?.namespace,
+        }, // parent collection info
+        model: "dashboard",
+      }}
       onMove={async (destination) => {
         await setDashboardCollection({ id: dashboard.id }, destination, {
           notify: {
@@ -55,7 +58,6 @@ function DashboardMoveModal({
         });
         onClose();
       }}
-      recentAndSearchFilter={recentsAndSearchFilter}
     />
   );
 }
@@ -72,7 +74,7 @@ const DashboardMoveToast = ({
       <Icon
         name="collection"
         style={{ marginInlineEnd: "0.25rem" }}
-        c="text-white"
+        c="text-primary-inverse"
       />
       {c("{0} is a location where the dashboard was moved to")
         .jt`Dashboard moved to ${

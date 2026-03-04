@@ -76,8 +76,9 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
     it("should show the new name in the main app", () => {
       cy.visit("/");
-      cy.icon("gear").click();
-      H.popover().findByText(`About ${NEW_COMPANY_NAME}`).click();
+      H.getProfileLink().click();
+      H.popover().findByText("Help").click();
+      H.getHelpSubmenu().findByText(`About ${NEW_COMPANY_NAME}`).click();
       H.modal()
         .findByText(`Thanks for using ${NEW_COMPANY_NAME}!`)
         .should("be.visible");
@@ -461,7 +462,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
           cy.log("test custom illustration");
 
-          cy.findByTestId("admin-navbar").findByText("Exit admin").click();
+          H.goToMainApp();
           H.appBar().findByText("New").click();
           H.popover().findByText("Dashboard").click();
           H.modal().findByTestId("collection-picker-button").click();
@@ -494,7 +495,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           }).click();
           H.selectDropdown().findByText("No illustration").click();
 
-          cy.findByTestId("admin-navbar").findByText("Exit admin").click();
+          H.goToMainApp();
           H.appBar().findByText("New").click();
           H.popover().findByText("Dashboard").click();
           H.modal().findByTestId("collection-picker-button").click();
@@ -606,7 +607,8 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.signInAsNormalUser();
 
       cy.visit("/");
-      openSettingsMenu();
+      H.getProfileLink().click();
+      H.popover().findByText("Help").click();
       helpLink().should("not.exist");
 
       cy.log("Set custom Help link");
@@ -635,7 +637,8 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
       cy.signInAsNormalUser();
       cy.visit("/");
-      openSettingsMenu();
+      H.getProfileLink().click();
+      H.popover().findByText("Help").click();
       helpLink().should(
         "have.attr",
         "href",
@@ -654,7 +657,8 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.wait("@putHelpLink");
 
       cy.visit("/");
-      openSettingsMenu();
+      H.getProfileLink().click();
+      H.popover().findByText("Help").click();
 
       helpLink()
         .should("have.attr", "href")
@@ -662,7 +666,8 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
       cy.signInAsNormalUser();
       cy.visit("/");
-      openSettingsMenu();
+      H.getProfileLink().click();
+      H.popover().findByText("Help").click();
 
       helpLink()
         .should("have.attr", "href")
@@ -674,8 +679,8 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
       cy.signInAsNormalUser();
       cy.visit("/");
-      openSettingsMenu();
-
+      H.getProfileLink().click();
+      H.popover().findByText("Help").click();
       helpLink()
         .should("have.attr", "href")
         .and("include", "https://www.metabase.com/help?");
@@ -733,7 +738,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .blur();
       H.undoToast().findByText("Changes saved").should("be.visible");
 
-      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
+      H.goToMainApp();
       cy.url().should("include", "/test-1");
     });
 
@@ -755,7 +760,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .findByText("This field must be a relative URL.")
         .should("be.visible");
 
-      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
+      H.goToMainApp();
       cy.url().should("include", "/test-2");
     });
   });
@@ -772,10 +777,8 @@ function setApplicationFontTo(font) {
   H.updateSetting("application-font", font);
 }
 
-const openSettingsMenu = () =>
-  H.appBar().findByRole("button", { name: "Settings" }).click();
-
-const helpLink = () => H.popover().findByRole("menuitem", { name: "Help" });
+const helpLink = () =>
+  H.getHelpSubmenu().findByRole("menuitem", { name: "Get help" });
 
 const getHelpLinkCustomDestinationInput = () =>
   cy.findByPlaceholderText("Enter a URL it should go to");

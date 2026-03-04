@@ -24,6 +24,7 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
@@ -31,7 +32,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import NewItemMenu from "metabase/common/components/NewItemMenu";
+import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
@@ -237,7 +238,11 @@ export const setup = async ({
   card,
   dataset = createMockDataset(),
   initialRoute = `/question${
-    isSavedCard(card) ? `/${card.id}` : `#${serializeCardForUrl(card)}`
+    card == null
+      ? ""
+      : isSavedCard(card)
+        ? `/${card.id}`
+        : `#${serializeCardForUrl(card)}`
   }`,
 }: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);
@@ -315,6 +320,7 @@ export const setup = async ({
             can_create_native_queries: true,
           }),
         }),
+        settings: mockSettings({ "site-url": "http://localhost:3000" }),
       }),
     },
   );

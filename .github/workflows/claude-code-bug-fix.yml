@@ -70,6 +70,31 @@ jobs:
               core.setFailed(error.message);
             }
 
+      - name: Find linked Linear issue
+        id: find_linear
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ISSUE_NUMBER: ${{ steps.get_issue.outputs.issue_number }}
+        with:
+          script: |
+            const { findLinearIssue } = require('${{ github.workspace }}/.github/scripts/find-linear-issue.js');
+
+            const githubIssueUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/issues/${process.env.ISSUE_NUMBER}`;
+
+            const result = await findLinearIssue({
+              githubIssueUrl,
+              linearApiKey: process.env.LINEAR_API_KEY
+            });
+
+            if (result.success) {
+              console.log(`Found Linear issue: ${result.issue}`);
+              core.setOutput('linear_issue', result.issue);
+            } else {
+              console.log(`Could not find Linear issue: ${result.message}`);
+            }
+
       - name: Set up git configuration
         run: |
           git config --global user.name "Claude Code[bot]"
@@ -205,6 +230,12 @@ jobs:
           mkdir -p .claude-scratchpad
           echo "Scratchpad directory created for Claude's temporary verification files"
 
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
       - name: Generate GitHub App Token for Claude
         uses: actions/create-github-app-token@v1
         id: claude-app-token
@@ -219,7 +250,7 @@ jobs:
           github_token: ${{ steps.claude-app-token.outputs.token }}
           prompt: ${{ env.BUG_FIX_PROMPT }}
           claude_args: |
-            --allowedTools "Bash(yarn test-unit*),Bash(yarn lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
+            --allowedTools "Bash(bun run test-unit*),Bash(bun run lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
             --disallowedTools "Bash(git commit*),Bash(git push*),Bash(gh*)"
 
       - name: Clean up scratchpad directory
@@ -259,6 +290,7 @@ jobs:
             core.setOutput('reviewers', issueCreator);
 
       - name: Create Pull Request
+        id: create_pr
         if: steps.check_changes.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
@@ -278,6 +310,8 @@ jobs:
           title: "Fix: ${{ env.ISSUE_TITLE }}"
           body: |
             This PR automatically fixes the bug reported in #${{ env.ISSUE_NUMBER }}.
+
+            ${{ steps.find_linear.outputs.linear_issue && format('Closes {0}', steps.find_linear.outputs.linear_issue) || '' }}
 
             ## Bug Report
             **Original Issue:** #${{ env.ISSUE_NUMBER }}
@@ -299,7 +333,6 @@ jobs:
             - If issues are found, either fix them or close this PR
 
             ---
-            Closes #${{ env.ISSUE_NUMBER }}
 
             🤖 Generated with [Claude Code](https://claude.ai/code)
 
@@ -309,6 +342,7 @@ jobs:
             automated-fix
             ci skip
           reviewers: ${{ steps.prepare_reviewers.outputs.reviewers }}
+          assignees: ${{ github.actor }}
 
       - name: Log existing branch update
         if: steps.check_changes.outputs.has_changes == 'true' && env.BRANCH_EXISTS == 'true'

@@ -18,16 +18,16 @@ const _AddBadgeListItem = (
     classNames={{
       label: CS.cursorPointer,
     }}
-    bg="var(--mb-color-bg-light)"
+    bg="background-secondary"
     tt="capitalize"
     size="lg"
     variant="transparent"
-    c="var(--mb-color-text-brand)"
+    c="text-brand"
     pr="sm"
     pl="xs"
     leftSection={
       <ActionIcon radius="xl" size="sm" className={CS.bgMediumHover}>
-        <Icon name="add" c="var(--mb-color-text-brand)" size={10} />
+        <Icon name="add" c="text-brand" size={10} />
       </ActionIcon>
     }
     {...rest}

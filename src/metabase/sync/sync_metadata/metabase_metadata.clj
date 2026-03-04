@@ -58,7 +58,7 @@
        (t2/update! :model/Database (u/the-id database) {k value})))))
 
 (mu/defn- sync-metabase-metadata-table!
-  "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other
+  "Databases may include a table named `_metabase_metadata` (case-insensitive) which includes descriptions or other
   metadata about the `Tables` and `Fields` it contains. This table is *not* synced normally, i.e. a Metabase `Table`
   is not created for it. Instead, *this* function is called, which reads the data it contains and updates the relevant
   Metabase objects.

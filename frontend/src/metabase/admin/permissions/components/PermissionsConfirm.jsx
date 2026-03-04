@@ -40,7 +40,7 @@ const TableAccessChange = ({ tables, verb, colorClassName }) => {
   );
 };
 
-const PermissionsConfirm = ({ diff }) => (
+export const PermissionsConfirm = ({ diff }) => (
   <div>
     {Object.values(diff.groups).map((group, groupIndex) =>
       Object.values(group.databases).map((database, databaseIndex) => (
@@ -102,5 +102,3 @@ const PermissionsConfirm = ({ diff }) => (
     )}
   </div>
 );
-
-export default PermissionsConfirm;

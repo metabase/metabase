@@ -10,7 +10,7 @@ export const rootStyle = css`
   height: 100%; /* ensure the entire page will fill the window */
   display: flex;
   flex-direction: column;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 `;

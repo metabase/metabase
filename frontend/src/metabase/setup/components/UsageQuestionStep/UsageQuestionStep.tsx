@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { useDispatch } from "metabase/lib/redux";
 import { Divider, Radio, Stack, Text } from "metabase/ui";
 import type { UsageReason } from "metabase-types/api";
@@ -65,7 +65,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
         onChange={handleChange}
         label={
           <Text
-            color="text-light"
+            color="text-tertiary"
             fw="normal"
           >{t`Let us know your plans with Metabase so that we can best guide you`}</Text>
         }

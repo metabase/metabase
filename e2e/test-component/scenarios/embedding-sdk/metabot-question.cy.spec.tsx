@@ -1,6 +1,9 @@
 const { H } = cy;
 
-import { MetabotQuestion } from "@metabase/embedding-sdk-react";
+import {
+  InteractiveQuestion,
+  MetabotQuestion,
+} from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -41,6 +44,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       body: response,
     });
 
+    cy.log("Create a question");
     H.createQuestion({
       name: "1",
       query: {
@@ -52,6 +56,14 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
     }).then(({ body: question }) => {
       cy.wrap(question.id).as("questionId");
       cy.wrap(question.entity_id).as("questionEntityId");
+    });
+
+    cy.log("Create a collection");
+    cy.request("POST", "/api/collection", {
+      name: "first_collection",
+      description: "First collection",
+    }).then(({ body }) => {
+      cy.wrap(body.id).as("collectionId");
     });
 
     cy.signOut();
@@ -67,6 +79,43 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
 
       cy.findByTestId("visualization-root").should("exist");
+    });
+  });
+
+  it("should allow saving a question", () => {
+    cy.intercept("POST", "/api/card").as("postCard");
+
+    setup(metabotResponseWithNavigateTo);
+
+    cy.get("@collectionId").then((collectionId) => {
+      mountSdkContent(
+        <MetabotQuestion isSaveEnabled targetCollection={collectionId} />,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByTestId("metabot-chat-input").type("Show orders {enter}");
+
+        cy.findByTestId("visualization-root").should("exist");
+
+        cy.findByText("Save").should("be.visible").click();
+
+        H.modal().within(() => {
+          cy.findByText("Save new question").should("be.visible");
+          cy.findByRole("button", { name: "Save" }).click();
+        });
+      });
+
+      cy.wait("@postCard").then((interception) => {
+        const response = interception.response?.body;
+        const questionId = response.id;
+
+        mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+        getSdkRoot().within(() => {
+          cy.findByText(
+            "Orders, Max of Quantity, Grouped by Product ID, 2 rows",
+          ).should("be.visible");
+        });
+      });
     });
   });
 
@@ -261,6 +310,27 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       "have.been.calledWith",
       'Invalid layout for MetabotQuestion: foobar. Valid values are "stacked", "sidebar", or "auto"',
     );
+  });
+});
+
+describe("scenarios > embedding-sdk > metabot-question > enablement", () => {
+  it("should show an error when embedded-metabot-enabled? is false", () => {
+    signInAsAdminAndEnableEmbeddingSdk();
+
+    cy.log("Disable embedded metabot");
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
+
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByText("Metabot is not enabled for embedded analytics.").should(
+        "be.visible",
+      );
+      cy.findByTestId("metabot-question-container").should("not.exist");
+    });
   });
 });
 

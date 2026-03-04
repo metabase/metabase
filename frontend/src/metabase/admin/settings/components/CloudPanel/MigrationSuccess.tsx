@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import type { Plan } from "metabase/common/utils/plan";
 import { color } from "metabase/lib/colors";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";

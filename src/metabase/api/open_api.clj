@@ -4,6 +4,7 @@
   Actual implementation for [[metabase.api.macros/defendpoint]] endpoints lives
   in [[metabase.api.macros.defendpoint.open-api]]. "
   (:require
+   [metabase.config.core :as config]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -59,9 +60,16 @@
   (pretty [_this]
     (list `handler-with-open-api-spec handler spec-fn)))
 
+(mr/def ::spec.info.license
+  [:map
+   [:name :string]
+   [:url  {:optional true} :string]])
+
 (mr/def ::spec.info
   [:map
-   [:title   [:= "Metabase API"]]])
+   [:title   [:= "Metabase API"]]
+   [:version :string]
+   [:license {:optional true} ::spec.info.license]])
 
 (mr/def ::path
   :string)
@@ -96,7 +104,7 @@
    [:map
 
     [:type [:= :string]]
-    [:format    {:optional true} [:enum :binary "binary" :byte "byte" :uuid "uuid"]]
+    [:format    {:optional true} [:enum :binary "binary" :byte "byte" :uuid "uuid" :date-time "date-time"]]
     [:minLength {:optional true} integer?]
     [:maxLength {:optional true} integer?]
     [:pattern   {:optional true} (ms/InstanceOfClass java.util.regex.Pattern)]]])
@@ -286,6 +294,7 @@
 
 (mr/def ::path-item
   [:map
+   [:operationId :string]
    [:summary     :string]
    [:description :string]
    [:parameters  [:sequential ::parameter]]
@@ -294,9 +303,20 @@
    [:deprecated  {:optional true} :boolean]
    [:responses   ::path-item.responses]])
 
+(mr/def ::security-scheme
+  [:map
+   [:type :string]
+   [:in {:optional true} :string]
+   [:name {:optional true} :string]
+   [:description {:optional true} :string]])
+
 (mr/def ::components
   [:map
-   [:schemas [:map-of :string ::parameter.schema]]])
+   [:schemas [:map-of :string ::parameter.schema]]
+   [:securitySchemes {:optional true} [:map-of :string ::security-scheme]]])
+
+(mr/def ::security-requirement
+  [:map-of :string [:sequential :string]])
 
 (mr/def ::spec
   "Based on https://swagger.io/specification/."
@@ -304,7 +324,8 @@
    [:openapi    {:optional true} :string]
    [:info       {:optional true} ::spec.info]
    [:paths      [:map-of ::path [:map-of ::method ::path-item]]]
-   [:components ::components]])
+   [:components ::components]
+   [:security   {:optional true} [:sequential ::security-requirement]]])
 
 (defn handler-with-open-api-spec
   "Attach `spec-fn`, which has the signature
@@ -321,10 +342,20 @@
   https://spec.openapis.org/oas/latest.html#openapi-object"
   [handler :- [:=> [:cat :map fn? fn?] any?]]
   {:closed true}
-  (merge
-   {:openapi "3.1.0"
-    :info    {:title   "Metabase API"}}
-   (open-api-spec handler "/api")))
+  (let [base-spec (open-api-spec handler "/api")]
+    (-> base-spec
+        (assoc :openapi "3.1.0"
+               :info    {:title   "Metabase API"
+                         :version (:tag config/mb-version-info)
+                         :license {:name "AGPL-3.0"
+                                   :url  "https://www.gnu.org/licenses/agpl-3.0.html"}}
+               ;; Apply session auth to all endpoints by default
+               :security [{"ApiKeyAuth" []}])
+        (assoc-in [:components :securitySchemes]
+                  {"ApiKeyAuth" {:type        "apiKey"
+                                 :in          "header"
+                                 :name        "X-Metabase-Session"
+                                 :description "Session token obtained from /api/session endpoint"}}))))
 
 #_:clj-kondo/ignore
 (comment

@@ -28,6 +28,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -42,6 +43,7 @@
     Connection
     ResultSet
     ResultSetMetaData
+    Statement
     Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
@@ -88,7 +90,9 @@
                               :database-routing         true
                               :transforms/table         true
                               :transforms/python        true
-                              :metadata/table-existence-check true}]
+                              :transforms/index-ddl     true
+                              :metadata/table-existence-check true
+                              :workspace                true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -157,8 +161,10 @@
 (defmethod driver/connection-properties :postgres
   [_]
   (->>
-   [driver.common/default-host-details
-    (assoc driver.common/default-port-details :placeholder 5432)
+   [{:type :group
+     :container-style ["grid" "3fr 1fr"]
+     :fields [driver.common/default-host-details
+              (assoc driver.common/default-port-details :placeholder 5432)]}
     driver.common/default-dbname-details
     driver.common/default-user-details
     (driver.common/auth-provider-options)
@@ -169,50 +175,52 @@
      :type :schema-filters
      :display-name "Schemas"
      :visible-if {"destination-database" false}}
-    driver.common/default-ssl-details
-    {:name         "ssl-mode"
-     :display-name (trs "SSL Mode")
-     :type         :select
-     :options [{:name  "allow"
-                :value "allow"}
-               {:name  "prefer"
-                :value "prefer"}
-               {:name  "require"
-                :value "require"}
-               {:name  "verify-ca"
-                :value "verify-ca"}
-               {:name  "verify-full"
-                :value "verify-full"}]
-     :default "require"
-     :visible-if {"ssl" true}}
-    {:name         "ssl-root-cert"
-     :display-name (trs "SSL Root Certificate (PEM)")
-     :type         :secret
-     :secret-kind  :pem-cert
-     ;; only need to specify the root CA if we are doing one of the verify modes
-     :visible-if   {"ssl-mode" ["verify-ca" "verify-full"]}}
-    {:name         "ssl-use-client-auth"
-     :display-name (trs "Authenticate client certificate?")
-     :type         :boolean
-     ;; TODO: does this somehow depend on any of the ssl-mode vals?  it seems not (and is in fact orthogonal)
-     :visible-if   {"ssl" true}}
-    {:name         "ssl-client-cert"
-     :display-name (trs "SSL Client Certificate (PEM)")
-     :type         :secret
-     :secret-kind  :pem-cert
-     :visible-if   {"ssl-use-client-auth" true}}
-    {:name         "ssl-key"
-     :display-name (trs "SSL Client Key (PKCS-8/DER)")
-     :type         :secret
-     ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
-     :secret-kind  :binary-blob
-     :visible-if   {"ssl-use-client-auth" true}}
-    {:name         "ssl-key-password"
-     :display-name (trs "SSL Client Key Password")
-     :type         :secret
-     :secret-kind  :password
-     :visible-if   {"ssl-use-client-auth" true}}
-    driver.common/ssh-tunnel-preferences
+    {:type :group
+     :container-style ["component" "backdrop"]
+     :fields [driver.common/default-ssl-details
+              {:name         "ssl-mode"
+               :display-name (trs "SSL Mode")
+               :type         :select
+               :options [{:name  "allow"
+                          :value "allow"}
+                         {:name  "prefer"
+                          :value "prefer"}
+                         {:name  "require"
+                          :value "require"}
+                         {:name  "verify-ca"
+                          :value "verify-ca"}
+                         {:name  "verify-full"
+                          :value "verify-full"}]
+               :default "require"
+               :visible-if {"ssl" true}}
+              {:name         "ssl-root-cert"
+               :display-name (trs "SSL Root Certificate (PEM)")
+               :type         :secret
+               :secret-kind  :pem-cert
+               ;; only need to specify the root CA if we are doing one of the verify modes
+               :visible-if   {"ssl-mode" ["verify-ca" "verify-full"]}}
+              {:name         "ssl-use-client-auth"
+               :display-name (trs "Authenticate client certificate?")
+               :type         :boolean
+               ;; TODO: does this somehow depend on any of the ssl-mode vals?  it seems not (and is in fact orthogonal)
+               :visible-if   {"ssl" true}}
+              {:name         "ssl-client-cert"
+               :display-name (trs "SSL Client Certificate (PEM)")
+               :type         :secret
+               :secret-kind  :pem-cert
+               :visible-if   {"ssl-use-client-auth" true}}
+              {:name         "ssl-key"
+               :display-name (trs "SSL Client Key (PKCS-8/DER)")
+               :type         :secret
+               ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
+               :secret-kind  :binary-blob
+               :visible-if   {"ssl-use-client-auth" true}}
+              {:name         "ssl-key-password"
+               :display-name (trs "SSL Client Key Password")
+               :type         :secret
+               :secret-kind  :password
+               :visible-if   {"ssl-use-client-auth" true}}
+              driver.common/ssh-tunnel-preferences]}
     driver.common/advanced-options-start
     driver.common/json-unfolding
 
@@ -253,7 +261,12 @@
                            :else nil]
                           :type]
                          [:d.description :description]
-                         [:stat.n_live_tup :estimated_row_count]]
+                         ;; In many cases tables will yield 0 as they have not been analyzed (recently).
+                         ;; if they actually have 0 rows, showing they have 0 is mostly uninteresting.
+                         ;; so we 'hide' 0, as on balance it seems to cause _less_ confusion.
+                         ;; Also considered: analyze during sync, doing a bounded count or limited scan.
+                         ;; we might change our mind on this when we explore estimates with more drivers.
+                         [[:nullif :stat.n_live_tup 0] :estimated_row_count]]
              :from      [[:pg_catalog.pg_class :c]]
              :join      [[:pg_catalog.pg_namespace :n]   [:= :c.relnamespace :n.oid]]
              :left-join [[:pg_catalog.pg_description :d] [:and [:= :c.oid :d.objoid] [:= :d.objsubid 0] [:= :d.classoid [:raw "'pg_class'::regclass"]]]
@@ -1286,7 +1299,9 @@
                {:name "Render" :pattern "\\.render\\.com$"}
                {:name "Scaleway" :pattern "\\.scw\\.cloud$"}
                {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
-               {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]})
+               {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]
+   :field-groups [{:id "host-and-port"
+                   :container-style "host-and-port-section"}]})
 
 ;; Custom nippy handling for PGobject to enable proper caching of postgres domains in arrays (#55301)
 
@@ -1300,3 +1315,77 @@
   (let [type  (nippy/thaw-from-in! data-input)
         value (nippy/thaw-from-in! data-input)]
     (doto (PGobject.) (.setType type) (.setValue value))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- user-exists?
+  "Check if a PostgreSQL user exists. Uses pg_user which also works in Redshift."
+  [conn username]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
+
+(defmethod driver/init-workspace-isolation! :postgres
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
+                     :password (driver.u/random-workspace-password)}]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      ;; Create user if not exists, otherwise update password
+      ;; PostgreSQL doesn't support CREATE USER IF NOT EXISTS, so we need to check first
+      (let [user-sql (if (user-exists? t-conn (:user read-user))
+                       (format "ALTER USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user))
+                       (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user)))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql [;; PostgreSQL supports IF NOT EXISTS for schemas
+                       (format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)
+                       user-sql
+                       ;; grant schema access (CREATE to create tables, USAGE to access them)
+                       ;; GRANT is idempotent in PostgreSQL
+                       (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO \"%s\"" schema-name (:user read-user))
+                       ;; grant all privileges on future tables created in this schema (by admin)
+                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\"" schema-name (:user read-user))
+                       ;; grant role membership to admin so DROP OWNED BY works during cleanup
+                       (format "GRANT \"%s\" TO CURRENT_USER" (:user read-user))]]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))
+    {:schema           schema-name
+     :database_details read-user}))
+
+(defmethod driver/destroy-workspace-isolation! :postgres
+  [_driver database workspace]
+  (let [schema-name (:schema workspace)
+        username    (-> workspace :database_details :user)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql (cond-> [(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name)]
+                      (user-exists? t-conn username)
+                      (into [(format "DROP OWNED BY \"%s\"" username)
+                             (format "DROP USER IF EXISTS \"%s\"" username)]))]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))
+
+(defmethod driver/grant-workspace-read-access! :postgres
+  [_driver database workspace tables]
+  (let [username       (-> workspace :database_details :user)
+        ;; Collect all unique source schemas that contain the tables we need to grant access to
+        source-schemas (into #{} (keep :schema) tables)
+        ;; Grant USAGE on source schemas, then SELECT on each table
+        ;; Note: workspace schema already has ALL PRIVILEGES from init, so no need to grant USAGE there
+        sqls           (concat
+                        ;; USAGE on each source schema containing tables we're granting access to
+                        (for [s source-schemas]
+                          (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" s username))
+                        ;; SELECT on each table
+                        (for [{s :schema, t :name} tables]
+                          (if (str/blank? s)
+                            (format "GRANT SELECT ON TABLE \"%s\" TO \"%s\"" t username)
+                            (format "GRANT SELECT ON TABLE \"%s\".\"%s\" TO \"%s\"" s t username))))]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+        (doseq [sql sqls]
+          (.addBatch ^Statement stmt ^String sql))
+        (.executeBatch ^Statement stmt)))))
+
+(defmethod driver/llm-sql-dialect-resource :postgres [_]
+  "llm/prompts/dialects/postgresql.md")

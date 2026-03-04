@@ -2,7 +2,7 @@
   height: 100%;
   position: relative;
   border-radius: var(--mantine-radius-md);
-  background-color: var(--mb-color-background-light);
+  background-color: var(--mb-color-background-secondary);
   border: 1px solid transparent;
   transition:
     background-color 150ms,
@@ -11,8 +11,8 @@
   &:hover {
     background-color: color-mix(
       in srgb,
-      var(--mb-color-background-inverse) 2%,
-      var(--mb-color-background-light)
+      var(--mb-color-background-primary-inverse) 2%,
+      var(--mb-color-background-secondary)
     );
   }
 
@@ -67,7 +67,7 @@
 .placeholder {
   position: absolute;
   pointer-events: none;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .commentsButton[data-variant="default"]:not(:hover) {

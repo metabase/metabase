@@ -2,7 +2,7 @@
 // used for detecting if we're previewing an embed
 export const IFRAMED_IN_SELF = (function () {
   try {
-    return window.self !== window.parent && window.parent.METABASE;
+    return window.self !== window.parent && Boolean(window.parent.METABASE);
   } catch (e) {
     return false;
   }

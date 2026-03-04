@@ -89,6 +89,24 @@ const barData: BarData<GroupedDatum> = {
 
 describe("events utils", () => {
   describe("getHoverData", () => {
+    it("returns dimension key based on axis title setting when set", () => {
+      const keyValueData = getHoverData(
+        barData,
+        {
+          "graph.x_axis.title_text": "My Custom Dimension Label",
+        },
+        {
+          dimension: chartColumns.dimension,
+          metrics: [chartColumns.metrics[0]],
+        },
+        datasetColumns,
+        [series1],
+        seriesColors,
+      ).data;
+
+      expect(keyValueData?.[0].key).toBe("My Custom Dimension Label");
+    });
+
     it("returns key-value pairs based on series_settings for charts without a breakout", () => {
       const keyValueData = getHoverData(
         barData,
@@ -185,6 +203,117 @@ describe("events utils", () => {
       ).stackedTooltipModel;
 
       expect(tooltipModel).not.toBeDefined();
+    });
+
+    it("handles breakout where datum has fewer rawRows than seriesIndex (UXW-2597)", () => {
+      // Simulates: SELECT 'Production' as stage, 'App1' as application, 'Finished' as status, 2000000 as x
+      //            UNION SELECT 'Development', 'App2', 'Finished', 2000000
+      // Each dimension value has only one breakout value, but series are created for all breakout values
+      const dataWithSparseBreakout: GroupedDatum[] = [
+        {
+          dimensionValue: "Production",
+          metrics: { x: 2000000 },
+          isClickable: true,
+          rawRows: [["Production", "App1", "Finished", 2000000]],
+          breakout: {
+            App1: {
+              metrics: { x: 2000000 },
+              rawRows: [["Production", "App1", "Finished", 2000000]],
+            },
+          },
+        },
+        {
+          dimensionValue: "Development",
+          metrics: { x: 2000000 },
+          isClickable: true,
+          rawRows: [["Development", "App2", "Finished", 2000000]],
+          breakout: {
+            App2: {
+              metrics: { x: 2000000 },
+              rawRows: [["Development", "App2", "Finished", 2000000]],
+            },
+          },
+        },
+      ];
+
+      const datasetColumns = [
+        createMockColumn({ name: "stage", display_name: "Stage" }),
+        createMockColumn({ name: "application", display_name: "Application" }),
+        createMockColumn({ name: "status", display_name: "Status" }),
+        createMockNumericColumn({ name: "x", display_name: "X" }),
+      ];
+
+      const columnsMap = {
+        stage: datasetColumns[0],
+        application: datasetColumns[1],
+        status: datasetColumns[2],
+        x: datasetColumns[3],
+      };
+
+      const chartColumns: BreakoutChartColumns = {
+        dimension: { index: 0, column: columnsMap.stage },
+        breakout: { index: 1, column: columnsMap.application },
+        metric: { index: 3, column: columnsMap.x },
+      };
+
+      const seriesApp1: Series<GroupedDatum, SeriesInfo> = {
+        seriesKey: "App1",
+        seriesName: "App1",
+        seriesInfo: {
+          metricColumn: columnsMap.x,
+          dimensionColumn: columnsMap.stage,
+          breakoutValue: "App1",
+        },
+        xAccessor: (datum: GroupedDatum) => datum.metrics["x"],
+        yAccessor: SERIES_Y_ACCESSOR,
+      };
+
+      const seriesApp2: Series<GroupedDatum, SeriesInfo> = {
+        seriesKey: "App2",
+        seriesName: "App2",
+        seriesInfo: {
+          metricColumn: columnsMap.x,
+          dimensionColumn: columnsMap.stage,
+          breakoutValue: "App2",
+        },
+        xAccessor: (datum: GroupedDatum) => datum.metrics["x"],
+        yAccessor: SERIES_Y_ACCESSOR,
+      };
+
+      const seriesColors = {
+        App1: "#509EE3",
+        App2: "#88BF4D",
+      };
+
+      // Hover on Development/App2 bar - seriesIndex is 1 but datum.rawRows.length is 1
+      const barData: BarData<GroupedDatum> = {
+        isNegative: false,
+        xStartValue: 0,
+        xEndValue: 2000000,
+        yValue: "Development",
+        datum: dataWithSparseBreakout[1],
+        datumIndex: 1,
+        series: seriesApp2,
+        seriesIndex: 1, // Second series, but datum only has 1 rawRow
+      };
+
+      // Should not throw and should return correct status value from breakout-specific rawRows
+      const tooltipData = getHoverData(
+        barData,
+        { "graph.dimensions": ["stage", "application"] },
+        chartColumns,
+        datasetColumns,
+        [seriesApp1, seriesApp2],
+        seriesColors,
+      );
+
+      expect(tooltipData.data).toBeDefined();
+      expect(
+        tooltipData.data?.find(({ col }) => col?.name === "status")?.value,
+      ).toBe("Finished");
+      expect(
+        tooltipData.data?.find(({ col }) => col?.name === "x")?.value,
+      ).toBe(2000000);
     });
 
     it("does handle data with breakout correctly (metabase#64931)", () => {

@@ -40,7 +40,7 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
 
     Object.entries(DASHBOARD_SQL_DATE_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         dateFilterSelector({
           filterType: filter,
@@ -61,14 +61,14 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
   it("should work when set as the default filter", () => {
     H.setFilter("Date picker", "Month and Year");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
       month: "Oct",
       year: "2022",
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     H.popover().contains("Month and Year").click();
     H.saveDashboard();
@@ -79,10 +79,10 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
     });
 
     // Make sure we can override the default value
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("October 2022").click();
     H.popover().contains("Aug").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Macy Olson");
   });
 });

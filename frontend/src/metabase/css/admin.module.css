@@ -32,13 +32,13 @@
 }
 
 .ContentTable th {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   padding: 1em;
 }
 
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
-  background-color: var(--mb-color-brand-alpha-04);
+  background-color: var(--mb-color-background-hover);
 }
 
 .ContentTable tr:hover .TableActions {
@@ -47,7 +47,7 @@
 }
 
 .AdminList {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border: var(--border-size) var(--border-style) var(--mb-color-border);
   border-radius: var(--default-border-radius);
   width: 266px;
@@ -66,7 +66,7 @@
   bottom: 0;
   margin: auto;
   margin-left: 1em;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .AdminListSearch .AdminInput {
@@ -92,7 +92,7 @@
 
 .AdminListItem.selected,
 .AdminListItem:hover {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   border-color: var(--mb-color-border);
   margin-left: -0.5em;
   margin-right: -0.5em;
@@ -105,16 +105,16 @@
   margin-top: 1em;
   padding: 0.5em 1em 0.5em 1em;
   text-transform: uppercase;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-weight: 700;
   font-size: smaller;
   padding-right: 15px; /* set so that table visibility icons align */
 }
 
 .AdminInput {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   padding: var(--padding-1);
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border: 1px solid transparent;
 }
 
@@ -152,7 +152,7 @@
 
 .AdminTable th {
   text-transform: uppercase;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   padding: var(--padding-1);
   font-weight: normal;
 }

@@ -73,6 +73,7 @@ export const StrategyForm = ({
   shouldShowName = true,
   onReset,
   isInSidebar = false,
+  classNames,
   buttonLabels = isInSidebar
     ? {
         save: t`Save`,
@@ -94,6 +95,7 @@ export const StrategyForm = ({
   onReset?: () => void;
   buttonLabels?: ButtonLabels;
   isInSidebar?: boolean;
+  classNames?: { formBox?: string };
 }) => {
   const defaultStrategy: CacheStrategy = useMemo(
     () => ({
@@ -123,6 +125,7 @@ export const StrategyForm = ({
         buttonLabels={buttonLabels}
         isInSidebar={isInSidebar}
         strategyType={initialValues.type}
+        classNames={classNames}
       />
     </FormProvider>
   );
@@ -163,6 +166,7 @@ const StrategyFormBody = ({
   shouldShowName = true,
   buttonLabels,
   isInSidebar,
+  classNames,
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -173,6 +177,7 @@ const StrategyFormBody = ({
   shouldShowName?: boolean;
   buttonLabels: ButtonLabels;
   isInSidebar?: boolean;
+  classNames?: { formBox?: string };
 }) => {
   const { values, initialValues, setFieldValue } =
     useFormikContext<CacheStrategy>();
@@ -229,15 +234,15 @@ const StrategyFormBody = ({
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
         <Box
-          className={cx(Styles.FormBox, {
+          className={cx(Styles.FormBox, classNames?.formBox, {
             [Styles.FormBoxSidebar]: isInSidebar,
           })}
         >
           {shouldShowName && (
-            <Box lh="1rem" pt="md" color="text-medium">
+            <Box lh="1rem" pt="md" color="text-secondary">
               <Group gap="sm">
                 {targetModel === "database" && (
-                  <FixedSizeIcon name="database" color="inherit" />
+                  <FixedSizeIcon name="database" c="inherit" />
                 )}
                 <Text fw="bold" py="1rem">
                   {targetName}
@@ -481,10 +486,10 @@ const StrategySelector = ({
       <FormRadioGroup
         label={
           <Stack gap="xs">
-            <Text lh="1rem" color="text-medium" id={headingId}>
+            <Text lh="1rem" color="text-secondary" id={headingId}>
               {t`Select the cache invalidation policy`}
             </Text>
-            <Text lh="1rem" fw="normal" size="sm" color="text-medium">
+            <Text lh="1rem" fw="normal" size="sm" color="text-secondary">
               {t`This determines how long cached results will be stored.`}
             </Text>
           </Stack>

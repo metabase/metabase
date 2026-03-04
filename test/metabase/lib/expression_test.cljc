@@ -126,6 +126,17 @@
     (is (= "Date - 1 day"
            (lib/display-name (lib.tu/venues-query) -1 clause)))))
 
+(deftest ^:parallel datetime-subtract-names-test
+  (let [clause [:datetime-subtract
+                {}
+                (lib.tu/field-clause :checkins :date {:base-type :type/Date})
+                1
+                :day]]
+    (is (= "DATE_minus_1_day"
+           (lib/column-name (lib.tu/venues-query) -1 clause)))
+    (is (= "Date - 1 day"
+           (lib/display-name (lib.tu/venues-query) -1 clause)))))
+
 (deftest ^:parallel expression-reference-names-test
   (let [query (-> (lib.tu/venues-query)
                   (lib/expression "double-price"

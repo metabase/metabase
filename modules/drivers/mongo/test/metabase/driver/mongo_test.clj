@@ -298,7 +298,7 @@
             (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
             (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
 
-          (testing "compount index"
+          (testing "compound index"
             (mongo.connection/with-mongo-database [db (mt/db)]
               (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
             (sync/sync-database! (mt/db))
@@ -671,11 +671,12 @@
 (deftest xrays-test
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
-      (is (empty?
-           (lib.util.match/match-one (->> (magic/automagic-analysis (t2/select-one :model/Field :id (mt/id :venues :price)) {})
-                                          :dashcards
-                                          (mapcat (comp :breakout :query :dataset_query :card)))
-             [:field _ (_ :guard :binning)]))))))
+      (is (nil?
+           (lib.util.match/match-lite
+             (->> (magic/automagic-analysis (t2/select-one :model/Field :id (mt/id :venues :price)) {})
+                  :dashcards
+                  (mapcat (comp :breakout :query :dataset_query :card)))
+             [:field _ (_ :guard :binning)] true))))))
 
 (deftest no-values-test
   (mt/test-driver :mongo
@@ -1011,9 +1012,9 @@
 
   Forward bindings become delays of results of functions used in mongo's describe-table:
 
-  - `dbfields`     : reuslt of [[mongo/fetch-dbfields]],
-  - `ftree`        : reuslt of [[mongo/dbfields->ftree]],
-  - `nested-fields`: reuslt of [[mongo/ftree->nested-fields]]."
+  - `dbfields`     : result of [[mongo/fetch-dbfields]],
+  - `ftree`        : result of [[mongo/dbfields->ftree]],
+  - `nested-fields`: result of [[mongo/ftree->nested-fields]]."
   [documents & body]
   `(do-with-describe-table-for-sample ~documents (fn [~'dbfields ~'ftree ~'nested-fields] ~@body)))
 

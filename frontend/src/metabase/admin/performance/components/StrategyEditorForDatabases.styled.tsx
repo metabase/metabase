@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 
 export const Panel = styled.section<{ hasLeftBorder?: boolean }>`
   overflow-y: auto;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   height: 100%;
 
   ${(props) =>

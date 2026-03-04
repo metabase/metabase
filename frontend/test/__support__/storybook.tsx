@@ -34,11 +34,13 @@ export const ReduxProvider = ({
 
 export const VisualizationWrapper = ({
   theme,
+  displayTheme,
   children,
   initialStore = createMockState(),
 }: {
   children: React.ReactElement;
   theme?: MantineThemeOverride;
+  displayTheme?: "light" | "dark";
   initialStore?: State;
 }) => {
   const store = getStore(mainReducers, initialStore);
@@ -49,6 +51,7 @@ export const VisualizationWrapper = ({
       withRouter={false}
       withKBar={false}
       theme={theme}
+      displayTheme={displayTheme}
       withDND
       withCssVariables
     >
@@ -113,6 +116,7 @@ export const SdkVisualizationStory = ({
   theme,
 }: IsomorphicVisualizationStoryProps & { theme?: MetabaseTheme }) => {
   return (
+    // @ts-expect-error story file
     <Box w={1000} h={600} bg={theme?.colors?.background}>
       <VisualizationWrapper>
         <SdkThemeProvider theme={theme}>

@@ -91,7 +91,7 @@ export const RefreshWidget = (
             tt="uppercase"
             mb="md"
             ml="sm"
-            c="text-medium"
+            c="text-secondary"
           >{t`Auto Refresh`}</Box>
           <ul>
             {OPTIONS.map((option) => (

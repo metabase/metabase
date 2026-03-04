@@ -17,7 +17,7 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
   color: ${(props) =>
-    props.isSelected ? color("text-white") : color("brand")};
+    props.isSelected ? color("text-primary-inverse") : color("brand")};
   background-color: ${(props) => (props.isSelected ? color("brand") : "unset")};
   padding-left: ${(props) => props.depth + 0.5}rem;
   padding-right: 0.5rem;

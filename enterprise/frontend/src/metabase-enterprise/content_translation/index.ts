@@ -2,9 +2,13 @@ import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ContentTranslationConfiguration } from "./components";
-import { contentTranslationEndpoints } from "./constants";
+import {
+  contentTranslationEndpoints,
+  dictionaryEndpointStore,
+} from "./constants";
 import { useTranslateContent } from "./use-translate-content";
 import {
+  translateColumnDisplayName,
   translateDisplayNames,
   useSortByContentTranslation,
   useTranslateFieldValuesInHoveredObject,
@@ -25,14 +29,24 @@ export function initializePlugin() {
       useTranslateFieldValuesInHoveredObject,
       useTranslateSeries,
       getDictionaryBasePath,
+      setEndpointsForAuthEmbedding: () => {
+        if (contentTranslationEndpoints.getDictionary) {
+          return;
+        }
+
+        dictionaryEndpointStore.setEndpoint(getDictionaryBasePath);
+      },
       setEndpointsForStaticEmbedding: (encodedToken: string) => {
         if (contentTranslationEndpoints.getDictionary) {
           return;
         }
 
-        contentTranslationEndpoints.getDictionary = `${getDictionaryBasePath}/${encodedToken}`;
+        dictionaryEndpointStore.setEndpoint(
+          `${getDictionaryBasePath}/${encodedToken}`,
+        );
       },
       translateDisplayNames,
+      translateColumnDisplayName,
       ContentTranslationConfiguration,
     });
   }

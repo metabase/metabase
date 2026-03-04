@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
+import * as Urls from "metabase/lib/urls";
 import { Anchor, Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
 import {
@@ -32,13 +33,17 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
     return (
       <Box w="18rem">
         <Text
-          c="text-white"
+          c="text-primary-inverse"
           fw={700}
         >{t`Editing unavailable: no PK defined`}</Text>
-        <Text c="text-white">{jt`Add a primary key in your database or set an ${(
+        <Text c="text-primary-inverse">{jt`Add a primary key in your database or set an ${(
           <Anchor
             component={Link}
-            to={`/data-studio/data/database/${table?.db_id}/schema/${table?.schema}/table/${table?.id}`}
+            to={Urls.dataStudioData({
+              databaseId: table?.db_id,
+              schemaName: table?.schema,
+              tableId: table?.id,
+            })}
             disabled={!table}
             key="entity-key-link"
             target="_blank"
@@ -52,8 +57,8 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
   if (showDetails) {
     return (
       <Stack gap="0.5rem" w="30rem" maw="100%">
-        <Text c="text-white">{t`Couldn't save table changes:`}</Text>
-        <Text c="text-white" style={{ fontFamily: "monospace" }}>
+        <Text c="text-primary-inverse">{t`Couldn't save table changes:`}</Text>
+        <Text c="text-primary-inverse" style={{ fontFamily: "monospace" }}>
           {errorMessage}
         </Text>
       </Stack>
@@ -64,12 +69,15 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
     <Group gap="2.5rem" w="20rem">
       <Group gap="0.5rem">
         <Icon name="warning" c="danger" size={12} />
-        <Text c="text-white" fw={700}>{t`Couldn't save table changes`}</Text>
+        <Text
+          c="text-primary-inverse"
+          fw={700}
+        >{t`Couldn't save table changes`}</Text>
       </Group>
 
       <Button
         size="compact-lg"
-        color="bg-darker"
+        c="background-secondary-inverse"
         variant="filled"
         autoContrast
         radius="0.5rem"

@@ -69,6 +69,7 @@ const ORDERS_MULTI_STAGE_QUESTION = {
 describe("scenarios > metrics > editing", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsNormalUser();
   });
 
@@ -120,11 +121,24 @@ describe("scenarios > metrics > editing", () => {
         .should("be.visible")
         .click();
 
+      cy.log("Verify metric_create_started event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_create_started",
+        triggered_from: "browse_metrics",
+      });
+
       H.miniPicker().within(() => {
         cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       saveMetric();
+
+      cy.log("Verify metric_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_created",
+        triggered_from: "main_app",
+        result: "success",
+      });
 
       cy.log("Go to the collection this metric was saved in");
       cy.findByTestId("head-crumbs-container")
@@ -297,10 +311,9 @@ describe("scenarios > metrics > editing", () => {
       });
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Data").click();
+        cy.findByText("Sample Database").click();
         cy.findByText("Orders").should("be.visible");
-        // FIXME: metabase#66210
-        // cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
       });
     });
 
@@ -387,12 +400,12 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC);
       H.startNewMetric();
-      cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
+      cy.intercept("POST", "/api/dataset/query_metadata").as("metadata");
       H.miniPicker().within(() => {
         cy.findByText("Our analytics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });
-      cy.wait("@queryMetadata");
+      cy.wait("@metadata");
       H.getNotebookStep("summarize")
         .findByText(ORDERS_SCALAR_METRIC.name)
         .click();
@@ -504,7 +517,7 @@ function getActionButton(title) {
 }
 
 function getPlusButton() {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy.findAllByTestId("notebook-cell-item").last();
 }
 
@@ -570,7 +583,7 @@ function addBreakout({ tableName, columnName, bucketName, stageIndex }) {
   }
   if (bucketName) {
     H.popover().findByLabelText(columnName).findByText("by month").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText(bucketName).click();
   } else {
     H.popover().findByText(columnName).click();

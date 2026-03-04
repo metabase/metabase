@@ -32,7 +32,7 @@ export function VirtualizedList({
     count: children.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => estimatedItemSize,
-    overscan: 5, // makes unit testing easier
+    overscan: Number(process.env.OVERSCAN) || 5, // makes unit testing easier
   });
 
   const items = virtualizer.getVirtualItems();

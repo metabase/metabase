@@ -1,7 +1,7 @@
 (ns metabase.plugins.init-steps
   "Logic for performing the `init-steps` listed in a Metabase plugin's manifest. For driver plugins that specify that we
   should `lazy-load`, these steps are lazily performed the first time non-trivial driver methods (such as connecting
-  to a Database) are called; for all other Metabase plugins these are perfomed during launch.
+  to a Database) are called; for all other Metabase plugins these are performed during launch.
 
   The entire list of possible init steps is below, as impls for the `do-init-step!` multimethod."
   (:require

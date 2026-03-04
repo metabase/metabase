@@ -77,6 +77,11 @@ export type DashboardContextOwnProps = {
    * Forcing passing it isn't ideal since we only need to do this in a couple of places
    */
   onNewQuestion?: () => void;
+  /**
+   * When true, internal click behaviors (dashboard/question links) are preserved
+   * instead of being filtered out. Used by the SDK for internal navigation.
+   */
+  enableEntityNavigation?: boolean;
 };
 
 export type DashboardContextOwnResult = {
@@ -148,6 +153,7 @@ const DashboardContextProviderInner = forwardRef(
       cardTitled = true,
       getClickActionMode = undefined,
       withFooter = true,
+      enableEntityNavigation = true, // true in core app, SDK passes it down as false
 
       // redux selectors
       dashboard,
@@ -433,6 +439,7 @@ const DashboardContextProviderInner = forwardRef(
           cardTitled,
           getClickActionMode,
           withFooter,
+          enableEntityNavigation,
 
           // redux selectors
           selectedTabId,

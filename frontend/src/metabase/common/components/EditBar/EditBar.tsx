@@ -13,7 +13,7 @@ type Props = {
   "data-testid"?: string;
 };
 
-function EditBar({
+export function EditBar({
   title,
   center,
   buttons,
@@ -36,6 +36,3 @@ function EditBar({
     </Root>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EditBar;

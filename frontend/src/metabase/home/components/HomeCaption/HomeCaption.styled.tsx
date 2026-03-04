@@ -12,7 +12,7 @@ export const CaptionRoot = styled.div<CaptionProps>`
   display: flex;
   align-items: center;
   color: ${(props) =>
-    props.primary ? color("text-dark") : color("text-medium")};
+    props.primary ? color("text-primary") : color("text-secondary")};
   font-weight: bold;
   margin-bottom: 1.5rem;
 

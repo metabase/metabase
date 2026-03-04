@@ -4,12 +4,14 @@ title: "Segments"
 
 # Segments
 
+> Prefer [Data Studio](../data-studio/data-structure.md#segments) for managing segments.
+
 Metabase allows admins to create segments so people can quickly and easily reference them in the query builder.
 
 To manage segments:
 
-1. Click the **gear** icon in the upper right.
-2. Select **Admin setting**.
+1. Click the **grid** icon in the upper right.
+2. Select **Admin**.
 3. Go to the **Table Metadata** tab.
 4. Click **Segments** at the bottom left.
 

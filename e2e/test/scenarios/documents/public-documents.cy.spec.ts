@@ -390,7 +390,7 @@ describe("scenarios > documents > public", () => {
       .should("exist")
       .should("be.visible")
       .should("have.attr", "href")
-      .and("contain", "https://www.metabase.com/powered-by-metabase");
+      .and("contain", "https://www.metabase.com?");
   });
 
   it("should not display footer for premium", () => {

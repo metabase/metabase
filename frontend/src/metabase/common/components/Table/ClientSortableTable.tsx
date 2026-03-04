@@ -1,6 +1,6 @@
 import cx from "classnames";
 
-import type { SortDirection } from "metabase-types/api/sorting";
+import type { SortDirection } from "metabase-types/api";
 
 import { type BaseRow, Table, type TableProps } from "./Table";
 import TableS from "./Table.module.css";

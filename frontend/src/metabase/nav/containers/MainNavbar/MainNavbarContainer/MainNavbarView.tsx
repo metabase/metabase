@@ -10,11 +10,12 @@ import {
   isLibraryCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import CollapseSection from "metabase/common/components/CollapseSection";
+import { CollapseSection } from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
+import { NavbarLibrarySection } from "metabase/data-studio/nav/components/NavbarLibrarySection";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import {
   getCanAccessOnboardingPage,
@@ -24,11 +25,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
-import {
-  PLUGIN_DATA_STUDIO,
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_TENANTS,
-} from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_TENANTS } from "metabase/plugins";
 import {
   getIsTenantUser,
   getUser,
@@ -63,6 +60,7 @@ type Props = {
   collections: CollectionTreeItem[];
   selectedItems: SelectedItem[];
   sharedTenantCollections?: Collection[];
+  canAccessTenantSpecificCollections: boolean;
   canCreateSharedCollection: boolean;
   showExternalCollectionsSection: boolean;
   handleCloseNavbar: () => void;
@@ -87,6 +85,7 @@ export function MainNavbarView({
   handleCreateNewCollection,
   handleCloseNavbar,
   sharedTenantCollections,
+  canAccessTenantSpecificCollections,
   canCreateSharedCollection,
   showExternalCollectionsSection,
 }: Props) {
@@ -236,18 +235,19 @@ export function MainNavbarView({
           {/* Tenant users don't see the section about "External collections" */}
           {showExternalCollectionsSection && (
             <PLUGIN_TENANTS.MainNavSharedCollections
+              canAccessTenantSpecificCollections={
+                canAccessTenantSpecificCollections
+              }
               canCreateSharedCollection={canCreateSharedCollection}
               sharedTenantCollections={sharedTenantCollections}
             />
           )}
 
-          {PLUGIN_DATA_STUDIO.isEnabled && (
-            <PLUGIN_DATA_STUDIO.NavbarLibrarySection
-              collections={collections}
-              selectedId={collectionItem?.id}
-              onItemSelect={onItemSelect}
-            />
-          )}
+          <NavbarLibrarySection
+            collections={collections}
+            selectedId={collectionItem?.id}
+            onItemSelect={onItemSelect}
+          />
 
           <SidebarSection>
             <ErrorBoundary>
@@ -262,7 +262,7 @@ export function MainNavbarView({
                     <Tooltip label={t`Create a new collection`}>
                       <ActionIcon
                         aria-label={t`Create a new collection`}
-                        color="var(--mb-color-text-medium)"
+                        color="text-secondary"
                         onClick={() => {
                           trackNewCollectionFromNavInitiated();
                           handleCreateNewCollection();

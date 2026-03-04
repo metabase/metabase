@@ -9,6 +9,7 @@
    [metabase.actions.models :as action]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.test-util :as driver.tu]
    [metabase.query-processor :as qp]
@@ -836,3 +837,26 @@
                       (is (= 400 (:status-code result)))
                       (is (= actions.error/violate-permission-constraint (:type first-error)))
                       (is (= "You don't have permission to delete data from this table." (:message first-error))))))))))))))
+
+(deftest action-creates-write-pool-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:actions]})
+    (mt/with-actions-test-data-and-actions-enabled
+      (let [db-id           (mt/id)
+            write-cache-key [db-id :write-data]]
+        (with-redefs [driver.conn/effective-connection-type
+                      (fn [_database]
+                        (if (= driver.conn/*connection-type* :write-data)
+                          :write-data
+                          :default))]
+          (try
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (testing "write pool does not exist before action execution"
+              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (binding [*current-user-permissions-set* (delay #{"/"})]
+              (actions/perform-action! :model.row/create
+                                       (assoc (mt/mbql-query categories)
+                                              :create-row {(format-field-name :name) "write_pool_test"})))
+            (testing "write pool is created during action execution"
+              (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+            (finally
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))

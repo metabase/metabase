@@ -115,7 +115,7 @@
       tag)))
 
 (defn one-of*
-  "Interal impl of `one-of` macro."
+  "Internal impl of `one-of` macro."
   [& schemas]
   (into
    [:multi {:dispatch      effective-clause-tag

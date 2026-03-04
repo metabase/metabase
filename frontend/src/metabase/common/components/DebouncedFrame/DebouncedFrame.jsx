@@ -3,18 +3,18 @@ import cx from "classnames";
 import { Component, forwardRef } from "react";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 
 const DEBOUNCE_PERIOD = 300;
 
 /**
  * This component prevents children elements from being rerendered while it's being resized (currently hard-coded debounce period of 250ms)
- * Useful for rendering components that maybe take a long time to render but you still wnat to allow their container to be resized fluidly
+ * Useful for rendering components that maybe take a long time to render but you still want to allow their container to be resized fluidly
  * We also fade the component out and block mouse events while it's transitioning
  */
 
-class DebouncedFrame extends Component {
+class DebouncedFrameInner extends Component {
   // NOTE: don't keep `_transition` in component state because we don't want to trigger a rerender when we update it
   // Instead manually modify the style in _updateTransitionStyle
   // There's probably a better way to block renders of children though
@@ -136,11 +136,11 @@ class DebouncedFrame extends Component {
 
 const DebouncedFrameForwardRef = forwardRef(
   function _DebouncedFrameRefWrapper(props, ref) {
-    return <DebouncedFrame {...props} forwardedRef={ref} />;
+    return <DebouncedFrameInner {...props} forwardedRef={ref} />;
   },
 );
 
-export default ExplicitSize({
+export const DebouncedFrame = ExplicitSize({
   // Disable ExplicitSize's debounce/throttle since DebouncedFrame has a built-in debounce
   refreshMode: "none",
 })(DebouncedFrameForwardRef);

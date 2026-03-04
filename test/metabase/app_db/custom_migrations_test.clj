@@ -2699,7 +2699,8 @@
           ;; rollback
           (migrate! :down 56)
           ;; assert pre conditions
-          (assert-pre-conditions))))))
+          (testing "everything back to normal after downgrade"
+            (assert-pre-conditions)))))))
 
 (deftest escape-existing-at-symbol-user-attributes-test
   (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
@@ -2726,36 +2727,51 @@
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
 
-(deftest backfill-transform-target-database-id-test
-  (testing "Migration v58.2025-12-15T12:16:16: backfill target_db_id for existing transforms"
-    (impl/test-migrations ["v58.2025-12-15T12:16:16"] [migrate!]
-      (let [user-id (first (t2/insert-returning-pks! :core_user {:first_name  "Test"
-                                                                 :last_name   "User"
-                                                                 :email       "test@example.com"
-                                                                 :password    "password"
-                                                                 :date_joined :%now}))
-            db-id   (first (t2/insert-returning-pks! :metabase_database {:name    "test-db"
-                                                                         :engine  "h2"
-                                                                         :details "{}"
-                                                                         :created_at :%now
-                                                                         :updated_at :%now}))
-            xf-id   (first (t2/insert-returning-pks! :transform
-                                                     {:name        "Query transform"
-                                                      :source      (json/encode {:type  "query"
-                                                                                 :query {:database db-id
-                                                                                         :type     "native"
-                                                                                         :native   {:query "SELECT 1"}}})
-                                                      :source_type "native"
-                                                      :target      (json/encode {:type     "table"
-                                                                                 :schema   "public"
-                                                                                 :name     "output_table"
-                                                                                 :database db-id})
-                                                      :creator_id  user-id
-                                                      :created_at  :%now
-                                                      :updated_at  :%now}))]
-        (testing "before migration, target_db_id is nil"
-          (is (nil? (:target_db_id (t2/select-one :transform :id xf-id)))))
+(deftest backfill-transform-target-db-id-test
+  (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
+    (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]
+      (let [db-id         (:id (new-instance-with-default :metabase_database))
+            deleted-db-id (+ db-id 9999)
+            query-source  (fn [id] (json/encode {:type "query" :query {:database id}}))
+            ;; Python transforms were meant to support 0-N source databases, but the table now has a single source id.
+            python-db-id  db-id
+            python-source (json/encode {:type "python" :script "x = 1", :source-database python-db-id})
+            target        (fn [& {:keys [database]}]
+                            (json/encode (cond-> {:schema "public" :table "out" :type "append"}
+                                           database (assoc :database database))))
+            insert!       (fn [source-type source target]
+                            (t2/insert-returning-pk!
+                             :transform
+                             {:name               "t"
+                              :source             source
+                              :target             target
+                              :source_type        source-type
+                              :source_database_id db-id
+                              :created_at         :%now
+                              :updated_at         :%now}))
+            ;; source.query.database takes precedence over target.database
+            both-id       (insert! "mbql" (query-source db-id) (target :database db-id))
+            ;; source.query.database used when target has no database
+            source-id     (insert! "mbql" (query-source db-id) (target))
+            ;; target.database used as fallback for python transforms
+            target-id     (insert! "python" python-source (target :database db-id))
+            ;; no database anywhere — stays nil
+            none-id       (insert! "python" python-source (target))
+            ;; deleted database reference — stays nil
+            deleted-id    (insert! "mbql" (query-source deleted-db-id) (target :database deleted-db-id))
+            id->target    #(t2/select-one-fn :target_db_id :transform :id %)]
+        (testing "Before backfill, the field is uniformly empty"
+          ;; Haven't turned this into a loop, as it would obscure which case failed.
+          (is (nil? (id->target both-id)))
+          (is (nil? (id->target source-id)))
+          (is (nil? (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))
         (migrate!)
-        (testing "after migration, target_db_id is populated"
-          (is (= db-id (:target_db_id (t2/select-one :transform :id xf-id)))
-              "Query transform target_db_id should equal target.database"))))))
+        (testing "Valid database ids are backfilled"
+          ;; Ditto, since the IDs are opaque in CI, give each case its own line for transparent failures.
+          (is (= db-id (id->target both-id)))
+          (is (= db-id (id->target source-id)))
+          (is (= db-id (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))))))

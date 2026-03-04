@@ -1,6 +1,6 @@
 import type { ChangeEvent } from "react";
 
-import Select, { Option } from "metabase/common/components/Select";
+import { Option, Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import type { CodeSampleOption } from "metabase/public/lib/types";
 

@@ -3,16 +3,16 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 1.5rem;
-  background-color: var(--mb-color-bg-white);
-  color: var(--mb-color-text-medium);
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-secondary);
   font-weight: bold;
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-filter);
 
     :global(.Icon) {
-      color: var(--mb-color-text-white) !important;
+      color: var(--mb-color-text-primary-inverse) !important;
     }
   }
 }

@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link/Link";
-import * as Urls from "metabase/lib/urls";
-import { Button, Group } from "metabase/ui";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { Link } from "metabase/common/components/Link/Link";
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PanelHeaderTitle,
-} from "metabase-enterprise/data-studio/common/components/PaneHeader";
+} from "metabase/data-studio/common/components/PaneHeader";
+import * as Urls from "metabase/lib/urls";
+import { Button, Group } from "metabase/ui";
 
 type PythonLibraryEditorHeaderProps = {
   isDirty?: boolean;

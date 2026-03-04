@@ -2124,7 +2124,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.popover().findByText("User → Longitude: 10°").click();
 
       // 1st stage - Products (implicit join with Reviews)
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getClickMapping("Product → Vendor").last().click();
       H.popover().findByText("Product → Category").click();
 
@@ -2141,7 +2141,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.popover().findByText("ID").click();
 
       // 2nd stage - Aggregations & breakouts
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       getClickMapping("Count").last().click();
       H.popover().findByText("User → Longitude: 10°").click();
 
@@ -2734,7 +2734,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.findByText("Saved question").click();
     });
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Questions").click();
       cy.findByText("Orders").click();
     });
     cy.findByTestId("click-mappings").findByText("Product ID").click();
@@ -2754,7 +2753,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 });
 
 const clickLineChartPoint = () => {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.cartesianChartCircle()
     .eq(POINT_INDEX)
     /**
@@ -2776,10 +2775,7 @@ const clickLineChartPoint = () => {
 const addDashboardDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Dashboard").click();
-  H.entityPickerModal()
-    .findByRole("tab", { name: /Dashboards/ })
-    .click();
-  H.entityPickerModal().findByText(TARGET_DASHBOARD.name).click();
+  H.pickEntity({ path: ["Our analytics", TARGET_DASHBOARD.name] });
 };
 
 const addUrlDestination = () => {
@@ -2790,9 +2786,6 @@ const addUrlDestination = () => {
 const addSavedQuestionDestination = () => {
   cy.get("aside").findByText("Go to a custom destination").click();
   cy.get("aside").findByText("Saved question").click();
-  H.entityPickerModal()
-    .findByRole("tab", { name: /Questions/ })
-    .click();
   H.entityPickerModal().findByText(TARGET_QUESTION.name).click();
 };
 
@@ -2934,7 +2927,7 @@ const testChangingBackToDefaultBehavior = () => {
 };
 
 const getTableCell = (index) => {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return cy
     .findAllByRole("row")
     .eq(POINT_INDEX)
@@ -3008,7 +3001,7 @@ function getClickMapping(columnName) {
 function verifyAvailableClickTargetColumns(columns) {
   cy.get("aside").within(() => {
     for (let index = 0; index < columns.length; ++index) {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("click-target-column")
         .eq(index)
         .should("have.text", columns[index]);

@@ -7,7 +7,7 @@ import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/collections/types";
-import EventSandbox from "metabase/common/components/EventSandbox";
+import { EventSandbox } from "metabase/common/components/EventSandbox";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";

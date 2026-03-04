@@ -141,7 +141,7 @@
    ::analyze.schema/qp-results-cased-map])
 
 (mu/defn infer-semantic-type-by-name :- [:maybe :keyword]
-  "Classifer that infers the semantic type of a `field` based on its name and base type."
+  "Classifier that infers the semantic type of a `field` based on its name and base type."
   [field-or-column :- FieldOrColumn]
   ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
   ;; been added.
@@ -182,7 +182,7 @@
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
 (mu/defn infer-entity-type-by-name :- analyze.schema/Table
-  "Classifer that infers the semantic type of a `table` based on its name."
+  "Classifier that infers the semantic type of a `table` based on its name."
   [table :- analyze.schema/Table]
   (let [table-name (-> table :name u/lower-case-en)]
     (assoc table :entity_type (or (some (fn [[pattern type]]

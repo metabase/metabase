@@ -88,6 +88,31 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :lucky :get 403 "user" :query "rasta")))))))
 
+(deftest user-list-for-data-analysts-test
+  (testing "GET /api/user"
+    (testing "A data analyst can get a list of all active users"
+      (mt/with-temp [:model/User {analyst-id :id :as analyst} {:first_name "Analyst"
+                                                               :last_name  "Testuser"
+                                                               :email      "analyst-list@metabase.com"
+                                                               :is_data_analyst true}]
+        (let [result (->> (:data (mt/user-http-request analyst :get 200 "user"))
+                          (filter #(or (mt/test-user? %) (= (:id %) analyst-id))))]
+          (is (= #{"crowberto@metabase.com"
+                   "lucky@metabase.com"
+                   "rasta@metabase.com"
+                   "analyst-list@metabase.com"}
+                 (set (map :email result)))))))
+
+    (testing "A sandboxed data analyst only sees themselves"
+      (mt/with-temp [:model/User {_ :id :as analyst} {:first_name "Sandboxed"
+                                                      :last_name  "Analyst"
+                                                      :email      "sandboxed-analyst@metabase.com"
+                                                      :is_data_analyst true}]
+        (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+          (let [result (:data (mt/user-http-request analyst :get 200 "user"))]
+            (is (= ["sandboxed-analyst@metabase.com"]
+                   (map :email result)))))))))
+
 (deftest user-list-for-group-managers-test
   (testing "Group Managers"
     (mt/with-premium-features #{:advanced-permissions}
@@ -1133,7 +1158,7 @@
         (letfn [(change-user-via-api! [m]
                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
                       (t2/hydrate :personal_collection_id ::personal-collection-name)
-                      (dissoc :user_group_memberships :personal_collection_id :email :is_superuser :jwt_attributes)
+                      (dissoc :user_group_memberships :personal_collection_id :email :is_superuser :jwt_attributes :is_data_analyst)
                       (#(apply (partial dissoc %) (keys @user-defaults)))
                       mt/boolean-ids-and-timestamps))]
           (testing "Name keys ommitted does not update the user"
@@ -1227,6 +1252,72 @@
                                 (assoc (fetch-rasta) :is_superuser true))
           (is (= before
                  (fetch-rasta))))))))
+
+(defn- user-is-data-analyst?
+  "Check if a user is a member of the Data Analysts group."
+  [user-id]
+  (t2/exists? :model/PermissionsGroupMembership
+              :user_id user-id
+              :group_id (:id (perms-group/data-analyst))))
+
+(deftest update-data-analyst-status-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that a superuser can set the :is_data_analyst flag (adds to Data Analysts group)"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst@metabase.com"}]
+        (is (not (user-is-data-analyst? user-id)))
+        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                              {:is_data_analyst true})
+        (is (user-is-data-analyst? user-id))))
+
+    (testing "Test that a superuser can unset the :is_data_analyst flag (removes from Data Analysts group)"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst-unset@metabase.com"}]
+        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                              {:is_data_analyst true})
+        (is (user-is-data-analyst? user-id))
+        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                              {:is_data_analyst false})
+        (is (not (user-is-data-analyst? user-id)))))
+
+    (testing "Test that a normal user cannot change the :is_data_analyst flag for themselves"
+      (is (not (user-is-data-analyst? (mt/user->id :rasta))))
+      (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
+                            {:is_data_analyst true})
+      (is (not (user-is-data-analyst? (mt/user->id :rasta)))))
+
+    (testing "Test that a normal user cannot change the :is_data_analyst flag for another user"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst2@metabase.com"}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (str "user/" user-id)
+                                     {:is_data_analyst true})))))))
+
+(deftest filter-by-data-analyst-test
+  (testing "GET /api/user"
+    (testing "Filter users by is_data_analyst=true includes data analysts group members"
+      (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst" :last_name "User"
+                                                   :email "analyst-filter@metabase.com"
+                                                   :is_data_analyst true}
+                     :model/User {non-analyst-id :id} {:first_name "NonAnalyst" :last_name "User"
+                                                       :email "non-analyst-filter@metabase.com"}]
+        (let [result (:data (mt/user-http-request :crowberto :get 200 "user" :is_data_analyst true))
+              result-ids (set (map :id result))]
+          (testing "data analyst group member is included"
+            (is (contains? result-ids analyst-id)))
+          (testing "non-analyst is excluded"
+            (is (not (contains? result-ids non-analyst-id)))))))
+
+    (testing "Filter users by is_data_analyst=false excludes data analysts group members"
+      (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst2"
+                                                   :last_name "User"
+                                                   :email "analyst-filter2@metabase.com"
+                                                   :is_data_analyst true}
+                     :model/User {non-analyst-id :id} {:first_name "NonAnalyst2" :last_name "User"
+                                                       :email "non-analyst-filter2@metabase.com"}]
+        (let [result (:data (mt/user-http-request :crowberto :get 200 "user" :is_data_analyst false))
+              result-ids (set (map :id result))]
+          (testing "data analyst group member is excluded"
+            (is (not (contains? result-ids analyst-id))))
+          (testing "non-analyst is included"
+            (is (contains? result-ids non-analyst-id))))))))
 
 (deftest update-permissions-test
   (testing "PUT /api/user/:id"
@@ -1495,6 +1586,14 @@
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :sso_source nil}
                    (mt/derecordize (t2/select-one [:model/User :is_active :sso_source] :id (u/the-id user)))))))))))
+
+(deftest reactivate-second-to-last-admin-test
+  (mt/with-single-admin-user! [{id :id}]
+    (testing "With two admins, one deactivated"
+      (mt/with-temp [:model/User {other-user :id} {:is_superuser true}]
+        (mt/user-http-request id :delete 200 (format "user/%d" other-user))
+        (testing "We can reactivate the other admin"
+          (mt/user-http-request id :put 200 (format "user/%d/reactivate" other-user)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |

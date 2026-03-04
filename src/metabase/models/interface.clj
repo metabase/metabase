@@ -16,11 +16,7 @@
    [medley.core :as m]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.models.json-migration :as jm]
    [metabase.models.resolution]
@@ -218,23 +214,12 @@
    :out (comp (catch-normalization-exceptions #_{:clj-kondo/ignore [:deprecated-var]} mbql.normalize/normalize-field-ref)
               json-out-with-keywordization)})
 
-(defn- normalize-result-metadata-column [col]
-  (if (:lib/type col)
-    (lib.normalize/normalize ::lib.schema.metadata/column col)
-    ;; legacy usages -- do not use these going forward
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (-> col
-        (->> (lib/normalize :metabase.query-processor.schema/result-metadata.column))
-        ;; This is necessary, because in the wild, there may be cards created prior to this change.
-        lib.temporal-bucket/ensure-temporal-unit-in-display-name
-        lib.binning/ensure-binning-in-display-name)))
-
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (not-empty (mapv normalize-result-metadata-column metadata))))
+    (not-empty (mapv lib/normalize-result-metadata-column metadata))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."
@@ -245,6 +230,11 @@
   "Transform for keywords."
   {:in  u/qualified-name
    :out keyword})
+
+(def transform-trim
+  "Transform that trims whitespace on input and output. Useful for fixed-width char columns that pad with spaces."
+  {:in  str/trim
+   :out str/trim})
 
 (def transform-json-no-keywordization
   "Transform for json-no-keywordization"
@@ -277,7 +267,7 @@
 (defn transform-validator
   "Given a transform, returns a transform that call `assert-fn` on the \"out\" value.
 
-  E.g: A keyword transfomer that throw an error if the value is not namespaced
+  E.g: A keyword transformer that throw an error if the value is not namespaced
     (transform-validator
       transform-keyword (fn [x]
       (when-not (-> x namespace some?)
@@ -342,6 +332,9 @@
    [:= {:decode/normalize keyword} :name]
    :string])
 
+;;; TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
+;;; `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
+;;; also [[metabase.models.visualization-settings]].
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to MBQL 4 clauses so things work correctly."
@@ -355,11 +348,18 @@
                          (not (sequential? x)) x
                          (= (first x) "ref")   (lib/normalize ::viz-settings-ref x)
                          (= (first x) "name")  (lib/normalize ::viz-settings-name x)
-                         :else                 (mbql.normalize/normalize x))))
+                         :else                 (try
+                                                 (mbql.normalize/normalize x)
+                                                 (catch Throwable e
+                                                   (log/debugf e "Error normalizing column settings key %s" (pr-str x))
+                                                   nil)))))
                     json/encode))
           (normalize-column-settings [column-settings]
-            (into {} (for [[k v] column-settings]
-                       [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
+            (into {} (for [[k v] column-settings
+                           ;; remove nil (bad) keys
+                           :let  [k (normalize-column-settings-key k)]
+                           :when (some? k)]
+                       [k (walk/keywordize-keys v)])))
           (mbql-field-clause? [form]
             (and (vector? form)
                  (#{"field-id"
@@ -630,12 +630,36 @@
   {:arglists '([instance] [model pk])}
   dispatch-on-model)
 
+(defmulti can-query?
+  "Return whether [[metabase.api.common/*current-user*]] has *query* permissions for an object (i.e., can run
+  queries against it). This is separate from [[can-read?]] which determines if the user can see the object's
+  metadata.
+
+  For data model entities like Tables and Databases, `can-read?` means 'can see metadata' while `can-query?`
+  means 'can execute queries against'. For collection entities, `can-query?` typically falls back to `can-read?`.
+
+  The default implementation falls back to [[can-read?]] for backward compatibility."
+  {:arglists '([instance] [model pk])}
+  dispatch-on-model)
+
+(defmethod can-query? :default
+  ;; Default implementation: fall back to can-read? for backward compatibility
+  ([instance]
+   (can-read? instance))
+  ([model pk]
+   (can-read? model pk)))
+
 #_{:clj-kondo/ignore [:unused-private-var]}
 (define-simple-hydration-method ^:private hydrate-can-write
   :can_write
   "Hydration method for `:can_write`."
   [instance]
   (can-write? instance))
+
+(methodical/defmethod t2/simple-hydrate [:default :can_query]
+  "Hydration method for `:can_query`. Returns whether the current user can execute queries against this object."
+  [_model k instance]
+  (assoc instance k (can-query? instance)))
 
 (defmulti can-create?
   "NEW! Check whether or not current user is allowed to CREATE a new instance of `model` with properties in map

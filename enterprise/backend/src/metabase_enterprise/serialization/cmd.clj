@@ -10,6 +10,7 @@
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features]
@@ -47,12 +48,13 @@
     (throw (ex-info "You cannot `import` into an empty database. Please set up Metabase normally, then retry." {})))
   (when token-check?
     (check-premium-token!))
-  ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
-  ;(when-not (load/compatible? path)
-  ;  (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
+  ;; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
+  ;;(when-not (load/compatible? path)
+  ;;  (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
   (log/infof "Loading serialized Metabase files from %s" path)
-  (serdes/with-cache
-    (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
+  (u/prog1 (serdes/with-cache
+             (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts))
+    (events/publish-event! :event/serdes-load {})))
 
 (mu/defn v2-load!
   "SerDes v2 load entry point.
@@ -112,6 +114,8 @@
                  (serdes/with-cache
                    (-> (v2.extract/extract opts)
                        (v2.storage/store! path)))
+                 ;; we could publish :event/serdes-dump to go with :event/serdes-load above, but
+                 ;; nothing would listen to it currently
                  (catch Exception e
                    (reset! err e)))]
     (analytics/track-event! :snowplow/serialization

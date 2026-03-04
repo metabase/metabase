@@ -1,6 +1,6 @@
 .QueryErrorTitle {
   flex: 1 1 auto;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: bold;
@@ -23,7 +23,7 @@
   line-height: 1.125rem;
   border: 1px solid var(--mb-color-brand);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   overflow-wrap: break-word;
 }
 

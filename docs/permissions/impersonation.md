@@ -118,7 +118,7 @@ People in one group can have different attribute values, but must have the same 
 
 ### Set up impersonation
 
-1. In Metabase, hit Cmd/Ctrl + K to bring up the command palette and search for **Permissions**, or go directly to **Admin settings** > **Permissions** > **Data**.
+1. In Metabase, hit Cmd/Ctrl + K to bring up the command palette and search for **Permissions**, or go directly to **Admin** > **Permissions** > **Data**.
 
 2. Select the group that you want to associate with the database role you created.
 
@@ -182,3 +182,7 @@ Admins won't ever see the effects of impersonation effects, because their privil
 Metabase's default Administrators group has "Can view" access to all databases, and Metabase uses the most permissive access for any person in multiple groups, so any admin will have "Can view" - not "Impersonated" - access to the database.
 
 To test impersonation, create a test user, assign them a user attribute with the database role, and add them to the impersonated group. Then, log in as the test user and verify the data access.
+
+## Impersonation and Slack notifications
+
+People in groups with impersonation access cannot create Slack [alerts](../questions/alerts.md) or [dashboard subscriptions](../dashboards/subscriptions.md). Email alerts and subscriptions are still available. See [Notification permissions](./notifications.md).

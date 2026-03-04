@@ -52,13 +52,21 @@ export class EmbedAuthManager {
     method: "saml" | "jwt";
     sessionToken: MetabaseEmbeddingSessionToken;
   }> {
-    const { instanceUrl, preferredAuthMethod, fetchRequestToken } =
-      this.context.properties;
-
-    const urlResponseJson = await connectToInstanceAuthSso(instanceUrl, {
-      headers: this.getAuthRequestHeader(),
+    const {
+      instanceUrl,
       preferredAuthMethod,
-    });
+      fetchRequestToken,
+      jwtProviderUri,
+    } = this.context.properties;
+
+    const shouldSkipSsoDiscovery = jwtProviderUri !== undefined;
+
+    const urlResponseJson = shouldSkipSsoDiscovery
+      ? { method: "jwt", url: jwtProviderUri }
+      : await connectToInstanceAuthSso(instanceUrl, {
+          headers: this.getAuthRequestHeader(),
+          preferredAuthMethod,
+        });
 
     const { method, url: responseUrl, hash } = urlResponseJson || {};
 
@@ -68,7 +76,7 @@ export class EmbedAuthManager {
       return { method, sessionToken };
     }
 
-    if (method === "jwt") {
+    if (method === "jwt" && responseUrl) {
       const sessionToken = await jwtDefaultRefreshTokenFunction(
         responseUrl,
         instanceUrl,
@@ -84,10 +92,10 @@ export class EmbedAuthManager {
 
   private getAuthRequestHeader(hash?: string) {
     return {
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
       "X-Metabase-Client": "embedding-simple",
 
-      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
       ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
     };
   }

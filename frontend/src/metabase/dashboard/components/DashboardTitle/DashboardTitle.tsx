@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import EditableText from "metabase/common/components/EditableText";
+import { EditableText } from "metabase/common/components/EditableText";
 import { DASHBOARD_NAME_MAX_LENGTH } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDashboardTitle } from "metabase/dashboard/hooks/use-dashboard-title";

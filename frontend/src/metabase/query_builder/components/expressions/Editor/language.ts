@@ -23,6 +23,7 @@ type LintOptions = {
   query: Lib.Query;
   stageIndex: number;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
   metadata: Metadata;
 };
 

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { Box, Tabs } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -13,6 +13,7 @@ import type {
   NativeDatasetQuery,
   Parameter,
   ParameterId,
+  ParameterValuesConfig,
   RowValue,
   TemplateTag,
   TemplateTagId,
@@ -34,6 +35,10 @@ interface TagEditorSidebarProps {
   sampleDatabaseId: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
+  setTemplateTagConfig?: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   onClose: () => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
@@ -46,6 +51,7 @@ export function TagEditorSidebar({
   sampleDatabaseId,
   setDatasetQuery,
   setTemplateTag,
+  setTemplateTagConfig,
   setParameterValue,
   onClose,
   getEmbeddedParameterVisibility,
@@ -85,6 +91,7 @@ export function TagEditorSidebar({
             database={database}
             databases={databases as Database[]}
             setTemplateTag={setTemplateTag}
+            setTemplateTagConfig={setTemplateTagConfig}
             setParameterValue={setParameterValue}
             getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
           />
@@ -109,6 +116,10 @@ interface SettingsPaneProps {
   databases: Database[];
   parametersById: Record<ParameterId, Parameter>;
   setTemplateTag: (tag: TemplateTag) => void;
+  setTemplateTagConfig?: (
+    tag: TemplateTag,
+    config: ParameterValuesConfig,
+  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
 }
@@ -119,6 +130,7 @@ const SettingsPane = ({
   database,
   databases,
   setTemplateTag,
+  setTemplateTagConfig,
   setParameterValue,
   getEmbeddedParameterVisibility,
 }: SettingsPaneProps) => {
@@ -136,6 +148,7 @@ const SettingsPane = ({
         database={database}
         databases={databases}
         setTemplateTag={setTemplateTag}
+        setTemplateTagConfig={setTemplateTagConfig}
         setParameterValue={setParameterValue}
       />
     </div>

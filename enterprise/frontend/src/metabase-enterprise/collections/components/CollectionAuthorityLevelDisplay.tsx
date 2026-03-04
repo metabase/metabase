@@ -4,7 +4,6 @@ import { t } from "ttag";
 import type { ObjectWithModel } from "metabase/lib/icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { Group, Icon, Text } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 import type { Collection } from "metabase-types/api";
 
 export const CollectionAuthorityLevelDisplay = ({
@@ -17,7 +16,7 @@ export const CollectionAuthorityLevelDisplay = ({
       ...collection,
       model: "collection",
     } as ObjectWithModel);
-    return { ...icon, color: icon.color && color(icon.color) };
+    return icon;
   }, [collection]);
 
   if (collection.authority_level !== "official") {

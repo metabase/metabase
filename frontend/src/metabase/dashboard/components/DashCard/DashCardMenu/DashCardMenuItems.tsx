@@ -37,8 +37,10 @@ export const DashCardMenuItems = ({
   const dispatch = useDispatch();
 
   const {
-    onEditQuestion = (question, mode = "notebook") =>
-      dispatch(editQuestion(question, mode)),
+    onEditQuestion = (
+      question: Question,
+      mode: "query" | "view" | "notebook" = "notebook",
+    ) => dispatch(editQuestion(question, mode)),
   } = useSdkDashboardContext();
 
   const { dashcardMenu } = useDashboardContext();

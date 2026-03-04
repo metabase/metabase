@@ -8,8 +8,9 @@ import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { addUndo } from "metabase/redux/undo";
-import { getIsEmbedding } from "metabase/selectors/embed";
+import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 import {
   type JSONValue,
@@ -73,6 +74,7 @@ export const {
   addSuggestedTransform,
   activateSuggestedTransform,
   deactivateSuggestedTransform,
+  updateSuggestedTransformId,
   createAgent,
   destroyAgent,
   addSuggestedCodeEdit,
@@ -90,6 +92,17 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
       errorMessage: false as const,
       shouldRetry: false,
     }))
+    .with(
+      { message: P.string.startsWith("Response status: 401") },
+      { status: 401 },
+      () => ({
+        errorMessage: {
+          type: "alert" as const,
+          message: METABOT_ERR_MSG.unauthenticated,
+        },
+        shouldRetry: true,
+      }),
+    )
     .with(
       { message: P.string.startsWith("Response status: 5") },
       { status: 500 },
@@ -300,7 +313,7 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const isEmbedding = getIsEmbedding(getState());
+    const isWorkspace = getIsWorkspace(getState());
     const { agentId, ...request } = payload;
 
     try {
@@ -338,7 +351,7 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbedding) {
+                if (!isEmbeddingSdk() && !isWorkspace) {
                   dispatch(push(part.value) as UnknownAction);
                 }
               })
@@ -398,7 +411,7 @@ export const sendAgentRequest = createAsyncThunk<
             (tc) => tc.state === "call",
           ),
           history: [...getHistory(getState(), agentId), ...response.history],
-          // state object comes at the end, so we may not have recieved it
+          // state object comes at the end, so we may not have received it
           // so fallback to the state used when the request was issued
           state: Object.keys(state).length === 0 ? request.state : state,
         });
