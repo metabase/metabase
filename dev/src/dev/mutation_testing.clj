@@ -230,8 +230,13 @@
     (str "mutation-testing-lib-" short-ns "-" fn-name)))
 
 (defn create-branch!
-  "Create and checkout a new branch from the base branch for mutation testing a function."
+  "Create and checkout a new branch from the base branch for mutation testing a function.
+   Fails early if there are uncommitted changes."
   [target-ns fn-name]
+  (let [status (:out (sh "git" "status" "--porcelain"))]
+    (when-not (str/blank? status)
+      (throw (ex-info (str "Uncommitted changes detected. Commit or stash before running.\n" status)
+                      {:status status}))))
   (let [branch (branch-name target-ns fn-name)]
     (sh "git" "checkout" (base-branch))
     (sh "git" "pull")
@@ -441,19 +446,22 @@
         test-path-base (-> test-ns
                            (str/replace "." "/")
                            (str/replace "-" "_"))
-        source-ext (cond
-                     (.exists (io/file (str "src/" ns-path ".cljc"))) ".cljc"
-                     (.exists (io/file (str "src/" ns-path ".clj"))) ".clj"
-                     :else ".cljc")
-        test-ext (cond
-                   (.exists (io/file (str "test/" test-path-base ".cljc"))) ".cljc"
-                   (.exists (io/file (str "test/" test-path-base ".clj"))) ".clj"
-                   :else ".cljc")]
+        source-prefixes ["src/" "enterprise/backend/src/"]
+        test-prefixes   ["test/" "enterprise/backend/test/"]
+        find-file (fn [prefixes base exts]
+                    (first (for [prefix prefixes, ext exts
+                                 :let [path (str prefix base ext)]
+                                 :when (.exists (io/file path))]
+                             {:prefix prefix :ext ext :path path})))
+        source-match (or (find-file source-prefixes ns-path [".cljc" ".clj"])
+                         {:prefix "src/" :ext ".cljc" :path (str "src/" ns-path ".cljc")})
+        test-match   (or (find-file test-prefixes test-path-base [".cljc" ".clj"])
+                         {:prefix "test/" :ext ".cljc" :path (str "test/" test-path-base ".cljc")})]
     {:target-ns (symbol target-ns)
      :test-ns (symbol test-ns)
      :short-name short-name
-     :source-path (str "src/" ns-path source-ext)
-     :test-path (str "test/" test-path-base test-ext)
+     :source-path (:path source-match)
+     :test-path (:path test-match)
      :report-path (str "mutation-testing-report." target-ns ".before.md")}))
 
 (defn group-functions
@@ -735,6 +743,11 @@
      (set-config! {:base-branch bb}))
    (when-let [pid (:project-id opts)]
      (set-config! {:project-id pid}))
+   ;; 0. Fail early if working tree is dirty
+   (let [status (:out (sh "git" "status" "--porcelain"))]
+     (when-not (str/blank? status)
+       (throw (ex-info (str "Uncommitted changes detected. Commit or stash before running.\n" status)
+                       {:status status}))))
    (let [parsed (parse-namespace target-ns-sym)
          {:keys [target-ns test-ns report-path]} parsed]
      ;; 1. Generate report
@@ -767,7 +780,15 @@
                             (try
                               (process-group! parsed group)
                               (catch Exception e
-                                (println "ERROR:" (.getMessage e))
+                                (let [log-file (str "mutation-testing-error-"
+                                                    (name (:primary-fn group))
+                                                    ".log")]
+                                  (with-open [w (io/writer log-file)]
+                                    (.write w (str "Error processing group: " (:primary-fn group) "\n"))
+                                    (.write w (str "Message: " (.getMessage e) "\n\n"))
+                                    (.printStackTrace e (java.io.PrintWriter. w)))
+                                  (println "ERROR:" (.getMessage e))
+                                  (println "  Full stack trace logged to" log-file))
                                 (try (return-to-base!) (catch Exception _))
                                 {:error (.getMessage e)
                                  :primary-fn (:primary-fn group)})))))]
