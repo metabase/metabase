@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-metric.core :as lib-metric]
+   [metabase.lib-metric.definition :as lib-metric.def]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
    [metabase.query-processor :as qp]
@@ -101,47 +102,15 @@
 ;;; ------------------------------------------------- Expression Helpers --------------------------------------------------
 
 (defn- collect-expression-uuids
-  "Walk an expression tree and collect all :lib/uuid values from leaf nodes."
+  "Collect all :lib/uuid values from leaf nodes in an expression tree."
   [expr]
-  (cond
-    ;; Leaf: [:metric {:lib/uuid ...} id] or [:measure {:lib/uuid ...} id]
-    (and (sequential? expr)
-         (= 3 (count expr))
-         (#{:metric :measure} (first expr)))
-    [(get (second expr) :lib/uuid)]
-
-    ;; Arithmetic: [op opts & exprs]
-    (and (sequential? expr)
-         (>= (count expr) 4)
-         (#{:+ :- :* :/} (first expr)))
-    (mapcat collect-expression-uuids (drop 2 expr))
-
-    :else []))
+  (mapv lib-metric.def/expression-leaf-uuid (lib-metric.def/expression-leaves expr)))
 
 (defn- collect-expression-leaves
-  "Walk an expression tree and collect [type id] pairs from leaf nodes."
+  "Collect [type id] pairs from leaf nodes in an expression tree."
   [expr]
-  (cond
-    ;; Leaf
-    (and (sequential? expr)
-         (= 3 (count expr))
-         (#{:metric :measure} (first expr)))
-    [[(first expr) (nth expr 2)]]
-
-    ;; Arithmetic
-    (and (sequential? expr)
-         (>= (count expr) 4)
-         (#{:+ :- :* :/} (first expr)))
-    (mapcat collect-expression-leaves (drop 2 expr))
-
-    :else []))
-
-(defn- expression-leaf?
-  "Returns true if the expression is a single leaf (metric or measure ref), not arithmetic."
-  [expr]
-  (and (sequential? expr)
-       (= 3 (count expr))
-       (#{:metric :measure} (first expr))))
+  (mapv (juxt lib-metric.def/expression-leaf-type lib-metric.def/expression-leaf-id)
+        (lib-metric.def/expression-leaves expr)))
 
 (mr/def ::Definition
   "Schema for the definition object within a dataset request.
@@ -185,23 +154,13 @@
                 [:rows [:sequential :any]]]]
    [:row_count ms/IntGreaterThanOrEqualToZero]])
 
-(defn- check-expression-permissions!
-  "Walk the expression tree and verify read permissions for all referenced entities."
+(defn- check-expression-permissions
+  "Collect all metric/measure leaves from the expression and verify query permissions for each."
   [expression]
-  (cond
-    ;; Leaf: [:metric {:lib/uuid ...} id] or [:measure {:lib/uuid ...} id]
-    (expression-leaf? expression)
-    (let [[source-type _opts source-id] expression]
-      (case source-type
-        :metric  (api/read-check (t2/select-one :model/Card :id source-id :type "metric"))
-        :measure (api/read-check (t2/select-one :model/Measure :id source-id))))
-
-    ;; Arithmetic: [op opts & exprs]
-    (and (sequential? expression)
-         (>= (count expression) 4)
-         (#{:+ :- :* :/} (first expression)))
-    (doseq [sub-expr (drop 2 expression)]
-      (check-expression-permissions! sub-expr))))
+  (doseq [[source-type source-id] (collect-expression-leaves expression)]
+    (case source-type
+      :metric  (api/query-check (t2/select-one :model/Card :id source-id :type "metric"))
+      :measure (api/query-check (t2/select-one :model/Measure :id source-id)))))
 
 (defn- from-api-definition
   "Create a MetricDefinition from API definition parameters.
@@ -213,7 +172,7 @@
   [provider definition]
   (let [{:keys [expression filters projections]} definition]
     ;; Permission check all expression leaves
-    (check-expression-permissions! expression)
+    (check-expression-permissions expression)
     ;; Build MetricDefinition — format matches directly
     {:lib/type          :metric/definition
      :expression        expression
