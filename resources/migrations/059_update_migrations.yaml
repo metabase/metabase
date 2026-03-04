@@ -3561,7 +3561,7 @@ databaseChangeLog:
 
   ## The original changeset that made this not null has been removed, but keep the switch to nullable to handle existing DBs.
   - changeSet:
-      id: v59.2026-03-01T11:02:53
+      id: v59.2026-03-01T11:00:00
       author: nvoxland
       comment: Make transform.source_database_id nullable
       changes:
@@ -3571,7 +3571,7 @@ databaseChangeLog:
             columnDataType: int
 
   - changeSet:
-      id: v59.2025-02-06T11:02:54
+      id: v59.2026-03-01T11:01:00
       author: nvoxland
       comment: Rename transform.source_database_id to source_db_id
       changes:
@@ -3582,7 +3582,7 @@ databaseChangeLog:
             newColumnName: source_db_id
 
   - changeSet:
-      id: v59.2025-02-06T11:02:55
+      id: v59.2026-03-01T11:02:00
       author: nvoxland
       comment: Drop foreign key on transform(source_database_id) to recreate it
       changes:
@@ -3591,7 +3591,7 @@ databaseChangeLog:
             constraintName: fk_tranform_source_database_id
 
   - changeSet:
-      id: v59.2025-02-06T11:02:56
+      id: v59.2026-03-01T11:03:00
       author: nvoxland
       comment: Add foreign key on transform(source_database_id)
       changes:
