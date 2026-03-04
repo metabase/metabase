@@ -62,19 +62,24 @@
       can-create-queries        (conj "permission:save_questions")
       can-create-native-queries (conj "permission:write_sql_queries"))))
 
-(defn- send-viz-output
-  "Send visualization output to Slack as either table blocks or image."
-  [client channel thread-ts {:keys [type content]} filename]
+(defn- update-viz-placeholder
+  "Replace a loading placeholder with the actual visualization content.
+   Tables update the message in-place with blocks. Images post the file as a new message
+   (Slack's chat.update doesn't support file_ids) then delete the placeholder.
+   description is included with image posts as context."
+  [client channel thread-ts placeholder-ts {:keys [type content]} filename description]
   (case type
-    :table (let [response (slackbot.client/post-message client {:channel   channel
-                                                                :thread_ts thread-ts
-                                                                :blocks    content
-                                                                :text      "Query results"})]
+    :table (let [response (slackbot.client/update-message client {:channel channel
+                                                                  :ts      placeholder-ts
+                                                                  :blocks  content
+                                                                  :text    "Query results"})]
              (when-not (:ok response)
-               (log/errorf "Slack table blocks error: %s" (pr-str response)))
+               (log/errorf "Slack table update error: %s" (pr-str response)))
              response)
     :image (let [filename (str filename ".png")]
-             (slackbot.client/post-image client content filename channel thread-ts))))
+             (slackbot.client/post-image client content filename channel thread-ts
+                                         :initial-comment description)
+             (slackbot.client/delete-message client {:channel channel :ts placeholder-ts}))))
 
 (def ^:private tool-friendly-names
   "Map of tool names to user-friendly gerund descriptions for slackbot profile tools."
@@ -156,8 +161,7 @@
   #{"static_viz" "adhoc_viz"})
 
 (defn- generate-viz-output
-  "Generate visualization output for a data-part. Called both by the prefetch executor (during streaming)
-   and synchronously by [[resolve-viz-output]] when no prefetched result exists."
+  "Generate visualization output for a data-part. Called by the prefetch executor during streaming."
   [{:keys [type value]}]
   (case type
     "static_viz"
@@ -184,54 +188,28 @@
       :else
       "Query execution failed, please try again.")))
 
-(defn- resolve-viz-output
-  "Get the result of a prefetched visualization Future, or generate synchronously if none exists.
-   Unwraps ExecutionException so callers see the original error."
-  [data-part ^Future prefetched-future]
-  (if prefetched-future
-    (try
-      (.get prefetched-future)
-      (catch ExecutionException e
-        (throw (or (.getCause e) e))))
-    (generate-viz-output data-part)))
-
-(defn- post-viz-error
-  "Post a user-friendly visualization error message to Slack, logging on failure."
-  [client channel thread-ts e]
+(defn- update-viz-error
+  "Update a placeholder message with a user-friendly error, logging on failure."
+  [client channel placeholder-ts e]
   (try
-    (slackbot.client/post-message client {:channel   channel
-                                          :thread_ts thread-ts
-                                          :text      (viz-error-message e)})
-    (catch Exception post-e
-      (log/error post-e "Failed to post visualization error message to Slack"))))
+    (slackbot.client/update-message client {:channel channel
+                                            :ts      placeholder-ts
+                                            :text    (viz-error-message e)})
+    (catch Exception update-e
+      (log/error update-e "Failed to update placeholder with visualization error"))))
 
-(defn- send-visualizations
-  "Send visualization data-parts as separate Slack messages after the stream ends.
-   Uses prefetched results when available (submitted during streaming) to reduce latency.
-   Posts a temporary indicator message while visualizations are being generated."
-  [client channel thread-ts data-parts prefetched-viz]
-  (let [vizs (keep-indexed (fn [idx part]
-                             (when (viz-data-types (:type part))
-                               [idx part]))
-                           data-parts)]
-    (when (seq vizs)
-      (let [indicator (slackbot.client/post-message client {:channel   channel
-                                                            :thread_ts thread-ts
-                                                            :text      "_Generating visualizations..._"})]
-        (try
-          (doseq [[idx data-part] vizs]
-            (try
-              (let [output   (resolve-viz-output data-part (get prefetched-viz idx))
-                    filename (case (:type data-part)
-                               "static_viz" (str "chart-" (:entity_id (:value data-part)))
-                               "adhoc_viz"  (str "adhoc-" (System/currentTimeMillis)))]
-                (send-viz-output client channel thread-ts output filename))
-              (catch Exception e
-                (log/errorf e "Failed to generate visualization for %s" (:type data-part))
-                (post-viz-error client channel thread-ts e))))
-          (finally
-            (when-let [ts (:ts indicator)]
-              (slackbot.client/delete-message client {:channel channel :ts ts}))))))))
+(defn- await-visualizations
+  "Wait for all in-flight visualization futures to complete. Each future is self-contained
+   (generates the viz and updates the placeholder in-place), so this just acts as a sync point
+   for error logging."
+  [prefetched-viz]
+  (doseq [[idx ^Future fut] prefetched-viz]
+    (try
+      (.get fut)
+      (catch ExecutionException e
+        (log/errorf (or (.getCause e) e) "Visualization future %d failed" idx))
+      (catch Exception e
+        (log/errorf e "Visualization future %d failed" idx)))))
 
 (defn- ensure-stream-started!
   "Ensure the Slack stream has been started, attempting once if not already tried."
@@ -349,7 +327,21 @@
         prefetched-viz (atom {})
         on-data (fn [idx content]
                   (when (viz-data-types (:type content))
-                    (let [task (bound-fn* #(generate-viz-output content))]
+                    (let [placeholder (slackbot.client/post-message client {:channel   channel
+                                                                            :thread_ts thread-ts
+                                                                            :text      "_Loading visualization..._"})
+                          placeholder-ts (:ts placeholder)
+                          task (bound-fn*
+                                #(try
+                                   (let [output   (generate-viz-output content)
+                                         filename (case (:type content)
+                                                    "static_viz" (str "chart-" (:entity_id (:value content)))
+                                                    "adhoc_viz"  (str "adhoc-" (System/currentTimeMillis)))]
+                                     (update-viz-placeholder client channel thread-ts placeholder-ts output filename
+                                                             (:description (:value content))))
+                                   (catch Exception e
+                                     (log/errorf e "Failed to generate visualization for %s" (:type content))
+                                     (update-viz-error client channel placeholder-ts e))))]
                       (swap! prefetched-viz assoc idx
                              (.submit viz-prefetch-executor ^Callable task)))))]
     {:on-text              on-text
@@ -414,7 +406,7 @@
            (if-let [{:keys [stream_ts channel]} @stream-state]
              (do
                (slackbot.client/stop-stream client channel stream_ts)
-               (send-visualizations client channel thread-ts data-parts @prefetched-viz))
+               (await-visualizations @prefetched-viz))
              (send-fallback "I wasn't able to generate a response. Please try again.")))
          (catch Exception e
            (run! #(.cancel ^Future % true) (vals @prefetched-viz))
