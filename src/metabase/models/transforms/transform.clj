@@ -72,8 +72,11 @@
   "Deserialize a transform source map from JSON storage format.
   Normalizes queries and keywordizes type fields."
   [m]
-  (-> (mi/json-out-with-keywordization m)
+  (-> m
+      mi/json-out-without-keywordization
+      (update-keys keyword)
       (m/update-existing :query lib-be/normalize-query)
+      (m/update-existing :source-incremental-strategy #(update-keys % keyword))
       (m/update-existing :type keyword)))
 
 (defn transform-source-in
