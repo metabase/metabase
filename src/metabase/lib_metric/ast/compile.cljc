@@ -310,4 +310,3 @@
   (if (has-joins? source)
     (compile-two-stage-values-query ast opts)
     (compile-single-stage-values-query ast opts)))
-

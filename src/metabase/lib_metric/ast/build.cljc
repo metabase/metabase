@@ -395,4 +395,3 @@
      :filter            ast-filter
      :group-by          (or ast-group-by [])
      :metadata-provider metadata-provider}))
-
