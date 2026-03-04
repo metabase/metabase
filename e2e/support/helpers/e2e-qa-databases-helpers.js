@@ -376,10 +376,7 @@ export function waitForSyncToFinish({
     } else if (tableName) {
       const table = body.tables.find(
         (table) =>
-          table.name === tableName &&
-          table.initial_sync_status === "complete" &&
-          table.fields &&
-          table.fields.length > 0,
+          table.name === tableName && table.initial_sync_status === "complete",
       );
 
       if (!table) {
