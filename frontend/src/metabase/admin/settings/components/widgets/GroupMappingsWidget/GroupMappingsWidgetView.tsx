@@ -4,6 +4,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
@@ -47,15 +48,15 @@ interface GroupMappingsWidgetViewProps {
   groupPlaceholder: string;
   allGroups: Group[];
   mappingSetting: string; // seems like this should be SettingKey but we pass in values like "jwt-group-mappings"
-  deleteGroup: ({ id }: { id: number }) => void;
-  clearGroupMember: ({ id }: { id: number }) => void;
+  deleteGroup: ({ id }: { id: number }) => Promise<void>;
+  clearGroupMember: ({ id }: { id: number }) => Promise<void>;
   updateSetting: ({
     key,
     value,
   }: {
     key: string;
     value: Record<string, GroupId[]>;
-  }) => void;
+  }) => Promise<void>;
   mappings: Record<string, GroupId[]>;
   setting: { key: string };
 }
@@ -72,7 +73,7 @@ export function GroupMappingsWidgetView({
   setting,
 }: GroupMappingsWidgetViewProps) {
   const [showAddRow, setShowAddRow] = useState(false);
-  const [saveError, setSaveError] = useState<any>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const groups = allGroups.filter(groupIsMappable);
 
@@ -95,7 +96,7 @@ export function GroupMappingsWidgetView({
       setShowAddRow(false);
       setSaveError(null);
     } catch (error) {
-      setSaveError(error);
+      setSaveError(getErrorMessage(error));
     }
   };
 
@@ -112,7 +113,7 @@ export function GroupMappingsWidgetView({
         await updateSetting({ key: mappingSetting, value: updatedMappings });
         setSaveError(null);
       } catch (error) {
-        setSaveError(error);
+        setSaveError(getErrorMessage(error));
       }
     };
 
@@ -136,7 +137,7 @@ export function GroupMappingsWidgetView({
       }
       setSaveError(null);
     } catch (error) {
-      setSaveError(error);
+      setSaveError(getErrorMessage(error));
     }
   };
 
@@ -208,10 +209,8 @@ export function GroupMappingsWidgetView({
           </div>
         </div>
       </Root>
-      {saveError?.data?.message && (
-        <div className={cx(CS.textError, CS.textBold, CS.m1)}>
-          {saveError.data.message}
-        </div>
+      {saveError && (
+        <div className={cx(CS.textError, CS.textBold, CS.m1)}>{saveError}</div>
       )}
     </WidgetAndErrorRoot>
   );

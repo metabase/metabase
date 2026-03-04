@@ -6,7 +6,6 @@ import {
 } from "@reduxjs/toolkit";
 import { assocIn, merge } from "icepick";
 import { push } from "react-router-redux";
-import { t } from "ttag";
 import { isBoolean } from "underscore";
 
 import {
@@ -19,6 +18,7 @@ import {
   updateTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
+import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
 import { Groups } from "metabase/entities/groups";
 import { Tables } from "metabase/entities/tables";
 import {
@@ -550,7 +550,7 @@ function isClearSaveErrorAction(
 
 function isSaveErrorAction(
   action: UnknownAction,
-): action is PayloadAction<any> {
+): action is PayloadAction<ErrorPayload> {
   return (
     isErrorAction(action) &&
     [
@@ -579,11 +579,7 @@ const saveError = createReducer<string | null>(null, (builder) => {
   );
   builder.addMatcher(isClearSaveErrorAction, () => null);
   builder.addMatcher(isSaveErrorAction, (state, { payload }) => {
-    return (
-      (payload && typeof payload.data === "string"
-        ? payload.data
-        : payload.data?.message) || t`Sorry, an error occurred.`
-    );
+    return getErrorMessage(payload);
   });
 });
 
