@@ -457,9 +457,7 @@
                                :day-of-week :get-day-of-week
                                :month-of-year :get-month
                                :quarter-of-year :get-quarter
-                               :hour-of-day :get-hour
-                               ;; Default
-                               :get-day-of-week)]
+                               :hour-of-day :get-hour)]
            (into [:!= {} [extraction-fn {} (dimension-ref dimension)]] values)))))
 
 (defn exclude-date-filter-parts

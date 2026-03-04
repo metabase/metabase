@@ -444,6 +444,13 @@
       (is (= 1 (nth clause 3)))
       (is (= 7 (nth clause 4))))))
 
+(deftest ^:parallel exclude-date-filter-clause-unknown-unit-throws-test
+  (testing "unknown temporal unit throws instead of silently defaulting"
+    (let [dimension {:id "dim-date" :effective-type :type/DateTime}
+          parts {:operator :!= :dimension dimension :unit :year-of-era :values [2024]}]
+      (is (thrown? #?(:clj Exception :cljs js/Error)
+                   (lib-metric.filter/exclude-date-filter-clause parts))))))
+
 (deftest ^:parallel exclude-date-filter-clause-null-test
   (testing "exclude-date-filter-clause creates null check clause"
     (let [dimension {:id "dim-date" :effective-type :type/DateTime}

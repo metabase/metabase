@@ -3,6 +3,13 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-metric.dimension :as lib-metric.dimension]))
 
+;;; -------------------------------------------------- group-type->type --------------------------------------------------
+
+(deftest ^:parallel group-type->type-unknown-throws-test
+  (testing "unknown group type throws instead of silently defaulting to connection"
+    (is (thrown? #?(:clj Exception :cljs js/Error)
+                 (#'lib-metric.dimension/group-type->type :group-type/unknown)))))
+
 ;;; -------------------------------------------------- Test Data --------------------------------------------------
 
 (def ^:private uuid-1 "550e8400-e29b-41d4-a716-446655440001")
@@ -117,14 +124,17 @@
     (is (= "Column 'old_column' no longer exists in the data source" (:status-message orphaned)))
     (is (= 1 (count dimension-mappings)) "orphaned dimensions have no mappings")))
 
-(deftest ^:parallel reconcile-non-persisted-dims-not-tracked-as-orphaned-test
-  (let [computed-pairs [(make-computed-pair "col1" target-1)]
-        persisted-dims [{:id uuid-2 :name "col2"}]
-        persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-2 :target target-2}]
-        {:keys [dimensions]}
-        (lib-metric.dimension/reconcile-dimensions-and-mappings
-         computed-pairs persisted-dims persisted-mappings)]
-    (is (= 1 (count dimensions)) "only the computed dimension should exist")))
+(deftest ^:parallel reconcile-non-persisted-dims-tracked-as-orphaned-test
+  (testing "Persisted dims without :status whose target no longer matches computed pairs are orphaned"
+    (let [computed-pairs [(make-computed-pair "col1" target-1)]
+          persisted-dims [{:id uuid-2 :name "col2"}]
+          persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-2 :target target-2}]
+          {:keys [dimensions]}
+          (lib-metric.dimension/reconcile-dimensions-and-mappings
+           computed-pairs persisted-dims persisted-mappings)
+          orphaned (first (filter #(= uuid-2 (:id %)) dimensions))]
+      (is (= 2 (count dimensions)) "computed + orphaned dimension")
+      (is (= :status/orphaned (:status orphaned))))))
 
 (deftest ^:parallel reconcile-orphaned-becomes-active-if-target-reappears-test
   (let [computed-pairs [(make-computed-pair "col1" target-1)]
@@ -394,3 +404,35 @@
           dim (first dimensions)]
       (is (= :type/Date (:effective-type dim))
           "persisted non-nil effective-type should override computed value"))))
+
+;;; ----------------------------------------- merge-persisted-modifications -----------------------------------------
+
+(deftest ^:parallel merge-persisted-nil-display-name-does-not-override-computed-test
+  (testing "A persisted dimension with nil :display-name should not override the computed display-name"
+    (let [computed-pairs [{:dimension {:id nil :name "col1" :display-name "Computed Name"}
+                           :mapping   {:type :table :target target-1}}]
+          persisted-dims [{:id uuid-1 :name "col1" :display-name nil :status :status/active}]
+          persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
+          {:keys [dimensions]}
+          (lib-metric.dimension/reconcile-dimensions-and-mappings
+           computed-pairs persisted-dims persisted-mappings)
+          dim (first dimensions)]
+      (is (= "Computed Name" (:display-name dim))
+          "nil display-name from persisted dim should not clobber the computed value"))))
+
+;;; ----------------------------------------- find-orphaned-dimensions -----------------------------------------
+
+(deftest ^:parallel reconcile-orphaned-without-status-is-detected-test
+  (testing "A persisted dimension missing :status should still be detected as orphaned"
+    (let [computed-pairs [(make-computed-pair "col1" target-1)]
+          persisted-dims [{:id uuid-1 :name "col1" :status :status/active}
+                          {:id uuid-orphaned :name "old_column"}]  ;; no :status key
+          persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}
+                              {:type :table :table-id 1 :dimension-id uuid-orphaned :target target-99}]
+          {:keys [dimensions]}
+          (lib-metric.dimension/reconcile-dimensions-and-mappings
+           computed-pairs persisted-dims persisted-mappings)
+          orphaned (first (filter #(= uuid-orphaned (:id %)) dimensions))]
+      (is (some? orphaned) "dimension without :status should appear in results")
+      (is (= :status/orphaned (:status orphaned)))
+      (is (string? (:status-message orphaned))))))

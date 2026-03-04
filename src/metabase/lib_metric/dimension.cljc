@@ -75,8 +75,7 @@
   [group-type]
   (case group-type
     :group-type/main "main"
-    (:group-type/join.explicit :group-type/join.implicit) "connection"
-    "connection"))
+    (:group-type/join.explicit :group-type/join.implicit) "connection"))
 
 (defn compute-dimension-pairs
   "Compute dimension/mapping pairs from visible columns. IDs not yet assigned.
@@ -149,7 +148,7 @@
   [computed-dim persisted-dim]
   (if persisted-dim
     (-> computed-dim
-        (merge (into {} (filter val) (perf/select-keys persisted-dim [:display-name :semantic-type :effective-type])))
+        (merge (into {} (remove (comp nil? val)) (perf/select-keys persisted-dim [:display-name :semantic-type :effective-type])))
         (dissoc :status-message))
     computed-dim))
 
@@ -181,10 +180,9 @@
          (remove #(contains? computed-targets (normalize-target (:target %))))
          (keep (fn [orphan-mapping]
                  (when-let [dim (get persisted-dims-by-id (:dimension-id orphan-mapping))]
-                   (when (:status dim)
-                     (-> dim
-                         (assoc :status :status/orphaned)
-                         (assoc :status-message (orphaned-status-message dim))))))))))
+                   (-> dim
+                       (assoc :status :status/orphaned)
+                       (assoc :status-message (orphaned-status-message dim)))))))))
 
 (mu/defn reconcile-dimensions-and-mappings :- [:map
                                                [:dimensions [:sequential ::lib-metric.schema/persisted-dimension]]

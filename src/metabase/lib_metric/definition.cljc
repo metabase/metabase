@@ -41,12 +41,14 @@
    Returns a vector of leaf nodes: [:metric opts id] or [:measure opts id]."
   [expression]
   (cond
+    (nil? expression) []
     (expression-leaf? expression) [expression]
     (and (sequential? expression)
          (#{:+ :- :* :/} (first expression))
          (>= (count expression) 4))
     (into [] (mapcat expression-leaves) (drop 2 expression))
-    :else []))
+    :else (throw (ex-info "Invalid expression: not a leaf or arithmetic node"
+                          {:expression expression}))))
 
 (defn flat-projections
   "Extract flat dimension-reference vectors from typed projections.

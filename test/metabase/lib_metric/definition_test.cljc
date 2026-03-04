@@ -241,10 +241,15 @@
       (is (= [leaf1 leaf2 leaf3] (lib-metric.definition/expression-leaves expr))))))
 
 (deftest ^:parallel expression-leaves-invalid-input-test
-  (testing "invalid input returns empty vector"
-    (is (= [] (lib-metric.definition/expression-leaves nil)))
-    (is (= [] (lib-metric.definition/expression-leaves "not-an-expression")))
-    (is (= [] (lib-metric.definition/expression-leaves [])))))
+  (testing "nil returns empty vector"
+    (is (= [] (lib-metric.definition/expression-leaves nil))))
+  (testing "malformed input throws"
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
+                          #"Invalid expression"
+                          (lib-metric.definition/expression-leaves "not-an-expression")))
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
+                          #"Invalid expression"
+                          (lib-metric.definition/expression-leaves [])))))
 
 (deftest ^:parallel expression-leaves-all-operators-test
   (testing "all arithmetic operators are supported"
