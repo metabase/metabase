@@ -1999,3 +1999,100 @@
                 "Card in collection should be included")
             (is (not (contains? result-ids table-id))
                 "Published table should NOT be included in collection search in OSS")))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Measure Search Tests (Phase 4)                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest measure-search-by-description-test
+  (testing "Should be able to find measures by description"
+    (let [unique-desc (mt/random-name)]
+      (mt/with-temp [:model/Measure _ {:name        "Some Measure"
+                                       :table_id    (mt/id :venues)
+                                       :description unique-desc}]
+        (is (=? [{:name "Some Measure" :model "measure" :description unique-desc}]
+                (search-request-data :crowberto :q unique-desc)))))))
+
+(deftest measure-table-db-id-filter-test
+  (testing "Measures are returned when searching with matching table_db_id"
+    (let [measure-name (mt/random-name)]
+      (mt/with-temp [:model/Measure _ {:name     measure-name
+                                       :table_id (mt/id :venues)}]
+        (is (=? [{:name measure-name :model "measure"}]
+                (search-request-data :crowberto :q measure-name
+                                     :table_db_id (mt/id)))))))
+  (testing "Measures are NOT returned when searching with non-matching table_db_id"
+    (let [measure-name (mt/random-name)]
+      (mt/with-temp [:model/Database {other-db-id :id} {}
+                     :model/Measure  _ {:name     measure-name
+                                        :table_id (mt/id :venues)}]
+        (is (= []
+               (binding [*search-request-results-database-id* other-db-id]
+                 (search-request-data :crowberto :q measure-name
+                                      :table_db_id other-db-id))))))))
+
+(deftest measure-search-result-shape-test
+  (testing "Measure search results contain table and database context fields"
+    (let [measure-name (mt/random-name)]
+      (mt/with-temp [:model/Measure _ {:name     measure-name
+                                       :table_id (mt/id :venues)}]
+        (is (=? [{:name        measure-name
+                  :model       "measure"
+                  :table_id    true
+                  :table_name  "VENUES"
+                  :database_id true}]
+                (search-request-data-with identity :crowberto
+                                          :q measure-name :models "measure")))))))
+
+(deftest measure-models-filter-test
+  (testing "Filtering by models=measure returns only measures"
+    (with-search-items-in-root-collection "test"
+      (let [results (search-request-data :crowberto :q "test" :models "measure")]
+        (is (= 1 (count results)))
+        (is (= "measure" (-> results first :model)))))))
+
+(deftest measure-permissions-with-data-access-test
+  (testing "User with view-data access can see measures in search"
+    (mt/with-temp [:model/Database                   {db-id :id} {}
+                   :model/Table                      {table-id :id} {:db_id db-id :schema nil}
+                   :model/Measure                    _ {:table_id table-id :name "test measure"}
+                   :model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+        (perms/set-table-permission! group-id (t2/select-one :model/Table table-id) :perms/create-queries :query-builder)
+        (is (=? [{:name "test measure" :model "measure"}]
+                (binding [*search-request-results-database-id* db-id]
+                  (search-request-data :rasta :q "test measure"))))))))
+
+(deftest measure-archive-round-trip-test
+  (testing "Archived measures appear in archived results and not in default results"
+    (let [measure-name (mt/random-name)]
+      (mt/with-temp [:model/Measure {measure-id :id} {:name     measure-name
+                                                      :table_id (mt/id :venues)}]
+        (testing "measure appears in default (non-archived) results"
+          (is (=? [{:name measure-name :model "measure"}]
+                  (search-request-data :crowberto :q measure-name))))
+        (testing "after archiving, measure disappears from default results"
+          (t2/update! :model/Measure measure-id {:archived true})
+          (is (= [] (search-request-data :crowberto :q measure-name))))
+        (testing "archived measure appears in archived=true results"
+          (is (=? [{:name measure-name :model "measure" :archived true}]
+                  (search-request-data :crowberto :q measure-name :archived "true"))))
+        (testing "after unarchiving, measure returns to default results"
+          (t2/update! :model/Measure measure-id {:archived false})
+          (is (=? [{:name measure-name :model "measure"}]
+                  (search-request-data :crowberto :q measure-name))))))))
+
+(deftest ^:synchronized measure-appdb-engine-test
+  (when (search/supports-index?)
+    (testing "Measures are indexed and returned by the appdb search engine"
+      (let [measure-name (mt/random-name)]
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Measure _ {:name     measure-name
+                                           :table_id (mt/id :venues)}]
+            (search/reindex! {:async? false :in-place? true})
+            (is (=? [{:name measure-name :model "measure"}]
+                    (search-request-data :crowberto :q measure-name
+                                         :search_engine "appdb"
+                                         :models "measure")))))))))
