@@ -3,6 +3,7 @@
    (startStream/appendStream/stopStream)."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
    [metabase-enterprise.metabot-v3.api.slackbot.events :as slackbot.events]
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
@@ -269,7 +270,7 @@
         filename (or (some-> title (u/slugify {:max-length 80}))
                      (case type
                        "static_viz" (str "chart-" (:entity_id value))
-                       "adhoc_viz"  (str "adhoc-" (random-uuid))))
+                       "adhoc_viz"  (str "adhoc-" (t/format "yyyy-MM-dd_HH-mm-ss" (t/zoned-date-time)))))
         link     (case type
                    "adhoc_viz"  (:link value)
                    "static_viz" (str "/question/" (:entity_id value)))]

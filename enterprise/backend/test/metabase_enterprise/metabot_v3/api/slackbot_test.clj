@@ -643,7 +643,7 @@
                 (is (= 1 (count @image-calls)))
                 (is (= "C789" (:channel (first @image-calls))))
                 (is (= "1234567890.000000" (:thread-ts (first @image-calls))))
-                (is (re-matches #"adhoc-\d+\.png" (:filename (first @image-calls))))
+                (is (re-matches #"adhoc-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.png" (:filename (first @image-calls))))
                 (is (= (vec fake-png-bytes) (vec (:image-bytes (first @image-calls)))))))))))))
 
 (deftest adhoc-viz-default-display-test
