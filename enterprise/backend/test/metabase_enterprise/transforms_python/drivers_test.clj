@@ -12,8 +12,8 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
-   [metabase.transforms.util :as transforms.util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -121,7 +121,7 @@
         table-schema {:name qualified-table-name
                       :columns columns}]
     (mt/as-admin
-      (transforms.util/create-table-from-schema! driver db-id table-schema))
+      (transforms-base.u/create-table-from-schema! driver db-id table-schema))
 
     (when (seq data)
       (driver/insert-from-source! driver db-id table-schema
