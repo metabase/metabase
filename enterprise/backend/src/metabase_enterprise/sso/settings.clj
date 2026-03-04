@@ -33,20 +33,23 @@
                ;; Disable SAML provisioning automatically when SCIM is enabled
                false
                (setting/get-value-of-type :boolean :saml-user-provisioning-enabled?)))
-  :audit   :getter)
+  :audit   :getter
+  :doc     "When set to `true`, users who log in via SAML will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via SAML.")
 
 (defsetting jwt-user-provisioning-enabled?
   (deferred-tru "Determines what happens when a user logs in via JWT and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
   :feature :sso-jwt
-  :audit   :getter)
+  :audit   :getter
+  :doc     "When set to `true`, users who log in via JWT will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via JWT.")
 
 (defsetting ldap-user-provisioning-enabled?
   (deferred-tru "Determines what happens when a user logs in via LDAP and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
-  :audit   :getter)
+  :audit   :getter
+  :doc     "When set to `true`, users who log in via LDAP will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via LDAP.")
 
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
@@ -492,11 +495,13 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :export?    false)
 
 (defsetting oidc-user-provisioning-enabled?
-  (deferred-tru "Determines what happens when a user logs in via OIDC and doesn''t have a Metabase account.")  :type    :boolean
+  (deferred-tru "Determines what happens when a user logs in via OIDC and doesn''t have a Metabase account.")
+  :type    :boolean
   :default true
   :feature :sso-oidc
-  :export?    false
-  :audit   :getter)
+  :export? false
+  :audit   :getter
+  :doc     "When set to `true`, users who log in via OIDC will automatically get a Metabase account if they don't have one, or get their existing account reactivated. When set to `false`, only users with active Metabase accounts can log in via OIDC.")
 
 (defsetting other-sso-enabled?
   "Are we using an SSO integration other than LDAP or Google Auth or ODIC? These integrations use the `/auth/sso` endpoint for
