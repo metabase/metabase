@@ -4,7 +4,8 @@
    Unlike the global `dependency` table which links to `table_id` (requiring the table to exist),
    workspace dependencies use two tables that support logical references:
 
-   - `workspace_input`  - external tables transforms consume (may not exist yet), with ref_id linking to transform
+   - `workspace_input`  - external tables transforms consume (may not exist yet)
+   - `workspace_input_transform` - join table linking inputs to transforms (ref_id + transform_version)
    - `workspace_output` - tables transforms produce
 
    ## Example: Internal Dependency (Transform B depends on Transform A's output)
@@ -36,15 +37,22 @@
    If Transform A also depended on an external table ORDERS:
 
    workspace_input:
-   | id  | ref_id             | schema | table  | table_id |
-   |-----|-------------------|--------|--------|----------|
-   | 201 | happy-dolphin-a1b2 | PUBLIC | ORDERS | 42       |
+   | id  | schema | table  | table_id |
+   |-----|--------|--------|----------|
+   | 201 | PUBLIC | ORDERS | 42       |
 
-   The ref_id directly links the input to its transform, no join table needed."
+   workspace_input_transform:
+   | workspace_input_id | ref_id             | transform_version |
+   |--------------------|--------------------|-------------------|
+   | 201                | happy-dolphin-a1b2 | 1                 |
+
+   The join table links inputs to transforms, allowing multiple transforms to share a single input row."
   (:require
    [metabase-enterprise.workspaces.models.workspace-input]
+   [metabase-enterprise.workspaces.models.workspace-input-transform]
    [metabase-enterprise.workspaces.models.workspace-output]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    ;; TODO (Chris 2025-12-17) -- I solemnly declare that we will clean up this coupling nightmare for table normalization
@@ -167,13 +175,25 @@
     (inputs-from-native-query query db-id)
     (inputs-from-mbql-query query)))
 
+(defn- source-table-ref->table-ref
+  "Paper over a small unfortunate difference in shape"
+  [table-ref]
+  (-> (select-keys table-ref [:schema :table :table_id])
+      (assoc :db_id (:database_id table-ref))))
+
 (defn- inputs-from-python-transform
   "Extract table refs from a python transform's source-tables.
-   Python transforms require tables to exist (they map name -> table_id). Batch lookup."
+   Uses metadata from map refs directly; only looks up the database for bare integer IDs."
   [source-tables]
-  (let [table-ids  (set (vals source-tables))
-        table-refs (batch-table-refs-from-ids table-ids)]
-    (u/keepv table-refs (vals source-tables))))
+  (let [{maps true ints false} (group-by (comp map? val) source-tables)
+        ;; Maps already have schema/table metadata
+        map-refs  (map (comp source-table-ref->table-ref val) maps)
+        ;; Integers need a batch lookup
+        int-ids   (map val ints)
+        int-refs  (when (seq int-ids)
+                    (let [lookup (batch-table-refs-from-ids int-ids)]
+                      (keep lookup int-ids)))]
+    (into (vec map-refs) int-refs)))
 
 (mu/defn analyze-entity :- ::analysis
   "Analyze a workspace entity to find its dependencies.
@@ -245,23 +265,38 @@
   [default-schema input]
   (update input :schema #(or % default-schema)))
 
+(defn- upsert-workspace-input!
+  "Ensure a workspace_input row exists for the given table coordinate.
+   Returns the workspace_input id (existing or newly created)."
+  [workspace-id {:keys [db_id schema table table_id]}]
+  (app-db/update-or-insert!
+   :model/WorkspaceInput
+   {:workspace_id workspace-id
+    :db_id        db_id
+    :schema       schema
+    :table        table}
+   (fn [existing]
+     (cond-> {:workspace_id workspace-id
+              :db_id        db_id
+              :schema       schema
+              :table        table
+              :table_id     (:table_id existing)}
+       table_id (assoc :table_id table_id)))))
+
 (defn- insert-workspace-inputs!
-  "Insert workspace_input records for the given inputs with the given transform_version.
-   Each input row is linked to a specific transform via ref_id.
-   With epochal versioning, we always insert new rows - cleanup of old versions happens separately.
-   Silently ignores constraint violations from concurrent inserts."
+  "Insert a single workspace_input record per table, with a join entry per transform that uses that table."
   [workspace-id ref-id inputs transform-version]
   (when (seq inputs)
-    (ws.u/ignore-constraint-violation
-     (t2/insert! :model/WorkspaceInput
-                 (for [{:keys [db_id schema table table_id]} inputs]
-                   {:workspace_id      workspace-id
-                    :ref_id            ref-id
-                    :transform_version transform-version
-                    :db_id             db_id
-                    :schema            schema
-                    :table             table
-                    :table_id          table_id}))))
+    ;; N+1 query here: we query once per input to handle race conditions. Native SQL upserts would be faster
+    ;; but we don't have a driver-independent helper for that.
+    (let [input-ids (mapv (partial upsert-workspace-input! workspace-id) inputs)]
+      (ws.u/ignore-constraint-violation
+       (t2/insert! :model/WorkspaceInputTransform
+                   (for [input-id input-ids]
+                     {:workspace_input_id input-id
+                      :workspace_id       workspace-id
+                      :ref_id             ref-id
+                      :transform_version  transform-version})))))
   nil)
 
 (defn transform-output-exists-for-version?

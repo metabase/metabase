@@ -16,7 +16,7 @@
   "Schema for valid values of template tag `:type`."
   [:enum
    {:decode/normalize common/normalize-keyword}
-   :snippet :card :dimension :number :text :date :boolean :temporal-unit])
+   :snippet :card :dimension :number :text :date :boolean :temporal-unit :table])
 
 (mr/def ::name
   [:ref
@@ -128,6 +128,22 @@
      [:card-id ::id/card]]]
    [:ref ::disallow-dimension]])
 
+;; Example:
+;;
+;;    {:id           "fc5e14d9-7d14-67af-66b2-b2a6e25afeaf"
+;;     :name         "orders"
+;;     :display-name "Orders"
+;;     :type         :table
+;;     :table-id     2}
+(mr/def ::source-table
+  [:and
+   [:merge
+    [:ref ::common]
+    [:map
+     [:type                  [:= :table]]
+     [:table-id              ::id/table]]]
+   [:ref ::disallow-dimension]])
+
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."
   #{:number :text :date :boolean})
@@ -164,6 +180,7 @@
     [:dimension     [:ref ::field-filter]]
     [:snippet       [:ref ::snippet]]
     [:card          [:ref ::source-query]]
+    [:table         [:ref ::source-table]]
     ;; :number, :text, :date
     [::mc/default [:ref ::raw-value]]]])
 

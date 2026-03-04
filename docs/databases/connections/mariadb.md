@@ -6,7 +6,7 @@ title: MariaDB
 
 > This page covers connecting to MariaDB as a _data warehouse_. For using MariaDB as Metabase's _application database_, see [Configuring the Metabase application database](../../installation-and-operation/configuring-application-database.md).
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 MariaDB shares a driver with MySQL, so select the **MySQL** driver.
 
@@ -100,6 +100,10 @@ JSON schema inference doesn't work with MariaDB, due to implementation differenc
 ## Passwords with special characters
 
 If your password contains characters that aren't UTF-8, then you might need to add an additional variable to the connection string `passwordCharacterEncoding=<your_encoding_here>`. This ensures that MariaDB understands the special characters in the password during authentication.
+
+## Writeable connection
+
+Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Database routing
 

@@ -114,7 +114,7 @@
       (mdb/increment-app-db-unique-indentifier!)
       (finally
         (.. lock writeLock unlock)
-        ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend`
+        ;; don't know why this happens but when I try to test things locally with `bun run test-cypress-open-no-backend`
         ;; and a backend server started with `dev/start!` the snapshots are always missing columns added by DB
         ;; migrations. So let's just check and make sure it's fully up to date in this scenario. Not doing this outside
         ;; of dev because it seems to work fine for whatever reason normally and we don't want tests taking 5 million
@@ -253,3 +253,14 @@
                                           [:ref ::lib.schema.test-spec/test-query-spec]]]
   (-> (lib-be/application-database-metadata-provider database)
       (lib/test-query query-spec)))
+
+(api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
+  "Creates a native query from a test query spec."
+  [_route-params
+   _query-params
+   {:keys [database], :as native-query-spec} :- [:merge
+                                                 [:map
+                                                  [:database ::lib.schema.id/database]]
+                                                 [:ref ::lib.schema.test-spec/test-native-query-spec]]]
+  (-> (lib-be/application-database-metadata-provider database)
+      (lib/test-native-query native-query-spec)))

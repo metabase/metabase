@@ -19,7 +19,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
    [toucan2.realize :as t2.realize]))
@@ -37,15 +36,19 @@
   variables. This might require updating `can-read?` and `can-write?` to take explicit perms sets instead of relying
   on dynamic variables."
   {:style/indent 0}
-  [current-user-perms & body]
-  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
+  [current-user-id current-user-perms & body]
+  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-id*)              ~current-user-id
+                   (requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
      ~@body))
 
-(defn- can-write? [{:keys [current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-write? instance)))
+(defn- can-write? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-write? instance)))
 
-(defn- can-read? [{:keys [current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-read? instance)))
+(defn- can-read? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-read? instance)))
+
+(defn- can-query? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-query? instance)))
 
 (defmethod check-permissions-for-model :default
   [search-ctx instance]
@@ -64,13 +67,7 @@
 ;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
   [search-ctx instance]
-  ;; we've already filtered out tables w/o collection permissions in the query itself.
-  (let [instance-id (:id instance)
-        user-id     (:current-user-id search-ctx)
-        db-id       (database/table-id->database-id instance-id)]
-    (and
-     (perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted db-id instance-id)
-     (perms/user-has-permission-for-table? user-id :perms/create-queries :query-builder db-id instance-id))))
+  (can-query? search-ctx (assoc instance :db_id (:database_id instance))))
 
 (defmethod check-permissions-for-model :indexed-entity
   [search-ctx instance]

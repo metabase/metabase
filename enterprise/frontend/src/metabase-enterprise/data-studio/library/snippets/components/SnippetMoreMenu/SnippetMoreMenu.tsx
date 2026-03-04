@@ -5,26 +5,22 @@ import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { NativeQuerySnippet } from "metabase-types/api";
 
-import { DeleteSnippetModal } from "../DeleteSnippetModal";
-
-type SnippetModalType = "move" | "delete";
+import { SnippetModal, type SnippetModalType } from "./SnippetModal";
 
 type SnippetMoreMenuProps = {
   snippet: NativeQuerySnippet;
-  onDelete?: () => void;
 };
 
-export function SnippetMoreMenu({ snippet, onDelete }: SnippetMoreMenuProps) {
+export function SnippetMoreMenu({ snippet }: SnippetMoreMenuProps) {
   const [modalType, setModalType] = useState<SnippetModalType>();
 
   return (
     <>
-      <SnippetMenu onOpenModal={setModalType} />
-      {modalType != null && (
+      <SnippetMenu onOpenModal={setModalType} snippet={snippet} />
+      {!!modalType && (
         <SnippetModal
           snippet={snippet}
           modalType={modalType}
-          onDelete={onDelete}
           onClose={() => setModalType(undefined)}
         />
       )}
@@ -34,12 +30,13 @@ export function SnippetMoreMenu({ snippet, onDelete }: SnippetMoreMenuProps) {
 
 type SnippetMenuProps = {
   onOpenModal: (modalType: SnippetModalType) => void;
+  snippet: NativeQuerySnippet;
 };
 
-function SnippetMenu({ onOpenModal }: SnippetMenuProps) {
+function SnippetMenu({ onOpenModal, snippet }: SnippetMenuProps) {
   const menuItems = [];
 
-  if (PLUGIN_SNIPPET_FOLDERS.isEnabled) {
+  if (PLUGIN_SNIPPET_FOLDERS.isEnabled && !snippet.archived) {
     menuItems.push(
       <Menu.Item
         key="move"
@@ -51,15 +48,27 @@ function SnippetMenu({ onOpenModal }: SnippetMenuProps) {
     );
   }
 
-  menuItems.push(
-    <Menu.Item
-      key="delete"
-      leftSection={<Icon name="trash" />}
-      onClick={() => onOpenModal("delete")}
-    >
-      {t`Delete`}
-    </Menu.Item>,
-  );
+  if (snippet.archived) {
+    menuItems.push(
+      <Menu.Item
+        key="archive"
+        leftSection={<Icon name="unarchive" />}
+        onClick={() => onOpenModal("unarchive")}
+      >
+        {t`Unarchive`}
+      </Menu.Item>,
+    );
+  } else {
+    menuItems.push(
+      <Menu.Item
+        key="archive"
+        leftSection={<Icon name="archive" />}
+        onClick={() => onOpenModal("archive")}
+      >
+        {t`Archive`}
+      </Menu.Item>,
+    );
+  }
 
   if (menuItems.length === 0) {
     return null;
@@ -75,38 +84,4 @@ function SnippetMenu({ onOpenModal }: SnippetMenuProps) {
       <Menu.Dropdown>{menuItems}</Menu.Dropdown>
     </Menu>
   );
-}
-
-type SnippetModalProps = {
-  snippet: NativeQuerySnippet;
-  modalType: SnippetModalType;
-  onDelete?: () => void;
-  onClose: () => void;
-};
-
-function SnippetModal({
-  snippet,
-  modalType,
-  onDelete,
-  onClose,
-}: SnippetModalProps) {
-  switch (modalType) {
-    case "move":
-      return (
-        <PLUGIN_SNIPPET_FOLDERS.MoveSnippetModal
-          snippet={snippet}
-          onClose={onClose}
-        />
-      );
-    case "delete":
-      return (
-        <DeleteSnippetModal
-          snippet={snippet}
-          onDelete={onDelete}
-          onClose={onClose}
-        />
-      );
-    default:
-      return null;
-  }
 }

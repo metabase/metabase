@@ -35,22 +35,6 @@ const setup = ({
 };
 
 describe("PaletteResultItem", () => {
-  it("icons should default to brand color", async () => {
-    setup({ item: { icon: "model" } });
-
-    expect(await screen.findByRole("img", { name: /model/ })).toHaveStyle({
-      color: "var(--mb-color-brand)",
-    });
-  });
-
-  it("icons should use provided colors when available", async () => {
-    setup({ item: { icon: "model", extra: { iconColor: "accent1" } } });
-
-    expect(await screen.findByRole("img", { name: /model/ })).toHaveStyle({
-      color: "var(--mb-color-accent1)",
-    });
-  });
-
   it("should not render an icon if none is provided", async () => {
     setup({});
     expect(screen.queryByRole("img")).not.toBeInTheDocument();

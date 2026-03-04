@@ -12,6 +12,7 @@
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -43,6 +44,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
@@ -152,7 +154,7 @@
   we can filter it out in Clojure-land."
   [{query :dataset_query, :as _card} :- [:map
                                          [:dataset_query ::queries.schema/query]]]
-  (lib.util.match/match (lib/aggregations query) #{:cum-count :cum-sum}))
+  (lib.util.match/match-lite (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
 
 (defn card-can-be-used-as-source-query?
   "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"
@@ -422,27 +424,6 @@
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
-(mu/defn get-database
-  "Retrieve database respecting `include-editable-data-model?`, `exclude-uneditable-details?` and `include-mirror-databases?`"
-  ([id] (get-database id {}))
-  ([id :- ms/PositiveInt
-    {:keys [include-editable-data-model?
-            exclude-uneditable-details?
-            include-destination-databases?]}
-    :- [:map
-        [:include-editable-data-model? {:optional true :default false} ms/MaybeBooleanValue]
-        [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
-        [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
-   (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
-         database               (api/check-404 (if include-destination-databases?
-                                                 (t2/select-one :model/Database :id id)
-                                                 (t2/select-one :model/Database :id id :router_database_id nil)))
-         router-db-id           (:router_database_id database)]
-     (cond-> database
-       filter-by-data-access? api/read-check
-       (or exclude-uneditable-details?
-           router-db-id)      api/write-check))))
-
 (mu/defn- check-database-exists
   ([id] (check-database-exists id {}))
   ([id :- ms/PositiveInt
@@ -496,10 +477,10 @@
        [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
        [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]]]
   (present-database
-   (get-database id {:include include
-                     :include-editable-data-model? include_editable_data_model
-                     :exclude-uneditable-details? exclude_uneditable_details
-                     :include-destination-databases? true})
+   (warehouses/get-database id {:include include
+                                :include-editable-data-model? include_editable_data_model
+                                :exclude-uneditable-details? exclude_uneditable_details
+                                :include-destination-databases? true})
    {:include include
     :include-editable-data-model? include_editable_data_model
     :exclude-uneditable-details? exclude_uneditable_details}))
@@ -588,7 +569,7 @@
   (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
 
 (defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
-  (let [db (-> (get-database id {:include-editable-data-model? include-editable-data-model?})
+  (let [db (-> (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
                (t2/hydrate
                 (if skip-fields?
                   [:tables :segments :metrics]
@@ -770,7 +751,7 @@
    {:keys [prefix substring]} :- [:map
                                   [:prefix    {:optional true} [:maybe ms/NonBlankString]]
                                   [:substring {:optional true} [:maybe ms/NonBlankString]]]]
-  (api/read-check (get-database id))
+  (api/read-check (warehouses/get-database id))
   (when (and (str/blank? prefix) (str/blank? substring))
     (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
   (try
@@ -806,7 +787,7 @@
    {:keys [query include_dashboard_questions]} :- [:map
                                                    [:query                       ms/NonBlankString]
                                                    [:include_dashboard_questions {:optional true} ms/BooleanValue]]]
-  (api/read-check (get-database id))
+  (api/read-check (warehouses/get-database id))
   (try
     (->> (autocomplete-cards id query include_dashboard_questions)
          (filter mi/can-read?)
@@ -824,7 +805,7 @@
   "Get a list of all `Fields` in `Database`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (get-database id)
+  (warehouses/get-database id)
   (let [fields (filter mi/can-read? (-> (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
                                                    :table_id        [:in (t2/select-fn-set :id :model/Table, :db_id id)]
                                                    :visibility_type [:not-in ["sensitive" "retired"]])
@@ -853,79 +834,12 @@
   (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
                                            [check-db-data-model-perms mi/can-write?]
                                            [api/read-check mi/can-read?])]
-    (db-perm-check (get-database id {:include-editable-data-model? true}))
+    (db-perm-check (warehouses/get-database id {:include-editable-data-model? true}))
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (t2/hydrate :table))))))
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
-
-(defn test-database-connection
-  "Try out the connection details for a database and useful error message if connection fails, returns `nil` if
-   connection succeeds."
-  [engine {:keys [host port] :as details}, & {:keys [log-exception]
-                                              :or   {log-exception true}}]
-  {:pre [(some? engine)]}
-  (let [engine  (keyword engine)
-        details (assoc details :engine engine)]
-    (try
-      (cond
-        (driver.u/can-connect-with-details? engine details :throw-exceptions)
-        nil
-
-        (and host port (u/host-port-up? host port))
-        {:message (tru "Connection to ''{0}:{1}'' successful, but could not connect to DB."
-                       host port)}
-
-        (and host (u/host-up? host))
-        {:message (tru "Connection to host ''{0}'' successful, but port {1} is invalid."
-                       host port)
-         :errors  {:port (deferred-tru "check your port settings")}}
-
-        host
-        {:message (tru "Host ''{0}'' is not reachable" host)
-         :errors  {:host (deferred-tru "check your host settings")}}
-
-        :else
-        {:message (tru "Unable to connect to database.")})
-      (catch Throwable e
-        (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
-          (log/error e "Cannot connect to Database"))
-        (if (-> e ex-data :message)
-          (ex-data e)
-          {:message (.getMessage e)})))))
-
-;; TODO - Just make `:ssl` a `feature`
-(defn- supports-ssl?
-  "Does the given `engine` have an `:ssl` setting?"
-  [driver]
-  {:pre [(driver/available? driver)]}
-  (let [driver-props (driver.u/collect-all-props-by-name (driver/connection-properties driver))]
-    (contains? driver-props "ssl")))
-
-(mu/defn test-connection-details :- :map
-  "Try a making a connection to database `engine` with `details`.
-
-  If the `details` has SSL explicitly enabled, go with that and do not accept plaintext connections. If it is disabled,
-  try twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
-  the details used to successfully connect. Otherwise returns a map with the connection error message. (This map will
-  also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
-  [engine  :- DBEngineString
-   details :- :map]
-  (let [;; Try SSL first if SSL is supported and not already enabled
-        ;; If not successful or not applicable, details-with-ssl will be nil
-        details-with-ssl (assoc details :ssl true)
-        details-with-ssl (when (and (supports-ssl? (keyword engine))
-                                    (not (true? (:ssl details)))
-                                    (nil? (test-database-connection engine details-with-ssl :log-exception false)))
-                           details-with-ssl)]
-    (or
-      ;; Opportunistic SSL
-     details-with-ssl
-      ;; Try with original parameters
-     (some-> (test-database-connection engine details)
-             (assoc :valid false))
-     details)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -952,7 +866,7 @@
     (api/check (premium-features/enable-cache-granular-controls?)
                [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
                               "cache granular controls feature."))]))
-  (let [details-or-error (test-connection-details engine details)
+  (let [details-or-error (warehouses/test-connection-details engine details)
         valid?           (not= (:valid details-or-error) false)]
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
@@ -1002,7 +916,7 @@
                                                       [:engine  DBEngineString]
                                                       [:details :map]]]]]
   (api/check-superuser)
-  (let [details-or-error (test-connection-details engine details)]
+  (let [details-or-error (warehouses/test-connection-details engine details)]
     ;; details that come back without a `:valid` key at all are... valid!
     (update details-or-error :valid (comp not false?))))
 
@@ -1025,17 +939,43 @@
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (defn- upsert-sensitive-fields
-  "Replace any sensitive values not overridden in the PUT with the original values"
-  [database details]
-  (when details
-    (merge (:details database)
-           (reduce
-            (fn [details k]
-              (if (= secret/protected-password (get details k))
-                (m/update-existing details k (constantly (get-in database [:details k])))
-                details))
-            details
-            (database/sensitive-fields-for-db database)))))
+  "Replace any sensitive values not overridden in the PUT with the original values.
+  `details-key` is the key in the database map to use (e.g., :details or :write_data_details)."
+  ([database details]
+   (upsert-sensitive-fields database details :details))
+  ([database details details-key]
+   (when details
+     (merge (get database details-key)
+            (reduce
+             (fn [details k]
+               (if (= secret/protected-password (get details k))
+                 (m/update-existing details k (constantly (get-in database [details-key k])))
+                 details))
+             details
+             (database/sensitive-fields-for-db database))))))
+
+(defn- validate-write-data-details!
+  "Validates write_data_details guardrails. Throws 400 on violation."
+  [existing-database write-data-details]
+  (api/check-400 (not (:router_database_id existing-database))
+                 (tru "Cannot configure a write connection on a destination database"))
+  (api/check-400 (not (t2/exists? :model/Database :router_database_id (:id existing-database)))
+                 (tru "Cannot configure a write connection on a router database"))
+  (when-not (:write-data-connection write-data-details)
+    (throw (ex-info (tru "write-data-connection must be set in write_data_details")
+                    {:status-code 400})))
+  (when (:destination-database write-data-details)
+    (throw (ex-info (tru "destination-database must be false in write_data_details")
+                    {:status-code 400})))
+  (let [engine (keyword (:engine existing-database))]
+    (when-let [hidden-fields (not-empty (driver.u/fields-hidden-for-write-data-connection engine))]
+      (let [hidden-kws      (into #{} (map keyword) hidden-fields)
+            disallowed-keys (filterv #(contains? hidden-kws %) (keys write-data-details))]
+        (when (seq disallowed-keys)
+          (throw (ex-info (tru "write_data_details must not contain fields hidden for write connections: {0}"
+                               (str/join ", " (sort (map name disallowed-keys))))
+                          {:status-code     400
+                           :disallowed-keys disallowed-keys})))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1046,87 +986,109 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-           auto_run_queries refingerprint cache_ttl settings provider_name]} :- [:map
-                                                                                 [:name               {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:engine             {:optional true} [:maybe DBEngineString]]
-                                                                                 [:refingerprint      {:optional true} [:maybe :boolean]]
-                                                                                 [:details            {:optional true} [:maybe ms/Map]]
-                                                                                 [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
-                                                                                 [:description        {:optional true} [:maybe :string]]
-                                                                                 [:caveats            {:optional true} [:maybe :string]]
-                                                                                 [:points_of_interest {:optional true} [:maybe :string]]
-                                                                                 [:auto_run_queries   {:optional true} [:maybe :boolean]]
-                                                                                 [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
-                                                                                 [:provider_name      {:optional true} [:maybe :string]]
-                                                                                 [:settings           {:optional true} [:maybe ms/Map]]]]
+   {:keys [name engine details write_data_details is_full_sync is_on_demand description caveats points_of_interest
+           schedules auto_run_queries refingerprint cache_ttl settings provider_name]}
+   :- [:map
+       [:name               {:optional true} [:maybe ms/NonBlankString]]
+       [:engine             {:optional true} [:maybe DBEngineString]]
+       [:refingerprint      {:optional true} [:maybe :boolean]]
+       [:details            {:optional true} [:maybe ms/Map]]
+       [:write_data_details {:optional true} [:maybe ms/Map]]
+       [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
+       [:description        {:optional true} [:maybe :string]]
+       [:caveats            {:optional true} [:maybe :string]]
+       [:points_of_interest {:optional true} [:maybe :string]]
+       [:auto_run_queries   {:optional true} [:maybe :boolean]]
+       [:cache_ttl          {:optional true} [:maybe ms/PositiveInt]]
+       [:provider_name      {:optional true} [:maybe :string]]
+       [:settings           {:optional true} [:maybe ms/Map]]]]
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
-  (let [existing-database (api/write-check (t2/select-one :model/Database :id id))
-        incoming-details  details
-        details           (some->> details
-                                   (upsert-sensitive-fields existing-database))
-        ;; verify that we can connect to the database if `:details` OR `:engine` have changed.
-        details-changed?  (some-> details (not= (:details existing-database)))
-        engine-changed?   (some-> engine keyword (not= (:engine existing-database)))
-        conn-error        (when (or details-changed? engine-changed?)
-                            (test-database-connection (or engine (:engine existing-database))
-                                                      (or details (:details existing-database))))
-        full-sync?        (some-> is_full_sync boolean)
-        on-demand?        (boolean is_on_demand)]
-    (if conn-error
+  (when (some? write_data_details)
+    (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions")))
+  (when (:write-data-connection details)
+    (throw (ex-info (tru "write-data-connection must not be set in details")
+                    {:status-code 400})))
+  (let [existing-database               (api/write-check (t2/select-one :model/Database :id id))
+        _                               (when write_data_details
+                                          (validate-write-data-details! existing-database write_data_details))
+        incoming-details                details
+        incoming-write-data-details     write_data_details
+        details-with-secrets            (some->> details
+                                                 (upsert-sensitive-fields existing-database))
+        write-data-details-with-secrets (when write_data_details
+                                          (upsert-sensitive-fields existing-database write_data_details :write_data_details))
+        ;; verify that we can connect to the database if details OR `:engine` have changed.
+        details-changed?                (some-> details-with-secrets (not= (:details existing-database)))
+        write-details-changed?          (some-> write-data-details-with-secrets (not= (:write_data_details existing-database)))
+        engine-changed?                 (some-> engine keyword (not= (:engine existing-database)))
+        main-conn-error                 (when (or details-changed? engine-changed?)
+                                          (warehouses/test-database-connection (or engine (:engine existing-database))
+                                                                               (or details-with-secrets (driver.conn/default-details existing-database))))
+        write-conn-error                (when (or write-details-changed? engine-changed?)
+                                          (let [would-be-database (cond-> existing-database
+                                                                    details-with-secrets            (assoc :details details-with-secrets)
+                                                                    write-data-details-with-secrets (assoc :write_data_details write-data-details-with-secrets))]
+                                            (driver.conn/with-write-connection
+                                              (warehouses/test-database-connection (or engine (:engine would-be-database))
+                                                                                   (driver.conn/effective-details would-be-database)))))
+        full-sync?                      (some-> is_full_sync boolean)
+        on-demand?                      (boolean is_on_demand)]
+    (if (or main-conn-error write-conn-error)
       ;; failed to connect, return error
       {:status 400
-       :body   conn-error}
+       ;; Write details are a merge over the top of default connection:
+       :body   (or main-conn-error write-conn-error)}
       ;; no error, proceed with update
       (let [existing-settings (:settings existing-database)
-            pending-settings (into {}
-                                   ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
-                                   (remove (fn [[_k v]] (nil? v)))
-                                   (merge existing-settings settings))
-            updates    (merge
-                        ;; TODO - is there really a reason to let someone change the engine on an existing database?
-                        ;;       that seems like the kind of thing that will almost never work in any practical way
-                        ;; TODO - this means one cannot unset the description. Does that matter?
-                        (u/select-keys-when
-                         {:name               name
-                          :engine             engine
-                          :details            details
-                          :refingerprint      refingerprint
-                          :is_full_sync       full-sync?
-                          :is_on_demand       on-demand?
-                          :description        description
-                          :caveats            caveats
-                          :points_of_interest points_of_interest
-                          :auto_run_queries   auto_run_queries
-                          :settings           (when (seq settings) pending-settings)
-                          :provider_name      provider_name}
-                         :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
-                                    :description :caveats :points_of_interest :auto_run_queries :settings}
-                         :present #{:provider_name})
-                        ;; cache_field_values_schedule can be nil
-                        (when schedules
-                          (sync.schedules/schedule-map->cron-strings schedules)))
-            pending-db (merge existing-database updates)]
+            pending-settings  (into {}
+                                    ;; upsert settings with a PATCH-style update. `nil` key means unset the Setting.
+                                    (remove (fn [[_k v]] (nil? v)))
+                                    (merge existing-settings settings))
+            updates           (merge
+                               ;; TODO - is there really a reason to let someone change the engine on an existing database?
+                               ;;       that seems like the kind of thing that will almost never work in any practical way
+                               ;; TODO - this means one cannot unset the description. Does that matter?
+                               (u/select-keys-when
+                                {:name               name
+                                 :engine             engine
+                                 :details            details-with-secrets
+                                 :write_data_details write-data-details-with-secrets
+                                 :refingerprint      refingerprint
+                                 :is_full_sync       full-sync?
+                                 :is_on_demand       on-demand?
+                                 :description        description
+                                 :caveats            caveats
+                                 :points_of_interest points_of_interest
+                                 :auto_run_queries   auto_run_queries
+                                 :settings           (when (seq settings) pending-settings)
+                                 :provider_name      provider_name}
+                                :non-nil #{:name :engine :details :refingerprint :is_full_sync :is_on_demand
+                                           :description :caveats :points_of_interest :auto_run_queries :settings}
+                                :present #{:provider_name :write_data_details})
+                               ;; cache_field_values_schedule can be nil
+                               (when schedules
+                                 (sync.schedules/schedule-map->cron-strings schedules)))
+            pending-db        (merge existing-database updates)]
         ;; pass in this predicate to break circular dependency
         (let [driver-supports? (fn [db feature] (driver.u/supports? (driver.u/database->driver db) feature db))]
           ;; ensure we're not trying to set anything we should not be able to.
           ;; Note: it's also possible for existing settings to become invalid when changing things like the engine.
           ;; We skip validation for: unchanged values and nil values (resetting to default is always allowed).
           (doseq [[setting-kw new-value] settings
-                  :when (and (some? new-value)
+                  :when                  (and (some? new-value)
                              ;; Allow explicit default value as well (typically this is what FE will actually do)
                              ;; Should we translate this into setting it to NULL? That seems too opinionated.
-                             (not= new-value (try (setting/default-value setting-kw)
+                                              (not= new-value (try (setting/default-value setting-kw)
                                                   ;; fallback to a redundant nil check
-                                                  (catch Exception _)))
-                             (not= new-value (get existing-settings setting-kw)))]
+                                                                   (catch Exception _)))
+                                              (not= new-value (get existing-settings setting-kw)))]
             (try
               (setting/validate-settable-for-db! setting-kw pending-db driver-supports?)
               (catch Exception e
                 (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e))))))
         (t2/update! :model/Database id updates)
-       ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
-       ;; with the advanced-config feature enabled.
+        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
+        ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
           (t2/update! :model/Database id {:cache_ttl cache_ttl}))
 
@@ -1134,15 +1096,16 @@
           ;; the details in db and existing-database have been normalized so they are the same here
           ;; we need to pass through details-changed? which is calculated before detail normalization
           ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
-          (events/publish-event! :event/database-update {:object db
-                                                         :user-id api/*current-user-id*
-                                                         :previous-object existing-database
+          (events/publish-event! :event/database-update {:object           db
+                                                         :user-id          api/*current-user-id*
+                                                         :previous-object  existing-database
                                                          :details-changed? details-changed?})
           (-> db
               ;; return the DB with the expanded schedules back in place
               add-expanded-schedules
               ;; return the DB with the passed in details in place
-              (m/update-existing :details #(merge incoming-details %))))))))
+              (m/update-existing :details #(merge incoming-details %))
+              (m/update-existing :write_data_details #(merge incoming-write-data-details %))))))))
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
@@ -1180,13 +1143,13 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   ;; just wrap this in a future so it happens async
-  (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
+  (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-sync {:object db :user-id api/*current-user-id*})
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
                   (binding [driver.settings/*allow-testing-h2-connections* true]
-                    (driver.u/can-connect-with-details? (:engine db) (:details db) :throw-exceptions))
+                    (driver.u/can-connect-with-details? (:engine db) (driver.conn/default-details db) :throw-exceptions))
                   nil
                   (catch Throwable e
                     e))]
@@ -1213,7 +1176,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   ;; manual full sync needs to be async, but this is a simple update of `Database`
-  (let [db     (api/write-check (get-database id {:exclude-uneditable-details? true}))
+  (let [db     (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))
         tables (map api/write-check (:tables (first (add-tables [db]))))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
@@ -1244,7 +1207,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   ;; just wrap this is a future so it happens async
-  (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
+  (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/simple_event {:event "database_manual_scan" :target_id id})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -1280,7 +1243,7 @@
   "Discards all saved field values for this `Database`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
+  (let [db (api/write-check (warehouses/get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-discard-field-values {:object db :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/simple_event {:event "database_discard_field_values" :target_id id})
     (delete-all-field-values-for-database! db))
@@ -1336,7 +1299,7 @@
   "Returns a list of all syncable schemas found for the database `id`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [db (get-database id)]
+  (let [db (warehouses/get-database id)]
     (api/check-403 (or (:is_attached_dwh db)
                        (perms/has-db-transforms-permission? api/*current-user-id* (:id db))
                        (and (mi/can-write? db)
@@ -1383,7 +1346,7 @@
                                            allowed-schemas (set (map :schema filtered-tables))]
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
-    (get-database id {:include-editable-data-model? include-editable-data-model?})
+    (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
     (->> (t2/select-fn-set :schema :model/Table
                            :db_id id :active true
                            (merge
@@ -1573,11 +1536,15 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/healthcheck"
   "Reports whether the database can currently connect"
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   {:keys [connection-type]} :- [:map [:connection-type {:optional true} ::driver.conn/connection-type]]]
+  (let [{:as database :keys [engine]} (t2/select-one :model/Database :id id)
+        connection-type               (or connection-type :default)
+        connection-details            (driver.conn/details-for-exact-type database connection-type)]
+    (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))
     ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
     (binding [driver.settings/*allow-testing-h2-connections* true]
-      (if-let [err-map (test-database-connection engine details)]
+      (if-let [err-map (warehouses/test-database-connection engine connection-details)]
         (merge err-map {:status "error"})
         {:status "ok"}))))
 
@@ -1646,5 +1613,5 @@
   "Get all database-local settings and their availability for the given database."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [database (api/read-check (get-database id))]
+  (let [database (api/read-check (warehouses/get-database id))]
     {:settings (database-local-settings database)}))

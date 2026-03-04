@@ -1,8 +1,8 @@
- (ns metabase.channel.email.logo
-   (:require
-    [clojure.string :as str]
-    [metabase.channel.render.core :as channel.render]
-    [metabase.util.jvm :as u.jvm]))
+(ns metabase.channel.email.logo
+  (:require
+   [clojure.string :as str]
+   [metabase.channel.render.core :as channel.render]
+   [metabase.util.jvm :as u.jvm]))
 
 (set! *warn-on-reflection* true)
 

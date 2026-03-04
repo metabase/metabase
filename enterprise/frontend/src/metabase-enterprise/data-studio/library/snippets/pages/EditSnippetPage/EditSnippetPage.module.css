@@ -11,3 +11,7 @@
   flex-shrink: 0;
   border-left: 1px solid var(--mb-color-border);
 }
+
+.flexStart {
+  align-self: flex-start;
+}

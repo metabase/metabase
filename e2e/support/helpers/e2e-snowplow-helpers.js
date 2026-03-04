@@ -127,11 +127,18 @@ const retrySnowplowRequest = (
         timeout - SNOWPLOW_INTERVAL,
       );
     } else {
-      const message =
+      let message =
         typeof messageOrMessageFn === "function"
           ? messageOrMessageFn(response)
           : messageOrMessageFn;
-      throw new Error("Snowplow retry timeout " + message);
+
+      if (!message) {
+        message =
+          "Response body (trimmed): " +
+          JSON.stringify(response.body)?.slice(0, 512);
+      }
+
+      throw new Error("Snowplow retry timeout: " + message);
     }
   });
 };

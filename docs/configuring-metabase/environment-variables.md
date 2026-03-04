@@ -672,14 +672,6 @@ Enable pivoted exports and pivoted subscriptions.
 
 Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?
 
-### `MB_ENABLE_QUERY_CACHING`
-
-- Type: boolean
-- Default: `true`
-- [Configuration file name](./config-file.md): `enable-query-caching`
-
-Allow caching results of queries that take a long time to run.
-
 ### `MB_ENABLE_XRAYS`
 
 - Type: boolean
@@ -879,6 +871,16 @@ Key to retrieve the JWT user's last name.
 - [Configuration file name](./config-file.md): `jwt-attribute-tenant`
 
 Key to retrieve the JWT user's tenant.
+
+### `MB_JWT_ATTRIBUTE_TENANT_ATTRIBUTES`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `@tenant.attributes`
+- [Configuration file name](./config-file.md): `jwt-attribute-tenant-attributes`
+
+Key to retrieve the JWT user's tenant attributes.
 
 ### `MB_JWT_ENABLED`
 
@@ -1303,6 +1305,34 @@ The size of the thread pool used to send notifications.
 If Metabase stops sending notifications like alerts, it may be because long-running
   queries are clogging the notification queue. You may be able to unclog the queue by
   increasing the size of the thread pool dedicated to notifications.
+
+### `MB_OIDC_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `allow-all`
+- [Configuration file name](./config-file.md): `oidc-allowed-networks`
+
+What networks are OIDC requests allowed to? Possible values: 'allow-all' (default), 'allow-private', or 'external-only'.
+
+### `MB_OIDC_PROVIDERS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: json
+- Default: `[]`
+- [Configuration file name](./config-file.md): `oidc-providers`
+
+JSON containing OIDC provider configurations.
+
+### `MB_OIDC_USER_PROVISIONING_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `true`
+- [Configuration file name](./config-file.md): `oidc-user-provisioning-enabled`
+
+When a user logs in via OIDC, create a Metabase account for them automatically if they don't have one.
 
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
@@ -1936,6 +1966,13 @@ Identify the source of HTTP requests by this header's value, instead of its remo
 Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
   in memory.
 
+### `MB_SQL_TOOLS_PARSER_BACKEND`
+
+- Type: keyword
+- Default: `sqlglot`
+
+Parser backend of `sql-tools` module.
+
 ### `MB_SSH_HEARTBEAT_INTERVAL_SEC`
 
 - Type: integer
@@ -1987,6 +2024,24 @@ Maximum number of leaf fields synced per collection of document database. Curren
 - [Configuration file name](./config-file.md): `synchronous-batch-updates`
 
 Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.
+
+### `MB_THREAD_INTERRUPT_ESCALATION_TIMEOUT_MS`
+
+- Type: integer
+- Default: `0`
+
+By default, this is 0 and the thread interrupt escalation does not run.
+
+Timeout in milliseconds to wait after query cancellation before escalating to thread interruption.
+        This is used to free up threads that are stuck waiting for a DB response after a query has been cancelled.
+
+### `MB_TRANSFORMS_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `transforms-enabled`
+
+Enable transforms for instances that have not explicitly purchased the transform add-on.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 
@@ -2120,6 +2175,8 @@ Default: `null`
 
 A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#mb_db_host). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#mb_db_type).
 
+Note that the `currentSchema` JDBC parameter has no effect. [The schema used for PostgreSQL application databases must be `public`](https://github.com/metabase/metabase/issues/37836).
+
 Examples:
 
 ```
@@ -2244,7 +2301,7 @@ Since: v51.3
 
 If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_DB_QUERY_TIMEOUT_MINUTES](#mb_db_query_timeout_minutes).
 
-In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom Log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -2375,6 +2432,20 @@ Default: True
 
 Whether to include the Sample Database in your Metabase. To exclude the Sample Database, set `MB_LOAD_SAMPLE_CONTENT=false`.
 
+### `MB_MONITOR_PERFORMANCE`
+
+Type: string<br>
+Default: `""`
+
+When set, starts a Java Flight Recorder (JFR) recording at startup that can be analyzed with JDK Mission Control or other JFR tools.
+
+- `"true"` generates a timestamped output file like `metabase-2026_01_15.jfr`
+- Any other non-empty value is used as the output filename (`.jfr` extension is appended if missing)
+- `""` or `"false"` disables monitoring (the default)
+
+The performance recording stores only method signature calls and other code execution metrics.
+It does not store any sensitive information such as environment variables, system properties, or other machine information.
+
 ### `MB_NO_SURVEYS`
 
 Type: boolean<br>
@@ -2463,4 +2534,3 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
-

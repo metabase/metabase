@@ -19,14 +19,14 @@ Both components are built and assembled together into a single JAR file. In the 
 ./bin/dev-install
 ```
 
-This installs [mise](https://mise.jdx.dev) (a tool version manager), sets up your shell, and installs all required tools (Node.js, Java, Clojure, Yarn, Babashka) at the correct versions. Follow the prompts, then open a new terminal.
+This installs [mise](https://mise.jdx.dev) (a tool version manager), sets up your shell, and installs all required tools (Node.js, Java, Clojure, Bun, Babashka) at the correct versions. Follow the prompts, then open a new terminal.
 
 **Already have your own setup?** You can check that it meets the requirements with `./bin/mage doctor`.
 
 To spin up a development environment, run:
 
 ```
-yarn dev
+bun run dev
 ```
 
 This runs both the [frontend](#frontend) and [backend](#backend). Alternatively, you can run them separately in two terminal sessions below.
@@ -41,13 +41,13 @@ Metabase depends on third-party libraries to run, so you'll need to keep those u
 
 ```sh
 # javascript dependencies
-$ yarn
+$ bun install
 ```
 
 Start the frontend build process with
 
 ```
-yarn build-hot
+bun run build-hot
 ```
 
 See [Frontend development](#frontend-development).
@@ -121,18 +121,18 @@ We use these technologies for our FE build process to allow us to use modules, e
 - babel
 - cssnext
 
-Frontend tasks are executed using `yarn`. All available tasks can be found in `package.json` under _scripts_.
+Frontend tasks are executed using `bun`. All available tasks can be found in `package.json` under _scripts_.
 
 To build the frontend client without watching for changes, you can use:
 
 ```sh
-$ yarn build
+$ bun run build
 ```
 
 If you're working on the frontend directly, you'll most likely want to reload changes on save, and in the case of React components, do so while maintaining state. To start a build with hot reloading, use:
 
 ```sh
-$ yarn build-hot
+$ bun run build-hot
 ```
 
 Note that at this time if you change CSS variables, those changes will only be picked up when a build is restarted.
@@ -140,7 +140,7 @@ Note that at this time if you change CSS variables, those changes will only be p
 There is also an option to reload changes on save without hot reloading if you prefer that.
 
 ```sh
-$ yarn build-watch
+$ bun run build-watch
 ```
 
 Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `rspack.main.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged rspack.main.config.js`
@@ -148,7 +148,7 @@ Some systems may have trouble detecting changes to frontend files. You can enabl
 We exclude ESLint loader in dev mode for seven times quicker initial builds by default. You can enable it by exporting an environment variable:
 
 ```sh
-$ USE_ESLINT=true yarn build-hot
+$ USE_ESLINT=true bun run build-hot
 ```
 
 ### Frontend testing
@@ -156,7 +156,7 @@ $ USE_ESLINT=true yarn build-hot
 Run all unit and Cypress end-to-end tests with
 
 ```
-yarn test
+bun run test
 ```
 
 Cypress tests and some unit tests are located in `frontend/test` directory. New unit test files are added next to the files they test.
@@ -170,7 +170,7 @@ If you run into issues with breakpoints, especially inside jsx, please set env v
 Example:
 
 ```
-BETTER_SOURCE_MAPS=true yarn dev
+BETTER_SOURCE_MAPS=true bun run dev
 ```
 
 ### Cypress end-to-end tests
@@ -186,8 +186,8 @@ Unit tests are focused around isolated parts of business logic.
 Unit tests use an enforced file naming convention `<test-suite-name>.unit.spec.js` to separate them from end-to-end tests.
 
 ```
-yarn test-unit # Run all tests at once
-yarn test-unit-watch # Watch for file changes
+bun run test-unit # Run all tests at once
+bun run test-unit-watch # Watch for file changes
 ```
 
 ## Backend development
@@ -207,7 +207,7 @@ You can also start a REPL another way (e.g., through your editor) and then call:
 ```
 
 To start the server (at `localhost:3000`). This will also set up or migrate your application database. To actually
-use Metabase, don't forget to start the frontend as well (e.g. with `yarn build-hot`).
+use Metabase, don't forget to start the frontend as well (e.g. with `bun run build-hot`).
 
 ### Multiple Instances
 
@@ -215,8 +215,8 @@ By default Rspack runs the development server on port `8088`. You can run multip
 
 Frontend:
 
-- If you are running the frontend with `yarn build-hot`, set the `MB_FRONTEND_DEV_PORT` environment variable: `MB_FRONTEND_DEV_PORT=8089 MB_EDITION=ee yarn build-hot`
-- If you are building the frontend statically with `yarn build`, there is nothing different to do
+- If you are running the frontend with `bun run build-hot`, set the `MB_FRONTEND_DEV_PORT` environment variable: `MB_FRONTEND_DEV_PORT=8089 MB_EDITION=ee bun run build-hot`
+- If you are building the frontend statically with `bun run build`, there is nothing different to do
 
 Backend:
 
@@ -464,12 +464,12 @@ clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
 All frontend and backend linters and tests can be executed with
 
 ```sh
-$ yarn ci
+$ bun run ci
 ```
 
 It is also possible to execute front-end and back-end checks separately
 
 ```sh
-$ yarn ci-frontend
-$ yarn ci-backend
+$ bun run ci-frontend
+$ bun run ci-backend
 ```

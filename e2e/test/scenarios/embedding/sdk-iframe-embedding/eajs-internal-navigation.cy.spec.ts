@@ -302,10 +302,27 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
     beforeEach(() => {
       H.prepareSdkIframeEmbedTest({ withToken: "bleeding-edge" });
 
-      H.createQuestion({
-        name: "Target Question",
-        query: { "source-table": ORDERS_ID, limit: 5 },
-      }).then(({ body }) => cy.wrap(body.id).as("targetQuestionId"));
+      H.createDashboard({ name: "Target Dashboard" }).then(
+        ({ body: targetDashboard }) => {
+          cy.wrap(targetDashboard.id).as("targetDashboardId");
+
+          H.createQuestion({
+            name: "Orders in Target Dashboard",
+            query: { "source-table": ORDERS_ID, limit: 5 },
+          }).then(({ body: targetQuestion }) => {
+            H.addOrUpdateDashboardCard({
+              card_id: targetQuestion.id,
+              dashboard_id: targetDashboard.id,
+              card: {
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 8,
+              },
+            });
+          });
+        },
+      );
 
       cy.then(function () {
         H.createDashboard({ name: "First Dashboard" }).then(
@@ -327,9 +344,9 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
                       [`["ref",["field",${ORDERS.ID},null]]`]: {
                         click_behavior: {
                           type: "link",
-                          linkType: "question",
-                          linkTextTemplate: "Go to Target Question",
-                          targetId: this.targetQuestionId,
+                          linkType: "dashboard",
+                          linkTextTemplate: "Go to Target Dashboard",
+                          targetId: this.targetDashboardId,
                           parameterMapping: {},
                         },
                       },
@@ -370,7 +387,7 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
 
       cy.log("click on click behavior link to trigger internal navigation");
       H.getSimpleEmbedIframeContent()
-        .findAllByText("Go to Target Question")
+        .findAllByText("Go to Target Dashboard")
         .first()
         .click();
 
@@ -381,11 +398,16 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
 
       cy.log("back button should be visible");
       H.getSimpleEmbedIframeContent()
-        .findByText(/Back to/)
+        .findByText("Back to First Dashboard")
         .should("be.visible")
         .click();
 
-      cy.log("breadcrumbs should return after going back");
+      cy.log("verify we returned to First Dashboard");
+      H.getSimpleEmbedIframeContent()
+        .findAllByText("First Dashboard")
+        .should("have.length", 2); // breadcrumbs and the dashboard heading
+
+      cy.log("breadcrumbs should be visible again");
       H.getSimpleEmbedIframeContent()
         .findByTestId("sdk-breadcrumbs")
         .should("be.visible");
@@ -394,6 +416,68 @@ describe("scenarios > embedding > sdk iframe embedding > internal-navigation", (
       H.getSimpleEmbedIframeContent()
         .findByText(/Back to/)
         .should("not.exist");
+    });
+
+    it("should clean up navigation stack when clicking a collection breadcrumb after navigating back", () => {
+      H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript({})}
+        <metabase-browser initial-collection="root" enable-entity-navigation />
+      `);
+
+      cy.log("open First Dashboard from the browser");
+      H.getSimpleEmbedIframeContent()
+        .findByText("First Dashboard")
+        .should("be.visible")
+        .click();
+
+      cy.wait("@getDashCardQuery");
+
+      cy.log("navigate to Target Dashboard via click behavior link");
+      H.getSimpleEmbedIframeContent()
+        .findAllByText("Go to Target Dashboard")
+        .first()
+        .click();
+
+      cy.wait("@getDashboard");
+
+      cy.log("click back to return to First Dashboard");
+      H.getSimpleEmbedIframeContent()
+        .findByText("Back to First Dashboard")
+        .should("be.visible")
+        .click();
+
+      cy.log(
+        "click 'Our analytics' breadcrumb to go back to the collection browser",
+      );
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("sdk-breadcrumbs")
+        .findByText("Our analytics")
+        .click();
+
+      cy.log("verify the collection browser is showing items again");
+      H.getSimpleEmbedIframeContent()
+        .findByText("First Dashboard")
+        .should("be.visible");
+
+      cy.log(
+        "verify no back button is present (navigation stack should be clean)",
+      );
+      H.getSimpleEmbedIframeContent()
+        .findByText(/Back to/)
+        .should("not.exist");
+
+      cy.log(
+        "verify we can navigate to a dashboard again (no stale virtual entries)",
+      );
+      H.getSimpleEmbedIframeContent().findByText("First Dashboard").click();
+
+      cy.wait("@getDashCardQuery");
+
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("sdk-breadcrumbs")
+        .findByText("First Dashboard")
+        .should("be.visible");
     });
   });
 });

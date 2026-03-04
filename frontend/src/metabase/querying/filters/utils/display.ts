@@ -7,11 +7,13 @@ export const getTranslatedFilterDisplayName = (
   stageIndex: number,
   filter: Lib.FilterClause,
   tc: ContentTranslationFunction,
+  locale: string,
 ): string => {
   const displayInfo = Lib.displayInfo(query, stageIndex, filter);
 
-  return PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
-    displayInfo.longDisplayName,
+  return PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+    displayName: displayInfo.longDisplayName,
     tc,
-  );
+    locale,
+  });
 };

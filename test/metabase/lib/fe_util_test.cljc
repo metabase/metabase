@@ -101,12 +101,12 @@
                [{:lib/type :metadata/column
                  :lib/source-uuid string?
                  :effective-type :type/Integer
-                 :metabase.lib.field/binning {:strategy :default}
+                 :lib/binning {:strategy :default}
 
                  :active true
                  :id (:id checkins-user-id-col)
                  :display-name "User ID: Auto binned"
-                 :metabase.lib.join/join-alias "Checkins"}
+                 :lib/join-alias "Checkins"}
                 (assoc (m/filter-vals some? (meta/field-metadata :users :id)) :display-name "ID: Auto binned")]}
               (lib/expression-parts query (lib/= (lib/with-binning checkins-user-id-col {:strategy :default})
                                                  (lib/with-binning user-id-col {:strategy :default}))))))
@@ -119,9 +119,9 @@
                  :effective-type :type/Date
 
                  :id (:id checkins-date-col)
-                 :metabase.lib.field/temporal-unit :day
+                 :lib/temporal-unit :day
                  :display-name "Date: Day"
-                 :metabase.lib.join/join-alias "Checkins"}
+                 :lib/join-alias "Checkins"}
                 (assoc (m/filter-vals some? (meta/field-metadata :users :last-login)) :display-name "Last Login: Day")]}
               (lib/expression-parts query (lib/= (lib/with-temporal-bucket checkins-date-col :day)
                                                  (lib/with-temporal-bucket user-last-login-col :day))))))))

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import {
   type DataPermission,
@@ -11,6 +11,7 @@ import {
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  Database as DatabaseType,
   Dataset,
   Group,
   GroupPermissions,
@@ -19,6 +20,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { PluginPlaceholder } from "../components/PluginPlaceholder";
 import type { PluginGroupManagersType } from "../types";
 
 const getDefaultAdminPermissionsDatabaseRoutes = () => [];
@@ -112,6 +114,10 @@ const getDefaultAdminUserMenuRoutes = (): (() => React.ReactNode)[] => [];
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = getDefaultAdminUserMenuItems();
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = getDefaultAdminUserMenuRoutes();
 
+export type WritableConnectionInfoSectionProps = {
+  database: DatabaseType;
+};
+
 const getDefaultAdvancedPermissions = () => ({
   addDatabasePermissionOptions: (permissions: any[], _database: Database) =>
     permissions,
@@ -127,28 +133,48 @@ const getDefaultAdvancedPermissions = () => ({
   isRestrictivePermission: (_value: string) => false,
   shouldShowViewDataColumn: false,
   defaultViewDataPermission: DataPermissionValue.UNRESTRICTED,
+  getWritableConnectionInfoRoutes: (_IsAdmin: ComponentType): ReactNode => null,
+  WritableConnectionInfoSection:
+    PluginPlaceholder<WritableConnectionInfoSectionProps>,
 });
 
 export const PLUGIN_ADVANCED_PERMISSIONS = getDefaultAdvancedPermissions();
 
 const getDefaultFeatureLevelPermissions = () => ({
-  getFeatureLevelDataPermissions: (
-    _entityId: DatabaseEntityId,
-    _groupId: number,
-    _groupType: SpecialGroupType,
-    _permissions: GroupsPermissions,
-    _dataAccessPermissionValue: DataPermissionValue,
-    _defaultGroup: Group,
-    _permissionSubject: PermissionSubject,
-    _permissionView?: "group" | "database",
-  ) => {
+  getFeatureLevelDataPermissions: ({
+    entityId: _entityId,
+    groupId: _groupId,
+    groupType: _groupType,
+    permissions: _permissions,
+    dataAccessPermissionValue: _dataAccessPermissionValue,
+    defaultGroup: _defaultGroup,
+    permissionSubject: _permissionSubject,
+    permissionView: _permissionView,
+    showTransformPermissions: _showTransformPermissions,
+  }: {
+    entityId: DatabaseEntityId;
+    groupId: number;
+    groupType: SpecialGroupType;
+    permissions: GroupsPermissions;
+    dataAccessPermissionValue: DataPermissionValue;
+    defaultGroup: Group;
+    permissionSubject: PermissionSubject;
+    permissionView?: "group" | "database";
+    showTransformPermissions?: boolean;
+  }) => {
     return [] as any;
   },
-  getDataColumns: (
-    _subject: PermissionSubject,
-    _groupType?: SpecialGroupType,
-    _isExternal?: boolean,
-  ) => [] as any,
+  getDataColumns: ({
+    subject: _subject,
+    groupType: _groupType,
+    isExternal: _isExternal,
+    showTransformPermissions: _showTransformPermissions,
+  }: {
+    subject: PermissionSubject;
+    groupType?: SpecialGroupType;
+    isExternal?: boolean;
+    showTransformPermissions?: boolean;
+  }) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
   canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),

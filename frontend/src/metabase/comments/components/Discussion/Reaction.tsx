@@ -17,8 +17,8 @@ interface Props {
 export function Reaction({ reaction, onReaction, onReactionRemove }: Props) {
   const currentUser = useSelector(getCurrentUser);
   const isCurrentUserReaction = useMemo(
-    () => reaction.users.some((user) => user.id === currentUser.id),
-    [reaction.users, currentUser.id],
+    () => reaction.users.some((user) => user.id === currentUser?.id),
+    [reaction.users, currentUser],
   );
 
   const reactionLabel = useMemo(

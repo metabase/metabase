@@ -84,7 +84,7 @@
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.2.33"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.36"}             ; Parse native SQL queries
   io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
@@ -165,6 +165,8 @@
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "25.0.1" :extension "pom"} ; JavaScript engine
   org.graalvm.polyglot/polyglot             {:mvn/version "25.0.1"}             ; GraalVM platform, required by JS engine
+  org.graalvm.polyglot/python               {:mvn/version "25.0.1"
+                                             :extension "pom"}
   org.jsoup/jsoup                           {:mvn/version "1.21.2"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.33.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
@@ -615,6 +617,9 @@
                                  :implicit-dependencies
                                  ;; too many false positives for now
                                  :unused-ret-vals
+                                 ;; hard to clear on for lib.util.match macros, and disabling the linter just there
+                                 ;; doesn't seem to work
+                                 :unused-meta-on-macro
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
                                  :wrong-arity
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
@@ -757,7 +762,7 @@
   ;;
   ;; the various steps available are:
   ;;
-  ;;    :version :translations :frontend :licenses :drivers :uberjar
+  ;;    :version :translations :frontend :licenses :drivers :python :uberjar
   :build/all
   {:exec-fn build/build-cli}
 

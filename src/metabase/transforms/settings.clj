@@ -15,3 +15,11 @@
   :export?    false
   :encryption :no
   :audit      :getter)
+
+(setting/defsetting transforms-enabled
+  (deferred-tru "Enable transforms for instances that have not explicitly purchased the transform add-on.")
+  :type       :boolean
+  :visibility :authenticated
+  :default    false
+  :export?    false
+  :audit      :getter)

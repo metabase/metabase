@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { useLocale } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import * as Lib from "metabase-lib";
@@ -20,6 +21,7 @@ export function BreakoutStep({
   const { question, stageIndex } = step;
   const isMetric = question.type() === "metric";
   const tc = useTranslateContent();
+  const { locale } = useLocale();
 
   const breakouts = useMemo(
     () => Lib.breakouts(query, stageIndex),
@@ -36,10 +38,11 @@ export function BreakoutStep({
   const isAddButtonDisabled = isMetric && metricColumns.length === 0;
 
   const renderBreakoutName = (clause: Lib.BreakoutClause) =>
-    PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName(
-      Lib.displayInfo(query, stageIndex, clause).longDisplayName,
+    PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+      displayName: Lib.displayInfo(query, stageIndex, clause).longDisplayName,
       tc,
-    );
+      locale,
+    });
 
   const handleAddBreakout = (column: Lib.ColumnMetadata) => {
     const nextQuery = Lib.breakout(query, stageIndex, column);

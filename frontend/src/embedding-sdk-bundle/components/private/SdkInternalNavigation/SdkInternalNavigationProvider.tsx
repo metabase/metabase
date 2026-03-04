@@ -33,6 +33,8 @@ type Props = {
   renderDrillThroughQuestion?: () => ReactNode;
   /** Props to pass to drill-through question components */
   drillThroughQuestionProps?: DrillThroughQuestionProps;
+  /** When true, children are kept mounted (but hidden) during navigation instead of being unmounted */
+  keepChildrenMounted?: boolean;
   style?: CSSProperties;
   className?: string;
 };
@@ -44,6 +46,7 @@ const SdkInternalNavigationProviderInner = ({
   dashboardProps,
   renderDrillThroughQuestion: RenderDrillThroughQuestion,
   drillThroughQuestionProps,
+  keepChildrenMounted = false,
 }: Props) => {
   const [stack, setStack] = useState<SdkInternalNavigationEntry[]>([]);
 
@@ -81,7 +84,10 @@ const SdkInternalNavigationProviderInner = ({
       pop,
       currentEntry: stack.at(-1),
       previousEntry: stack.at(-2),
-      canGoBack: stack.length > 1,
+      // When starting from the `metabase-browser`, we need to have > 2 items in
+      // the stack to be able to go back, as the first navigation is handled by
+      // the breadcrumbs.
+      canGoBack: stack.filter((e) => e.type !== "metabase-browser").length > 1,
       initWithDashboard,
     }),
     [stack, push, pop, initWithDashboard],
@@ -90,7 +96,7 @@ const SdkInternalNavigationProviderInner = ({
   // "Virtual" entries are entries that are rendered by the previous entity (ie: drills, new question from dashboard)
   // we don't have to render them, but we need them in the stack to make the back button work correctly
   const nonVirtualEntries = useMemo(
-    () => stack.filter((entry) => !entry.type.startsWith("virtual")),
+    () => stack.filter((entry) => !entry.virtual),
     [stack],
   );
 
@@ -144,14 +150,16 @@ const SdkInternalNavigationProviderInner = ({
     })
     .otherwise(() => children);
 
-  // When we don't render the children directly, we need to render a wrapper with the styles applied.
-  // Otherwise we don pass `style` and `className` to anything, we can't always wrap it otherwise we may render
-  // paddings and borders twice.
   return (
     <SdkInternalNavigationContext.Provider value={value}>
-      {entryIsOriginalEntity ? (
-        children
-      ) : (
+      {/* When `keepChildrenMounted` is true, we keep the children mounted but hide them */}
+      <div style={{ display: entryIsOriginalEntity ? "contents" : "none" }}>
+        {entryIsOriginalEntity || keepChildrenMounted ? children : null}
+      </div>
+      {entryIsOriginalEntity ? null : (
+        // When we don't render the children directly, we need to render a wrapper with the styles applied.
+        // Otherwise we don't pass `style` and `className` to anything, we can't always wrap it otherwise we may render
+        // paddings and borders twice.
         <SdkDashboardStyledWrapper className={className} style={style}>
           {maybeButton}
           {content}

@@ -255,9 +255,8 @@
 (defmethod mi/can-read? :model/Table
   ;; Check if user can see this table's metadata.
   ;; True if user has:
-  ;; - Data access permissions (and (view-data :unrestricted) (create-queries :query-builder)), OR
+  ;; - Data access permissions (view-data :unrestricted) and either query perms or published-collection access, OR
   ;; - Metadata management permission (manage-table-metadata :yes), OR
-  ;; - Access via published table in a collection (EE feature)
   ([instance]
    (or
     ;; Has data access permissions
@@ -267,31 +266,31 @@
           :unrestricted
           (:db_id instance)
           (:id instance))
-         (perms/user-has-permission-for-table?
-          api/*current-user-id*
-          :perms/create-queries
-          :query-builder
-          (:db_id instance)
-          (:id instance)))
+         (or
+          (perms/user-has-permission-for-table?
+           api/*current-user-id*
+           :perms/create-queries
+           :query-builder
+           (:db_id instance)
+           (:id instance))
+          ;; Can access via published collection (EE feature)
+          (perms/can-access-via-collection? instance)))
     ;; Has manage-table-metadata permission (allows viewing metadata without data access)
     (perms/user-has-permission-for-table?
      api/*current-user-id*
      :perms/manage-table-metadata
      :yes
      (:db_id instance)
-     (:id instance))
-    ;; Can access via published collection (EE feature)
-    (perms/can-access-via-collection? instance)))
+     (:id instance))))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Table pk))))
 
 (defmethod mi/can-query? :model/Table
   ;; Check if user can execute queries against this table.
   ;; True if user has:
-  ;; - Both view-data AND create-queries permissions, OR
-  ;; - Access via published table in a collection (EE feature)
+  ;; - view-data permission and either create-queries permission or published-collection access (EE feature)
   ([instance]
-   (or
+   (boolean
     ;; Has both view-data and create-queries permissions
     (and (perms/user-has-permission-for-table?
           api/*current-user-id*
@@ -299,14 +298,15 @@
           :unrestricted
           (:db_id instance)
           (:id instance))
-         (perms/user-has-permission-for-table?
-          api/*current-user-id*
-          :perms/create-queries
-          :query-builder
-          (:db_id instance)
-          (:id instance)))
-    ;; Can access via published collection (EE feature)
-    (perms/can-access-via-collection? instance)))
+         (or
+          (perms/user-has-permission-for-table?
+           api/*current-user-id*
+           :perms/create-queries
+           :query-builder
+           (:db_id instance)
+           (:id instance))
+          ;; Can access via published collection (EE feature)
+          (perms/can-access-via-collection? instance)))))
   ([_ pk]
    (mi/can-query? (t2/select-one :model/Table pk))))
 
@@ -378,8 +378,21 @@
   [_                  :- :keyword
    column-or-exp      :- :any
    user-info          :- perms/UserInfo
-   permission-mapping :- perms/PermissionMapping]
-  (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping))
+   permission-mapping :- perms/PermissionMapping
+   & [{:keys [include-published-via-collection?]}]]
+  (let [{:keys [clause with]} (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping)]
+    (if-let [published-clause (and include-published-via-collection?
+                                   (perms/published-table-visible-clause column-or-exp user-info))]
+      {:clause [:or clause
+                [:and
+                 [:in column-or-exp (perms/visible-table-filter-select
+                                     :id
+                                     user-info
+                                     {:perms/view-data :unrestricted})]
+                 published-clause]]
+       :with with}
+      {:clause clause
+       :with with})))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 

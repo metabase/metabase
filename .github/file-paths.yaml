@@ -26,7 +26,7 @@ frontend_ci: &frontend_ci
   - ".github/workflows/frontend.yml"
 
 frontend_configs: &frontend_configs
-  - "yarn.lock"
+  - "bun.lock"
   - "**/tsconfig*.json"
   - "package.json"
   - "babel.config.json"
@@ -199,3 +199,15 @@ cljs:
   - *shared_specs
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
+
+openapi:
+  - ".github/workflows/openapi.yml"
+  - "src/metabase/api/**"
+  - "src/metabase/api_routes/**"
+  - "src/metabase/*_rest/api.clj"
+  - "src/metabase/*/api.clj"
+  - "src/metabase/*/api/*.clj"
+  - "enterprise/backend/src/metabase_enterprise/**/api.clj"
+  - "enterprise/backend/src/metabase_enterprise/**/api/*.clj"
+  - "resources/openapi/**"
+  - "package.json"

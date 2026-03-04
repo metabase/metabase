@@ -33,7 +33,7 @@ Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will automatically e
 
 ## Encrypting an existing connection
 
-If you added databases before setting the `MB_ENCRYPTION_SECRET_KEY` value, you can encrypt the connection details by going to each one of those databases in **Admin settings** > **Databases** and clicking on the **Save** button. Existing databases with unencrypted details will continue to work normally.
+If you added databases before setting the `MB_ENCRYPTION_SECRET_KEY` value, you can encrypt the connection details by going to each one of those databases in **Admin** > **Databases** and clicking on the **Save** button. Existing databases with unencrypted details will continue to work normally.
 
 ## Rotating an encryption key
 

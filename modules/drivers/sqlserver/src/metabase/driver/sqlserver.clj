@@ -11,6 +11,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -20,30 +21,27 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [mapv get-in]])
-  ;; TODO (Chris 2026-01-22) -- Remove jsqlparser imports/typehints to be SQL parser-agnostic
   (:import
    (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
-   (java.util UUID)
-   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
-   (net.sf.jsqlparser.schema Table)
-   ^{:clj-kondo/ignore [:metabase/no-jsqlparser-imports]}
-   (net.sf.jsqlparser.statement.select PlainSelect Select)))
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :sqlserver, :parent #{:sql-jdbc})
+(driver/register! :sqlserver, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
@@ -126,7 +124,13 @@
     :varbinary        :type/*
     :varchar          :type/Text
     :xml              :type/*
-    (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
+    ;; auto-incrementing integer (ie pk) field
+    (keyword "tinyint identity")  :type/Integer
+    (keyword "smallint identity") :type/Integer
+    (keyword "int identity")      :type/Integer
+    (keyword "bigint identity")   :type/BigInteger
+    (keyword "decimal identity")  :type/Decimal
+    (keyword "numeric identity")  :type/Decimal} column-type))
 
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for SQL Server that dispatches on type."
@@ -249,7 +253,7 @@
   it casts to `:datetime2`."
   [base-expr day-expr]
   (if (or (= (:base-type *field-options*) :type/Date)
-          (driver-api/match-one base-expr [::h2x/typed _ {:database-type (_ :guard #{:date "date"})}]))
+          (driver-api/match-lite base-expr [::h2x/typed _ {:database-type #{:date "date"}}] true))
     day-expr
     (h2x/cast :datetime2 day-expr)))
 
@@ -633,6 +637,15 @@
     (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
          (parent-method driver :filter honeysql-form))))
 
+;; SQL Server doesn't like backslashes as the escape character for `LIKE` clauses. Use character classes instead to
+;; escape the `LIKE` metacharacters `%` and `_`.
+(defmethod sql.qp/escape-like-pattern :sqlserver
+  [_driver like-pattern]
+  (-> like-pattern
+      (str/replace "\\" "[\\]")
+      (str/replace "%"  "[%]")
+      (str/replace "_"  "[_]")))
+
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
   [_ bool]
@@ -856,12 +869,12 @@
             (and (has-order-by-without-limit? m)
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
-    (driver-api/replace inner-query
+    (driver-api/replace-lite inner-query
       ;; remove order by and then recurse in case we need to do more transformations at another level
-      (m :guard (partial remove-order-by? &parents))
+      (m :guard (remove-order-by? &parents m))
       (fix-order-bys (dissoc m :order-by))
 
-      (m :guard (partial add-limit? &parents))
+      (m :guard (add-limit? &parents m))
       (fix-order-bys (assoc m :limit driver-api/absolute-max-results)))))
 
 (defmethod sql.qp/preprocess :sqlserver
@@ -1004,8 +1017,7 @@
   ;; Use a "role" (sqlserver user) if it exists. Do not fall back to the user
   ;; field automatically, as it represents the login user which may not be a
   ;; valid database user for impersonation (see issue #60665).
-  (let [{:keys [role]} (:details database)]
-    role))
+  (:role (driver.conn/effective-details database)))
 
 (defmethod driver.sql/set-role-statement :sqlserver
   [_driver role]
@@ -1031,15 +1043,12 @@
                          lines)]
       (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
-;; TODO (Chris 2026-01-22) -- Remove jsqlparser typehints/classes to be SQL parser-agnostic
 (defmethod driver/compile-transform :sqlserver
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
-        ^Select parsed-query (driver.u/parsed-query sql-query driver)
-        ^PlainSelect select-body (.getSelectBody parsed-query)]
-    (.setIntoTables select-body [(Table. table-name)])
-    [(str parsed-query) sql-params]))
+        modified-sql (sql-tools/add-into-clause driver sql-query table-name)]
+    [modified-sql sql-params]))
 
 (defmethod driver/compile-insert :sqlserver
   [driver {:keys [query output-table]}]

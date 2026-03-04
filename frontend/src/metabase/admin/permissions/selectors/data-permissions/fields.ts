@@ -191,15 +191,25 @@ const buildNativePermission = (
   };
 };
 
-export const buildFieldsPermissions = (
-  entityId: TableEntityId,
-  groupId: number,
-  groupType: SpecialGroupType,
-  permissions: GroupsPermissions,
-  originalPermissions: GroupsPermissions,
-  defaultGroup: Group,
-  database: Database,
-): PermissionSectionConfig[] => {
+export const buildFieldsPermissions = ({
+  entityId,
+  groupId,
+  groupType,
+  permissions,
+  originalPermissions,
+  defaultGroup,
+  database,
+  showTransformPermissions,
+}: {
+  entityId: TableEntityId;
+  groupId: number;
+  groupType: SpecialGroupType;
+  permissions: GroupsPermissions;
+  originalPermissions: GroupsPermissions;
+  defaultGroup: Group;
+  database: Database;
+  showTransformPermissions: boolean;
+}): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";
 
   const accessPermission = buildAccessPermission(
@@ -227,14 +237,15 @@ export const buildFieldsPermissions = (
   return _.compact([
     shouldShowViewDataColumn && accessPermission,
     nativePermission,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions({
       entityId,
       groupId,
       groupType,
       permissions,
-      accessPermission.value,
+      dataAccessPermissionValue: accessPermission.value,
       defaultGroup,
-      "fields",
-    ),
+      permissionSubject: "fields",
+      showTransformPermissions,
+    }),
   ]);
 };

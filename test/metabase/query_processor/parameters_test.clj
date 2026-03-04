@@ -775,3 +775,26 @@
       (is (= [[1   2.07]
               [212 2.07]]
              (mt/formatted-rows [int 2.0] (qp/process-query query)))))))
+
+(defn- query-result-ids [query]
+  (into #{}
+        (map first)
+        (mt/formatted-rows [int] (qp/process-query query))))
+
+(defn- assert-table-param-query-selects-ids
+  [mp ids template-tag-overrides]
+  (let [sql (mt/native-query-with-card-template-tag driver/*driver* "table")
+        base-query (lib/native-query mp sql)
+        template-tag (get (lib/template-tags base-query) "table")
+        query (lib/with-template-tags base-query
+                {"table" (merge template-tag {:type :table} template-tag-overrides)})]
+    (is (= (set ids) (query-result-ids query)))))
+
+(deftest ^:parallel basic-table-template-tag-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :parameters/table-reference)
+    (testing "can run queries with basic table template tags"
+      (let [mp (mt/metadata-provider)]
+        (assert-table-param-query-selects-ids
+         mp
+         (query-result-ids (lib/query mp (lib.metadata/table mp (mt/id :products))))
+         {:table-id (mt/id :products)})))))

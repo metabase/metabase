@@ -237,7 +237,7 @@ function EditMetadataButton({ transform }: EditMetadataButtonProps) {
   return (
     <Button
       component={Link}
-      to={Urls.dataModel({
+      to={Urls.dataStudioData({
         databaseId: table.db_id,
         schemaName: table.schema,
         tableId: table.id,

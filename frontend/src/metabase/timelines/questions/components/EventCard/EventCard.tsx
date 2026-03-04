@@ -48,7 +48,7 @@ const EventCard = ({
   onShowTimelineEvents,
   onHideTimelineEvents,
 }: EventCardProps): JSX.Element => {
-  const selectedRef = useScrollOnMount();
+  const selectedRef = useScrollOnMount<HTMLDivElement>();
   const menuItems = getMenuItems(event, timeline, onEdit, onMove, onArchive);
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);

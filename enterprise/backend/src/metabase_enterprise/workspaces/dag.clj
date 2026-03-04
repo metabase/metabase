@@ -67,17 +67,23 @@
   ;; Get the latest version - which may have changed since we started this graph analysis (!!!)
   ;; Unfortunately, since each transform is versioned separately, it's not trivial to freeze to a snapshot.
   ;; NOTE: Perhaps this is a reason to snapshot these rows, or pre-query them all :thinking:
+  ;;
+  ;; After normalization (BOT-955), workspace_input no longer has ref_id/transform_version.
+  ;; We JOIN through workspace_input_transform to find which inputs belong to this transform.
   (t2/select-fn-vec (fn [table-coord]
                       {:node-type :table, :id (t2.realize/realize table-coord)})
                     [:model/WorkspaceInput [:db_id :db] :schema :table [:table_id :id]]
-                    :workspace_id ws-id
-                    :ref_id ref-id
-                    {:where [:= :transform_version
-                             {:select [[:%max.transform_version]]
-                              :from   [:workspace_input]
-                              :where  [:and
-                                       [:= :workspace_id ws-id]
-                                       [:= :ref_id ref-id]]}]}))
+                    {:join  [[:workspace_input_transform :wit]
+                             [:= :wit.workspace_input_id :workspace_input.id]]
+                     :where [:and
+                             [:= :wit.workspace_id ws-id]
+                             [:= :wit.ref_id ref-id]
+                             [:= :wit.transform_version
+                              {:select [[:%max.transform_version]]
+                               :from   [:workspace_input_transform]
+                               :where  [:and
+                                        [:= :workspace_id ws-id]
+                                        [:= :ref_id ref-id]]}]]}))
 
 (defn- table-producers [ws-id id-or-coord]
   ;; Work with either logical co-ords or an id

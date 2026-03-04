@@ -16,6 +16,7 @@ import type {
 } from "metabase-types/api";
 import {
   createMockDatabase,
+  createMockTable,
   createMockTokenFeatures,
   createMockTransform,
   createMockTransformOwner,
@@ -163,5 +164,36 @@ describe("OwnerSection", () => {
       }),
     });
     expect(screen.getByText("Ownership")).toBeInTheDocument();
+  });
+});
+
+describe("TargetSection", () => {
+  it("should not render a edit table metadata button when the target table does not exist", async () => {
+    setup({});
+
+    expect(
+      await screen.findByRole("button", { name: /Change target/ }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("link", { name: /Edit this table/ }),
+    ).not.toBeInTheDocument();
+  });
+  it("should link you to a page where you can edit the target tables metadata", async () => {
+    setup({
+      transform: createMockTransform({
+        table: createMockTable(),
+      }),
+    });
+
+    expect(
+      await screen.findByRole("button", { name: /Change target/ }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("link", { name: /Edit this table/ }),
+    ).toHaveAttribute(
+      "href",
+      expect.stringContaining("/data-studio/data/database"),
+    );
   });
 });

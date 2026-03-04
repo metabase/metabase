@@ -17,7 +17,6 @@
    [metabase.channel.template.core :as channel.template]
    [metabase.channel.urls :as urls]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib.util :as lib.util]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -51,7 +50,7 @@
   []
   (:image-src (logo-bundle)))
 
-(defn logo-attachment
+(defn- logo-attachment
   "Return the logo attachment map for embedding in emails, or nil if not needed."
   []
   (:attachment (logo-bundle)))
@@ -417,7 +416,7 @@
                                                   (fn [{:keys [value] :as param}]
                                                     (cond-> param
                                                       (coll? value)
-                                                      (update :value #(lib.util/join-strings-with-conjunction
+                                                      (update :value #(i18n/join-strings-with-conjunction
                                                                        (i18n/tru "or")
                                                                        %))))
                                                   bad-parameters)

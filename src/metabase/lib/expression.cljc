@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.computed :as lib.computed]
+   [metabase.lib.display-name :as lib.display-name]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -39,7 +40,7 @@
                  {:lib/uuid       (str (random-uuid))
                   :base-type      (:base-type metadata)
                   :effective-type ((some-fn :effective-type :base-type) metadata)}
-                 (when-let [unit (:metabase.lib.field/temporal-unit metadata)]
+                 (when-let [unit (:lib/temporal-unit metadata)]
                    {:temporal-unit unit}))]
     [:expression options ((some-fn :lib/expression-name :name) metadata)]))
 
@@ -71,12 +72,11 @@
            (when <>
              (log/warnf "Found expression %s in previous stage" (pr-str expression-name)))))
        (when (lib.util/first-stage? query stage-number)
-         (when-let [source-card-id (lib.util/source-card-id query)]
-           (when-let [source-card (lib.metadata/card query source-card-id)]
-             (u/prog1 (resolve-expression (:dataset-query source-card) expression-name)
-               (when <>
-                 (log/warnf "Found expression %s in source card %d. Next time, use a :field name ref!"
-                            (pr-str expression-name) source-card-id))))))
+         (when-let [source-card (lib.metadata.calculation/primary-source-card query)]
+           (u/prog1 (resolve-expression (:dataset-query source-card) expression-name)
+             (when <>
+               (log/warnf "Found expression %s in source card %d. Next time, use a :field name ref!"
+                          (pr-str expression-name) (:id source-card))))))
        (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                        {:expression-name expression-name
                         :query           query
@@ -105,7 +105,7 @@
                 :effective-type          (or (:effective-type opts) base-type)
                 :lib/source              :source/expressions}
                (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-                 {:metabase.lib.field/temporal-unit unit})
+                 {:lib/temporal-unit unit})
                (when lib.metadata.calculation/*propagate-binning-and-bucketing*
                  (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
                    {:inherited-temporal-unit unit})))))))
@@ -136,9 +136,9 @@
 (defmethod lib.metadata.calculation/display-name-method :expression
   [_query _stage-number [_expression {:keys [temporal-unit] :as _opts} expression-name] _style]
   (letfn [(temporal-format [display-name]
-            (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
-                                                       (str/replace \- \space)
-                                                       u/capitalize-en)))]
+            (str display-name
+                 lib.display-name/column-display-name-separator
+                 (lib.temporal-bucket/describe-temporal-unit temporal-unit)))]
     (cond-> expression-name
       temporal-unit temporal-format)))
 
@@ -234,6 +234,18 @@
   (str (lib.metadata.calculation/column-name query stage-number x)
        \_
        (interval-column-name amount unit)))
+
+(defmethod lib.metadata.calculation/display-name-method :datetime-subtract
+  [query stage-number [_datetime-subtract _opts x amount unit] style]
+  (str (lib.metadata.calculation/display-name query stage-number x style)
+       \space
+       (interval-display-name (clojure.core/- amount) unit)))
+
+(defmethod lib.metadata.calculation/column-name-method :datetime-subtract
+  [query stage-number [_datetime-subtract _opts x amount unit]]
+  (str (lib.metadata.calculation/column-name query stage-number x)
+       \_
+       (interval-column-name (clojure.core/- amount) unit)))
 
 ;;; for now we'll just pretend `:coalesce` isn't a present and just use the display name for the expr it wraps.
 (defmethod lib.metadata.calculation/display-name-method :coalesce
@@ -411,7 +423,7 @@
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."
   [literal :- [:or :string number? :boolean [:fn u.number/bigint?]]]
-  (let [base-type (lib.schema.expression/type-of literal)]
+  (let [base-type (lib.schema.expression/type-of-resolved literal)]
     (lib.options/ensure-uuid [:value
                               {:base-type base-type, :effective-type base-type}
                               (cond-> literal (u.number/bigint? literal) str)])))
@@ -544,7 +556,7 @@
   (lib.options/update-options
    (if (lib.util/clause? an-expression-clause)
      an-expression-clause
-     [:value {:effective-type (lib.schema.expression/type-of an-expression-clause)}
+     [:value {:effective-type (lib.schema.expression/type-of-resolved an-expression-clause)}
       an-expression-clause])
    (fn [opts]
      (let [opts (assoc opts :lib/uuid (str (random-uuid)))]
@@ -566,9 +578,7 @@
 
 (defn- referred-expressions
   [expr]
-  (into #{}
-        (map #(get % 2))
-        (lib.util.match/match expr :expression)))
+  (set (lib.util.match/match-many expr [:expression _opts x & _] x)))
 
 (defn- aggregation->name
   [query stage-number aggregation]
@@ -576,9 +586,7 @@
 
 (defn- referred-aggregations
   [agg]
-  (into #{}
-        (map #(get % 2))
-        (lib.util.match/match agg :aggregation)))
+  (set (lib.util.match/match-many agg [:aggregation _opts x & _] x)))
 
 (defn- cyclic-definition
   ([node->children]
