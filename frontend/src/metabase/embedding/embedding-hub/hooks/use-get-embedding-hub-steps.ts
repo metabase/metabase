@@ -71,13 +71,6 @@ export const useGetEmbeddingHubSteps = (): EmbeddingHubStep[] => {
           modal: { type: "xray-dashboard" },
           variant: "outline",
         },
-        {
-          title: t`Create models`,
-          description: t`Set up data models for your embedded analytics.`,
-          to: "/model/new",
-          optional: true,
-          stepId: "create-models",
-        },
       ],
     };
 
