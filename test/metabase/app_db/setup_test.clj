@@ -44,7 +44,16 @@
       (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 1 :patch 1})))
       (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 11 :minor 0 :patch 0})))
       (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor -1 :patch 0})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 0 :patch -1}))))))
+      (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 0 :patch -1}))))
+
+    (testing "for mysql"
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 17})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 9 :minor 0 :patch 17})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 1 :patch 17})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 18})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 7 :minor 0 :patch 17})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor -1 :patch 17})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 16}))))))
 
 (deftest parse-db-version-test
   (testing "Can parse H2 version strings"
@@ -55,26 +64,25 @@
     (is (= {:major 11 :minor 16 :patch 0} (#'mdb.setup/parse-db-version "11.16 (Debian 11.16-1.pgdg90+1)"))))
 
   (testing "Can parse mysql version strings"
-    (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "TODO"))))
+    (is (= {:major 9 :minor 6 :patch 0} (#'mdb.setup/parse-db-version "9.6.0")))
+    (is (= {:major 8 :minor 0 :patch 45} (#'mdb.setup/parse-db-version "8.0.45"))))
+
   (testing "Can parse mariadb version strings"
     (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "TODO")))))
 
 (comment
-  (mdb.data-source/broken-out-details->DataSource
-   :postgres
-   {:subprotocol "h2"
-    :subname     (format "mem:%s" (mt/random-name))
-    :classname   "org.h2.Driver"})
-  (metabase.app-db.connection/db-type)
-  (.. (metabase.app-db.connection/data-source)
-      (getConnection)
-      (getMetaData)
-      (getDatabaseProductName))
 
-  (.. (metabase.app-db.connection/data-source)
-      (getConnection)
-      (getMetaData)
-      (getDatabaseProductVersion)))
+  [(metabase.app-db.connection/db-type)
+
+   (.. (metabase.app-db.connection/data-source)
+       (getConnection)
+       (getMetaData)
+       (getDatabaseProductName))
+
+   (.. (metabase.app-db.connection/data-source)
+       (getConnection)
+       (getMetaData)
+       (getDatabaseProductVersion))])
 
 (deftest setup-db-test
   (testing "Should be able to set up an arbitrary application DB"

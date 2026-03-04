@@ -8,6 +8,7 @@
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations :as custom-migrations]
@@ -122,10 +123,10 @@
 
 (def supported-db-versions
   "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"
-  {:h2 {:major 2 :minor 1 :patch 214}
+  {:h2       {:major 2 :minor 1 :patch 214}
    :postgres {:major 12 :minor 0 :patch 0}
-   :mysql {:major 8 :minor 0 :patch 17}
-   :maria {:major 10 :minor 4 :patch 0}})
+   :mysql    {:major 8 :minor 0 :patch 17}
+   :maria    {:major 10 :minor 4 :patch 0}})
 
 (defn- parse-db-version
   [product-version]
@@ -134,18 +135,12 @@
      :minor (or (some-> minor parse-long) 0)
      :patch (or (some-> patch parse-long) 0)}))
 
-(comment
-  (re-find #_#"^(\d+)\.(\d+)\.(\d+)" #"^(\d+)(?:\.(\d+))?(?:\.(\d+))?" "1.1.1")
-
-  (re-find #_#"^(\d+)\.(\d+)\.(\d+)" #"^(\d+)(?:\.(\d+))?(?:\.(\d+))?" "1.1")
-  (re-find #_#"^(\d+)\.(\d+)\.(\d+)" #"^(\d+)(?:\.(\d+))?(?:\.(\d+))?" "1"))
-
 (mu/defn- db-version
   :- [:map
       [:major [:int {:min 0}]]
       [:minor [:int {:min 0}]]
       [:patch [:int {:min 0}]]]
-  [metadata :- (ms/InstanceOfClass java.sql.DatabaseMetaData)]
+  [^java.sql.DatabaseMetaData metadata :- (ms/InstanceOfClass java.sql.DatabaseMetaData)]
   (merge
    (parse-db-version (.getDatabaseProductVersion metadata))
    {:major (.getDatabaseMajorVersion metadata)
@@ -175,7 +170,19 @@
         (log/infof "Successfully verified %s %s application database connection. %s"
                    (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅"))
         ; TODO make this message better
-        (throw (ex-info "App DB version not supported." db-version))))))
+        (throw (ex-info (str/join \newline [(trs "Metabase {0} DB version not supported (found {1}, required {2}). Please upgrade your database to a supported version and try again."
+                                                 (name db-type)
+                                                 (format "%s.%s.%s"
+                                                         (:major db-version)
+                                                         (:minor db-version)
+                                                         (:patch db-version))
+                                                 (let [required-version (get supported-db-versions db-type)]
+                                                   (format "%s.%s.%s"
+                                                           (:major required-version)
+                                                           (:minor required-version)
+                                                           (:patch required-version))))
+                                            "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"])
+                        {}))))))
 
 (mu/defn- check-encryption
   "Ensure encryption env variable is correctly set if needed, and encrypt the database if it needs to be
