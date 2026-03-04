@@ -20,9 +20,12 @@ import type {
 } from "../types/viewer-state";
 import {
   applyDimensionFilter,
+  applyProjection,
   buildBinnedBreakoutDef,
+  findBinningStrategy,
   findDimensionById,
   findFilterDimensionById,
+  findTemporalBucket,
   getDefinitionName,
 } from "../utils/metrics";
 import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
@@ -71,15 +74,12 @@ export interface UseMetricsViewerResult {
   removeTab: (tabId: string) => void;
   updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
   updateActiveTab: (updates: Partial<MetricsViewerTabState>) => void;
-  changeDimension: (
-    definitionId: MetricSourceId,
-    dimension: DimensionMetadata,
-  ) => void;
-  changeCardDimension: (
+  changeTabDimension: (
     tabId: string,
     definitionId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
+  removeTabDimension: (tabId: string, definitionId: MetricSourceId) => void;
   updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
   setBreakoutDimension: (
     id: MetricSourceId,
@@ -91,23 +91,45 @@ function buildUrlRestoreTransform(
   sourceId: MetricSourceId,
   request: LoadSourcesRequest,
 ): ((definition: MetricDefinition) => MetricDefinition) | undefined {
-  const breakoutId = request.breakoutBySourceId?.[sourceId];
+  const breakoutInfo = request.breakoutBySourceId?.[sourceId];
   const filters = request.filtersBySourceId?.[sourceId];
 
-  if (!breakoutId && (!filters || filters.length === 0)) {
+  if (!breakoutInfo && (!filters || filters.length === 0)) {
     return undefined;
   }
 
   return (definition: MetricDefinition): MetricDefinition => {
     let result = definition;
 
-    if (breakoutId) {
-      const dimension = findDimensionById(result, breakoutId);
+    if (breakoutInfo) {
+      const dimension = findDimensionById(result, breakoutInfo.dimensionId);
       if (dimension) {
-        result = buildBinnedBreakoutDef(
-          result,
-          LibMetric.dimensionReference(dimension),
-        );
+        const dimensionRef = LibMetric.dimensionReference(dimension);
+
+        let modifiedRef: LibMetric.ProjectionClause | null = null;
+        if (breakoutInfo.temporalUnit) {
+          const bucket = findTemporalBucket(
+            result,
+            dimension,
+            breakoutInfo.temporalUnit,
+          );
+          if (bucket) {
+            modifiedRef = LibMetric.withTemporalBucket(dimensionRef, bucket);
+          }
+        } else if (breakoutInfo.binning) {
+          const strategy = findBinningStrategy(
+            result,
+            dimension,
+            breakoutInfo.binning,
+          );
+          if (strategy) {
+            modifiedRef = LibMetric.withBinning(dimensionRef, strategy);
+          }
+        }
+
+        result = modifiedRef
+          ? applyProjection(result, modifiedRef)
+          : buildBinnedBreakoutDef(result, dimensionRef);
       }
     }
 
@@ -136,7 +158,8 @@ export function useMetricsViewer({
     addTab,
     removeTab,
     updateTab,
-    setDefinitionDimension: changeCardDimension,
+    setDefinitionDimension: changeTabDimension,
+    removeDefinitionDimension: removeTabDimension,
     setBreakoutDimension,
     initialize,
     loadAndAddMetric,
@@ -334,16 +357,6 @@ export function useMetricsViewer({
     [activeTab, updateTab],
   );
 
-  const changeDimension = useCallback(
-    (definitionId: MetricSourceId, dimension: DimensionMetadata) => {
-      if (!activeTab) {
-        return;
-      }
-      changeCardDimension(activeTab.id, definitionId, dimension);
-    },
-    [changeCardDimension, activeTab],
-  );
-
   return {
     definitions: state.definitions,
     tabs: effectiveTabs,
@@ -372,8 +385,8 @@ export function useMetricsViewer({
     removeTab,
     updateTab,
     updateActiveTab,
-    changeDimension,
-    changeCardDimension,
+    changeTabDimension,
+    removeTabDimension,
     updateDefinition,
     setBreakoutDimension,
   };

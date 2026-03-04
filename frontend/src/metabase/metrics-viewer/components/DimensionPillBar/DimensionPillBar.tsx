@@ -1,14 +1,15 @@
+import type { DimensionOption } from "metabase/common/components/DimensionPill";
+import { DimensionPill } from "metabase/common/components/DimensionPill";
 import type { IconName } from "metabase/ui";
 import { Flex } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 
-import type { DimensionOption } from "../DimensionPill";
-import { DimensionPill } from "../DimensionPill";
+import type { MetricSourceId } from "../../types/viewer-state";
 
 import S from "./DimensionPillBar.module.css";
 
 export interface DimensionItem {
-  id: string | number;
+  id: MetricSourceId;
   label?: string;
   icon?: IconName;
   colors?: string[];
@@ -18,15 +19,17 @@ export interface DimensionItem {
 export interface DimensionPillBarProps {
   items: DimensionItem[];
   onDimensionChange: (
-    itemId: string | number,
+    itemId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
+  onDimensionRemove?: (itemId: MetricSourceId) => void;
   disabled?: boolean;
 }
 
 export function DimensionPillBar({
   items,
   onDimensionChange,
+  onDimensionRemove,
   disabled,
 }: DimensionPillBarProps) {
   if (items.length === 0) {
@@ -49,6 +52,9 @@ export function DimensionPillBar({
           colors={item.colors}
           options={item.availableOptions}
           onSelect={(dimension) => onDimensionChange(item.id, dimension)}
+          onRemove={
+            onDimensionRemove ? () => onDimensionRemove(item.id) : undefined
+          }
           disabled={disabled}
         />
       ))}

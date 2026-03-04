@@ -47,6 +47,8 @@ interface SerializedSource {
   type: "metric" | "measure";
   id: number;
   breakout?: string;
+  breakoutTemporalUnit?: TemporalUnit;
+  breakoutBinning?: string;
   filters?: SerializedUrlFilter[];
 }
 
@@ -168,6 +170,34 @@ export function stateToSerializedState(
             rawDim,
           );
           source.breakout = dimInfo.id;
+
+          if (LibMetric.temporalBucket(breakoutProjection)) {
+            const buckets = LibMetric.availableTemporalBuckets(
+              entry.definition,
+              rawDim,
+            );
+            for (const bucket of buckets) {
+              const info = LibMetric.displayInfo(entry.definition, bucket);
+              if (info.selected) {
+                source.breakoutTemporalUnit = info.shortName;
+                break;
+              }
+            }
+          }
+
+          if (LibMetric.binning(breakoutProjection)) {
+            const strategies = LibMetric.availableBinningStrategies(
+              entry.definition,
+              rawDim,
+            );
+            for (const strategy of strategies) {
+              const info = LibMetric.displayInfo(entry.definition, strategy);
+              if (info.selected) {
+                source.breakoutBinning = info.displayName;
+                break;
+              }
+            }
+          }
         }
       }
 
@@ -197,6 +227,8 @@ const sourceSchema = defineCompactSchema<SerializedSource>({
   type: "t",
   id: "i",
   breakout: { key: "b", optional: true },
+  breakoutTemporalUnit: { key: "u", optional: true },
+  breakoutBinning: { key: "B", optional: true },
   filters: { key: "F", schema: sourceFilterSchema, optional: true },
 });
 

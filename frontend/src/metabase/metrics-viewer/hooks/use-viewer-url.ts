@@ -4,7 +4,7 @@ import { push, replace } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import type { MeasureId } from "metabase-types/api";
+import type { MeasureId, TemporalUnit } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
 import type {
@@ -22,10 +22,16 @@ import {
   stateToSerializedState,
 } from "../utils/url-serialization";
 
+export interface BreakoutInfo {
+  dimensionId: string;
+  temporalUnit?: TemporalUnit;
+  binning?: string;
+}
+
 export interface LoadSourcesRequest {
   metricIds: MetricId[];
   measureIds: MeasureId[];
-  breakoutBySourceId?: Record<MetricSourceId, string>;
+  breakoutBySourceId?: Record<MetricSourceId, BreakoutInfo>;
   filtersBySourceId?: Record<MetricSourceId, SourceFilter[]>;
 }
 
@@ -71,7 +77,7 @@ export function useViewerUrl(
 
     const metricIds: MetricId[] = [];
     const measureIds: MeasureId[] = [];
-    const breakoutBySourceId: Record<MetricSourceId, string> = {};
+    const breakoutBySourceId: Record<MetricSourceId, BreakoutInfo> = {};
     const filtersBySourceId: Record<MetricSourceId, SourceFilter[]> = {};
 
     for (const source of serializedState.sources) {
@@ -84,7 +90,11 @@ export function useViewerUrl(
       }
 
       if (source.breakout) {
-        breakoutBySourceId[sourceId] = source.breakout;
+        breakoutBySourceId[sourceId] = {
+          dimensionId: source.breakout,
+          temporalUnit: source.breakoutTemporalUnit,
+          binning: source.breakoutBinning,
+        };
       }
 
       if (source.filters && source.filters.length > 0) {
@@ -100,7 +110,6 @@ export function useViewerUrl(
         definitions: [],
         tabs,
         selectedTabId: serializedState.selectedTabId,
-        isFullscreen: false,
       });
     }
 

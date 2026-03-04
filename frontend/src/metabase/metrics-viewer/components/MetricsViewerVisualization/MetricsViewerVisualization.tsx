@@ -1,6 +1,6 @@
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
-import type { DimensionItem } from "metabase/common/components/DimensionPillBar";
-import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
+import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
+import { DimensionPillBar } from "metabase/metrics-viewer/components/DimensionPillBar";
 import type { MetricsViewerTabLayoutState } from "metabase/metrics-viewer/types";
 import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import { Flex, SimpleGrid, Stack } from "metabase/ui";
@@ -22,9 +22,10 @@ type MetricsViewerVisualizationProps = {
   rawSeries: SingleSeries[];
   dimensionItems: DimensionItem[];
   onDimensionChange?: (
-    cardId: string | number,
+    definitionId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
+  onDimensionRemove?: (definitionId: MetricSourceId) => void;
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;
   layout?: MetricsViewerTabLayoutState;
@@ -38,6 +39,7 @@ export function MetricsViewerVisualization({
   rawSeries,
   dimensionItems,
   onDimensionChange,
+  onDimensionRemove,
   onBrush,
   className,
   layout,
@@ -97,6 +99,7 @@ export function MetricsViewerVisualization({
         <DimensionPillBar
           items={dimensionItems}
           onDimensionChange={onDimensionChange}
+          onDimensionRemove={onDimensionRemove}
         />
       )}
     </Flex>

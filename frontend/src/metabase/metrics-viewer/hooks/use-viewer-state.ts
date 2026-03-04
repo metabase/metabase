@@ -140,6 +140,10 @@ export interface UseViewerStateResult {
     definitionId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
+  removeDefinitionDimension: (
+    tabId: string,
+    definitionId: MetricSourceId,
+  ) => void;
   setBreakoutDimension: (
     id: MetricSourceId,
     dimension: ProjectionClause | undefined,
@@ -381,6 +385,28 @@ export function useViewerState(): UseViewerStateResult {
     [],
   );
 
+  const removeDefinitionDimension = useCallback(
+    (tabId: string, definitionId: MetricSourceId) =>
+      setState((prev) => ({
+        ...prev,
+        tabs: prev.tabs.map((tab) => {
+          if (tab.id !== tabId) {
+            return tab;
+          }
+          const { [definitionId]: _, ...rest } = tab.dimensionMapping;
+          return {
+            ...tab,
+            dimensionMapping: rest,
+            projectionConfig: {
+              ...tab.projectionConfig,
+              dimensionFilter: undefined,
+            },
+          };
+        }),
+      })),
+    [],
+  );
+
   const setBreakoutDimension = useCallback(
     (id: MetricSourceId, dimension: ProjectionClause | undefined) =>
       setState((prev) => ({
@@ -544,6 +570,7 @@ export function useViewerState(): UseViewerStateResult {
     removeTab,
     updateTab,
     setDefinitionDimension,
+    removeDefinitionDimension,
     setBreakoutDimension,
 
     initialize,

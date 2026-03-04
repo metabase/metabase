@@ -386,7 +386,7 @@ export function findFilterDimensionById(
   });
 }
 
-function findTemporalBucket(
+export function findTemporalBucket(
   def: MetricDefinition,
   dim: DimensionMetadata,
   targetUnit: TemporalUnit,
@@ -397,6 +397,19 @@ function findTemporalBucket(
     return info.shortName === targetUnit;
   });
   return bucket ?? null;
+}
+
+export function findBinningStrategy(
+  def: MetricDefinition,
+  dimension: DimensionMetadata,
+  strategyName: string,
+): LibMetric.BinningStrategy | null {
+  const strategies = LibMetric.availableBinningStrategies(def, dimension);
+  return (
+    strategies.find(
+      (s) => LibMetric.displayInfo(def, s).displayName === strategyName,
+    ) ?? null
+  );
 }
 
 // ── Projection application ──
@@ -423,12 +436,7 @@ function applyBinnedProjection(
   if (binningStrategy === UNBINNED) {
     newProjection = LibMetric.withBinning(baseProjection, null);
   } else if (binningStrategy) {
-    const strategies = LibMetric.availableBinningStrategies(def, dimension);
-    const strategy =
-      strategies.find((s) => {
-        const info = LibMetric.displayInfo(def, s);
-        return info.displayName === binningStrategy;
-      }) ?? null;
+    const strategy = findBinningStrategy(def, dimension, binningStrategy);
     newProjection = LibMetric.withBinning(baseProjection, strategy);
   } else {
     newProjection = LibMetric.withDefaultBinning(tempDef, baseProjection);

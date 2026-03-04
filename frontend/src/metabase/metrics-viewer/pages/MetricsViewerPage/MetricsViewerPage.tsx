@@ -46,8 +46,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     removeTab,
     updateTab,
     updateActiveTab,
-    changeDimension,
-    changeCardDimension,
+    changeTabDimension,
+    removeTabDimension,
     updateDefinition,
     setBreakoutDimension,
   } = useMetricsViewer(props);
@@ -104,7 +104,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   definitions={definitions}
                   tabs={tabs}
                   updateTab={updateTab}
-                  onDimensionChange={changeCardDimension}
+                  onDimensionChange={changeTabDimension}
+                  onDimensionRemove={removeTabDimension}
                   sourceColors={sourceColors}
                 />
               ) : activeTab ? (
@@ -117,7 +118,12 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   sourceColors={sourceColors}
                   isExecuting={isExecuting}
                   onTabUpdate={updateActiveTab}
-                  onDimensionChange={changeDimension}
+                  onDimensionChange={(defId, dim) =>
+                    changeTabDimension(activeTab.id, defId, dim)
+                  }
+                  onDimensionRemove={(defId) =>
+                    removeTabDimension(activeTab.id, defId)
+                  }
                 />
               ) : hasLoadedDefinitions ? (
                 <MetricsViewerNoTabsEmptyState />

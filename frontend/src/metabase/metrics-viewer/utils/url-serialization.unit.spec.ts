@@ -35,6 +35,64 @@ describe("url-serialization", () => {
       expect(decoded).toEqual(state);
     });
 
+    it("round-trips a source with breakoutTemporalUnit", () => {
+      const state: SerializedMetricsViewerPageState = {
+        sources: [
+          {
+            type: "metric",
+            id: 1,
+            breakout: "created_at",
+            breakoutTemporalUnit: "year",
+          },
+        ],
+        tabs: [],
+        selectedTabId: null,
+      };
+
+      const hash = encodeState(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("round-trips a source with breakoutBinning", () => {
+      const state: SerializedMetricsViewerPageState = {
+        sources: [
+          {
+            type: "metric",
+            id: 2,
+            breakout: "total",
+            breakoutBinning: "50 bins",
+          },
+        ],
+        tabs: [],
+        selectedTabId: null,
+      };
+
+      const hash = encodeState(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("round-trips a source with both breakoutTemporalUnit and breakoutBinning", () => {
+      const state: SerializedMetricsViewerPageState = {
+        sources: [
+          {
+            type: "metric",
+            id: 3,
+            breakout: "dim-1",
+            breakoutTemporalUnit: "quarter",
+            breakoutBinning: "Auto bin",
+          },
+        ],
+        tabs: [],
+        selectedTabId: null,
+      };
+
+      const hash = encodeState(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
     it("round-trips an empty state", () => {
       const state: SerializedMetricsViewerPageState = {
         sources: [],

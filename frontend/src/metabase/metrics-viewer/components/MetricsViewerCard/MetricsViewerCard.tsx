@@ -1,5 +1,6 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
+import { getObjectKeys } from "metabase/lib/objects";
 import { Paper, Stack, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 
@@ -29,6 +30,7 @@ type MetricsViewerCardProps = {
     definitionId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
+  onDimensionRemove: (definitionId: MetricSourceId) => void;
   sourceColors: SourceColorMap;
 };
 
@@ -37,6 +39,7 @@ export function MetricsViewerCard({
   tab,
   onTabUpdate,
   onDimensionChange,
+  onDimensionRemove,
   sourceColors,
 }: MetricsViewerCardProps) {
   const tabConfig = getTabConfig(tab.type);
@@ -90,12 +93,9 @@ export function MetricsViewerCard({
     ],
   );
 
-  const handleDimensionChange = useCallback(
-    (itemId: string | number, dimension: DimensionMetadata) => {
-      onDimensionChange(itemId as MetricSourceId, dimension);
-    },
-    [onDimensionChange],
-  );
+  const mappedDimensionCount = getObjectKeys(tab.dimensionMapping).length;
+  const dimensionRemoveHandler =
+    mappedDimensionCount > 1 ? onDimensionRemove : undefined;
 
   if (rawSeries.length === 0) {
     return null;
@@ -118,7 +118,8 @@ export function MetricsViewerCard({
           className={S.visualization}
           rawSeries={rawSeries}
           dimensionItems={dimensionItems}
-          onDimensionChange={handleDimensionChange}
+          onDimensionChange={onDimensionChange}
+          onDimensionRemove={dimensionRemoveHandler}
           layout={tab.layout}
           definitions={definitions}
           tab={tab}

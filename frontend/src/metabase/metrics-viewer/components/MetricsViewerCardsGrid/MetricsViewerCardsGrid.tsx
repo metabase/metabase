@@ -18,6 +18,7 @@ type MetricsViewerCardsGridProps = {
     definitionId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
+  onDimensionRemove: (tabId: string, definitionId: MetricSourceId) => void;
   sourceColors: SourceColorMap;
 };
 
@@ -26,6 +27,7 @@ export function MetricsViewerCardsGrid({
   tabs,
   updateTab,
   onDimensionChange,
+  onDimensionRemove,
   sourceColors,
 }: MetricsViewerCardsGridProps) {
   return (
@@ -39,6 +41,7 @@ export function MetricsViewerCardsGrid({
           onDimensionChange={(defId, dimension) =>
             onDimensionChange(tab.id, defId, dimension)
           }
+          onDimensionRemove={(defId) => onDimensionRemove(tab.id, defId)}
           sourceColors={sourceColors}
         />
       ))}

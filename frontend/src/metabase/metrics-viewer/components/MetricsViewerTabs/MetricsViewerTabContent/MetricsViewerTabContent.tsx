@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 
-import { DimensionPillBar } from "metabase/common/components/DimensionPillBar";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getObjectKeys } from "metabase/lib/objects";
 import { Box, Flex, Stack } from "metabase/ui";
@@ -41,6 +40,7 @@ type MetricsViewerTabContentProps = {
     definitionId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
+  onDimensionRemove: (definitionId: MetricSourceId) => void;
 };
 
 export function MetricsViewerTabContent({
@@ -53,6 +53,7 @@ export function MetricsViewerTabContent({
   isExecuting,
   onTabUpdate,
   onDimensionChange,
+  onDimensionRemove,
 }: MetricsViewerTabContentProps) {
   const isLoading = useMemo(() => {
     return getObjectKeys(tab.dimensionMapping).some(isExecuting);
@@ -138,13 +139,6 @@ export function MetricsViewerTabContent({
     return filterDimensions;
   }, [tab.dimensionMapping, modifiedDefinitions]);
 
-  const handleDimensionChange = useCallback(
-    (itemId: string | number, dimension: DimensionMetadata) => {
-      onDimensionChange(itemId as MetricSourceId, dimension);
-    },
-    [onDimensionChange],
-  );
-
   const handleDimensionFilterChange = useCallback(
     (value: DimensionFilterValue | undefined) => {
       onTabUpdate({
@@ -213,20 +207,12 @@ export function MetricsViewerTabContent({
   );
 
   const isTimeTab = tab.type === "time";
+  const mappedDimensionCount = getObjectKeys(tab.dimensionMapping).length;
+  const dimensionRemoveHandler =
+    mappedDimensionCount > 1 ? onDimensionRemove : undefined;
 
   if (isLoading || firstError) {
     return <LoadingAndErrorWrapper loading={isLoading} error={firstError} />;
-  }
-
-  if (rawSeries.length === 0 && dimensionItems.length > 0) {
-    return (
-      <Stack flex="1 0 auto" gap="sm">
-        <DimensionPillBar
-          items={dimensionItems}
-          onDimensionChange={handleDimensionChange}
-        />
-      </Stack>
-    );
   }
 
   if (rawSeries.length === 0) {
@@ -238,7 +224,8 @@ export function MetricsViewerTabContent({
       <MetricsViewerVisualization
         rawSeries={rawSeries}
         dimensionItems={dimensionItems}
-        onDimensionChange={handleDimensionChange}
+        onDimensionChange={onDimensionChange}
+        onDimensionRemove={dimensionRemoveHandler}
         onBrush={isTimeTab ? handleBrush : undefined}
         layout={tab.layout}
         definitions={definitions}

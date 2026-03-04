@@ -7,7 +7,7 @@ import {
 } from "metabase/common/components/AccordionList";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import type { IconName } from "metabase/ui";
-import { Flex, Icon, Popover, Text } from "metabase/ui";
+import { Divider, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 
 import S from "./DimensionPill.module.css";
@@ -33,7 +33,36 @@ export interface DimensionPillProps {
   colors?: string[];
   options: DimensionOption[];
   onSelect: (dimension: DimensionMetadata) => void;
+  onRemove?: () => void;
   disabled?: boolean;
+}
+
+interface RemoveAction {
+  name: string;
+  displayName: string;
+  icon: IconName;
+}
+
+const REMOVE_ACTION: RemoveAction = {
+  name: "__remove__",
+  get displayName() {
+    return t`Remove dimension`;
+  },
+  icon: "close",
+};
+
+const REMOVE_SECTIONS: Section<RemoveAction>[] = [{ items: [REMOVE_ACTION] }];
+
+function renderItemName(item: DimensionOption | RemoveAction) {
+  return item.displayName;
+}
+
+function renderItemIcon(item: DimensionOption | RemoveAction) {
+  return <Icon name={item.icon} />;
+}
+
+function itemIsSelected() {
+  return false;
 }
 
 export function DimensionPill({
@@ -42,6 +71,7 @@ export function DimensionPill({
   colors,
   options,
   onSelect,
+  onRemove,
   disabled,
 }: DimensionPillProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -50,6 +80,8 @@ export function DimensionPill({
   const isEmpty = isPlaceholder && options.length === 0;
   const hasMultipleOptions =
     options.length > 1 || (isPlaceholder && options.length > 0);
+  const canRemove = !isPlaceholder && onRemove != null;
+  const canOpenPopover = hasMultipleOptions || canRemove;
 
   const handleSelect = useCallback(
     (item: DimensionOption) => {
@@ -58,6 +90,11 @@ export function DimensionPill({
     },
     [onSelect],
   );
+
+  const handleRemove = useCallback(() => {
+    onRemove?.();
+    setIsOpen(false);
+  }, [onRemove]);
 
   let pillLabel: string;
   if (isEmpty) {
@@ -97,31 +134,14 @@ export function DimensionPill({
     }));
   }, [options]);
 
-  const renderItemName = useCallback(
-    (item: DimensionOption) => item.displayName,
-    [],
-  );
-
-  const renderItemIcon = useCallback(
-    (item: DimensionOption) => <Icon name={item.icon} />,
-    [],
-  );
-
-  const itemIsSelected = useCallback(
-    (item: DimensionOption) => item.selected ?? false,
-    [],
-  );
-
   const pillContent = (
     <Flex
       className={S.pill}
       align="center"
       gap="xs"
-      onClick={
-        hasMultipleOptions && !disabled ? () => setIsOpen(true) : undefined
-      }
+      onClick={canOpenPopover && !disabled ? () => setIsOpen(true) : undefined}
       data-disabled={disabled || isEmpty}
-      data-static={!hasMultipleOptions}
+      data-static={!canOpenPopover}
       data-placeholder={isPlaceholder || undefined}
     >
       <SourceColorIndicator colors={colors} fallbackIcon={icon ?? "add"} />
@@ -131,7 +151,7 @@ export function DimensionPill({
     </Flex>
   );
 
-  if (!hasMultipleOptions) {
+  if (!canOpenPopover) {
     return pillContent;
   }
 
@@ -139,17 +159,35 @@ export function DimensionPill({
     <Popover opened={isOpen} onChange={setIsOpen} position="top-start">
       <Popover.Target>{pillContent}</Popover.Target>
       <Popover.Dropdown px={0} py="xs" mah={300} style={{ overflowY: "auto" }}>
-        <AccordionList
-          className={S.dimensionList}
-          sections={sections}
-          onChange={handleSelect}
-          renderItemName={renderItemName}
-          renderItemIcon={renderItemIcon}
-          itemIsSelected={itemIsSelected}
-          alwaysExpanded
-          maxHeight={Infinity}
-          width={240}
-        />
+        {hasMultipleOptions && (
+          <AccordionList
+            className={S.dimensionList}
+            sections={sections}
+            onChange={handleSelect}
+            renderItemName={renderItemName}
+            renderItemIcon={renderItemIcon}
+            itemIsSelected={itemIsSelected}
+            alwaysExpanded
+            maxHeight={Infinity}
+            width={240}
+          />
+        )}
+        {canRemove && (
+          <>
+            {hasMultipleOptions && <Divider my="xs" />}
+            <AccordionList
+              className={S.dimensionList}
+              sections={REMOVE_SECTIONS}
+              onChange={handleRemove}
+              renderItemName={renderItemName}
+              renderItemIcon={renderItemIcon}
+              itemIsSelected={itemIsSelected}
+              alwaysExpanded
+              maxHeight={Infinity}
+              width={240}
+            />
+          </>
+        )}
       </Popover.Dropdown>
     </Popover>
   );
