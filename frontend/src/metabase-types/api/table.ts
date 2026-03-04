@@ -10,7 +10,7 @@ import type { UserId, UserInfo } from "./user";
 
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
-export type TableId = ConcreteTableId | VirtualTableId;
+export type TableId = ConcreteTableId;
 export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
 
 export function isConcreteTableId(
@@ -40,8 +40,8 @@ export type TableDataSource =
 
 export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
 
-export type Table<TId extends TableId = TableId> = {
-  id: TId;
+export type Table = {
+  id: TableId;
   type?: CardType;
   name: string;
   display_name: string;
@@ -84,8 +84,6 @@ export type Table<TId extends TableId = TableId> = {
   is_published: boolean;
   collection?: Collection;
 };
-
-export type VirtualTable = Table<VirtualTableId>;
 
 export type TableOwner = Pick<
   UserInfo,
