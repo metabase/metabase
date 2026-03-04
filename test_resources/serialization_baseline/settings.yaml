@@ -30,6 +30,8 @@ enable-xrays: null
 gsheets: null
 hide-embed-branding?: null
 humanization-strategy: null
+embedded-metabot-enabled?: null
+metabot-enabled?: null
 landing-page: null
 landing-page-illustration: null
 landing-page-illustration-custom: null

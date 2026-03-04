@@ -872,6 +872,27 @@
                   (for [col cols]
                     (lib/display-info query col)))))))))
 
+(deftest ^:parallel join-condition-rhs-columns-join-card-non-suggested-test
+  (testing "non-suggested join conditions should be correctly formed, using correct ID- or name-based refs (QUE2-383)"
+    (let [card     (:categories (lib.tu/mock-cards))
+          mp       (lib.tu/metadata-provider-with-mock-cards)
+          base     (lib/query mp (meta/table-metadata :venues))
+          lhs-cols (lib/join-condition-lhs-columns base card nil nil)
+          lhs      (m/find-first #(= (:display-name %) "Name") lhs-cols)
+          rhs-cols (lib/join-condition-rhs-columns base card (lib/ref lhs) nil)
+          rhs      (m/find-first #(= (:display-name %) "Name") rhs-cols)
+          clause   (lib/join-clause card [(lib/= lhs rhs)])
+          query    (lib/join base clause)]
+      (is (=? [{:lib/type :mbql/join
+                :stages [{:source-card (:id card)}]
+                :fields :all
+                :conditions [[:= {}
+                              ;; The LHS uses the Field ID, since it's a plain table.
+                              [:field {:join-alias (symbol "nil #_\"key is not present.\"")} (meta/id :venues :name)]
+                              ;; The RHS uses the Field ID, since it's a plain table.
+                              [:field {:join-alias "Mock categories card - Name"} "NAME"]]]}]
+              (lib/joins query))))))
+
 (deftest ^:parallel join-condition-rhs-columns-existing-join-test
   (testing "RHS columns for existing join"
     (let [cols (lib/join-condition-rhs-columns (lib.tu/query-with-join) join-for-query-with-join nil nil)]
@@ -1523,7 +1544,8 @@
                                 :conditions [[:=
                                               {}
                                               [:field {:base-type :type/Text} "Products__CATEGORY"]
-                                              [:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]]
+                                              ;; This must be a name-based ref since it's coming from a card.
+                                              [:field {:join-alias "Card 2 - Products → Category"} "CATEGORY"]]]
                                 :alias      "Card 2 - Products → Category"}]
                        :limit 2}]}
             (lib.tu.mocks-31769/query)))))
@@ -1597,6 +1619,32 @@
                    (lib/aggregate (lib/count))
                    (lib/join (meta/table-metadata :products))
                    has-fields?))))))
+
+(deftest ^:parallel joined-card-columns-use-name-refs-test
+  (testing "a joined card's columns should use name-based refs (QUE2-383)"
+    (let [card     (:products (lib.tu/mock-cards))
+          base     (-> (lib/query (lib.tu/metadata-provider-with-mock-cards) (meta/table-metadata :orders))
+                       (lib/join (lib/join-clause card)))
+          cols     (lib/visible-columns base)
+          rating   (m/find-first (comp #{"RATING"}   :lib/source-column-alias) cols)
+          category (m/find-first (comp #{"CATEGORY"} :lib/source-column-alias) cols)]
+      (testing "when used in an expression"
+        (is (=? {:stages [{:expressions [[:* {:lib/expression-name "10-star ratings"}
+                                          [:field {:join-alias "Mock products card - Product"} "RATING"]
+                                          2]]}]}
+                (lib/expression base "10-star ratings" (lib/* rating 2)))))
+      (testing "when used in a filter"
+        (is (=? {:stages [{:filters [[:> {} [:field {:join-alias "Mock products card - Product"} "RATING"] 3]]}]}
+                (lib/filter base (lib/> rating 3)))))
+      (testing "when used in an aggregation or breakout"
+        (is (=? {:stages [{:aggregation [[:avg {} [:field {:join-alias "Mock products card - Product"} "RATING"]]]
+                           :breakout    [[:field {:join-alias "Mock products card - Product"} "CATEGORY"]]}]}
+                (-> base
+                    (lib/aggregate (lib/avg rating))
+                    (lib/breakout category)))))
+      (testing "when used in an order-by"
+        (is (=? {:stages [{:order-by [[:asc {} [:field {:join-alias "Mock products card - Product"} "RATING"]]]}]}
+                (lib/order-by base rating)))))))
 
 (deftest ^:parallel join-clause-with-outdated-fields-test
   (testing "update a model to return entirely new columns, but if an old join remembers the originals"

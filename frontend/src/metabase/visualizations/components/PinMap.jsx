@@ -13,7 +13,6 @@ import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 import { hasLatitudeAndLongitudeColumns } from "metabase-lib/v1/types/utils/isa";
 
 import { LeafletGridHeatMap } from "./LeafletGridHeatMap";
-import { LeafletHeatMap } from "./LeafletHeatMap";
 import { LeafletMarkerPinMap } from "./LeafletMarkerPinMap";
 import { LeafletTilePinMap } from "./LeafletTilePinMap";
 import S from "./PinMap.module.css";
@@ -26,7 +25,6 @@ const WORLD_BOUNDS = [
 const MAP_COMPONENTS_BY_TYPE = {
   markers: LeafletMarkerPinMap,
   tiles: LeafletTilePinMap,
-  heat: LeafletHeatMap,
   grid: LeafletGridHeatMap,
 };
 
