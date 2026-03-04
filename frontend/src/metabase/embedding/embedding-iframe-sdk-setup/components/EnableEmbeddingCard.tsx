@@ -169,7 +169,7 @@ const GuestEmbedsTooltipContent = () => (
     <Text fz="sm" lh="lg">
       {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Only admins, at the moment, should see this */}
       {t`When you embed charts or dashboards from Metabase in your
-        own application that application isn't subject to the Affero
+        own application, that application isn't subject to the Affero
         General Public License that covers the rest of Metabase,
         provided you keep the Metabase logo and the "Powered by
         Metabase" visible on those embeds.`}
