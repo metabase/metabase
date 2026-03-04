@@ -7,7 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.queries.schema :as queries.schema]
-   [metabase.transforms.core :as transforms]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -60,7 +60,7 @@
               [:python
                ;; If the upstream table doesn't exist yet, table_id will be nil
                [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id [:maybe :int]]]]]]]]]]]]
-  (let [source-type (transforms/transform-type transform)]
+  (let [source-type (transforms-base.u/transform-type transform)]
     (case source-type
       :query (upstream-deps:query query)
       :python (upstream-deps:python-transform transform)

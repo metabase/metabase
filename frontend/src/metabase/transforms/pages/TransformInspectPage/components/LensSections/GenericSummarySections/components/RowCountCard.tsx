@@ -20,9 +20,5 @@ export const RowCountCard = ({ card }: RowCountCardProps) => {
     );
   }
 
-  return (
-    <Text size="sm" ta="right">
-      {rowCount?.toString() ?? "-"}
-    </Text>
-  );
+  return <Text ta="right">{rowCount?.toString() ?? "-"}</Text>;
 };

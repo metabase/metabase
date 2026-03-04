@@ -12,7 +12,7 @@ interface LegendItemDotProps {
   isVisible: boolean;
   color: string;
   size?: string; // px
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent) => void;
 }
 
 export const LegendItemDot = forwardRef<

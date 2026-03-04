@@ -3,7 +3,7 @@
 
    Cards returned:
    - base-count: COUNT(*) with 0 joins
-   - join-step-N: [COUNT(*), COUNT(nullable_field)] for each join step
+   - join-step-N: [COUNT(*), COUNT(CASE WHEN join_condition THEN 1 END)] for each join step
    - table-N-count: COUNT(*) for each joined table (right-row-count)
 
    FE derives from card results:
@@ -18,6 +18,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.util :as lib.util]
    [metabase.transforms-inspector.lens.core :as lens.core]
    [metabase.transforms-inspector.lens.query-util :as query-util]
    [metabase.util.i18n :refer [tru trun]]))
@@ -31,32 +32,28 @@
   [ctx]
   (:join-structure (or (:mbql-context ctx) (:native-context ctx))))
 
+(defn- outer-join?
+  [strategy]
+  (contains? #{:left-join :right-join :full-join} strategy))
+
 ;;; -------------------------------------------------- MBQL Query Building --------------------------------------------------
 
 (defn- make-count-query
   [query]
   (lib/aggregate query (lib/count)))
 
-(defn- nullable-side-field-info
-  "For outer joins, return the field info for the side that becomes NULL on non-match.
-   LEFT  → RHS is nullable, RIGHT → LHS is nullable, FULL → RHS (detects left-unmatched)."
-  [join]
-  (let [strategy (or (:strategy join) :left-join)]
-    (case strategy
-      (:left-join :full-join) (query-util/get-rhs-field-info (:conditions join))
-      :right-join             (query-util/get-lhs-field-info (:conditions join))
-      nil)))
-
 (defn- make-join-step-query-mbql
-  "Query returning [COUNT(*), COUNT(nullable_field)] for outer joins, [COUNT(*)] otherwise."
+  "Query returning [COUNT(*), COUNT(CASE WHEN join_condition THEN 1 END)] for outer joins, [COUNT(*)] otherwise."
   [query step join]
-  (let [field-info (nullable-side-field-info join)
+  (let [strategy   (or (:strategy join) :left-join)
+        outer?     (outer-join? strategy)
         step-query (-> query (query-util/bare-query-with-n-joins step) make-count-query)]
-    (if field-info
-      (let [mp (lib-be/application-database-metadata-provider (:database query))
-            field-meta (-> (lib.metadata/field mp (:field-id field-info))
-                           (lib/with-join-alias (:join-alias field-info)))]
-        (lib/aggregate step-query (lib/count field-meta)))
+    (if outer?
+      (let [conditions (:conditions join)
+            combined   (if (= 1 (count conditions))
+                         (first conditions)
+                         (apply lib/and conditions))]
+        (lib/aggregate step-query (lib/count (lib/case [[(lib.util/fresh-uuids combined) 1]]))))
       step-query)))
 
 (defn- make-table-count-query
@@ -68,15 +65,6 @@
 
 ;;; -------------------------------------------------- Native SQL Building --------------------------------------------------
 
-(defn- nullable-side-column
-  "For outer joins, return the HoneySQL column ref for the side that becomes NULL on non-match.
-   LEFT/FULL → rhs-column, RIGHT → lhs-column."
-  [{:keys [strategy rhs-column lhs-column]}]
-  (case strategy
-    (:left-join :full-join) rhs-column
-    :right-join             lhs-column
-    nil))
-
 (def ^:private strategy->hsql-join-type
   "Map our join strategy keywords to HoneySQL :join-by type keywords.
    HoneySQL uses :join for INNER JOIN, not :inner-join."
@@ -87,15 +75,17 @@
    :cross-join :cross-join})
 
 (defn- build-native-join-step-hsql
-  "Build a HoneySQL map for [COUNT(*), COUNT(nullable_field)] with joins.
+  "Build a HoneySQL map for [COUNT(*), COUNT(CASE WHEN condition THEN 1 END)] with joins.
    Uses :join-by to preserve original join ordering across different join types."
   [from-table joins]
-  (let [col      (nullable-side-column (last joins))
-        join-by  (into [] (mapcat (fn [{:keys [strategy join-table join-condition]}]
-                                    [(strategy->hsql-join-type strategy) [join-table join-condition]]))
-                       joins)]
-    {:select (if col
-               [[[:count :*]] [[:count col]]]
+  (let [last-join  (last joins)
+        outer?     (outer-join? (:strategy last-join))
+        condition  (:join-condition last-join)
+        join-by    (into [] (mapcat (fn [{:keys [strategy join-table join-condition]}]
+                                      [(strategy->hsql-join-type strategy) [join-table join-condition]]))
+                         joins)]
+    {:select (if (and outer? condition)
+               [[[:count :*]] [[:count [:case condition [:inline 1]]]]]
                [[[:count :*]]])
      :from   [from-table]
      :join-by join-by}))
@@ -182,7 +172,9 @@
 
 (defmethod lens.core/lens-applicable? :join-analysis
   [_ ctx]
-  (:has-joins? ctx))
+  (and (:has-joins? ctx)
+       (pos-int? (:from-table-id ctx))
+       (every? #(pos-int? (:source-table %)) (get-join-structure ctx))))
 
 (defmethod lens.core/lens-metadata :join-analysis
   [_ _ctx]
@@ -194,8 +186,7 @@
 (defn- make-triggers
   "Generate alert and drill-lens triggers for join steps."
   [join-structure params]
-  (let [outer-joins (filter #(contains? #{:left-join :right-join :full-join}
-                                        (:strategy %))
+  (let [outer-joins (filter #(outer-join? (:strategy %))
                             (map-indexed #(assoc %2 :step (inc %1)) join-structure))]
     {:alert_triggers
      (for [{:keys [step alias strategy]} outer-joins]

@@ -747,8 +747,11 @@ describe(suiteTitle, () => {
       if (experience === "chart") {
         cy.log("select a different visualization to enable the save button");
         H.getSimpleEmbedIframeContent().within(() => {
-          cy.findByText("Table").click();
-          H.popover().findByText("Number").click();
+          cy.findByTestId("chart-type-selector-button").click();
+
+          cy.findByRole("listbox").within(() => {
+            cy.findByText("Number").click();
+          });
         });
       }
 

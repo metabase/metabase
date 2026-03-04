@@ -4,14 +4,23 @@
       "name": "Querying",
       "label": ".Team/Querying",
       "members": [
-        "ranquild",
-        "romeovs",
         "bshepherdson",
         "metamben",
-        "wzimrin",
+        "rileythomp",
+        "camsual"
+      ]
+    },
+    {
+      "name": "Graphy",
+      "label": ".Team/Graphy",
+      "members": [
+        "ranquild",
+        "romeovs",
         "ericnormand",
         "galdre",
-        "rileythomp"
+        "dpsutton",
+        "escherize",
+        "bgrabow"
       ]
     },
     {
@@ -36,9 +45,6 @@
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "camsaul",
-        "dpsutton",
-        "escherize",
         "fraserdrops",
         "nemanjaglumac"
       ]

@@ -58,6 +58,7 @@ Metabase will only export the following entities:
 - Snippets
 - Data model and table metadata
 - Segments
+- Measures
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#general-metabase-settings-that-are-exported)
 - Events and timelines
@@ -632,14 +633,14 @@ tar -xvf  metabase_data.tgz
 
 1. Send a `curl` request to export data:
 
-    ```sh
-    curl \
-      -H 'x-api-key: YOUR_API_KEY' \
-      -X POST 'https://your-metabase-url/api/ee/serialization/export' \
-      -o metabase_data.tgz
-    ```
+   ```sh
+   curl \
+     -H 'x-api-key: YOUR_API_KEY' \
+     -X POST 'https://your-metabase-url/api/ee/serialization/export' \
+     -o metabase_data.tgz
+   ```
 
-    substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
+   substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
 
     > We use `POST`, not `GET`, for the `/export` endpoint.
 
@@ -675,10 +676,10 @@ tar -xvf  metabase_data.tgz
       -o -
     ```
 
-    substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with your Metabase instance URL.
-    The `-o -` option will output logs in the terminal.
+   substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with your Metabase instance URL.
+   The `-o -` option will output logs in the terminal.
 
-    > If you import Metabase data into the same Metabase as you exported it from, you will overwrite your existing questions, dashboards, etc. See [How import works](#how-import-works).
+   > If you import Metabase data into the same Metabase as you exported it from, you will overwrite your existing questions, dashboards, etc. See [How import works](#how-import-works).
 
 ## Other uses of serialization
 

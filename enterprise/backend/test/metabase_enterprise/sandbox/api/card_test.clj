@@ -131,10 +131,11 @@
             (data-perms/set-table-permission! group (mt/id :venues) :perms/view-data view-perm)
             (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries create-perm)
             (testing (str "view-data: " view-perm ", create-queries: " create-perm)
-              (let [response (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))]
-                (if should-succeed?
-                  (is (= 1 (count (mt/rows response))))
-                  (is (thrown? clojure.lang.ExceptionInfo (mt/rows response))))))))))))
+              (if should-succeed?
+                (let [response (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))]
+                  (is (= 1 (count (mt/rows response)))))
+                (let [response (mt/user-http-request user-id :post 403 (str "card/" (u/the-id card) "/query"))]
+                  (is (partial= {:error_type "missing-required-permissions"} response)))))))))))
 
 (deftest sandbox-join-permissions-test
   (testing "Sandboxed query can't be saved when sandboxed table is joined to a table that the current user doesn't have access to"

@@ -208,6 +208,28 @@
       (ldap-enabled)
       (ee-sso-configured?)))
 
+(defn sso-source-enabled?
+  "Returns true if the given SSO source's authentication provider is currently enabled.
+   When a provider is disabled (e.g., after license downgrade), returns false so users
+   can fall back to password authentication."
+  [sso-source]
+  (boolean
+   (case (keyword sso-source)
+     :google (google-auth-enabled)
+     :ldap   (ldap-enabled)
+     ;; Enterprise SSO providers: setting/get respects the :feature flag on each
+     ;; setting — returning the default (false) when the feature is unlicensed (e.g.,
+     ;; after license downgrade), so users aren't locked out of password reset.
+     ;; Exception: :scim-enabled has no :feature guard, so it returns the stored value
+     ;; regardless of license status.
+     :saml   (setting/get :saml-enabled)
+     :jwt    (setting/get :jwt-enabled)
+     :oidc   (setting/get :oidc-enabled?)
+     :slack  (setting/get :slack-connect-enabled)
+     :scim   (setting/get :scim-enabled)
+     ;; Unknown sso_source -- treat as disabled to allow password reset
+     false)))
+
 (define-multi-setting google-auth-auto-create-accounts-domain
   (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain.")
   (fn [] (if (premium-features/enable-sso-google?) :ee :oss))
