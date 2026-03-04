@@ -42,10 +42,11 @@
   ([column group]
    (let [target (lib/ref column)
          has-field-values (lib/infer-has-field-values column)]
-     {:dimension (cond-> {:id   nil
-                          :name (:name column)}
+     {:dimension (cond-> {:id             nil
+                          :name           (:name column)
+                          :effective-type (or (:effective-type column)
+                                              (:base-type column))}
                    (:display-name column)    (assoc :display-name (:display-name column))
-                   (:effective-type column)  (assoc :effective-type (:effective-type column))
                    (:semantic-type column)   (assoc :semantic-type (:semantic-type column))
                    (:lib/source column)      (assoc :lib/source (:lib/source column))
                    (pos-int? (:id column))   (assoc :sources [(cond-> {:type :field, :field-id (:id column)}
@@ -148,7 +149,7 @@
   [computed-dim persisted-dim]
   (if persisted-dim
     (-> computed-dim
-        (merge (perf/select-keys persisted-dim [:display-name :semantic-type :effective-type]))
+        (merge (into {} (filter val) (perf/select-keys persisted-dim [:display-name :semantic-type :effective-type])))
         (dissoc :status-message))
     computed-dim))
 

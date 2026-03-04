@@ -351,3 +351,46 @@
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
                             #"Cannot resolve dimension target to field ID"
                             (lib-metric.dimension/resolve-dimension-to-field-id dimensions mappings "dim-1"))))))
+
+;;; ----------------------------------------- effective-type / base-type fallback -----------------------------------------
+
+(deftest ^:parallel reconcile-dimension-with-effective-type-from-base-type-test
+  (testing "A dimension computed from a column with only :base-type still gets :effective-type
+            via the base-type fallback, so type predicates like isDateOrDateTime work."
+    (let [;; Simulate what column->computed-pair now produces for a column that has
+          ;; :base-type but no :effective-type (as seen with H2)
+          computed-pairs [{:dimension {:id nil :name "created_at" :effective-type :type/DateTimeWithLocalTZ}
+                           :mapping   {:type :table :target target-1}}]
+          {:keys [dimensions]}
+          (lib-metric.dimension/reconcile-dimensions-and-mappings computed-pairs nil nil)
+          dim (first dimensions)]
+      (is (= :type/DateTimeWithLocalTZ (:effective-type dim))
+          "effective-type should be present on the reconciled dimension"))))
+
+(deftest ^:parallel reconcile-persisted-nil-effective-type-does-not-clobber-computed-test
+  (testing "When a persisted dimension has nil :effective-type, it should not overwrite
+            the freshly computed :effective-type during reconciliation."
+    (let [computed-pairs [{:dimension {:id nil :name "created_at" :effective-type :type/DateTimeWithLocalTZ}
+                           :mapping   {:type :table :target target-1}}]
+          ;; Persisted dimension was saved before effective-type was populated (H2 scenario)
+          persisted-dims [{:id uuid-1 :name "created_at" :effective-type nil :status :status/active}]
+          persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
+          {:keys [dimensions]}
+          (lib-metric.dimension/reconcile-dimensions-and-mappings
+           computed-pairs persisted-dims persisted-mappings)
+          dim (first dimensions)]
+      (is (= :type/DateTimeWithLocalTZ (:effective-type dim))
+          "computed effective-type should not be overwritten by nil from persisted dimension"))))
+
+(deftest ^:parallel reconcile-persisted-effective-type-overrides-computed-test
+  (testing "When a persisted dimension has a non-nil :effective-type, it should be used."
+    (let [computed-pairs [{:dimension {:id nil :name "created_at" :effective-type :type/DateTimeWithLocalTZ}
+                           :mapping   {:type :table :target target-1}}]
+          persisted-dims [{:id uuid-1 :name "created_at" :effective-type :type/Date :status :status/active}]
+          persisted-mappings [{:type :table :table-id 1 :dimension-id uuid-1 :target target-1}]
+          {:keys [dimensions]}
+          (lib-metric.dimension/reconcile-dimensions-and-mappings
+           computed-pairs persisted-dims persisted-mappings)
+          dim (first dimensions)]
+      (is (= :type/Date (:effective-type dim))
+          "persisted non-nil effective-type should override computed value"))))
