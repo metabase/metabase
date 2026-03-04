@@ -40,6 +40,7 @@
   (let [transform (t2/select-one :model/Transform :id entity-id)]
     (when-let [query (get-in transform [:source :query])]
       (when (replacement.util/valid-query? query)
+        (models.dependency/swap-dependency! :transform entity-id old-source new-source)
         (let [new-query (update-query query old-source new-source {})]
           (when (not= query new-query)
             (t2/update! :model/Transform entity-id
@@ -64,6 +65,7 @@
                       (= (:table_id card) (ultimate-table-id query old-source))
                       (assoc :table_id    (ultimate-table-id query new-source)))]
         ;; no changes, so don't update
+        (models.dependency/swap-dependency! :card entity-id old-source new-source)
         (when (seq changes)
           (t2/update! :model/Card entity-id changes)
           ;; TODO: not sure we really want this code to have to know about dependency tracking
@@ -75,7 +77,7 @@
           ;; todo: we still want to publish the card changed event here, but we should suppress the depdency analysis
           ;; and do it ourselves. This probably should be moved higher up so it's a bit more generic than this
           ;; paritcular spot
-          (models.dependency/swap-dependency! :card entity-id old-source new-source))
+          )
         (swap.viz/dashboard-card-update-field-refs! entity-id
                                                     (source-ref->source-map old-source)
                                                     (source-ref->source-map new-source))))))
@@ -97,6 +99,7 @@
                       (= table (ultimate-table-id query old-source))
                       (assoc :table_id table'))]
         ;; no changes, so don't update
+        (models.dependency/swap-dependency! :segment entity-id old-source new-source)
         (when (seq changes)
           (t2/update! :model/Segment entity-id changes)
           (events/publish-event! :event/segment-update
@@ -118,6 +121,7 @@
 
                       (= table (ultimate-table-id query old-source))
                       (assoc :table_id table'))]
+        (models.dependency/swap-dependency! :measure entity-id old-source new-source)
         ;; no changes, so don't update
         (when (seq changes)
           (t2/update! :model/Measure entity-id changes)
@@ -128,7 +132,9 @@
   [[_entity-type dashboard-id] old-source new-source]
   (let [old-source-map (source-ref->source-map old-source)
         new-source-map (source-ref->source-map new-source)]
-    (swap.viz/dashboard-update-field-refs! dashboard-id old-source-map new-source-map)))
+    (swap.viz/dashboard-update-field-refs! dashboard-id old-source-map new-source-map)
+    (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard
+                                                                           :id dashboard-id)})))
 
 (defn do-swap!
   "Swap old-source to new-source in an entity."
