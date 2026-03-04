@@ -171,7 +171,9 @@
      (table-search-results))
     (merge
      (make-result "measure test measure"
-                  :model "measure")
+                  :model "measure"
+                  :creator_id true
+                  :creator_common_name "Rasta Toucan")
      (table-search-results))]))
 
 (defn- default-table-scoped-results
