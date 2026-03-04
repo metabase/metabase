@@ -1,4 +1,12 @@
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
+import type {
+  Card,
+  CardId,
+  Collection,
+  Table,
+  TableId,
+  WrappedCardId,
+} from "metabase-types/api";
 
 export const SAVED_QUESTIONS_VIRTUAL_DB_ID = -1337;
 const ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME = "Everything else";
@@ -7,7 +15,7 @@ export const ROOT_COLLECTION_VIRTUAL_SCHEMA = getCollectionVirtualSchemaId({
   id: null,
 });
 
-export function getCollectionVirtualSchemaName(collection) {
+export function getCollectionVirtualSchemaName(collection: Collection) {
   const isRoot =
     !collection || collection.id === null || collection.id === "root";
   return isRoot
@@ -15,20 +23,24 @@ export function getCollectionVirtualSchemaName(collection) {
     : collection.schemaName || collection.name;
 }
 
-export function getCollectionVirtualSchemaId(collection) {
+export function getCollectionVirtualSchemaId(collection: Collection) {
   const collectionName = getCollectionVirtualSchemaName(collection);
   return generateSchemaId(SAVED_QUESTIONS_VIRTUAL_DB_ID, collectionName);
 }
 
-export function getQuestionVirtualTableId(id) {
+export function getQuestionVirtualTableId(id: CardId): WrappedCardId {
   return `card__${id}`;
 }
 
-export function isVirtualCardId(tableId) {
-  return typeof tableId === "string" && tableId.startsWith("card__");
+export function isVirtualCardId(
+  id: TableId | WrappedCardId,
+): id is WrappedCardId {
+  return typeof id === "string" && id.startsWith("card__");
 }
 
-export function getQuestionIdFromVirtualTableId(tableId) {
+export function getQuestionIdFromVirtualTableId(
+  tableId: TableId | WrappedCardId,
+): CardId | null {
   if (typeof tableId !== "string") {
     return null;
   }
@@ -36,7 +48,8 @@ export function getQuestionIdFromVirtualTableId(tableId) {
   return Number.isSafeInteger(id) ? id : null;
 }
 
-export function convertSavedQuestionToVirtualTable(card) {
+export function convertSavedQuestionToVirtualTable(card: Card): Table {
+  // TODO(romeovs): remove this helper
   return {
     id: getQuestionVirtualTableId(card.id),
     display_name: card.name,
