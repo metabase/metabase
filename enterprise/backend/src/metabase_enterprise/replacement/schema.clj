@@ -7,7 +7,8 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::entity-id
-  [:or ::lib.schema.id/card ::lib.schema.id/table])
+  [:or ::lib.schema.id/card ::lib.schema.id/table ::lib.schema.id/dashboard
+   ::lib.schema.id/transform ::lib.schema.id/segment ::lib.schema.id/measure])
 
 (mr/def ::entity-type
   [:enum :card :table :dashboard :transform :segment :measure])
