@@ -147,7 +147,7 @@ export class Scalar extends Component<
       // widget: "number",
     },
     click_behavior: {},
-  } as VisualizationSettingsDefinitions;
+  };
 
   _scalar: HTMLElement | null = null;
 

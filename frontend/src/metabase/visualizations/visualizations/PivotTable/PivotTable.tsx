@@ -1,7 +1,6 @@
 import { DndContext } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import cx from "classnames";
-import type * as React from "react";
 import {
   forwardRef,
   useCallback,
@@ -34,7 +33,6 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import {
-  type Visualization,
   type VisualizationDefinition,
   type VisualizationProps,
   toVisualizationSettingsDefinitions,
@@ -617,23 +615,22 @@ export const PivotTableView = ExplicitSize<
   refreshMode: "debounceLeading",
 })(PivotTableInner);
 
+const PIVOT_TABLE_VIZ_DEFINITION: VisualizationDefinition = {
+  getUiName: () => t`Pivot Table`,
+  identifier: "pivot",
+  iconName: "pivot_table",
+  minSize: getMinSize("pivot"),
+  defaultSize: getDefaultSize("pivot"),
+  canSavePng: false,
+  isSensible,
+  checkRenderable: (series, visualizationSettings) =>
+    checkRenderable(series, visualizationSettings),
+  settings: toVisualizationSettingsDefinitions(settings),
+  columnSettings,
+  isLiveResizable: () => false,
+};
+
 export const PivotTable = Object.assign(
   connect(mapStateToProps)(PivotTableView),
-  {
-    getUiName: () => t`Pivot Table`,
-    identifier: "pivot",
-    iconName: "pivot_table",
-    minSize: getMinSize("pivot"),
-    defaultSize: getDefaultSize("pivot"),
-    canSavePng: false,
-    isSensible,
-    checkRenderable: (series, visualizationSettings) =>
-      checkRenderable(series as any, visualizationSettings),
-    settings: toVisualizationSettingsDefinitions(settings),
-    columnSettings,
-    isLiveResizable: () => false,
-  } satisfies VisualizationDefinition & {
-    columnSettings: typeof columnSettings;
-    isLiveResizable: () => boolean;
-  },
-) as Visualization;
+  PIVOT_TABLE_VIZ_DEFINITION,
+);
