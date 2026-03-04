@@ -67,7 +67,7 @@ export const EnableEmbeddingCard = ({
       () => ({
         title:
           embeddingType === "guest-embeds"
-            ? jt`To continue, enable ${embeddingTypeLocalized} and agree to the ${(
+            ? jt`To continue, enable guest embeds and agree to the ${(
                 <Anchor
                   key="usage-conditions"
                   href="https://metabase.com/license/embedding"
