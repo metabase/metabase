@@ -1857,27 +1857,46 @@
 
 (define-reversible-migration UnifySourceTablesFormat
   ;; Forward: convert source-tables from map {alias: value} to vec [{alias: ..., table_id: ..., ...}]
-  (let [convert-source-tables
-        (fn [source-json]
-          (let [parsed (json-out source-json false)]
-            (when-let [st (get parsed "source-tables")]
-              (when (map? st)
-                (let [entries (mapv (fn [[alias v]]
-                                      (if (int? v)
-                                        {"alias" alias "table_id" v}
-                                        (assoc v "alias" alias)))
-                                    st)]
-                  (json-in (assoc parsed "source-tables" entries)))))))
-        pk-cols {:transform       [:id]
-                 :workspace_transform [:workspace_id :ref_id]}]
-    (doseq [[table-name pks] pk-cols]
-      (doseq [row (t2/query {:select (into [:source] pks)
-                             :from   [table-name]
-                             :where  [:like :source "%\"type\":\"python\"%"]})]
-        (when-let [new-source (convert-source-tables (:source row))]
-          (t2/query {:update table-name
-                     :set    {:source new-source}
-                     :where  (into [:and] (map #(vector := % (get row %)) pks))})))))
+  ;; Also backfill database_id/schema/table for bare integer entries from metabase_table.
+  (let [pk-cols {:transform            [:id]
+                 :workspace_transform  [:workspace_id :ref_id]}
+        ;; Pass 1: collect all python transform rows and all bare-integer table IDs
+        all-rows (into []
+                       (mapcat (fn [[table-name pks]]
+                                 (map #(assoc % ::table table-name ::pks pks)
+                                      (t2/query {:select (into [:source] pks)
+                                                 :from   [table-name]
+                                                 :where  [:like :source "%\"type\":\"python\"%"]}))))
+                       pk-cols)
+        all-ids  (into #{}
+                       (mapcat (fn [{:keys [source]}]
+                                 (let [st (get (json-out source false) "source-tables")]
+                                   (when (map? st)
+                                     (filter int? (vals st))))))
+                       all-rows)
+        ;; Single bulk lookup for all table metadata
+        metadata (when (seq all-ids)
+                   (into {}
+                         (map (fn [{:keys [id db_id schema name]}]
+                                [id {"database_id" db_id "schema" schema "table" name}]))
+                         (t2/query {:select [:id :db_id :schema :name]
+                                    :from   [:metabase_table]
+                                    :where  [:in :id all-ids]})))]
+    ;; Pass 2: convert and update
+    (doseq [{:keys [source] :as row} all-rows]
+      (let [parsed (json-out source false)
+            st     (get parsed "source-tables")]
+        (when (map? st)
+          (let [entries (mapv (fn [[alias v]]
+                                (if (int? v)
+                                  (merge {"alias" alias "table_id" v}
+                                         (get metadata v))
+                                  (assoc v "alias" alias)))
+                              st)
+                pks     (::pks row)]
+            (t2/query {:update (::table row)
+                       :set    {:source (json-in (assoc parsed "source-tables" entries))}
+                       :where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
   ;; Rollback: convert source-tables from vec [{alias: ..., table_id: ...}] back to map {alias: table_id}
   (let [convert-back
         (fn [source-json]

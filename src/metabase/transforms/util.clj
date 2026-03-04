@@ -57,10 +57,7 @@
       (let [source-tables (:source-tables source)]
         (if (empty? source-tables)
           true
-          ;; TODO (Ngoc 2026-03-04) -- remove map branch when FE sends array format for source-tables
-          (let [table-ids (if (sequential? source-tables)
-                            (into [] (keep :table_id) source-tables)
-                            (into [] (keep (fn [[_ v]] (if (int? v) v (:table_id v)))) source-tables))]
+          (let [table-ids (into [] (keep :table_id) source-tables)]
             (and (seq table-ids)
                  (every? (fn [table-id]
                            (when-let [table (t2/select-one :model/Table table-id)]

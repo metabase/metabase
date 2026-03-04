@@ -210,6 +210,29 @@
                                             :schema "public" :table "orders" :table_id 999}]}]
         (is (= [{:alias "orders" :database_id 1
                  :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "keeps original values when mapping has nil :id"
+      (let [table-mapping {123 {:db-id  1
+                                :schema "ws_isolated_123"
+                                :table  "orders_isolated"
+                                :id     nil}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 123}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "entry with no matching mapping is left unchanged"
+      (let [table-mapping {999 {:db-id 1 :schema "ws" :table "t" :id 456}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "public" :table "orders" :table_id 123}]
                (:source-tables (remap-python-source table-mapping source))))))))
 
 (deftest remap-sql-source-test

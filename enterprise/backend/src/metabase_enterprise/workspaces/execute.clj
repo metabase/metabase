@@ -26,11 +26,11 @@
                          (some-> table_id table-mapping)
                          (when table
                            (table-mapping [database_id schema table])))]
-              (merge entry
-                     (when id {:table_id id})
-                     (when db-id {:database_id db-id})
-                     (when target-schema {:schema target-schema})
-                     (when target-table {:table target-table}))
+              (cond-> entry
+                id            (assoc :table_id id)
+                db-id         (assoc :database_id db-id)
+                target-schema (assoc :schema target-schema)
+                target-table  (assoc :table target-table))
               entry))]
     (update source :source-tables (fn [entries] (mapv remap entries)))))
 

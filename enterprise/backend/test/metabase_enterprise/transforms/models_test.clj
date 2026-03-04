@@ -7,9 +7,8 @@
 (defn- find-source-table
   "Find a source table entry by alias in the source-tables vec."
   [saved alias]
-  (some #(when (= alias (:alias %))
-           %)
-        (get-in saved [:source :source-tables])))
+  (first (filter #(= alias (:alias %))
+                 (get-in saved [:source :source-tables]))))
 
 (deftest python-transform-source-table-resolution-on-save-test
   (testing "Python transform source-tables with name refs get table_id resolved on save"

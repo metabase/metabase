@@ -27,6 +27,7 @@
    [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.util :as transforms.u]
@@ -79,10 +80,12 @@
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
-     ;; TODO (Ngoc 2026-03-04) -- remove map-of branch when FE sends array format for source-tables
-     [:source-tables   [:or
-                        [:sequential [:map [:alias [:string {:min 1}]] [:table_id :int]]]
-                        [:map-of [:string {:min 1}] [:or :int :map]]]]
+     ;; TODO (Ngoc 2026-03-04) -- remove decode/normalize when FE sends array format for source-tables
+     [:source-tables   [:sequential {:decode/normalize (fn [st]
+                                                         (if (map? st)
+                                                           (transforms-base.u/source-tables-map->vec st)
+                                                           st))}
+                        [:map [:alias [:string {:min 1}]] [:table_id :int]]]]
      [:type [:= "python"]]
      [:body :string]]]])
 
