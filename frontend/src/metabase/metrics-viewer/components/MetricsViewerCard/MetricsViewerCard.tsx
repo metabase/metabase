@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { isNotNull } from "metabase/lib/types";
 import { Paper, Stack, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 
@@ -93,7 +94,7 @@ export function MetricsViewerCard({
   );
 
   const mappedDimensionCount = Object.values(tab.dimensionMapping).filter(
-    (v) => v != null,
+    isNotNull,
   ).length;
   const dimensionRemoveHandler =
     mappedDimensionCount > 1 ? onDimensionRemove : undefined;
@@ -121,7 +122,6 @@ export function MetricsViewerCard({
           dimensionItems={dimensionItems}
           onDimensionChange={onDimensionChange}
           onDimensionRemove={dimensionRemoveHandler}
-          layout={tab.layout}
           definitions={definitions}
           tab={tab}
           onTabUpdate={onTabUpdate}

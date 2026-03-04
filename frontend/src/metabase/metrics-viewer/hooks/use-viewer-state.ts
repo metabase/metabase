@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { measureApi, metricApi } from "metabase/api";
 import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
 import { useDispatch, useStore } from "metabase/lib/redux";
+import { isNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type {
   DimensionMetadata,
@@ -95,9 +96,8 @@ function addDefinitionToTabs(
       return tab;
     }
 
-    const { [newDefId]: _, ...otherMappings } = tab.dimensionMapping;
-    const activeOtherMappings = objectFromEntries(
-      getObjectEntries(otherMappings).filter(
+    const activeMappings = objectFromEntries(
+      getObjectEntries(tab.dimensionMapping).filter(
         (entry): entry is [MetricSourceId, string] => entry[1] != null,
       ),
     );
@@ -105,7 +105,7 @@ function addDefinitionToTabs(
       id: tab.id,
       type: tab.type,
       label: tab.label,
-      dimensionsBySource: activeOtherMappings,
+      dimensionsBySource: activeMappings,
     };
 
     const matchingDimension = findMatchingDimensionForTab(
@@ -226,9 +226,7 @@ export function useViewerState(): UseViewerStateResult {
             const { [id]: _, ...rest } = tab.dimensionMapping;
             return { ...tab, dimensionMapping: rest };
           })
-          .filter((tab) =>
-            Object.values(tab.dimensionMapping).some((v) => v != null),
-          );
+          .filter((tab) => Object.values(tab.dimensionMapping).some(isNotNull));
 
         return {
           ...prev,
@@ -259,7 +257,7 @@ export function useViewerState(): UseViewerStateResult {
         );
 
         const newTabs = updatedTabs.filter((tab) =>
-          Object.values(tab.dimensionMapping).some((v) => v != null),
+          Object.values(tab.dimensionMapping).some(isNotNull),
         );
 
         return {

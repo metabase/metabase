@@ -1,8 +1,9 @@
 import { useCallback, useMemo } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Flex, Stack } from "metabase/ui";
 import { getObjectKeys, getObjectValues } from "metabase/lib/objects";
+import { isNotNull } from "metabase/lib/types";
+import { Flex, Stack } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, TemporalUnit } from "metabase-types/api";
@@ -194,7 +195,7 @@ export function MetricsViewerTabContent({
 
   const isTimeTab = tab.type === "time";
   const mappedDimensionCount = getObjectValues(tab.dimensionMapping).filter(
-    (v) => v != null,
+    isNotNull,
   ).length;
   const dimensionRemoveHandler =
     mappedDimensionCount > 1 ? onDimensionRemove : undefined;

@@ -1,4 +1,5 @@
 import { b64url_to_utf8, utf8_to_b64url } from "metabase/lib/encoding";
+import { getObjectEntries } from "metabase/lib/objects";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
@@ -104,9 +105,9 @@ function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
     type: tab.type,
     label: tab.label,
     display: tab.display,
-    definitions: Object.entries(tab.dimensionMapping).map(
+    definitions: getObjectEntries(tab.dimensionMapping).map(
       ([sourceId, dimensionId]) => ({
-        definitionId: sourceId as MetricSourceId,
+        definitionId: sourceId,
         ...(dimensionId != null ? { dimensionId } : {}),
       }),
     ),
