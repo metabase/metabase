@@ -123,10 +123,11 @@
          :http_connection_provider       "HTTP_URL_CONNECTION"
          :jdbc_ignore_unsupported_values "true"
          :jdbc_schema_term               "schema"
-         :select_sequential_consistency  true
          :max_open_connections           (or max-open-connections 100)
          ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-         :custom_http_params             (or clickhouse-settings "")}
+         :custom_http_params             (cond-> "select_sequential_consistency=1"
+                                           (not (str/blank? clickhouse-settings))
+                                           (str "," clickhouse-settings))}
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]

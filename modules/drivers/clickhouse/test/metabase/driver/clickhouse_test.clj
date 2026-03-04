@@ -61,7 +61,7 @@
              :user "bob"
              :password "qaz"
              :ssl true
-             :custom_http_params "max_threads=42,allow_experimental_analyzer=0"})
+             :custom_http_params "select_sequential_consistency=1,max_threads=42,allow_experimental_analyzer=0"})
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {:host "myclickhouse"
@@ -100,7 +100,7 @@
 
 (deftest ^:parallel clickhouse-connection-string-select-sequential-consistency
   (testing "connection with no additional options"
-    (is (= (assoc ctd/default-connection-params :select_sequential_consistency true)
+    (is (= ctd/default-connection-params
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {})))))
@@ -256,33 +256,33 @@
                                 :value  ["African"]}]}))))))))
 
 ;; TODO(rileythomp, 2026-01-21): Re-enable this test when the ClickHouse JDBC driver is upgraded
-#_(deftest ^:parallel ternary-with-variable-test
-    (mt/test-driver :clickhouse
-      (testing "a query with a ternary and a variable should work correctly (#56690)"
-        (is (= [[1 "African" 1]]
-               (mt/rows
-                (qp/process-query
-                 {:database (mt/id)
-                  :type :native
-                  :native {:query "SELECT *, true ? 1 : 0 AS foo
+(deftest ^:parallel ternary-with-variable-test
+  (mt/test-driver :clickhouse
+    (testing "a query with a ternary and a variable should work correctly (#56690)"
+      (is (= [[1 "African" 1]]
+             (mt/rows
+              (qp/process-query
+               {:database (mt/id)
+                :type :native
+                :native {:query "SELECT *, true ? 1 : 0 AS foo
                                  FROM test_data.categories
                                  WHERE name = {{category_name}};"
-                           :template-tags {"category_name" {:type         :text
-                                                            :name         "category_name"
-                                                            :display-name "Category Name"}}}
-                  :parameters [{:type   :category
-                                :target [:variable [:template-tag "category_name"]]
-                                :value  "African"}]})))))))
+                         :template-tags {"category_name" {:type         :text
+                                                          :name         "category_name"
+                                                          :display-name "Category Name"}}}
+                :parameters [{:type   :category
+                              :target [:variable [:template-tag "category_name"]]
+                              :value  "African"}]})))))))
 
 ;; TODO(rileythomp, 2026-01-21): Re-enable this test when the ClickHouse JDBC driver is upgraded
-#_(deftest ^:parallel line-comment-block-comment-test
-    (mt/test-driver :clickhouse
-      (testing "a query with a line comment followed by a block comment should work correctly (#57149, #62741)"
-        (is (= [[1]]
-               (mt/rows
-                (qp/process-query
-                 (mt/native-query
-                  {:query "-- foo
+(deftest ^:parallel line-comment-block-comment-test
+  (mt/test-driver :clickhouse
+    (testing "a query with a line comment followed by a block comment should work correctly (#57149, #62741)"
+      (is (= [[1]]
+             (mt/rows
+              (qp/process-query
+               (mt/native-query
+                {:query "-- foo
                          /* comment */
                          select 1;"}))))))))
 
