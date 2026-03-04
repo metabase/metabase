@@ -64,9 +64,7 @@
                source-range-params (transforms.util/get-source-range-params transform)
                ;; First incremental run (no checkpoint) should behave like non-incremental
                ;; to drop and recreate the table rather than appending to existing data.
-               ;; Only applies to MBQL transforms - other transform types handle this differently.
-               effective-transform-type (if (and (not (transforms.util/native-query-transform? transform))
-                                                 (= :table-incremental (keyword (:type target)))
+               effective-transform-type (if (and (= :table-incremental (keyword (:type target)))
                                                  (nil? (:last_checkpoint_type transform)))
                                           :table
                                           (keyword (:type target)))
