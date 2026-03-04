@@ -10,7 +10,6 @@ import type {
   MetricsViewerTabState,
   MetricsViewerTabType,
 } from "../types/viewer-state";
-import { getInitialMetricsViewerTabLayout } from "../types/viewer-state";
 
 import { defineCompactSchema } from "./compact-schema";
 import type { DimensionFilterValue } from "./metrics";
@@ -142,7 +141,6 @@ export function deserializeTab(
       temporalUnit: serializedTab.projectionConfig?.temporalUnit,
       binningStrategy: serializedTab.projectionConfig?.binning,
     },
-    layout: getInitialMetricsViewerTabLayout(serializedTab.display),
   };
 }
 

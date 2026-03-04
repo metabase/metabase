@@ -6,7 +6,6 @@ import type {
   TemporalUnit,
 } from "metabase-types/api";
 
-import { DISPLAY_TYPE_REGISTRY } from "../utils";
 import type { DimensionFilterValue } from "../utils/metrics";
 
 // ── Core types ──
@@ -51,11 +50,6 @@ export interface MetricsViewerDefinitionEntry {
 
 // ── Tab state ──
 
-export interface MetricsViewerTabLayoutState {
-  split: boolean;
-  spacing: number;
-}
-
 export interface MetricsViewerTabProjectionConfig {
   temporalUnit?: TemporalUnit;
   binningStrategy?: string;
@@ -69,17 +63,6 @@ export interface MetricsViewerTabState {
   display: MetricsViewerDisplayType;
   dimensionMapping: Record<MetricSourceId, DimensionId>;
   projectionConfig: MetricsViewerTabProjectionConfig;
-  layout: MetricsViewerTabLayoutState;
-}
-
-export function getInitialMetricsViewerTabLayout(
-  displayType: MetricsViewerDisplayType,
-): MetricsViewerTabLayoutState {
-  const { supportsMultipleSeries } = DISPLAY_TYPE_REGISTRY[displayType];
-  return {
-    split: !supportsMultipleSeries,
-    spacing: 0,
-  };
 }
 
 // ── Page state ──

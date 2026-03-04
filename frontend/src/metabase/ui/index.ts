@@ -10,6 +10,6 @@ export type {
   PolymorphicComponentProps,
   MantineColorsTuple,
 } from "@mantine/core";
-export { useHover } from "@mantine/hooks";
+export { useHover, useElementSize } from "@mantine/hooks";
 
 export * from "./components";

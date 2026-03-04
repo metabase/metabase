@@ -1,9 +1,10 @@
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
 import { DimensionPillBar } from "metabase/metrics-viewer/components/DimensionPillBar";
-import type { MetricsViewerTabLayoutState } from "metabase/metrics-viewer/types";
+import { DISPLAY_TYPE_REGISTRY } from "metabase/metrics-viewer/utils";
 import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
-import { Flex, SimpleGrid, Stack } from "metabase/ui";
+import { getGridColumns } from "metabase/metrics-viewer/utils/grid-columns";
+import { Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { DimensionMetadata } from "metabase-lib/metric";
 import type { CardId, SingleSeries } from "metabase-types/api";
@@ -28,7 +29,6 @@ type MetricsViewerVisualizationProps = {
   onDimensionRemove?: (definitionId: MetricSourceId) => void;
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;
-  layout?: MetricsViewerTabLayoutState;
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
@@ -42,12 +42,14 @@ export function MetricsViewerVisualization({
   onDimensionRemove,
   onBrush,
   className,
-  layout,
   definitions,
   tab,
   onTabUpdate,
   cardIdToDimensionId,
 }: MetricsViewerVisualizationProps) {
+  const { ref, width } = useElementSize();
+  const cols = getGridColumns(width, rawSeries.length);
+
   const clickActionsMode = new MetricsViewerClickActionsMode({
     definitions,
     tab,
@@ -56,21 +58,16 @@ export function MetricsViewerVisualization({
   });
 
   return (
-    <Flex direction="column" flex="1 0 auto" gap="sm" className={className}>
-      {layout?.split === false || !layout || rawSeries.length === 1 ? (
-        <DebouncedFrame className={S.chartWrapper}>
-          <Visualization
-            className={S.chart}
-            rawSeries={rawSeries}
-            isQueryBuilder={false}
-            hideLegend
-            onBrush={onBrush}
-            mode={clickActionsMode}
-            onChangeCardAndRun={noop}
-          />
-        </DebouncedFrame>
-      ) : (
-        <SimpleGrid cols={layout.spacing} flex={1} spacing={0}>
+    <Flex
+      ref={ref}
+      direction="column"
+      flex="1 0 auto"
+      gap="sm"
+      className={className}
+    >
+      {rawSeries.length > 1 &&
+      DISPLAY_TYPE_REGISTRY[tab.display].supportsMultipleSeries === false ? (
+        <SimpleGrid cols={cols} flex={1} spacing={0}>
           {rawSeries.map((series, i) => (
             <Stack
               gap="sm"
@@ -93,6 +90,18 @@ export function MetricsViewerVisualization({
             </Stack>
           ))}
         </SimpleGrid>
+      ) : (
+        <DebouncedFrame className={S.chartWrapper}>
+          <Visualization
+            className={S.chart}
+            rawSeries={rawSeries}
+            isQueryBuilder={false}
+            hideLegend
+            onBrush={onBrush}
+            mode={clickActionsMode}
+            onChangeCardAndRun={noop}
+          />
+        </DebouncedFrame>
       )}
 
       {dimensionItems.length > 0 && onDimensionChange && (

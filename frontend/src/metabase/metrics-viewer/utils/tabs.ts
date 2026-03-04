@@ -8,12 +8,11 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 
 import { MAX_AUTO_TABS } from "../constants";
-import {
-  type MetricSourceId,
-  type MetricsViewerTabState,
-  type MetricsViewerTabType,
-  type StoredMetricsViewerTab,
-  getInitialMetricsViewerTabLayout,
+import type {
+  MetricSourceId,
+  MetricsViewerTabState,
+  MetricsViewerTabType,
+  StoredMetricsViewerTab,
 } from "../types/viewer-state";
 
 import { GEO_SUBTYPE_PRIORITY, isDimensionCandidate } from "./metrics";
@@ -84,7 +83,7 @@ export function getDimensionsByType(
 
   const defaultDimIds = new Set(
     LibMetric.defaultBreakoutDimensions(def)
-      .map(dim => LibMetric.dimensionValuesInfo(def, dim).id)
+      .map((dim) => LibMetric.dimensionValuesInfo(def, dim).id)
       .filter(Boolean),
   );
 
@@ -426,7 +425,6 @@ export function computeDefaultTabs(
         display: config.defaultDisplayType,
         dimensionMapping: mapping,
         projectionConfig: {},
-        layout: getInitialMetricsViewerTabLayout(config.defaultDisplayType),
       });
       continue;
     }
@@ -454,7 +452,6 @@ export function computeDefaultTabs(
         display: config.defaultDisplayType,
         dimensionMapping: mapping,
         projectionConfig: {},
-        layout: getInitialMetricsViewerTabLayout(config.defaultDisplayType),
       });
     }
   }
@@ -502,7 +499,6 @@ export function createTabFromDimension(
     display,
     dimensionMapping: mapping,
     projectionConfig: {},
-    layout: getInitialMetricsViewerTabLayout(display),
   };
 }
 

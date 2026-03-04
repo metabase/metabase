@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getObjectKeys } from "metabase/lib/objects";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, TemporalUnit } from "metabase-types/api";
@@ -11,7 +11,6 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
-  MetricsViewerTabLayoutState,
   MetricsViewerTabState,
   SourceColorMap,
 } from "../../../types/viewer-state";
@@ -22,9 +21,8 @@ import {
   buildRawSeriesFromDefinitions,
   getCardIdToDimensionId,
 } from "../../../utils/series";
-import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "../../../utils/tab-config";
+import { getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
-import { MetricLayoutControl } from "../../MetricLayoutControl";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
 
 type MetricsViewerTabContentProps = {
@@ -171,19 +169,7 @@ export function MetricsViewerTabContent({
 
   const handleDisplayTypeChange = useCallback(
     (display: MetricsViewerDisplayType) => {
-      const { supportsMultipleSeries } = DISPLAY_TYPE_REGISTRY[display];
-      const layout = {
-        split: supportsMultipleSeries === false ? true : tab.layout.split,
-        spacing: tab.layout.spacing,
-      };
-      onTabUpdate({ display, layout });
-    },
-    [onTabUpdate, tab],
-  );
-
-  const handleLayoutChange = useCallback(
-    (layout: MetricsViewerTabLayoutState) => {
-      onTabUpdate({ layout });
+      onTabUpdate({ display });
     },
     [onTabUpdate],
   );
@@ -227,15 +213,13 @@ export function MetricsViewerTabContent({
         onDimensionChange={onDimensionChange}
         onDimensionRemove={dimensionRemoveHandler}
         onBrush={isTimeTab ? handleBrush : undefined}
-        layout={tab.layout}
         definitions={definitions}
         tab={tab}
         onTabUpdate={onTabUpdate}
         cardIdToDimensionId={cardIdToDimensionId}
       />
       {definitionForControls && (
-        <Flex justify="space-between" align="center">
-          <Box />
+        <Flex justify="center" align="center">
           <MetricControls
             definition={definitionForControls}
             displayType={tab.display}
@@ -246,12 +230,6 @@ export function MetricsViewerTabContent({
             onDimensionFilterChange={handleDimensionFilterChange}
             onTemporalUnitChange={handleTemporalUnitChange}
             onBinningChange={handleBinningChange}
-          />
-          <MetricLayoutControl
-            displayType={tab.display}
-            value={tab.layout}
-            onChange={handleLayoutChange}
-            seriesCount={rawSeries.length}
           />
         </Flex>
       )}
