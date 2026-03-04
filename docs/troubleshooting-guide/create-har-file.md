@@ -45,7 +45,7 @@ Instructions are identical to Chrome above.
 
 1. If you haven't yet, enable the **Develop** menu by going to **Safari > Settings > Advanced**, and select **Show features for web developers**.
 
-2. Open the Safari developer tools by going to **Develop > Show Web Inspector** or by right-clicking on any element on the page and selecting **Inspect Element** from the context menu.
+2. Open the Safari developer tools by going to **Develop > Show Web Inspector** or by right-clicking anywhere on the page and selecting **Inspect Element** from the context menu.
 
 3. In Developer tools, switch to the **Network** tab. The network log recording should start automatically.
 
