@@ -47,8 +47,8 @@
 (mu/defn upstream-deps:python-transform :- ::deps.schema/upstream-deps
   "Given a Toucan `:model/Transform`, return its upstream dependencies as a map from the kind to a set of IDs."
   [{{tables :source-tables} :source :as _py-transform}
-   :- [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id :int]]]]]]]
-  {:table (into #{} (keep (fn [v] (if (map? v) (:table_id v) v))) (vals tables))})
+   :- [:map [:source-tables {:optional true} [:sequential [:map [:alias :string] [:table [:or :int [:map [:table_id :int]]]]]]]]]
+  {:table (into #{} (keep (fn [{:keys [table]}] (if (map? table) (:table_id table) table))) tables)})
 
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
@@ -59,7 +59,7 @@
                [:map [:query ::lib.schema/query]]]
               [:python
                ;; If the upstream table doesn't exist yet, table_id will be nil
-               [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id [:maybe :int]]]]]]]]]]]]
+               [:map [:source-tables {:optional true} [:sequential [:map [:alias :string] [:table [:or :int [:map [:table_id [:maybe :int]]]]]]]]]]]]]]
   (let [source-type (transforms/transform-type transform)]
     (case source-type
       :query (upstream-deps:query query)

@@ -55,14 +55,12 @@ export function areSourceTablesEqual(
     return a === b;
   }
 
-  const aEntries = Object.entries(a);
-  const bEntries = Object.entries(b);
-
-  if (aEntries.length !== bEntries.length) {
+  if (a.length !== b.length) {
     return false;
   }
 
-  return aEntries.every(([key, value], index) => {
-    return bEntries[index][0] === key && bEntries[index][1] === value;
-  });
+  return a.every(
+    (entry, index) =>
+      b[index].alias === entry.alias && b[index].table === entry.table,
+  );
 }

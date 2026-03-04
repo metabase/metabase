@@ -58,7 +58,7 @@ export const IncrementalTransformSettings = ({
   // Incremental transforms are only supported for single-table Python transforms
   const isPythonTransform = source.type === "python";
   const isMultiTablePythonTransform =
-    isPythonTransform && Object.keys(source["source-tables"]).length > 1;
+    isPythonTransform && source["source-tables"].length > 1;
 
   const transformType = match({
     isMbqlQuery: isMbqlQuery(source, metadata),

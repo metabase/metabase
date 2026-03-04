@@ -46,7 +46,9 @@
               (or id {:database_id db-id, :schema schema, :table table})
               ;; Leave it un-mapped if we don't have an override.
               table-ref))]
-    (update source :source-tables update-vals remap)))
+    (update source :source-tables
+            (fn [source-tables]
+              (mapv (fn [entry] (update entry :table remap)) source-tables)))))
 
 (defn- remap-sql-source [table-mapping source]
   (let [remapping (reduce

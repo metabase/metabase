@@ -44,7 +44,7 @@
                       transform-payload {:name   "Library Test Transform"
                                          :source {:type  "python"
                                                   :source-database (mt/id)
-                                                  :source-tables {}
+                                                  :source-tables []
                                                   :body transform-body}
                                          :target (assoc target :database (mt/id))}
                       {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform"
@@ -71,7 +71,7 @@
               (let [original           {:name   "Gadget Products"
                                         :source {:type  "python"
                                                  :source-database (mt/id)
-                                                 :source-tables {"transforms_customers" (mt/id :transforms_customers)}
+                                                 :source-tables [{:alias "transforms_customers" :table (mt/id :transforms_customers)}]
                                                  :body  (str "import pandas as pd\n"
                                                              "\n"
                                                              "def transform():\n"

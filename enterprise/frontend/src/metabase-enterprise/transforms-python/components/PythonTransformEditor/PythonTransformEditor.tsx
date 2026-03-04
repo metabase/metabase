@@ -50,7 +50,7 @@ export function PythonTransformEditor({
     const newSource = {
       ...source,
       "source-database": databaseId,
-      "source-tables": {},
+      "source-tables": [],
     };
     onChangeSource(newSource);
   };

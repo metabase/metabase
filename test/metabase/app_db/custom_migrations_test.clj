@@ -2775,3 +2775,56 @@
           (is (= db-id (id->target target-id)))
           (is (nil? (id->target none-id)))
           (is (nil? (id->target deleted-id))))))))
+
+(deftest migrate-python-source-tables-format-test
+  (testing "v59.2026-02-27T12:00:00 : convert python source-tables between object and array formats"
+    (impl/test-migrations ["v59.2026-02-27T12:00:00"] [migrate!]
+      (let [db-id                 (:id (new-instance-with-default :metabase_database))
+            workspace-id          (t2/insert-returning-pk! :workspace
+                                                           {:name "Workspace for source-table migration"})
+            target                (json/encode {:type "table" :schema "public" :name "out" :database db-id})
+            object-source         (json/encode {:type "python"
+                                                :source-database db-id
+                                                :source-tables {"people" {"database_id" db-id
+                                                                          "schema" "public"
+                                                                          "table" "people"
+                                                                          "table_id" 31}
+                                                                "customers" {"database_id" db-id
+                                                                             "schema" "public"
+                                                                             "table" "customers"
+                                                                             "table_id" 30}}
+                                                :body "def transform(people, customers): pass"})
+            transform-id          (t2/insert-returning-pk! :transform
+                                                           {:name               "object-source-transform"
+                                                            :source             object-source
+                                                            :target             target
+                                                            :source_type        "python"
+                                                            :source_database_id db-id
+                                                            :target_db_id       db-id
+                                                            :created_at         :%now
+                                                            :updated_at         :%now})
+            workspace-transform-id "00000000-0000-0000-0000-000000000001"
+            _                     (t2/insert! :workspace_transform
+                                              {:ref_id      workspace-transform-id
+                                               :workspace_id workspace-id
+                                               :name        "object-source-workspace-transform"
+                                               :source      object-source
+                                               :target      target
+                                               :created_at  :%now
+                                               :updated_at  :%now})
+            transform-source      #(json/decode (t2/select-one-fn :source :transform :id transform-id))
+            workspace-source      #(json/decode (t2/select-one-fn :source
+                                                                  :workspace_transform
+                                                                  :workspace_id workspace-id
+                                                                  :ref_id workspace-transform-id))]
+        (testing "Before migration: both sources are object format"
+          (is (map? (get (transform-source) "source-tables")))
+          (is (map? (get (workspace-source) "source-tables"))))
+        (migrate!)
+        (testing "After migration: object format is upgraded to array format"
+          (is (sequential? (get (transform-source) "source-tables")))
+          (is (sequential? (get (workspace-source) "source-tables"))))
+        (migrate! :down 58)
+        (testing "After downgrade: array format is reverted back to object format on transform"
+          ;; workspace_transform is a v59 table and is dropped when downgrading to v58.
+          (is (map? (get (transform-source) "source-tables"))))))))

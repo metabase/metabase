@@ -57,7 +57,12 @@ export type Transform = {
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
   Pick<Transform, "name" | "description" | "source" | "target">;
 
-export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
+export type PythonTransformTableEntry = {
+  alias: string;
+  table: ConcreteTableId;
+};
+
+export type PythonTransformTableAliases = PythonTransformTableEntry[];
 
 export type TransformSourceCheckpointStrategy = {
   type: "checkpoint";
@@ -267,7 +272,7 @@ export type ListTransformRunsResponse = {
 
 export type TestPythonTransformRequest = {
   code: string;
-  source_tables: PythonTransformTableAliases;
+  source_tables: { alias: string; table_id: number }[];
 };
 
 export type TestPythonTransformResponse = {

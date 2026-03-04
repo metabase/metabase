@@ -153,7 +153,7 @@
                       :source-incremental-strategy {:type "checkpoint"
                                                     :checkpoint-filter-unique-key lib-column-key}}
                :python {:type "python"
-                        :source-tables {"transforms_products" (mt/id :transforms_products)}
+                        :source-tables [{:alias "transforms_products" :table (mt/id :transforms_products)}]
                         :limit 10
                         :body incremental-python-body
                         :source-incremental-strategy {:type "checkpoint"

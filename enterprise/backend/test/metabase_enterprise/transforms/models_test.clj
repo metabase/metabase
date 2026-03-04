@@ -15,15 +15,16 @@
                                                    :source {:type            "python"
                                                             :body            "def transform(): pass"
                                                             :source-database db-id
-                                                            :source-tables   {"input" {:database_id db-id
+                                                            :source-tables   [{:alias "input"
+                                                                               :table {:database_id db-id
                                                                                        :schema      "public"
-                                                                                       :table       "existing_table"}}}
+                                                                                       :table       "existing_table"}}]}
                                                    :target {:type     "table"
                                                             :schema   "public"
                                                             :name     "output"
                                                             :database db-id}}]
           (let [saved        (t2/select-one :model/Transform :id (:id transform))
-                source-table (get-in saved [:source :source-tables "input"])]
+                source-table (:table (first (get-in saved [:source :source-tables])))]
             (is (= table-id (:table_id source-table))
                 "table_id should be resolved from database lookup"))))
 
@@ -32,15 +33,16 @@
                                                    :source {:type            "python"
                                                             :body            "def transform(): pass"
                                                             :source-database db-id
-                                                            :source-tables   {"input" {:database_id db-id
+                                                            :source-tables   [{:alias "input"
+                                                                               :table {:database_id db-id
                                                                                        :schema      "public"
-                                                                                       :table       "nonexistent_table"}}}
+                                                                                       :table       "nonexistent_table"}}]}
                                                    :target {:type     "table"
                                                             :schema   "public"
                                                             :name     "output"
                                                             :database db-id}}]
           (let [saved        (t2/select-one :model/Transform :id (:id transform))
-                source-table (get-in saved [:source :source-tables "input"])]
+                source-table (:table (first (get-in saved [:source :source-tables])))]
             (is (nil? (:table_id source-table))
                 "table_id should be nil for non-existent table"))))
 
@@ -49,15 +51,16 @@
                                                    :source {:type            "python"
                                                             :body            "def transform(): pass"
                                                             :source-database db-id
-                                                            :source-tables   {"input" {:database_id db-id
+                                                            :source-tables   [{:alias "input"
+                                                                               :table {:database_id db-id
                                                                                        :schema      "public"
                                                                                        :table       "existing_table"
-                                                                                       :table_id    999}}}
+                                                                                       :table_id    999}}]}
                                                    :target {:type     "table"
                                                             :schema   "public"
                                                             :name     "output"
                                                             :database db-id}}]
           (let [saved        (t2/select-one :model/Transform :id (:id transform))
-                source-table (get-in saved [:source :source-tables "input"])]
+                source-table (:table (first (get-in saved [:source :source-tables])))]
             (is (= 999 (:table_id source-table))
                 "explicit table_id should be preserved")))))))

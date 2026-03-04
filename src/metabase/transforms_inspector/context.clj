@@ -64,7 +64,7 @@
   (try
     (let [source-tables (get-in transform [:source :source-tables])
           normalized (transforms.util/normalize-source-tables source-tables)
-          table-ids (keep (fn [[_ v]] (:table_id v)) normalized)]
+          table-ids (keep (fn [entry] (get-in entry [:table :table_id])) normalized)]
       (table-ids->source-info table-ids))
     (catch Exception e
       (log/warn e "Failed to extract sources from Python transform")

@@ -35,5 +35,5 @@
 (defmethod transforms.i/table-dependencies :python
   [transform]
   (into #{}
-        (map source-table-value->dependency)
-        (vals (get-in transform [:source :source-tables]))))
+        (map (comp source-table-value->dependency :table))
+        (get-in transform [:source :source-tables])))

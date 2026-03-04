@@ -175,13 +175,19 @@
     (inputs-from-native-query query db-id)
     (inputs-from-mbql-query query)))
 
+(defn- source-table->id
+  "Extract the integer table ID from a source-table entry's :table value.
+   Handles both integer IDs (old format) and map refs (new format)."
+  [table-value]
+  (if (int? table-value) table-value (:table_id table-value)))
+
 (defn- inputs-from-python-transform
   "Extract table refs from a python transform's source-tables.
-   Python transforms require tables to exist (they map name -> table_id). Batch lookup."
+   Python transforms require tables to exist (they store [{:alias :table} ...]). Batch lookup."
   [source-tables]
-  (let [table-ids  (set (vals source-tables))
+  (let [table-ids  (into #{} (keep (comp source-table->id :table)) source-tables)
         table-refs (batch-table-refs-from-ids table-ids)]
-    (u/keepv table-refs (vals source-tables))))
+    (u/keepv table-refs (keep (comp source-table->id :table) source-tables))))
 
 (mu/defn analyze-entity :- ::analysis
   "Analyze a workspace entity to find its dependencies.

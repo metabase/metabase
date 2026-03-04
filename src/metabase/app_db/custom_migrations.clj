@@ -1852,5 +1852,61 @@
                         nil)]
       (t2/update! :transform (:id transform) {:source_database_id db-id}))))
 
+(defn- source-tables-map->vec
+  "Convert old source-tables map format {alias -> table} to array format [{alias table} ...]."
+  [source-tables]
+  (if (map? source-tables)
+    (mapv (fn [[alias table]]
+            {"alias" (if (keyword? alias) (name alias) (str alias))
+             "table" table})
+          source-tables)
+    source-tables))
+
+(defn- source-tables-vec->map
+  "Convert source-tables array format [{alias table} ...] to old map format {alias -> table}."
+  [source-tables]
+  (if (sequential? source-tables)
+    (reduce
+     (fn [acc entry]
+       (let [alias (or (get entry "alias") (get entry :alias))
+             table (or (get entry "table") (get entry :table))]
+         (if alias
+           (assoc acc (if (keyword? alias) (name alias) (str alias)) table)
+           acc)))
+     {}
+     source-tables)
+    source-tables))
+
+(defn- update-python-source-tables-shape
+  "Apply `source-tables` shape conversion for python transform sources, no-op otherwise."
+  [source source-tables-converter]
+  (let [parsed-source (json/decode source)]
+    (if (= "python" (get parsed-source "type"))
+      (let [updated-source (update parsed-source "source-tables" source-tables-converter)]
+        (if (= updated-source parsed-source)
+          source
+          (json/encode updated-source)))
+      source)))
+
+(defn- migrate-source-tables-shape!
+  "Migrate source-tables shape in both global transform and workspace transform source JSON."
+  [source-tables-converter]
+  (doseq [{:keys [id source]} (t2/query {:select [:id :source]
+                                         :from   [:transform]})]
+    (let [updated-source (update-python-source-tables-shape source source-tables-converter)]
+      (when (not= updated-source source)
+        (t2/update! :transform id {:source updated-source}))))
+  (doseq [{:keys [workspace_id ref_id source]} (t2/query {:select [:workspace_id :ref_id :source]
+                                                          :from   [:workspace_transform]})]
+    (let [updated-source (update-python-source-tables-shape source source-tables-converter)]
+      (when (not= updated-source source)
+        (t2/update! :workspace_transform
+                    {:workspace_id workspace_id :ref_id ref_id}
+                    {:source updated-source})))))
+
+(define-reversible-migration MigratePythonSourceTablesObjectAndArrayFormats
+  (migrate-source-tables-shape! source-tables-map->vec)
+  (migrate-source-tables-shape! source-tables-vec->map))
+
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))

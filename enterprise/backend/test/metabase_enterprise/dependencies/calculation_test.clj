@@ -199,8 +199,8 @@
           orders-id (mt/id :orders)]
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :python
-                                                          :source-tables {"PRODUCTS" products-id
-                                                                          "ORDERS" orders-id}
+                                                          :source-tables [{:alias "PRODUCTS" :table products-id}
+                                                                          {:alias "ORDERS" :table orders-id}]
                                                           ;; A problematic field, hopefully removed again.
                                                           :source-database (mt/id)
                                                           :body "..."}

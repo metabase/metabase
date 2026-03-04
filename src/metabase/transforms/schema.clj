@@ -43,7 +43,9 @@
     [:map
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
-     [:source-tables   [:map-of :string ::source-table-value]]
+     [:source-tables   [:sequential [:map
+                                     [:alias :string]
+                                     [:table ::source-table-value]]]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
