@@ -1,29 +1,36 @@
 import { t } from "ttag";
 
+import type { Crumb } from "metabase/common/components/Breadcrumbs";
 import { isNotNull } from "metabase/lib/types";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 export const getCrumbs = (
-  collection: Collection,
+  collection: Collection | undefined,
   collectionsById: Partial<Record<CollectionId, Collection>>,
   callback: (id: CollectionId) => void,
-) => {
-  if (collection && collection.path) {
+): Crumb[] => {
+  if (collection?.path) {
     return [
       ...collection.path
         .map((id) => collectionsById[id])
         .filter(isNotNull)
-        .map((collection) => [collection.name, () => callback(collection.id)]),
+        .map(
+          (collection): Crumb => [
+            collection.name,
+            () => callback(collection.id),
+          ],
+        ),
       [collection.name],
     ];
-  } else {
-    const rootCollection = collectionsById.root;
-
-    return [
-      ...(rootCollection
-        ? [[rootCollection.name, () => callback(rootCollection.id)]]
-        : []),
-      [t`Unknown`],
-    ];
   }
+
+  const rootCollection = collectionsById.root;
+  if (!rootCollection) {
+    return [[t`Unknown`]];
+  }
+
+  return [
+    [rootCollection.name, () => callback(rootCollection.id)],
+    [t`Unknown`],
+  ];
 };

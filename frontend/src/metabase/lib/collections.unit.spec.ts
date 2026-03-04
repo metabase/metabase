@@ -1,6 +1,19 @@
+import type { Crumb } from "metabase/common/components/Breadcrumbs";
 import { createMockCollection } from "metabase-types/api/mocks";
 
 import { getCrumbs } from "./collections";
+
+const getCrumbAction = (crumb: Crumb) => {
+  if (
+    !Array.isArray(crumb) ||
+    crumb.length < 2 ||
+    typeof crumb[1] !== "function"
+  ) {
+    throw new Error("Expected crumb callback action");
+  }
+
+  return crumb[1];
+};
 
 const collectionsById = {
   root: createMockCollection({ id: "root", name: "Our analytics", path: [] }),
@@ -23,12 +36,14 @@ describe("getCrumbs", () => {
     const callbackMock = jest.fn();
     const crumbs = getCrumbs(collectionsById[2], collectionsById, callbackMock);
 
-    const [_rootName, rootCallback] = crumbs[0];
-    (rootCallback as any)();
+    const rootCallback = getCrumbAction(crumbs[0]);
+    // Workaround to simulate actual event object passed by React, impossible to construct.
+    rootCallback(undefined as never);
     expect(callbackMock).toHaveBeenCalledWith("root");
 
-    const [_parentName, parentCallback] = crumbs[1];
-    (parentCallback as any)();
+    const parentCallback = getCrumbAction(crumbs[1]);
+    // Workaround to simulate actual event object passed by React, impossible to construct.
+    parentCallback(undefined as never);
     expect(callbackMock).toHaveBeenCalledWith(1);
   });
 });

@@ -8,9 +8,11 @@ import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CollectionNamespace,
+  ConcreteTableId,
   Database,
   DatabaseId,
   DraftTransformSource,
+  PythonTransformTableAliases,
   TemplateTag,
   Transform,
   TransformRun,
@@ -135,9 +137,76 @@ export function isSameSource(
     return Lib.areLegacyQueriesEqual(source1.query, source2.query);
   }
   if (source1.type === "python" && source2.type === "python") {
-    return _.isEqual(source1, source2);
+    return _.isEqual(
+      {
+        ...source1,
+        "source-tables": collapseSourceTableReferences(
+          source1["source-tables"],
+        ),
+      },
+      {
+        ...source2,
+        "source-tables": collapseSourceTableReferences(
+          source2["source-tables"],
+        ),
+      },
+    );
   }
   return false;
+}
+
+/**
+ * Extract a ConcreteTableId from a source-tables value, which may be either
+ * a bare integer or a map with table_id (from backend normalization).
+ */
+export function extractTableId(
+  value: ConcreteTableId | Record<string, unknown>,
+): ConcreteTableId | undefined {
+  if (typeof value === "number") {
+    return value;
+  }
+  if (typeof value === "object" && value != null) {
+    const id = (value as Record<string, unknown>)["table_id"];
+    if (typeof id === "number") {
+      return id as ConcreteTableId;
+    }
+  }
+  return undefined;
+}
+
+const collapseCache = new WeakMap<
+  Record<string, unknown>,
+  PythonTransformTableAliases
+>();
+
+/**
+ * Collapse source-table references to plain { alias: tableId } form.
+ * The backend may return map refs (with table_id, schema, etc.) instead of
+ * bare integer IDs. Returns the original map unchanged if all values are
+ * already plain integers. Results are memoized by object reference.
+ */
+export function collapseSourceTableReferences(
+  tables: Record<string, unknown>,
+): PythonTransformTableAliases {
+  const cached = collapseCache.get(tables);
+  if (cached) {
+    return cached;
+  }
+  const values = Object.values(tables);
+  if (values.every((v) => typeof v === "number")) {
+    return tables as PythonTransformTableAliases;
+  }
+  const result: PythonTransformTableAliases = {};
+  for (const [key, value] of Object.entries(tables)) {
+    const id = extractTableId(
+      value as ConcreteTableId | Record<string, unknown>,
+    );
+    if (id != null) {
+      result[key] = id;
+    }
+  }
+  collapseCache.set(tables, result);
+  return result;
 }
 
 export function isSourceEmpty(

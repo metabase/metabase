@@ -7,11 +7,11 @@ import { t } from "ttag";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import CS from "metabase/css/core/index.css";
 import { UtilApi } from "metabase/services";
-import type { TextInputProps } from "metabase/ui";
-import { Button, Flex, TextInput } from "metabase/ui";
+import type { PasswordInputProps } from "metabase/ui";
+import { Button, Flex, PasswordInput } from "metabase/ui";
 
 export interface FormSecretKeyProps
-  extends Omit<TextInputProps, "value" | "error"> {
+  extends Omit<PasswordInputProps, "value" | "error"> {
   name: string;
   nullable?: boolean;
   confirmation: {
@@ -63,7 +63,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
   return (
     <>
       <Flex align="end" gap="1rem">
-        <TextInput
+        <PasswordInput
           {...props}
           ref={ref}
           name={name}

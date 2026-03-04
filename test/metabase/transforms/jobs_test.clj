@@ -152,12 +152,12 @@
             run-id 102
             logged-messages (atom [])
             run-called? (atom false)]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)
-                      transforms.execute/execute! (fn [_ _]
-                                                    (reset! run-called? true))
-                      transforms.job-run/add-run-activity! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                               (swap! logged-messages conj {:level level :message message}))
+                                    transform-run/running-run-for-transform-id (constantly nil)
+                                    transforms.execute/execute! (fn [_ _]
+                                                                  (reset! run-called? true))
+                                    transforms.job-run/add-run-activity! (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled nil query-transform)
           (is (empty? (filter (comp #{:warn} :level) @logged-messages))
               "Should not log warnings when feature is enabled")
@@ -170,9 +170,9 @@
                              :name "Test Query Transform"}
             run-id 100
             logged-messages (atom [])]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)]
+        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                               (swap! logged-messages conj {:level level :message message}))
+                                    transform-run/running-run-for-transform-id (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled nil query-transform)
           (is (= 1 (count @logged-messages))
               "Should log exactly one warning")
@@ -190,12 +190,12 @@
             run-id 102
             logged-messages (atom [])
             run-called? (atom false)]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)
-                      transforms.execute/execute! (fn [_ _]
-                                                    (reset! run-called? true))
-                      transforms.job-run/add-run-activity! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                               (swap! logged-messages conj {:level level :message message}))
+                                    transform-run/running-run-for-transform-id (constantly nil)
+                                    transforms.execute/execute! (fn [_ _]
+                                                                  (reset! run-called? true))
+                                    transforms.job-run/add-run-activity! (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled nil query-transform)
           (is (empty? (filter (comp #{:warn} :level) @logged-messages))
               "Should not log warnings when feature is enabled")
@@ -237,9 +237,9 @@
                                                                    :tag_id (:id tag)
                                                                    :position 0}]
                   (let [run-id-atom (atom nil)]
-                    (with-redefs [jobs/run-transforms! (fn [run-id & _]
-                                                         (reset! run-id-atom run-id)
-                                                         (throw (ex-info "Uncaught error" {})))]
+                    (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
+                                                                       (reset! run-id-atom run-id)
+                                                                       (throw (ex-info "Uncaught error" {})))]
                       (try
                         (jobs/run-job! (:id job) {:run-method :cron})
                         (catch clojure.lang.ExceptionInfo _))
@@ -286,9 +286,9 @@
                                                                    :tag_id (:id tag)
                                                                    :position 0}]
                   (let [run-id-atom (atom nil)]
-                    (with-redefs [jobs/run-transforms! (fn [run-id & _]
-                                                         (reset! run-id-atom run-id)
-                                                         (throw (ex-info "Uncaught error" {})))]
+                    (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
+                                                                       (reset! run-id-atom run-id)
+                                                                       (throw (ex-info "Uncaught error" {})))]
                       (try
                         (jobs/run-job! (:id job) {:run-method :manual})
                         (catch clojure.lang.ExceptionInfo _))
@@ -481,14 +481,14 @@
                           on-enter        (fn [] (await-barrier barrier-enter))
                           on-exit         (fn [] (await-barrier barrier-exit) (.set tl-tripped true))
                           original-insert transforms.u/try-start-unless-already-running]
-                      (with-redefs [transforms.u/try-start-unless-already-running
-                                    (fn [transform-id run-method user-id]
-                                      (on-enter)
-                                      (let [[ret ex] (try
-                                                       [(original-insert transform-id run-method user-id)]
-                                                       (catch Throwable t [nil t]))]
-                                        (on-exit)
-                                        (if ex (throw ex) ret)))]
+                      (mt/with-dynamic-fn-redefs [transforms.u/try-start-unless-already-running
+                                                  (fn [transform-id run-method user-id]
+                                                    (on-enter)
+                                                    (let [[ret ex] (try
+                                                                     [(original-insert transform-id run-method user-id)]
+                                                                     (catch Throwable t [nil t]))]
+                                                      (on-exit)
+                                                      (if ex (throw ex) ret)))]
                         (let [run1 (transforms.job-run/start-run! (:id job) :manual)
                               run2 (transforms.job-run/start-run! (:id job) :manual)
                               fut1 (future

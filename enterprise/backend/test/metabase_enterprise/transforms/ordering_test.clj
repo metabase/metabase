@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer [deftest testing is]]
    [metabase.test :as mt]
-   [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.ordering :as ordering]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.ordering :as ordering]
    [toucan2.core :as t2]))
 
 (defn- make-python-transform
@@ -34,7 +34,7 @@
                                                           :table "intermediate_output"}}
                                                "final_output")]
       (testing "table-dependencies returns table-ref for unresolved name reference"
-        (let [deps (transforms.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
+        (let [deps (transforms-base.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
           (is (contains? deps {:table-ref {:database_id (mt/id)
                                            :schema "public"
                                            :table "intermediate_output"}}))))
@@ -58,7 +58,7 @@
                                                                   :table "output_a"}}
                                                "output_b")]
       (testing "table-dependencies includes both types"
-        (let [deps (transforms.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
+        (let [deps (transforms-base.i/table-dependencies (t2/select-one :model/Transform :id t-b))]
           (is (contains? deps {:table (mt/id :products)}))
           (is (contains? deps {:table-ref {:database_id (mt/id)
                                            :schema "public"

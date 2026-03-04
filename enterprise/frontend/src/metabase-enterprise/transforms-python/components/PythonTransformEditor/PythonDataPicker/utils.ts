@@ -1,4 +1,5 @@
 import { slugify as toSlug } from "metabase/lib/formatting";
+import { extractTableId } from "metabase/transforms/utils";
 import type { PythonTransformTableAliases } from "metabase-types/api";
 
 import type { TableSelection } from "./types";
@@ -7,8 +8,8 @@ export function getInitialTableSelections(
   tables: PythonTransformTableAliases | undefined,
 ) {
   if (tables && Object.keys(tables).length > 0) {
-    return Object.entries(tables).map(([alias, tableId]) => ({
-      tableId,
+    return Object.entries(tables).map(([alias, value]) => ({
+      tableId: extractTableId(value),
       alias,
     }));
   }

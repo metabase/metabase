@@ -6,7 +6,7 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
-   [metabase.transforms.interface :as transforms.i]
+   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
@@ -157,7 +157,7 @@
   (ws.u/assert-transform! entity-type)
   ;; Initialize workspace if uninitialized (outside transaction so async task can see committed data)
   (let [workspace (if (= :uninitialized (:db_status workspace))
-                    (let [target-db-id (transforms.i/target-db-id body)]
+                    (let [target-db-id (transforms-base.i/target-db-id body)]
                       (api/check-400 target-db-id "Transform must have a target database")
                       (initialize-workspace! workspace target-db-id))
                     workspace)]

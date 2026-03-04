@@ -59,9 +59,9 @@
                               :name "Test Python Transform"}
             run-id 101
             logged-messages (atom [])]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)]
+        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                               (swap! logged-messages conj {:level level :message message}))
+                                    transform-run/running-run-for-transform-id (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled nil python-transform)
           (is (= 1 (count @logged-messages))
               "Should log exactly one warning")
