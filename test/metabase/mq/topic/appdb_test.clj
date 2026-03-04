@@ -1,8 +1,9 @@
 (ns metabase.mq.topic.appdb-test
   (:require
    [clojure.test :refer :all]
+   [metabase.mq.impl :as mq.impl]
+   [metabase.mq.topic.appdb]
    [metabase.mq.topic.backend :as topic.backend]
-   [metabase.mq.topic.impl :as topic.impl]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -32,9 +33,9 @@
 (deftest subscribe-and-receive-test
   (let [topic-name :topic/sub-receive-test
         received   (atom [])]
-    (topic.impl/subscribe! topic-name
-                           (fn [{:keys [message]}]
-                             (swap! received conj message)))
+    (mq.impl/listen! topic-name
+                     (fn [message]
+                       (swap! received conj message)))
     (topic.backend/publish! :topic.backend/appdb topic-name ["hello-appdb"])
     ;; allow time for polling
     (Thread/sleep 5000)
@@ -42,7 +43,7 @@
     (testing "Subscriber receives the published message"
       (is (= ["hello-appdb"] @received)))
 
-    (topic.impl/unsubscribe! topic-name)
+    (mq.impl/unlisten! topic-name)
     ;; cleanup
     (t2/delete! :topic_message_batch :topic_name (name topic-name))))
 

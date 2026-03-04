@@ -4,17 +4,17 @@
   Two patterns are supported:
 
   **Queue** — single-consumer, at-least-once delivery.  Each message is processed by exactly
-  one handler and removed after successful processing.  Failed messages are retried up to a
+  one listener and removed after successful processing.  Failed messages are retried up to a
   configurable limit.
 
-      (listen! :queue/my-task handler-fn)
+      (listen! :queue/my-task listener-fn)
       (with-queue :queue/my-task [q]
         (put q message))
 
   **Topic** — single-consumer pub/sub.  Each active node receives every published message.
-  There can be up to one handler per node for each topic. Failed messages are never retried.
+  There can be up to one listener per node for each topic. Failed messages are never retried.
 
-      (subscribe! :topic/my-events handler-fn)
+      (listen! :topic/my-events listener-fn)
       (with-topic :topic/my-events [t]
         (put t payload))"
   (:require
@@ -24,10 +24,10 @@
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.memory :as q.memory]
    [metabase.mq.queue.sync :as q.sync]
+   [metabase.mq.topic.appdb :as topic.appdb]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.impl :as topic.impl]
    [metabase.mq.topic.memory :as topic.memory]
-   [metabase.mq.topic.postgres :as topic.postgres]
    [metabase.mq.topic.sync :as topic.sync]
    [potemkin :as p]))
 
@@ -37,39 +37,31 @@
   q.appdb/keep-me
   q.memory/keep-me
   q.sync/keep-me
+  topic.appdb/keep-me
   topic.memory/keep-me
-  topic.postgres/keep-me
   topic.sync/keep-me)
 
 (p/import-vars
  [mq.impl
-  put]
+  put
+  listen!
+  unlisten!]
 
  [q.impl
-  listen!
   batch-listen!
   queue-length
-  with-queue
-  stop-listening!]
+  with-queue]
 
  [topic.impl
-  publish!
-  subscribe!
-  unsubscribe!
   with-topic])
 
 (defn shutdown!
-  "Shuts down all mq resources: stops all queue listeners and topic subscribers,
-  clears handler registries, then delegates to backends for infrastructure cleanup."
+  "Shuts down all mq resources: clears listener registries, then delegates to
+  backends for infrastructure cleanup."
   []
-  ;; Stop all queue listeners and clear handlers
-  (doseq [queue-name (keys @q.impl/*handlers*)]
-    (q.backend/stop-listening! q.backend/*backend* queue-name))
-  (reset! q.impl/*handlers* {})
-  ;; Unsubscribe all topic subscribers and clear handlers
-  (doseq [topic-name (keys @topic.backend/*handlers*)]
-    (topic.backend/unsubscribe! topic.backend/*backend* topic-name))
-  (reset! topic.backend/*handlers* {})
+  ;; Clear listener registries
+  (reset! q.impl/*listeners* {})
+  (reset! topic.impl/*listeners* {})
   ;; Stop the background message manager
   (q.impl/stop-message-manager!)
   ;; Backend-specific infrastructure cleanup

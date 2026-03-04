@@ -2,71 +2,128 @@
   (:require
    [clojure.test :refer :all]
    [metabase.mq.core :as mq]
-   [metabase.mq.topic.test-util :as tpt]))
+   [metabase.mq.impl :as mq.impl]
+   [metabase.mq.topic.test-util :as tpt])
+  (:import (clojure.lang ExceptionInfo)
+           (java.util.concurrent CyclicBarrier)))
 
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel e2e-publish-subscribe-test
   (tpt/with-sync-topics
     (let [received (atom [])]
-      (mq/subscribe! :topic/e2e
-                     (fn [message]
-                       (swap! received conj message)))
+      (mq/listen! :topic/e2e
+                  (fn [message]
+                    (swap! received conj message)))
 
       (testing "Messages are received by subscriber"
-        (mq/publish! :topic/e2e ["message-1"])
-        (mq/publish! :topic/e2e ["message-2"])
+        (mq/with-topic :topic/e2e [t]
+          (mq/put t "message-1"))
+        (mq/with-topic :topic/e2e [t]
+          (mq/put t "message-2"))
         (is (= ["message-1" "message-2"] @received)))
 
       (testing "Unsubscribe stops delivery"
-        (mq/unsubscribe! :topic/e2e)
-        (mq/publish! :topic/e2e ["message-3"])
+        (mq/unlisten! :topic/e2e)
+        (mq/with-topic :topic/e2e [t]
+          (mq/put t "message-3"))
         (is (= ["message-1" "message-2"] @received))))))
 
 (deftest ^:parallel batch-publish-e2e-test
   (tpt/with-sync-topics
     (let [received (atom [])]
-      (mq/subscribe! :topic/batch
-                     (fn [message]
-                       (swap! received conj message)))
+      (mq/listen! :topic/batch
+                  (fn [message]
+                    (swap! received conj message)))
 
-      (mq/publish! :topic/batch ["a" "b" "c"])
+      (mq/with-topic :topic/batch [t]
+        (mq/put t "a")
+        (mq/put t "b")
+        (mq/put t "c"))
 
       (testing "Batch of messages delivered together"
         (is (= ["a" "b" "c"] @received)))
 
-      (mq/unsubscribe! :topic/batch))))
+      (mq/unlisten! :topic/batch))))
 
 (deftest ^:parallel error-handling-e2e-test
   (tpt/with-sync-topics
     (let [received (atom [])]
-      (mq/subscribe! :topic/errors
-                     (fn [message]
-                       (when (= "fail" message)
-                         (throw (ex-info "Handler error" {})))
-                       (swap! received conj message)))
+      (mq/listen! :topic/errors
+                  (fn [message]
+                    (when (= "fail" message)
+                      (throw (ex-info "Handler error" {})))
+                    (swap! received conj message)))
 
-      (mq/publish! :topic/errors ["ok-1"])
-      (mq/publish! :topic/errors ["fail"])
-      (mq/publish! :topic/errors ["ok-2"])
+      (mq/with-topic :topic/errors [t]
+        (mq/put t "ok-1"))
+      (mq/with-topic :topic/errors [t]
+        (mq/put t "fail"))
+      (mq/with-topic :topic/errors [t]
+        (mq/put t "ok-2"))
 
       (testing "Non-error messages are delivered"
         (is (= ["ok-1" "ok-2"] @received)))
 
-      (mq/unsubscribe! :topic/errors))))
+      (mq/unlisten! :topic/errors))))
+
+(deftest ^:parallel batch-partial-failure-test
+  (testing "When listener throws on one message in a batch, remaining messages are still delivered"
+    (tpt/with-sync-topics
+      (let [received (atom [])]
+        (mq/listen! :topic/batch-fail
+                    (fn [message]
+                      (when (= "boom" message)
+                        (throw (ex-info "Handler error" {})))
+                      (swap! received conj message)))
+
+        (mq/with-topic :topic/batch-fail [t]
+          (mq/put t "msg-1")
+          (mq/put t "boom")
+          (mq/put t "msg-3")
+          (mq/put t "msg-4"))
+
+        (is (= ["msg-1" "msg-3" "msg-4"] @received))
+
+        (mq/unlisten! :topic/batch-fail)))))
+
+(deftest ^:parallel concurrent-subscribe-throws-test
+  (tpt/with-sync-topics
+    (let [topic-name :topic/concurrent-sub-test
+          n          10
+          barrier    (CyclicBarrier. n)
+          results    (atom [])]
+      (testing "Concurrent listen! calls: exactly one succeeds, rest throw"
+        (let [threads (mapv (fn [_]
+                              (let [f (bound-fn []
+                                        (.await barrier)
+                                        (try
+                                          (mq.impl/listen! topic-name (fn [_] nil))
+                                          (swap! results conj :ok)
+                                          (catch ExceptionInfo _
+                                            (swap! results conj :error))))]
+                                (Thread. ^Runnable f)))
+                            (range n))]
+          (run! (fn [^Thread t] (.start t)) threads)
+          (run! (fn [^Thread t] (.join t 5000)) threads)
+          (is (= 1 (count (filter #{:ok} @results))))
+          (is (= (dec n) (count (filter #{:error} @results))))))
+      (mq/unlisten! topic-name))))
 
 (deftest ^:parallel late-subscriber-test
   (tpt/with-sync-topics
-    (mq/publish! :topic/late ["old-message"])
+    (mq/with-topic :topic/late [t]
+      (mq/put t "old-message"))
 
     (let [received (atom [])]
-      (mq/subscribe! :topic/late
-                     (fn [message]
-                       (swap! received conj message)))
+      (mq/listen! :topic/late
+                  (fn [message]
+                    (swap! received conj message)))
 
-      (mq/publish! :topic/late ["new-message"])
+      (mq/with-topic :topic/late [t]
+        (mq/put t "new-message"))
 
       (testing "Late subscriber only sees new messages"
         (is (= ["new-message"] @received)))
 
-      (mq/unsubscribe! :topic/late))))
+      (mq/unlisten! :topic/late))))

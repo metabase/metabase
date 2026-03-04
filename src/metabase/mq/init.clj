@@ -13,7 +13,7 @@
   #{:queue.backend/appdb :queue.backend/memory})
 
 (def ^:private valid-topic-backends
-  #{:topic.backend/appdb :topic.backend/memory :topic.backend/postgres})
+  #{:topic.backend/appdb :topic.backend/memory})
 
 (defmethod startup/def-startup-logic! ::MqInit [_]
   (let [queue-be (keyword "queue.backend" (mq.settings/queue-backend))

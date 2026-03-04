@@ -23,20 +23,7 @@
 
 (defmulti queue-length
   "The number of unprocessed *bundles* waiting in the queue.
-  Does not include bundles currently being handled by a handler"
-  {:arglists '([backend queue-name])}
-  (fn [backend _queue-name]
-    backend))
-
-(defmulti listen!
-  "Ensures the queue exists and starts listening for messages on it.
-  Creates the queue if it doesn't already exist, then begins processing."
-  {:arglists '([backend queue-name])}
-  (fn [backend _queue-name]
-    backend))
-
-(defmulti stop-listening!
-  "Stops listening on the queue with the given name. This is a no-op if the queue does not exist."
+  Does not include bundles currently being handled by a listener"
   {:arglists '([backend queue-name])}
   (fn [backend _queue-name]
     backend))
@@ -52,6 +39,14 @@
   {:arglists '([backend queue-name bundle-id])}
   (fn [backend _queue-name _bundle-id]
     backend))
+
+(defmulti start!
+  "Starts the backend polling loop. Called once at init time.
+  The backend polls `q.impl/*listeners*` dynamically to discover registered queues."
+  {:arglists '([backend])}
+  identity)
+
+(defmethod start! :default [_] nil)
 
 (defmulti shutdown!
   "Shuts down all queue resources for this backend: stops all listeners and releases any background threads."

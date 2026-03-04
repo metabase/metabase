@@ -1,5 +1,5 @@
 (ns metabase.mq.queue.sync
-  "Synchronous queue backend that calls the handler inline during `publish!`.
+  "Synchronous queue backend that calls the listener inline during `publish!`.
   Useful in tests to avoid needing `*force-sync*` dynamic vars in each namespace."
   (:require
    [metabase.mq.queue.backend :as q.backend]
@@ -14,12 +14,6 @@
 
 (defmethod q.backend/queue-length :queue.backend/sync [_ _queue-name]
   0)
-
-(defmethod q.backend/listen! :queue.backend/sync [_ _queue-name]
-  nil)
-
-(defmethod q.backend/stop-listening! :queue.backend/sync [_ _queue-name]
-  nil)
 
 (defmethod q.backend/bundle-successful! :queue.backend/sync [_ _queue-name _bundle-id]
   nil)

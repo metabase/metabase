@@ -21,12 +21,12 @@
   :export?    false)
 
 (defsetting topic-backend
-  (deferred-tru "Which topic backend to use. Valid values: appdb, memory, postgres.")
+  (deferred-tru "Which topic backend to use. Valid values: appdb, memory.")
   :type       :string
   :getter     (fn []
                 (or (setting/get-value-of-type :string :topic-backend)
                     (if (= (mdb/db-type) :postgres)
-                      "postgres"
+                      "appdb"
                       "memory")))
   :visibility :internal
   :encryption :no

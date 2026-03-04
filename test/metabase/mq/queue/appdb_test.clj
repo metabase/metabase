@@ -3,20 +3,12 @@
    [clojure.test :refer :all]
    [metabase.mq.queue.appdb :as q.appdb]
    [metabase.mq.queue.backend :as q.backend]
+   [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.settings :as mq.settings]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(deftest create-and-remove-listener-test
-  (let [queue-name (keyword "queue" (str (gensym "listener-test-")))]
-    (testing "Create listener"
-      (q.backend/listen! :queue.backend/appdb queue-name)
-      (is (contains? @@#'q.appdb/listening-queues queue-name)))
-    (testing "Close listener"
-      (q.backend/stop-listening! :queue.backend/appdb queue-name)
-      (is (not (contains? @@#'q.appdb/listening-queues queue-name))))))
 
 (deftest publish-test
   (let [queue-name (keyword "queue" (str (gensym "publish-test-")))]
@@ -35,7 +27,7 @@
   (let [queue1 (keyword "queue" (str "queue1-" (gensym)))
         queue2 (keyword "queue" (str "queue2-" (gensym)))
         invalid-queue (keyword "queue" (str "queue-invalid-" (gensym)))]
-    (with-redefs [q.appdb/listening-queues (atom #{queue1 queue2})]
+    (binding [q.impl/*listeners* (atom {queue1 {:listener identity} queue2 {:listener identity}})]
       (t2/with-connection [_conn]
         (testing "Returns nil if no rows are found"
           (is (nil? (#'q.appdb/fetch!))))
@@ -51,7 +43,7 @@
                      :messages   (json/encode ["data2"])})
 
         (testing "Returns nil if no queues are defined"
-          (with-redefs [q.appdb/listening-queues (atom #{})]
+          (binding [q.impl/*listeners* (atom {})]
             (is (nil? (#'q.appdb/fetch!)))))
         (testing "Returns finds a row for a valid queue"
           (let [{:keys [bundle-id queue messages]} (#'q.appdb/fetch!)]

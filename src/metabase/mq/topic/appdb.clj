@@ -3,6 +3,7 @@
   Messages are stored in the `topic_message` table. Each subscriber on each node polls
   independently, tracking its read offset in memory."
   (:require
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.impl :as topic.impl]
    [metabase.util.json :as json]
@@ -13,6 +14,10 @@
            (java.util.concurrent Future)))
 
 (set! *warn-on-reflection* true)
+
+(def keep-me
+  "Referenced from [[metabase.mq.core]] to ensure this namespace is loaded."
+  true)
 
 (def ^:private offsets
   "Map of topic-name -> long offset."
@@ -56,14 +61,18 @@
               (try
                 (loop []
                   (when @background-process
-                    (doseq [topic-name (keys @topic.backend/*handlers*)]
+                    (doseq [topic-name (keys @topic.impl/*listeners*)]
                       (try
-                        (let [offset (get @offsets topic-name)]
-                          (when offset
-                            (let [rows (poll-messages! topic-name offset)]
-                              (doseq [{:keys [id messages]} rows]
-                                (topic.impl/handle! topic-name (json/decode messages))
-                                (swap! offsets assoc topic-name id)))))
+                        (let [offset (if (contains? @offsets topic-name)
+                                       (get @offsets topic-name)
+                                       ;; Lazily initialize offset for newly registered topics
+                                       (let [o (current-max-id topic-name)]
+                                         (swap! offsets assoc topic-name o)
+                                         o))
+                              rows (poll-messages! topic-name offset)]
+                          (doseq [{:keys [id messages]} rows]
+                            (topic.impl/handle! topic-name (json/decode messages))
+                            (swap! offsets assoc topic-name id)))
                         (catch Exception e
                           (log/errorf e "Error polling topic %s" (name topic-name)))))
                     (Thread/sleep (long poll-interval-ms))
@@ -90,30 +99,21 @@
   (atom nil))
 
 (defn- cleanup-old-messages!
-  "Deletes all `topic_message` rows older than [[cleanup-max-age-ms]]."
+  "Deletes all `topic_message` rows older than [[cleanup-max-age-ms]] that are below the minimum subscriber offset."
   []
-  (let [threshold (Timestamp/from (.minusMillis (Instant/now) cleanup-max-age-ms))
-        deleted   (t2/delete! :topic_message_batch :created_at [:< threshold])]
+  (let [threshold  (Timestamp/from (.minusMillis (Instant/now) cleanup-max-age-ms))
+        min-offset (reduce min Long/MAX_VALUE (vals @offsets))
+        deleted    (if (= min-offset Long/MAX_VALUE)
+                     ;; No subscribers — safe to clean everything old
+                     (t2/delete! :topic_message_batch :created_at [:< threshold])
+                     ;; Only clean messages below the minimum offset AND older than threshold
+                     (t2/delete! :topic_message_batch
+                                 {:where [:and
+                                          [:< :created_at threshold]
+                                          [:< :id min-offset]]}))]
     (when (pos? deleted)
       (log/infof "Cleaned up %d old topic messages" deleted))
     deleted))
-
-(defn- start-cleanup-loop!
-  "Starts a background loop that periodically runs [[cleanup-old-messages!]].
-  Loops while [[cleanup-future]] is non-nil."
-  []
-  (future
-    (try
-      (loop []
-        (when @cleanup-future
-          (try
-            (cleanup-old-messages!)
-            (catch Exception e
-              (log/error e "Error during topic message cleanup")))
-          (Thread/sleep (long cleanup-interval-ms))
-          (recur)))
-      (catch InterruptedException _
-        (log/info "Topic cleanup loop interrupted")))))
 
 ;;; ------------------------------------------- Backend Multimethods -------------------------------------------
 
@@ -123,10 +123,11 @@
     (.cancel f true)
     (log/info "Topic polling loop stopped"))
   (reset! offsets {})
-  (when-let [^Future f @cleanup-future]
-    (reset! cleanup-future nil)
-    (.cancel f true)
-    (log/info "Topic cleanup loop stopped")))
+  (mq.impl/stop-cleanup-loop! cleanup-future "Topic"))
+
+(defmethod topic.backend/start! :topic.backend/appdb [_]
+  (start-polling!)
+  (mq.impl/start-cleanup-loop-once! cleanup-future cleanup-interval-ms cleanup-old-messages! "Topic"))
 
 (defmethod topic.backend/publish! :topic.backend/appdb
   [_ topic-name messages]
@@ -139,13 +140,6 @@
   (let [offset (current-max-id topic-name)]
     (swap! offsets assoc topic-name offset)
     (start-polling!)
-    ;; Idempotently start the cleanup loop on first subscription
-    (when-not @cleanup-future
-      (locking cleanup-future
-        (when-not @cleanup-future
-          (let [f (start-cleanup-loop!)]
-            (reset! cleanup-future f)
-            (log/info "Topic cleanup loop started")))))
     (log/infof "Subscribed to topic %s (starting offset %d)" (name topic-name) offset)))
 
 (defmethod topic.backend/unsubscribe! :topic.backend/appdb

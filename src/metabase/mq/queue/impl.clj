@@ -1,7 +1,6 @@
 (ns metabase.mq.queue.impl
   "Internal implementation for the queue system: listener registration, batching, and public API."
   (:require
-   [metabase.analytics.prometheus :as analytics]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.util.log :as log]
@@ -19,8 +18,8 @@
   [:and :keyword [:fn {:error/message "Queue name must be namespaced to 'queue'"}
                   #(= "queue" (namespace %))]])
 
-(def ^:dynamic *handlers*
-  "Atom containing a map of queue-name → {:handler fn :max-batch-messages int :max-next-ms int}.
+(def ^:dynamic *listeners*
+  "Atom containing a map of queue-name → {:listener fn :max-batch-messages int :max-next-ms int}.
   Backend-agnostic."
   (atom {}))
 
@@ -33,19 +32,19 @@
 ;;; ------------------------------------------- Message handling -------------------------------------------
 
 (mu/defn handle!
-  "Handles messages from one or more bundles by invoking the registered handler.
-  For max-batch-messages=1 (listen!), calls handler with each message individually.
-  For max-batch-messages>1 (batch-listen!), partitions messages and calls handler with each batch vec.
+  "Handles messages from one or more bundles by invoking the registered listener.
+  For max-batch-messages=1 (listen!), calls listener with each message individually.
+  For max-batch-messages>1 (batch-listen!), calls listener with each batch vec.
   On success, marks all bundles as successful. On failure, marks all as failed.
   `message-bundles` is a map of bundle-id → backend-key, so each bundle is acked/nacked on the
   correct backend even when backends are swapped at runtime."
   [queue-name :- :metabase.mq.queue/queue-name
    message-bundles :- [:map-of :any ::q.backend/backend]
    messages :- [:sequential :any]]
-  (let [{:keys [handler max-batch-messages]} (get @*handlers* queue-name)]
-    (mq.impl/invoke-handler!
+  (let [{:keys [listener max-batch-messages]} (get @*listeners* queue-name)]
+    (mq.impl/invoke-listener!
      {:channel-name    queue-name
-      :handler-fn      (constantly handler)
+      :listener-fn     (constantly listener)
       :invoke-fn       (fn [h]
                          (if (= 1 max-batch-messages)
                            (doseq [msg messages] (h msg))
@@ -70,7 +69,7 @@
    bundle-id :- :any
    messages :- [:sequential :any]]
   (let [{:keys [max-batch-messages max-next-ms]
-         :or   {max-batch-messages 1 max-next-ms 0}} (get @*handlers* queue-name)]
+         :or   {max-batch-messages 1 max-next-ms 0}} (get @*listeners* queue-name)]
     (if (= 1 max-batch-messages)
       (handle! queue-name {bundle-id backend} messages)
       (let [drained (atom nil)]
@@ -122,7 +121,8 @@
         (log/error e "Error flushing pending batch" {:queue queue-name})))))
 
 (defn start!
-  "Starts a background thread that drains expired accumulators every ~100ms."
+  "Starts the background message-manager thread and triggers backend processing
+  for all registered queues."
   []
   (let [exec (Executors/newSingleThreadScheduledExecutor
               (reify ThreadFactory
@@ -131,7 +131,8 @@
                     (.setDaemon true)))))]
     (if (compare-and-set! flush-executor nil exec)
       (.scheduleAtFixedRate exec ^Runnable flush-all-pending! 100 100 TimeUnit/MILLISECONDS)
-      (.shutdown exec))))
+      (.shutdown exec)))
+  (q.backend/start! q.backend/*backend*))
 
 (defn stop-message-manager!
   "Stops the background message-manager thread."
@@ -141,38 +142,39 @@
 
 ;;; ------------------------------------------- Listener registration -------------------------------------------
 
-(mu/defn listen!
-  "Registers a handler function for the given queue and starts listening.
-  The handler will be called with a single message at a time.
-  Throws if the queue name is invalid or if a handler is already registered."
-  [queue-name :- :metabase.mq.queue/queue-name
-   handler :- fn?]
-  (when (get @*handlers* queue-name)
-    (throw (ex-info "Queue handler already defined" {:queue queue-name})))
-  (swap! *handlers* assoc queue-name
-         {:handler handler
-          :max-batch-messages 1
-          :max-next-ms 0})
-  (q.backend/listen! q.backend/*backend* queue-name))
+(defn- register-listener!
+  "Atomically registers a listener for the given queue, throwing if one already exists.
+  Returns the new listeners map on success."
+  [queue-name listener-map]
+  (let [already-registered? (atom false)]
+    (swap! *listeners*
+           (fn [m]
+             (if (contains? m queue-name)
+               (do (reset! already-registered? true) m)
+               (assoc m queue-name listener-map))))
+    (when @already-registered?
+      (throw (ex-info "Queue listener already defined" {:queue queue-name})))))
+
+(defmethod mq.impl/listen! "queue"
+  [queue-name listener]
+  (register-listener! queue-name {:listener           listener
+                                  :max-batch-messages 1
+                                  :max-next-ms        0}))
 
 (mu/defn batch-listen!
-  "Registers a batch handler function for the given queue and starts listening.
-  The handler will be called with a vec of messages, sized up to :max-batch-messages.
+  "Registers a batch listener function for the given queue.
+  The listener will be called with a vec of messages, sized up to :max-batch-messages.
   Batches can span multiple backend bundles, waiting up to :max-next-ms for additional bundles.
-  Throws if a handler is already registered."
+  Throws if a listener is already registered.
+  Note: This registers the listener. Call [[start!]] to begin backend processing."
   [queue-name :- :metabase.mq.queue/queue-name
-   handler :- fn?
+   listener :- fn?
    config :- [:map [:max-batch-messages pos-int?] [:max-next-ms nat-int?]]]
-  (when (get @*handlers* queue-name)
-    (throw (ex-info "Queue handler already defined" {:queue queue-name})))
-  (swap! *handlers* assoc queue-name
-         (merge config {:handler handler}))
-  (q.backend/listen! q.backend/*backend* queue-name))
+  (register-listener! queue-name (merge config {:listener listener})))
 
-(mu/defn stop-listening!
-  "Stops listening to the given queue and closes it."
-  [queue-name :- :metabase.mq.queue/queue-name]
-  (q.backend/stop-listening! q.backend/*backend* queue-name))
+(defmethod mq.impl/unlisten! "queue"
+  [queue-name]
+  (swap! *listeners* dissoc queue-name))
 
 (defmacro with-queue
   "Runs the body with the ability to add messages to the given queue.
@@ -184,21 +186,15 @@
   message will be lost. Callers that need stronger guarantees should publish within
   the same DB transaction or use an idempotent retry strategy."
   [queue-name [queue-binding] & body]
-  `(let [buffer# (atom [])
-         ~queue-binding (reify mq.impl/MessageBuffer
-                          (put [_ msg#] (swap! buffer# conj msg#)))]
-     (try
-       (let [result# (do ~@body)]
-         (let [msgs# @buffer#]
-           (when (seq msgs#)
-             (q.backend/publish! q.backend/*backend* ~queue-name msgs#)
-             (analytics/inc! :metabase-mq/queue-messages-published
-                             {:queue (name ~queue-name)}
-                             (count msgs#))))
-         result#)
-       (catch Exception e#
-         (log/error e# "Error in queue processing, no messages will be persisted to the queue")
-         (throw e#)))))
+  `(mq.impl/with-buffer
+     (fn [msgs#]
+       (q.backend/publish! q.backend/*backend* ~queue-name msgs#)
+       (mq.impl/analytics-inc! :metabase-mq/queue-messages-published
+                               {:queue (name ~queue-name)}
+                               (count msgs#)))
+     "Error in queue processing, no messages will be persisted to the queue"
+     [~queue-binding]
+     ~@body))
 
 (mu/defn queue-length :- :int
   "The number of message *bundles* in the queue."

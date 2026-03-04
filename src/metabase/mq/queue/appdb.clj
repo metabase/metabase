@@ -1,11 +1,10 @@
 (ns metabase.mq.queue.appdb
   "Database-backed implementation of the message queue using the application database."
   (:require
-   [metabase.analytics.prometheus :as analytics]
    [metabase.models.interface :as mi]
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.impl :as q.impl]
-   [metabase.mq.settings :as mq.settings]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -15,23 +14,25 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- queue-max-retries []
+  ((requiring-resolve 'metabase.mq.settings/queue-max-retries)))
+
 (def ^:private owner-id (str (random-uuid)))
 (def ^:private background-process (atom nil))
-(def ^:private listening-queues (atom #{}))
 
 (defn- fetch!
   "Fetches the next pending message from any of the listening queues.
   Returns a map with :bundle-id, :queue, and :messages keys, or nil if no messages are available.
   Marks the fetched message as 'processing' within the same transaction."
   []
-  (when (seq @listening-queues)
+  (when-let [queue-names (seq (keys @q.impl/*listeners*))]
     (t2/with-transaction [conn]
       (when-let [row (t2/query-one
                       conn
                       {:select   [:*]
                        :from     [:queue_message_bundle]
                        :where    [:and
-                                  [:in :queue_name (map name @listening-queues)]
+                                  [:in :queue_name (map name queue-names)]
                                   [:= :status "pending"]]
                        :order-by [[:id :asc]]
                        :limit    1
@@ -70,22 +71,6 @@
       (log/infof "Cleaned up %d failed queue bundles" deleted))
     deleted))
 
-(defn- start-cleanup-loop!
-  "Starts a background loop that periodically runs [[cleanup-failed-bundles!]]."
-  []
-  (future
-    (try
-      (loop []
-        (when @cleanup-future
-          (try
-            (cleanup-failed-bundles!)
-            (catch Exception e
-              (log/error e "Error during queue failed bundle cleanup")))
-          (Thread/sleep (long cleanup-interval-ms))
-          (recur)))
-      (catch InterruptedException _
-        (log/info "Queue cleanup loop interrupted")))))
-
 ;;; ------------------------------------------- Polling -------------------------------------------
 
 (def ^:private error-backoff-ms
@@ -106,25 +91,23 @@
   (when (compare-and-set! background-process nil ::starting)
     (try
       (log/info "Starting background process for appdb queue")
-      (when-not @cleanup-future
-        (locking cleanup-future
-          (when-not @cleanup-future
-            (reset! cleanup-future (start-cleanup-loop!))
-            (log/info "Queue cleanup loop started"))))
+      (mq.impl/start-cleanup-loop-once! cleanup-future cleanup-interval-ms cleanup-failed-bundles! "Queue")
       (reset! background-process
               (future
                 (try
                   (loop []
-                    (when (seq @listening-queues)
-                      (try
+                    (try
+                      (if (seq @q.impl/*listeners*)
                         (if (process-bundle!)
                           nil ;; delivered a bundle, loop immediately to fetch more
                           (Thread/sleep 2000))
-                        (catch InterruptedException e (throw e))
-                        (catch Exception e
-                          (log/error e "Unexpected error in queue polling loop, backing off")
-                          (Thread/sleep (long error-backoff-ms))))
-                      (recur)))
+                        ;; No queues registered — sleep longer and re-check
+                        (Thread/sleep 5000))
+                      (catch InterruptedException e (throw e))
+                      (catch Exception e
+                        (log/error e "Unexpected error in queue polling loop, backing off")
+                        (Thread/sleep (long error-backoff-ms))))
+                    (recur))
                   (catch InterruptedException _
                     (log/info "Background process interrupted")))
                 (log/info "Stopping background process for appdb queue")
@@ -134,25 +117,15 @@
         (throw e)))))
 
 (defmethod q.backend/shutdown! :queue.backend/appdb [_]
-  (when-let [^Future f @cleanup-future]
-    (reset! cleanup-future nil)
-    (.cancel f true)
-    (log/info "Queue cleanup loop stopped"))
+  (mq.impl/stop-cleanup-loop! cleanup-future "Queue")
   (when-let [f @background-process]
     (when (instance? Future f)
       (.cancel ^Future f true))
     (reset! background-process nil))
   (log/info "Shut down appdb queue backend"))
 
-(defmethod q.backend/listen! :queue.backend/appdb [_ queue-name]
-  (when-not (contains? @listening-queues queue-name)
-    (swap! listening-queues conj queue-name)
-    (log/infof "Registered listener for queue %s" (name queue-name))
-    (start-polling!)))
-
-(defmethod q.backend/stop-listening! :queue.backend/appdb [_ queue-name]
-  (swap! listening-queues disj queue-name)
-  (log/infof "Unregistered handler for queue %s" (name queue-name)))
+(defmethod q.backend/start! :queue.backend/appdb [_]
+  (start-polling!))
 
 (defmethod q.backend/queue-length :queue.backend/appdb
   [_ queue]
@@ -162,10 +135,9 @@
 
 (defmethod q.backend/publish! :queue.backend/appdb
   [_ queue messages]
-  (t2/with-transaction [_conn]
-    (t2/insert! :queue_message_bundle
-                {:queue_name (name queue)
-                 :messages   (json/encode messages)})))
+  (t2/insert! :queue_message_bundle
+              {:queue_name (name queue)
+               :messages   (json/encode messages)}))
 
 (defmethod q.backend/bundle-successful! :queue.backend/appdb
   [_ _queue-name bundle-id]
@@ -177,10 +149,10 @@
   [_ queue-name bundle-id]
   (let [row     (t2/select-one :queue_message_bundle :id bundle-id :owner owner-id)
         updated (when row
-                  (if (>= (inc (:failures row)) (mq.settings/queue-max-retries))
+                  (if (>= (inc (:failures row)) (queue-max-retries))
                     (do
-                      (log/warnf "Message %d has reached max failures (%d), marking as failed" bundle-id (mq.settings/queue-max-retries))
-                      (analytics/inc! :metabase-mq/queue-bundle-permanent-failures {:queue (name queue-name)})
+                      (log/warnf "Message %d has reached max failures (%d), marking as failed" bundle-id (queue-max-retries))
+                      (mq.impl/analytics-inc! :metabase-mq/queue-bundle-permanent-failures {:queue (name queue-name)})
                       (t2/update! :queue_message_bundle
                                   {:id    bundle-id
                                    :owner owner-id}
@@ -189,7 +161,7 @@
                                    :status_heartbeat (mi/now)
                                    :owner            nil}))
                     (do
-                      (analytics/inc! :metabase-mq/queue-bundle-retries {:queue (name queue-name)})
+                      (mq.impl/analytics-inc! :metabase-mq/queue-bundle-retries {:queue (name queue-name)})
                       (t2/update! :queue_message_bundle
                                   {:id    bundle-id
                                    :owner owner-id}
