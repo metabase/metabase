@@ -78,12 +78,13 @@
 
 (defn transform-source-in
   "Serialize a transform source map for JSON storage.
-  Converts source-tables from FE map format to vec if needed, normalizes, and prepares queries."
+  Normalizes source-tables and prepares queries."
   [m]
   (-> m
       (m/update-existing :source-tables
                          (fn [st]
-                           (-> (if (map? st) ;; TODO(FE-source-tables): remove map->vec conversion
+                           ;; TODO (Ngoc 2026-03-04) -- remove map->vec conversion when FE sends array format for source-tables
+                           (-> (if (map? st)
                                  (transforms-base.u/source-tables-map->vec st)
                                  st)
                                transforms-base.u/normalize-source-tables)))

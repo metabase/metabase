@@ -8,6 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -47,7 +48,7 @@
 (mu/defn upstream-deps:python-transform :- ::deps.schema/upstream-deps
   "Given a Toucan `:model/Transform`, return its upstream dependencies as a map from the kind to a set of IDs."
   [{{tables :source-tables} :source :as _py-transform}
-   :- [:map [:source-tables {:optional true} [:sequential [:map [:table_id {:optional true} [:maybe :int]]]]]]]
+   :- [:map [:source-tables {:optional true} [:sequential ::transforms.schema/source-table-entry]]]]
   {:table (into #{} (keep :table_id) tables)})
 
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
@@ -58,8 +59,7 @@
               [:query
                [:map [:query ::lib.schema/query]]]
               [:python
-               ;; If the upstream table doesn't exist yet, table_id will be nil
-               [:map [:source-tables {:optional true} [:sequential [:map [:table_id {:optional true} [:maybe :int]]]]]]]]]]]
+               [:map [:source-tables {:optional true} [:sequential ::transforms.schema/source-table-entry]]]]]]]]
   (let [source-type (transforms-base.u/transform-type transform)]
     (case source-type
       :query (upstream-deps:query query)

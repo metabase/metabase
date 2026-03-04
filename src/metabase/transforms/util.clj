@@ -57,8 +57,7 @@
       (let [source-tables (:source-tables source)]
         (if (empty? source-tables)
           true
-          ;; source-tables may be vec [{:alias .. :table_id ..}] or legacy map {alias -> id/ref}.
-          ;; Extract table-ids from whichever format we have.
+          ;; TODO (Ngoc 2026-03-04) -- remove map branch when FE sends array format for source-tables
           (let [table-ids (if (sequential? source-tables)
                             (into [] (keep :table_id) source-tables)
                             (into [] (keep (fn [[_ v]] (if (int? v) v (:table_id v)))) source-tables))]

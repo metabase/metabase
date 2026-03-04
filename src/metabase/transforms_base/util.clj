@@ -553,22 +553,32 @@
     (execute-secondary-index-ddl-if-required!
      transform run-id database target with-stage-timing-fn)))
 
+;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
+
+(mr/def ::source-table-entry
+  "A source table entry in the array format. Combines alias with table reference."
+  [:map
+   [:alias :string]
+   [:database_id {:optional true} :int]
+   [:schema {:optional true} [:maybe :string]]
+   [:table {:optional true} :string]
+   [:table_id {:optional true} [:maybe :int]]])
+
 ;;; ------------------------------------------------- Source Table Format Conversion -------------------------------------------------
 
-(defn source-tables-map->vec
-  "Convert legacy map format `{alias -> value}` to new vec format `[{:alias alias ...}]`.
+(mu/defn source-tables-map->vec :- [:sequential ::source-table-entry]
+  "Convert map format `{alias -> value}` to vec format `[{:alias alias ...}]`.
   Handles both int values (`{alias: table_id}`) and ref map values (`{alias: {:database_id ...}}`)."
-  [m]
+  [m :- [:map-of :string [:or :int :map]]]
   (mapv (fn [[alias v]]
           (if (int? v)
             {:alias alias :table_id v}
             (assoc v :alias alias)))
         m))
 
-(defn source-tables-vec->alias-id-map
-  "Convert vec format `[{:alias alias :table_id id}]` to `{alias -> table_id}` map.
-  Used for FE compat wrapper and python runner which expect this shape."
-  [entries]
+(mu/defn source-tables-vec->alias-id-map :- [:map-of :string [:maybe :int]]
+  "Convert source-table entries to `{alias -> table_id}` map."
+  [entries :- [:sequential ::source-table-entry]]
   (into {} (map (juxt :alias :table_id)) entries))
 
 ;;; ------------------------------------------------- Source Table Resolution -------------------------------------------------
@@ -607,16 +617,13 @@
   [v]
   (and (map? v) (nil? (:table_id v))))
 
-(defn normalize-source-tables
-  "Normalize source-tables vec to enriched entries with {:alias :database_id :schema :table :table_id}.
-
-  Accepts the new vec format `[{:alias ... :table_id ...}]`.
-  For entries with only :table_id (int), looks up table metadata.
+(mu/defn normalize-source-tables :- [:sequential ::source-table-entry]
+  "Normalize source-table entries by enriching them with full metadata.
+  For entries with only :table_id, looks up :database_id/:schema/:table.
   For entries with only :database_id/:schema/:table, looks up :table_id.
-
   Throws if an integer table ID references a non-existent table.
   Map refs with non-existent tables get nil table_id (resolved later at execute time)."
-  [source-tables]
+  [source-tables :- [:sequential ::source-table-entry]]
   (let [;; Entries that have table_id but lack table metadata need lookup
         needs-metadata   (filter (fn [e] (and (:table_id e) (not (:table e)))) source-tables)
         int-id->metadata (when (seq needs-metadata)
@@ -647,11 +654,10 @@
               :else entry))
           source-tables)))
 
-(defn resolve-source-tables
-  "Resolve source-tables vec to {alias -> table_id}. Throws if any table not found.
-  For execute time - all entries must resolve to valid table IDs.
-  Accepts vec format `[{:alias ... :table_id ...}]`."
-  [source-tables]
+(mu/defn resolve-source-tables :- [:map-of :string :int]
+  "Resolve source-table entries to `{alias -> table_id}`. Throws if any table not found.
+  For execute time — all entries must resolve to valid table IDs."
+  [source-tables :- [:sequential ::source-table-entry]]
   (let [needs-lookup (filter missing-table-id? source-tables)
         lookup       (or (batch-lookup-table-ids needs-lookup) {})
         resolved     (u/for-map [entry source-tables]

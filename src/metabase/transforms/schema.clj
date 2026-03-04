@@ -3,6 +3,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.queries.schema :as queries.schema]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -19,14 +20,8 @@
   "Either a table ID (int) or a reference map."
   [:or :int ::source-table-ref])
 
-(mr/def ::source-table-entry
-  "A source table entry in the array format. Combines alias with table reference."
-  [:map
-   [:alias :string]
-   [:database_id {:optional true} :int]
-   [:schema {:optional true} [:maybe :string]]
-   [:table {:optional true} :string]
-   [:table_id {:optional true} [:maybe :int]]])
+;; Re-export from transforms-base.util where the canonical definition lives.
+(mr/def ::source-table-entry ::transforms-base.u/source-table-entry)
 
 (mr/def ::checkpoint-strategy
   [:map
@@ -52,11 +47,12 @@
     [:map
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
-     ;; Accepts both new array format and legacy map format (from FE).
-     ;; Map format is converted to array in transform-source-in.
-     [:source-tables   [:or
-                        [:sequential ::source-table-entry]
-                        [:map-of :string ::source-table-value]]]
+     ;; TODO (Ngoc 2026-03-04) -- remove decode/normalize when FE sends array format for source-tables
+     [:source-tables   [:sequential {:decode/normalize (fn [st]
+                                                         (if (map? st)
+                                                           (transforms-base.u/source-tables-map->vec st)
+                                                           st))}
+                        ::source-table-entry]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
      [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
