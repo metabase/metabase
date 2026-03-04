@@ -4,8 +4,8 @@
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source :as source]
    [metabase-enterprise.replacement.source-swap :as source-swap]
-   [metabase-enterprise.replacement.swap.viz :as swap.viz]
    [metabase-enterprise.replacement.usages :as usages]
+   [metabase-enterprise.replacement.util :as replacement.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -55,6 +55,7 @@
                            (concat
                             ;; Card dataset queries
                             (eduction (comp (keep :dataset_query)
+                                            (filter replacement.util/valid-query?)
                                             (map #(lib/query metadata-provider %)))
                                       (vals cards))
                             ;; Transform query sources

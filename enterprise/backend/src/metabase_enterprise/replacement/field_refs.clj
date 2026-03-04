@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.field-refs
   (:require
    [clojure.walk :as clojure.walk]
+   [metabase-enterprise.replacement.util :as replacement.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.field.resolution :as lib.field.resolution]
@@ -90,31 +91,32 @@
 
 (defn- card-upgrade-field-refs!
   [card]
-  (let [dataset-query  (:dataset_query card)
-        dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)
-        viz            (:visualization_settings card)
-        viz' (-> viz
-                 vs/db->norm
-                 (update-existing ::vs/column-settings upgrade-card-column-settings dataset-query')
-                 (upgrade-viz-settings-locations dataset-query')
-                 vs/norm->db)
-        changes (cond-> {}
-                  (not= dataset-query dataset-query')
-                  (assoc :dataset_query dataset-query')
+  (when (replacement.util/valid-query? (:dataset_query card))
+    (let [dataset-query  (:dataset_query card)
+          dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)
+          viz            (:visualization_settings card)
+          viz' (-> viz
+                   vs/db->norm
+                   (update-existing ::vs/column-settings upgrade-card-column-settings dataset-query')
+                   (upgrade-viz-settings-locations dataset-query')
+                   vs/norm->db)
+          changes (cond-> {}
+                    (not= dataset-query dataset-query')
+                    (assoc :dataset_query dataset-query')
 
-                  ;; result_metadata is set to nil for native queries if not present in changes
-                  (and (not= dataset-query dataset-query') (lib/native-only-query? dataset-query'))
-                  (assoc :result_metadata (:result_metadata card))
+                    ;; result_metadata is set to nil for native queries if not present in changes
+                    (and (not= dataset-query dataset-query') (lib/native-only-query? dataset-query'))
+                    (assoc :result_metadata (:result_metadata card))
 
-                  (not= viz viz')
-                  (assoc :visualization_settings viz'))]
-    (when (seq changes)
-      (t2/update! :model/Card (:id card) changes))))
+                    (not= viz viz')
+                    (assoc :visualization_settings viz'))]
+      (when (seq changes)
+        (t2/update! :model/Card (:id card) changes)))))
 
 (defn- transform-upgrade-field-refs!
   [transform]
   (let [source (:source transform)]
-    (when (= :query (:type source))
+    (when (and (= :query (:type source) (replacement.util/valid-query? (:query source))))
       (let [query (:query source)
             query' (lib-be/upgrade-field-refs-in-query query)]
         (when (not= query query')
@@ -122,17 +124,19 @@
 
 (defn- segment-upgrade-field-refs!
   [segment]
-  (let [definition  (:definition segment)
-        definition' (lib-be/upgrade-field-refs-in-query definition)]
-    (when (not= definition definition')
-      (t2/update! :model/Segment (:id segment) {:definition definition'}))))
+  (when (replacement.util/valid-query? (:definition segment))
+    (let [definition  (:definition segment)
+          definition' (lib-be/upgrade-field-refs-in-query definition)]
+      (when (not= definition definition')
+        (t2/update! :model/Segment (:id segment) {:definition definition'})))))
 
 (defn- measure-upgrade-field-refs!
   [measure]
-  (let [definition  (:definition measure)
-        definition' (lib-be/upgrade-field-refs-in-query definition)]
-    (when (not= definition definition')
-      (t2/update! :model/Measure (:id measure) {:definition definition'}))))
+  (when (replacement.util/valid-query? (:definition measure))
+    (let [definition  (:definition measure)
+          definition' (lib-be/upgrade-field-refs-in-query definition)]
+      (when (not= definition definition')
+        (t2/update! :model/Measure (:id measure) {:definition definition'})))))
 
 (defn dashboard-upgrade-field-refs!
   "Upgrade field refs in parameter_mappings and column_settings for all dashcards in a dashboard.
@@ -151,12 +155,15 @@
       (let [parameter-mappings  (:parameter_mappings dashcard)
             parameter-mappings' (mapv (fn [pm]
                                         (if-let [card (get cards-by-id (:card_id pm))]
-                                          (let [query (lib-be/upgrade-field-refs-in-query (:dataset_query card))]
-                                            (upgrade-parameter-mappings query pm))
+                                          (if (replacement.util/valid-query? (:dataset_query card))
+                                            (let [query (lib-be/upgrade-field-refs-in-query (:dataset_query card))]
+                                              (upgrade-parameter-mappings query pm))
+                                            pm)
                                           pm))
                                       parameter-mappings)
             primary-card    (get cards-by-id (:card_id dashcard))
-            primary-query   (some-> primary-card :dataset_query lib-be/upgrade-field-refs-in-query)
+            primary-query   (when (replacement.util/valid-query? (:dataset_query primary-card))
+                              (lib-be/upgrade-field-refs-in-query (:dataset_query primary-card)))
             viz             (vs/db->norm (:visualization_settings dashcard))
             column-settings (::vs/column-settings viz)
             column-settings' (if primary-query
