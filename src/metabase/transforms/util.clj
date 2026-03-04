@@ -392,6 +392,8 @@
         db-id               (:database query)
         metadata-provider   (lib-be/application-database-metadata-provider db-id)
         checkpoint-column   (lib.metadata/field metadata-provider checkpoint-field-id)
+        _                   (when (or (nil? checkpoint-column) (not (:active checkpoint-column)))
+                              (throw (ex-info "Checkpoint field does not exist or is not active" {:checkpoint-field-id checkpoint-field-id})))
         checkpoint-table-id (:table-id checkpoint-column)
         ;; Find the table tag that references the checkpoint field's table
         table-tag           (some (fn [[k v]]
