@@ -1,10 +1,9 @@
-/* eslint-disable metabase/no-literal-metabase-strings -- This string only shows for admins */
-
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
+import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
 import { slugify } from "metabase/lib/formatting";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import {
@@ -21,20 +20,18 @@ import type { FieldId } from "metabase-types/api";
 
 import { useCreateTenantMutation } from "../../../api/tenants";
 
+import S from "./CreateTenantsOnboardingStep.module.css";
 import { TenantIdentifierInput } from "./TenantIdentifierInput";
-
-const createEmptyTenant = (index: number): CreatedTenantData => ({
-  name: `Tenant ${index}`,
-  tenantIdentifier: "",
-  slug: `tenant-${index}`,
-});
+import { getIsolationFieldConfig } from "./isolation-field-config";
 
 export const CreateTenantsOnboardingStep = ({
   onTenantsCreated,
   selectedFieldIds,
+  strategy,
 }: {
   onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
   selectedFieldIds?: FieldId[];
+  strategy?: DataSegregationStrategy | null;
 }) => {
   const [sendToast] = useToast();
 
@@ -74,16 +71,21 @@ export const CreateTenantsOnboardingStep = ({
     setTenants((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  const fieldConfig = getIsolationFieldConfig(strategy);
+
   const handleCreateTenants = useCallback(async () => {
     try {
       // Create all tenants sequentially
       for (const tenant of tenants) {
+        const attributes =
+          fieldConfig && tenant.dataIsolationFieldValue
+            ? { [fieldConfig.attributeKey]: tenant.dataIsolationFieldValue }
+            : {};
+
         await createTenant({
           name: tenant.name,
           slug: tenant.slug,
-          attributes: {
-            tenant_identifier: tenant.tenantIdentifier,
-          },
+          attributes,
         }).unwrap();
       }
 
@@ -102,21 +104,17 @@ export const CreateTenantsOnboardingStep = ({
         message: getErrorMessage(error, t`Failed to create tenants`),
       });
     }
-  }, [tenants, createTenant, sendToast, onTenantsCreated]);
+  }, [tenants, fieldConfig, createTenant, sendToast, onTenantsCreated]);
 
   const isValid = tenants.every(
     (tenant) =>
       tenant.name.trim() &&
-      tenant.tenantIdentifier.trim() &&
-      tenant.slug.trim(),
+      tenant.slug.trim() &&
+      tenant.dataIsolationFieldValue.trim(),
   );
 
   return (
     <Stack gap="md">
-      <Text c="text-secondary" size="sm" lh="lg">
-        {t`Use tenants to isolate external organizations on the same Metabase instance. Tenant users will see rows in the tables you selected where the value in the columns you chose in the previous step equals the value you enter in this screen for the tenant_identifier attribute.`}
-      </Text>
-
       <Stack gap="md">
         {tenants.map((tenant, index) => (
           <Paper key={index} withBorder p="md" radius="md">
@@ -128,8 +126,9 @@ export const CreateTenantsOnboardingStep = ({
                     updateTenantCard(index, "name", e.target.value)
                   }
                   placeholder={t`Tenant name`}
-                  size="md"
                   flex={1}
+                  fw="bold"
+                  classNames={{ input: S.TenantNameInput }}
                 />
                 {tenants.length > 1 && (
                   <Button
@@ -144,13 +143,29 @@ export const CreateTenantsOnboardingStep = ({
                 )}
               </Group>
 
-              <TenantIdentifierInput
-                value={tenant.tenantIdentifier}
-                onChange={(value) =>
-                  updateTenantCard(index, "tenantIdentifier", value)
-                }
-                selectedFieldIds={selectedFieldIds}
-              />
+              {strategy === "row-column-level-security" && (
+                <TenantIdentifierInput
+                  value={tenant.dataIsolationFieldValue}
+                  onChange={(value) =>
+                    updateTenantCard(index, "dataIsolationFieldValue", value)
+                  }
+                  selectedFieldIds={selectedFieldIds}
+                />
+              )}
+
+              {(strategy === "connection-impersonation" ||
+                strategy === "database-routing") &&
+                fieldConfig && (
+                  <TenantFormField
+                    label={fieldConfig.label}
+                    description={fieldConfig.description}
+                    value={tenant.dataIsolationFieldValue}
+                    onChange={(value) =>
+                      updateTenantCard(index, "dataIsolationFieldValue", value)
+                    }
+                    placeholder={fieldConfig.placeholder}
+                  />
+                )}
 
               <TenantFormField
                 label={t`Tenant slug`}
@@ -217,3 +232,9 @@ const TenantFormField = ({
     />
   </Stack>
 );
+
+const createEmptyTenant = (index: number): CreatedTenantData => ({
+  name: `Tenant ${index}`,
+  dataIsolationFieldValue: "",
+  slug: `tenant-${index}`,
+});
