@@ -7,11 +7,12 @@
    [metabase.models.transforms.transform-run]
    [metabase.models.transforms.transform-run-cancelation]
    [metabase.models.transforms.transform-tag]
+   [metabase.transforms-base.ordering]
+   [metabase.transforms-base.util]
    [metabase.transforms.canceling]
    [metabase.transforms.crud]
    [metabase.transforms.execute]
    [metabase.transforms.jobs]
-   [metabase.transforms.ordering]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.util]
@@ -21,14 +22,15 @@
 (p/import-vars
  [metabase.transforms.settings
   transform-timeout]
- [metabase.transforms.util
-  add-source-readable
+ [metabase.transforms-base.util
   native-query-transform?
   python-transform?
   query-transform?
   transform-source-database
   transform-source-type
-  transform-type
+  transform-type]
+ [metabase.transforms.util
+  add-source-readable
   is-temp-transform-table?]
  [metabase.transforms.crud
   python-source-table-ref->table-id
@@ -47,7 +49,7 @@
   cancel-run!]
  [metabase.transforms.execute
   execute!]
- [metabase.transforms.ordering
+ [metabase.transforms-base.ordering
   transform-ordering
   get-transform-cycle]
  [metabase.transforms.jobs
