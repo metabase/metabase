@@ -6,12 +6,16 @@ import type { HoveredObject } from "metabase/visualizations/types";
 import type { ClickObjectDataRow } from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
-import type { Point } from "metabase-types/api/dataset";
 
-import type { LeafletMapProps } from "./LeafletMap";
-import { LeafletMap } from "./LeafletMap";
+import {
+  LeafletMap,
+  type LeafletMapPoint,
+  type LeafletMapProps,
+} from "./LeafletMap";
 
-interface LeafletMarkerPinMapProps extends LeafletMapProps<Point> {
+type IndexedPoint = LeafletMapPoint<[number]>;
+
+interface LeafletMarkerPinMapProps extends LeafletMapProps<IndexedPoint> {
   onHoverChange?: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick?: (
     clickObject: {
@@ -63,7 +67,7 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
     }
   }
 
-  _createMarkers = (points?: Point[] | null) => {
+  _createMarkers = (points?: IndexedPoint[] | null) => {
     const { pinMarkerLayer } = this;
     if (!this.map || !pinMarkerLayer || !points) {
       return;
@@ -81,29 +85,26 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
     const crossesRightDateline = mapWest < 180 && mapEast > 180;
     const shouldGetWrappedPoints = crossesLeftDateline || crossesRightDateline;
 
-    const wrappedPoints: Array<[number, number] | [number, number, number]> =
-      shouldGetWrappedPoints
-        ? points.flatMap((point, index) => {
-            const [lat, lng] = point;
-            // we need to store the data index separately
-            // because the same point can have multiple markers
-            const wrapped: Array<[number, number, number]> = [
-              [lat, lng, index],
-            ];
+    const wrappedPoints: IndexedPoint[] = shouldGetWrappedPoints
+      ? points.flatMap((point, index) => {
+          const [lat, lng] = point;
+          // we need to store the data index separately
+          // because the same point can have multiple markers
+          const wrapped: IndexedPoint[] = [[lat, lng, index]];
 
-            // note: for wide screens, we may need extra copies on both sides
-            if (crossesLeftDateline) {
-              // copy on the left side
-              wrapped.push([lat, lng - 360, index]);
-            }
+          // note: for wide screens, we may need extra copies on both sides
+          if (crossesLeftDateline) {
+            // copy on the left side
+            wrapped.push([lat, lng - 360, index]);
+          }
 
-            if (crossesRightDateline) {
-              // copy on the right side
-              wrapped.push([lat, lng + 360, index]);
-            }
-            return wrapped;
-          })
-        : points;
+          if (crossesRightDateline) {
+            // copy on the right side
+            wrapped.push([lat, lng + 360, index]);
+          }
+          return wrapped;
+        })
+      : points;
 
     const markers = pinMarkerLayer.getLayers() as L.Marker[];
     const max = Math.max(wrappedPoints.length, markers.length);
@@ -114,9 +115,7 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
       }
 
       const index =
-        wrappedPoints.length > points.length
-          ? (wrappedPoints[i] as [number, number, number])[2]
-          : i;
+        wrappedPoints.length > points.length ? wrappedPoints[i][2] : i;
       if (i >= markers.length) {
         // create new markers for new points
         const marker = this._createMarker(index);
@@ -128,9 +127,7 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
         const { lat, lng } = markers[i].getLatLng();
         // if any marker doesn't match the point, update it
         if (lng !== wrappedPoints[i][0] || lat !== wrappedPoints[i][1]) {
-          markers[i].setLatLng(
-            wrappedPoints[i].slice(0, 2) as [number, number],
-          );
+          markers[i].setLatLng([wrappedPoints[i][0], wrappedPoints[i][1]]);
           // we need to re-attach the pointer events because the indexes might have changed from zooming
           this._setupMarkerEvents(markers[i], index);
         }
