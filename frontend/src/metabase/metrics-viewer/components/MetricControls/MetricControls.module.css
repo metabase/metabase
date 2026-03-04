@@ -1,10 +1,11 @@
 .container {
   display: inline-flex;
-  min-height: 42px;
+  min-height: 48px;
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-md);
+  border-radius: var(--mantine-radius-lg);
   padding: 0 var(--mantine-spacing-sm);
+  box-shadow: var(--mantine-shadow-sm);
 }
 
 .divider {
@@ -13,6 +14,6 @@
 }
 
 .controlButton {
-  font-weight: normal;
+  font-weight: bold;
   padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
 }
