@@ -192,9 +192,7 @@
   ([entity]
    (upgrade! entity nil))
   ([entity loaded-object]
-   (cond
-     ;; [type id] tuple format - used by runner
-     (and (vector? entity) (= 2 (count entity)))
+   (when (and (vector? entity) (= 2 (count entity)))
      (let [[entity-type entity-id] entity]
        (case entity-type
          :dashboard (dashboard-upgrade-field-refs! entity-id)
@@ -203,15 +201,4 @@
          :segment   (when loaded-object (segment-upgrade-field-refs! loaded-object))
          :measure   (when loaded-object (measure-upgrade-field-refs! loaded-object))
          ;; table, document - no-op
-         nil))
-
-     ;; Direct entity map (for backwards compatibility)
-     (map? entity)
-     (cond
-       (:dataset_query entity) (card-upgrade-field-refs! entity)
-       (and (:source entity) (:id entity)) (transform-upgrade-field-refs! entity)
-       (and (:definition entity) (:table_id entity) (not (:aggregation entity))) (segment-upgrade-field-refs! entity)
-       (:definition entity) (measure-upgrade-field-refs! entity)
-       :else :do-nothing)
-
-     :else :do-nothing)))
+         nil)))))

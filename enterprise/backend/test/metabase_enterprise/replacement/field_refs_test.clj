@@ -292,7 +292,7 @@
 
 (deftest upgrade-dispatch-nil-test
   (testing "upgrade! with nil entity is a no-op"
-    (is (= :do-nothing (field-refs/upgrade! nil)))))
+    (is (nil? (field-refs/upgrade! nil)))))
 
 (deftest upgrade-dispatch-unknown-vector-test
   (testing "upgrade! with unknown entity type vector is a no-op"
