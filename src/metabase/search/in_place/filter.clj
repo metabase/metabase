@@ -300,7 +300,7 @@
     (sql.helpers/where query false-clause)))
 
 ;; Things that don't belong to collections
-(doseq [model ["database" "action" "indexed-entity"]]
+(doseq [model ["database" "action" "indexed-entity" "measure" "segment"]]
   (defmethod build-optional-filter-query [:collection model]
     [_filter _model query _collection-id]
     ;; These models don't have collection_id, so they never match

@@ -475,3 +475,13 @@
                       base-search-query
                       "action"
                       (merge default-search-ctx {:search-string "foo" :search-native-query true}))))))))
+
+(deftest ^:parallel build-collection-filter-for-non-collection-models-test
+  (testing "collection filter on models without collections returns false-clause (no results, no error)"
+    (doseq [model ["measure" "segment" "database" "action" "indexed-entity"]]
+      (testing model
+        (let [result (search.filter/build-filters
+                      base-search-query model
+                      (merge default-search-ctx {:collection 1}))]
+          (is (some #{[:inline [:= 0 1]]}
+                    (tree-seq sequential? seq (:where result)))))))))
