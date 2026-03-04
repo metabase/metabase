@@ -83,15 +83,19 @@
         (let [mp       (mt/metadata-provider)
               products (lib.metadata/table mp (mt/id :products))
               orders   (lib.metadata/table mp (mt/id :orders))]
-          (mt/with-temp [:model/Card {old-source-id :id} {:dataset_query (lib/query mp products)}
-                         :model/Card {new-source-id :id} {:dataset_query (lib/query mp orders)}
+          (mt/with-temp [:model/Card {old-source-id :id :as source} {:dataset_query (lib/query mp products)}
+                         :model/Card {new-source-id :id :as destination} {:dataset_query (lib/query mp orders)}
                          :model/Card {native-card-id :id :as native-card}
                          {:dataset_query (lib/native-query mp (str "SELECT * FROM {{#" old-source-id "}}"))}]
+            (doseq [card [source destination native-card]]
+              (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
             ;; Perform the swap
             (source-swap/do-swap! [:card native-card-id] [:card old-source-id] [:card new-source-id])
             ;; FIXME
             (is (contains? (set (usages/direct-usages [:card new-source-id]))
-                           [:card native-card-id]))))))))
+                           [:card native-card-id]))
+            (doseq [card [source destination native-card]]
+              (events/publish-event! :event/card-delete {:object card :user-id (mt/user->id :rasta)}))))))))
 
 ;;; ------------------------------------------------ swap-source: card -> X ------------------------------------------------
 

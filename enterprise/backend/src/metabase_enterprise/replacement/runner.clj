@@ -170,7 +170,12 @@
   ([old-source
     new-source
     progress]
-   (assert (:success (source/check-replace-source old-source new-source)))
+   (let [check-result (source/check-replace-source old-source new-source)]
+     (when-not (:success check-result)
+       (throw (ex-info "Source replacement check failed"
+                       {:old-source old-source
+                        :new-source new-source
+                        :check-result check-result}))))
 
    (let [all-transitive        (usages/transitive-usages old-source)]
      (run-swap* {:all-transitive-dependents all-transitive}

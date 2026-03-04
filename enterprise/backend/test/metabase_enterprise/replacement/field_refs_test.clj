@@ -375,10 +375,6 @@
   (testing "upgrade! with :table entity is a no-op"
     (is (nil? (field-refs/upgrade! [:table 123])))))
 
-(deftest upgrade-dispatch-table-noop-test
-  (testing "upgrade! with [:table id] is a no-op (tables have no field refs to upgrade)"
-    (is (nil? (field-refs/upgrade! [:table 42])))))
-
 (deftest upgrade-dispatch-dashboard-via-upgrade!-test
   (testing "upgrade! with [:dashboard id] dispatches to dashboard-upgrade-field-refs!"
     (mt/dataset test-data
