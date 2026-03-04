@@ -49,7 +49,7 @@ const getSettingsStyle = (
 
 const REMARK_PLUGINS = [remarkGfm];
 const REHYPE_PLUGINS: Options["rehypePlugins"] = [
-  rehypeExternalLinks({ rel: ["noreferrer"], target: "_blank" }),
+  [rehypeExternalLinks, { rel: ["noreferrer"], target: "_blank" }],
 ];
 
 export function Text({
