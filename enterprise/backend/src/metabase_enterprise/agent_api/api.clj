@@ -13,6 +13,7 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.query-processor :as qp]
@@ -446,11 +447,14 @@
 ;;; -------------------------------------------- Stateless JWT Authentication --------------------------------------------
 
 (defn- authenticate-with-jwt
-  "Authenticate a request using a stateless JWT. Returns {:user <user>} on success,
-   or {:error <type> :message <msg>} on failure. Does NOT create a session.
+  "Authenticate a request using a stateless JWT. Returns `{:user <user> :scope <scope-string-or-nil>}` on success, or
+   `{:error <type> :message <msg>}` on failure. Does NOT create a session.
 
-   Uses auth-identity/authenticate to validate the JWT, which reuses the same
-   implementation as the /auth/sso endpoint and handles all settings validation."
+   Uses auth-identity/authenticate to validate the JWT, which reuses the same implementation as the /auth/sso endpoint
+   and handles all settings validation.
+
+   When the JWT contains a `\"scope\"` claim, it is returned as `:scope` so that [[enforce-authentication]] can attach
+   parsed scopes to the request."
   [token]
   (let [result (auth-identity/authenticate :provider/jwt {:token token})]
     (if (:success? result)
@@ -458,7 +462,8 @@
       ;; The provider uses jwt-attribute-email setting to extract the email from claims
       (if-let [user (when-let [email (get-in result [:user-data :email])]
                       (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))]
-        {:user user}
+        {:user  user
+         :scope (get (:jwt-data result) "scope")}
         ;; Don't reveal whether the user exists or not - use same error as invalid JWT
         {:error   "invalid_jwt"
          :message "Invalid or expired JWT token."})
@@ -508,7 +513,10 @@
           (let [result (authenticate-with-jwt bearer-token)]
             (if-let [user (:user result)]
               (request/with-current-user (:id user)
-                (handler request respond raise))
+                (handler (cond-> request
+                           (:scope result)
+                           (assoc :token-scopes (scope/parse-scopes (:scope result))))
+                         respond raise))
               (respond (error-response (:error result) (:message result))))))))))
 
 (def ^:private +auth

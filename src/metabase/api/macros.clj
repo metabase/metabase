@@ -27,6 +27,7 @@
    [medley.core :as m]
    [metabase.api.common.internal]
    [metabase.api.macros.defendpoint.open-api]
+   [metabase.api.macros.scope]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -583,13 +584,21 @@
           body))))
 
 (mu/defn- middleware-forms
-  "Middleware to apply to base handler. Currently the only option is middleware for handling multipart requests, applied
-  if the handler metadata contains
+  "Middleware to apply to base handler. Supports:
 
-    {:multipart true}"
+    {:multipart true}  — wraps with multipart-params middleware
+    {:scope \"agent:workspaces\"} — wraps with scope enforcement middleware
+
+   Endpoints without `:scope` get [[metabase.api.macros.scope/ensure-scopes-checked]] to prevent scoped
+   tokens from reaching endpoints that haven't opted in."
   [{:keys [metadata], :as _args} :- ::parsed-args]
-  (when (:multipart metadata)
-    '[ring.middleware.multipart-params/wrap-multipart-params]))
+  (cond-> []
+    (:multipart metadata)
+    (conj 'ring.middleware.multipart-params/wrap-multipart-params)
+    (:scope metadata)
+    (conj (list 'metabase.api.macros.scope/enforce-scope (:scope metadata)))
+    (not (:scope metadata))
+    (conj 'metabase.api.macros.scope/ensure-scopes-checked)))
 
 (mu/defn- apply-middleware :- ::handler
   [handler    :- ::handler
