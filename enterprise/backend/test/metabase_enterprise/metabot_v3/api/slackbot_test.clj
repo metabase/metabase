@@ -812,7 +812,7 @@
     (with-slackbot-setup
       (let [mock-data-parts [{:type  "static_viz"
                               :value {:entity_id 101
-                                      :caption   "AI-generated caption"}}]
+                                      :title     "AI-generated caption"}}]
             event-body      (update base-dm-event :event merge
                                     {:text      "Show revenue"
                                      :channel   "C456"
@@ -844,7 +844,7 @@
       (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
             mock-data-parts [{:type  "adhoc_viz"
                               :value {:query   mock-query
-                                      :caption "Sales Data"
+                                      :title   "Sales Data"
                                       :link    "/question#abc123"}}]
             event-body      (update base-dm-event :event merge
                                     {:text      "Show sales"
