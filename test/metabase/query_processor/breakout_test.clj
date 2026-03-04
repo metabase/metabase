@@ -13,7 +13,8 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (deftest ^:parallel single-column-with-breakout-test
   (mt/test-drivers (mt/normal-drivers)
@@ -335,12 +336,34 @@
                                              :condition    [:= $product_id &Products.products.id]
                                              :fields       [&Products.products.price]}]
                                    :fields [[:field %id {:base-type :type/BigInteger}]]})]
+          ;; DEBUG: Verify fingerprints exist at each stage of the flow
+          (let [mp (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                    [source-card-query])
+                longitude-field (lib.metadata/field mp (mt/id :people :longitude))
+                card (lib.metadata/card mp 1)
+                longitude-in-card (m/find-first #(= (:name %) "LONGITUDE")
+                                                (:result-metadata card))]
+            ;; Assert 1: Field from metadata provider should have fingerprint
+            (testing "longitude field from metadata provider has fingerprint with min/max"
+              (is (some? (get-in (:fingerprint longitude-field) [:type :type/Number :min]))
+                  (format "Field fingerprint: %s" (pr-str (:fingerprint longitude-field))))
+              (is (some? (get-in (:fingerprint longitude-field) [:type :type/Number :max]))
+                  (format "Field fingerprint: %s" (pr-str (:fingerprint longitude-field)))))
+            ;; Assert 2: Card result-metadata should include fingerprint
+            (testing "card result-metadata includes longitude with fingerprint"
+              (is (some? longitude-in-card)
+                  (format "Card result-metadata: %s" (pr-str (map :name (:result-metadata card)))))
+              (when longitude-in-card
+                (is (some? (get-in (:fingerprint longitude-in-card) [:type :type/Number :min]))
+                    (format "Longitude in card fingerprint: %s" (pr-str (:fingerprint longitude-in-card)))))))
           (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                             [source-card-query])
             (let [query            (-> (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1))
                                        (lib/aggregate (lib/count)))
                   people-longitude (m/find-first #(= (:id %) (mt/id :people :longitude))
                                                  (lib/breakoutable-columns query))
+                  _                (log/infof "DEBUG: people-longitude from breakoutable-columns fingerprint: %s"
+                                              (pr-str (:fingerprint people-longitude)))
                   _                (is (some? people-longitude))
                   binning-strategy (m/find-first #(= (:display-name %) "Bin every 20 degrees")
                                                  (lib/available-binning-strategies query people-longitude))
