@@ -1581,10 +1581,14 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
                 write=to_dialect,
                 pretty=True,
                 identify=use_identify,
-            )[0]
+            )
 
-            result['transpiled_sql'] = transpiled
-            result['status'] = 'success'
+            if len(transpiled) > 1:
+                result['status'] = 'error'
+                result['error_message'] = 'Multiple SQL statements are not supported. Please provide a single query.'
+            else:
+                result['transpiled_sql'] = transpiled[0]
+                result['status'] = 'success'
         except Exception as e:
             result['status'] = 'error'
             result['error_message'] = e.args[0]
