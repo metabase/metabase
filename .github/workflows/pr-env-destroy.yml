@@ -9,6 +9,13 @@ on:
         required: false
         type: boolean
         default: false
+      pr_number:
+        description: 'PR number (required for manual dispatch)'
+        required: false
+        type: string
+
+env:
+  PR_NUMBER: ${{ inputs.pr_number || github.event.number }}
 
 jobs:
   destroy_pr:
@@ -62,8 +69,8 @@ jobs:
       - name: Destroy PR Review ENV
         if: ${{ !inputs.self_hosting }}
         run: |
-          kubectl delete metabase -n hosting-pr${{ github.event.number }} hosting-pr${{ github.event.number }}
-          kubectl delete ns hosting-pr${{ github.event.number }}
+          kubectl delete metabase -n hosting-pr${{ env.PR_NUMBER }} hosting-pr${{ env.PR_NUMBER }}
+          kubectl delete ns hosting-pr${{ env.PR_NUMBER }}
       - name: Setup Helm
         if: ${{ inputs.self_hosting }}
         uses: azure/setup-helm@v4
@@ -72,8 +79,8 @@ jobs:
       - name: Destroy PR Review ENV (self-hosting)
         if: ${{ inputs.self_hosting }}
         run: |
-          helm uninstall hosting-pr${{ github.event.number }} --namespace hosting-pr${{ github.event.number }} || true
-          kubectl delete ns hosting-pr${{ github.event.number }} || true
+          helm uninstall hosting-pr${{ env.PR_NUMBER }} --namespace hosting-pr${{ env.PR_NUMBER }} || true
+          kubectl delete ns hosting-pr${{ env.PR_NUMBER }} || true
       - name: Setup psql client
         run: |
           sudo apt-get update
@@ -85,4 +92,4 @@ jobs:
           -h ${{ secrets.PR_ENV_DB_HOST }} \
           -U ${{ secrets.PR_ENV_DB_USER }} \
           -d ${{ secrets.PR_ENV_DB_NAME }} \
-          -c "DROP DATABASE IF EXISTS hosting_pr${{ github.event.number }};"
+          -c "DROP DATABASE IF EXISTS hosting_pr${{ env.PR_NUMBER }};"

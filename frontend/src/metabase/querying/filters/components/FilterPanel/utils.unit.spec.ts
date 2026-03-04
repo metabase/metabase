@@ -1,5 +1,5 @@
 import * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import { getFilterItems } from "./utils";
 
@@ -13,7 +13,7 @@ function createMultiStageFilteredQuery() {
   const stageIndexes = Array.from({ length: STAGE_COUNT }, (_, i) => i);
   return stageIndexes.reduce(
     (query) => Lib.appendStage(createFilteredQuery(query)),
-    createQuery(),
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   );
 }
 

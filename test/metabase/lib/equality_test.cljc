@@ -360,7 +360,7 @@
           table-col #(assoc % :lib/source :source/table-defaults)
           join-col  #(-> %
                          (merge {:lib/source                   :source/joins
-                                 :metabase.lib.join/join-alias "Orders"}))
+                                 :lib/join-alias "Orders"}))
           sorted    #(sort-by (juxt :position :lib/original-join-alias) %)
           visible   (lib/visible-columns query)]
       (is (=? (->> (sorted (concat (map table-col cols)
@@ -445,7 +445,7 @@
                            :table-id                     (meta/id :orders)
                            :id                           (meta/id :orders :id)
                            :name                         "ID_2"
-                           :metabase.lib.join/join-alias "Orders"
+                           :lib/join-alias "Orders"
                            :lib/source                   :source/joins
                            :fk-target-field-id           nil
                            :parent-id                    nil
@@ -459,7 +459,7 @@
                            :table-id                     (meta/id :orders)
                            :id                           (meta/id :orders :tax)
                            :name                         "TAX_2"
-                           :metabase.lib.join/join-alias "Orders"
+                           :lib/join-alias "Orders"
                            :lib/source                   :source/joins
                            :fk-target-field-id           nil
                            :parent-id                    nil
@@ -923,7 +923,7 @@
                 :lib/source                   :source/joins
                 :lib/source-column-alias      "TITLE"
                 :lib/type                     :metadata/column
-                :metabase.lib.join/join-alias "question b - Product"
+                :lib/join-alias "question b - Product"
                 :name                         "TITLE"}
           refs [[:field
                  {:lib/uuid       "435541d8-8c9e-4a95-ac12-0e4c246ca797"
@@ -990,7 +990,7 @@
           a-ref [:field {:lib/uuid                                          "28d2f111-3882-4ffb-a650-0650bc7d7c3b"
                          :effective-type                                    :type/DateTime
                          :base-type                                         :type/DateTime
-                         :metabase.lib.query/transformation-added-base-type true}
+                         :lib/transformation-added-base-type true}
                  66]]
       (is (=? {:id 66, :display-name "Created At"}
               (lib.equality/find-matching-column a-ref cols))))))
@@ -1008,7 +1008,7 @@
               :lib/source-column-alias      "ID"
               :lib/source-uuid              "1c2a0643-f25c-4099-a2d5-7c7e790b632f"
               :lib/type                     :metadata/column
-              :metabase.lib.join/join-alias "Orders"
+              :lib/join-alias "Orders"
               :name                         "ID_2"
               :semantic-type                :type/PK
               :table-id                     55060}
@@ -1069,7 +1069,7 @@
                     :lib/source                   :source/joins
                     :lib/source-column-alias      "NAME"
                     :lib/source-uuid              "00000000-0000-0000-0000-000000000000"
-                    :metabase.lib.join/join-alias "Cat"
+                    :lib/join-alias "Cat"
                     :name                         "NAME"})
             col-2 (merge
                    (meta/field-metadata :categories :name)
@@ -1123,21 +1123,21 @@
 (deftest ^:parallel column-equality-binning-test
   (testing "Two columns with the same binning should be equal; different binning should make them unequal"
     (let [col               (assoc (meta/field-metadata :orders :total)
-                                   :metabase.lib.field/binning {:bin-width 20.0
-                                                                :max-value 160.0
-                                                                :min-value 0.0
-                                                                :num-bins  10
-                                                                :strategy  :num-bins})
-          same-binning      (assoc col :metabase.lib.field/binning {:bin-width 20.0
-                                                                    :max-value 160.0
-                                                                    :min-value 0.0
-                                                                    :num-bins  10
-                                                                    :strategy  :num-bins})
-          different-binning (assoc col :metabase.lib.field/binning {:bin-width 5.0
-                                                                    :max-value 160.0
-                                                                    :min-value 5.0
-                                                                    :num-bins  50
-                                                                    :strategy  :num-bins})]
+                                   :lib/binning {:bin-width 20.0
+                                                 :max-value 160.0
+                                                 :min-value 0.0
+                                                 :num-bins  10
+                                                 :strategy  :num-bins})
+          same-binning      (assoc col :lib/binning {:bin-width 20.0
+                                                     :max-value 160.0
+                                                     :min-value 0.0
+                                                     :num-bins  10
+                                                     :strategy  :num-bins})
+          different-binning (assoc col :lib/binning {:bin-width 5.0
+                                                     :max-value 160.0
+                                                     :min-value 5.0
+                                                     :num-bins  50
+                                                     :strategy  :num-bins})]
       (is (lib.equality/= col same-binning))
       (is (not (lib.equality/= col different-binning))))))
 

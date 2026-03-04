@@ -562,7 +562,7 @@
     (is (= source-database-id query-db-id))
     (is (= source-table-id magic-card-table-id))
     (is (= source-card-id
-           (lib/source-card-id magic-card-query)))
+           (lib/primary-source-card-id magic-card-query)))
     (doseq [breakout (lib/breakouts magic-card-query)
             field-id (lib/all-field-ids breakout)]
       (is (contains? valid-source-ids field-id)))))

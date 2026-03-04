@@ -8,7 +8,6 @@ import type { DraftDashboardSubscription } from "metabase-types/store";
 
 import {
   CANCEL_EDITING_PULSE,
-  FETCH_PULSE_CARD_PREVIEW,
   FETCH_PULSE_FORM_INPUT,
   FETCH_PULSE_LIST_BY_DASHBOARD_ID,
   SAVE_EDITING_PULSE,
@@ -52,24 +51,6 @@ export const formInput = handleActions(
     },
   },
   {} as ChannelApiResponse,
-);
-
-type CardPreviewEntry = { id: number };
-type CardPreviewsState = Record<number, CardPreviewEntry>;
-
-export const cardPreviews = handleActions(
-  {
-    [FETCH_PULSE_CARD_PREVIEW]: {
-      next: (
-        state: CardPreviewsState,
-        { payload }: { payload: CardPreviewEntry },
-      ) => ({
-        ...state,
-        [payload.id]: payload,
-      }),
-    },
-  },
-  {} as CardPreviewsState,
 );
 
 export const pulseList = handleActions(
