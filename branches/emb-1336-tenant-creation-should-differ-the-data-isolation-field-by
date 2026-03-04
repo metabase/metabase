@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1327-show-tenant_identifier-suggestions-in-a-menu-from-row-level",
-    "hash": "d22564ff6d770e3e6b832525d3e853db165b8855"
+    "hash": "2b0144f40a9cf117a83739113d8c7204366c2558"
   },
   "upstream": {
     "branch": "emb-1336-tenant-creation-should-differ-the-data-isolation-field-by"
