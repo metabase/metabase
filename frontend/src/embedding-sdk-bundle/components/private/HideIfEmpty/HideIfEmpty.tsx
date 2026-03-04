@@ -46,17 +46,12 @@ function useShouldRender(node: HTMLElement | null): boolean {
       return;
     }
 
-    let frameId: number;
-
     const update = () => {
-      cancelAnimationFrame(frameId);
-      frameId = requestAnimationFrame(() => {
-        setShouldRender(hasVisibleContent(node));
-      });
+      setShouldRender(hasVisibleContent(node));
     };
 
     // Initial check runs synchronously to avoid a flash of content
-    setShouldRender(hasVisibleContent(node));
+    update();
 
     const observer = new MutationObserver(update);
     observer.observe(node, {
@@ -66,7 +61,6 @@ function useShouldRender(node: HTMLElement | null): boolean {
     });
 
     return () => {
-      cancelAnimationFrame(frameId);
       observer.disconnect();
     };
   }, [node]);
