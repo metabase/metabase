@@ -30,6 +30,19 @@
             (testing "instructions contain actual query ID link"
               (is (str/includes? output (str "metabase://query/" query-id))))))))))
 
+(deftest create-sql-query-validation-error-output-test
+  (testing "create_sql_query output contains appropriate info on validation failure"
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {db-id :id} {}]
+          (let [result (agent-sql/create-sql-query-tool
+                        {:database_id db-id
+                         :sql_query   "SELECT ="})
+                output   (:output result)]
+            (is (string? output))
+            (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
+            (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error"))))))))
+
 (deftest edit-sql-query-output-test
   (testing "edit_sql_query output includes edit-specific instructions with query ID"
     (mt/test-drivers #{:h2}
@@ -58,7 +71,7 @@
               (is (str/includes? output "Make further refinements using this tool again")))))))))
 
 (deftest edit-sql-query-validation-error-output-test
-  (testing "edit_sql_query output is adjusted for validation failure"
+  (testing "edit_sql_query output contains appropriate info on validation failure"
     (mt/test-drivers #{:h2 :postgres}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
@@ -101,3 +114,22 @@
               (is (str/includes? output (str "metabase://query/" query-id))))
             (testing "instructions mention edit_sql_query as alternative"
               (is (str/includes? output "this tool or edit_sql_query again")))))))))
+
+(deftest replace-sql-query-validtion-error-output-test
+  (testing "replace_sql_query output contains appropriate info on validation failure"
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {db-id :id} {}]
+          (let [query-id "test-replace-q"
+                memory   (atom {:state {:queries {query-id {:database db-id
+                                                            :type     :native
+                                                            :native   {:query "SELECT 1"}}}}})
+                result   (binding [shared/*memory-atom* memory]
+                           (agent-sql/replace-sql-query-tool
+                            {:query_id  query-id
+                             :checklist "- [x] checked"
+                             :new_query "SELECT ="}))
+                output   (:output result)]
+            (is (string? output))
+            (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
+            (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error"))))))))
