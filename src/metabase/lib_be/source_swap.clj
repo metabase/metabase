@@ -179,7 +179,7 @@
     (-> stage
         (u/update-some :fields      #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true}))
         (u/update-some :joins       #(upgrade-field-refs-in-joins query stage-number %))
-        (u/update-some :expressions #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true}))
+        (u/update-some :expressions #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
         (u/update-some :filters     #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
         (u/update-some :aggregation #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
         (u/update-some :breakout    #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true}))
@@ -363,7 +363,7 @@
   (-> (lib.util/query-stage query stage-number)
       (u/update-some :fields      #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))
       (u/update-some :joins       #(swap-field-refs-in-joins query stage-number field-id-mapping %))
-      (u/update-some :expressions #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))
+      (u/update-some :expressions #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
       (u/update-some :filters     #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
       (u/update-some :aggregation #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
       (u/update-some :breakout    #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))
