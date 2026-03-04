@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
    [metabase-enterprise.metabot-v3.api.slackbot.events :as slackbot.events]
+   [metabase-enterprise.metabot-v3.api.slackbot.persistence :as slackbot.persistence]
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
@@ -71,7 +72,7 @@
                            set)
         _             (log/infof "[slackbot] Looking up message history for conversation %s, bot-msg-ids: %s"
                                  conversation-id (pr-str bot-msg-ids))
-        msg-history   (metabot-v3.persistence/get-message-history conversation-id bot-msg-ids)
+        msg-history   (slackbot.persistence/get-message-history conversation-id bot-msg-ids)
         _             (log/infof "[slackbot] Found message history for %d bot messages" (count msg-history))]
     (->> (:messages thread)
          (filter :text)
