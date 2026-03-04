@@ -3,26 +3,42 @@ import _ from "underscore";
 
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { open } from "metabase/lib/dom";
+import type Question from "metabase-lib/v1/Question";
+import type { Dispatch } from "metabase-types/store";
+
+import type {
+  ClickAction,
+  OnChangeCardAndRun,
+  QuestionChangeClickAction,
+} from "../types";
+
+type ActionProps = {
+  dispatch: Dispatch;
+  onChangeCardAndRun?: OnChangeCardAndRun;
+  onUpdateQuestion?: (question: Question) => void;
+};
 
 export function performAction(
-  action,
-  { dispatch, onChangeCardAndRun, onUpdateQuestion },
-) {
-  if (action.onClick) {
-    action.onClick();
+  action: ClickAction,
+  props: ActionProps,
+): boolean {
+  const { dispatch, onChangeCardAndRun, onUpdateQuestion } = props;
+
+  if ("onClick" in action && action.onClick) {
+    action.onClick({ dispatch, closePopover: () => undefined });
     return true;
   }
 
   let didPerform = false;
-  if (action.action) {
+  if ("action" in action) {
     const reduxAction = action.action();
     if (reduxAction) {
       dispatch(reduxAction);
-
       didPerform = true;
     }
   }
-  if (action.url) {
+
+  if ("url" in action) {
     const url = action.url();
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {
@@ -36,21 +52,23 @@ export function performAction(
       didPerform = true;
     }
   }
-  if (action.question) {
-    const { questionChangeBehavior = "changeCardAndRun" } = action;
 
+  if (isQuestionChangeClickAction(action)) {
+    const { questionChangeBehavior = "changeCardAndRun" } = action;
     const question = action.question();
-    const extra = action?.extra?.() ?? {};
+    const extra = action.extra?.() ?? {};
+    const objectId =
+      typeof extra.objectId === "number" ? extra.objectId : undefined;
 
     if (question) {
       if (questionChangeBehavior === "changeCardAndRun") {
-        onChangeCardAndRun({
+        onChangeCardAndRun?.({
           nextCard: question.card(),
           ...extra,
-          objectId: extra.objectId,
+          objectId,
         });
       } else if (questionChangeBehavior === "updateQuestion") {
-        onUpdateQuestion(question);
+        onUpdateQuestion?.(question);
       }
 
       didPerform = true;
@@ -59,27 +77,36 @@ export function performAction(
   return didPerform;
 }
 
-export function performDefaultAction(actions, props) {
+export function performDefaultAction(
+  actions: ClickAction[] | null | undefined,
+  props: ActionProps,
+): boolean {
   if (!actions) {
     return false;
   }
 
   // "default" action if there's only one
-  if (actions.length === 1 && actions[0].default) {
+  if (actions.length === 1 && "default" in actions[0] && actions[0].default) {
     return performAction(actions[0], props);
   }
 
   // "defaultAlways" action even if there's more than one
-  const action = _.find(actions, (action) => action.defaultAlways === true);
+  const action = _.find(
+    actions,
+    (candidate) =>
+      "defaultAlways" in candidate && candidate.defaultAlways === true,
+  );
   if (action) {
     return performAction(action, props);
   }
 
   // TODO: Consider refactoring (@kulyk)
   if (actions.length <= 2) {
-    const sortAsc = actions.find((action) => action.name === "sort.ascending");
+    const sortAsc = actions.find(
+      (candidate) => candidate.name === "sort.ascending",
+    );
     const sortDesc = actions.find(
-      (action) => action.name === "sort.descending",
+      (candidate) => candidate.name === "sort.descending",
     );
     if (sortAsc && sortDesc) {
       performAction(sortAsc, props);
@@ -95,4 +122,10 @@ export function performDefaultAction(actions, props) {
   }
 
   return false;
+}
+
+function isQuestionChangeClickAction(
+  action: ClickAction,
+): action is QuestionChangeClickAction {
+  return "question" in action;
 }
