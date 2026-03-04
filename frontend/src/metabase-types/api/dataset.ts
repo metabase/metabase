@@ -20,8 +20,15 @@ import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
+type Dimension = {
+  column: DatasetColumn;
+  value: RowValue;
+};
+
 export type RowValue = string | number | null | boolean | object;
-export type RowValues = RowValue[];
+export type RowValues = RowValue[] & {
+  _dimension?: Dimension; // present in pivoted data
+};
 
 export function getRowsForStableKeys(
   data: Pick<DatasetData, "rows" | "untranslatedRows">,
@@ -85,6 +92,8 @@ export interface DatasetColumn {
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+
+  _dimension?: Dimension; // present in pivoted data
 }
 
 export interface ResultsMetadata {
@@ -109,6 +118,8 @@ export interface DatasetData {
     "show-column-totals"?: boolean;
   };
   untranslatedRows?: RowValues[];
+
+  sourceRows?: number[][]; // present in pivoted data
 }
 
 export type JsonQuery = DatasetQuery & {
