@@ -52,8 +52,11 @@ export function useViewerUrl(
           tabs: [],
           selectedTabId: null,
         };
-        hash = encodeState(serializedState);
-        dispatch(replace(Urls.metricsViewer(hash)));
+        const encodedHash = encodeState(serializedState);
+        if (encodedHash === undefined) {
+          return;
+        }
+        hash = encodedHash;
       } else {
         serializedState = decodeState(hash);
       }
@@ -124,7 +127,7 @@ export function useViewerUrl(
 
     const serializedState = stateToSerializedState(state);
     const hash = encodeState(serializedState);
-    if (hash !== lastHashRef.current) {
+    if (hash !== undefined && hash !== lastHashRef.current) {
       lastHashRef.current = hash;
       const url = Urls.metricsViewer(hash);
       if (!window.location.hash) {

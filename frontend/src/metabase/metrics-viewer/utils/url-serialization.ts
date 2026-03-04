@@ -17,14 +17,19 @@ import type { DimensionFilterValue } from "./metrics";
 import { extractDefinitionFilters } from "./metrics";
 import { getEntryBreakout } from "./series";
 
-// After JSON round-trip, Date values in DimensionFilterValue become ISO strings.
-// This restores them — same approach as query builder's deserializeCard + normalize.
-function reviveFilterDates(filter: DimensionFilterValue): DimensionFilterValue {
+function reviveFilter(filter: DimensionFilterValue): DimensionFilterValue {
   if (filter.type === "specific-date" || filter.type === "time") {
     return {
       ...filter,
       values: filter.values.map((value) =>
         typeof value === "string" ? new Date(value) : value,
+      ),
+    };
+  } else if (filter.type === "number" || filter.type === "coordinate") {
+    return {
+      ...filter,
+      values: filter.values.map((value) =>
+        typeof value === "string" ? BigInt(value) : value,
       ),
     };
   }
@@ -243,7 +248,7 @@ function reviveStateDates(
             ...source,
             filters: source.filters.map((filter) => ({
               ...filter,
-              value: reviveFilterDates(filter.value),
+              value: reviveFilter(filter.value),
             })),
           }
         : source,
@@ -254,7 +259,7 @@ function reviveStateDates(
             ...tab,
             projectionConfig: {
               ...tab.projectionConfig,
-              dimensionFilter: reviveFilterDates(
+              dimensionFilter: reviveFilter(
                 tab.projectionConfig.dimensionFilter,
               ),
             },
@@ -264,8 +269,19 @@ function reviveStateDates(
   };
 }
 
-export function encodeState(state: SerializedMetricsViewerPageState): string {
-  return utf8_to_b64url(JSON.stringify(rootSchema.compact(state)));
+export function encodeState(
+  state: SerializedMetricsViewerPageState,
+): string | undefined {
+  try {
+    return utf8_to_b64url(
+      JSON.stringify(rootSchema.compact(state), (_, value) =>
+        typeof value === "bigint" ? String(value) : value,
+      ),
+    );
+  } catch (err) {
+    console.error("Failed to encode metrics viewer URL state:", err);
+    return undefined;
+  }
 }
 
 export function decodeState(hash: string): SerializedMetricsViewerPageState {

@@ -18,6 +18,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util :as u]
    [metabase.util.memoize :as memoize]
+   [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
 
 ;; =============================================================================
@@ -305,6 +306,7 @@
                         (gobject/set obj (u/qualified-name k) (expression->js v)))
                       obj)
     (vector? expr)  (to-array (map expression->js expr))
+    (u.number/bigint? expr) (str expr)
     :else           expr))
 
 (defn- instance-filter->js
