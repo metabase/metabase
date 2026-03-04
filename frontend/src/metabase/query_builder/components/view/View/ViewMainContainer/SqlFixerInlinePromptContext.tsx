@@ -7,7 +7,10 @@ import {
   useMemo,
   useState,
 } from "react";
+import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
+import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 
@@ -36,6 +39,7 @@ export const SqlFixerInlinePromptProvider = ({
   const [requestFix, setRequestFix] = useState<PromptFn | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const register = useCallback((rf: PromptFn) => {
     setRequestFix(() => rf);
@@ -53,11 +57,17 @@ export const SqlFixerInlinePromptProvider = ({
       try {
         await dispatch(setIsNativeEditorOpen(true));
         await requestFix(prompt);
+      } catch (error) {
+        sendToast({
+          icon: "warning",
+          toastColor: "error",
+          message: getErrorMessage(error, t`Error trying to fix SQL`),
+        });
       } finally {
         setIsLoading(false);
       }
     },
-    [dispatch, requestFix],
+    [dispatch, requestFix, sendToast],
   );
 
   return (

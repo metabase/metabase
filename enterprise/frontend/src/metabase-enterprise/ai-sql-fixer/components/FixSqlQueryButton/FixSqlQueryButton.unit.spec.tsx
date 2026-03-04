@@ -71,7 +71,7 @@ describe("FixSqlQueryButton", () => {
     jest.clearAllMocks();
   });
 
-  it("should render the button with correct text when metabot is enabled", () => {
+  it("should render the button with correct text when metabot is enabled", async () => {
     setup({ isMetabotEnabled: true });
     expect(
       await screen.findByRole("button", { name: /Have Metabot fix it/ }),

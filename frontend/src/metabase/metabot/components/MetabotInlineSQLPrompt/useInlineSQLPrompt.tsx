@@ -238,23 +238,6 @@ export function useInlineSQLPrompt(
 
     (async () => {
       try {
-        if (generatedSqlRef.current) {
-          resetInputRef.current();
-        }
-
-        setHasEverBeenOpened(true);
-        setPromptValue(prompt);
-
-        const cursorPos = editorView.state.doc.length;
-        if (!portalTarget) {
-          editorView.dispatch({
-            selection: { anchor: cursorPos },
-            effects: toggleEffect.of({ view: editorView }),
-          });
-        } else {
-          editorView.dispatch({ selection: { anchor: cursorPos } });
-        }
-
         const referencedEntities = selectedTables.map((table) => ({
           model: "table" as const,
           id: table.id,
