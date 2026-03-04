@@ -351,7 +351,8 @@
                             :dashboard-id           dashboard-id
                             :visualization-settings merged-viz}
                      (and (= (:type card) :model) (seq (:result_metadata card)))
-                     (assoc :metadata/model-metadata (:result_metadata card)))]
+                     (assoc :metadata/model-metadata (:result_metadata card)
+                            :metadata/own-model-query? true))]
     (when (seq parameters)
       (validate-card-parameters card-id (lib/normalize ::lib.schema.parameter/parameters parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id

@@ -7,6 +7,8 @@ import type {
   MiniPickerItem as MiniPickerItemType,
 } from "../types";
 
+import styles from "./MiniPickerItem.module.css";
+
 export const MiniPickerItem = ({
   model,
   name,
@@ -29,9 +31,13 @@ export const MiniPickerItem = ({
         }
         rightSection={isFolder ? <Icon name="chevronright" /> : undefined}
         onClick={onClick}
+        classNames={{
+          itemLabel: styles.section,
+          itemSection: styles.section,
+        }}
         {...menuItemProps}
       >
-        <Ellipsified maw={isFolder ? "13rem" : "16rem"}>{name}</Ellipsified>
+        <Ellipsified>{name}</Ellipsified>
       </Menu.Item>
     </Box>
   );

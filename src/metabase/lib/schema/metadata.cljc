@@ -416,9 +416,17 @@
     ;;
     ;; this SHOULD NOT get propagated to subsequent stages!
     [:lib/breakout? {:optional true} [:maybe :boolean]]
-
-    ;; ID of the Card this came from, if this came from Card results metadata. Mostly used for creating column groups.
+    ;;
+    ;; ID of the Card this came from, if this column originally came from a Card (Saved Question or Model). Mostly
+    ;; used for creating column groups. AFAIK this should get propagated indefinitely -- Cam
     [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
+    ;;
+    ;; Whether this column originally was introduced by a Model. Model metadata has special rules, for example because
+    ;; `:display-name` can be user-edited we should be careful not to recalculate it unnecessarily. See for
+    ;; example [[metabase.query-processor.model-test/preserve-model-display-names-test]].
+    ;;
+    ;; This key should get propagated indefinitely.
+    [:lib/from-model? {:optional true} [:maybe :boolean]]
     ;;
     ;; this stuff is adapted from [[metabase.query-processor.util.add-alias-info]]. It is included in
     ;; the [[metabase.lib.metadata.calculation/metadata]]
