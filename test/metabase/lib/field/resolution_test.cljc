@@ -1806,3 +1806,51 @@
       (testing "ref with :source-field-name should resolve to the column with matching :fk-field-name"
         (is (= (:lib/desired-column-alias stage-1-renamed-cat)
                (:lib/source-column-alias (lib.field.resolution/resolve-field-ref query 2 renamed-ref))))))))
+
+(deftest ^:parallel resolve-field-ref-missing-table-metadata-test
+  (testing "resolve-field-ref should not throw when the source table is missing from the metadata provider"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/with-fields [(meta/field-metadata :orders :id)])
+                    lib/append-stage
+                    ;; change source-table to a non-existent ID to simulate missing table metadata
+                    (update-in [:stages 0] assoc :source-table Integer/MAX_VALUE))]
+      ;; resolving in stage 1 needs returned-columns of stage 0, which calls lib.metadata/table
+      ;; with a non-existent ID — should gracefully return fallback metadata instead of NPE
+      (is (=? {::lib.field.resolution/fallback-metadata? true}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} "ID"]))))))
+
+(deftest ^:parallel resolve-field-ref-missing-card-in-join-test
+  (testing "resolve-field-ref should not throw when a join's source-card is missing from the metadata provider"
+    (let [orders-with-join (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                               (lib/join (meta/table-metadata :products)))
+          join-alias       (-> orders-with-join lib/joins first lib/current-join-alias)
+          mp               (lib.tu/metadata-provider-with-card-from-query 1 orders-with-join)
+          ;; build a query sourcing from card 1
+          query            (-> (lib/query mp (lib.metadata/card mp 1))
+                               ;; swap to a provider that doesn't have card 1
+                               (assoc :lib/metadata meta/metadata-provider))]
+      ;; resolve-in-join for the card's internal join alias → join not found in stage 0 →
+      ;; tries source-card (card 1) → lib.metadata/card returns nil → should not NPE
+      (is (=? {::lib.field.resolution/fallback-metadata? true}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:base-type :type/BigInteger, :join-alias join-alias,
+                        :lib/uuid "00000000-0000-0000-0000-000000000000"}
+                (meta/id :products :id)]))))))
+
+(deftest ^:parallel resolve-field-ref-missing-parent-field-test
+  (testing "resolve-field-ref should not throw when a nested column's parent-id points to a non-existent field"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:fields [{:id        999999
+                            :table-id  (meta/id :orders)
+                            :name      "nested_col"
+                            :base-type :type/Text
+                            :parent-id Integer/MAX_VALUE}]})
+          query (lib/query mp (meta/table-metadata :orders))]
+      (is (=? {:name "nested_col"}
+              (lib.field.resolution/resolve-field-ref
+               query -1
+               [:field {:base-type :type/Text, :lib/uuid "00000000-0000-0000-0000-000000000000"} 999999]))))))
