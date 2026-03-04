@@ -124,8 +124,8 @@
     opts :- [:map
              [:limit {:optional true} [:maybe pos-int?]]]]
    (let [ast (->ast definition)]
-     (if-let [limit (:limit opts)]
-       (ast.compile/compile-to-mbql ast :limit limit)
+     (if (some? (:limit opts))
+       (ast.compile/compile-to-mbql ast :limit (:limit opts))
        (ast.compile/compile-to-mbql ast)))))
 
 (mu/defn ->values-query
@@ -137,6 +137,6 @@
     opts :- [:map
              [:limit {:optional true} [:maybe pos-int?]]]]
    (let [ast (->ast definition)]
-     (if-let [limit (:limit opts)]
-       (ast.compile/compile-to-values-query ast :limit limit)
+     (if (some? (:limit opts))
+       (ast.compile/compile-to-values-query ast :limit (:limit opts))
        (ast.compile/compile-to-values-query ast)))))

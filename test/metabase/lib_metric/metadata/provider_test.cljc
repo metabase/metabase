@@ -219,3 +219,39 @@
       (lib.metadata.protocols/cache-value! mp :my-key {:some "value"})
       (is (= {:some "value"} (lib.metadata.protocols/cached-value mp :my-key :not-found)))
       (is (= :not-found (lib.metadata.protocols/cached-value mp :other-key :not-found))))))
+
+(deftest ^:parallel store-and-retrieve-measure-via-cache-test
+  (testing "store-metadata! and cached-metadatas work for measures"
+    (let [mp      (create-mock-provider)
+          measure {:id 10 :name "Revenue Measure" :lib/type :metadata/measure}]
+      (lib.metadata.protocols/store-metadata! mp measure)
+      (let [cached (lib.metadata.protocols/cached-metadatas mp :metadata/measure [10])]
+        (is (= 1 (count cached)))
+        (is (= "Revenue Measure" (:name (first cached)))))
+      (testing "does not return measure when asking for metric"
+        (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/metric [10])))))))
+
+(deftest ^:parallel store-and-retrieve-dimension-via-cache-test
+  (testing "store-metadata! and cached-metadatas work for dimensions"
+    (let [mp        (create-mock-provider)
+          dimension {:id 20 :name "Date Dimension" :lib/type :metadata/dimension}]
+      (lib.metadata.protocols/store-metadata! mp dimension)
+      (let [cached (lib.metadata.protocols/cached-metadatas mp :metadata/dimension [20])]
+        (is (= 1 (count cached)))
+        (is (= "Date Dimension" (:name (first cached)))))
+      (testing "does not return dimension when asking for measure"
+        (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/measure [20])))))))
+
+(deftest clear-cache!-clears-all-types-test
+  (testing "clear-cache! clears metrics, measures, and dimensions"
+    (let [mp (create-mock-provider)]
+      (lib.metadata.protocols/store-metadata! mp {:id 1 :name "M" :lib/type :metadata/metric})
+      (lib.metadata.protocols/store-metadata! mp {:id 2 :name "Meas" :lib/type :metadata/measure})
+      (lib.metadata.protocols/store-metadata! mp {:id 3 :name "Dim" :lib/type :metadata/dimension})
+      (is (= 1 (count (lib.metadata.protocols/cached-metadatas mp :metadata/metric [1]))))
+      (is (= 1 (count (lib.metadata.protocols/cached-metadatas mp :metadata/measure [2]))))
+      (is (= 1 (count (lib.metadata.protocols/cached-metadatas mp :metadata/dimension [3]))))
+      (lib.metadata.protocols/clear-cache! mp)
+      (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/metric [1])))
+      (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/measure [2])))
+      (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/dimension [3]))))))

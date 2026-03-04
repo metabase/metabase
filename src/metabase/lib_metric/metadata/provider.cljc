@@ -59,14 +59,14 @@
           table->db-fn          ;; (fn [table-id] ...) returns database-id
           db-provider-fn        ;; (fn [db-id] ...) returns MetadataProvider for that database
           setting-fn            ;; (fn [setting-key] ...) returns setting value
-          metric-cache          ;; atom for caching metric metadata
+          cache                 ;; atom for caching metric, measure, and dimension metadata
           ]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
     ;; No single database context for metric provider
     nil)
 
-  (metadatas [_this {metadata-type :lib/type, :as metadata-spec}]
+  (metadatas [this {metadata-type :lib/type, :as metadata-spec}]
     (case metadata-type
       :metadata/metric
       (metric-fetcher-fn metadata-spec)
@@ -78,14 +78,18 @@
       (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) [])
 
       :metadata/measure
-      (if measure-fetcher-fn
-        (measure-fetcher-fn metadata-spec)
-        (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) []))
+      (let [results (if measure-fetcher-fn
+                      (measure-fetcher-fn metadata-spec)
+                      (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) []))]
+        (run! #(lib.metadata.protocols/store-metadata! this %) results)
+        results)
 
       :metadata/dimension
-      (if dimension-fetcher-fn
-        (dimension-fetcher-fn metadata-spec)
-        [])
+      (let [results (if dimension-fetcher-fn
+                      (dimension-fetcher-fn metadata-spec)
+                      [])]
+        (run! #(lib.metadata.protocols/store-metadata! this %) results)
+        results)
 
       :metadata/segment
       (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) [])
@@ -101,29 +105,30 @@
 
   lib.metadata.protocols/CachedMetadataProvider
   (cached-metadatas [_this metadata-type metadata-ids]
-    (when (= metadata-type :metadata/metric)
-      (let [cache @metric-cache]
+    (when (#{:metadata/metric :metadata/measure :metadata/dimension} metadata-type)
+      (let [c @cache]
         (into []
-              (keep #(get cache %))
+              (keep #(get c [metadata-type %]))
               metadata-ids))))
 
   (store-metadata! [_this object]
-    (when (= (:lib/type object) :metadata/metric)
-      (swap! metric-cache assoc (:id object) object))
+    (when-let [obj-type (:lib/type object)]
+      (when (#{:metadata/metric :metadata/measure :metadata/dimension} obj-type)
+        (swap! cache assoc [obj-type (:id object)] object)))
     true)
 
   (cached-value [_this k not-found]
-    (get @metric-cache [::cached-value k] not-found))
+    (get @cache [::cached-value k] not-found))
 
   (cache-value! [_this k v]
-    (swap! metric-cache assoc [::cached-value k] v)
+    (swap! cache assoc [::cached-value k] v)
     nil)
 
   (has-cache? [_this]
     true)
 
   (clear-cache! [_this]
-    (reset! metric-cache {})
+    (reset! cache {})
     nil)
 
   MetricMetadataProvider
@@ -158,7 +163,7 @@
    - Routes measure requests to measure-fetcher-fn if provided, otherwise to database provider
    - Routes dimension requests to dimension-fetcher-fn if provided
    - Routes table/column/segment requests to the appropriate database provider
-   - Caches metric metadata internally"
+   - Caches metric, measure, and dimension metadata internally"
   ([metric-fetcher-fn table->db-fn db-provider-fn setting-fn]
    (metric-context-metadata-provider metric-fetcher-fn nil nil table->db-fn db-provider-fn setting-fn))
   ([metric-fetcher-fn measure-fetcher-fn table->db-fn db-provider-fn setting-fn]

@@ -371,14 +371,22 @@
     (boolean (or (re-find #"T" v)
                  (re-find #"\d{2}:\d{2}" v)))
 
-    ;; JS Date object: check if any UTC time components are non-zero
+    ;; Date object: check if any UTC time components are non-zero
     ;; Using UTC methods to avoid timezone issues with midnight dates
     #?(:cljs (instance? js/Date v)
        :clj  (instance? java.util.Date v))
-    (let [hours   #?(:cljs (.getUTCHours v)   :clj (.getHours v))
-          minutes #?(:cljs (.getUTCMinutes v) :clj (.getMinutes v))
-          seconds #?(:cljs (.getUTCSeconds v) :clj (.getSeconds v))]
-      (or (pos? hours) (pos? minutes) (pos? seconds)))
+    #?(:cljs
+       (let [hours   (.getUTCHours v)
+             minutes (.getUTCMinutes v)
+             seconds (.getUTCSeconds v)]
+         (or (pos? hours) (pos? minutes) (pos? seconds)))
+       :clj
+       (let [zdt     (-> (.toInstant ^java.util.Date v)
+                         (.atZone java.time.ZoneOffset/UTC))
+             hours   (.getHour zdt)
+             minutes (.getMinute zdt)
+             seconds (.getSecond zdt)]
+         (or (pos? hours) (pos? minutes) (pos? seconds))))
 
     :else false))
 
