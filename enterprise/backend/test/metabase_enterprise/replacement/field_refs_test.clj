@@ -16,6 +16,13 @@
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/table mp (mt/id table-kw)))))
 
+(defn- model-sourced-query
+  "Build a pMBQL query that sources from a model card. This produces queries
+   where upgrade-field-ref-in-parameter-target actually converts ID-based refs to name-based."
+  [model-card-id]
+  (let [mp (lib.metadata/->metadata-provider (mt/metadata-provider) model-card-id)]
+    (lib/query mp (lib.metadata/card mp model-card-id))))
+
 (defn- ref-key
   "Build a JSON-encoded column_settings key in the ref format."
   [field-id & [opts]]
@@ -244,15 +251,39 @@
 
 ;;; ----------------------------------------- dashboard-upgrade-field-refs! ----------------------------------------
 
-(deftest dashboard-upgrade-column-settings-test
-  (testing "dashboard-upgrade-field-refs! upgrades column_settings click_behavior parameterMappings"
+(deftest dashboard-upgrade-parameter-mappings-test
+  (testing "dashboard-upgrade-field-refs! upgrades parameter_mappings targets from ID-based to name-based"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
-                                       :visualization_settings {}}
+      (mt/with-temp [:model/Card model {:type :model
+                                        :dataset_query (table-query :products)}
+                     :model/Card question {:dataset_query (model-sourced-query (:id model))}
                      :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
                      :model/DashboardCard {dashcard-id :id}
                      {:dashboard_id dashboard-id
-                      :card_id (:id card)
+                      :card_id (:id question)
+                      :parameter_mappings [{:card_id (:id question)
+                                            :parameter_id "abc"
+                                            :target [:dimension
+                                                     [:field (mt/id :products :category)
+                                                      {:base-type :type/Text}]]}]}]
+        (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+        (let [updated-pms (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dashcard-id)
+              pm          (first updated-pms)
+              field-ref   (get-in pm [:target 1])]
+          (is (some? pm) "parameter_mapping should exist after upgrade")
+          (is (= "CATEGORY" (nth field-ref 1))
+              "field ref should be upgraded to use column name"))))))
+
+(deftest dashboard-upgrade-column-settings-dimension-refs-test
+  (testing "dashboard-upgrade-field-refs! upgrades dimension refs in column_settings values"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card model {:type :model
+                                        :dataset_query (table-query :products)}
+                     :model/Card question {:dataset_query (model-sourced-query (:id model))}
+                     :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:dashboard_id dashboard-id
+                      :card_id (:id question)
                       :visualization_settings
                       {:column_settings
                        {(name-key "TITLE")
@@ -270,8 +301,35 @@
                                                   {"base-type" "type/Text"}]]}}}}}}}}]
         (field-refs/dashboard-upgrade-field-refs! dashboard-id)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
-              cs          (:column_settings updated-viz)]
-          (is (some? cs) "column_settings should exist after upgrade"))))))
+              cs          (:column_settings updated-viz)
+              title-settings (get cs (name-key "TITLE"))
+              pm-val      (first (vals (:parameterMapping (:click_behavior title-settings))))
+              dim         (get-in pm-val [:target :dimension])]
+          (is (some? dim) "dimension target should exist after upgrade")
+          (is (= "CATEGORY" (nth (second dim) 1))
+              "dimension field ref should be upgraded to use column name"))))))
+
+(deftest dashboard-upgrade-preserves-unchanged-parameter-mappings-test
+  (testing "dashboard-upgrade-field-refs! preserves parameter_mappings when card_id doesn't match"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card model {:type :model
+                                        :dataset_query (table-query :products)}
+                     :model/Card question {:dataset_query (model-sourced-query (:id model))}
+                     :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:dashboard_id dashboard-id
+                      :card_id (:id question)
+                      :parameter_mappings [{:parameter_id "abc"
+                                            :target [:dimension
+                                                     [:field (mt/id :products :category)
+                                                      {:base-type :type/Text}]]}]}]
+        ;; No :card_id on the parameter_mapping, so it won't be upgraded
+        (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+        (let [updated-pms (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dashcard-id)
+              pm          (first updated-pms)]
+          (is (= [:dimension [:field (mt/id :products :category) {:base-type :type/Text}]]
+                 (:target pm))
+              "parameter_mapping without card_id should be preserved as-is"))))))
 
 (deftest dashboard-upgrade-no-column-settings-test
   (testing "dashboard-upgrade-field-refs! is a no-op for dashcards without column_settings"
@@ -289,6 +347,163 @@
               "unrelated settings should be preserved"))))))
 
 ;;; ----------------------------------------- upgrade! dispatch ----------------------------------------
+
+(deftest dashboard-upgrade-pm-card-id-differs-from-dashcard-test
+  (testing "dashboard-upgrade-field-refs! uses pm's :card_id (not dashcard's) to look up the query for each pm"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card model {:type :model
+                                        :dataset_query (table-query :products)}
+                     :model/Card pm-card {:dataset_query (model-sourced-query (:id model))}
+                     :model/Card dashcard-card {:dataset_query (table-query :orders)}
+                     :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:dashboard_id dashboard-id
+                      :card_id (:id dashcard-card)
+                      :parameter_mappings [{:card_id (:id pm-card)
+                                            :parameter_id "abc"
+                                            :target [:dimension
+                                                     [:field (mt/id :products :category)
+                                                      {:base-type :type/Text}]]}]}]
+        (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+        (let [updated-pms (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dashcard-id)
+              pm          (first updated-pms)
+              field-ref   (get-in pm [:target 1])]
+          (is (= "CATEGORY" (nth field-ref 1))
+              "pm's card_id should be used to load the query for upgrading the pm's target"))))))
+
+(deftest dashboard-upgrade-virtual-card-preserves-column-settings-test
+  (testing "dashboard-upgrade-field-refs! preserves column_settings when dashcard has no primary card"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:dashboard_id dashboard-id
+                      :card_id nil
+                      :visualization_settings {:column_settings
+                                               {(name-key "TOTAL") {:column_title "Grand Total"}}}}]
+        (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+        (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
+              cs          (:column_settings updated-viz)]
+          (is (= {:column_title "Grand Total"} (get cs (name-key "TOTAL")))
+              "column_settings should be preserved when there is no primary card"))))))
+
+(deftest dashboard-upgrade-no-unnecessary-writes-test
+  (testing "dashboard-upgrade-field-refs! does not write when nothing changes"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:dataset_query (table-query :products)}
+                     :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:dashboard_id dashboard-id
+                      :card_id (:id card)
+                      :parameter_mappings []
+                      :visualization_settings {:some_setting "value"}}]
+        (let [original-update! t2/update!
+              update-calls     (atom [])]
+          (with-redefs [t2/update! (fn [model id changes]
+                                     (swap! update-calls conj {:model model :id id :changes changes})
+                                     (original-update! model id changes))]
+            (field-refs/dashboard-upgrade-field-refs! dashboard-id))
+          (is (empty? @update-calls)
+              "no updates should be made when nothing needs upgrading"))))))
+
+(deftest dashboard-upgrade-preserves-other-viz-settings-test
+  (testing "dashboard-upgrade-field-refs! preserves non-column_settings viz settings when upgrading"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card model {:type :model
+                                        :dataset_query (table-query :products)}
+                     :model/Card question {:dataset_query (model-sourced-query (:id model))}
+                     :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:dashboard_id dashboard-id
+                      :card_id (:id question)
+                      :visualization_settings
+                      {:column_settings
+                       {(name-key "TITLE")
+                        {:click_behavior
+                         {:type "link"
+                          :linkType "question"
+                          :targetId 1
+                          :parameterMapping
+                          {(json/encode ["dimension" ["field" (mt/id :products :category)
+                                                      {"base-type" "type/Text"}]])
+                           {:source {:type "column" :id "TITLE"}
+                            :target {:type "dimension"
+                                     :dimension ["dimension"
+                                                 ["field" (mt/id :products :category)
+                                                  {"base-type" "type/Text"}]]}}}}}}
+                       :graph.show_trendline true
+                       :table.pivot false}}]
+        (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+        (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)]
+          (is (true? (:graph.show_trendline updated-viz))
+              "graph.show_trendline should be preserved")
+          (is (false? (:table.pivot updated-viz))
+              "table.pivot should be preserved"))))))
+
+(deftest dashboard-upgrade-column-settings-base-type-keyword-test
+  (testing "dashboard-upgrade-field-refs! correctly handles :base-type keyword conversion in dimension refs"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card model {:type :model
+                                        :dataset_query (table-query :products)}
+                     :model/Card question {:dataset_query (model-sourced-query (:id model))}
+                     :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:dashboard_id dashboard-id
+                      :card_id (:id question)
+                      :visualization_settings
+                      {:column_settings
+                       {(name-key "PRICE")
+                        {:click_behavior
+                         {:type "link"
+                          :linkType "question"
+                          :targetId 1
+                          :parameterMapping
+                          {(json/encode ["dimension" ["field" (mt/id :products :price)
+                                                      {"base-type" "type/Float"}]])
+                           {:source {:type "column" :id "PRICE"}
+                            :target {:type "dimension"
+                                     :dimension ["dimension"
+                                                 ["field" (mt/id :products :price)
+                                                  {"base-type" "type/Float"}]]}}}}}}}}]
+        (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+        (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
+              cs          (:column_settings updated-viz)
+              price-settings (get cs (name-key "PRICE"))
+              pm-val      (first (vals (:parameterMapping (:click_behavior price-settings))))
+              dim         (get-in pm-val [:target :dimension])]
+          (is (some? dim) "dimension target should exist after upgrade")
+          (is (= "PRICE" (nth (second dim) 1))
+              "dimension with base-type should be upgraded to column name"))))))
+
+(deftest dashboard-upgrade-invalid-dimension-form-preserved-test
+  (testing "dashboard-upgrade-field-refs! preserves invalid dimension forms via catch block"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card model {:type :model
+                                        :dataset_query (table-query :products)}
+                     :model/Card question {:dataset_query (model-sourced-query (:id model))}
+                     :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:dashboard_id dashboard-id
+                      :card_id (:id question)
+                      :visualization_settings
+                      {:column_settings
+                       {(name-key "TITLE")
+                        {:click_behavior
+                         {:type "link"
+                          :linkType "question"
+                          :targetId 1
+                          :parameterMapping
+                          {"bad-key"
+                           {:source {:type "column" :id "TITLE"}
+                            :target {:type "dimension"
+                                     :dimension ["dimension" "not-a-valid-field-ref"]}}}}}}}}]
+        (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+        (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
+              cs          (:column_settings updated-viz)
+              title-settings (get cs (name-key "TITLE"))
+              pm-val      (get-in title-settings [:click_behavior :parameterMapping "bad-key"])
+              dim         (get-in pm-val [:target :dimension])]
+          (is (= ["dimension" "not-a-valid-field-ref"] dim)
+              "invalid dimension form should be preserved as-is via catch block"))))))
 
 (deftest upgrade-dispatch-nil-test
   (testing "upgrade! with nil entity is a no-op"
