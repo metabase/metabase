@@ -196,11 +196,8 @@
 (defn- apply-aggregation-sort-order
   "If sort-order is specified, add an order-by clause for the last aggregation in the query."
   [query sort-order]
-  (if sort-order
-    (let [query-aggregations (lib/aggregations query)
-          last-aggregation-idx (dec (count query-aggregations))]
-      (lib/order-by query (lib/aggregation-ref query last-aggregation-idx) sort-order))
-    query))
+  (cond-> query
+    sort-order (lib/order-by (last (lib/aggregations query)) sort-order)))
 
 (defn- add-aggregation
   [query aggregation]

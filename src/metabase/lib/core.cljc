@@ -93,6 +93,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -377,21 +378,133 @@
   integer
   float])
 
-;;; # IGNORE ME!
-;;; <img src="https://i.redd.it/1b9z1mv805e61.jpg" />
-;;; *These are the leftovers which are not properly wrapped in user documentation yet.*
+;;; ## Aggregations
+;;; Aggregations are either "canned" aggregate functions like `Count`, `Sum` and `Max`, or a custom expression written
+;;; by the user in the same expression editor as is used for expressions. The only columns in scope for custom
+;;; aggregations are the breakouts and any aggregations to the left.
+;;;
+;;; Aggregations define new columns, which can be referenced by any custom aggregations to its right, in an Order By, or
+;;; in later stages of the query.
+;;;
+;;; The canned aggregations come in four varieties:
+;;;
+;;; - No args: `count` and `distinct`
+;;; - Single column: `sum`, `avg`, `max`, etc.
+;;; - Single filter: `count-where` and `distinct-where`
+;;; - Column and filter: `sum-where`
+;;;
+;;; ### Measures and Metrics
+;;; Measures are effectively *saved aggregations*, defined outside of a query. They can be referenced as an aggregation
+;;; on a query which has a source compatible with the measure's source.
+;;;
+;;; Semantically, referencing a measure is identical to pasting its definition into the query.
+;;;
+;;; The (deprecated?) Metrics v2 can be used similarly, though they allow several things that measures don't, such as
+;;; embedding a filter.
+
+(mu/defn aggregate :- ::lib.schema/query
+  "Adds the given `aggregable` to the target stage of `a-query` as its rightmost aggregation.
+
+  Valid `aggregable`s are:
+
+  - Canned aggregation clauses like [[count]]
+  - A `::lib.schema.common/external-op` AST from the custom aggregation editor
+  - A measure
+  - A (v2) metric
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query aggregable]
+   (aggregate a-query -1 aggregable))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    aggregable   :- ::lib.aggregation/aggregable]
+   (lib.aggregation/aggregate a-query stage-number aggregable)))
+
+(mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
+  "Returns the list of aggregation definitions on the target stage of `a-query`, or nil if there are none."
+  ([a-query] (aggregations a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.aggregation/aggregations a-query stage-number)))
+
+(mu/defn aggregable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Returns the columns which are in scope for a custom aggregation expression.
+
+  Takes `aggregation-position`, which is the index of the \"current\" aggregation while editing an existing aggregation,
+  and nil when adding a new one.
+
+  The columns in scope for an aggregation expression are:
+
+  1. Any breakouts on this stage
+  2. Any aggregations on this stage whose position is less than `aggregation-position`; all of them if it's nil.
+  3. Any pre-aggregation columns (from the source, joins, or expressions)
+     - **But** these are only legal when wrapped in an aggregation like `sum([Some Column])`.
+
+  To illustrate, a custom expression can do top-level arithmetic on other aggregations like
+
+      Unit Price = [Sum of Subtotal] / [Sum of Quantity]
+
+  or directly aggregate pre-aggregation columns like
+
+      Unit Price = sum([Subtotal]) / sum([Quantity])
+
+  **Code Health:** Single use. This mainly exists for the custom editor in the UI.
+  Prefer [[available-aggregation-operators]] and [[aggregation-operator-columns]] for more \"structured\" usages."
+  ([a-query aggregation-position]
+   (aggregable-columns a-query -1 aggregation-position))
+  ([a-query              :- ::lib.schema/query
+    stage-number         :- :int
+    aggregation-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (lib.aggregation/aggregable-columns a-query stage-number aggregation-position)))
+
+(mu/defn aggregation-operator-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Given an `aggregation-operator` map from [[available-aggregation-operators]], this returns the metadata of all
+  available columns to which that operator can legally be applied.
+
+  For aggregations which don't take an input column, like `:count`, this returns nil.
+
+  **Code Health:** Healthy."
+  [aggregation-operator :- ::lib.aggregation/operator-with-columns]
+  (lib.aggregation/aggregation-operator-columns aggregation-operator))
+
+(mu/defn available-aggregation-operators :- [:maybe [:sequential ::lib.aggregation/operator-with-columns]]
+  "Returns a map for each aggregation operator (`:count`, `:sum`, etc.) which can plausibly be applied to the target
+  stage of `a-query`. This takes into account the operators the database engine can support, and omits any operators
+  that require an input column when no suitable inputs are available.
+
+  **Code Health:** Healthy. This is the correct way to determine the valid set of aggregation operators."
+  ([a-query] (available-aggregation-operators a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.aggregation/available-aggregation-operators a-query stage-number)))
+
+(mu/defn remove-all-aggregations :- ::lib.schema/query
+  "Removes all aggregations from the target stage of `a-query`.
+
+  **Code Health:** Healthy, though it's an unusual thing to do."
+  ([a-query] (remove-all-aggregations a-query -1))
+  ([a-query :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.aggregation/remove-all-aggregations a-query stage-number)))
+
+(mu/defn selected-aggregation-operators :- [:maybe [:sequential ::lib.aggregation/selected-operator-with-columns]]
+  "Given the aggregation operator maps from [[available-aggregation-operators]], and a particular `agg-clause`, mark
+  both the operator map and the selected column (if applicable) with `:selected? true`.
+
+  This is useful when editing an aggregation to indicate its current settings.
+
+  **Code Health:** Healthy. Mostly exists to support the UI, but it would be legitimate to add new calls."
+  [agg-operators :- [:maybe [:sequential ::lib.aggregation/operator-with-columns]]
+   agg-clause :- ::lib.schema.aggregation/aggregation]
+  (lib.aggregation/selected-aggregation-operators agg-operators agg-clause))
+
+;;; These functions all directly construct an aggregation clause suitable for passing to [[aggregate]], taking
+;;; input column and/or filter clauses as arguments, depending on the operator.
+;;;
+;;; **Code Health:** Healthy. Mainly used in tests, but any case where a known query is being constructed
+;;; programatically is valid. UIs should generally be using [[available-aggregation-operators]] instead.
 (shared.ns/import-fns
  [lib.aggregation
-  aggregable-columns
-  aggregate
-  aggregation-clause
-  aggregation-ref
-  aggregation-operator-columns
-  aggregations
-  aggregations-metadata
-  available-aggregation-operators
-  remove-all-aggregations
-  selected-aggregation-operators
   count
   avg
   count-where
@@ -407,7 +520,20 @@
   sum-where
   var
   cum-count
-  cum-sum]
+  cum-sum])
+
+;;; **Code Health:** Leak. These helpers are only used in tests and should be avoided. To be unexported soon.
+(shared.ns/import-fns
+ [lib.aggregation
+  aggregation-clause
+  aggregation-ref
+  aggregations-metadata])
+
+;;; # IGNORE ME!
+;;; <img src="https://i.redd.it/1b9z1mv805e61.jpg" />
+;;; *These are the leftovers which are not properly wrapped in user documentation yet.*
+(shared.ns/import-fns
+
  [lib.binning
   available-binning-strategies
   binning
