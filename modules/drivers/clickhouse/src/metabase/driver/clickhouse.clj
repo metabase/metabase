@@ -123,10 +123,11 @@
          :http_connection_provider       "HTTP_URL_CONNECTION"
          :jdbc_ignore_unsupported_values "true"
          :jdbc_schema_term               "schema"
-         :select_sequential_consistency  true
          :max_open_connections           (or max-open-connections 100)
          ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-         :custom_http_params             (or clickhouse-settings "")}
+         :custom_http_params             (cond-> "select_sequential_consistency=1"
+                                           (not (str/blank? clickhouse-settings))
+                                           (str "," clickhouse-settings))}
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
@@ -405,14 +406,6 @@
                      (format "DROP USER IF EXISTS `%s`" username)]]
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
-
-(defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse
-  [driver database]
-  (merge
-   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
-   ;; TODO(rileythomp, 2026-01-29): Remove this once we upgrade past 0.8.4
-   ;; This is to work around 68674 where connections are being poisoned with bad roles
-   {"preferredTestQuery" "SELECT 1"}))
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
   "llm/prompts/dialects/clickhouse.md")
