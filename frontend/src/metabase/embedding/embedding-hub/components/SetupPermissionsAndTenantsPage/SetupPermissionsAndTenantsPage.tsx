@@ -11,6 +11,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins/oss/tenants";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
+import type { FieldId } from "metabase-types/api";
 
 import { ConnectionImpersonationStepContent } from "./ConnectionImpersonationStepContent";
 import {
@@ -37,6 +38,9 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   // Track the tenants created in this onboarding flow
   const [createdTenants, setCreatedTenants] = useState<CreatedTenantData[]>([]);
+
+  // Track the selected field IDs from the RLS step (in-session only)
+  const [selectedFieldIds, setSelectedFieldIds] = useState<FieldId[]>([]);
 
   const isTenantsEnabled = checklist?.["enable-tenants"] ?? false;
 
@@ -142,7 +146,9 @@ export const SetupPermissionsAndTenantsPage = () => {
           {match(selectedStrategy)
             .with("row-column-level-security", () => (
               <RlsDataSelector
-                onSuccess={() => {
+                onSuccess={(fieldIds) => {
+                  setSelectedFieldIds(fieldIds);
+
                   // User might had already created tenants before,
                   // so we allow jumping straight to the summary flow.
                   stepperRef.current?.goToNextIncompleteStep();
@@ -164,6 +170,7 @@ export const SetupPermissionsAndTenantsPage = () => {
         >
           <PLUGIN_TENANTS.CreateTenantsOnboardingStep
             onTenantsCreated={setCreatedTenants}
+            selectedFieldIds={selectedFieldIds}
           />
         </OnboardingStepper.Step>
 
