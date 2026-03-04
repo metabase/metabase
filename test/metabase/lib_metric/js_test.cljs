@@ -103,6 +103,23 @@
     (testing "preserves metadata-provider"
       (is (= mock-provider (:metadata-provider definition))))))
 
+(deftest ^:parallel fromJsMetricDefinition-arithmetic-expression-test
+  (let [js-def     #js {:expression #js ["+" #js {} #js ["metric" #js {"lib/uuid" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"} 42]
+                                         #js ["measure" #js {"lib/uuid" "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99]]}
+        definition (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]
+    (testing "has correct lib/type"
+      (is (= :metric/definition (:lib/type definition))))
+    (testing "has arithmetic expression with correct operator"
+      (is (= :+ (first (:expression definition)))))
+    (testing "has metric leaf"
+      (let [metric-leaf (nth (:expression definition) 2)]
+        (is (= :metric (first metric-leaf)))
+        (is (= 42 (nth metric-leaf 2)))))
+    (testing "has measure leaf"
+      (let [measure-leaf (nth (:expression definition) 3)]
+        (is (= :measure (first measure-leaf)))
+        (is (= 99 (nth measure-leaf 2)))))))
+
 (deftest ^:parallel fromJsMetricDefinition-legacy-metric-source-test
   (let [js-def     #js {:source-metric 42}
         definition (lib-metric.js/fromJsMetricDefinition mock-provider js-def)]

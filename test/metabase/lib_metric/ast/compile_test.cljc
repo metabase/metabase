@@ -66,6 +66,15 @@
     (testing "has no breakout when AST has none"
       (is (nil? (get-in result [:stages 0 :breakout]))))))
 
+;;; -------------------------------------------------- Database ID Resolution --------------------------------------------------
+
+(deftest ^:parallel compile-missing-database-id-throws-test
+  (let [ast-no-db (assoc-in sample-ast [:source :metadata] {:dataset-query {}})]
+    (testing "throws when metadata has no database ID"
+      (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
+                            #"Cannot determine database ID"
+                            (ast.compile/compile-to-mbql ast-no-db))))))
+
 ;;; -------------------------------------------------- Aggregation Compilation --------------------------------------------------
 
 (deftest ^:parallel compile-sum-aggregation-test

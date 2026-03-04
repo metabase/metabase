@@ -290,7 +290,7 @@
    Returns nil if no filters, a single filter/mbql node if one filter,
    or a filter/and node containing filter/mbql nodes if multiple."
   [pmbql-query]
-  (when-let [filters (lib/filters pmbql-query)]
+  (when-let [filters (lib/filters pmbql-query 0)]
     (if (= 1 (count filters))
       (mbql-clause->filter-mbql-node (first filters))
       {:node/type :filter/and
@@ -299,7 +299,7 @@
 (defn- extract-source-joins
   "Extract joins from pMBQL query and convert to AST join nodes."
   [pmbql-query]
-  (when-let [joins (lib/joins pmbql-query -1)]
+  (when-let [joins (lib/joins pmbql-query 0)]
     (perf/mapv (fn [join]
                  {:node/type :ast/join
                   :mbql-join join})
@@ -309,7 +309,7 @@
   "Parse pMBQL query into source node structure using lib functions."
   [source-type id metadata pmbql-query]
   (let [table-id      (lib.util/source-table-id pmbql-query)
-        aggregation   (first (lib/aggregations pmbql-query))
+        aggregation   (first (lib/aggregations pmbql-query 0))
         source-filter (extract-source-filters pmbql-query)
         source-joins  (extract-source-joins pmbql-query)]
     (cond-> {:node/type   source-type

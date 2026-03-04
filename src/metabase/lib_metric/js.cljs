@@ -259,7 +259,7 @@
         definition     (js->clj js-definition :keywordize-keys true)]
     (if-let [expression (:expression definition)]
       ;; New expression-based format
-      (let [norm-expression (lib-metric.schema/normalize-filter-clause expression) ;; reuse normalizer for expression refs
+      (let [norm-expression (lib-metric.schema/normalize-math-expression expression)
             ;; Normalize instance filters
             raw-filters     (or (:filters definition) [])
             norm-filters    (mapv (fn [inst-filter]

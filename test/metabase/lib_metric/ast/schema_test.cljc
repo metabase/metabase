@@ -164,13 +164,13 @@
         dim-ref-b {:node/type :ast/dimension-ref :dimension-id uuid-2}]
     (testing "valid inside filter"
       (is (nil? (me/humanize (mr/explain ::ast.schema/filter-inside
-                                          {:node/type     :filter/inside
-                                           :lat-dimension dim-ref-a
-                                           :lon-dimension dim-ref-b
-                                           :north         40.0
-                                           :east          -73.0
-                                           :south         39.0
-                                           :west          -74.0})))))
+                                         {:node/type     :filter/inside
+                                          :lat-dimension dim-ref-a
+                                          :lon-dimension dim-ref-b
+                                          :north         40.0
+                                          :east          -73.0
+                                          :south         39.0
+                                          :west          -74.0})))))
     (testing "invalid inside filter - missing lon-dimension"
       (is (some? (me/humanize (mr/explain ::ast.schema/filter-inside
                                           {:node/type     :filter/inside

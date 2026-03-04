@@ -158,8 +158,8 @@
      (perf/get-in metadata [:dataset-query :database])
      ;; From measure definition
      (perf/get-in metadata [:definition :database])
-     ;; Default fallback
-     1)))
+     (throw (ex-info "Cannot determine database ID for metric source"
+                     {:source-metadata metadata})))))
 
 ;;; -------------------- Join Compilation --------------------
 

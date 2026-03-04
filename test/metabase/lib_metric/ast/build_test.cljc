@@ -406,3 +406,35 @@
       ;; Dimensions are loaded from provider -> sample-metric-metadata
       (is (= 2 (count (:dimensions ast))))
       (is (= 2 (count (:mappings ast)))))))
+
+;;; -------------------------------------------------- Multi-Stage Source Queries --------------------------------------------------
+
+(defn- sample-metric-query-with-join []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/join (lib/join-clause (meta/table-metadata :categories)
+                                 [(lib/= (meta/field-metadata :venues :category-id)
+                                         (meta/field-metadata :categories :id))]))
+      (lib/aggregate (lib/count))
+      (lib/append-stage)))
+
+(defn- sample-metric-metadata-with-join []
+  {:lib/type           :metadata/metric
+   :id                 42
+   :name               "Total Revenue"
+   :dimensions         (sample-dimensions)
+   :dimension-mappings (sample-mappings)
+   :dataset-query      (sample-metric-query-with-join)})
+
+(deftest ^:parallel from-definition-multi-stage-extracts-from-stage-0-test
+  (testing "joins, filters, and aggregation are extracted from stage 0 of multi-stage queries"
+    (let [provider   (make-test-provider (sample-metric-metadata-with-join) (sample-measure-metadata))
+          definition {:lib/type          :metric/definition
+                      :expression        [:metric {:lib/uuid expr-uuid} 42]
+                      :filters           []
+                      :projections       []
+                      :metadata-provider provider}
+          ast        (ast.build/from-definition definition)]
+      (testing "has joins extracted from stage 0"
+        (is (seq (get-in ast [:source :joins]))))
+      (testing "has aggregation extracted from stage 0"
+        (is (some? (get-in ast [:source :aggregation])))))))

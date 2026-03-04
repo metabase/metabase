@@ -208,7 +208,7 @@
   "Arithmetic operators for metric math."
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :+ :- :* :/])
 
-(defn- normalize-math-expression
+(defn normalize-math-expression
   "Recursively normalize a metric math expression from API format.
    Handles string keys, string operators, and nested expressions."
   [x]

@@ -334,8 +334,8 @@
           (let [pmbql-query        (lib/query metadata-provider raw-query)
                 breakout-clauses   (lib/breakouts pmbql-query)
                 breakout-field-ids (into #{}
-                                        (keep lib-metric.dimension/dimension-target->field-id)
-                                        breakout-clauses)]
+                                         (keep lib-metric.dimension/dimension-target->field-id)
+                                         breakout-clauses)]
             (if (empty? breakout-field-ids)
               []
               (filterv #(dimension-has-field-id? breakout-field-ids %)
