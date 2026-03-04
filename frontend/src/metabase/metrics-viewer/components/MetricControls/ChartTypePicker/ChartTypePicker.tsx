@@ -15,16 +15,21 @@ export function ChartTypePicker({
   onChange,
 }: ChartTypePickerProps) {
   return (
-    <Flex gap="xs">
+    <Flex gap="xs" bg="background-secondary" p="xs" bdrs="md">
       {chartTypes.map(({ type, icon }) => (
         <ActionIcon
+          w="2rem"
           key={type}
           variant={value === type ? "filled" : "subtle"}
-          color={value === type ? "brand" : "text-primary"}
+          bg={value === type ? "background-primary" : undefined}
           onClick={() => onChange(type)}
           aria-label={type}
+          style={{
+            boxShadow:
+              value === type ? "0 1px 2px var(--mb-color-shadow)" : undefined,
+          }}
         >
-          <Icon name={icon} />
+          <Icon name={icon} c={value === type ? "brand" : "text-primary"} />
         </ActionIcon>
       ))}
     </Flex>

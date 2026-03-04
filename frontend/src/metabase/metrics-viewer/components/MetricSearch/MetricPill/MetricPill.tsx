@@ -148,8 +148,7 @@ export function MetricPill({
           <Pill
             className={S.metricPill}
             c="text-primary"
-            bd="1px solid var(--mb-color-border)"
-            mih={32}
+            h="2rem"
             px="sm"
             py="xs"
             fw={600}

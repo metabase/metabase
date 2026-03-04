@@ -74,7 +74,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
       <Flex flex="1 1 auto" mih={0}>
         <Stack gap={0} flex={1} mih={0} miw={0}>
           {hasDefinitions && (
-            <Box px="lg" pt="sm" flex="0 0 auto" className={S.tabsBar}>
+            <Box px="lg" pt="xs" flex="0 0 auto" className={S.tabsBar}>
               <MetricsViewerTabs
                 tabs={tabs}
                 activeTabId={activeTabId}

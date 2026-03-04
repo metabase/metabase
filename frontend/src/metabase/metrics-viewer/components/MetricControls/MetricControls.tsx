@@ -73,7 +73,13 @@ export function MetricControls({
     : config.defaultDisplayType;
 
   return (
-    <Flex className={S.container} align="center" gap="xs">
+    <Flex
+      h="3rem"
+      className={S.container}
+      align="center"
+      gap="xs"
+      data-testid="metrics-viewer-controls"
+    >
       <ChartTypePicker
         chartTypes={chartTypes}
         value={effectiveDisplayType}

@@ -76,9 +76,16 @@ export function MetricsViewerTabs({
           </Tabs.Tab>
         )}
         {tabs.map((tab) => (
-          <Tabs.Tab key={tab.id} value={tab.id} px="md" aria-label={tab.label}>
+          <Tabs.Tab
+            key={tab.id}
+            value={tab.id}
+            pl="lg"
+            aria-label={tab.label}
+            className={S.tab}
+          >
             {tab.label}
             <ActionIcon
+              className={S.closeButton}
               size="xs"
               variant="subtle"
               ml={4}
