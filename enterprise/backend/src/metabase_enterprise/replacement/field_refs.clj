@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.field-refs
   (:require
    [clojure.walk :as clojure.walk]
+   [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -8,6 +9,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as vs]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 ;; I tried putting the various {dashboard-card,card,transform}-upgrade-field-refs! functions in the respective models
@@ -43,7 +45,7 @@
 
 (defn- upgrade-field-ref-to-name
   [query field-ref]
-  (when (= :field (first field-ref))
+  (when (= :field (keyword (first field-ref)))
     (try
       (let [field-ref (lib/->pMBQL field-ref)]
         (when (lib.util/field-clause? field-ref)
@@ -179,26 +181,22 @@
         (when (seq changes)
           (t2/update! :model/DashboardCard (:id dashcard) changes))))))
 
-(defn upgrade!
+(mu/defn upgrade!
   "Upgrade field refs in an entity.
 
-  The entity can be:
-  - A [type id] tuple like [:dashboard 123] or [:card 456] (used by runner)
-  - A map object (card, transform, segment, or measure) with the entity already loaded
-  - nil or other (no-op)
-
-  For [type id] tuples, `loaded-object` should be the pre-fetched entity map from
-  bulk-load-metadata-for-entities!. Dashboards don't use loaded-object (not bulk-loaded)."
-  ([entity]
-   (upgrade! entity nil))
-  ([entity loaded-object]
-   (when (and (vector? entity) (= 2 (count entity)))
-     (let [[entity-type entity-id] entity]
-       (case entity-type
-         :dashboard (dashboard-upgrade-field-refs! entity-id)
-         :card      (when loaded-object (card-upgrade-field-refs! loaded-object))
-         :transform (when loaded-object (transform-upgrade-field-refs! loaded-object))
-         :segment   (when loaded-object (segment-upgrade-field-refs! loaded-object))
-         :measure   (when loaded-object (measure-upgrade-field-refs! loaded-object))
-         ;; table, document - no-op
-         nil)))))
+  `entity-ref` is a [type id] tuple like [:dashboard 123] or [:card 456].
+  `loaded-object` is an optional pre-fetched entity map from bulk-load-metadata-for-entities!.
+  Dashboards don't use loaded-object (not bulk-loaded)."
+  ([entity-ref :- ::replacement.schema/entity-ref]
+   (upgrade! entity-ref nil))
+  ([entity-ref :- ::replacement.schema/entity-ref
+    loaded-object]
+   (let [[entity-type entity-id] entity-ref]
+     (case entity-type
+       :dashboard (dashboard-upgrade-field-refs! entity-id)
+       :card      (when loaded-object (card-upgrade-field-refs! loaded-object))
+       :transform (when loaded-object (transform-upgrade-field-refs! loaded-object))
+       :segment   (when loaded-object (segment-upgrade-field-refs! loaded-object))
+       :measure   (when loaded-object (measure-upgrade-field-refs! loaded-object))
+       ;; table - no-op
+       nil))))

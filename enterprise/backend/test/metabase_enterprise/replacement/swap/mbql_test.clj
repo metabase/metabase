@@ -94,14 +94,14 @@
                   _           (wait-for-result-metadata (:id native-card))
                   mbql-card   (card/create-card! (card-sourced-from "MBQL Card" native-card) user)]
               ;; Swap the model at the root
-              (field-refs/upgrade! [:card (:id native-card)])
-              (field-refs/upgrade! [:card (:id mbql-card)])
+              (field-refs/upgrade! [:card (:id native-card)] native-card)
+              (field-refs/upgrade! [:card (:id mbql-card)] mbql-card)
               (source-swap/do-swap! [:card (:id native-card)]
-                                 [:card (:id old-model)]
-                                 [:card (:id new-model)])
+                                    [:card (:id old-model)]
+                                    [:card (:id new-model)])
               (source-swap/do-swap! [:card (:id mbql-card)]
-                                 [:card (:id old-model)]
-                                 [:card (:id new-model)])
+                                    [:card (:id old-model)]
+                                    [:card (:id new-model)])
               ;; Native card's {{#old-id}} should be updated to {{#new-id}}
               (let [native-query (t2/select-one-fn :dataset_query :model/Card :id (:id native-card))
                     native-sql   (get-in native-query [:stages 0 :native])]

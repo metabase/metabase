@@ -10,7 +10,7 @@
   [:or ::lib.schema.id/card ::lib.schema.id/table])
 
 (mr/def ::entity-type
-  [:enum :card :table])
+  [:enum :card :table :dashboard :transform :segment :measure])
 
 (mr/def ::entity-ref
   [:tuple ::entity-type ::entity-id])

@@ -79,7 +79,7 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings vis-settings}]
-                (field-refs/upgrade! [:card (:id child)])
+                (field-refs/upgrade! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -100,7 +100,7 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings {:some_setting "value"}}]
-                (field-refs/upgrade! [:card (:id child)])
+                (field-refs/upgrade! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -123,7 +123,7 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings {:column_settings {name-key {:column_title "Custom"}}}}]
-                (field-refs/upgrade! [:card (:id child)])
+                (field-refs/upgrade! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
