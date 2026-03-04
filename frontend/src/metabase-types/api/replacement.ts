@@ -59,13 +59,22 @@ export type ReplaceSourceRunStatus =
   | "started"
   | "succeeded"
   | "failed"
+  | "canceled"
   | "timeout";
 
 export type ReplaceSourceRun = {
   id: ReplaceSourceRunId;
   status: ReplaceSourceRunStatus;
-  progress: number;
+  is_active: boolean | null;
+  source_entity_type: ReplaceSourceEntityType;
+  source_entity_id: ReplaceSourceEntityId;
+  target_entity_type: ReplaceSourceEntityType;
+  target_entity_id: ReplaceSourceEntityId;
+  progress: number | null;
+  message: string | null;
+  user_id: number | null;
   start_time: string;
+  end_time: string | null;
 };
 
 export type ReplaceSourceRequest = {

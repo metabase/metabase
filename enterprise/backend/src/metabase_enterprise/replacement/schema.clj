@@ -1,7 +1,8 @@
 (ns metabase-enterprise.replacement.schema
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,8 +33,8 @@
    [:progress [:maybe :double]]
    [:message [:maybe :string]]
    [:user_id [:maybe ::lib.schema.id/user]]
-   [:start_time :any]
-   [:end_time [:maybe :any]]])
+   [:start_time ms/TemporalInstant]
+   [:end_time [:maybe ms/TemporalInstant]]])
 
 (mr/def ::column
   [:map
@@ -48,7 +49,7 @@
   [:enum :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])
 
 (mr/def ::error-type
-  [:enum :cycle-detected :database-mismatch])
+  [:enum :cycle-detected :database-mismatch :incompatible-implicit-joins])
 
 (mr/def ::column-mapping
   [:map

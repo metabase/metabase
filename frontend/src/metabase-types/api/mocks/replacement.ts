@@ -41,7 +41,15 @@ export const createMockReplaceSourceRun = (
 ): ReplaceSourceRun => ({
   id: 1,
   status: "started",
+  is_active: true,
+  source_entity_type: "card",
+  source_entity_id: 1,
+  target_entity_type: "card",
+  target_entity_id: 2,
   progress: 0,
+  message: null,
+  user_id: null,
   start_time: new Date().toISOString(),
+  end_time: null,
   ...opts,
 });

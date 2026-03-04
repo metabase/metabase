@@ -43,7 +43,7 @@ export function ProgressModalContent({
 }
 
 function getProgressValue(run: ReplaceSourceRun | undefined): number {
-  if (run == null) {
+  if (run == null || run.progress == null) {
     return 0;
   }
   return run.progress * 100;
