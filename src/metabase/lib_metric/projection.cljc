@@ -280,11 +280,11 @@
 
                          :else nil)]
     (when strategies
-      (mapv (fn [strategy]
-              (cond-> strategy
-                existing                      (dissoc :default)
-                (strategy= strategy existing) (assoc :selected true)))
-            strategies))))
+      (perf/mapv (fn [strategy]
+                   (cond-> strategy
+                     existing                      (dissoc :default)
+                     (strategy= strategy existing) (assoc :selected true)))
+                 strategies))))
 
 (mu/defn binning :- [:maybe ::lib-metric.schema/binning]
   "Get the current binning from a projection clause."
@@ -311,10 +311,10 @@
 (defn- dimension-has-field-id?
   "Check if a dimension has a source matching any of the given field IDs."
   [field-ids dimension]
-  (some (fn [source]
-          (when-let [fid (:field-id source)]
-            (field-ids fid)))
-        (:sources dimension)))
+  (perf/some (fn [source]
+               (when-let [fid (:field-id source)]
+                 (field-ids fid)))
+             (:sources dimension)))
 
 (mu/defn default-breakout-dimensions :- [:sequential ::lib-metric.schema/metadata-dimension]
   "Get dimensions corresponding to the source metric's default breakout columns.
@@ -337,7 +337,7 @@
                 breakout-field-ids (into #{}
                                          (keep lib-metric.dimension/dimension-target->field-id)
                                          breakout-clauses)]
-            (if (empty? breakout-field-ids)
+            (if (perf/empty? breakout-field-ids)
               []
               (filterv #(dimension-has-field-id? breakout-field-ids %)
                        (projectable-dimensions definition)))))))))

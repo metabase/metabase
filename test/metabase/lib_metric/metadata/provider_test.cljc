@@ -220,7 +220,7 @@
       (is (= {:some "value"} (lib.metadata.protocols/cached-value mp :my-key :not-found)))
       (is (= :not-found (lib.metadata.protocols/cached-value mp :other-key :not-found))))))
 
-(deftest ^:parallel store-and-retrieve-measure-via-cache-test
+(deftest store-and-retrieve-measure-via-cache-test
   (testing "store-metadata! and cached-metadatas work for measures"
     (let [mp      (create-mock-provider)
           measure {:id 10 :name "Revenue Measure" :lib/type :metadata/measure}]
@@ -231,7 +231,7 @@
       (testing "does not return measure when asking for metric"
         (is (empty? (lib.metadata.protocols/cached-metadatas mp :metadata/metric [10])))))))
 
-(deftest ^:parallel store-and-retrieve-dimension-via-cache-test
+(deftest store-and-retrieve-dimension-via-cache-test
   (testing "store-metadata! and cached-metadatas work for dimensions"
     (let [mp        (create-mock-provider)
           dimension {:id 20 :name "Date Dimension" :lib/type :metadata/dimension}]

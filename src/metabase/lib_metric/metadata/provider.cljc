@@ -66,7 +66,7 @@
     ;; No single database context for metric provider
     nil)
 
-  (metadatas [this {metadata-type :lib/type, :as metadata-spec}]
+  (metadatas [_this {metadata-type :lib/type, :as metadata-spec}]
     (case metadata-type
       :metadata/metric
       (metric-fetcher-fn metadata-spec)
@@ -78,18 +78,14 @@
       (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) [])
 
       :metadata/measure
-      (let [results (if measure-fetcher-fn
-                      (measure-fetcher-fn metadata-spec)
-                      (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) []))]
-        (run! #(lib.metadata.protocols/store-metadata! this %) results)
-        results)
+      (if measure-fetcher-fn
+        (measure-fetcher-fn metadata-spec)
+        (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) []))
 
       :metadata/dimension
-      (let [results (if dimension-fetcher-fn
-                      (dimension-fetcher-fn metadata-spec)
-                      [])]
-        (run! #(lib.metadata.protocols/store-metadata! this %) results)
-        results)
+      (if dimension-fetcher-fn
+        (dimension-fetcher-fn metadata-spec)
+        [])
 
       :metadata/segment
       (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) [])

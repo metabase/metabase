@@ -121,7 +121,7 @@
 (defmulti compile-aggregation-node
   "Compile aggregation node to MBQL aggregation clause."
   {:arglists '([node])}
-  (fn [node] (:node/type node))
+  :node/type
   :hierarchy #'ast.schema/ast-hierarchy)
 
 (defmethod compile-aggregation-node :aggregation/count
