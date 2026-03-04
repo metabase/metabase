@@ -119,7 +119,7 @@ export interface DatasetData {
   };
   untranslatedRows?: RowValues[];
 
-  sourceRows?: number[][]; // present in pivoted data
+  sourceRows?: (number | null)[][]; // present in pivoted data
 }
 
 export type JsonQuery = DatasetQuery & {

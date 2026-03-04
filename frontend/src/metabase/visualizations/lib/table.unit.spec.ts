@@ -4,29 +4,36 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import type { Series } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
-const RAW_COLUMN = {
+const RAW_COLUMN = createMockColumn({
   source: "fields",
-};
-const METRIC_COLUMN = {
+});
+const METRIC_COLUMN = createMockColumn({
   source: "aggregation",
-};
-const DIMENSION_COLUMN = {
+});
+const DIMENSION_COLUMN = createMockColumn({
   source: "breakout",
-};
+});
 
 describe("metabase/visualization/lib/table", () => {
   describe("getTableClickedObjectRowData", () => {
-    const series = [
+    const series: Series = [
       {
-        data: {
+        card: createMockCard(),
+        data: createMockDatasetData({
           rows: [
             [1, 2, 3],
             [4, 5, 6],
             [7, 8, 9],
           ],
           cols: [DIMENSION_COLUMN, METRIC_COLUMN, RAW_COLUMN],
-        },
+        }),
       },
     ];
 
@@ -34,7 +41,7 @@ describe("metabase/visualization/lib/table", () => {
       const rowIndex = 0;
       const colIndex = 0;
       const isPivoted = false;
-      const data = {};
+      const data = createMockDatasetData({ sourceRows: [] });
 
       expect(
         getTableClickedObjectRowData(
@@ -44,7 +51,7 @@ describe("metabase/visualization/lib/table", () => {
           isPivoted,
           data,
         ),
-      ).toEqual([
+      ).toMatchObject([
         { col: { source: "breakout" }, value: 1 },
         { col: { source: "aggregation" }, value: 2 },
         { col: { source: "fields" }, value: 3 },
@@ -55,12 +62,12 @@ describe("metabase/visualization/lib/table", () => {
       const rowIndex = 1;
       const colIndex = 2;
       const isPivoted = true;
-      const pivotedData = {
+      const pivotedData = createMockDatasetData({
         sourceRows: [
           [null, 0, 1],
           [null, null, 2],
         ],
-      };
+      });
 
       expect(
         getTableClickedObjectRowData(
@@ -70,7 +77,7 @@ describe("metabase/visualization/lib/table", () => {
           isPivoted,
           pivotedData,
         ),
-      ).toEqual([
+      ).toMatchObject([
         { col: { source: "breakout" }, value: 7 },
         { col: { source: "aggregation" }, value: 8 },
         { col: { source: "fields" }, value: 9 },
@@ -81,12 +88,12 @@ describe("metabase/visualization/lib/table", () => {
       const rowIndex = 1;
       const colIndex = 1;
       const isPivoted = true;
-      const pivotedData = {
+      const pivotedData = createMockDatasetData({
         sourceRows: [
           [null, 0, 1],
           [null, null, 2],
         ],
-      };
+      });
 
       expect(
         getTableClickedObjectRowData(
@@ -101,18 +108,19 @@ describe("metabase/visualization/lib/table", () => {
   });
 
   describe("getTableCellClickedObject", () => {
-    const rowData = ["row data"];
-
     describe("normal table", () => {
       it("should work with a raw data cell", () => {
         expect(
           getTableCellClickedObject(
-            { rows: [[0]], cols: [RAW_COLUMN] },
+            createMockDatasetData({
+              rows: [[0]],
+              cols: [RAW_COLUMN],
+            }),
             {},
             0,
             0,
             false,
-            rowData,
+            null,
           ),
         ).toEqual({
           value: 0,
@@ -123,19 +131,22 @@ describe("metabase/visualization/lib/table", () => {
             row: [0],
             rowIndex: 0,
           },
-          data: rowData,
+          data: null,
         });
       });
 
       it("should work with a dimension cell", () => {
         expect(
           getTableCellClickedObject(
-            { rows: [[1, 2]], cols: [DIMENSION_COLUMN, METRIC_COLUMN] },
+            createMockDatasetData({
+              rows: [[1, 2]],
+              cols: [DIMENSION_COLUMN, METRIC_COLUMN],
+            }),
             {},
             0,
             0,
             false,
-            rowData,
+            null,
           ),
         ).toEqual({
           value: 1,
@@ -146,19 +157,22 @@ describe("metabase/visualization/lib/table", () => {
             rowIndex: 0,
           },
           settings: {},
-          data: rowData,
+          data: null,
         });
       });
 
       it("should work with a metric cell", () => {
         expect(
           getTableCellClickedObject(
-            { rows: [[1, 2]], cols: [DIMENSION_COLUMN, METRIC_COLUMN] },
+            createMockDatasetData({
+              rows: [[1, 2]],
+              cols: [DIMENSION_COLUMN, METRIC_COLUMN],
+            }),
             {},
             0,
             1,
             false,
-            rowData,
+            null,
           ),
         ).toEqual({
           value: 2,
@@ -175,7 +189,7 @@ describe("metabase/visualization/lib/table", () => {
             rowIndex: 0,
           },
           settings: {},
-          data: rowData,
+          data: null,
         });
       });
     });
@@ -187,55 +201,51 @@ describe("metabase/visualization/lib/table", () => {
 
   describe("isColumnRightAligned", () => {
     it("should return true for numeric columns without a semantic type", () => {
-      expect(isColumnRightAligned({ base_type: TYPE.Integer })).toBe(true);
+      const column = createMockColumn({ base_type: TYPE.Integer });
+      expect(isColumnRightAligned(column)).toBe(true);
     });
 
     it("should return true for numeric columns with semantic type Number", () => {
-      expect(
-        isColumnRightAligned({
-          base_type: TYPE.Integer,
-          semantic_type: TYPE.Number,
-        }),
-      ).toBe(true);
+      const column = createMockColumn({
+        base_type: TYPE.Integer,
+        semantic_type: TYPE.Number,
+      });
+      expect(isColumnRightAligned(column)).toBe(true);
     });
 
     it("should return true for numeric columns with semantic type latitude or longitude", () => {
-      expect(
-        isColumnRightAligned({
-          base_type: TYPE.Integer,
-          semantic_type: TYPE.Latitude,
-        }),
-      ).toBe(true);
-      expect(
-        isColumnRightAligned({
-          base_type: TYPE.Integer,
-          semantic_type: TYPE.Longitude,
-        }),
-      ).toBe(true);
+      const latitudeColumn = createMockColumn({
+        base_type: TYPE.Integer,
+        semantic_type: TYPE.Latitude,
+      });
+      const longitudeColumn = createMockColumn({
+        base_type: TYPE.Integer,
+        semantic_type: TYPE.Longitude,
+      });
+      expect(isColumnRightAligned(latitudeColumn)).toBe(true);
+      expect(isColumnRightAligned(longitudeColumn)).toBe(true);
     });
 
     it("should return false for numeric columns with semantic type zip code", () => {
-      expect(
-        isColumnRightAligned({
-          base_type: TYPE.Integer,
-          semantic_type: TYPE.ZipCode,
-        }),
-      ).toBe(false);
+      const column = createMockColumn({
+        base_type: TYPE.Integer,
+        semantic_type: TYPE.ZipCode,
+      });
+      expect(isColumnRightAligned(column)).toBe(false);
     });
 
     it("should return false for numeric columns with semantic type FK or PK", () => {
-      expect(
-        isColumnRightAligned({
-          base_type: TYPE.Integer,
-          semantic_type: TYPE.FK,
-        }),
-      ).toBe(false);
-      expect(
-        isColumnRightAligned({
-          base_type: TYPE.Integer,
-          semantic_type: TYPE.FK,
-        }),
-      ).toBe(false);
+      const fkColumn = createMockColumn({
+        base_type: TYPE.Integer,
+        semantic_type: TYPE.FK,
+      });
+      const pkColumn = createMockColumn({
+        base_type: TYPE.Integer,
+        semantic_type: TYPE.PK,
+      });
+
+      expect(isColumnRightAligned(fkColumn)).toBe(false);
+      expect(isColumnRightAligned(pkColumn)).toBe(false);
     });
   });
 });
