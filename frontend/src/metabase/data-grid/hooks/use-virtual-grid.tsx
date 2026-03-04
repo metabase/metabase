@@ -37,9 +37,11 @@ export const useVirtualGrid = <TData,>({
   const { rows: tableRows } = table.getRowModel();
   const visibleColumns = table.getVisibleLeafColumns();
 
+  const columnPinning = table.getState().columnPinning;
   const pinnedColumnsIndices = useMemo(
     () => table.getLeftVisibleLeafColumns().map((c) => c.getPinnedIndex()),
-    [table],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `columnPinning` affects pinnedColumnsIndices
+    [table, columnPinning],
   );
 
   const columnVirtualizer = useVirtualizer({
@@ -65,13 +67,16 @@ export const useVirtualGrid = <TData,>({
     overscan: 3,
   });
 
+  const rowPinning = table.getState().rowPinning;
+
   const pinnedRowIndices = useMemo(
     () =>
       table
         .getTopRows()
         .concat(table.getBottomRows())
-        .map((row) => row.getPinnedIndex(), []),
-    [table],
+        .map((row) => row.getPinnedIndex()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `rowPinning` affects pinnedRowIndices
+    [table, rowPinning],
   );
 
   const rowVirtualizer = useVirtualizer({
