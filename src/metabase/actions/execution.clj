@@ -160,6 +160,7 @@
                                     ;; consistent rather than random to make this easier to test
                                     :id     "metabase.actions.execution/prefetch-parameters-pk"
                                     :target [:dimension [:field (:id pk-field) nil]]
+                                    ;; :type/UUID derives from :type/Text, so UUIDs are handled as strings
                                     :type   (if (isa? (:base_type pk-field) :type/Number)
                                               :number/=
                                               :string/=)
