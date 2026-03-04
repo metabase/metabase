@@ -255,7 +255,6 @@
                                 :target [:dimension [:template-tag "category_name"]]
                                 :value  ["African"]}]}))))))))
 
-;; TODO(rileythomp, 2026-01-21): Re-enable this test when the ClickHouse JDBC driver is upgraded
 (deftest ^:parallel ternary-with-variable-test
   (mt/test-driver :clickhouse
     (testing "a query with a ternary and a variable should work correctly (#56690)"
@@ -274,7 +273,6 @@
                               :target [:variable [:template-tag "category_name"]]
                               :value  "African"}]})))))))
 
-;; TODO(rileythomp, 2026-01-21): Re-enable this test when the ClickHouse JDBC driver is upgraded
 (deftest ^:parallel line-comment-block-comment-test
   (mt/test-driver :clickhouse
     (testing "a query with a line comment followed by a block comment should work correctly (#57149, #62741)"
