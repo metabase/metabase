@@ -61,13 +61,13 @@
                  {:xf    (t2/count :model/Transform)
                   :xfrun (t2/count :model/TransformRun)})))))))
 
-(deftest dry-run-workspace-transform-test
+(deftest dry-run-sql-workspace-transform-test
   (testing "Dry-running a workspace transform returns rows without persisting"
     (let [workspace    (ws.tu/create-ready-ws! "Dry-Run Test Workspace")
           db-id        (:database_id workspace)
           body         {:name   "Dry-Run Transform"
                         :source {:type  "query"
-                                 :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world' ORDER BY 1"})}
+                                 :query (mt/native-query {:query "SELECT * FROM (SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world') t ORDER BY 1"})}
                         :target {:type     "table"
                                  :database db-id
                                  :schema   nil
