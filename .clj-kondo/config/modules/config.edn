@@ -133,7 +133,7 @@
            version}}
 
   analyze
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.analyze.core
            metabase.analyze.query-results}
    :uses #{config
@@ -694,7 +694,7 @@
            util}}
 
   graph
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.graph.core}
    :uses #{util}}
 
@@ -738,17 +738,10 @@
   {:team "Querying"
    :api  #{metabase.lib.core
            metabase.lib.equality
-           metabase.lib.field
            metabase.lib.init
            metabase.lib.metadata
-           metabase.lib.metadata.cached-provider
-           metabase.lib.metadata.column
-           metabase.lib.metadata.invocation-tracker
            metabase.lib.metadata.protocols
-           metabase.lib.metadata.result-metadata
-           metabase.lib.normalize
            metabase.lib.options
-           metabase.lib.query
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -772,14 +765,17 @@
            metabase.lib.schema.validate
            metabase.lib.types.isa
            metabase.lib.util
-           metabase.lib.util.match
-           metabase.lib.walk}
+           metabase.lib.util.match}
    :uses #{config
            graph
            legacy-mbql
            types
            util}
-   :friends #{query-processor legacy-mbql}}
+   :friends #{legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
+              lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
+              query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
+              enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
+              }}
 
   lib-be
   {:team "Querying"
@@ -874,6 +870,7 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
+           metabase.models.transforms.transform
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -890,6 +887,7 @@
            search
            settings
            transforms
+           transforms-base
            util}
    :friends #{transforms}}
 
@@ -1472,7 +1470,7 @@
            util}}
 
   sync
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.sync.api
            metabase.sync.core
            metabase.sync.init
@@ -1575,10 +1573,7 @@
 
   transforms
   {:team "Querying"
-   :api  #{metabase.transforms.api.transform
-           metabase.transforms.api.transform-job
-           metabase.transforms.api.transform-tag
-           metabase.transforms.core
+   :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
            metabase.transforms.schema
@@ -1590,22 +1585,65 @@
            driver
            events
            lib
-           lib-be
            models
            premium-features
            queries
            query-processor
-           request
            revisions
            settings
-           sql-tools
-           sync
            task
            task-history
+           transforms-base
            util}
    :friends #{models
               enterprise/transforms-python
               enterprise/workspaces}}
+
+  transforms-base
+  {:team "Querying"
+   :api  #{metabase.transforms-base.init
+           metabase.transforms-base.interface
+           metabase.transforms-base.util}
+   :uses #{driver
+           events
+           lib
+           lib-be
+           query-processor
+           sync
+           util}
+   :friends #{transforms
+              enterprise/transforms-python
+              enterprise/workspaces}}
+
+  transforms-inspector
+  {:team "Gadget"
+   :api  #{metabase.transforms-inspector.core
+           metabase.transforms-inspector.schema}
+   :uses #{driver
+           lib
+           lib-be
+           query-processor
+           sql-tools
+           transforms-base
+           util}}
+
+  transforms-rest
+  {:team "Gadget"
+   :api  #{metabase.transforms-rest.api.transform
+           metabase.transforms-rest.api.transform-job
+           metabase.transforms-rest.api.transform-tag}
+   :uses #{api
+           driver
+           events
+           models
+           query-processor
+           request
+           server
+           sql-tools
+           transforms
+           transforms-base
+           transforms-inspector
+           util}}
 
   types
   {:team "Querying"
@@ -2089,7 +2127,7 @@
            warehouses}}
 
   enterprise/dependencies
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
@@ -2115,6 +2153,7 @@
            settings
            task
            transforms
+           transforms-base
            util}}
 
   enterprise/email
@@ -2232,6 +2271,7 @@
               system
               task
               transforms
+              transforms-base
               users
               util
               warehouses
@@ -2455,6 +2495,7 @@
            query-processor
            settings
            transforms
+           transforms-base
            util}}
 
   enterprise/upload-management
@@ -2488,6 +2529,7 @@
            sql-tools
            system
            transforms
+           transforms-base
            util
            enterprise/transforms-python}}}
 

@@ -1402,7 +1402,9 @@
   (try
     (t2/with-transaction [_conn]
       (doseq [[k v] settings]
-        (metabase.settings.models.setting/set! k v)))
+        (if (registered? k)
+          (metabase.settings.models.setting/set! k v)
+          (log/infof "Skipping unregistered setting: %s" (name k)))))
     settings
     (catch Throwable e
       (setting.cache/restore-cache!)

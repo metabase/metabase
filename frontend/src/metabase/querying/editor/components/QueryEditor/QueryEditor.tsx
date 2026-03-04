@@ -63,9 +63,11 @@ export function QueryEditor({
     isRunning,
     isResultDirty,
     setQuestion,
+    setParameterValues,
     runQuery,
     cancelQuery,
     openModal,
+    parameterValues,
     setSelectionRange,
     setModalSnippet,
     openSnippetModalWithSelectedText,
@@ -74,6 +76,7 @@ export function QueryEditor({
     toggleDataReferenceSidebar,
     toggleSnippetSidebar,
     toggleNativeQuerySidebar,
+    toggleTemplateTagsSidebar,
     togglePreviewQueryModal,
   } = useQueryEditor({
     query,
@@ -114,6 +117,9 @@ export function QueryEditor({
             resizable={uiOptions?.resizable}
             isShowingDataReference={uiState.sidebarType === "data-reference"}
             isShowingSnippetSidebar={uiState.sidebarType === "snippet"}
+            isShowingTemplateTagsSidebar={
+              uiState.sidebarType === "template-tags"
+            }
             shouldDisableItem={uiOptions?.shouldDisableDataPickerItem}
             shouldDisableDatabase={uiOptions?.shouldDisableDatabasePickerItem}
             shouldShowLibrary={uiOptions?.shouldShowLibrary}
@@ -122,6 +128,7 @@ export function QueryEditor({
             onCancelQuery={cancelQuery}
             onToggleDataReference={toggleDataReferenceSidebar}
             onToggleSnippetSidebar={toggleSnippetSidebar}
+            onToggleTemplateTagsSidebar={toggleTemplateTagsSidebar}
             onOpenModal={openModal}
             onChangeModalSnippet={setModalSnippet}
             onInsertSnippet={insertSnippet}
@@ -159,16 +166,22 @@ export function QueryEditor({
         {isNative && (
           <NativeQuerySidebar
             question={question}
+            query={query}
+            parameterValues={parameterValues}
+            setParameterValues={setParameterValues}
             isNative={isNative}
             isDataReferenceOpen={uiState.sidebarType === "data-reference"}
             isSnippetSidebarOpen={uiState.sidebarType === "snippet"}
+            isTemplateTagsSidebarOpen={uiState.sidebarType === "template-tags"}
             onInsertSnippet={insertSnippet}
             onToggleDataReference={toggleDataReferenceSidebar}
             onToggleSnippetSidebar={toggleSnippetSidebar}
+            onToggleTemplateTagsSidebar={toggleTemplateTagsSidebar}
             onChangeModalSnippet={setModalSnippet}
             onOpenSnippetModalWithSelectedText={
               openSnippetModalWithSelectedText
             }
+            onChangeQuery={onChangeQuery}
           />
         )}
         {!isNative && uiState.sidebarType === "native-query" && (

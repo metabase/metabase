@@ -210,7 +210,7 @@
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
-  (let [{:keys [type] :as action} (api/check-404 (actions/select-action :id id :archived false))]
+  (let [{:keys [type] :as action} (api/read-check (actions/select-action :id id :archived false))]
     (when (= type :http)
       (throw (ex-info (tru "HTTP actions are not supported.")
                       {:type        :http

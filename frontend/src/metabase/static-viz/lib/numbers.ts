@@ -1,9 +1,12 @@
+import type { CurrencyStyle } from "metabase/lib/formatting";
 import { formatNumber as appFormatNumber } from "metabase/lib/formatting/numbers";
 
+export type NumberStyle = "currency" | "decimal" | "scientific" | "percentage";
+
 export type NumberFormatOptions = {
-  number_style?: "currency" | "decimal" | "scientific" | "percentage";
+  number_style?: NumberStyle;
   currency?: string;
-  currency_style?: "symbol" | "code" | "name";
+  currency_style?: CurrencyStyle;
   number_separators?: ".,";
   decimals?: number;
   scale?: number;
@@ -13,7 +16,7 @@ export type NumberFormatOptions = {
 };
 
 const DEFAULT_OPTIONS = {
-  number_style: "decimal" as NumberFormatOptions["number_style"],
+  number_style: "decimal" as const,
   currency: undefined,
   currency_style: "symbol",
   number_separators: ".,",

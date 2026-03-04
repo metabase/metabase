@@ -57,22 +57,8 @@ RUN apk add -U bash fontconfig curl font-noto font-noto-arabic font-noto-hebrew 
 COPY --from=builder /home/node/target/uberjar/metabase.jar /app/
 COPY bin/docker/run_metabase.sh /app/
 
-# Also used as the group name
-ARG USERNAME=metabase
-ARG MGID=2000
-ARG MUID=2000
-
-RUN addgroup --gid $MGID --system $USERNAME \
-    && adduser --disabled-password --uid $MUID --ingroup $USERNAME $USERNAME
-
-# ensure writable directory exists for default H2 database location
-RUN mkdir -p /metabase.db && chown $USERNAME:$USERNAME /metabase.db
-
-USER $USERNAME
-
 # expose our default runtime port
 EXPOSE 3000
 
 # run it
-ENV MB_DB_FILE=/metabase.db/metabase.db
 ENTRYPOINT ["/app/run_metabase.sh"]

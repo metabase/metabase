@@ -79,7 +79,7 @@
   [query stage-number _key]
   (when-let [filters (perf/not-empty (:filters (lib.util/query-stage query stage-number)))]
     (i18n/tru "Filtered by {0}"
-              (lib.util/join-strings-with-conjunction
+              (i18n/join-strings-with-conjunction
                (i18n/tru "and")
                (for [filter filters]
                  (lib.metadata.calculation/display-name query stage-number filter :long))))))
@@ -96,7 +96,7 @@
 
 (defmethod lib.metadata.calculation/display-name-method ::compound
   [query stage-number [tag _opts & subclauses] style]
-  (lib.util/join-strings-with-conjunction
+  (i18n/join-strings-with-conjunction
    (conjunction-word tag)
    (for [clause subclauses]
      (lib.metadata.calculation/display-name query stage-number clause style))))
@@ -627,7 +627,7 @@
 
 (defn compound-filter-conjunctions
   "Returns conjunction strings used in compound filter display names,
-   derived from [[lib.util/join-strings-with-conjunction]] output.
+   derived from [[i18n/join-strings-with-conjunction]] output.
    Longest strings first so greedy matching works correctly."
   []
   (let [conjunctions (mapv conjunction-word [:and :or])
@@ -635,11 +635,11 @@
         ;; with marker strings and seeing what appears between them.
         two-item    (fn [conj-word]
                       ;; "A and B" => " and " is between A and B
-                      (let [result (lib.util/join-strings-with-conjunction conj-word ["A" "B"])]
+                      (let [result (i18n/join-strings-with-conjunction conj-word ["A" "B"])]
                         (subs result 1 (dec (count result)))))
         three-item  (fn [conj-word]
                       ;; "A, B, and C" => ", " between A and B, ", and " between B and C
-                      (let [result (lib.util/join-strings-with-conjunction conj-word ["A" "B" "C"])
+                      (let [result (i18n/join-strings-with-conjunction conj-word ["A" "B" "C"])
                             ;; Find the separators around "B"
                             b-idx  (str/index-of result "B")]
                         [(subs result 1 b-idx)

@@ -132,7 +132,7 @@ jobs:
     if: inputs.bundle-size-check
     continue-on-error: true
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
+    timeout-minutes: 20
     env:
       BUNDLE_SIZE_THRESHOLD_PERCENT: 2
     steps:

@@ -1,13 +1,16 @@
 import { useCallback, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { trackSegmentCreated } from "metabase/data-studio/analytics";
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { Segment } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -20,9 +23,19 @@ type SegmentAppOwnProps = {
   route: Route;
 };
 
+type NormalizedSegmentResponse = {
+  payload: {
+    segment: Segment;
+  };
+};
+
 type SegmentAppDispatchProps = {
-  createSegment: (segment: Partial<Segment>) => Promise<Segment>;
-  updateSegment: (segment: Partial<Segment>) => Promise<Segment>;
+  createSegment: (
+    segment: Partial<Segment>,
+  ) => Promise<NormalizedSegmentResponse>;
+  updateSegment: (
+    segment: Partial<Segment>,
+  ) => Promise<NormalizedSegmentResponse>;
   onChangeLocation: (path: string) => void;
 };
 
@@ -97,6 +110,7 @@ function CreateSegmentForm({
   ...props
 }: CreateSegmentFormProps) {
   const [isDirty, setIsDirty] = useState(false);
+  const { sendErrorToast } = useMetadataToasts();
 
   /**
    * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
@@ -110,14 +124,28 @@ function CreateSegmentForm({
 
       scheduleCallback(async () => {
         try {
-          await createSegment(segment);
+          const { payload } = await createSegment(segment);
+          trackSegmentCreated(
+            "success",
+            "admin_datamodel_segments",
+            payload.segment?.id,
+          );
           onChangeLocation("/admin/datamodel/segments");
-        } catch {
+        } catch (error) {
+          sendErrorToast(t`Failed to create segment`);
+          trackSegmentCreated("failure", "admin_datamodel_segments");
           setIsDirty(isDirty);
+          console.warn(error);
         }
       });
     },
-    [scheduleCallback, createSegment, isDirty, onChangeLocation],
+    [
+      scheduleCallback,
+      createSegment,
+      onChangeLocation,
+      sendErrorToast,
+      isDirty,
+    ],
   );
 
   return (

@@ -29,12 +29,12 @@ export function getListRequest(
   return {
     id: node.id,
     type: node.type,
-    dependent_types: [type],
-    dependent_card_types: cardType != null ? [cardType] : undefined,
+    "dependent-types": [type],
+    "dependent-card-types": cardType != null ? [cardType] : undefined,
     query: query,
-    include_personal_collections: filterOptions.includePersonalCollections,
-    sort_column: sortOptions.column,
-    sort_direction: sortOptions.direction,
+    "include-personal-collections": filterOptions.includePersonalCollections,
+    "sort-column": sortOptions.column,
+    "sort-direction": sortOptions.direction,
   };
 }
 
