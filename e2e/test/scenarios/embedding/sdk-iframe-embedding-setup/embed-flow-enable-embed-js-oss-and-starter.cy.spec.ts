@@ -34,11 +34,12 @@ describe("scenarios > embedding > sdk iframe embed setup > enable embed js (oss 
             cy.findByText("New embed").click();
           });
 
-        embedModalEnableEmbeddingCard().within(() => {
-          cy.findByText(
-            /To continue, enable guest embeds and agree to the/,
-          ).should("exist");
+        embedModalEnableEmbeddingCard().should(
+          "contain.text",
+          "To continue, enable guest embeds and agree to the usage conditions.",
+        );
 
+        embedModalEnableEmbeddingCard().within(() => {
           cy.log("usage conditions should be a link");
           cy.findByRole("link", { name: "usage conditions" })
             .should(
