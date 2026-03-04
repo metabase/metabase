@@ -14,20 +14,15 @@
   :default    false
   :visibility :public
   :export?    false
-  :setter     :none
-  :getter     (fn reading-tracing-enabled []
-                (setting/get-raw-value :tracing-enabled boolean? parse-boolean)))
+  :setter     :none)
 
 (defsetting tracing-endpoint
-  (deferred-tru "OTLP collector endpoint for trace export.")
+  (deferred-tru "OTLP HTTP collector endpoint for trace export (e.g., http://localhost:4318/v1/traces).")
   :type       :string
-  :default    "http://localhost:4317"
+  :default    "http://localhost:4318/v1/traces"
   :visibility :internal
   :export?    false
-  :setter     :none
-  :getter     (fn reading-tracing-endpoint []
-                (or (setting/get-raw-value :tracing-endpoint string? identity)
-                    "http://localhost:4317")))
+  :setter     :none)
 
 (defsetting tracing-groups
   (deferred-tru "Comma-separated list of trace groups to enable, or \"all\" for everything.")
@@ -35,10 +30,7 @@
   :default    "all"
   :visibility :internal
   :export?    false
-  :setter     :none
-  :getter     (fn reading-tracing-groups []
-                (or (setting/get-raw-value :tracing-groups string? identity)
-                    "all")))
+  :setter     :none)
 
 (defsetting tracing-log-level
   (deferred-tru "Log level threshold during traced spans. When a span is active, log events at this level and above bypass per-logger level gates via Log4j2 DynamicThresholdFilter. Requires the filter in log4j2.xml. Valid values: \"INFO\", \"DEBUG\", \"TRACE\".")
@@ -62,10 +54,7 @@
   :default    2048
   :visibility :internal
   :export?    false
-  :setter     :none
-  :getter     (fn reading-tracing-max-queue-size []
-                (or (setting/get-raw-value :tracing-max-queue-size pos-int? #(Long/parseLong ^String %))
-                    2048)))
+  :setter     :none)
 
 (defsetting tracing-export-timeout-ms
   (deferred-tru "Maximum time in milliseconds to wait for a batch export to complete. If the collector is slow or unreachable, the batch is dropped after this timeout.")
@@ -73,10 +62,7 @@
   :default    10000
   :visibility :internal
   :export?    false
-  :setter     :none
-  :getter     (fn reading-tracing-export-timeout-ms []
-                (or (setting/get-raw-value :tracing-export-timeout-ms pos-int? #(Long/parseLong ^String %))
-                    10000)))
+  :setter     :none)
 
 (defsetting tracing-schedule-delay-ms
   (deferred-tru "Delay in milliseconds between consecutive batch span exports to the collector.")
@@ -84,10 +70,7 @@
   :default    5000
   :visibility :internal
   :export?    false
-  :setter     :none
-  :getter     (fn reading-tracing-schedule-delay-ms []
-                (or (setting/get-raw-value :tracing-schedule-delay-ms pos-int? #(Long/parseLong ^String %))
-                    5000)))
+  :setter     :none)
 
 (defsetting tracing-service-name
   (deferred-tru "Service name reported in traces. Defaults to the hostname.")

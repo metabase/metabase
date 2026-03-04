@@ -19,6 +19,7 @@
   (:require
    [clojure.string :as str]
    [metabase.tracing.attributes :as trace-attrs]
+   [metabase.tracing.settings :as tracing.settings]
    [metabase.util.log :as log]
    [potemkin :as p]
    [steffan-westcott.clj-otel.api.otel :as otel]
@@ -308,19 +309,18 @@
 
 (defn init!
   "Initialize the OTel SDK with OTLP HTTP exporter. No-op when MB_TRACING_ENABLED=false.
-   Should be called as early as possible in startup — has no database dependency.
-   Uses requiring-resolve for settings to avoid cyclic load dependency."
+   Should be called as early as possible in startup — has no database dependency."
   []
-  (if-not ((requiring-resolve 'metabase.tracing.settings/tracing-enabled))
+  (if-not (tracing.settings/tracing-enabled)
     (log/info "OpenTelemetry tracing is disabled (MB_TRACING_ENABLED=false)")
     (try
-      (let [endpoint      ((requiring-resolve 'metabase.tracing.settings/tracing-endpoint))
-            service-name  ((requiring-resolve 'metabase.tracing.settings/tracing-service-name))
-            groups-str    ((requiring-resolve 'metabase.tracing.settings/tracing-groups))
-            log-level-str ((requiring-resolve 'metabase.tracing.settings/tracing-log-level))
-            queue-size    ((requiring-resolve 'metabase.tracing.settings/tracing-max-queue-size))
-            timeout-ms    ((requiring-resolve 'metabase.tracing.settings/tracing-export-timeout-ms))
-            delay-ms      ((requiring-resolve 'metabase.tracing.settings/tracing-schedule-delay-ms))
+      (let [endpoint      (tracing.settings/tracing-endpoint)
+            service-name  (tracing.settings/tracing-service-name)
+            groups-str    (tracing.settings/tracing-groups)
+            log-level-str (tracing.settings/tracing-log-level)
+            queue-size    (tracing.settings/tracing-max-queue-size)
+            timeout-ms    (tracing.settings/tracing-export-timeout-ms)
+            delay-ms      (tracing.settings/tracing-schedule-delay-ms)
             exporter      (otlp-http/span-exporter {:endpoint endpoint})]
         (log/infof "Initializing OpenTelemetry tracing: service=%s endpoint=%s groups=%s log-level=%s"
                    service-name endpoint groups-str log-level-str)
