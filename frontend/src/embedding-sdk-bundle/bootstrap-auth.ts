@@ -218,8 +218,7 @@ function getSdkRequestHeaders(hash?: string): Record<string, string> {
     "X-Metabase-Client": "embedding-sdk-react",
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     "X-Metabase-Client-Version":
-      // Intentionally hardcoded — cannot import getBuildInfo here without
-      // pulling in the full build-info module.
+      getWindow()?.METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO?.version ??
       "unknown",
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
