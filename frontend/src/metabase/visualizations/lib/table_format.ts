@@ -14,7 +14,7 @@ import type {
   RowValues,
 } from "metabase-types/api";
 
-import type { Formatter } from "../types";
+import type { Extent, Formatter } from "../types";
 
 type Formatters = Record<string, Formatter[]>;
 
@@ -28,8 +28,6 @@ type FormatterFactory = (value: RowValue, color: string) => Formatter;
 type ColumnIndexes = Record<string, number>;
 
 type ColumnExtents = Record<string, Extent>;
-
-type Extent = [number, number];
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
