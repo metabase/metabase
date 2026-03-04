@@ -164,12 +164,8 @@
                  {:type :table, :id (mt/id :products_b)})
                 ;; The dashcard's parameter_mappings should now reference products_b field name
                 (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
-                      target     (get-in updated-dc [:parameter_mappings 0 :target])
-                      field-ref  (second target)]
-                  ;; After swap, field refs become name-based
-                  (is (= "ID" (second field-ref))
-                      "Parameter mapping target on series-card dashcard should reference products_b field")
-                  (is (not= [:dimension [:field (mt/id :products_a :id) nil]] target)
+                      target     (get-in updated-dc [:parameter_mappings 0 :target])]
+                  (is (=? [:dimension [:field (mt/id :products_b :id) {}]] target)
                       "Parameter mapping should no longer reference the old products_a field"))))))))))
 
 (deftest swap-source-series-card-no-duplicate-updates-test
@@ -195,11 +191,7 @@
                  (:id card)
                  {:type :table, :id (mt/id :products_a)}
                  {:type :table, :id (mt/id :products_b)})
-                ;; Should update exactly once, not error
                 (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
-                      target     (get-in updated-dc [:parameter_mappings 0 :target])
-                      field-ref  (second target)]
-                  (is (= "ID" (second field-ref))
-                      "Parameter mapping should be updated to name-based ref")
-                  (is (not= [:dimension [:field (mt/id :products_a :id) nil]] target)
+                      target     (get-in updated-dc [:parameter_mappings 0 :target])]
+                  (is (=? [:dimension [:field (mt/id :products_b :id) {}]] target)
                       "Parameter mapping should no longer reference the old field"))))))))))

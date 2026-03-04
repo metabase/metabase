@@ -2,10 +2,8 @@
   (:require
    [clojure.walk]
    [medley.core :as m]
-   [metabase.lib-be.core :as lib-be]
+   [metabase-enterprise.replacement.util :as replacement.util]
    [metabase.lib-be.source-swap :as lib-be.source-swap]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.visualization-settings :as vs]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -53,8 +51,8 @@
   [dashcard]
   (when-let [card-id (:card_id dashcard)]
     (when-let [card (t2/select-one :model/Card :id card-id)]
-      (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
-        (lib/query mp (lib.metadata/card mp card-id))))))
+      (when (replacement.util/valid-query? (:dataset_query card))
+        (:dataset_query card)))))
 
 (defn dashboard-card-update-field-refs!
   "After a card's query has been updated, swap the field refs in parameter_mappings
