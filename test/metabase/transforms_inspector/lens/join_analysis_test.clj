@@ -5,8 +5,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
-   [metabase.transforms-inspector.lens.join-analysis :as join-analysis]
-   [metabase.transforms.util :as transforms.util]))
+   [metabase.transforms-base.util :as transforms-base.util]
+   [metabase.transforms-inspector.lens.join-analysis :as join-analysis]))
 
 (set! *warn-on-reflection* true)
 
@@ -59,7 +59,7 @@
                                    (lib/with-join-alias "Products")))])
                       (lib/with-join-alias "Products")
                       (lib/with-join-fields :all)))
-        transforms.util/massage-sql-query
+        transforms-base.util/massage-sql-query
         qp.preprocess/preprocess)))
 
 (defn- preprocess-query-with-multi-condition-join
@@ -77,7 +77,7 @@
                                    (lib/with-join-alias "Products")))])
                       (lib/with-join-alias "Products")
                       (lib/with-join-fields :all)))
-        transforms.util/massage-sql-query
+        transforms-base.util/massage-sql-query
         qp.preprocess/preprocess)))
 
 (deftest make-join-step-query-mbql-single-condition-test
