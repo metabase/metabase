@@ -50,7 +50,7 @@ function waitForAuthConfigAndStartEarlyAuthFlow() {
   }
 
   // Subscribe to store changes
-  const checkForAuthConfig = () => {
+  const checkForAuthConfigAndStartAuth = () => {
     const store = win.METABASE_PROVIDER_PROPS_STORE;
 
     if (!store) {
@@ -68,7 +68,7 @@ function waitForAuthConfigAndStartEarlyAuthFlow() {
   };
 
   // Check immediately
-  if (checkForAuthConfig()) {
+  if (checkForAuthConfigAndStartAuth()) {
     return;
   }
 
@@ -85,7 +85,7 @@ function waitForAuthConfigAndStartEarlyAuthFlow() {
     attempts++;
 
     setTimeout(() => {
-      if (!checkForAuthConfig()) {
+      if (!checkForAuthConfigAndStartAuth()) {
         checkInterval();
       }
     }, delay);
