@@ -17,6 +17,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
@@ -42,19 +43,26 @@
     (conj :column-type-mismatch)
 
     (and new-column
-         (= :type/PK (:semantic-type old-column))
-         (not= :type/PK (:semantic-type new-column)))
+         (lib.types.isa/primary-key? old-column)
+         (not (lib.types.isa/primary-key? new-column)))
     (conj :missing-primary-key)
 
     (and new-column
-         (not= :type/PK (:semantic-type old-column))
-         (= :type/PK (:semantic-type new-column)))
+         (not (lib.types.isa/primary-key? old-column))
+         (lib.types.isa/primary-key? new-column))
     (conj :extra-primary-key)
 
     (and new-column
-         (= :type/FK (:semantic-type old-column))
-         (not= :type/FK (:semantic-type new-column)))
-    (conj :missing-foreign-key)))
+         (lib.types.isa/foreign-key? old-column)
+         (not (lib.types.isa/foreign-key? new-column)))
+    (conj :missing-foreign-key)
+
+    (and new-column
+         old-column
+         (lib.types.isa/foreign-key? old-column)
+         (lib.types.isa/foreign-key? new-column)
+         (not= (:fk-target-field-id old-column) (:fk-target-field-id new-column)))
+    (conj :foreign-key-mismatch)))
 
 (mu/defn check-column-mappings :- [:sequential ::lib-be.schema.source-swap/column-mapping]
   "Build column mappings between source and target query columns."
