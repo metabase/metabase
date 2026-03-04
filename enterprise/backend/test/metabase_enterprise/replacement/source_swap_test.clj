@@ -650,7 +650,7 @@
               (testing message
                 (mt/with-temp [:model/Card card {:dataset_query query}]
                   ;; first, upgrade the card
-                  (field-refs/upgrade! [:card (:id card)])
+                  (field-refs/upgrade! [:card (:id card)] card)
                   ;; sanity check that card points to original card
                   (is (= (mt/id :orders_a) (-> card :table_id)))
                   (is (= (:id old-source) (-> card :dataset_query :stages (get 0) :source-card)))
