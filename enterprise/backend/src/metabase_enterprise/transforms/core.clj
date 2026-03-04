@@ -7,8 +7,7 @@
   But we need a 'real' module, because all tests must belong to a module."
   (:require
    [java-time.api :as t]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.transforms.feature-gating :as feature-gating]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [toucan2.core :as t2]))
 
 (defenterprise transform-stats
@@ -25,7 +24,8 @@
                                                            [:= :r.status "succeeded"]
                                                            [:= [:cast :r.end_time :date] [:cast date :date]]]}))
                              0))
-        advanced?      (feature-gating/python-transforms-enabled?)
+        advanced?      (and (premium-features/has-feature? :transforms)
+                            (premium-features/has-feature? :transforms-python))
         yesterday-runs (count-all-runs yesterday-utc)
         today-runs     (count-all-runs today-utc)]
     {:transform-basic-runs                   (if advanced? 0 yesterday-runs)

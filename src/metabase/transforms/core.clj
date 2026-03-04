@@ -1,7 +1,6 @@
 (ns metabase.transforms.core
   "API namespace for the `metabase.transforms` module."
   (:require
-   [java-time.api :as t]
    [metabase.models.transforms.transform]
    [metabase.models.transforms.transform-job]
    [metabase.models.transforms.transform-run]
@@ -12,13 +11,11 @@
    [metabase.transforms.canceling]
    [metabase.transforms.crud]
    [metabase.transforms.execute]
-   [metabase.transforms.feature-gating :as feature-gating]
    [metabase.transforms.jobs]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.util]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (p/import-vars
  [metabase.transforms.settings
@@ -76,25 +73,3 @@
   tag-name-exists?
   tag-name-exists-excluding?])
 
-(defn transform-stats
-  "Calculate successful transform runs over a window of the previous UTC day 00:00-23:59.
-    Rolling stats are included under :transform-rolling (up to date totals for today)"
-  []
-  (let [today-utc      (t/offset-date-time (t/zone-offset "+00"))
-        yesterday-utc  (t/minus today-utc (t/days 1))
-        count-all-runs (fn [date]
-                         (or (:cnt (t2/query-one {:select [[[:count :r.id] :cnt]]
-                                                  :from   [[:transform_run :r]]
-                                                  :where  [:and
-                                                           [:= :r.status "succeeded"]
-                                                           [:= [:cast :r.end_time :date] [:cast date :date]]]}))
-                             0))
-        advanced?      (feature-gating/python-transforms-enabled?)
-        yesterday-runs (count-all-runs yesterday-utc)
-        today-runs     (count-all-runs today-utc)]
-    {:transform-basic-runs                   (if advanced? 0 yesterday-runs)
-     :transform-advanced-runs                (if advanced? yesterday-runs 0)
-     :transform-usage-date         (str (t/local-date yesterday-utc))
-     :transform-rolling-basic-runs           (if advanced? 0 today-runs)
-     :transform-rolling-advanced-runs        (if advanced? today-runs 0)
-     :transform-rolling-usage-date (str (t/local-date today-utc))}))
