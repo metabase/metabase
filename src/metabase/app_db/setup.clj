@@ -129,10 +129,16 @@
 
 (defn- parse-db-version
   [product-version]
-  (let [[_ major minor patch] (re-find #"^(\d+)\.(\d+)\.(\d+)" product-version)]
-    {:major (parse-long major)
-     :minor (or (parse-long minor) 0)
-     :patch (or (parse-long patch) 0)}))
+  (let [[_ major minor patch] (re-find #"^(\d+)(?:\.(\d+))?(?:\.(\d+))?" product-version)]
+    {:major (or (some-> major parse-long) 0)
+     :minor (or (some-> minor parse-long) 0)
+     :patch (or (some-> patch parse-long) 0)}))
+
+(comment
+  (re-find #_#"^(\d+)\.(\d+)\.(\d+)" #"^(\d+)(?:\.(\d+))?(?:\.(\d+))?" "1.1.1")
+
+  (re-find #_#"^(\d+)\.(\d+)\.(\d+)" #"^(\d+)(?:\.(\d+))?(?:\.(\d+))?" "1.1")
+  (re-find #_#"^(\d+)\.(\d+)\.(\d+)" #"^(\d+)(?:\.(\d+))?(?:\.(\d+))?" "1"))
 
 (mu/defn- db-version
   :- [:map

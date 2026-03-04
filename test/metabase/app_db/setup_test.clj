@@ -29,22 +29,49 @@
 
 (deftest supported-app-db-version?-test
   (testing "Should be able to check if an app DB is a supported version"
-    (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 1 :patch 214})))
-    (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 2 :patch 0})))
-    (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 3 :minor 0 :patch 0})))
-    (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 1 :patch 213})))
-    (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 0 :patch 214})))
-    (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 1 :minor 1 :patch 214})))))
+    (testing "for H2"
+      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 1 :patch 214})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 3 :minor 1 :patch 214})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 2 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 3 :minor 0 :patch 0})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 1 :patch 213})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 0 :patch 214})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 1 :minor 1 :patch 214}))))
+    (testing "for postgres"
+      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 0 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 13 :minor 0 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 1 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 1 :patch 1})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 11 :minor 0 :patch 0})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor -1 :patch 0})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 0 :patch -1}))))))
 
 (deftest parse-db-version-test
   (testing "Can parse H2 version strings"
     (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "2.1.214 (2022-06-13)"))))
   (testing "Can parse postgres version strings"
-    (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "TODO"))))
+    (is (= {:major 18 :minor 3 :patch 0} (#'mdb.setup/parse-db-version "18.3 (Debian 18.3-1.pgdg13+1)"))))
   (testing "Can parse mysql version strings"
     (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "TODO"))))
   (testing "Can parse mariadb version strings"
     (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "TODO")))))
+
+(comment
+  (mdb.data-source/broken-out-details->DataSource
+   :postgres
+   {:subprotocol "h2"
+    :subname     (format "mem:%s" (mt/random-name))
+    :classname   "org.h2.Driver"})
+  (metabase.app-db.connection/db-type)
+  (.. (metabase.app-db.connection/data-source)
+      (getConnection)
+      (getMetaData)
+      (getDatabaseProductName))
+
+  (.. (metabase.app-db.connection/data-source)
+      (getConnection)
+      (getMetaData)
+      (getDatabaseProductVersion)))
 
 (deftest setup-db-test
   (testing "Should be able to set up an arbitrary application DB"
