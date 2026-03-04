@@ -98,10 +98,10 @@
               0
               23]
              (params.dates/date-string->filter "exclude-hours-0-23" [:field "field" {:base-type :type/DateTime}])))
-      (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-hours-\""
-                   (params.dates/date-string->filter "exclude-hours-" [:field "field" {:base-type :type/DateTime}])))
-      (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-hours-24-3\""
-                   (params.dates/date-string->filter "exclude-hours-24-3" [:field "field" {:base-type :type/DateTime}]))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-hours-\""
+                            (params.dates/date-string->filter "exclude-hours-" [:field "field" {:base-type :type/DateTime}])))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-hours-24-3\""
+                            (params.dates/date-string->filter "exclude-hours-24-3" [:field "field" {:base-type :type/DateTime}]))))
     (testing "quarters"
       (is (= [:!=
               [:field "field" {:base-type :type/DateTime, :temporal-unit :quarter-of-year}]
@@ -113,16 +113,16 @@
               3
               4]
              (params.dates/date-string->filter "exclude-quarters-2-3-4" [:field "field" {:base-type :type/DateTime}])))
-      (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-quarters-Q1\""
-                   (params.dates/date-string->filter "exclude-quarters-Q1" [:field "field" {:base-type :type/DateTime}]))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-quarters-Q1\""
+                            (params.dates/date-string->filter "exclude-quarters-Q1" [:field "field" {:base-type :type/DateTime}]))))
     (testing "days (with default start-of-week = Sunday: Sun=1, Mon=2, Tue=3, Wed=4, Thu=5, Fri=6, Sat=7)"
       (is (= [:!=
               [:field "field" {:base-type :type/DateTime, :temporal-unit :day-of-week}]
               6
               3]
              (params.dates/date-string->filter "exclude-days-Fri-Tue" [:field "field" {:base-type :type/DateTime}])))
-      (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-days-Friday\""
-                   (params.dates/date-string->filter "exclude-days-Friday" [:field "field" {:base-type :type/DateTime}]))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-days-Friday\""
+                            (params.dates/date-string->filter "exclude-days-Friday" [:field "field" {:base-type :type/DateTime}]))))
     (testing "months"
       (is (= [:!=
               [:field "field" {:base-type :type/DateTime, :temporal-unit :month-of-year}]
@@ -130,8 +130,8 @@
               4
               9]
              (params.dates/date-string->filter "exclude-months-Dec-Apr-Sep" [:field "field" {:base-type :type/DateTime}])))
-      (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-months-April\""
-                   (params.dates/date-string->filter "exclude-months-April" [:field "field" {:base-type :type/DateTime}]))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-months-April\""
+                            (params.dates/date-string->filter "exclude-months-April" [:field "field" {:base-type :type/DateTime}]))))
     (testing "minutes"
-      (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-minutes-15-30\""
-                   (params.dates/date-string->filter "exclude-minutes-15-30" [:field "field" {:base-type :type/DateTime}]))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-minutes-15-30\""
+                            (params.dates/date-string->filter "exclude-minutes-15-30" [:field "field" {:base-type :type/DateTime}]))))))
