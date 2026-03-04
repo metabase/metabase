@@ -20,11 +20,6 @@
   []
   (get-in (current-memory) [:state :queries] {}))
 
-(defn query-by-id
-  "Returns query from memory by its id."
-  [id]
-  (get (current-queries-state) id))
-
 (defn current-charts-state
   "Returns the current charts state map from agent memory."
   []

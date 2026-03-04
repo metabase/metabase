@@ -138,7 +138,7 @@
   [{:keys [query_id edits checklist]}
    :- [:map {:closed true}
        [:query_id [:or :string :int]]
-       [:checklist {:optional true} :string]
+       [:checklist :string]
        [:edits [:sequential [:map {:closed true}
                              [:old_string :string]
                              [:new_string :string]

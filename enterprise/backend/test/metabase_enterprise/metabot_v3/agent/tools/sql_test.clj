@@ -69,6 +69,7 @@
                 result   (binding [shared/*memory-atom* memory]
                            (agent-sql/edit-sql-query-tool
                             {:query_id  query-id
+                             :checklist "- [x] checked"
                              :edits     [{:old_string "SELECT *"
                                           :new_string "SELECT ="}]}))
                 output   (:output result)]
