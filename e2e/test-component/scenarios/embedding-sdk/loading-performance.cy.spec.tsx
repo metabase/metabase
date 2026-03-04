@@ -35,6 +35,7 @@ describe(
   "scenarios > embedding-sdk > loading-performance",
   {
     tags: ["@skip-backward-compatibility"],
+    // These test in some cases load a new SDK Bundle that in combination with the Component Testing is memory-consuming
     numTestsKeptInMemory: 1,
   },
   () => {
