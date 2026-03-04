@@ -5,6 +5,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.driver.common :as driver.common]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -464,3 +467,55 @@
           (mt/with-temporary-setting-values [synchronous-batch-updates true]
             (run-query-for-dashcard dashboard-id card-id dashcard-id)
             (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id)))))))))
+
+(deftest exclude-day-of-week-dashboard-parameter-test
+  (testing "Exclude day-of-week filter via dashboard parameter should not embed date literals in SQL (#68479)"
+    ;; Repro scenario from the issue:
+    ;; 1. Create a question on a table with a timestamp column
+    ;; 2. Add the question to a dashboard with a Date filter parameter
+    ;; 3. Set the filter to "Exclude Monday"
+    ;; 4. The dashboard query should produce the same results as running the question
+    ;;    directly with an equivalent day-of-week filter.
+    ;;
+    ;; The underlying bug: the dashboard parameter path converts "exclude-days-Mon" into
+    ;; a date string value (e.g. "2026-02-23", a Monday) instead of a numeric day-of-week
+    ;; constant (e.g. 1). This causes the generated SQL to extract day-of-week from a date
+    ;; literal (on Postgres: extract(dow from CAST('2026-02-23' AS timestamp))) instead of
+    ;; comparing directly with a number (<> 1).
+    ;; This breaks on databases that can't handle the CAST (e.g. Cube.js).
+    (let [mp         (mt/metadata-provider)
+          orders     (lib.metadata/table mp (mt/id :orders))
+          created-at (lib.metadata/field mp (mt/id :orders :created_at))
+          base-query (-> (lib/query mp orders)
+                         (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query base-query}
+                     :model/Dashboard {dashboard-id :id} {:parameters [{:id   "date_param"
+                                                                        :name "Date"
+                                                                        :slug "date"
+                                                                        :type "date/all-options"}]}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
+                                                             :card_id            card-id
+                                                             :parameter_mappings [{:parameter_id "date_param"
+                                                                                   :card_id      card-id
+                                                                                   :target       [:dimension
+                                                                                                  [:field (:id created-at) nil]]}]}]
+        (let [dashboard-result (run-query-for-dashcard
+                                dashboard-id card-id dashcard-id
+                                :parameters [{:id    "date_param"
+                                              :value "exclude-days-Mon"}])
+              dashboard-sql    (-> dashboard-result :data :native_form :query)
+              ;; Monday = index 0 in driver.common/days-of-week [:monday :tuesday ... :sunday]
+              ;; start-of-week->int returns 0-based index in that same vector (default :sunday = 6)
+              ;; Metabase day-of-week convention: 1 = start-of-week day, 7 = day before start-of-week
+              monday-dow       (inc (mod (- (driver.common/start-of-week->int)) 7))
+              direct-result    (qp/process-query
+                                (-> base-query
+                                    (lib/filter (lib/!= (lib/with-temporal-bucket created-at :day-of-week) monday-dow))))]
+          (testing "Both queries return the same count"
+            (is (= (mt/rows direct-result)
+                   (mt/rows dashboard-result))))
+          (testing "Dashboard SQL should not contain a date/timestamp literal in the WHERE clause"
+            ;; The dashboard parameter path currently embeds a date literal like
+            ;; '2026-02-23 00:00:00' and extracts day-of-week from it, rather than
+            ;; comparing with a numeric constant directly.
+            (is (not (re-find #"'\d{4}-\d{2}-\d{2}" dashboard-sql)))))))))
