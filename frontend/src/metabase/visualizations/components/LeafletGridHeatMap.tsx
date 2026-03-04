@@ -11,9 +11,13 @@ import type { DatasetColumn, RowValue } from "metabase-types/api";
 
 import { computeNumericDataInterval } from "../lib/numeric";
 
-import { LeafletMap, type LeafletMapProps } from "./LeafletMap";
+import {
+  LeafletMap,
+  type LeafletMapPoint,
+  type LeafletMapProps,
+} from "./LeafletMap";
 
-type GridHeatPoint = [number, number, number];
+type GridHeatPoint = LeafletMapPoint<[number]>;
 
 type GridHeatMapSeries = LeafletMapProps["series"][number] & {
   data: {
@@ -22,11 +26,7 @@ type GridHeatMapSeries = LeafletMapProps["series"][number] & {
   };
 };
 
-type LeafletGridHeatMapProps = Omit<
-  LeafletMapProps,
-  "points" | "onVisualizationClick" | "onHoverChange"
-> & {
-  points?: GridHeatPoint[] | null;
+type LeafletGridHeatMapProps = LeafletMapProps<GridHeatPoint> & {
   min?: number;
   max?: number;
   onVisualizationClick?: ((clickObject: ClickObject | null) => void) | null;
@@ -59,7 +59,7 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
     this.componentDidUpdate({} as LeafletGridHeatMapProps);
   }
 
-  componentDidUpdate(prevProps: LeafletMapProps) {
+  componentDidUpdate(prevProps: LeafletGridHeatMapProps) {
     super.componentDidUpdate(prevProps);
 
     try {

@@ -16,6 +16,14 @@ import type { Series } from "metabase-types/api";
 import type { Point } from "metabase-types/api/dataset";
 import { isObject } from "metabase-types/guards/common";
 
+export type LeafletMapPoint<TExtra extends unknown[] = []> = [
+  number,
+  number,
+  ...TExtra,
+];
+
+type AnyLeafletMapPoint = LeafletMapPoint<unknown[]>;
+
 /**
  * Checks if a hostname belongs to openstreetmap.org or one of its subdomains.
  * Uses exact matching to prevent bypass via malicious domains like
@@ -36,13 +44,13 @@ type MapSettings = {
   "map.zoom"?: number;
 };
 
-export interface LeafletMapProps {
+export interface LeafletMapProps<TPoint extends AnyLeafletMapPoint = Point> {
   className?: string;
   width?: number;
   height?: number;
   bounds: L.LatLngBounds;
   settings: MapSettings;
-  points?: Point[] | null;
+  points?: TPoint[] | null;
   series: Series;
   metadata?: Metadata;
   token?: string | null;
@@ -58,7 +66,7 @@ export interface LeafletMapProps {
 }
 
 export class LeafletMap<
-  T extends LeafletMapProps = LeafletMapProps,
+  T extends LeafletMapProps<AnyLeafletMapPoint> = LeafletMapProps,
 > extends Component<T> {
   mapRef = createRef<HTMLDivElement>();
   map: L.Map | null = null;
@@ -136,7 +144,7 @@ export class LeafletMap<
     }
   }
 
-  componentDidUpdate(prevProps: LeafletMapProps) {
+  componentDidUpdate(prevProps: T) {
     if (!this.map) {
       return;
     }
@@ -378,8 +386,8 @@ export class LeafletMap<
  * so that we should recalculate the zoom.
  */
 function shouldRecalculateZoom(
-  prevPoints?: Point[] | null,
-  nextPoints?: Point[] | null,
+  prevPoints?: LeafletMapPoint<unknown[]>[] | null,
+  nextPoints?: LeafletMapPoint<unknown[]>[] | null,
 ) {
   if (!prevPoints && !nextPoints) {
     return false;
