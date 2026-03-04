@@ -552,7 +552,8 @@
                     :id "123"
                     :searchable_text "test content"
                     :embeddable_text "test content"
-                    :creator_id 1}]
+                    :creator_id 1
+                    :embedding embedding-vec}]
 
       (testing "MySQL-style integer booleans are converted to real booleans"
         (let [doc-with-mysql-booleans (assoc base-doc
@@ -560,7 +561,7 @@
                                              :official_collection 1
                                              :pinned 0
                                              :verified 1)
-              result (#'semantic.index/doc->db-record nil embedding-vec doc-with-mysql-booleans)]
+              result (#'semantic.index/doc->db-record nil doc-with-mysql-booleans)]
           (is (false? (:archived result)))
           (is (true? (:official_collection result)))
           (is (false? (:pinned result)))
@@ -572,7 +573,7 @@
                                             :official_collection false
                                             :pinned true
                                             :verified false)
-              result (#'semantic.index/doc->db-record nil embedding-vec doc-with-real-booleans)]
+              result (#'semantic.index/doc->db-record nil doc-with-real-booleans)]
           (is (true? (:archived result)))
           (is (false? (:official_collection result)))
           (is (true? (:pinned result)))
@@ -580,7 +581,7 @@
 
       (testing "nil boolean fields are handled correctly"
         (let [doc-with-nil-booleans base-doc
-              result (#'semantic.index/doc->db-record nil embedding-vec doc-with-nil-booleans)]
+              result (#'semantic.index/doc->db-record nil doc-with-nil-booleans)]
           (is (nil? (:archived result)))
           (is (nil? (:official_collection result)))
           (is (nil? (:pinned result)))

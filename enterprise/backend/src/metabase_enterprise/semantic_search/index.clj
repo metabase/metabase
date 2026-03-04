@@ -145,9 +145,9 @@
 
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
-  [owner-ids embedding-vec {:keys [model id searchable_text embeddable_text native_query created_at creator_id updated_at
-                                   last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
-                                   pinned dashboardcard_count view_count last_viewed_at] :as doc}]
+  [owner-ids {:keys [model id embedding searchable_text embeddable_text native_query created_at creator_id updated_at
+                     last_editor_id archived verified official_collection database_id collection_id display_type legacy_input
+                     pinned dashboardcard_count view_count last_viewed_at] :as doc}]
   {:model               model
    :model_id            id
    :collection_id       collection_id
@@ -169,7 +169,7 @@
    :last_viewed_at      (some-> last_viewed_at to-instant)
    :legacy_input        [:cast (json/encode legacy_input) :jsonb]
    :metadata            [:cast (json/encode (dissoc doc :embedding)) :jsonb]
-   :embedding           [:raw (format-embedding embedding-vec)]
+   :embedding           [:raw (format-embedding embedding)]
    :text_search_vector  (if (:name doc)
                           [:||
                            (search/weighted-tsvector "A" (:name doc))
@@ -206,13 +206,12 @@
       (log/warn e "Failed to set :metabase-search/semantic-index-size metric"))))
 
 (defn- batch-update!
-  [connectable table-name records->sql documents embeddings]
+  [connectable table-name records->sql documents]
   (when (seq documents)
     (u/prog1 (->> documents (map :model) frequencies)
       (u/profile (str "Semantic index database update of " (count documents) " documents " <>)
         (let [owner-ids (batch-resolve-personal-owner-ids (map :collection_id documents))]
-          (doseq [batch (->> (map vector documents embeddings)
-                             (map (fn [[doc embedding]] (doc->db-record owner-ids embedding doc)))
+          (doseq [batch (->> (map #(doc->db-record owner-ids %) documents)
                              (partition-all *batch-size*))]
             (jdbc/execute! connectable (records->sql batch))))
         (analytics-set-index-size! connectable table-name)))))
@@ -299,8 +298,7 @@
              (sql.helpers/on-conflict :model :model_id)
              (sql.helpers/do-update-set (db-records->update-set db-records))
              sql-format-quoted))
-       batch-documents
-       (map :embedding batch-documents)))))
+       batch-documents))))
 
 (defn- unwrap-pgobject
   [^PGobject obj]
