@@ -77,6 +77,7 @@
       (update-keys keyword)
       (m/update-existing :query lib-be/normalize-query)
       (m/update-existing :source-incremental-strategy #(update-keys % keyword))
+      (m/update-existing :source-tables (fn [st] (mapv #(update-keys % keyword) st)))
       (m/update-existing :type keyword)))
 
 (defn transform-source-in
