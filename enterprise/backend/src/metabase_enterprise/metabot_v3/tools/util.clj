@@ -13,8 +13,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
