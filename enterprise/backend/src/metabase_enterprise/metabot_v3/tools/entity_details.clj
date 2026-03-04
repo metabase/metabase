@@ -406,10 +406,14 @@
       (let [options (cond-> arguments
                       (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
             details (if (int? report-id)
-                      (let [details (card-details report-id options)]
+                      (let [card    (t2/hydrate (metabot-v3.tools.u/get-card report-id)
+                                                :average_query_time)
+                            mp      (lib-be/application-database-metadata-provider (:database_id card))
+                            details (card-details card mp options)]
                         (-> details
                             (select-keys [:id :type :description :name :verified])
-                            (assoc :result-columns (:fields details))))
+                            (assoc :result-columns (:fields details))
+                            (m/assoc-some :average_query_time (:average_query_time card))))
                       (throw (ex-info "Invalid report_id format"
                                       {:agent-error? true :status-code 400})))]
         {:structured-output details}))

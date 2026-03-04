@@ -472,7 +472,7 @@
                     (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")))))
 
 (deftest user-message-with-visualizations-test
-  (testing "POST /events with visualizations posts images and cleans up placeholders"
+  (testing "POST /events with visualizations posts images"
     (with-slackbot-setup
       (let [mock-ai-text "Here are your charts"
             mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
@@ -487,7 +487,7 @@
         (with-slackbot-mocks
           {:ai-text mock-ai-text
            :data-parts mock-data-parts}
-          (fn [{:keys [stream-calls append-text-calls stop-stream-calls image-calls delete-calls
+          (fn [{:keys [stream-calls append-text-calls stop-stream-calls image-calls
                        generate-card-output-calls fake-png-bytes]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
@@ -509,16 +509,14 @@
                 (is (= 2 (count @generate-card-output-calls)))
                 (is (= #{101 202} (set (map :card-id @generate-card-output-calls)))))
 
-              (testing "images posted and placeholders deleted"
+              (testing "images posted"
                 (is (= 2 (count @image-calls)))
                 (is (every? #(= "C456" (:channel %)) @image-calls))
                 (is (every? #(= "1234567890.000000" (:thread-ts %)) @image-calls))
                 (is (= #{"chart-101.png" "chart-202.png"}
                        (set (map :filename @image-calls))))
                 (is (every? #(= (vec fake-png-bytes) (vec (:image-bytes %)))
-                            @image-calls))
-                ;; Placeholders deleted after image posted (plus Thinking... = 3 deletes)
-                (is (>= (count @delete-calls) 2))))))))))
+                            @image-calls))))))))))
 
 (deftest user-not-linked-sends-auth-message-test
   (testing "POST /events with unlinked user sends ephemeral auth message (DMs always threaded)"
@@ -667,13 +665,12 @@
         (with-slackbot-mocks
           {:ai-text    "Here's your table"
            :data-parts mock-data-parts}
-          (fn [{:keys [generate-adhoc-output-calls stop-stream-calls update-calls]}]
+          (fn [{:keys [generate-adhoc-output-calls stop-stream-calls]}]
             (mt/client :post 200 "ee/metabot-v3/slack/events"
                        (slack-request-options event-body)
                        event-body)
-            ;; Wait for streaming to complete and table rendering (table updates placeholder in-place)
             (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
-                                       (>= (count @update-calls) 1))
+                                       (>= (count @generate-adhoc-output-calls) 1))
                      :done?      true?
                      :timeout-ms 5000})
             (testing "display defaults to :table"
@@ -738,8 +735,8 @@
 
 ;; -------------------------------- Visualization Error Handling Tests --------------------------------
 
-(deftest viz-error-updates-placeholder-test
-  (testing "updates placeholder with error when visualization generation fails"
+(deftest viz-error-posts-error-message-test
+  (testing "posts error message when visualization generation fails"
     (with-slackbot-setup
       (let [event-body (update base-dm-event :event merge
                                {:text      "Show me a chart"
@@ -750,7 +747,7 @@
         (with-slackbot-mocks
           {:ai-text    "Here's your chart"
            :data-parts [{:type "static_viz" :value {:entity_id 999999}}]}
-          (fn [{:keys [update-calls stop-stream-calls]}]
+          (fn [{:keys [post-calls stop-stream-calls]}]
             (mt/with-dynamic-fn-redefs
               [slackbot.query/generate-card-output (fn [_card-id]
                                                      (throw (ex-info "Unexpected render error" {})))]
@@ -758,10 +755,10 @@
                          (slack-request-options event-body) event-body)
               (let [error-msg "Query execution failed, please try again."]
                 (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
-                                           (some (fn [m] (= error-msg (:text m))) @update-calls))
+                                           (some (fn [m] (= error-msg (:text m))) @post-calls))
                          :done?      true?
                          :timeout-ms 5000})
-                (is (some #(= error-msg (:text %)) @update-calls))))))))))
+                (is (some #(= error-msg (:text %)) @post-calls))))))))))
 
 (deftest viz-error-does-not-block-other-vizs-test
   (testing "a failing viz does not prevent subsequent vizs from rendering"
@@ -777,7 +774,7 @@
           {:ai-text    "Here are your charts"
            :data-parts [{:type "static_viz" :value {:entity_id 999999}}
                         {:type "static_viz" :value {:entity_id 123}}]}
-          (fn [{:keys [update-calls image-calls stop-stream-calls]}]
+          (fn [{:keys [post-calls image-calls stop-stream-calls]}]
             (mt/with-dynamic-fn-redefs
               [slackbot.query/generate-card-output (fn [card-id]
                                                      (if (= card-id 999999)
@@ -789,9 +786,9 @@
                                          (>= (count @image-calls) 1))
                        :done?      true?
                        :timeout-ms 5000})
-              (testing "error message updated on placeholder for failing viz"
+              (testing "error message posted for failing viz"
                 (is (some #(= "Query execution failed, please try again." (:text %))
-                          @update-calls)))
+                          @post-calls)))
               (testing "second card still rendered"
                 (is (= 1 (count @image-calls)))))))))))
 
