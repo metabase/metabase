@@ -154,6 +154,19 @@
                  :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
                (:source-tables (remap-python-source table-mapping source))))))
 
+    (testing "remaps without table_id when mapping has nil :id"
+      (let [table-mapping {[1 "public" "orders"] {:db-id  1
+                                                  :schema "ws_isolated_123"
+                                                  :table  "orders_isolated"
+                                                  :id     nil}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 123}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
     (testing "leaves source-tables unchanged when no mapping exists"
       (let [table-mapping {}
             source        {:type          "python"
