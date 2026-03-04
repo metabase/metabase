@@ -428,12 +428,12 @@
             [:tracking-opts {:optional true} [:maybe [:map
                                                       [:session-id {:optional true} [:maybe ms/UUIDString]]
                                                       [:source {:optional true} [:maybe :string]]
-                                                      [:tag {:optional true} [:maybe :string]]]]]
-            [:track-user-intent? {:optional true} [:maybe :boolean]]
+                                                      [:tag {:optional true} [:maybe :string]]
+                                                      [:track-user-intent? {:optional true} [:maybe :boolean]]]]]
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
-        track-user-intent? (:track-user-intent? opts)
+        track-user-intent? (some-> opts :tracking-opts :track-user-intent?)
         labels             {:profile-id (name profile-id)}]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]

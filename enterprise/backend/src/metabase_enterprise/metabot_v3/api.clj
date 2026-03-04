@@ -174,12 +174,12 @@
           (transduce xf
                      (streaming-writer-rf os canceled-chan)
                      (agent/run-agent-loop
-                      (cond-> {:messages           messages
-                               :state              state
-                               :profile-id         (keyword profile-id)
-                               :context            enriched-context
-                               :tracking-opts      {:session-id conversation-id}
-                               :track-user-intent? true}
+                      (cond-> {:messages      messages
+                               :state         state
+                               :profile-id    (keyword profile-id)
+                               :context       enriched-context
+                               :tracking-opts {:session-id          conversation-id
+                                               :track-user-intent?  true}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))

@@ -665,8 +665,8 @@
                              :state               {}
                              :context             {}
                              :profile-id          :internal
-                             :tracking-opts       {:session-id "00000000-0000-0000-0000-000000000002"}
-                             :track-user-intent?  true}))
+                             :tracking-opts       {:session-id          "00000000-0000-0000-0000-000000000002"
+                                                   :track-user-intent?  true}}))
             (tu/poll-until 5000
                            (some #(= "user_intent" (get-in % [:properties "data" "data" "event"]))
                                  @snowplow-test/*snowplow-collector*))
@@ -706,7 +706,7 @@
                          :state               {}
                          :context             {}
                          :profile-id          :internal
-                         :tracking-opts       {:session-id "00000000-0000-0000-0000-000000000004"}
-                         :track-user-intent?  true}))
+                         :tracking-opts       {:session-id          "00000000-0000-0000-0000-000000000004"
+                                               :track-user-intent?  true}}))
         (tu/poll-until 5000 @classify-called)
         (is (true? @classify-called))))))
