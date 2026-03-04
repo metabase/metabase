@@ -37,6 +37,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: metabase/repro-bot
+          ref: ci-support
           token: ${{ secrets.METABASE_BOT_GITHUB_TOKEN }}
 
       - name: Pre-clone metabase bare git repo
