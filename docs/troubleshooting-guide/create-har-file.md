@@ -25,13 +25,11 @@ To create the HAR file, follow the instructions for your web browser:
 
 4. With the Network tab open and recording in progress, repeat the steps to reproduce the issue.
 
-5. Once you're finished reproducing the issue, right-click anywhere in the table of network calls and select **Copy** > **Copy all as HAR (with sensitive content)**.
-
-6. Open a text editor such as TextEdit or Notepad, open a new document, and paste into it.
+5. Once you're finished reproducing the issue, click the download icon on the far right of the toolbar just below the tab bar. Choose **Export HAR (with sensitive data)…** and save the file.
 
 ## Create a HAR file in Edge
 
-Instructions are identical to Chrome above. You can also follow [Microsoft's guide for creating HAR files with sensitive data](https://docs.wpo365.com/article/225-create-a-har-file-with-sensitive-data)
+Instructions are identical to Chrome above.
 
 ## Create a HAR file in Firefox
 
