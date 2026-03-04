@@ -792,20 +792,20 @@
               (testing "second card still rendered"
                 (is (= 1 (count @image-calls)))))))))))
 
-(deftest format-viz-caption-test
-  (testing "format-viz-caption builds correct caption text"
+(deftest format-viz-title-test
+  (testing "format-viz-title builds correct title text"
     (mt/with-temporary-setting-values [site-url "https://metabase.example.com"]
-      (testing "caption + link"
+      (testing "title + link"
         (is (= "📊 <https://metabase.example.com/question/42|My Chart>"
-               (#'slackbot.streaming/format-viz-caption "My Chart" "/question/42"))))
-      (testing "caption only"
+               (#'slackbot.streaming/format-viz-title "My Chart" "/question/42"))))
+      (testing "title only"
         (is (= "My Chart"
-               (#'slackbot.streaming/format-viz-caption "My Chart" nil))))
+               (#'slackbot.streaming/format-viz-title "My Chart" nil))))
       (testing "link only"
         (is (= "📊 <https://metabase.example.com/question/42|Open in Metabase>"
-               (#'slackbot.streaming/format-viz-caption nil "/question/42"))))
+               (#'slackbot.streaming/format-viz-title nil "/question/42"))))
       (testing "neither"
-        (is (nil? (#'slackbot.streaming/format-viz-caption nil nil)))))))
+        (is (nil? (#'slackbot.streaming/format-viz-title nil nil)))))))
 
 (deftest viz-caption-and-link-on-image-test
   (testing "image viz for static_viz uses the card name as caption, not the AI-provided caption"
