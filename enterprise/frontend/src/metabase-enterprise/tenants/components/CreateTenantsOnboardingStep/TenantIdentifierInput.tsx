@@ -4,6 +4,7 @@ import { Autocomplete, Stack, Text } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
 
 import { useFieldDistinctValues } from "./hooks/use-field-distinct-values";
+import { getIsolationFieldConfig } from "./isolation-field-config";
 
 export const TenantIdentifierInput = ({
   value,
@@ -21,6 +22,8 @@ export const TenantIdentifierInput = ({
 
   const { values: suggestions } = useFieldDistinctValues(firstFieldId);
 
+  const config = getIsolationFieldConfig("row-column-level-security")!;
+
   const placeholder = suggestions[0]
     ? c("example tenant identifier value from the database")
         .t`e.g. ${suggestions[0]}`
@@ -29,11 +32,11 @@ export const TenantIdentifierInput = ({
   return (
     <Stack gap="xs">
       <Text fw="bold" size="sm">
-        {t`tenant_identifier`}
+        {config.label}
       </Text>
 
       <Text c="text-secondary" size="xs" mb="sm">
-        {t`Users will only see rows where this matches the value in the column you selected.`}
+        {config.description}
       </Text>
 
       <Autocomplete

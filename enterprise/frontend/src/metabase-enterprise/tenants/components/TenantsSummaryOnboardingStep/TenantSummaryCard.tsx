@@ -5,11 +5,13 @@ import { Grid, Paper, Stack, Text, Title } from "metabase/ui";
 export const TenantSummaryCard = ({
   name,
   slug,
-  tenantIdentifier,
+  isolationFieldLabel,
+  isolationFieldValue,
 }: {
   name: string;
   slug: string;
-  tenantIdentifier: string | null;
+  isolationFieldLabel: string | null;
+  isolationFieldValue: string | null;
 }) => {
   return (
     <Paper withBorder p="lg" radius="md">
@@ -19,17 +21,19 @@ export const TenantSummaryCard = ({
         </Title>
 
         <Grid>
-          <Grid.Col span={4}>
-            <Stack gap={4}>
-              <Text size="xs" c="text-secondary">
-                {t`tenant_identifier`}
-              </Text>
+          {isolationFieldLabel && (
+            <Grid.Col span={4}>
+              <Stack gap={4}>
+                <Text size="xs" c="text-secondary">
+                  {isolationFieldLabel}
+                </Text>
 
-              <Text size="sm" fw="bold" c="text-primary">
-                {tenantIdentifier ?? "-"}
-              </Text>
-            </Stack>
-          </Grid.Col>
+                <Text size="sm" fw="bold" c="text-primary">
+                  {isolationFieldValue ?? "-"}
+                </Text>
+              </Stack>
+            </Grid.Col>
+          )}
 
           <Grid.Col span={4}>
             <Stack gap={4}>

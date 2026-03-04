@@ -70,6 +70,13 @@
       (t2/exists? :model/ConnectionImpersonation)
       (t2/exists? :model/DatabaseRouter)))
 
+(defn- active-data-segregation-strategy []
+  (cond
+    (has-configured-sandboxes?)              "row-column-level-security"
+    (t2/exists? :model/ConnectionImpersonation) "connection-impersonation"
+    (t2/exists? :model/DatabaseRouter)       "database-routing"
+    :else                                    nil))
+
 (defn- has-published-guest-embed? []
   ;; Check if at least one card or dashboard has embedding enabled (is published as a guest embed)
   (or (t2/exists? :model/Card :enable_embedding true)
@@ -80,44 +87,51 @@
                                               (has-shared-tenant-collections?))
         create-tenants?                  (has-user-created-tenants?)
         setup-data-segregation-strategy? (has-configured-data-segregation-strategy?)]
-    ;; for the main embedding hub checklist
-    {"add-data"                          (has-user-added-database?)
-     "create-dashboard"                  (has-user-created-dashboard?)
-     "create-models"                     (has-user-created-models?)
-     "configure-row-column-security"     (has-configured-sandboxes?)
-     "create-test-embed"                 (or (has-published-guest-embed?)
-                                             (embedding.settings/embedding-hub-test-embed-snippet-created))
-     "embed-production"                  (embedding.settings/embedding-hub-production-embed-snippet-created)
-     "data-permissions-and-enable-tenants" (and enable-tenants?
-                                                create-tenants?
-                                                setup-data-segregation-strategy?)
+    {"checklist"
+     {;; for the main embedding hub checklist
+      "add-data"                          (has-user-added-database?)
+      "create-dashboard"                  (has-user-created-dashboard?)
+      "create-models"                     (has-user-created-models?)
+      "configure-row-column-security"     (has-configured-sandboxes?)
+      "create-test-embed"                 (or (has-published-guest-embed?)
+                                              (embedding.settings/embedding-hub-test-embed-snippet-created))
+      "embed-production"                  (embedding.settings/embedding-hub-production-embed-snippet-created)
+      "data-permissions-and-enable-tenants" (and enable-tenants?
+                                                 create-tenants?
+                                                 setup-data-segregation-strategy?)
 
-     ;; for the "configure data permissions and enable tenants" sub-checklist page
-     "enable-tenants"                    enable-tenants?
-     "create-tenants"                    create-tenants?
-     "setup-data-segregation-strategy"   setup-data-segregation-strategy?
+      ;; for the "configure data permissions and enable tenants" sub-checklist page
+      "enable-tenants"                    enable-tenants?
+      "create-tenants"                    create-tenants?
+      "setup-data-segregation-strategy"   setup-data-segregation-strategy?
 
-     ;; for the "configure SSO" sub-checklist page
-     "sso-configured"                     (has-configured-sso?)
-     "sso-auth-manual-tested"            (embedding.settings/embedding-hub-sso-auth-manual-tested)}))
+      ;; for the "configure SSO" sub-checklist page
+      "sso-configured"                    (has-configured-sso?)
+      "sso-auth-manual-tested"            (embedding.settings/embedding-hub-sso-auth-manual-tested)}
 
-(def ^:private EmbeddingHubChecklist
+     "data-isolation-strategy"           (active-data-segregation-strategy)}))
+
+(def ^:private EmbeddingHubChecklistResponse
   "Schema for the embedding hub checklist response."
   [:map {:closed true}
-   ["add-data"                             :boolean]
-   ["create-dashboard"                     :boolean]
-   ["create-models"                        :boolean]
-   ["configure-row-column-security"        :boolean]
-   ["create-test-embed"                    :boolean]
-   ["embed-production"                     :boolean]
-   ["sso-configured"                        :boolean]
-   ["data-permissions-and-enable-tenants"  :boolean]
-   ["enable-tenants"                       :boolean]
-   ["create-tenants"                       :boolean]
-   ["setup-data-segregation-strategy"      :boolean]
-   ["sso-auth-manual-tested"               :boolean]])
+   ["checklist"
+    [:map {:closed true}
+     ["add-data"                             :boolean]
+     ["create-dashboard"                     :boolean]
+     ["create-models"                        :boolean]
+     ["configure-row-column-security"        :boolean]
+     ["create-test-embed"                    :boolean]
+     ["embed-production"                     :boolean]
+     ["sso-configured"                       :boolean]
+     ["data-permissions-and-enable-tenants"  :boolean]
+     ["enable-tenants"                       :boolean]
+     ["create-tenants"                       :boolean]
+     ["setup-data-segregation-strategy"      :boolean]
+     ["sso-auth-manual-tested"               :boolean]]]
+   ["data-isolation-strategy"
+    [:maybe [:enum "row-column-level-security" "connection-impersonation" "database-routing"]]]])
 
-(api.macros/defendpoint :get "/checklist" :- EmbeddingHubChecklist
+(api.macros/defendpoint :get "/checklist" :- EmbeddingHubChecklistResponse
   "Get the embedding hub checklist status, indicating which setup steps have been completed."
   []
   (embedding-hub-checklist))

@@ -11,13 +11,15 @@ export const useCompletedEmbeddingHubSteps = (): {
   data: Record<EmbeddingHubStepId, boolean>;
   isLoading: boolean;
 } => {
-  const { data: embeddingHubChecklist, isLoading } =
+  const { data: checklistResponse, isLoading } =
     useGetEmbeddingHubChecklistQuery(undefined, {
       refetchOnMountOrArgChange: true,
     });
 
   const data = useMemo(() => {
-    if (isLoading || !embeddingHubChecklist) {
+    const checklist = checklistResponse?.checklist;
+
+    if (isLoading || !checklist) {
       return {
         // main checklist
         "create-test-embed": false,
@@ -41,12 +43,11 @@ export const useCompletedEmbeddingHubSteps = (): {
     // For the main embedding hub, the SSO step is only complete if both
     // SSO is configured AND the user has manually acknowledged it works
     return {
-      ...embeddingHubChecklist,
+      ...checklist,
       "sso-configured":
-        embeddingHubChecklist["sso-configured"] &&
-        embeddingHubChecklist["sso-auth-manual-tested"],
+        checklist["sso-configured"] && checklist["sso-auth-manual-tested"],
     };
-  }, [embeddingHubChecklist, isLoading]);
+  }, [checklistResponse, isLoading]);
 
   return { data, isLoading };
 };

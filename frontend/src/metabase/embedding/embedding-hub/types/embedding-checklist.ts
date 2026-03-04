@@ -1,5 +1,10 @@
 import type { AddDataTab } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/utils";
 
+export type DataSegregationStrategy =
+  | "row-column-level-security"
+  | "connection-impersonation"
+  | "database-routing";
+
 export type EmbeddingHubStepId =
   | "create-test-embed"
   | "add-data"

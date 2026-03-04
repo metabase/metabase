@@ -17,7 +17,8 @@ const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 export const SetupSsoPage = () => {
   const stepperRef = useRef<OnboardingStepperHandle>(null);
 
-  const { data: checklist } = useGetEmbeddingHubChecklistQuery();
+  const { data: checklistResponse } = useGetEmbeddingHubChecklistQuery();
+  const checklist = checklistResponse?.checklist;
 
   // UI-only confirmation state for step 2
   const [isAddEndpointConfirmed, setIsAddEndpointConfirmed] = useState(false);

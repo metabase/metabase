@@ -27,7 +27,9 @@ const SETUP_GUIDE_PATH = "/admin/embedding/setup-guide";
 
 export const SetupPermissionsAndTenantsPage = () => {
   const stepperRef = useRef<OnboardingStepperHandle>(null);
-  const { data: checklist } = useGetEmbeddingHubChecklistQuery();
+
+  const { data: checklistResponse } = useGetEmbeddingHubChecklistQuery();
+  const checklist = checklistResponse?.checklist;
 
   // The "Which data segregation strategy does your database use?"
   // is a purely UI step for choosing which strategy to use.
@@ -41,6 +43,10 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   // Track the selected field IDs from the RLS step (in-session only)
   const [selectedFieldIds, setSelectedFieldIds] = useState<FieldId[]>([]);
+
+  // Prefer in-session UI state; fall back to backend detection for reloads
+  const activeStrategy =
+    selectedStrategy ?? checklistResponse?.["data-isolation-strategy"] ?? null;
 
   const isTenantsEnabled = checklist?.["enable-tenants"] ?? false;
 
@@ -73,9 +79,9 @@ export const SetupPermissionsAndTenantsPage = () => {
 
   const lockedSteps = useMemo(() => {
     return {
-      // Even if the data strategy step was completed before,
-      // UI needs to know which strategy to re-configure.
-      "select-data": !isStrategyConfirmed,
+      // Unlock once we know the strategy — either from in-session confirmation
+      // or from the backend on reload.
+      "select-data": activeStrategy === null,
       "create-tenants": !isPickDataStrategyDone,
       summary: !(
         isTenantsEnabled &&
@@ -85,7 +91,7 @@ export const SetupPermissionsAndTenantsPage = () => {
       ),
     };
   }, [
-    isStrategyConfirmed,
+    activeStrategy,
     isPickDataStrategyDone,
     isTenantsEnabled,
     isDataSegregationSetupDone,
@@ -122,7 +128,7 @@ export const SetupPermissionsAndTenantsPage = () => {
           title={t`Which data segregation strategy does your database use?`}
         >
           <DataSegregationStrategyPicker
-            value={selectedStrategy}
+            value={activeStrategy}
             onChange={(value) => {
               setSelectedStrategy(value);
               setIsStrategyConfirmed(false);
@@ -141,9 +147,9 @@ export const SetupPermissionsAndTenantsPage = () => {
           stepId="select-data"
           title={t`Select data to make available`}
           // Database routing step links to documentation
-          hideTitleOnActive={selectedStrategy === "database-routing"}
+          hideTitleOnActive={activeStrategy === "database-routing"}
         >
-          {match(selectedStrategy)
+          {match(activeStrategy)
             .with("row-column-level-security", () => (
               <RlsDataSelector
                 onSuccess={(fieldIds) => {
@@ -171,6 +177,7 @@ export const SetupPermissionsAndTenantsPage = () => {
           <PLUGIN_TENANTS.CreateTenantsOnboardingStep
             onTenantsCreated={setCreatedTenants}
             selectedFieldIds={selectedFieldIds}
+            strategy={activeStrategy}
           />
         </OnboardingStepper.Step>
 
@@ -181,6 +188,7 @@ export const SetupPermissionsAndTenantsPage = () => {
         >
           <PLUGIN_TENANTS.TenantsSummaryOnboardingStep
             tenants={createdTenants}
+            strategy={activeStrategy}
           />
         </OnboardingStepper.Step>
       </OnboardingStepper>

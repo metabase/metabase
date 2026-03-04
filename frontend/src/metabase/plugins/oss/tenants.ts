@@ -4,6 +4,7 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
+import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
 import type { CollectionTreeItem } from "metabase/entities/collections/utils";
 import type {
   Collection,
@@ -19,7 +20,7 @@ import { PluginPlaceholder } from "../components/PluginPlaceholder";
 export type CreatedTenantData = {
   name: string;
   slug: string;
-  tenantIdentifier: string;
+  dataIsolationFieldValue: string;
 };
 
 export type TenantCollectionPathItem = {
@@ -39,9 +40,11 @@ const getDefaultPluginTenants = () => ({
   CreateTenantsOnboardingStep: PluginPlaceholder as React.ComponentType<{
     onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
     selectedFieldIds?: number[];
+    strategy?: DataSegregationStrategy | null;
   }>,
   TenantsSummaryOnboardingStep: PluginPlaceholder as React.ComponentType<{
     tenants: CreatedTenantData[];
+    strategy?: DataSegregationStrategy | null;
   }>,
   EditUserStrategySettingsButton: PluginPlaceholder,
   FormTenantWidget: (_props: any) => null as React.ReactElement | null,
@@ -108,9 +111,11 @@ export const PLUGIN_TENANTS: {
   CreateTenantsOnboardingStep: React.ComponentType<{
     onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
     selectedFieldIds?: number[];
+    strategy?: DataSegregationStrategy | null;
   }>;
   TenantsSummaryOnboardingStep: React.ComponentType<{
     tenants: CreatedTenantData[];
+    strategy?: DataSegregationStrategy | null;
   }>;
   EditUserStrategySettingsButton: (props: {
     page: "people" | "tenants";
