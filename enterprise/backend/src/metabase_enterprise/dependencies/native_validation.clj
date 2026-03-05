@@ -237,6 +237,8 @@
   [driver :- :keyword
    query  :- ::lib.schema/query]
   (into #{}
+        ;; Strip :unknown source attribution — consumers should not distinguish between
+        ;; "we tried and couldn't determine the source" vs "no source info available".
         (map #(cond-> % (= :unknown (:source-entity-type %)) (dissoc :source-entity-type :source-entity-id)))
         (if (has-card-template-tags? query)
           (if-let [compiled (compile-toplevel-query query)]
