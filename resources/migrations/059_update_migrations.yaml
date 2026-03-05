@@ -3585,7 +3585,7 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-03-01T11:02:00
       author: nvoxland
-      comment: Drop foreign key on transform(source_database_id) to recreate it
+      comment: Drop foreign key on transform(source_db_id) to recreate it
       changes:
         - dropForeignKeyConstraint:
             baseTableName: transform
@@ -3593,15 +3593,15 @@ databaseChangeLog:
       rollback:
         - addForeignKeyConstraint:
             baseTableName: transform
-            baseColumnNames: source_database_id
+            baseColumnNames: source_db_id
             referencedTableName: metabase_database
             referencedColumnNames: id
-            constraintName: fk_tranform_source_database_id
+            constraintName: fk_tranform_source_db_id
 
   - changeSet:
       id: v59.2026-03-01T11:03:00
       author: nvoxland
-      comment: Add foreign key on transform(source_database_id)
+      comment: Add foreign key on transform(source_db_id)
       changes:
         - addForeignKeyConstraint:
             baseTableName: transform
