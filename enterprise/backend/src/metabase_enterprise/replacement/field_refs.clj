@@ -105,7 +105,7 @@
                                       (replacement.walk/viz-settings-click-behavior-card-ids (-> dashcard :visualization_settings vs/db->norm)))))
                            dashcards)
         card-id->card (if (seq all-card-ids)
-                        (t2/select-pk->fn :dataset_query :model/Card :id [:in all-card-ids])
+                        (t2/select-pk->fn identity :model/Card :id [:in all-card-ids])
                         {})]
     (doseq [dashcard dashcards]
       (dashcard-upgrade-field-refs! dashcard card-id->card))))

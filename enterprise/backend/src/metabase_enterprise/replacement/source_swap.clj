@@ -127,11 +127,21 @@
           (events/publish-event! :event/measure-update
                                  {:object (merge measure changes) :user-id (:id @api/*current-user*)}))))))
 
+(defn- swap-parameter-target
+  "Swap field refs in a parameter target to reference the new source."
+  [target card-id card-id->card old-source new-source]
+  (or (when-some [card (get card-id->card card-id)]
+        (let [query (:dataset_query card)]
+          (when (replacement.util/valid-query? query)
+            (lib-be.source-swap/swap-source-in-parameter-target
+             query target
+             (source-ref->source-map old-source)
+             (source-ref->source-map new-source)))))
+      target))
+
 (defn- dashcard-swap!
-  [dashcard card-id->query old-source new-source]
-  (let [update-fn           #(lib-be.source-swap/swap-source-in-parameter-target %1 %2
-                                                                                 (source-ref->source-map old-source)
-                                                                                 (source-ref->source-map new-source))
+  [dashcard card-id->card old-source new-source]
+  (let [update-fn           #(swap-parameter-target %1 %2 card-id->card old-source new-source)
         parameter-mappings  (:parameter_mappings dashcard)
         parameter-mappings' (replacement.walk/walk-parameter-mapping-targets parameter-mappings update-fn)
         viz-settings        (:visualization_settings dashcard)
@@ -156,12 +166,11 @@
                                         (replacement.walk/parameter-mapping-card-ids (:parameter_mappings dashcard))
                                         (replacement.walk/viz-settings-click-behavior-card-ids (-> dashcard :visualization_settings vs/db->norm)))))
                              dashcards)
-        card-id->query (when (seq all-card-ids)
-                         (into {}
-                               (filter (fn [[_id query]] (replacement.util/valid-query? query)))
-                               (t2/select-pk->fn :dataset_query :model/Card :id [:in all-card-ids])))]
+        card-id->card (if (seq all-card-ids)
+                        (t2/select-pk->fn identity :model/Card :id [:in all-card-ids])
+                        {})]
     (doseq [dashcard dashcards]
-      (dashcard-swap! dashcard card-id->query old-source new-source))
+      (dashcard-swap! dashcard card-id->card old-source new-source))
     (events/publish-event! :event/dashboard-update {:object  (t2/select-one :model/Dashboard
                                                                             :id dashboard-id)
                                                     :user-id (:id @api/*current-user*)})))

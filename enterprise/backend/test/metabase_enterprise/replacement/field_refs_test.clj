@@ -447,7 +447,7 @@
                                          :description "test"
                                          :definition  q
                                          :table_id    (mt/id :orders)}]
-          (field-refs/upgrade! [:measure (:id m)] m)
+          (replacement.field-refs/upgrade-field-refs! [:measure (:id m)] m)
           (is (= q (t2/select-one-fn :definition :model/Measure (:id m)))
               "no changes needed for a clean pMBQL measure"))))))
 
@@ -462,6 +462,6 @@
         (mt/with-temp [:model/Segment s {:name       "Test Segment"
                                          :definition q
                                          :table_id   (mt/id :orders)}]
-          (field-refs/upgrade! [:segment (:id s)] s)
+          (replacement.field-refs/upgrade-field-refs! [:segment (:id s)] s)
           (is (= q (t2/select-one-fn :definition :model/Segment (:id s)))
               "no changes needed for a clean pMBQL segment"))))))

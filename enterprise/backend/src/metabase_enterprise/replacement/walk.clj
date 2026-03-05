@@ -12,13 +12,13 @@
 
 (defn walk-parameter-mapping-targets
   "Walk the parameter mappings and update the targets using the provided function.
-  
+
   `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
   [parameter-mappings target-fn]
   (mapv (fn [mapping]
           (or (when-some [card-id (:card_id mapping)]
-                (when-some [target' (target-fn (::vs/param-mapping-target mapping) card-id)]
-                  (assoc-in mapping [::vs/param-mapping-target] target')))
+                (when-some [target' (target-fn (:target mapping) card-id)]
+                  (assoc mapping :target target')))
               mapping))
         parameter-mappings))
 
