@@ -212,7 +212,7 @@ const config = {
     ],
     alias: {
       ...RESOLVE_ALIASES,
-      "docs-snippets": DOCS_SNIPPETS_PATH,
+      "sdk-docs-snippets": DOCS_SNIPPETS_PATH,
     },
     fallback: {
       buffer: require.resolve("buffer/"),
