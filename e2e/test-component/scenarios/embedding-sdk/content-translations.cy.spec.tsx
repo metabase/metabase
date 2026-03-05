@@ -1,4 +1,4 @@
-import { Flex } from "@mantine/core";
+
 import {
   CollectionBrowser,
   InteractiveQuestion,
@@ -120,9 +120,9 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       mockAuthProviderAndJwtSignIn();
 
       mountSdkContent(
-        <Flex p="xl">
+        <div style={{ display: "flex", padding: "20px" }}>
           <InteractiveQuestion questionId="new" />
-        </Flex>,
+        </div>,
         {
           sdkProviderProps: {
             locale: "de",
@@ -677,9 +677,9 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       mockAuthProviderAndJwtSignIn();
 
       mountSdkContent(
-        <Flex p="xl">
+        <div style={{ display: "flex", padding: "20px" }}>
           <InteractiveQuestion questionId="new" />
-        </Flex>,
+        </div>,
         {
           sdkProviderProps: {
             locale: "ar",
@@ -842,12 +842,12 @@ describe("scenarios > embedding-sdk > content-translations", () => {
 
       cy.get("@collectionId").then((collectionId) => {
         mountSdkContent(
-          <Flex p="xl">
+          <div style={{ display: "flex", padding: "20px" }}>
             <CollectionBrowser
               collectionId={collectionId as unknown as number}
               visibleColumns={["type", "name", "description"]}
             />
-          </Flex>,
+          </div>,
           {
             sdkProviderProps: {
               locale: "de",

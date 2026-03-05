@@ -1,4 +1,4 @@
-import { Box } from "@mantine/core";
+
 import {
   InteractiveQuestion,
   type MetabaseTheme,
@@ -236,9 +236,9 @@ function getColorDifferencePercentage(color1: string, color2: string) {
 function setupInteractiveQuestionWithTheme(theme: MetabaseTheme) {
   cy.get<number>("@questionId").then((questionId) => {
     mountSdkContent(
-      <Box bg={theme.colors?.background} h="100vh">
+      <div style={{ background: theme.colors?.background, height: "100vh" }}>
         <InteractiveQuestion questionId={questionId} />
-      </Box>,
+      </div>,
       { sdkProviderProps: { theme } },
     );
   });

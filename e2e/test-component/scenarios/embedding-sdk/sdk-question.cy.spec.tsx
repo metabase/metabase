@@ -1,5 +1,3 @@
-import { Box, Button, Modal } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
 import {
   InteractiveQuestion,
   type MetabaseQuestion,
@@ -253,14 +251,14 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     const TestSuiteComponent = ({ questionId }: { questionId: string }) => (
-      <Box p="lg">
+      <div style={{ padding: "16px" }}>
         <InteractiveQuestion questionId={questionId}>
-          <Box>
+          <div>
             <InteractiveQuestion.FilterDropdown />
             <InteractiveQuestion.QuestionVisualization />
-          </Box>
+          </div>
         </InteractiveQuestion>
-      </Box>
+      </div>
     );
 
     cy.get<string>("@questionId").then((questionId) => {
@@ -289,7 +287,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       onBeforeSave,
       onSave,
     }: InteractiveQuestionProps) => {
-      const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
+      const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+      const toggle = () => setIsSaveModalOpen((v) => !v);
+      const close = () => setIsSaveModalOpen(false);
 
       const handleSave = (
         question: MetabaseQuestion | undefined,
@@ -309,14 +309,14 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
           onBeforeSave={onBeforeSave}
           onSave={handleSave}
         >
-          <Box p="lg">
-            <Button onClick={toggle}>Save</Button>
-          </Box>
+          <div style={{ padding: "16px" }}>
+            <button onClick={toggle}>Save</button>
+          </div>
 
           {isSaveModalOpen && (
-            <Modal opened={isSaveModalOpen} onClose={close}>
+            <div role="dialog" data-testid="modal">
               <InteractiveQuestion.SaveQuestionForm onCancel={close} />
-            </Modal>
+            </div>
           )}
 
           {!isSaveModalOpen && <InteractiveQuestion.QuestionVisualization />}
@@ -550,10 +550,10 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       );
 
       return (
-        <Box>
+        <div>
           <InteractiveQuestion questionId={questionId} />
-          <Button onClick={() => setQuestionId("new")}>New Question</Button>
-        </Box>
+          <button onClick={() => setQuestionId("new")}>New Question</button>
+        </div>
       );
     };
 

@@ -1,4 +1,4 @@
-import { Box, Button } from "@mantine/core";
+
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
@@ -86,13 +86,13 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         const [questionId, setQuestionId] = useState<string | number>("new");
 
         return (
-          <Box>
+          <div>
             <InteractiveQuestion questionId={questionId} />
 
-            <Button onClick={() => setQuestionId(nativeQuestionId)}>
+            <button onClick={() => setQuestionId(nativeQuestionId)}>
               use native question
-            </Button>
-          </Box>
+            </button>
+          </div>
         );
       };
 

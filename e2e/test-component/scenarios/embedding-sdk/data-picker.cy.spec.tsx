@@ -1,4 +1,4 @@
-import { Flex } from "@mantine/core";
+
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { popover } from "e2e/support/helpers";
@@ -19,9 +19,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       cy.intercept("POST", "/api/card").as("createCard");
 
       mountSdkContent(
-        <Flex p="xl">
+        <div style={{ display: "flex", padding: "20px" }}>
           <InteractiveQuestion questionId="new" />
-        </Flex>,
+        </div>,
       );
 
       // Wait until the entity picker modal is visible
@@ -61,9 +61,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       cy.intercept("POST", "/api/card").as("createCard");
 
       mountSdkContent(
-        <Flex p="xl">
+        <div style={{ display: "flex", padding: "20px" }}>
           <InteractiveQuestion questionId="new" />
-        </Flex>,
+        </div>,
       );
 
       // Wait until the entity picker modal is visible

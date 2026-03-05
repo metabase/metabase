@@ -1,5 +1,5 @@
 const { H } = cy;
-import { Stack } from "@mantine/core";
+
 import {
   InteractiveDashboard,
   InteractiveQuestion,
@@ -86,11 +86,11 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
         <InteractiveDashboard
           dashboardId={dashboardId}
           renderDrillThroughQuestion={() => (
-            <Stack>
+            <div style={{ display: "flex", flexDirection: "column" }}>
               <InteractiveQuestion.Title />
               <InteractiveQuestion.QuestionVisualization />
               <div>This is a custom question layout.</div>
-            </Stack>
+            </div>
           )}
         />,
       );
