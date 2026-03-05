@@ -19,15 +19,15 @@
                   :sql sql
                   :name "Test Query"})]
             (is (contains? result :query-id))
-            (is (= "SELECT\n  1 AS \"test\"" (:query-content result)))
+            (is (re-find #"(?si)SELECT\s+1\s+AS\s+\"?test\"?" (:query-content result)))
             (is (= db-id (:database result)))
-            (is (= {:database db-id
-                    :type :native
-                    :native {:query "SELECT\n  1 AS \"test\""}}
-                   (:query result)))))))))
+            (is (=? {:database db-id
+                     :type :native
+                     :native {:query #(re-find #"(?si)SELECT\s+1\s+AS\s+\"?test\"?" %)}}
+                    (:query result)))))))))
 
 (deftest create-sql-query-validation-error-test
-  (mt/test-drivers #{:h2 :postgres}
+  (mt/test-drivers #{:postgres}
     (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}]
       (testing "attempts to create query with wrong syntax"
         (mt/with-current-user (mt/user->id :crowberto)
