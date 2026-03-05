@@ -75,8 +75,8 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MariaDB 10.2 with pgvector pg17
-            junit-name: semantic-search-tests-mariadb-10-2
+          - name: MariaDB 10.4 with pgvector pg17
+            junit-name: semantic-search-tests-mariadb-10-4
             mariadb-image: circleci/mariadb:10.4.0
             pgvector-image: pgvector/pgvector:pg17
           - name: MariaDB Latest with pgvector pg17

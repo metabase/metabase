@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MariaDB 10.2
+          - name: MariaDB 10.4
             junit-name: be-tests-mariadb-10-4-ee
             image: circleci/mariadb:10.4.0
             env:
