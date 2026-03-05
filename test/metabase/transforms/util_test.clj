@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -322,6 +323,32 @@
                       (binding [api/*current-user-id* (:id user)]
                         (is (false? (transforms.u/source-tables-readable? transform))
                             "User who cannot read all source tables should have source_readable=false")))))))))))))
+
+(deftest activate-table-and-mark-computed-sets-is-writable-false-test
+  (testing "activate-table-and-mark-computed! sets is_writable to false on computed transform tables"
+    (let [target {:type "table" :schema nil :name "test_computed_writable"}
+          synced-table (atom nil)]
+      (mt/with-temp [:model/Database db {:engine :h2}]
+        ;; Mock sync-table! to just create the table in Metabase without needing a real DB table
+        (with-redefs [sync/create-table! (fn [database table-map]
+                                           (let [created (t2/insert-returning-instance!
+                                                          :model/Table
+                                                          {:db_id          (:id database)
+                                                           :name           (:name table-map)
+                                                           :schema         (:schema table-map)
+                                                           :active         true
+                                                           :is_writable    (:is_writable table-map)
+                                                           :data_source    (:data_source table-map)
+                                                           :data_authority (:data_authority table-map)})]
+                                             (reset! synced-table created)
+                                             created))
+                      sync/sync-table!   (constantly nil)]
+          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (is (some? @synced-table))
+          (let [table (t2/select-one :model/Table (:id @synced-table))]
+            (is (= :computed (:data_authority table)))
+            (is (false? (:is_writable table))
+                "Computed transform tables should have is_writable=false")))))))
 
 (deftest execute-sets-transform-id-on-target-table-test
   (testing "Executing a query transform sets transform_id on the target table"
