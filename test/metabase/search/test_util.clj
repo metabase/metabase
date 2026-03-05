@@ -37,7 +37,7 @@
   [& body]
   `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/appdb)]
      (with-temp-index-table
-       (search/reindex! {:async? false :in-place? true})
+       (search.impl/sync-reindex! {:in-place? true})
        ~@body)))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}

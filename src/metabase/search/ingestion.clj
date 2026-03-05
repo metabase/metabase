@@ -19,10 +19,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def queue-name
-  "The name of the persistent queue used for search index updates."
-  :queue/search-index-update)
-
 (def max-searchable-value-length
   "The maximum length of a searchable value. This is mostly driven by postgresql max-lengths on tsvector columns.
   And is about half of postgresql's max, since we concat two values together often. That is likely aggressive, but being safe until we can better understand normal data shapes"
@@ -283,7 +279,7 @@
         (update! documents to-delete))
       {})))
 
-(defn ingest-maybe-async!
+(defn queue-updates
   "Update or create any search index entries related to the given updates.
   Enqueues updates for async processing via the persistent queue."
   [updates]
@@ -291,5 +287,5 @@
     ;; Serialize where-clauses as EDN strings so they survive JSON round-tripping
     ;; through the appdb queue (keywords would otherwise become strings).
     (let [serialized (mapv (fn [[model where]] [model (pr-str where)]) updates)]
-      (mq/with-queue queue-name [q]
+      (mq/with-queue :queue/search-reindex [q]
         (mq/put q serialized)))))

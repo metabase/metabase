@@ -110,12 +110,12 @@
         duration-metric (keyword "metabase-mq" (str system-name "-handle-duration-ms"))
         start          (System/nanoTime)]
     (try
-      (when-not listener
-        (throw (ex-info (str "No listener defined for " system-name)
-                        {label-key channel-name})))
-      (invoke-fn listener)
-      (when on-success (on-success))
-      (analytics-inc! bundles-metric (assoc labels :status "success"))
+      (if-not listener
+        (log/debugf "No listener registered for %s %s, skipping message" system-name (name channel-name))
+        (do
+          (invoke-fn listener)
+          (when on-success (on-success))
+          (analytics-inc! bundles-metric (assoc labels :status "success"))))
       (catch Exception e
         (log/error e (str "Error handling " system-name " message") labels)
         (when on-error (on-error e))

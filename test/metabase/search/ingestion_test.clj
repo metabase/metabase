@@ -4,8 +4,8 @@
    [clojure.test :refer :all]
    [metabase.lib-be.metadata.jvm :as metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
+   [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.test :as mt]))
@@ -176,6 +176,6 @@
                                                    (metadata.jvm/application-database-metadata-provider 3)
                                                    {"card" 6})
                     metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
-        (search/init-index!)
+        (search.impl/sync-init-index!)
         (is (= 3 @factory-calls)
             "Factory should be called once per unique database-id, not once per lookup")))))

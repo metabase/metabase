@@ -10,12 +10,12 @@
 
 (t2/define-after-insert :hook/search-index
   [instance]
-  (search/update! instance true)
+  (search/queue-update! instance true)
   instance)
 
 (t2/define-after-update :hook/search-index
   [instance]
-  (search/update! instance)
+  (search/queue-update! instance)
   nil)
 
 ;; Too much of a performance risk.

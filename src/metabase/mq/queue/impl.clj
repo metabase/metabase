@@ -29,7 +29,9 @@
                 :message-bundles {bundle-id backend-key}}"
   (atom {}))
 
-(defn exclusive? [queue-name]
+(defn exclusive?
+  "Returns true if the given queue name is registered with `:exclusive true`."
+  [queue-name]
   (:exclusive (get @*listeners* queue-name)))
 
 (defn exclusive-queue-names

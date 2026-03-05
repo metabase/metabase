@@ -74,7 +74,9 @@
   []
   (api/check-superuser)
   (if (search/supports-index?)
-    {:message (search/init-index! {:force-reset? true})}
+    (do
+      (search/queue-init! :force-reset? true)
+      {:message "re-init enqueued"})
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -88,7 +90,7 @@
   (if (search/supports-index?)
     (if (task/job-exists? task.search-index/reindex-job-key)
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
-      (do (search/reindex!) {:message "reindex triggered"}))
+      (do (search/queue-reindex!) {:message "reindex triggered"}))
 
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 

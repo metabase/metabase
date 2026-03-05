@@ -3,6 +3,7 @@
   (:require
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.topic.backend :as topic.backend]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -25,7 +26,7 @@
 (defn- cleanup-expired-ids
   "Returns `m` with expired entries removed."
   [m]
-  (let [threshold (- (System/currentTimeMillis) locally-published-expiry-ms)]
+  (let [threshold (u/since-ms-wall-clock locally-published-expiry-ms)]
     (persistent!
      (reduce-kv (fn [acc k ts]
                   (if (< (long ts) threshold)

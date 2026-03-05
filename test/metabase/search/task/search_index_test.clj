@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [honey.sql.helpers :as sql.helpers]
    [metabase.search.appdb.index :as search.index]
-   [metabase.search.core :as search]
-   [metabase.search.task.search-index :as task]
+   [metabase.search.impl :as search.impl]
    [metabase.search.test-util :as search.tu]
    [toucan2.core :as t2]))
 
@@ -20,22 +19,22 @@
     (t2/query (sql.helpers/drop-table (search.index/active-table)))
     (testing "It can recreate the index from scratch"
      ;; May return falsey if there is nothing to index.
-      (is (task/init!))
+      (is (search.impl/sync-init-index! {:force-reset? false :re-populate? false}))
       (is (pos? (index-size))))
     (testing "It will reuse an existing index"
-      (is (not (task/init!))))))
+      (is (not (search.impl/sync-init-index! {:force-reset? false :re-populate? false}))))))
 
 (deftest reindex!-test
   (search.tu/with-temp-index-table
    ;; TODO this is coupled to appdb engines at the moment
     (t2/query (sql.helpers/drop-table (search.index/active-table)))
     (testing "It can recreate the index from scratch"
-      (is (search/reindex! {:async? false}))
+      (is (search.impl/sync-reindex!))
       (let [initial-size (index-size)
             table-name (search.index/active-table)]
         (is (pos? initial-size))
         (t2/delete! table-name (t2/select-one-pk table-name))
         (is (= (dec initial-size) (index-size)))
         (testing "It can cycle the index gracefully"
-          (is (search/reindex! {:async? false}))
+          (is (search.impl/sync-reindex!))
           (is (= initial-size (index-size))))))))

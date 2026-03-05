@@ -94,7 +94,7 @@
           (mq/put q "msg2"))
         (is (= ["msg1" "msg2"] @heard-messages))))))
 
-(deftest ^:parallel batch-listen-exclusive-test
+(deftest batch-listen-exclusive-test
   (let [heard-batches (atom [])]
     (mq.tu/with-sync-mq
       (mq/batch-listen! :queue/batch-exclusive

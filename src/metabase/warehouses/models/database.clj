@@ -427,7 +427,7 @@
                                :where  [:= :database_id id]})))
        (run! (fn [batch]
                ;; damn circular deps
-               ((requiring-resolve 'metabase.search.core/delete!) :model/Card (map (comp str :id) batch)))))
+               ((requiring-resolve 'metabase.search.core/queue-delete!) :model/Card (map (comp str :id) batch)))))
   (when (not= :postgres (mdb/db-type))
     (t2/query {:delete-from (t2/table-name :model/Card)
                :where       [:= :database_id id]}))

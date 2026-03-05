@@ -95,7 +95,7 @@
                                                  :enabled-transform-source-types (transforms.gating/enabled-source-types)}))]
             ;; warm it up, in case the DB call depends on the order of test execution and it needs to
             ;; do some initialization
-            (search/init-index!)
+            (search.impl/sync-init-index!)
             (do-search)
             (t2/with-call-count [call-count]
               (do-search)

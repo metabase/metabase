@@ -23,7 +23,7 @@
 
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [f]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                      (mt/with-dynamic-fn-redefs [search/queue-reindex! (constantly nil)]
                         (test-helpers/clean-remote-sync-state f))))
 
 (deftest transform-event-creates-sync-object-when-setting-enabled-test

@@ -139,7 +139,7 @@
                 (t2/delete! :model/ModelIndexValue
                             :model_index_id (:id model-index)
                             :model_pk [:in (->> deletions-part (map first))])
-                (search/delete! :model/ModelIndexValue search-model-ids)))
+                (search/queue-delete! :model/ModelIndexValue search-model-ids)))
             (when (seq additions)
               (doseq [additions-part (partition-all 10000 additions)]
                 (t2/insert! :model/ModelIndexValue
@@ -154,7 +154,7 @@
                        :state      (if (> (count values-to-index) max-indexed-values)
                                      "overflow"
                                      "indexed")}))
-        (run! search/update! (t2/reducible-select :model/ModelIndexValue :model_index_id (:id model-index)))
+        (run! search/queue-update! (t2/reducible-select :model/ModelIndexValue :model_index_id (:id model-index)))
         (catch Exception e
           (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
                       (:id model-index) (:model_id model-index))

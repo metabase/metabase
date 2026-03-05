@@ -53,13 +53,15 @@
 
 (defmulti init!
   "Ensure that the search index exists, and is ready to take search queries.
-   Returns a map of the number of documents indexed in each model"
+   Returns a map of the number of documents indexed in each model.
+   This should normally be called through a :reindex command on :queue/search-reindex and not directly"
   {:arglists '([engine opts])}
   (fn [engine _opts]
     engine))
 
 (defmulti reindex!
-  "Perform a full refresh of the given engine's index."
+  "Perform a full refresh of the given engine's index.
+  This should normally be called through a :reindex command on :queue/search-reindex and not directly"
   {:arglists '([engine opts])}
   (fn [engine _opts] engine))
 

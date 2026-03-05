@@ -14,6 +14,7 @@
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
+   [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.settings :as search.settings]
@@ -130,8 +131,7 @@
       (when init-now?
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
-          (future
-            (search.engine/init! search-engine {:force-reset? false}))
+          (search.impl/queue-init! :engine search-engine :force-reset? false)
           (catch Exception e
             (log/error e))))
       ;; Even if the index exists now, return an error so that we don't obscure that there was an issue.
@@ -148,7 +148,7 @@
   (try
     (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
       ;; wait for a bit for the queue to be drained
-      (let [pending-updates #(mq/queue-length search.ingestion/queue-name)]
+      (let [pending-updates #(mq/queue-length :queue/search-reindex)]
         (when-not (u/poll {:thunk       pending-updates
                            :done?       zero?
                            :timeout-ms  2000
@@ -202,7 +202,7 @@
     (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
         (log/info "Forcing early reindex because existing index is old")
-        (search.engine/reindex! :search.engine/appdb {}))
+        (search.impl/queue-reindex! :engine :search.engine/appdb))
 
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
@@ -230,4 +230,4 @@
   [_topic event]
   (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
     (log/info "Reindexing appdb index because the site locale changed.")
-    (future (search.engine/reindex! :search.engine/appdb {}))))
+    (search.impl/queue-reindex! :engine :search.engine/appdb)))

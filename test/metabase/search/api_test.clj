@@ -18,6 +18,7 @@
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.impl :as search.impl]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -366,20 +367,20 @@
 (deftest custom-engine-test
   (when (search/supports-index?)
     (testing "It can use an alternate search engine"
-      (search/init-index! {:force-reset? false :re-populate? false})
+      (search.impl/sync-init-index! {:force-reset? false :re-populate? false})
       (with-search-items-in-root-collection "test"
         (let [resp (search-request :crowberto :q "test" :search_engine "appdb" :limit 1)]
           ;; The index is not populated here, so there's not much interesting to assert.
           (is (= "search.engine/appdb" (:engine resp))))))
 
     (testing "It can use the old search engine name, e.g. for old cookies"
-      (search/init-index! {:force-reset? false :re-populate? false})
+      (search.impl/sync-init-index! {:force-reset? false :re-populate? false})
       (with-search-items-in-root-collection "test"
         (let [resp (search-request :crowberto :q "test" :search_engine "fulltext" :limit 1)]
           (is (= "search.engine/fulltext" (:engine resp))))))
 
     (testing "It will not use an unknown search engine"
-      (search/init-index! {:force-reset? false :re-populate? false})
+      (search.impl/sync-init-index! {:force-reset? false :re-populate? false})
       (with-search-items-in-root-collection "test"
         (let [resp (search-request :crowberto :q "test" :search_engine "wut" :limit 1)]
           (is (#{"search.engine/in-place"
@@ -464,7 +465,7 @@
                    :model/DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}
                    :model/DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}]
       ;; We do not synchronously update dashboard count
-      (search/reindex! {:async? false :in-place? true})
+      (search.impl/sync-reindex! {:in-place? true})
       (is (= (sort-by :dashboardcard_count (cleaned-results dashboard-count-results))
              (sort-by :dashboardcard_count (unsorted-search-request-data :rasta :q "dashboard-count")))))))
 
@@ -661,7 +662,7 @@
                (search-request-data :crowberto :q "test"))))))
 
   ;; TODO need to isolate these two tests properly, they're sharing  temp index
-  (search/reindex! {:async? false :in-place? true})
+  (search.impl/sync-reindex! {:in-place? true})
 
   (testing "Basic search, should find 1 of each entity type and include bookmarks when available"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
@@ -1431,7 +1432,7 @@
         {http-action :action-id}  {:type :http :name search-term}
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
        ;; TODO investigate why the actions don't get indexed automatically
-        (search/reindex! {:async? false :in-place? true})
+        (search.impl/sync-reindex! {:in-place? true})
         (testing "by default do not search for native content"
           (is (= #{["card" mbql-card]
                    ["card" native-card-in-name]
@@ -1793,52 +1794,53 @@
         (is (= 5.0 (search.config/scorer-param search-ctx :model :dataset)))))))
 
 (deftest ^:synchronized dashboard-questions
-  (testing "Dashboard questions get a dashboard_id when searched"
-    (let [search-name (random-uuid)
-          named #(str search-name "-" %)]
-      (mt/with-temp [:model/Dashboard {dash-id :id} {:name (named "dashboard")}
-                     :model/Card {card-id :id} {:dashboard_id dash-id :name (named "dashboard card")}
-                     :model/Card {reg-card-id :id} {:name (named "regular card")}
-                     ;; DQs aren't searchable without a DashboardCard (see later test)
-                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+  (search.tu/with-sync-search-indexing
+    (testing "Dashboard questions get a dashboard_id when searched"
+      (let [search-name (random-uuid)
+            named       #(str search-name "-" %)]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:name (named "dashboard")}
+                       :model/Card {card-id :id} {:dashboard_id dash-id :name (named "dashboard card")}
+                       :model/Card {reg-card-id :id} {:name (named "regular card")}
+                       ;; DQs aren't searchable without a DashboardCard (see later test)
+                       :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
 
-        ;; We need to update the entry for the card once the join is created.
-        ;; This is not necessary in the real app because of how the index updates are batched.
-        ;; Another solution would be to explicitly mark this data dependency, which we explicitly chose not to do for
-        ;; now (see note of the Card spec).
-        (search/update! (t2/instance :model/Card {:id card-id}))
+          ;; We need to update the entry for the card once the join is created.
+          ;; This is not necessary in the real app because of how the index updates are batched.
+          ;; Another solution would be to explicitly mark this data dependency, which we explicitly chose not to do for
+          ;; now (see note of the Card spec).
+          (search/queue-update! (t2/instance :model/Card {:id card-id}))
 
-        (testing "The card data also include `dashboard` info"
-          (is (= {:id dash-id
-                  :name (named "dashboard")
-                  :moderation_status nil}
+          (testing "The card data also include `dashboard` info"
+            (is (= {:id                dash-id
+                    :name              (named "dashboard")
+                    :moderation_status nil}
+                   (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                        :data
+                        (filter #(= card-id (:id %)))
+                        first
+                        :dashboard))))
+          (testing "Regular cards don't have it"
+            (is (nil?
                  (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                       :data
-                      (filter #(= card-id (:id %)))
+                      (filter #(= reg-card-id (:id %)))
                       first
                       :dashboard))))
-        (testing "Regular cards don't have it"
-          (is (nil?
-               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
-                    :data
-                    (filter #(= reg-card-id (:id %)))
-                    first
-                    :dashboard))))
-        (testing "Dashboard questions are only returned if you pass `include_dashboard_questions=true`"
-          (is (= []
-                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "false")
-                      :data
-                      (filter #(= card-id (:id %))))))))))
-  (testing "Dashboard questions aren't searchable without a DashboardCard"
-    (let [search-name (random-uuid)
-          named #(str search-name "-" %)]
-      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dashboard"}
-                     :model/Card _ {:dashboard_id dash-id :name (named "dashboard card")}]
-        (is (= {:total 0
-                :data []}
-               (select-keys
-                (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
-                [:total :data])))))))
+          (testing "Dashboard questions are only returned if you pass `include_dashboard_questions=true`"
+            (is (= []
+                   (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "false")
+                        :data
+                        (filter #(= card-id (:id %))))))))))
+    (testing "Dashboard questions aren't searchable without a DashboardCard"
+      (let [search-name (random-uuid)
+            named       #(str search-name "-" %)]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dashboard"}
+                       :model/Card _ {:dashboard_id dash-id :name (named "dashboard card")}]
+          (is (= {:total 0
+                  :data  []}
+                 (select-keys
+                  (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                  [:total :data]))))))))
 
 (deftest ^:synchronized include-metadata
   (testing "Include card result_metadata if include-metadata is set"
@@ -1898,29 +1900,30 @@
       (is (= 1 result-count)))))
 
 (deftest ^:synchronized delete-database-hides-cards-from-search-test
-  (testing "When deleting a database, cards referring to that database should be hidden from search"
-    (let [card-name (str (random-uuid))]
-      (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
-                     :model/Table {table-id :id} {:db_id db-id :name "Test Table"}
-                     :model/Card {card-id :id} {:name card-name
-                                                :database_id db-id
-                                                :table_id table-id
-                                                :dataset_query {:database db-id
-                                                                :type :query
-                                                                :query {:source-table table-id}}}]
-        (search/reindex! {:async? false :in-place? true})
-        (testing "Card should be visible in search before database deletion"
-          (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
-            (is (some #(= (:id %) card-id) (:data search-results))
-                "Card should be found in search results before database deletion")))
+  (search.tu/with-sync-search-indexing
+    (testing "When deleting a database, cards referring to that database should be hidden from search"
+      (let [card-name (str (random-uuid))]
+        (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
+                       :model/Table {table-id :id} {:db_id db-id :name "Test Table"}
+                       :model/Card {card-id :id} {:name          card-name
+                                                  :database_id   db-id
+                                                  :table_id      table-id
+                                                  :dataset_query {:database db-id
+                                                                  :type     :query
+                                                                  :query    {:source-table table-id}}}]
+          (search/queue-reindex! {:in-place? true})
+          (testing "Card should be visible in search before database deletion"
+            (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
+              (is (some #(= (:id %) card-id) (:data search-results))
+                  "Card should be found in search results before database deletion")))
 
-        (testing "Card should be hidden from search after database deletion"
-          (t2/delete! :model/Database :id db-id)
-          (is (not (t2/exists? :model/Card :id card-id)))
-          (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
-            (is (not (some #{card-id}
-                           (mapv :id (:data search-results))))
-                "Card should not be found in search results after database deletion")))))))
+          (testing "Card should be hidden from search after database deletion"
+            (t2/delete! :model/Database :id db-id)
+            (is (not (t2/exists? :model/Card :id card-id)))
+            (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
+              (is (not (some #{card-id}
+                             (mapv :id (:data search-results))))
+                  "Card should not be found in search results after database deletion"))))))))
 
 (deftest collection-filter-test
   (mt/with-temp

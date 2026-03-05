@@ -211,8 +211,8 @@
   (testing "Successful export creates valid archive with correct files and Snowplow event"
     (with-serialization-test-data! [coll dash card]
       ;; Clear entities from search index to verify export works independently
-      (search/delete! :model/Dashboard [(str (:id dash))])
-      (search/delete! :model/Card [(str (:id card))])
+      (search/queue-delete! :model/Dashboard [(str (:id dash))])
+      (search/queue-delete! :model/Card [(str (:id card))])
       (is (= 0 (search-result-count "dashboard" "thraddash")))
       (is (= 0 (search-result-count "dataset" "frobinate")))
 
@@ -255,8 +255,8 @@
   (testing "Import restores deleted/renamed entities and updates search index"
     (with-serialization-test-data! [coll dash card]
       ;; Clear entities from search index
-      (search/delete! :model/Dashboard [(str (:id dash))])
-      (search/delete! :model/Card [(str (:id card))])
+      (search/queue-delete! :model/Dashboard [(str (:id dash))])
+      (search/queue-delete! :model/Card [(str (:id card))])
 
       ;; Export the data
       (let [ba (do-export (:id coll))]
@@ -268,7 +268,7 @@
         (t2/delete! :model/Card (:id card))
 
         (let [re-indexed? (atom false)
-              res         (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
+              res         (mt/with-dynamic-fn-redefs [search/queue-reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
                             (mt/user-http-request :crowberto :post 200 "ee/serialization/import?reindex=false"
                                                   {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                   {:file ba}))]
