@@ -302,6 +302,20 @@
                   (is (= 0 (count @post-calls)))
                   (is (= 0 (count @ephemeral-calls))))))))))))
 
+(deftest message-deleted-ignored-test
+  (testing "POST /events ignores message_deleted events"
+    (with-slackbot-setup
+      (let [event-body (update base-dm-event :event merge {:subtype "message_deleted"})]
+        (with-slackbot-mocks
+          {:ai-text "Should not be called"}
+          (fn [{:keys [post-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (Thread/sleep 200)
+              (is (= 0 (count @post-calls))))))))))
+
 (deftest slackbot-disabled-setting-test
   (testing "POST /events acks but does not process when slack-connect-enabled is false"
     (with-slackbot-setup
@@ -548,36 +562,35 @@
                             @image-calls))))))))))
 
 (deftest user-not-linked-sends-auth-message-test
-  (testing "POST /events with unlinked user sends ephemeral auth message (DMs always threaded)"
+  (testing "POST /events with unlinked user sends auth message (DM, no user mention prefix)"
     (with-slackbot-setup
       (let [event-body (assoc-in base-dm-event [:event :user] "U-UNKNOWN-USER")]
         (with-slackbot-mocks
           {:ai-text "Should not be called"
            :user-id ::no-user}
-          (fn [{:keys [post-calls ephemeral-calls]}]
+          (fn [{:keys [post-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk #(= 1 (count @ephemeral-calls))
+              (u/poll {:thunk #(= 1 (count @post-calls))
                        :done? true?
                        :timeout-ms 5000})
-              (testing "no regular messages should be posted"
-                (is (= 0 (count @post-calls))))
-              (testing "ephemeral auth message sent to user, threaded using message ts"
-                (is (=? [{:user "U-UNKNOWN-USER"
-                          :channel "C123"
+              (testing "auth message posted as regular message, threaded using message ts"
+                (is (=? [{:channel "C123"
                           :thread_ts "1234567890.000001"
                           :text #"(?i).*connect.*slack.*metabase.*"}]
-                        @ephemeral-calls))))))))))
+                        @post-calls)))
+              (testing "DM auth message does not include user mention prefix"
+                (is (not (str/starts-with? (:text (first @post-calls)) "<@")))))))))))
 
 (deftest app-mention-unlinked-user-test
   (testing "POST /events with app_mention from unlinked user sends auth message"
     (with-slackbot-setup
       (doseq [[desc thread-ts expected-thread-ts]
-              [;; top-level @mention should NOT thread (so users see the prompt)
-               ["top-level @mention" nil nil]
-               ;; @mention in thread should thread (to keep context)
+              [;; top-level @mention threads using the event ts
+               ["top-level @mention" nil "1234567890.000002"]
+               ;; @mention in thread threads using the thread ts
                ["@mention in thread" "1234567890.000001" "1234567890.000001"]]]
         (testing desc
           (let [event-body (cond-> (update base-mention-event :event merge
@@ -588,15 +601,18 @@
             (with-slackbot-mocks
               {:ai-text "Should not be called"
                :user-id ::no-user}
-              (fn [{:keys [post-calls ephemeral-calls]}]
+              (fn [{:keys [post-calls]}]
                 (is (= "ok" (mt/client :post 200 "ee/metabot-v3/slack/events"
                                        (slack-request-options event-body) event-body)))
-                (u/poll {:thunk #(= 1 (count @ephemeral-calls))
+                (u/poll {:thunk #(= 1 (count @post-calls))
                          :done? true?
                          :timeout-ms 5000})
-                (is (= 0 (count @post-calls)))
-                (is (=? {:user "U-UNKNOWN" :channel "C123" :thread_ts expected-thread-ts}
-                        (first @ephemeral-calls)))))))))))
+                (is (=? {:channel "C123"
+                         :thread_ts expected-thread-ts
+                         :text #"(?i).*connect.*slack.*metabase.*"}
+                        (first @post-calls)))
+                (testing "channel auth message includes user mention prefix"
+                  (is (str/starts-with? (:text (first @post-calls)) "<@U-UNKNOWN>")))))))))))
 
 ;; -------------------------------- Setup Complete Tests --------------------------------
 
