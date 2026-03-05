@@ -60,6 +60,7 @@
           db-provider-fn        ;; (fn [db-id] ...) returns MetadataProvider for that database
           setting-fn            ;; (fn [setting-key] ...) returns setting value
           cache                 ;; atom for caching metric, measure, and dimension metadata
+          column-post-process-fn ;; (fn [cols] ...) optional post-processing for columns (can be nil)
           ]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
@@ -75,7 +76,10 @@
       (route-table-metadata table->db-fn db-provider-fn metadata-spec)
 
       :metadata/column
-      (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) [])
+      (let [cols (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) [])]
+        (if column-post-process-fn
+          (column-post-process-fn cols)
+          cols))
 
       :metadata/measure
       (if measure-fetcher-fn
@@ -140,7 +144,8 @@
          (= dimension-fetcher-fn (.-dimension-fetcher-fn ^MetricContextMetadataProvider another))
          (= table->db-fn (.-table->db-fn ^MetricContextMetadataProvider another))
          (= db-provider-fn (.-db-provider-fn ^MetricContextMetadataProvider another))
-         (= setting-fn (.-setting-fn ^MetricContextMetadataProvider another)))))
+         (= setting-fn (.-setting-fn ^MetricContextMetadataProvider another))
+         (= column-post-process-fn (.-column-post-process-fn ^MetricContextMetadataProvider another)))))
 
 (mu/defn metric-context-metadata-provider
   "Create a MetricMetadataProvider for queries that span multiple databases.
@@ -161,10 +166,12 @@
    - Routes table/column/segment requests to the appropriate database provider
    - Caches metric, measure, and dimension metadata internally"
   ([metric-fetcher-fn table->db-fn db-provider-fn setting-fn]
-   (metric-context-metadata-provider metric-fetcher-fn nil nil table->db-fn db-provider-fn setting-fn))
+   (metric-context-metadata-provider metric-fetcher-fn nil nil table->db-fn db-provider-fn setting-fn nil))
   ([metric-fetcher-fn measure-fetcher-fn table->db-fn db-provider-fn setting-fn]
-   (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn nil table->db-fn db-provider-fn setting-fn))
+   (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn nil table->db-fn db-provider-fn setting-fn nil))
   ([metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn table->db-fn db-provider-fn setting-fn]
+   (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn table->db-fn db-provider-fn setting-fn nil))
+  ([metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn table->db-fn db-provider-fn setting-fn column-post-process-fn]
    (->MetricContextMetadataProvider
     metric-fetcher-fn
     measure-fetcher-fn
@@ -172,4 +179,5 @@
     table->db-fn
     db-provider-fn
     setting-fn
-    (atom {}))))
+    (atom {})
+    column-post-process-fn)))

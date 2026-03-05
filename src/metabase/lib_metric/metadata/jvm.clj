@@ -9,10 +9,12 @@
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.metadata.provider :as provider]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
+   [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -114,6 +116,25 @@
       id-set (filter #(contains? id-set (:id %)))
       true   vec)))
 
+(defn- enrich-columns-with-has-field-values
+  "Batch-fetch `has_field_values` from Field and assoc `:has-field-values` onto each column."
+  [cols]
+  (if (perf/empty? cols)
+    cols
+    (let [col-ids           (into #{} (keep :id) cols)
+          field-values-map  (when (seq col-ids)
+                              (into {}
+                                    (map (fn [field]
+                                           [(:id field)
+                                            (lib/infer-has-field-values
+                                             (lib-be/instance->metadata field :metadata/column))]))
+                                    (t2/select :model/Field :id [:in col-ids])))]
+      (perf/mapv (fn [col]
+                   (if-let [hfv (get field-values-map (:id col))]
+                     (assoc col :has-field-values hfv)
+                     col))
+                 cols))))
+
 (mu/defn metadata-provider :- ::lib.metadata.protocols/metadata-provider
   "Create a MetricMetadataProvider for the JVM.
 
@@ -152,4 +173,5 @@
      fetch-dimensions               ; dimension-fetcher-fn
      table->db
      db-provider-fn
-     setting/get)))
+     setting/get
+     enrich-columns-with-has-field-values)))
