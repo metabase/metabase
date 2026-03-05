@@ -20,7 +20,6 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]))
@@ -138,8 +137,8 @@
    stage-number :- :int
    join         :- ::lib.schema.join/join]
   (-> join
-      (u/update-some :fields #(if (keyword? %) % (upgrade-field-refs-in-clauses query stage-number % {:distinct? true})))
-      (u/update-some :conditions #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))))
+      (m/update-existing :fields #(if (keyword? %) % (upgrade-field-refs-in-clauses query stage-number % {:distinct? true})))
+      (m/update-existing :conditions #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))))
 
 (mu/defn- upgrade-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
   "Upgrade all field refs in a list of joins."
@@ -154,13 +153,13 @@
    stage-number :- :int]
   (let [stage (lib.util/query-stage query stage-number)]
     (-> stage
-        (u/update-some :fields      #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true}))
-        (u/update-some :joins       #(upgrade-field-refs-in-joins query stage-number %))
-        (u/update-some :expressions #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
-        (u/update-some :filters     #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
-        (u/update-some :aggregation #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
-        (u/update-some :breakout    #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true}))
-        (u/update-some :order-by    #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true})))))
+        (m/update-existing :fields      #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true}))
+        (m/update-existing :joins       #(upgrade-field-refs-in-joins query stage-number %))
+        (m/update-existing :expressions #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
+        (m/update-existing :filters     #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
+        (m/update-existing :aggregation #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
+        (m/update-existing :breakout    #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true}))
+        (m/update-existing :order-by    #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true})))))
 
 (mu/defn upgrade-field-refs-in-query :- ::lib.schema/query
   "Upgrade all field refs in `query` to use name-based field refs when possible."
@@ -212,13 +211,13 @@
    old-source :- ::lib-be.schema.source-swap/source
    new-source :- ::lib-be.schema.source-swap/source]
   (-> (swap-source-table-or-card stage old-source new-source)
-      (u/update-some :joins
-                     (fn [joins]
-                       (perf/mapv (fn [join]
-                                    (u/update-some join :stages
-                                                   (fn [stages]
-                                                     (perf/mapv #(swap-source-table-or-card-in-stage % old-source new-source) stages))))
-                                  joins)))))
+      (m/update-existing :joins
+                         (fn [joins]
+                           (perf/mapv (fn [join]
+                                        (m/update-existing join :stages
+                                                           (fn [stages]
+                                                             (perf/mapv #(swap-source-table-or-card-in-stage % old-source new-source) stages))))
+                                      joins)))))
 
 (mu/defn- swap-source-table-or-card-in-query :- ::lib.schema/query
   "Swaps the source table or card in a query."
@@ -316,11 +315,11 @@
    field-id-mapping :- ::field-id-mapping
    join             :- ::lib.schema.join/join]
   (-> join
-      (u/update-some :fields (fn [fields]
-                               (if (keyword? fields)
-                                 fields
-                                 (swap-field-refs-in-clauses query stage-number field-id-mapping fields {:distinct? true}))))
-      (u/update-some :conditions #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))))
+      (m/update-existing :fields (fn [fields]
+                                   (if (keyword? fields)
+                                     fields
+                                     (swap-field-refs-in-clauses query stage-number field-id-mapping fields {:distinct? true}))))
+      (m/update-existing :conditions #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))))
 
 (mu/defn- swap-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
   "Swaps field refs in a list of joins."
@@ -336,24 +335,24 @@
    stage-number     :- :int
    field-id-mapping :- ::field-id-mapping]
   (-> (lib.util/query-stage query stage-number)
-      (u/update-some :fields      #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))
-      (u/update-some :joins       #(swap-field-refs-in-joins query stage-number field-id-mapping %))
-      (u/update-some :expressions #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
-      (u/update-some :filters     #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
-      (u/update-some :aggregation #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
-      (u/update-some :breakout    #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))
-      (u/update-some :order-by    #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))))
+      (m/update-existing :fields      #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))
+      (m/update-existing :joins       #(swap-field-refs-in-joins query stage-number field-id-mapping %))
+      (m/update-existing :expressions #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
+      (m/update-existing :filters     #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
+      (m/update-existing :aggregation #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
+      (m/update-existing :breakout    #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))
+      (m/update-existing :order-by    #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))))
 
 (mu/defn- swap-field-refs-in-query :- ::lib.schema/query
   "Swaps field refs in a query."
   [query            :- ::lib.schema/query
    field-id-mapping :- ::field-id-mapping]
-  (u/update-some query :stages
-                 (fn [stages]
-                   (into []
-                         (map-indexed (fn [stage-number _]
-                                        (swap-field-refs-in-stage query stage-number field-id-mapping)))
-                         stages))))
+  (m/update-existing query :stages
+                     (fn [stages]
+                       (into []
+                             (map-indexed (fn [stage-number _]
+                                            (swap-field-refs-in-stage query stage-number field-id-mapping)))
+                             stages))))
 
 (mu/defn swap-source-in-query :- ::lib.schema/query
   "Updates the query to use the new source table or card."
