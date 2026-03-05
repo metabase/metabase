@@ -302,6 +302,7 @@ describe("DashCard", () => {
     it("should not show the chevron icon (VIZ-1111)", () => {
       setup({
         isEditing: true,
+        dashcardData: {},
         dashcard: createMockDashboardCard({
           series: [
             createMockCard({

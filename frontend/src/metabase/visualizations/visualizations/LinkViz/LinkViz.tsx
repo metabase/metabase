@@ -218,7 +218,7 @@ const LINK_VIZ_DEFINITION: VisualizationDefinition = {
   defaultSize: settings.defaultSize,
   checkRenderable: settings.checkRenderable,
   isSensible: () => false,
-  settings,
+  settings: settings.settings,
 };
 
 export const LinkViz = Object.assign(LinkVizInner, LINK_VIZ_DEFINITION, {
