@@ -327,17 +327,6 @@ export function getMapRegionForDimension(
   return null;
 }
 
-export function isDimensionCandidate(dimension: DimensionMetadata): boolean {
-  return (
-    !LibMetric.isPrimaryKey(dimension) &&
-    !LibMetric.isForeignKey(dimension) &&
-    !LibMetric.isURL(dimension) &&
-    !LibMetric.isLatitude(dimension) &&
-    !LibMetric.isLongitude(dimension) &&
-    !LibMetric.isCoordinate(dimension)
-  );
-}
-
 export const GEO_SUBTYPE_PRIORITY: readonly GeoSubtype[] = [
   "country",
   "state",

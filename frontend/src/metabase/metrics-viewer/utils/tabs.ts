@@ -15,7 +15,7 @@ import type {
   StoredMetricsViewerTab,
 } from "../types/viewer-state";
 
-import { GEO_SUBTYPE_PRIORITY, isDimensionCandidate } from "./metrics";
+import { GEO_SUBTYPE_PRIORITY } from "./metrics";
 import type { TabTypeDefinition } from "./tab-config";
 import { TAB_TYPE_REGISTRY, getTabConfig } from "./tab-config";
 
@@ -54,10 +54,6 @@ export function getDimensionIcon(dimension: DimensionMetadata): IconName {
 function getDimensionType(
   dimension: DimensionMetadata,
 ): MetricsViewerTabType | null {
-  if (!isDimensionCandidate(dimension)) {
-    return null;
-  }
-
   for (const config of TAB_TYPE_REGISTRY) {
     if (config.dimensionPredicate(dimension)) {
       return config.type;
@@ -75,6 +71,7 @@ type ClassifiedDimension = {
   type: MetricsViewerTabType;
   group?: DimensionGroup;
   isDefault?: boolean;
+  canListValues?: boolean;
 };
 
 export function getDimensionsByType(
@@ -89,10 +86,6 @@ export function getDimensionsByType(
   );
 
   for (const dimension of LibMetric.projectionableDimensions(def)) {
-    if (!isDimensionCandidate(dimension)) {
-      continue;
-    }
-
     const type = getDimensionType(dimension);
     if (!type) {
       continue;
@@ -112,6 +105,7 @@ export function getDimensionsByType(
       type,
       group: displayInfo.group,
       isDefault: defaultDimensionIds.has(valuesInfo.id),
+      canListValues: valuesInfo.canListValues,
     });
   }
 
@@ -364,10 +358,17 @@ function collectUniqueExactDimensions(
   dimensionsBySource: Map<MetricSourceId, Map<string, ClassifiedDimension>>,
   sourceOrder: MetricSourceId[],
   type: MetricsViewerTabType,
-): Map<string, { displayName: string; sourceIds: MetricSourceId[] }> {
+): Map<
+  string,
+  { displayName: string; sourceIds: MetricSourceId[]; canListValues: boolean }
+> {
   const unique = new Map<
     string,
-    { displayName: string; sourceIds: MetricSourceId[] }
+    {
+      displayName: string;
+      sourceIds: MetricSourceId[];
+      canListValues: boolean;
+    }
   >();
 
   for (const sourceId of sourceOrder) {
@@ -384,10 +385,14 @@ function collectUniqueExactDimensions(
       const existing = unique.get(info.id);
       if (existing) {
         existing.sourceIds.push(sourceId);
+        if (info.canListValues) {
+          existing.canListValues = true;
+        }
       } else {
         unique.set(info.id, {
           displayName: info.displayName,
           sourceIds: [sourceId],
+          canListValues: info.canListValues ?? false,
         });
       }
     }
@@ -448,7 +453,16 @@ export function computeDefaultTabs(
       config.type,
     );
 
-    for (const [dimensionId, { displayName, sourceIds }] of uniqueDimensions) {
+    const sortedDimensions = [...uniqueDimensions.entries()].sort(
+      ([, a], [, b]) => {
+        if (a.canListValues === b.canListValues) {
+          return 0;
+        }
+        return a.canListValues ? -1 : 1;
+      },
+    );
+
+    for (const [dimensionId, { displayName, sourceIds }] of sortedDimensions) {
       if (tabs.length >= MAX_AUTO_TABS) {
         break;
       }
@@ -724,10 +738,6 @@ function collectAllDimensionEntries(
 
     const seen = new Set<string>();
     for (const dimension of LibMetric.projectionableDimensions(def)) {
-      if (!isDimensionCandidate(dimension)) {
-        continue;
-      }
-
       const valuesInfo = LibMetric.dimensionValuesInfo(def, dimension);
       if (
         !valuesInfo.id ||

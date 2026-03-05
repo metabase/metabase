@@ -64,8 +64,6 @@ const CATEGORY_CHART_TYPES: ChartTypeOption[] = [
   { type: "line", icon: "line" },
   { type: "area", icon: "area" },
   { type: "bar", icon: "bar" },
-  // TODO: re-enable pie when ready
-  // { type: "pie", icon: "pie" },
 ];
 
 const NUMERIC_CHART_TYPES: ChartTypeOption[] = [
