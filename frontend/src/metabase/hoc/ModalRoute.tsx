@@ -1,6 +1,5 @@
 import type { Location, LocationDescriptor } from "history";
-import { Component } from "react";
-import * as React from "react";
+import { Component, cloneElement } from "react";
 import { Route } from "react-router";
 import { push } from "react-router-redux";
 
@@ -110,7 +109,7 @@ class _ModalRoute extends Route {
     const { modal, modalProps, noWrap } = element.props;
 
     if (modal) {
-      element = React.cloneElement(element, {
+      element = cloneElement(element, {
         component: ModalWithRoute(modal, modalProps, noWrap),
       });
 
