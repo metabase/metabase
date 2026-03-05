@@ -15,7 +15,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useLatest } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -72,6 +71,7 @@ import type {
 } from "metabase-types/api";
 
 import S from "./TableInteractive.module.css";
+import { TableInteractiveContextProvider } from "./TableInteractiveContext";
 import {
   HeaderCellWithColumnInfo,
   type HeaderCellWithColumnInfoProps,
@@ -180,9 +180,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const getInfoPopoversDisabledRef = useLatest(() => {
-    return clicked !== null || !hasMetadataPopovers || isDashboard;
-  });
+  const infoPopoversDisabled =
+    clicked !== null || !hasMetadataPopovers || isDashboard;
+  const tableInteractiveContextValue = useMemo(
+    () => ({ infoPopoversDisabled }),
+    [infoPopoversDisabled],
+  );
   const tableTheme = theme?.other?.table;
   const dispatch = useDispatch();
   const isClientSideSortingEnabled = isDashboard;
@@ -535,7 +538,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               className={cx({
                 [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
               })}
-              getInfoPopoversDisabled={getInfoPopoversDisabledRef.current}
               timezone={data.results_timezone}
               question={question}
               column={col}
@@ -601,7 +603,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     tableTheme,
     isDashboard,
     tc,
-    getInfoPopoversDisabledRef,
   ]);
 
   const handleColumnResize = useCallback(
@@ -812,25 +813,27 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     (isDashboard || mode == null || isRawTable) && !isSettings;
 
   return (
-    <div
-      ref={ref}
-      className={cx(S.root, DashboardS.fullscreenNormalText, className)}
-    >
-      <DataGrid
-        {...tableProps}
-        styles={dataGridStyles}
-        showRowsCount={isDashboard}
-        rowsTruncated={data.rows_truncated}
-        isColumnReorderingDisabled={isColumnReorderingDisabled}
-        emptyState={emptyState}
-        zoomedRowIndex={zoomedRowIndex}
-        onBodyCellClick={handleBodyCellClick}
-        onAddColumnClick={handleAddColumnButtonClick}
-        onHeaderCellClick={handleHeaderCellClick}
-        onWheel={handleWheel}
-        tableFooterExtraButtons={tableFooterExtraButtons}
-      />
-    </div>
+    <TableInteractiveContextProvider value={tableInteractiveContextValue}>
+      <div
+        ref={ref}
+        className={cx(S.root, DashboardS.fullscreenNormalText, className)}
+      >
+        <DataGrid
+          {...tableProps}
+          styles={dataGridStyles}
+          showRowsCount={isDashboard}
+          rowsTruncated={data.rows_truncated}
+          isColumnReorderingDisabled={isColumnReorderingDisabled}
+          emptyState={emptyState}
+          zoomedRowIndex={zoomedRowIndex}
+          onBodyCellClick={handleBodyCellClick}
+          onAddColumnClick={handleAddColumnButtonClick}
+          onHeaderCellClick={handleHeaderCellClick}
+          onWheel={handleWheel}
+          tableFooterExtraButtons={tableFooterExtraButtons}
+        />
+      </div>
+    </TableInteractiveContextProvider>
   );
 });
 
