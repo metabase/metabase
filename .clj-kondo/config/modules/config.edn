@@ -845,7 +845,6 @@
            events
            lib
            lib-be
-           lib-metric
            metrics
            models
            permissions
