@@ -280,10 +280,10 @@ export const cardHasBecomeDirty = (
   !_.isEqual(previousCard.dataset_query, nextCard.dataset_query) ||
   previousCard.display !== nextCard.display;
 
-export function getCardAfterVisualizationClick(
-  nextCard: Card | VirtualCard,
-  previousCard: Card | VirtualCard,
-): Card | VirtualCard {
+export function getCardAfterVisualizationClick<T extends Card | VirtualCard>(
+  nextCard: T,
+  previousCard: T,
+): T {
   if (cardHasBecomeDirty(nextCard, previousCard)) {
     const isMultiseriesQuestion = !nextCard.id;
     const alreadyHadLineage = !!previousCard.original_card_id;
