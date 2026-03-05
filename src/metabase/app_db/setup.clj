@@ -171,6 +171,10 @@
           ;
           db-type (or (when (= "MariaDB" (.getDatabaseProductName metadata)) :mariadb)
                       db-type)]
+      (log/warn "Found DB metadata" {:product-name (.getDatabaseProductName metadata)
+                                     :major (.getDatabaseMajorVersion metadata)
+                                     :minor (.getDatabaseMinorVersion metadata)
+                                     :product-version (.getDatabaseProductVersion metadata)})
       (if (supported-app-db-version? db-type db-version)
         (log/infof "Successfully verified %s %s application database connection. %s"
                    (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅"))
