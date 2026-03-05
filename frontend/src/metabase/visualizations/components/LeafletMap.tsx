@@ -101,7 +101,12 @@ export class LeafletMap extends Component<LeafletMapProps> {
       try {
         mapTileHostname = new URL(mapTileUrl).host;
       } catch {}
-      const mapTileAttribution = mapTileHostname.includes("openstreetmap.org")
+      const openStreetMapHosts = [
+        "openstreetmap.org",
+        "www.openstreetmap.org",
+        "tile.openstreetmap.org",
+      ];
+      const mapTileAttribution = openStreetMapHosts.includes(mapTileHostname)
         ? 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
         : undefined;
 
