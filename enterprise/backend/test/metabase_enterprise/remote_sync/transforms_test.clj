@@ -900,13 +900,11 @@ serdes/meta:
     (mt/with-premium-features #{:transforms}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
-        (let [builtin-lib (t2/insert-returning-instance! :model/PythonLibrary
-                                                         {:path "common.py"
-                                                          :source "# builtin"
-                                                          :entity_id transforms-python/builtin-entity-id})
-              custom-lib (t2/insert-returning-instance! :model/PythonLibrary
-                                                        {:path "custom.py"
-                                                         :source "# custom"})]
+        (mt/with-temp [:model/PythonLibrary builtin-lib {:path "common.py"
+                                                         :source "# builtin"
+                                                         :entity_id transforms-python/builtin-entity-id}
+                       :model/PythonLibrary custom-lib {:path "custom.py"
+                                                        :source "# custom"}]
           (let [python-lib-spec (spec/spec-for-model-key :model/PythonLibrary)
                 export-roots (spec/query-export-roots python-lib-spec)
                 exported-ids (set (map second export-roots))]
@@ -920,13 +918,11 @@ serdes/meta:
     (mt/with-premium-features #{:transforms}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
-        (let [builtin-lib (t2/insert-returning-instance! :model/PythonLibrary
-                                                         {:path "common.py"
-                                                          :source "# builtin"
-                                                          :entity_id transforms-python/builtin-entity-id})
-              custom-lib (t2/insert-returning-instance! :model/PythonLibrary
-                                                        {:path "custom.py"
-                                                         :source "# custom"})]
+        (mt/with-temp [:model/PythonLibrary _ {:path "common.py"
+                                               :source "# builtin"
+                                               :entity_id transforms-python/builtin-entity-id}
+                       :model/PythonLibrary custom-lib {:path "custom.py"
+                                                        :source "# custom"}]
           (settings/sync-transform-tracking! true)
           (settings/sync-transform-tracking! false)
           (let [paths (spec/build-all-removal-paths)]
