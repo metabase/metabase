@@ -3,7 +3,8 @@ import {
   type ElementType,
   type PropsWithChildren,
   createElement,
-  useEffect,
+  useCallback,
+  useRef,
   useState,
 } from "react";
 
@@ -24,33 +25,18 @@ export function RenderIfHasContent<C extends ElementType>({
   children,
   ...props
 }: RenderIfHasContentProps<C>) {
-  const [node, setNode] = useState<HTMLElement | null>(null);
-  const shouldRender = useShouldRender(node);
-
-  if (!shouldRender) {
-    return (
-      <div ref={setNode} hidden>
-        {children}
-      </div>
-    );
-  }
-
-  return createElement(Component, { ...props, ref: setNode }, children);
-}
-
-function useShouldRender(node: HTMLElement | null): boolean {
   const [shouldRender, setShouldRender] = useState(true);
+  const observerRef = useRef<MutationObserver | null>(null);
 
-  useEffect(() => {
+  const refCallback = useCallback((node: HTMLElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+
     if (!node) {
       return;
     }
 
-    const update = () => {
-      setShouldRender(hasVisibleContent(node));
-    };
-
-    // Run an initial check as soon as the node is attached, before the first observer event
+    const update = () => setShouldRender(hasVisibleContent(node));
     update();
 
     const observer = new MutationObserver(update);
@@ -59,13 +45,18 @@ function useShouldRender(node: HTMLElement | null): boolean {
       subtree: true,
       characterData: true,
     });
+    observerRef.current = observer;
+  }, []);
 
-    return () => {
-      observer.disconnect();
-    };
-  }, [node]);
+  if (!shouldRender) {
+    return (
+      <div ref={refCallback} hidden>
+        {children}
+      </div>
+    );
+  }
 
-  return shouldRender;
+  return createElement(Component, { ...props, ref: refCallback }, children);
 }
 
 /**
