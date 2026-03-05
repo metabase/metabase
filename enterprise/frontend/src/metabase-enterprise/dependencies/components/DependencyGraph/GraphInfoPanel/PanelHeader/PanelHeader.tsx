@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
 import {
   ActionIcon,
@@ -35,6 +36,9 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
   const location = getNodeLocationInfo(node);
   const replaceSource = getNodeReplaceSourceEntry(node);
+  const canUserReplaceSource = useSelector(
+    PLUGIN_REPLACEMENT.canUserReplaceSource,
+  );
   const [
     isReplaceModalOpened,
     { open: openReplaceModal, close: closeReplaceModal },
@@ -56,7 +60,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
           {link != null && (
             <GraphExternalLink label={link.label} url={link.url} />
           )}
-          {PLUGIN_REPLACEMENT.isEnabled && replaceSource != null && (
+          {canUserReplaceSource && replaceSource != null && (
             <Tooltip label={t`Find and replace`}>
               <ActionIcon
                 aria-label={t`Replace data source`}
