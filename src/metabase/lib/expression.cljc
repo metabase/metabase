@@ -643,7 +643,7 @@
         (:errors explanation)))
 
 (defn- parent-operator-name
-  "Given an expression and a path into it, return the name of expression at the end of the path."
+  "Given an expression and a path to a value, return the name of the parent operator of that value."
   [expr in-path]
   (when (and (seq in-path) (every? integer? in-path))
     (let [parent-path (pop (vec in-path))
