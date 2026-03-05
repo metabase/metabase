@@ -65,12 +65,12 @@
   ;; Inline can-write? logic since instance is a plain map without model metadata.
   ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
   ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
-  (or api/*is-superuser?*
-      (let [source-db-id (or (:source_db_id instance) (transforms-base.i/source-db-id instance))]
-        (and (and api/*is-data-analyst?*
-                  (transforms.u/source-tables-readable? instance))
-             (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
-             (remote-sync/transforms-editable?)))))
+  (and (remote-sync/transforms-editable?)
+       (or api/*is-superuser?*
+           (let [source-db-id (or (:source_db_id instance) (transforms-base.i/source-db-id instance))]
+             (and api/*is-data-analyst?*
+                  (transforms.u/source-tables-readable? instance)
+                  (perms/has-db-transforms-permission? api/*current-user-id* source-db-id))))))
 
 (defn- keywordize-source-table-refs
   "Keywordize keys in source-tables map values (refs are maps, ints pass through)."
