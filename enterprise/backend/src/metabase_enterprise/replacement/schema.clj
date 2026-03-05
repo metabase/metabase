@@ -6,15 +6,11 @@
 
 (set! *warn-on-reflection* true)
 
-(mr/def ::entity-id
-  [:or ::lib.schema.id/card ::lib.schema.id/table ::lib.schema.id/dashboard
-   ::lib.schema.id/transform ::lib.schema.id/segment ::lib.schema.id/measure])
+(mr/def ::source-entity-id
+  [:or ::lib.schema.id/card ::lib.schema.id/table])
 
-(mr/def ::entity-type
-  [:enum :card :table :dashboard :transform :segment :measure])
-
-(mr/def ::entity-ref
-  [:tuple ::entity-type ::entity-id])
+(mr/def ::source-entity-type
+  [:enum :card :table])
 
 (mr/def ::run-id
   pos-int?)
@@ -27,10 +23,10 @@
    [:id ::run-id]
    [:status ::run-status]
    [:is_active [:maybe :boolean]]
-   [:source_entity_type ::entity-type]
-   [:source_entity_id ::entity-id]
-   [:target_entity_type ::entity-type]
-   [:target_entity_id ::entity-id]
+   [:source_entity_type ::source-entity-type]
+   [:source_entity_id ::source-entity-id]
+   [:target_entity_type ::source-entity-type]
+   [:target_entity_id ::source-entity-id]
    [:progress [:maybe :double]]
    [:message [:maybe :string]]
    [:user_id [:maybe ::lib.schema.id/user]]

@@ -1,13 +1,11 @@
 (ns metabase-enterprise.replacement.field-refs
   (:require
    [metabase-enterprise.replacement.parameters :as replacement.parameters]
-   [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.viz :as replacement.viz]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.visualization-settings :as vs]
-   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (defn- card-upgrade-field-refs!
@@ -89,16 +87,15 @@
     (doseq [dashcard dashcards]
       (dashcard-upgrade-field-refs! dashcard card-id->query))))
 
-(mu/defn upgrade!
+(defn upgrade!
   "Upgrade field refs in an entity.
 
   `entity-ref` is a [type id] tuple like [:dashboard 123] or [:card 456].
   `loaded-object` is an optional pre-fetched entity map from bulk-load-metadata-for-entities!.
   Dashboards don't use loaded-object (not bulk-loaded)."
-  ([entity-ref :- ::replacement.schema/entity-ref]
+  ([entity-ref]
    (upgrade! entity-ref nil))
-  ([entity-ref :- ::replacement.schema/entity-ref
-    loaded-object]
+  ([entity-ref loaded-object]
    (let [[entity-type entity-id] entity-ref]
      (case entity-type
        :dashboard (dashboard-upgrade-field-refs! entity-id)
