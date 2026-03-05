@@ -46,6 +46,7 @@
                               :sso-google
                               :sso-jwt
                               :sso-ldap
+                              :sso-oidc
                               :sso-saml
                               :sso-slack
                               :support-users
@@ -57,7 +58,8 @@
                               :database-routing
                               :tenants
                               :cloud-custom-smtp
-                              :workspaces}
+                              :workspaces
+                              :writable-connection}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
@@ -94,6 +96,7 @@
             :sso_google                     true
             :sso_jwt                        true
             :sso_ldap                       true
+            :sso_oidc                       true
             :sso_saml                       true
             :sso_slack                      true
             :support-users                  true
@@ -109,5 +112,6 @@
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
-            :workspaces                     true}
+            :workspaces                     true
+            :writable_connection            true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

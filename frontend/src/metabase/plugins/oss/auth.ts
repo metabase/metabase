@@ -6,12 +6,22 @@ import type { User } from "metabase-types/api";
 
 import type { GetAuthProviders } from "../types";
 
+export type AuthSettingsPageTab =
+  | "authentication"
+  | "user-provisioning"
+  | "api-keys";
+
+export type AuthSettingsPageProps = {
+  tab?: AuthSettingsPageTab;
+};
+
 const getDefaultPluginAuthProviders = () => ({
   isEnabled: () => false,
-  AuthSettingsPage: PluginPlaceholder,
+  AuthSettingsPage: PluginPlaceholder<AuthSettingsPageProps>,
   UserProvisioningSettings: NotFoundPlaceholder,
   SettingsSAMLForm: NotFoundPlaceholder,
   SettingsJWTForm: NotFoundPlaceholder,
+  SettingsOIDCForm: NotFoundPlaceholder,
   providers: [] as GetAuthProviders[],
 });
 

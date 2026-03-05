@@ -96,6 +96,7 @@ export interface DatabaseData {
   // missing in responses from the backend, cf. implementation of
   // [[metabase.models.interface/to-json]] for `:model/Database`:
   details?: Record<string, unknown>;
+  write_data_details?: Record<string, unknown> | null;
   schedules: DatabaseSchedules;
   auto_run_queries: boolean | null;
   refingerprint: boolean | null;
@@ -137,6 +138,13 @@ export type DatabaseLocalSettingDisableReason = {
 export type DatabaseLocalSettingAvailability =
   | { enabled: true }
   | { enabled: false; reasons: DatabaseLocalSettingDisableReason[] };
+
+export type DatabaseConnectionType = "default" | "write-data";
+
+export type GetDatabaseHealthRequest = {
+  id: DatabaseId;
+  "connection-type"?: DatabaseConnectionType;
+};
 
 export type GetDatabaseHealthResponse =
   | { status: "ok" }
@@ -212,6 +220,7 @@ export interface UpdateDatabaseRequest {
   engine?: string;
   refingerprint?: boolean | null;
   details?: Record<string, unknown>;
+  write_data_details?: Record<string, unknown> | null;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;

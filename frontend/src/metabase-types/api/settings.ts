@@ -9,6 +9,13 @@ import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
 import type { UserId } from "./user";
 
+export interface OidcAuthProvider {
+  type: "oidc";
+  key: string;
+  "login-prompt": string;
+  "sso-url": string;
+}
+
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
   "type/Number"?: NumberFormattingSettings;
@@ -326,6 +333,7 @@ export const tokenFeatures = [
   "sso_google",
   "sso_jwt",
   "sso_ldap",
+  "sso_oidc",
   "sso_saml",
   "session_timeout_config",
   "whitelabel",
@@ -355,6 +363,7 @@ export const tokenFeatures = [
   "support-users",
   "tenants",
   "workspaces",
+  "writable_connection",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -363,6 +372,9 @@ export type TokenFeatures = Record<TokenFeature, boolean>;
 export type PasswordComplexity = {
   total?: number;
   digit?: number;
+  upper?: number;
+  lower?: number;
+  special?: number;
 };
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
@@ -438,7 +450,7 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
-  "llm-sql-generation-enabled": boolean;
+  "llm-anthropic-api-key-configured?": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -474,6 +486,7 @@ interface AdminSettings {
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-configured": boolean;
   "premium-embedding-token": string | null;
+  "oidc-login-providers"?: OidcAuthProvider[];
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
@@ -561,6 +574,7 @@ interface PublicSettings {
   "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
   "ldap-group-membership-filter"?: string;
   "ldap-user-provisioning-enabled?": boolean;
+  "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
@@ -573,6 +587,8 @@ interface PublicSettings {
   "report-timezone-short": string;
   "session-cookies": boolean | null;
   "setup-token": string | null;
+  "metabot-enabled?": boolean;
+  "embedded-metabot-enabled?": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
   "show-google-sheets-integration": boolean;
@@ -710,6 +726,8 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-groups": string | null;
   "jwt-attribute-tenant": string | null;
   "jwt-group-sync": boolean | null;
+  "oidc-enabled": boolean;
+  "oidc-configured": boolean;
   "saml-enabled": boolean;
   "saml-configured": boolean;
   "saml-user-provisioning-enabled?": boolean;

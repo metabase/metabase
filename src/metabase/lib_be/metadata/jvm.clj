@@ -44,7 +44,8 @@
   (u.memo/fast-memo u/->kebab-case-en))
 
 (def ^:private metadata-type->schema
-  {:metadata/card ::lib.schema.metadata/card})
+  {:metadata/card   ::lib.schema.metadata/card
+   :metadata/column ::lib.schema.metadata/column})
 
 (mu/defn instance->metadata
   "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
@@ -78,7 +79,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone :router_database_id]}))
+         {:select [:id :engine :name :dbms_version :settings :is_audit :details :write_data_details :timezone :router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -546,7 +547,10 @@
   (metadatas [_this metadata-spec]
     (metadatas database-id metadata-spec))
   (setting [_this setting-name]
-    (setting/get setting-name))
+    (if (setting/database-local-values)
+      (setting/get setting-name)
+      (setting/with-database (database database-id)
+        (setting/get setting-name))))
 
   pretty/PrettyPrintable
   (pretty [_this]

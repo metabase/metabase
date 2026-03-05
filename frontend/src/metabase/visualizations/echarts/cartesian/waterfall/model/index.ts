@@ -106,14 +106,14 @@ export const getWaterfallChartModel = (
   const leftAxisModel = getYAxisModel(
     [WATERFALL_END_KEY],
     [],
-    [],
     transformedDataset,
     settings,
     { [WATERFALL_END_KEY]: seriesModel.column },
-    null,
     {
-      compact:
-        settings["graph.label_value_formatting"] === "compact" || isCompact,
+      formattingOptions: {
+        compact:
+          settings["graph.label_value_formatting"] === "compact" || isCompact,
+      },
     },
   );
 

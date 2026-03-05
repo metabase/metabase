@@ -17,7 +17,6 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -93,7 +92,6 @@
  database-routing/check-allowed-access!
  events/publish-event!
  lib-be/start-of-week
- lib.field/json-field?
  lib-be/instance->metadata
  lib.metadata/database
  lib.metadata/field
@@ -107,14 +105,19 @@
  lib.types.isa/temporal?
  lib.util.match/match
  lib.util.match/match-one
+ lib.util.match/match-lite
+ lib.util.match/match-many
  lib.util.match/replace
+ lib.util.match/replace-lite
  lib/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
  lib/duplicate-column-error
+ lib/json-field?
  lib/match-and-normalize-tag-name
  lib/missing-column-error
  lib/missing-table-alias-error
+ lib/native-query-table-references
  lib/normalize
  lib/order-by-clause
  lib/query-from-legacy-inner-query

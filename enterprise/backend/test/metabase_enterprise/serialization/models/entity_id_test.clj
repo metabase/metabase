@@ -72,6 +72,7 @@
     :model/PermissionsGroupMembership
     :model/PermissionsRevision
     :model/PersistedInfo
+    :model/PremiumFeaturesCache
     :model/Pulse
     :model/PulseCard
     :model/PulseChannel
@@ -115,6 +116,7 @@
     :model/Workspace
     :model/WorkspaceInput
     :model/WorkspaceInputExternal
+    :model/WorkspaceInputTransform
     :model/WorkspaceLog
     :model/WorkspaceMerge
     :model/WorkspaceMergeTransform

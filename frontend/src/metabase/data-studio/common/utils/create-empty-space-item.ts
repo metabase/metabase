@@ -38,14 +38,15 @@ const getEmptyStateConfig = (
 
 export const createEmptyStateItem = (
   sectionType: LibrarySectionType,
-  metricCollectionId?: CollectionId,
+  collectionId?: CollectionId,
+  hideAction?: boolean,
 ): TreeItem => {
   const config = getEmptyStateConfig(sectionType);
 
   let actionUrl: string | undefined;
-  if (sectionType === "metrics" && metricCollectionId) {
-    actionUrl = Urls.newDataStudioMetric({ collectionId: metricCollectionId });
-  } else if (sectionType === "snippets") {
+  if (sectionType === "metrics" && collectionId && !hideAction) {
+    actionUrl = Urls.newDataStudioMetric({ collectionId: collectionId });
+  } else if (sectionType === "snippets" && !hideAction) {
     actionUrl = Urls.newDataStudioSnippet();
   }
   // "data" section opens a modal, so no actionUrl

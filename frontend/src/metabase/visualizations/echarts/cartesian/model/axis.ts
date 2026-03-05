@@ -45,6 +45,7 @@ import {
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric";
+import { getLineAreaBarComparisonSettings } from "metabase/visualizations/lib/settings";
 import type {
   ColumnSettings,
   ComputedVisualizationSettings,
@@ -56,7 +57,6 @@ import type {
   NumericScale,
   RawSeries,
   RowValue,
-  SeriesSettings,
   StackType,
 } from "metabase-types/api";
 import { numericScale } from "metabase-types/api";
@@ -67,31 +67,6 @@ import type { ShowWarning } from "../../types";
 import { getAxisTransforms } from "./transforms";
 import { getFormattingOptionsWithoutScaling } from "./util";
 
-const KEYS_TO_COMPARE = new Set([
-  "number_style",
-  "currency",
-  "currency_style",
-  "number_separators",
-  "decimals",
-  "scale",
-  "prefix",
-  "suffix",
-]);
-
-function getLineAreaBarComparisonSettings(
-  columnSettings: Record<string, unknown>,
-) {
-  return _.pick(columnSettings, (value, key) => {
-    if (!KEYS_TO_COMPARE.has(key)) {
-      return false;
-    }
-    if ((key === "prefix" || key === "suffix") && value === "") {
-      return false;
-    }
-    return true;
-  });
-}
-
 const uniqueCards = (seriesModels: SeriesModel[]) =>
   _.uniq(seriesModels.map(({ cardId }) => cardId)).length;
 
@@ -100,7 +75,7 @@ const getMetricColumnsCount = (seriesModels: SeriesModel[]) => {
     .length;
 };
 
-function shouldAutoSplitYAxis(
+export function shouldAutoSplitYAxis(
   settings: ComputedVisualizationSettings,
   seriesModels: SeriesModel[],
   seriesExtents: SeriesExtents,
@@ -292,7 +267,7 @@ const getYAxisSplit = (
 
   const axisBySeriesKey = seriesModels.reduce(
     (acc, seriesModel) => {
-      const seriesSettings: SeriesSettings = settings.series(
+      const seriesSettings = settings.series?.(
         seriesModel.legacySeriesSettingsObjectKey,
       );
 
@@ -521,17 +496,28 @@ function getYAxisExtent(
   return combinedExtent != null ? combinedExtent : [0, 0];
 }
 
+interface YAxisModelOptions {
+  stackModels?: StackModel[];
+  stackType?: StackType;
+  formattingOptions?: OptionsType;
+  gridSize?: VisualizationGridSize;
+}
+
 export function getYAxisModel(
   seriesKeys: string[],
   seriesNames: string[],
-  stackModels: StackModel[],
   transformedDataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
-  stackType: StackType,
-  formattingOptions?: OptionsType,
-  gridSize?: VisualizationGridSize,
+  options: YAxisModelOptions = {},
 ): YAxisModel | null {
+  const {
+    stackModels = [],
+    stackType = null,
+    formattingOptions,
+    gridSize,
+  } = options;
+
   if (seriesKeys.length === 0) {
     return null;
   }
@@ -625,26 +611,31 @@ export function getYAxesModels(
     leftAxisModel: getYAxisModel(
       leftAxisSeriesKeys,
       leftAxisSeriesNames,
-      leftStackModels,
       transformedDataset,
       settings,
       columnByDataKey,
-      settings["stackable.stack_type"] ?? null,
-      { compact: isCompactFormatting },
-      gridSize,
+      {
+        stackModels: leftStackModels,
+        stackType: settings["stackable.stack_type"] ?? null,
+        formattingOptions: { compact: isCompactFormatting },
+        gridSize,
+      },
     ),
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
       rightAxisSeriesNames,
-      rightStackModels,
       transformedDataset,
       settings,
       columnByDataKey,
-      settings["stackable.stack_type"] === "normalized"
-        ? null
-        : (settings["stackable.stack_type"] ?? null),
-      { compact: isCompactFormatting },
-      gridSize,
+      {
+        stackModels: rightStackModels,
+        stackType:
+          settings["stackable.stack_type"] === "normalized"
+            ? null
+            : (settings["stackable.stack_type"] ?? null),
+        formattingOptions: { compact: isCompactFormatting },
+        gridSize,
+      },
     ),
   };
 }

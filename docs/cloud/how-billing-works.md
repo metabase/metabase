@@ -56,7 +56,7 @@ Generally, annual billing is a great deal; it's cheaper across the board. The on
 
 ## What counts as a user account?
 
-A user account is any account which has been added to your Metabase instance (manually or via SSO) that has not been deactivated. You can view a list of user accounts in your **Admin settings** -> **People** list. Any user account which has been [deactivated](../people-and-groups/managing.md#deactivating-an-account) doesn't count toward your number of user accounts. That is to say: if an account exists, but has not been deactivated, that account will count toward your bill, _even if no one signs in and uses that account_. If an account is deactivated, that account is charged for the number of days the account was available for use during that billing period, including the day it was deactivated (since it was available for use for part of the day up until it was deactivated).
+A user account is any account which has been added to your Metabase instance (manually or via SSO) that has not been deactivated. You can view a list of user accounts in your **Admin** -> **People** list. Any user account which has been [deactivated](../people-and-groups/managing.md#deactivating-an-account) doesn't count toward your number of user accounts. That is to say: if an account exists, but has not been deactivated, that account will count toward your bill, _even if no one signs in and uses that account_. If an account is deactivated, that account is charged for the number of days the account was available for use during that billing period, including the day it was deactivated (since it was available for use for part of the day up until it was deactivated).
 
 ## How billing works with embedding
 

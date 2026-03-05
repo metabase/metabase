@@ -59,14 +59,12 @@
                           :result-metadata [{:base_type      :type/BigInteger
                                              :display_name   "ID"
                                              :effective_type :type/BigInteger
-                                             :field_ref      [:field "ID" {:base-type :type/BigInteger}]
                                              :fingerprint    nil
                                              :name           "ID"
                                              :semantic_type  :type/PK}
                                             {:base_type      :type/BigInteger
                                              :display_name   "ID"
                                              :effective_type :type/BigInteger
-                                             :field_ref      [:field "ID_2" {:base-type :type/BigInteger}]
                                              :fingerprint    nil
                                              :name           "ID"
                                              :semantic_type  :type/PK}]}]})
@@ -77,8 +75,9 @@
                                               [:field "ID_2" {:base-type :type/Integer}]]}
                     :database (mt/id)
                     :type     :query})]
-        (is (=? ["ID" "ID_2"]
-                (map :name (mt/cols (qp/process-query query)))))))))
+        (mt/with-native-query-testing-context query
+          (is (=? ["ID" "ID_2"]
+                  (map :name (mt/cols (qp/process-query query))))))))))
 
 (deftest ^:parallel native-referring-question-referring-question-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"

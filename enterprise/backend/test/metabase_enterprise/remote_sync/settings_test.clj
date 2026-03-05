@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as settings]
+   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]))
@@ -42,6 +43,40 @@
         (testing "Updating with nil token clears it out"
           (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token nil))
           (is (= nil (settings/remote-sync-token))))))))
+
+(deftest check-git-settings-rejects-non-https-urls
+  (testing "git:// URLs are rejected with a helpful error message"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Invalid repository URL: only HTTPS URLs are supported"
+                          (settings/check-git-settings! {:remote-sync-url   "git://github.com/foo/bar.git"
+                                                         :remote-sync-token nil
+                                                         :remote-sync-branch "main"
+                                                         :remote-sync-type  :read-only}))))
+  (testing "ssh:// URLs are rejected with a helpful error message"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Invalid repository URL: only HTTPS URLs are supported"
+                          (settings/check-git-settings! {:remote-sync-url   "ssh://git@github.com/foo/bar.git"
+                                                         :remote-sync-token nil
+                                                         :remote-sync-branch "main"
+                                                         :remote-sync-type  :read-only}))))
+  (testing "Non-GitHub HTTPS URLs are accepted"
+    (with-redefs [git/git-source (fn [& _] nil)
+                  git/branches   (fn [_] ["main"])]
+      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://gitlab.com/foo/bar.git"
+                                               :remote-sync-token nil
+                                               :remote-sync-branch "main"
+                                               :remote-sync-type  :read-only}))
+          "GitLab HTTPS URLs should be accepted")
+      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://bitbucket.org/foo/bar.git"
+                                               :remote-sync-token nil
+                                               :remote-sync-branch "main"
+                                               :remote-sync-type  :read-only}))
+          "Bitbucket HTTPS URLs should be accepted")
+      (is (nil? (settings/check-git-settings! {:remote-sync-url   "https://dev.azure.com/org/project/_git/repo"
+                                               :remote-sync-token nil
+                                               :remote-sync-branch "main"
+                                               :remote-sync-type  :read-only}))
+          "Azure DevOps HTTPS URLs should be accepted"))))
 
 (deftest cannot-set-remote-sync-type-to-invalid-value
   (is (thrown-with-msg? clojure.lang.ExceptionInfo

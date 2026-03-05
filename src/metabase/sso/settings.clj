@@ -187,6 +187,16 @@
                     (setting/set-value-of-type! :boolean :google-auth-enabled new-value))
                   (setting/set-value-of-type! :boolean :google-auth-enabled new-value))))
 
+(defsetting oidc-allowed-networks
+  (deferred-tru "What networks are OIDC requests allowed to? Possible values: ''allow-all'' (default), ''allow-private'', or ''external-only''.")
+  :type :keyword
+  :default :allow-all
+  :export? false
+  :setter (fn [new-value]
+            (when (some? new-value)
+              (assert (#{:allow-all :allow-private :external-only} (keyword new-value))))
+            (setting/set-value-of-type! :keyword :oidc-allowed-networks new-value)))
+
 (defn- ee-sso-configured? []
   (when config/ee-available?
     (setting/get :other-sso-enabled?)))
@@ -197,6 +207,28 @@
   (or (google-auth-enabled)
       (ldap-enabled)
       (ee-sso-configured?)))
+
+(defn sso-source-enabled?
+  "Returns true if the given SSO source's authentication provider is currently enabled.
+   When a provider is disabled (e.g., after license downgrade), returns false so users
+   can fall back to password authentication."
+  [sso-source]
+  (boolean
+   (case (keyword sso-source)
+     :google (google-auth-enabled)
+     :ldap   (ldap-enabled)
+     ;; Enterprise SSO providers: setting/get respects the :feature flag on each
+     ;; setting — returning the default (false) when the feature is unlicensed (e.g.,
+     ;; after license downgrade), so users aren't locked out of password reset.
+     ;; Exception: :scim-enabled has no :feature guard, so it returns the stored value
+     ;; regardless of license status.
+     :saml   (setting/get :saml-enabled)
+     :jwt    (setting/get :jwt-enabled)
+     :oidc   (setting/get :oidc-enabled?)
+     :slack  (setting/get :slack-connect-enabled)
+     :scim   (setting/get :scim-enabled)
+     ;; Unknown sso_source -- treat as disabled to allow password reset
+     false)))
 
 (define-multi-setting google-auth-auto-create-accounts-domain
   (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain.")

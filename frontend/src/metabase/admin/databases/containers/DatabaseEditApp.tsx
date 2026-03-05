@@ -20,6 +20,7 @@ import {
   PLUGIN_DB_ROUTING,
   PLUGIN_TABLE_EDITING,
   PLUGIN_WORKSPACES,
+  PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
@@ -102,6 +103,10 @@ function DatabaseEditAppInner({
                   mb={{ base: "3rem", sm: "5.5rem" }}
                 >
                   <DatabaseConnectionInfoSection database={database} />
+
+                  <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
+                    database={database}
+                  />
 
                   <DatabaseModelFeaturesSection
                     database={database}

@@ -87,7 +87,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/dependencies/check_card",
+        url: "/api/ee/dependencies/check-card",
         body,
       }),
     }),
@@ -97,7 +97,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/dependencies/check_snippet",
+        url: "/api/ee/dependencies/check-snippet",
         body,
       }),
     }),
@@ -107,7 +107,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/dependencies/check_transform",
+        url: "/api/ee/dependencies/check-transform",
         body,
       }),
     }),

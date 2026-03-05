@@ -11,9 +11,9 @@ import {
   Text,
 } from "metabase/ui";
 
-interface ConfirmModal extends ModalProps {
+interface ConfirmModal extends Omit<ModalProps, "content"> {
   title?: string | ReactNode;
-  content?: string;
+  content?: string | ReactNode;
   message?: string | ReactNode;
   onConfirm?: () => void | Promise<void>;
   confirmButtonText?: string;

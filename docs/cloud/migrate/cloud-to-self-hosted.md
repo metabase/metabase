@@ -23,7 +23,7 @@ To migrate, you'll need to [contact our success team](https://www.metabase.com/h
 
 The major version of your self-hosted Metabase should match the version of your Metabase Cloud instance. For example, if your Metabase Cloud instance is on version 52, then your self-hosted instance should be on version 52 as well.
 
-You can find the version of your Metabase by clicking on the **Gear** icon in the top right of your Metabase and clicking on **About Metabase**. For Metabase Cloud, you can also see the version of your instance in the [Metabase Store](https://store.metabase.com).
+You can find the version of your Metabase by clicking the **grid icon** in the top right, selecting **Help**, then clicking **About Metabase**. For Metabase Cloud, you can also see the version of your instance in the [Metabase Store](https://store.metabase.com).
 
 ### Use PostgreSQL for your application database
 

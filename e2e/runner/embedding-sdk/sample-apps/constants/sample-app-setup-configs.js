@@ -53,6 +53,14 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
   },
   "shoppy-e2e": {
     ...BASE_SETUP_CONFIG,
+    env: {
+      ...BASE_SETUP_CONFIG.env,
+      DATADOG_APPLICATION_ID: process.env.SHOPPY_DATADOG_APPLICATION_ID,
+      DATADOG_CLIENT_TOKEN: process.env.SHOPPY_DATADOG_CLIENT_TOKEN,
+      DATADOG_SITE: process.env.SHOPPY_DATADOG_SITE,
+      DATADOG_SERVICE: "shoppy",
+      DATADOG_ENV: process.env.SHOPPY_DATADOG_ENV,
+    },
     appName: "shoppy",
   },
 };

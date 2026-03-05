@@ -12,12 +12,23 @@ import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
+  createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { UpdatesSettingsPage } from "./UpdatesSettingsPage";
 
-const setup = async (props: { isHosted: boolean; versionTag: string }) => {
+const setup = async (props: {
+  isHosted: boolean;
+  versionTag: string;
+  isPro?: boolean;
+}) => {
+  // having any SSO feature is how we detect if you have a pro plan
+  const tokenFeatures = createMockTokenFeatures(
+    props.isPro ? { sso_jwt: true } : {},
+  );
+
   const updatesSettings = {
     "is-hosted?": props.isHosted,
     "check-for-updates": true,
@@ -27,7 +38,8 @@ const setup = async (props: { isHosted: boolean; versionTag: string }) => {
       tag: props.versionTag,
       hash: "4742ea1",
     },
-  } as const;
+    "token-features": tokenFeatures,
+  };
 
   const settings = createMockSettings(updatesSettings);
   setupPropertiesEndpoints(settings);
@@ -56,6 +68,7 @@ const setup = async (props: { isHosted: boolean; versionTag: string }) => {
     {
       storeInitialState: {
         settings: createMockSettingsState(settings),
+        currentUser: createMockUser({ is_superuser: true }), // upsells only show for admins
       },
     },
   );
@@ -86,5 +99,43 @@ describe("UpdatesSettingsPage", () => {
       }),
     );
     expect(await screen.findByRole("switch")).toBeChecked();
+  });
+
+  it("should show upsell when not hosted", async () => {
+    await act(() =>
+      setup({
+        isHosted: false,
+        isPro: false,
+        versionTag: "v1.53.8",
+      }),
+    );
+    expect(
+      await screen.findByText("Migrate to Metabase Cloud"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show upsell to self-hosted pro users", async () => {
+    await act(() =>
+      setup({
+        isHosted: false,
+        isPro: true,
+        versionTag: "v1.53.8",
+      }),
+    );
+    expect(
+      screen.queryByText("Migrate to Metabase Cloud"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not show upsell when hosted", async () => {
+    await act(() =>
+      setup({
+        isHosted: true,
+        versionTag: "v1.53.8",
+      }),
+    );
+    expect(
+      screen.queryByText("Migrate to Metabase Cloud"),
+    ).not.toBeInTheDocument();
   });
 });

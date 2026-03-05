@@ -1306,6 +1306,34 @@ If Metabase stops sending notifications like alerts, it may be because long-runn
   queries are clogging the notification queue. You may be able to unclog the queue by
   increasing the size of the thread pool dedicated to notifications.
 
+### `MB_OIDC_ALLOWED_NETWORKS`
+
+- Type: keyword
+- Default: `allow-all`
+- [Configuration file name](./config-file.md): `oidc-allowed-networks`
+
+What networks are OIDC requests allowed to? Possible values: 'allow-all' (default), 'allow-private', or 'external-only'.
+
+### `MB_OIDC_PROVIDERS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: json
+- Default: `[]`
+- [Configuration file name](./config-file.md): `oidc-providers`
+
+JSON containing OIDC provider configurations.
+
+### `MB_OIDC_USER_PROVISIONING_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `true`
+- [Configuration file name](./config-file.md): `oidc-user-provisioning-enabled`
+
+When a user logs in via OIDC, create a Metabase account for them automatically if they don't have one.
+
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
 - Type: string
@@ -1938,6 +1966,13 @@ Identify the source of HTTP requests by this header's value, instead of its remo
 Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
   in memory.
 
+### `MB_SQL_TOOLS_PARSER_BACKEND`
+
+- Type: keyword
+- Default: `sqlglot`
+
+Parser backend of `sql-tools` module.
+
 ### `MB_SSH_HEARTBEAT_INTERVAL_SEC`
 
 - Type: integer
@@ -2140,6 +2175,8 @@ Default: `null`
 
 A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#mb_db_host). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#mb_db_type).
 
+Note that the `currentSchema` JDBC parameter has no effect. [The schema used for PostgreSQL application databases must be `public`](https://github.com/metabase/metabase/issues/37836).
+
 Examples:
 
 ```
@@ -2264,7 +2301,7 @@ Since: v51.3
 
 If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_DB_QUERY_TIMEOUT_MINUTES](#mb_db_query_timeout_minutes).
 
-In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom Log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -2497,4 +2534,3 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
-

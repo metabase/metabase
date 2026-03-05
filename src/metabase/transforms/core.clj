@@ -3,7 +3,17 @@
   (:require
    [java-time.api :as t]
    [metabase.models.transforms.transform]
+   [metabase.models.transforms.transform-job]
    [metabase.models.transforms.transform-run]
+   [metabase.models.transforms.transform-run-cancelation]
+   [metabase.models.transforms.transform-tag]
+   [metabase.transforms-base.ordering]
+   [metabase.transforms-base.util]
+   [metabase.transforms.canceling]
+   [metabase.transforms.crud]
+   [metabase.transforms.execute]
+   [metabase.transforms.jobs]
+   [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.util]
    [potemkin :as p]
@@ -12,19 +22,58 @@
 (p/import-vars
  [metabase.transforms.settings
   transform-timeout]
- [metabase.transforms.util
-  add-source-readable
+ [metabase.transforms-base.util
   native-query-transform?
   python-transform?
   query-transform?
   transform-source-database
   transform-source-type
-  transform-type
+  transform-type]
+ [metabase.transforms.util
+  add-source-readable
   is-temp-transform-table?]
- [metabase.models.transforms.transform-run
-  timeout-run!]
+ [metabase.transforms.crud
+  python-source-table-ref->table-id
+  check-database-feature
+  check-feature-enabled!
+  extract-all-columns-from-query
+  extract-incremental-filter-columns-from-query
+  validate-incremental-column-type!
+  validate-transform-query!
+  get-transforms
+  get-transform
+  create-transform!
+  update-transform!
+  delete-transform!]
+ [metabase.transforms.canceling
+  cancel-run!]
+ [metabase.transforms.execute
+  execute!]
+ [metabase.transforms-base.ordering
+  transform-ordering
+  get-transform-cycle]
+ [metabase.transforms.jobs
+  run-job!
+  job-transforms]
+ [metabase.transforms.schedule
+  validate-cron-expression
+  initialize-job!
+  update-job!
+  delete-job!
+  existing-trigger]
  [metabase.models.transforms.transform
-  update-transform-tags!])
+  update-transform-tags!]
+ [metabase.models.transforms.transform-run
+  timeout-run!
+  paged-runs
+  running-run-for-transform-id]
+ [metabase.models.transforms.transform-run-cancelation
+  mark-cancel-started-run!]
+ [metabase.models.transforms.transform-job
+  update-job-tags!]
+ [metabase.models.transforms.transform-tag
+  tag-name-exists?
+  tag-name-exists-excluding?])
 
 (defn transform-stats
   "Calculate successful transform runs over a window of the previous UTC day 00:00-23:59.

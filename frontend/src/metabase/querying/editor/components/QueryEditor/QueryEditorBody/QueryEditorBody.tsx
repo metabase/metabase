@@ -32,7 +32,7 @@ const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   dataReference: true,
   snippets: true,
   formatQuery: true,
-  variables: false,
+  variables: true,
   promptInput: false,
 };
 
@@ -54,6 +54,7 @@ type QueryEditorBodyProps = {
   isResultDirty: boolean;
   isShowingDataReference: boolean;
   isShowingSnippetSidebar: boolean;
+  isShowingTemplateTagsSidebar: boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
   shouldDisableItem?: (item: OmniPickerItem | RecentCollectionItem) => boolean;
   shouldShowLibrary?: boolean;
@@ -62,6 +63,7 @@ type QueryEditorBodyProps = {
   onRunQuery: () => Promise<void>;
   onToggleDataReference: () => void;
   onToggleSnippetSidebar: () => void;
+  onToggleTemplateTagsSidebar: () => void;
   onCancelQuery: () => void;
   onInsertSnippet: (snippet: NativeQuerySnippet) => void;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
@@ -90,6 +92,7 @@ export function QueryEditorBody({
   isResultDirty,
   isShowingDataReference,
   isShowingSnippetSidebar,
+  isShowingTemplateTagsSidebar,
   shouldDisableDatabase,
   shouldDisableItem,
   shouldShowLibrary,
@@ -98,6 +101,7 @@ export function QueryEditorBody({
   onRunQuery,
   onToggleDataReference,
   onToggleSnippetSidebar,
+  onToggleTemplateTagsSidebar,
   onCancelQuery,
   onInsertSnippet,
   onChangeModalSnippet,
@@ -155,12 +159,14 @@ export function QueryEditorBody({
         readOnly={readOnly}
         resizable={resizable}
         canChangeDatabase={canChangeDatabase}
-        hasParametersList={false}
+        hasParametersList
+        hasEditingSidebar
         isRunnable={isRunnable}
         isRunning={isRunning}
         isResultDirty={isResultDirty}
         isShowingDataReference={isShowingDataReference}
         isShowingSnippetSidebar={isShowingSnippetSidebar}
+        isShowingTemplateTagsEditor={isShowingTemplateTagsSidebar}
         runQuery={hideRunButton ? undefined : onRunQuery}
         cancelQuery={onCancelQuery}
         databaseIsDisabled={shouldDisableDatabase}
@@ -168,6 +174,7 @@ export function QueryEditorBody({
         sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
         toggleDataReference={onToggleDataReference}
         toggleSnippetSidebar={onToggleSnippetSidebar}
+        toggleTemplateTagsEditor={onToggleTemplateTagsSidebar}
         modalSnippet={modalSnippet}
         insertSnippet={onInsertSnippet}
         closeSnippetModal={() => onChangeModalSnippet(null)}

@@ -36,6 +36,7 @@
     :model/DatabaseRouter
     :model/Dependency
     :model/PythonLibrary
+    :model/PremiumFeaturesCache
     :model/Query
     :model/QueryCache
     :model/QueryExecution
@@ -63,6 +64,7 @@
     :model/WorkspaceGraph
     :model/WorkspaceInput
     :model/WorkspaceInputExternal
+    :model/WorkspaceInputTransform
     :model/WorkspaceLog
     :model/WorkspaceMerge
     :model/WorkspaceMergeTransform

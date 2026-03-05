@@ -90,6 +90,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run frontend unit tests
+        id: fe-tests
         run: bun run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
         # Trunk Quarantine controls the final state of the run in the CI!
         # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
@@ -106,6 +107,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.fe-tests.outcome }}
 
   fe-tests-timezones:
     if: ${{ !inputs.skip }}

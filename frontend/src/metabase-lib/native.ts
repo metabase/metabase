@@ -1,7 +1,24 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DatabaseId, TemplateTags } from "metabase-types/api";
+import type { DatabaseId, TemplateTag, TemplateTags } from "metabase-types/api";
 
 import type { MetadataProvider, Query, ValidationError } from "./types";
+
+export const variableTemplateTags = new Set([
+  "boolean",
+  "date",
+  "dimension",
+  "number",
+  "table",
+  "temporal-unit",
+  "text",
+]);
+
+export function isVariableTemplateTag(type: string | TemplateTag): boolean {
+  if (typeof type === "string") {
+    return variableTemplateTags.has(type);
+  }
+  return variableTemplateTags.has(type.type);
+}
 
 export function nativeQuery(
   databaseId: DatabaseId,

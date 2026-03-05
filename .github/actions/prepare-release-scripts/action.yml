@@ -6,8 +6,8 @@ runs:
   steps:
     - uses: oven-sh/setup-bun@v2
       with:
-        bun-version: latest
-        github-token: ${{ github.token }}
+        bun-version: "1.3.7"
+        token: ${{ github.token }}
 
     - name: Build release scripts
       shell: bash

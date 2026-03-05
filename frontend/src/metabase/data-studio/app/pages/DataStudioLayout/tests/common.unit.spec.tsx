@@ -24,7 +24,6 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.getByText("Data structure")).toBeInTheDocument();
-      expect(screen.getByText("Exit")).toBeInTheDocument();
     });
 
     it("should render content area", async () => {

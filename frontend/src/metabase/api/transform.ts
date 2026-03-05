@@ -2,12 +2,17 @@ import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
   CheckQueryComplexityRequest,
   CreateTransformRequest,
+  Dataset,
   ExtractColumnsFromQueryRequest,
   ExtractColumnsFromQueryResponse,
+  GetInspectorLensRequest,
+  InspectorDiscoveryResponse,
+  InspectorLens,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
   QueryComplexity,
+  RunInspectorQueryRequest,
   RunTransformResponse,
   Transform,
   TransformId,
@@ -19,6 +24,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideInspectorLensTags,
   provideTransformListTags,
   provideTransformRunListTags,
   provideTransformTags,
@@ -216,6 +222,31 @@ export const transformApi = Api.injectEndpoints({
         body: { query: queryString },
       }),
     }),
+    getInspectorDiscovery: builder.query<
+      InspectorDiscoveryResponse,
+      TransformId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/transform/${id}/inspect`,
+      }),
+      providesTags: (_, _error, id) => [idTag("transform", id)],
+    }),
+    getInspectorLens: builder.query<InspectorLens, GetInspectorLensRequest>({
+      query: ({ transformId, lensId, lensParams }) => ({
+        method: "GET",
+        url: `/api/transform/${transformId}/inspect/${lensId}`,
+        params: lensParams,
+      }),
+      providesTags: provideInspectorLensTags,
+    }),
+    runInspectorQuery: builder.query<Dataset, RunInspectorQueryRequest>({
+      query: ({ transformId, lensId, query, lensParams }) => ({
+        method: "POST",
+        url: `/api/transform/${transformId}/inspect/${lensId}/query`,
+        body: { query, lens_params: lensParams },
+      }),
+    }),
   }),
 });
 
@@ -224,6 +255,9 @@ export const {
   useListTransformRunsQuery,
   useGetTransformQuery,
   useLazyGetTransformQuery,
+  useGetInspectorDiscoveryQuery,
+  useGetInspectorLensQuery,
+  useLazyGetInspectorLensQuery,
   useRunTransformMutation,
   useCancelCurrentTransformRunMutation,
   useCreateTransformMutation,
@@ -232,4 +266,5 @@ export const {
   useDeleteTransformTargetMutation,
   useExtractColumnsFromQueryMutation,
   useLazyCheckQueryComplexityQuery,
+  useRunInspectorQueryQuery,
 } = transformApi;

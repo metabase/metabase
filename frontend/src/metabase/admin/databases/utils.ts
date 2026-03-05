@@ -23,6 +23,12 @@ export const hasActionsEnabled = (database: Pick<Database, "settings">) => {
   return Boolean(database.settings?.["database-enable-actions"]);
 };
 
+export const hasWritableConnectionDetails = (
+  database: Pick<Database, "write_data_details">,
+) => {
+  return database.write_data_details != null;
+};
+
 export const hasDbRoutingEnabled = (
   database: Pick<Database, "router_user_attribute">,
 ) => {
@@ -74,3 +80,11 @@ export const dashboardUsesRoutingEnabledDatabases = (
     return false;
   });
 };
+
+export function hasWorkspacesEnabled(database: Pick<Database, "settings">) {
+  return Boolean(database.settings?.["database-enable-workspaces"]);
+}
+
+export function hasTableEditingEnabled(database: Pick<Database, "settings">) {
+  return Boolean(database.settings?.["database-enable-table-editing"]);
+}

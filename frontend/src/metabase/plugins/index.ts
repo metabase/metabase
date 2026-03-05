@@ -15,6 +15,8 @@ export {
   PLUGIN_LDAP_FORM_FIELDS,
   PLUGIN_IS_PASSWORD_USER,
   PLUGIN_ADMIN_USER_FORM_FIELDS,
+  type AuthSettingsPageProps,
+  type AuthSettingsPageTab,
 } from "./oss/auth";
 export {
   PLUGIN_CACHING,
@@ -109,7 +111,10 @@ export {
 } from "./oss/permissions";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
-export { PLUGIN_SEMANTIC_SEARCH } from "./oss/semantic-search";
+export {
+  PLUGIN_SEMANTIC_SEARCH,
+  type SearchSettingsWidgetProps,
+} from "./oss/semantic-search";
 export { PLUGIN_ADMIN_SETTINGS } from "./oss/settings";
 export { PLUGIN_SMTP_OVERRIDE } from "./oss/smtp-override";
 export {
@@ -137,6 +142,10 @@ export {
 } from "./oss/transforms";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
+export {
+  PLUGIN_WRITABLE_CONNECTION,
+  type WritableConnectionInfoSectionProps,
+} from "./oss/writable-connection";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
 
@@ -182,6 +191,7 @@ import { reinitialize as reinitializeTenants } from "./oss/tenants";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
+import { reinitialize as reinitializeWritableConnection } from "./oss/writable-connection";
 
 /**
  * Mostly for test purposes, reinitialize all plugins.
@@ -222,4 +232,5 @@ export function reinitialize() {
   reinitializeTransforms();
   reinitializeUploadManagement();
   reinitializeWhitelabel();
+  reinitializeWritableConnection();
 }
