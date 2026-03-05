@@ -1,7 +1,11 @@
 import { setLocalization } from "metabase/lib/i18n";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+} from "metabase-lib/test-helpers";
 import type { DateFormattingSettings } from "metabase-types/api";
 
 import {
@@ -16,7 +20,7 @@ type DateFilterClauseCase = {
 };
 
 describe("getDateFilterClause", () => {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const stageIndex = 0;
   const columns = Lib.filterableColumns(query, stageIndex);
   const findColumn = columnFinder(query, columns);

@@ -64,7 +64,7 @@ describe("scenarios > dashboard > title drill", () => {
           cy.findByTestId("loading-indicator").should("not.exist");
 
           H.getDashboardCard().findByRole("link", { name: "Q1" }).as("title");
-          cy.get("@title").realHover();
+          cy.get("@title").trigger("mouseover");
           cy.get("@title")
             .should("have.attr", "href")
             .and("include", `/question/${questionId}`);

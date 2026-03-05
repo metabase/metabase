@@ -21,6 +21,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -73,6 +74,38 @@
             (is (= [[1 nil]]
                    (mt/rows
                     (mt/run-mbql-query exciting-moments-in-history))))))))))
+
+(deftest sync-fks-test
+  (testing "Make sure we sync table FKs correctly for MySQL (#28060)"
+    (mt/test-driver :mysql
+      (tx/drop-if-exists-and-create-db! driver/*driver* "test_28060")
+      (let [details (tx/dbdef->connection-details :mysql :db {:database-name "test_28060"})
+            spec    (sql-jdbc.conn/connection-details->spec :mysql details)]
+        ;; according to #28060 this synced incorrectly (nil column and table names) and triggered an exception; this
+        ;; test is to prove that the issue is fixed
+        (doseq [lines [["CREATE TABLE IF NOT EXISTS foo ("
+                        "    id BIGINT(20) UNSIGNED,"
+                        "    PRIMARY KEY (id)"
+                        ");"]
+                       ["CREATE TABLE IF NOT EXISTS bar ("
+                        "    id BIGINT(20) UNSIGNED,"
+                        "    foo_id BIGINT(20) UNSIGNED,"
+                        "    FOREIGN KEY (foo_id) REFERENCES foo(id)"
+                        ");"]]
+                :let  [sql (str/join "\n" lines)]]
+          (jdbc/execute! spec [sql]))
+        (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
+          (sync/sync-database! database)
+          (is (= [{:pk-table-schema nil
+                   :pk-table-name   "foo"
+                   :pk-column-name  "id"
+                   :fk-table-schema nil
+                   :fk-table-name   "bar"
+                   :fk-column-name  "foo_id"}]
+                 (into []
+                       (driver/describe-fks driver/*driver*
+                                            (lib-be/instance->metadata database :metadata/database)
+                                            {:table-names #{"foo" "bar"}})))))))))
 
 (deftest multiple-schema-test
   (testing "Make sure that we filter databases (schema) with :db or :dbname (#50072)"

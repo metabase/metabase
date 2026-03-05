@@ -92,7 +92,7 @@ const DATE_QUESTION = {
   },
 };
 
-describe("extract action", () => {
+describe("extract action", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -395,7 +395,7 @@ function extractColumnAndCheck({
   }
 }
 
-describe("extract action", () => {
+describe("extract action", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

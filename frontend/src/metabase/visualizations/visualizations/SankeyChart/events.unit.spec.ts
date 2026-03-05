@@ -55,6 +55,7 @@ describe("createSankeyClickData", () => {
       dataType: "node",
       data: {
         rawName: "A",
+        displayName: "A",
         level: 0,
         hasInputs: false,
         hasOutputs: true,
@@ -96,6 +97,7 @@ describe("createSankeyClickData", () => {
       dataType: "node",
       data: {
         rawName: "B",
+        displayName: "B",
         level: 1,
         hasInputs: true,
         hasOutputs: false,
@@ -135,6 +137,7 @@ describe("createSankeyClickData", () => {
   it("should create click data for edge events", () => {
     const sourceNode = {
       rawName: "A",
+      displayName: "A",
       level: 0,
       hasInputs: false,
       hasOutputs: true,
@@ -145,6 +148,7 @@ describe("createSankeyClickData", () => {
 
     const targetNode = {
       rawName: "B",
+      displayName: "B",
       level: 1,
       hasInputs: true,
       hasOutputs: false,

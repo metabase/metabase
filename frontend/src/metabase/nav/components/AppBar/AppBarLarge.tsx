@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
@@ -57,6 +58,8 @@ const AppBarLarge = ({
   const { isVisible: isGitSyncVisible } =
     PLUGIN_REMOTE_SYNC.useGitSyncVisible();
 
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+
   return (
     <AppBarRoot
       hasSidebarOpen={
@@ -94,7 +97,10 @@ const AppBarLarge = ({
           ) : null}
         </AppBarInfoContainer>
       </Flex>
-      {(isSearchVisible || isNewButtonVisible || isAppSwitcherVisible) && (
+      {(isSearchVisible ||
+        isNewButtonVisible ||
+        isAppSwitcherVisible ||
+        isMetabotEnabled) && (
         <Flex
           align="center"
           gap="sm"
@@ -105,7 +111,7 @@ const AppBarLarge = ({
           {isSearchVisible &&
             (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
-          {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
+          {<PLUGIN_METABOT.MetabotAppBarButton />}
           {isAppSwitcherVisible && (
             <Box c="text-primary" aria-label={t`Settings menu`}>
               <AppSwitcher />

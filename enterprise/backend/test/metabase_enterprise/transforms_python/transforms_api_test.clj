@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-python.base :as transforms-python.base]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms-python.init]
    [metabase-enterprise.transforms-python.python-runner :as transforms-python.python-runner]
@@ -158,8 +159,7 @@
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 10000)
                 (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
-                (is (= [["Alice" 25] ["Bob" 30]]
-                       (transforms.tu/table-rows table-name)))))))))))
+                (is (= [["Alice" 25] ["Bob" 30]] (sort-by first (transforms.tu/table-rows table-name))))))))))))
 
 (defn- subsequence?
   "Returns true if sequence ys is a subsequence of xs:
@@ -238,9 +238,9 @@
 
             (run-scenario [scenario schema]
               (with-redefs [transforms-python.execute/python-message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)
-                            transforms-python.execute/transfer-file-to-db                (if-some [e (:writeback-ex scenario)]
+                            transforms-python.base/transfer-file-to-db                   (if-some [e (:writeback-ex scenario)]
                                                                                            (fn [& _] (throw e))
-                                                                                           @#'transforms-python.execute/transfer-file-to-db)]
+                                                                                           @#'transforms-python.base/transfer-file-to-db)]
                 (with-transform-cleanup! [target {:type   "table"
                                                   :schema schema
                                                   :name   "result"}]
@@ -384,7 +384,7 @@
                  (fn [os fields-meta col-meta]
                    (rf-proxy ready-signal wait-signal (f os fields-meta col-meta)))})
               :write
-              (let [f-ref #'transforms-python.execute/transfer-file-to-db
+              (let [f-ref #'transforms-python.base/transfer-file-to-db
                     f     @f-ref]
                 {f-ref
                  (fn [& args]

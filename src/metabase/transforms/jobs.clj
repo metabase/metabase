@@ -12,11 +12,11 @@
    [metabase.revisions.core :as revisions]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
+   [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
-   [metabase.transforms.ordering :as transforms.ordering]
    [metabase.transforms.settings :as transforms.settings]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -35,7 +35,7 @@
       found)))
 
 (defn- next-transform [ordering transforms-by-id complete]
-  (-> (transforms.ordering/available-transforms ordering #{} complete)
+  (-> (transforms-base.ordering/available-transforms ordering #{} complete)
       first
       transforms-by-id))
 
@@ -54,7 +54,7 @@
 (defn- get-plan [transform-ids]
   (tracing/with-span :tasks "task.transform.plan" {:transform/count (count transform-ids)}
     (let [all-transforms   (t2/select :model/Transform)
-          global-ordering  (transforms.ordering/transform-ordering all-transforms)
+          global-ordering  (transforms-base.ordering/transform-ordering all-transforms)
           relevant-ids     (get-deps global-ordering transform-ids)
           transforms-by-id (into {}
                                  (keep (fn [{:keys [id] :as transform}]
@@ -62,7 +62,7 @@
                                            [id transform])))
                                  all-transforms)
           ordering         (sorted-ordering (select-keys global-ordering relevant-ids) transforms-by-id)]
-      (when-let [cycle (transforms.ordering/find-cycle ordering)]
+      (when-let [cycle (transforms-base.ordering/find-cycle ordering)]
         (let [id->name (into {} (map (juxt :id :name)) all-transforms)]
           (throw (ex-info (str "Cyclic transform definitions detected: "
                                (str/join " → " (map id->name cycle)))
@@ -73,8 +73,14 @@
           {:order (map transforms-by-id complete)
            :deps global-ordering})))))
 
+(defn- block-until-not-already-running [transform-id]
+  (when-let [active-run (transform-run/running-run-for-transform-id transform-id)]
+    (log/warn "Transform" (pr-str transform-id) "already running, waiting for run" (:id active-run))
+    (while (transform-run/running-run-for-transform-id transform-id)
+      (Thread/sleep 2000))))
+
 (defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
-  (if-not (transforms.util/check-feature-enabled transform)
+  (if-not (transforms.u/check-feature-enabled transform)
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
     (tracing/with-span :tasks "task.transform.execute" {:transform/id   transform-id
                                                         :transform/name (:name transform)}

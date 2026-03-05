@@ -10,6 +10,7 @@
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -296,3 +297,12 @@
       (is (mr/validate ::lib.schema.metadata/column metadata))
       (is (not (:field-ref metadata))
           "Legacy keys like :field_ref/:field-ref should have been removed"))))
+
+(deftest ^:parallel database-local-settings-test
+  (testing "JVM metadata provider should return database-local Settings"
+    (let [global-value (setting/get :unaggregated-query-row-limit)
+          local-value  (inc (or global-value 0))]
+      (mt/with-temp [:model/Database {db-id :id} {:settings {:unaggregated-query-row-limit local-value}}]
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
+          (is (= local-value
+                 (lib.metadata/setting mp :unaggregated-query-row-limit))))))))
