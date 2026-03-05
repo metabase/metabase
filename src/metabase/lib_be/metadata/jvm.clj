@@ -158,7 +158,6 @@
                 :field/effective_type
                 :field/fingerprint
                 :field/fk_target_field_id
-                :field/has_field_values
                 :field/id
                 :field/name
                 :field/nfc_path
@@ -363,9 +362,7 @@
                 :measure/name
                 :measure/description
                 :measure/archived
-                :measure/definition
-                :measure/dimensions
-                :measure/dimension_mappings]
+                :measure/definition]
     :from      [[(t2/table-name :model/Measure) :measure]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :measure/table_id :table/id]]}))
