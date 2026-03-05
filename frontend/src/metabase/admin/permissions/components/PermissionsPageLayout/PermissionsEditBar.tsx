@@ -1,22 +1,28 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EditBar } from "metabase/common/components/EditBar";
+import { Flex, Text } from "metabase/ui";
+import type { PermissionsGraph } from "metabase-types/api";
 
 import { PermissionsConfirm } from "../PermissionsConfirm";
 
-const propTypes = {
-  diff: PropTypes.object,
-  isDirty: PropTypes.bool.isRequired,
-  onCancel: PropTypes.func.isRequired,
-  onSave: PropTypes.func.isRequired,
-};
+interface PermissionsEditBarProps {
+  diff?: PermissionsGraph;
+  isDirty: boolean;
+  onCancel: () => void;
+  onSave?: () => void;
+}
 
-export function PermissionsEditBar({ diff, isDirty, onCancel, onSave }) {
+export function PermissionsEditBar({
+  diff,
+  isDirty,
+  onCancel,
+  onSave,
+}: PermissionsEditBarProps) {
   const [modelOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const saveButton = (
     <Button
@@ -42,9 +48,16 @@ export function PermissionsEditBar({ diff, isDirty, onCancel, onSave }) {
       <ConfirmModal
         title={t`Save permissions?`}
         opened={modelOpened}
-        content={diff ? <PermissionsConfirm diff={diff} /> : null}
+        message={
+          diff ? (
+            <Flex direction="column" gap="lg">
+              <PermissionsConfirm diff={diff} />
+              <Text>{t`Are you sure you want to do this?`}</Text>
+            </Flex>
+          ) : undefined
+        }
         onConfirm={() => {
-          onSave();
+          onSave?.();
           closeModal();
         }}
         onClose={closeModal}
@@ -52,5 +65,3 @@ export function PermissionsEditBar({ diff, isDirty, onCancel, onSave }) {
     </>
   );
 }
-
-PermissionsEditBar.propTypes = propTypes;
