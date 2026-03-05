@@ -53,7 +53,16 @@
       (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 18})))
       (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 7 :minor 0 :patch 17})))
       (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor -1 :patch 17})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 16}))))))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 16}))))
+
+    (testing "for mariadb"
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 4 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 11 :minor 4 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 5 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 4 :patch 1})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 9 :minor 4 :patch 0})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 3 :patch 0})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 4 :patch -1}))))))
 
 (deftest parse-db-version-test
   (testing "Can parse H2 version strings"
@@ -68,18 +77,18 @@
     (is (= {:major 8 :minor 0 :patch 45} (#'mdb.setup/parse-db-version "8.0.45"))))
 
   (testing "Can parse mariadb version strings"
-    (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "TODO")))))
+    (is (= {:major 12 :minor 2 :patch 2} (#'mdb.setup/parse-db-version "12.2.2-MariaDB-ubu2404")))))
 
 (comment
 
-  [(metabase.app-db.connection/db-type)
+  [(mdb.connection/db-type)
 
-   (.. (metabase.app-db.connection/data-source)
+   (.. (mdb.connection/data-source)
        (getConnection)
        (getMetaData)
        (getDatabaseProductName))
 
-   (.. (metabase.app-db.connection/data-source)
+   (.. (mdb.connection/data-source)
        (getConnection)
        (getMetaData)
        (getDatabaseProductVersion))])
