@@ -50,8 +50,8 @@ const DEFAULT_VALUES: DefaultValues = {
     read_only: true,
     enable_entity_navigation: false, // NEW: EMB-1334 - default: entity navigation disabled
   },
+  // NEW: EMB-1334 - new component
   metabot: {
-    // NEW: EMB-1334 - new component
     layout: "auto", // default: auto layout (responsive)
   },
 };

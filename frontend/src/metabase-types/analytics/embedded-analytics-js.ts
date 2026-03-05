@@ -3,7 +3,7 @@ export type EmbeddedAnalyticsJsEventSchema = {
   event: EVENTS;
   global: {
     auth_method: AUTH_TYPES;
-    locale_used?: boolean; // NEW: EMB-1334
+    locale_used: boolean; // NEW: EMB-1334
   };
   components: ComponentData[];
 };
@@ -58,8 +58,8 @@ export type DefaultValues = {
     read_only: boolean;
     enable_entity_navigation: boolean; // NEW: EMB-1334
   };
+  // NEW: EMB-1334
   metabot: {
-    // NEW: EMB-1334
     layout: "auto" | "sidebar" | "stacked";
   };
 };
@@ -73,7 +73,7 @@ type EmbeddedAnalyticsJsSetupEvent = ValidateEvent<{
   event: "setup";
   global: {
     auth_method: AUTH_TYPES;
-    locale_used?: boolean;
+    locale_used: boolean;
   };
   components: ComponentData[];
 }>;
