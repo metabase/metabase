@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { act, screen } from "__support__/ui";
+import { act, render, screen } from "__support__/ui";
 
 import { HideIfEmpty } from "./HideIfEmpty";
 

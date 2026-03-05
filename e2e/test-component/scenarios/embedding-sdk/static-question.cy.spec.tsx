@@ -60,6 +60,8 @@ describe("scenarios > embedding-sdk > static-question", () => {
     cy.intercept("GET", "/api/user/current").as("getUser");
 
     cy.get<number>("@questionId").then((questionId) => {
+      const consoleErrorSpy = cy.spy(console, "error").as("consoleError");
+
       const renderQuestion = (props: Partial<StaticQuestionProps>) => (
         <ThemeProvider>
           <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
@@ -74,15 +76,11 @@ describe("scenarios > embedding-sdk > static-question", () => {
         cy.wait("@getUser");
         cy.wait("@getCard");
 
-        cy.log(
-          "top bar should not be rendered when there are no visible children",
-        );
         getSdkRoot().within(() => {
           cy.findByText("Product ID").should("be.visible");
           cy.findByTestId("static-question-top-bar").should("not.exist");
         });
 
-        cy.log("top bar should be rendered when title is enabled");
         rerender(renderQuestion({ title: true, withChartTypeSelector: false }));
 
         getSdkRoot().within(() => {
@@ -91,7 +89,6 @@ describe("scenarios > embedding-sdk > static-question", () => {
             .and("be.visible");
         });
 
-        cy.log("top bar should not be rendered again when title is disabled");
         rerender(
           renderQuestion({ title: false, withChartTypeSelector: false }),
         );
@@ -100,7 +97,6 @@ describe("scenarios > embedding-sdk > static-question", () => {
           cy.findByTestId("static-question-top-bar").should("not.exist");
         });
 
-        cy.log("top bar should be rendered when downloads are enabled");
         rerender(renderQuestion({ title: false, withDownloads: true }));
 
         getSdkRoot().within(() => {
@@ -109,13 +105,20 @@ describe("scenarios > embedding-sdk > static-question", () => {
             .and("be.visible");
         });
 
-        cy.log(
-          "top bar should not be rendered when downloads are disabled again",
-        );
         rerender(renderQuestion({ title: false, withDownloads: false }));
 
         getSdkRoot().within(() => {
           cy.findByTestId("static-question-top-bar").should("not.exist");
+        });
+
+        cy.then(() => {
+          const refWarningCalls = consoleErrorSpy
+            .getCalls()
+            .filter((call: sinon.SinonSpyCall) =>
+              String(call.args[0]).includes("cannot be given refs"),
+            );
+
+          expect(refWarningCalls).to.have.length(0);
         });
       });
     });
