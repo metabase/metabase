@@ -36,27 +36,26 @@ export type AUTH_TYPES = "session" | "api_key" | "sso" | "guest";
 export type DefaultValues = {
   dashboard: {
     drills: boolean;
-    with_downloads: boolean;
-    with_title: boolean;
-    with_subscriptions: boolean;
-    auto_refresh_interval: boolean; // NEW: EMB-1334
-    enable_entity_navigation: boolean; // NEW: EMB-1334
+    withDownloads: boolean;
+    withTitle: boolean;
+    withSubscriptions: boolean;
+    autoRefreshInterval: boolean; // NEW: EMB-1334
+    enableEntityNavigation: boolean; // NEW: EMB-1334
   };
   question: {
     drills: boolean;
-    with_downloads: boolean;
-    with_title: boolean;
-    is_save_enabled: boolean;
-    with_alerts: boolean;
-    id_new_native: boolean; // NEW: EMB-1334
-    id_new: boolean; // NEW: EMB-1334
+    withDownloads: boolean;
+    withTitle: boolean;
+    isSaveEnabled: boolean;
+    withAlerts: boolean;
+    questionId: undefined; // NEW: EMB-1334
   };
   exploration: {
-    is_save_enabled: boolean;
+    isSaveEnabled: boolean;
   };
   browser: {
-    read_only: boolean;
-    enable_entity_navigation: boolean; // NEW: EMB-1334
+    readOnly: boolean;
+    enableEntityNavigation: boolean; // NEW: EMB-1334
   };
   // NEW: EMB-1334
   metabot: {

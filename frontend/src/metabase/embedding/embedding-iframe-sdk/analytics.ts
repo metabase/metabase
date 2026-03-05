@@ -16,43 +16,57 @@ const DEFAULT_VALUES: DefaultValues = {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L188} */
     drills: true,
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L160} */
-    with_downloads: false,
+    withDownloads: false,
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L159} */
-    with_title: true,
+    withTitle: true,
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L161} */
-    with_subscriptions: false,
-    auto_refresh_interval: false, // NEW: EMB-1334 - default: no auto-refresh configured
-    enable_entity_navigation: false, // NEW: EMB-1334 - default: entity navigation disabled
+    withSubscriptions: false,
+    /**
+     * @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L125}
+     * Since this is optional, the default value is undefined.
+     *
+     * Unused, but documented for completeness.
+     */
+    autoRefreshInterval: false, // NEW: EMB-1334
+    /** @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L175} */
+    enableEntityNavigation: false, // NEW: EMB-1334
   },
   question: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L241} */
     drills: true,
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.tsx#L132} */
-    with_downloads: false,
+    withDownloads: false,
     /**
      * @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L234}
      * @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L255}
      */
-    with_title: true,
+    withTitle: true,
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
-    is_save_enabled: false,
+    isSaveEnabled: false,
     /** @see {@link https://github.com/metabase/metabase/blob/c1b57eeb3f6f99126cc52e3a960b98f5c8bbc109/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.tsx#L137} */
-    with_alerts: false,
-    id_new_native: false, // NEW: EMB-1334 - computed from questionId, default: not new-native
-    id_new: false, // NEW: EMB-1334 - computed from questionId, default: not new
+    withAlerts: false,
+    /**
+     * @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/types.ts#L3-L16}
+     * Since this is optional, the default value is undefined.
+     *
+     * Unused, but documented for completeness.
+     */
+    questionId: undefined, // NEW: EMB-1334 - used to derive id_new/id_new_native
   },
   exploration: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
-    is_save_enabled: false,
+    isSaveEnabled: false,
   },
   browser: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/MetabaseBrowser.tsx#L39} */
-    read_only: true,
-    enable_entity_navigation: false, // NEW: EMB-1334 - default: entity navigation disabled
+    readOnly: true,
+    /** @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embedding/embedding-iframe-sdk/types/embed.ts#L166} */
+    enableEntityNavigation: false, // NEW: EMB-1334
   },
   // NEW: EMB-1334 - new component
   metabot: {
-    layout: "auto", // default: auto layout (responsive)
+    /** @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/embedding-sdk-bundle/components/public/MetabotQuestion/types.ts#L17} */
+    layout: "auto",
   },
 };
 
@@ -139,6 +153,7 @@ export function createEmbeddedAnalyticsJsUsage(
           name: "drills",
           values: countPropertyValues(
             dashboardEmbeds,
+            "dashboard",
             "drills",
             (drills, properties) =>
               String(
@@ -153,29 +168,31 @@ export function createEmbeddedAnalyticsJsUsage(
           name: "with_downloads",
           values: countPropertyValues(
             dashboardEmbeds,
+            "dashboard",
             "withDownloads",
             (withDownloads) =>
-              String(withDownloads ?? DEFAULT_VALUES.dashboard.with_downloads),
+              String(withDownloads ?? DEFAULT_VALUES.dashboard.withDownloads),
           ),
         },
         {
           name: "with_title",
           values: countPropertyValues(
             dashboardEmbeds,
+            "dashboard",
             "withTitle",
             (withTitle) =>
-              String(withTitle ?? DEFAULT_VALUES.dashboard.with_title),
+              String(withTitle ?? DEFAULT_VALUES.dashboard.withTitle),
           ),
         },
         {
           name: "with_subscriptions",
           values: countPropertyValues(
             dashboardEmbeds,
+            "dashboard",
             "withSubscriptions",
             (withSubscriptions) =>
               String(
-                withSubscriptions ??
-                  DEFAULT_VALUES.dashboard.with_subscriptions,
+                withSubscriptions ?? DEFAULT_VALUES.dashboard.withSubscriptions,
               ),
           ),
         },
@@ -183,6 +200,7 @@ export function createEmbeddedAnalyticsJsUsage(
           name: "auto_refresh_interval", // NEW: EMB-1334
           values: countPropertyValues(
             dashboardEmbeds,
+            "dashboard",
             "autoRefreshInterval",
             (autoRefreshInterval) => String(autoRefreshInterval != null),
           ),
@@ -191,11 +209,12 @@ export function createEmbeddedAnalyticsJsUsage(
           name: "enable_entity_navigation", // NEW: EMB-1334
           values: countPropertyValues(
             dashboardEmbeds,
+            "dashboard",
             "enableEntityNavigation",
             (enableEntityNavigation) =>
               String(
                 enableEntityNavigation ??
-                  DEFAULT_VALUES.dashboard.enable_entity_navigation,
+                  DEFAULT_VALUES.dashboard.enableEntityNavigation,
               ),
           ),
         },
@@ -212,6 +231,7 @@ export function createEmbeddedAnalyticsJsUsage(
           name: "drills",
           values: countPropertyValues(
             questionEmbeds,
+            "question",
             "drills",
             (drills, properties) =>
               String(
@@ -226,42 +246,47 @@ export function createEmbeddedAnalyticsJsUsage(
           name: "with_downloads",
           values: countPropertyValues(
             questionEmbeds,
+            "question",
             "withDownloads",
             (withDownloads) =>
-              String(withDownloads ?? DEFAULT_VALUES.question.with_downloads),
+              String(withDownloads ?? DEFAULT_VALUES.question.withDownloads),
           ),
         },
         {
           name: "with_title",
           values: countPropertyValues(
             questionEmbeds,
+            "question",
             "withTitle",
             (withTitle) =>
-              String(withTitle ?? DEFAULT_VALUES.question.with_title),
+              String(withTitle ?? DEFAULT_VALUES.question.withTitle),
           ),
         },
         {
           name: "is_save_enabled",
           values: countPropertyValues(
             questionEmbeds,
+            "question",
             "isSaveEnabled",
             (isSaveEnabled) =>
-              String(isSaveEnabled ?? DEFAULT_VALUES.question.is_save_enabled),
+              String(isSaveEnabled ?? DEFAULT_VALUES.question.isSaveEnabled),
           ),
         },
         {
           name: "with_alerts",
           values: countPropertyValues(
             questionEmbeds,
+            "question",
             "withAlerts",
             (withAlerts) =>
-              String(withAlerts ?? DEFAULT_VALUES.question.with_alerts),
+              String(withAlerts ?? DEFAULT_VALUES.question.withAlerts),
           ),
         },
         {
           name: "id_new_native", // NEW: EMB-1334
           values: countPropertyValues(
             questionEmbeds,
+            "question",
             "questionId",
             (questionId) => String(questionId === "new-native"),
           ),
@@ -270,6 +295,7 @@ export function createEmbeddedAnalyticsJsUsage(
           name: "id_new", // NEW: EMB-1334
           values: countPropertyValues(
             questionEmbeds,
+            "question",
             "questionId",
             (questionId) => String(questionId === "new"),
           ),
@@ -287,11 +313,10 @@ export function createEmbeddedAnalyticsJsUsage(
           name: "is_save_enabled",
           values: countPropertyValues(
             explorationEmbeds,
+            "exploration",
             "isSaveEnabled",
             (isSaveEnabled) =>
-              String(
-                isSaveEnabled ?? DEFAULT_VALUES.exploration.is_save_enabled,
-              ),
+              String(isSaveEnabled ?? DEFAULT_VALUES.exploration.isSaveEnabled),
           ),
         },
       ],
@@ -305,19 +330,23 @@ export function createEmbeddedAnalyticsJsUsage(
       properties: [
         {
           name: "read_only",
-          values: countPropertyValues(browserEmbeds, "readOnly", (readOnly) =>
-            String(readOnly ?? DEFAULT_VALUES.browser.read_only),
+          values: countPropertyValues(
+            browserEmbeds,
+            "browser",
+            "readOnly",
+            (readOnly) => String(readOnly ?? DEFAULT_VALUES.browser.readOnly),
           ),
         },
         {
           name: "enable_entity_navigation", // NEW: EMB-1334
           values: countPropertyValues(
             browserEmbeds,
+            "browser",
             "enableEntityNavigation",
             (enableEntityNavigation) =>
               String(
                 enableEntityNavigation ??
-                  DEFAULT_VALUES.browser.enable_entity_navigation,
+                  DEFAULT_VALUES.browser.enableEntityNavigation,
               ),
           ),
         },
@@ -334,8 +363,9 @@ export function createEmbeddedAnalyticsJsUsage(
           name: "layout",
           values: countPropertyValues(
             metabotEmbeds,
+            "metabot",
             "layout",
-            (layout) => layout ?? DEFAULT_VALUES.metabot.layout,
+            (layout) => String(layout ?? DEFAULT_VALUES.metabot.layout),
           ),
         },
       ],
@@ -378,12 +408,13 @@ function hasLocaleUsed(activeEmbeds: Set<MetabaseEmbedElement>): boolean {
   );
 }
 
-/**
- * Count property values across embeds and return PropertyValue array
- */
-function countPropertyValues(
+function countPropertyValues<
+  ComponentName extends keyof DefaultValues,
+  PropertyName extends Extract<keyof DefaultValues[ComponentName], string>,
+>(
   embeds: MetabaseEmbedElement[],
-  propertyName: string,
+  _component: ComponentName,
+  propertyName: PropertyName,
   getValue: (
     propertyValue: any,
     properties: MetabaseEmbedElement["properties"],
@@ -392,10 +423,12 @@ function countPropertyValues(
   const counts = new Map<string, number>();
 
   embeds.forEach((embed) => {
-    const propertyValue = (embed.properties as any)[propertyName];
+    const propertyValue = (embed.properties as Record<string, any>)[
+      propertyName
+    ];
     const value = getValue(propertyValue, embed.properties);
-    const groupStr = String(value);
-    counts.set(groupStr, (counts.get(groupStr) || 0) + 1);
+    const group = String(value);
+    counts.set(group, (counts.get(group) || 0) + 1);
   });
 
   return Array.from(counts.entries()).map(([group, value]) => ({
