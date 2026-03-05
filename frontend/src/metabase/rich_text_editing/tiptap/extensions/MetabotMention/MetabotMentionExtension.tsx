@@ -12,7 +12,7 @@ export interface MentionOptions {
   suggestion: Partial<SuggestionOptions>;
 }
 
-interface MentionProps {
+export interface MentionProps {
   type?: string;
   id?: number | string;
   model?: string;
