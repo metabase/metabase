@@ -170,7 +170,7 @@ export function DimensionPill({
             />
           </>
         )}
-      </>
+      </Popover.Dropdown>
     </Popover>
   );
 }

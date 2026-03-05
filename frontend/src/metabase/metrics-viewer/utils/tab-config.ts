@@ -29,25 +29,30 @@ interface DisplayTypeDefinition {
   ) => VisualizationSettings;
 }
 
-export interface TabTypeDefinition {
+interface BaseTabTypeDefinition {
   type: MetricsViewerTabType;
-  priority: number;
   autoCreate: boolean;
-  matchMode: "aggregate" | "exact-column";
-
-  fixedId?: string;
-  fixedLabel?: string;
-
   dimensionPredicate: (dim: DimensionMetadata) => boolean;
   dimensionSubtype?: (dim: DimensionMetadata) => string | null;
-
   defaultDisplayType: MetricsViewerDisplayType;
   availableDisplayTypes: ChartTypeOption[];
 }
 
+interface AggregateTabType extends BaseTabTypeDefinition {
+  matchMode: "aggregate";
+  fixedId: string;
+  fixedLabel: string;
+}
+
+interface ExactColumnTabType extends BaseTabTypeDefinition {
+  matchMode: "exact-column";
+}
+
+export type TabTypeDefinition = AggregateTabType | ExactColumnTabType;
+
 // ── Tab type registry ──
 
-const TIME_CHART_TYPES: ChartTypeOption[] = [
+const STANDARD_CHART_TYPES: ChartTypeOption[] = [
   { type: "line", icon: "line" },
   { type: "area", icon: "area" },
   { type: "bar", icon: "bar" },
@@ -55,39 +60,27 @@ const TIME_CHART_TYPES: ChartTypeOption[] = [
 
 const GEO_CHART_TYPES: ChartTypeOption[] = [
   { type: "map", icon: "pinmap" },
-  { type: "line", icon: "line" },
-  { type: "area", icon: "area" },
-  { type: "bar", icon: "bar" },
-];
-
-const CATEGORY_CHART_TYPES: ChartTypeOption[] = [
-  { type: "line", icon: "line" },
-  { type: "area", icon: "area" },
-  { type: "bar", icon: "bar" },
+  ...STANDARD_CHART_TYPES,
 ];
 
 const NUMERIC_CHART_TYPES: ChartTypeOption[] = [
-  { type: "line", icon: "line" },
-  { type: "area", icon: "area" },
-  { type: "bar", icon: "bar" },
+  ...STANDARD_CHART_TYPES,
   { type: "scatter", icon: "bubble" },
 ];
 
 export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
   {
     type: "time",
-    priority: 0,
     autoCreate: true,
     matchMode: "aggregate",
     fixedId: "time",
     fixedLabel: "Time",
     dimensionPredicate: LibMetric.isDateOrDateTime,
     defaultDisplayType: "line",
-    availableDisplayTypes: TIME_CHART_TYPES,
+    availableDisplayTypes: STANDARD_CHART_TYPES,
   },
   {
     type: "geo",
-    priority: 1,
     autoCreate: true,
     matchMode: "aggregate",
     fixedId: "geo",
@@ -99,7 +92,6 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
   },
   {
     type: "category",
-    priority: 2,
     autoCreate: true,
     matchMode: "exact-column",
     dimensionPredicate: (dim) =>
@@ -107,20 +99,18 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
       !isGeoDimension(dim) &&
       !LibMetric.isBoolean(dim),
     defaultDisplayType: "bar",
-    availableDisplayTypes: CATEGORY_CHART_TYPES,
+    availableDisplayTypes: STANDARD_CHART_TYPES,
   },
   {
     type: "boolean",
-    priority: 3,
     autoCreate: true,
     matchMode: "exact-column",
     dimensionPredicate: LibMetric.isBoolean,
     defaultDisplayType: "bar",
-    availableDisplayTypes: CATEGORY_CHART_TYPES,
+    availableDisplayTypes: STANDARD_CHART_TYPES,
   },
   {
     type: "numeric",
-    priority: 4,
     autoCreate: false,
     matchMode: "exact-column",
     dimensionPredicate: (dim) =>
@@ -186,13 +176,8 @@ function getScatterSettings(
   def: MetricDefinition,
   dimension: DimensionMetadata,
 ): VisualizationSettings {
-  const { dimensions, metrics } = getDimensionsAndMetrics(def, dimension);
-
   return {
-    "graph.x_axis.labels_enabled": false,
-    "graph.y_axis.labels_enabled": false,
-    "graph.dimensions": dimensions,
-    "graph.metrics": metrics,
+    ...getChartSettings(def, dimension),
     "scatter.bubble": undefined,
   };
 }
