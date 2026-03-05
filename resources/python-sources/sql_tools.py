@@ -1573,7 +1573,7 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     else:
         try:
             use_identify = (from_dialect in CASE_SENSITIVE_DIALECTS 
-                            or from_dialect in CASE_SENSITIVE_DIALECTS)
+                            or to_dialect in CASE_SENSITIVE_DIALECTS)
 
             transpiled = sqlglot.transpile(
                 sql,
