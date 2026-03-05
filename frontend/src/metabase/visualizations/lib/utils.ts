@@ -185,7 +185,14 @@ export function computeSplit(
   }
 }
 
-export function isSameSeries(seriesA: Series, seriesB: Series): boolean {
+export function isSameSeries(
+  seriesA: Partial<Pick<SingleSeries, "card" | "data">>[] | undefined,
+  seriesB: Partial<Pick<SingleSeries, "card" | "data">>[] | undefined,
+): boolean {
+  if (!seriesA || !seriesB) {
+    return seriesA === seriesB;
+  }
+
   return (
     (seriesA && seriesA.length) === (seriesB && seriesB.length) &&
     _.zip(seriesA, seriesB).reduce<boolean>((acc, [a, b]) => {
