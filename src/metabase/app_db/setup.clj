@@ -176,7 +176,7 @@
                    (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅"))
         ; TODO make this message better
         (throw (ex-info (str/join \newline [(trs "Metabase {0} DB version not supported (found {1}, required {2}). Please upgrade your database to a supported version and try again."
-                                                 (name db-type)
+                                                 (format "%s %s" (name db-type) (.getDatabaseProductVersion metadata))
                                                  (format "%s.%s.%s"
                                                          (:major db-version)
                                                          (:minor db-version)
