@@ -130,6 +130,7 @@ export function NativeQueryTableTagFieldSelect({
     try {
       const allOptions: Array<SelectOption> = [];
       const seenFieldIds = new Set<number>();
+      const showTablePrefix = tables.length > 1;
 
       for (const table of tables) {
         const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
@@ -183,8 +184,10 @@ export function NativeQueryTableTagFieldSelect({
           seenFieldIds.add(fieldId);
 
           const columnInfo = Lib.displayInfo(query, stageIndex, column);
-          // Use longDisplayName which includes table prefix for disambiguation
-          const label = columnInfo.longDisplayName;
+          // When multiple tables, prepend table name for clarity
+          const label = showTablePrefix
+            ? `${table.display_name || table.name}: ${columnInfo.displayName}`
+            : columnInfo.displayName;
 
           allOptions.push({ value: String(fieldId), label });
         }
