@@ -38,6 +38,18 @@
     (assoc error :name (normalize-name driver error-name))
     error))
 
+(defmulti default-schema
+  "Returns the default schema for a given database driver.
+
+  Drivers that support any of the `:transforms/...` features must implement this method."
+  {:added "0.57.0" :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod default-schema :sql
+  [_]
+  "public")
+
 (defmulti reserved-literal
   "Checks whether a particular name is actually a literal value in a given sql dialect.
 

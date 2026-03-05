@@ -7,6 +7,7 @@
    Note: Implementation namespaces (macaw.core, sqlglot.core) are loaded via
    metabase.sql-tools.init to avoid circular dependencies."
   (:require
+   [metabase.sql-tools.common :as common]
    [metabase.sql-tools.interface :as interface]
    [metabase.sql-tools.metrics :as metrics]
    [metabase.sql-tools.settings :as sql-tools.settings]
@@ -184,15 +185,13 @@
       (interface/add-into-clause-impl parser driver sql table-name))))
 
 (defn find-table-or-transform
-  "Wrapper for `sql-tools.common/find-table-or-transform` that can be provided to outside world. For details see
-  the comments in `sql-tools.interface`."
-  [driver tables transform spec]
-  (interface/find-table-or-transform-shim
-   driver tables transform spec))
+  "Given a table and schema parsed from a native query, find the matching table or transform.
+  Returns {:table table-id} or {:transform transform-id}, or nil."
+  [driver tables transforms spec]
+  (common/find-table-or-transform driver tables transforms spec))
 
 (defn resolve-field
-  "Wrapper for `sql-tools.common/resolve-field` that can be provided to outside world. For details see
-  the comments in `sql-tools.interface`."
+  "Resolve a field reference to one or more actual database fields.
+  See [[metabase.sql-tools.common/resolve-field]] for details."
   [driver mp col-spec]
-  (interface/resolve-field-shim
-   driver mp col-spec))
+  (common/resolve-field driver mp col-spec))

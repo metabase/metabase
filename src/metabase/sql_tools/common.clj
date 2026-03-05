@@ -3,7 +3,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.interface :as sql-tools]
@@ -13,7 +13,7 @@
 (defn normalize-name
   "Normalize a name by per driver rules."
   [driver name*]
-  (driver.sql/normalize-name driver name*))
+  (sql.normalize/normalize-name driver name*))
 
 (defn normalize-table-spec
   "Return tables spec with normalized values."
@@ -26,7 +26,7 @@
    It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
   [driver tables transforms {search-table :table raw-schema :schema}]
   (let [search-schema (or raw-schema
-                          (driver.sql/default-schema driver))
+                          (sql.normalize/default-schema driver))
         normalize (partial normalize-name driver)
         matches? (fn [db-table db-schema]
                    (and (= (normalize search-table) (normalize db-table))
@@ -173,7 +173,7 @@
     (->> (-> errors
              (into (check-fields used-fields))
              (into (check-fields returned-fields)))
-         (map (partial driver.sql/normalize-error driver))
+         (map (partial sql.normalize/normalize-error driver))
          set)))
 
 (defn referenced-fields
@@ -185,13 +185,3 @@
                         (keep :col)))
           used-fields)))
 
-;;;; Implementations make the functionality providable to outside world. For details see the comment
-;;;; in `sql-tools.interface`.
-
-(defmethod sql-tools/resolve-field-shim :default
-  [driver metadata-provider col-spec]
-  (resolve-field driver metadata-provider col-spec))
-
-(defmethod sql-tools/find-table-or-transform-shim :default
-  [driver tables transforms search-spec]
-  (find-table-or-transform driver tables transforms search-spec))

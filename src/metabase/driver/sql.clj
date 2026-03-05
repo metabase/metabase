@@ -209,18 +209,6 @@
   ;; honeysql, and accepts a keyword too. This way we delegate proper escaping and qualification to honeysql.
   (driver/drop-table! driver (:id database) (qualified-name target)))
 
-(defmulti default-schema
-  "Returns the default schema for a given database driver.
-
-  Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod default-schema :sql
-  [_]
-  "public")
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -252,4 +240,4 @@
 
 (p/import-vars
  [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution]
- [sql.normalize normalize-error normalize-name reserved-literal])
+ [sql.normalize default-schema normalize-error normalize-name reserved-literal])

@@ -1,7 +1,7 @@
 (ns metabase.sql-tools.sqlglot.core
   (:require
    [clojure.string :as str]
-   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
@@ -54,7 +54,7 @@
     (let [db-tables (lib.metadata/tables query)
           db-transforms (lib.metadata/transforms query)
           sql (lib/raw-native-query query)
-          default-schema (driver.sql/default-schema driver)
+          default-schema (sql.normalize/default-schema driver)
           query-tables (sql-parsing/referenced-tables (driver->dialect driver) sql)]
       (into #{}
             (keep (fn [[_catalog table-schema table]]
@@ -90,7 +90,7 @@
                  (assoc m k
                         (cond
                           (and (normalizable-keys k) (string? v))
-                          (driver.sql/normalize-name driver v)
+                          (sql.normalize/normalize-name driver v)
 
                           (map? v)
                           (normalize-field driver v)
