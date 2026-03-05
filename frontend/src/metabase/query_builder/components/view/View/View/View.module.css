@@ -4,8 +4,6 @@
   background-color: var(--mb-color-background-primary);
   height: 100%;
   position: relative;
-  container-name: query-builder;
-  container-type: inline-size;
 }
 
 .QueryBuilderContentContainer {
