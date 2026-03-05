@@ -1,4 +1,9 @@
 (ns metabase-enterprise.replacement.source-swap
+  "Swap sources namespace. Entrypoint is [[swap-source!]]. Internally, we rely on the field references having been
+  already upgraded. Then we only have to swap concrete usages. We also need to update dependencies: we do this in two
+  ways. We might explicitly call [[models.dependency/swap-dependency!]] which needs to happen regardless of whether a
+  change actually happened. And then we fire the event only in case of actual changes: this will redo dependency
+  calculation, but also do other things that must happen which cards/metrics/etc change like revisions."
   (:require
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.replacement.source-swap.mbql :as source-swap.mbql]
@@ -30,8 +35,10 @@
       (models.dependency/swap-dependency! :transform (:id transform) old-source new-source)
       (let [new-query (update-query query old-source new-source {})]
         (when (not= query new-query)
-          (t2/update! :model/Transform (:id transform)
-                      {:source (assoc (:source transform) :query new-query)}))))))
+          (let [transform' {:source (assoc (:source transform) :query new-query)}]
+            (t2/update! :model/Transform (:id transform) transform')
+            (events/publish-event! :event/transform-update
+                                   {:object transform' :user-id api/*current-user-id*})))))))
 
 (defn- card-swap-source!
   [card old-source new-source]
@@ -55,12 +62,10 @@
       (models.dependency/swap-dependency! :card (:id card) old-source new-source)
       (when (seq changes)
         (t2/update! :model/Card (:id card) changes)
-        ;; TODO: not sure we really want this code to have to know about dependency tracking
-        ;; TODO: publishing this event twice per update seems bad
-        #_(events/publish-event! :event/card-update
-                                 {:object (merge card changes)
-                                  :user-id (:id @api/*current-user*)
-                                  :previous-object card})
+        (events/publish-event! :event/card-update
+                               {:object (merge card changes)
+                                :user-id (:id @api/*current-user*)
+                                :previous-object card})
         ;; todo: we still want to publish the card changed event here, but we should suppress the depdency analysis
         ;; and do it ourselves. This probably should be moved higher up so it's a bit more generic than this
         ;; paritcular spot

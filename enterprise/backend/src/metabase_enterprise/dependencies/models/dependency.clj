@@ -272,16 +272,23 @@
   "Efficiently swap a dependency from old-source to new-source during replacement operations.
   This is more efficient than full dependency analysis since we know exactly what changed.
 
+  If the new dependency already exists, we just delete the old one (to avoid duplicate key violation).  If the old
+  dependency doesn't exist, this is a no-op.
+
   Parameters:
   - entity-type: The type of the entity whose dependency is changing (e.g., :card)
   - entity-id: The ID of the entity
   - old-source: The source being replaced, as [source-type source-id] (e.g., [:card 783])
   - new-source: The new source, as [source-type source-id] (e.g., [:table 164])"
   [entity-type entity-id [old-source-type old-source-id] [new-source-type new-source-id]]
-  (t2/update! :model/Dependency
-              {:from_entity_type entity-type
-               :from_entity_id entity-id
-               :to_entity_type old-source-type
-               :to_entity_id old-source-id}
-              {:to_entity_type new-source-type
-               :to_entity_id new-source-id}))
+  (let [already-present? (t2/exists? :model/Dependency
+                                     :from_entity_type entity-type :from_entity_id entity-id
+                                     :to_entity_type new-source-type :to_entity_id new-source-id)]
+    (if already-present?
+      (t2/delete! :model/Dependency
+                  :from_entity_type entity-type :from_entity_id entity-id
+                  :to_entity_type old-source-type :to_entity_id old-source-id)
+      (t2/update! :model/Dependency
+                  {:from_entity_type entity-type :from_entity_id entity-id
+                   :to_entity_type old-source-type :to_entity_id old-source-id}
+                  {:to_entity_type new-source-type :to_entity_id new-source-id}))))
