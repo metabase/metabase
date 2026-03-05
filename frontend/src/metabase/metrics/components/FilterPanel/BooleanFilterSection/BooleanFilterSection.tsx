@@ -22,10 +22,7 @@ export function BooleanFilterSection({
   );
 
   return (
-    <FilterSectionLayout
-      label={dimensionInfo.displayName}
-      onRemove={onRemove}
-    >
+    <FilterSectionLayout label={dimensionInfo.displayName} onRemove={onRemove}>
       {getBooleanDisplayValue(filterParts)}
     </FilterSectionLayout>
   );
