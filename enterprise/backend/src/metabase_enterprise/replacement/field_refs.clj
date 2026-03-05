@@ -128,8 +128,24 @@
 ;;        form))
 ;;    column-settings))
 
-(defn- dashcard-upgrade-viz-settings
+(defn- click-behavior->card-id
+  [click-behavior]
+  (when (= ::vs/question (::vs/link-type click-behavior))
+    (::vs/link-target-id click-behavior)))
+
+(defn- viz-settings->card-ids
   [viz-settings]
+  (concat
+     ;; global click behavior (non-table cards)
+   (when-let [id (click-behavior->card-id (::vs/click-behavior norm-viz))]
+     [id])
+     ;; per-column click behaviors
+   (keep (fn [[_col-key col-viz]]
+           (click-behavior->card-id (::vs/click-behavior col-viz)))
+         (::vs/column-settings norm-viz))))
+
+(defn- dashcard-upgrade-viz-settings
+  [viz-settings cards-by-id]
   viz-settings)
 
 (defn- dashcard-upgrade-field-refs!
@@ -139,7 +155,7 @@
         viz-settings        (:visualization_settings dashcard)
         viz-settings'       (some-> viz-settings
                                     vs/db->norm
-                                    dashcard-upgrade-viz-settings
+                                    (dashcard-upgrade-viz-settings cards-by-id)
                                     vs/norm->db)
         changes (cond-> {}
                   (not= parameter-mappings parameter-mappings')
@@ -154,8 +170,11 @@
    Each parameter_mapping's :card_id determines which card's query to use for the upgrade."
   [dashboard-id]
   (let [dashcards    (t2/select :model/DashboardCard :dashboard_id dashboard-id)
-        all-card-ids (into #{} (mapcat (fn [dashcard]
-                                         (keep :card_id (:parameter_mappings dashcard))))
+        all-card-ids (into #{}
+                           (mapcat (fn [dashcard]
+                                     (concat
+                                      (keep :card_id (:parameter_mappings dashcard))
+                                      (viz-settings->card-ids (-> dashcard :visualization_settings vs/db->norm)))))
                            dashcards)
         cards-by-id  (when (seq all-card-ids)
                        (->> (t2/select :model/Card :id [:in all-card-ids])
