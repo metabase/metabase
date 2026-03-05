@@ -1,6 +1,9 @@
 name: "Repro Bot"
 
 on:
+  push:
+    branches:
+      - repro-bot
   issues:
     types:
       - labeled
@@ -20,6 +23,7 @@ jobs:
       issues: read
       id-token: write
     if: |
+      (github.event_name == 'push') ||
       (github.event_name == 'issues' && github.event.label.name == 'repro-bot' && github.event.issue.state == 'open') ||
       (github.event_name == 'workflow_dispatch')
 
@@ -29,6 +33,8 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "number=${{ github.event.inputs.issue_number }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "number=70292" >> $GITHUB_OUTPUT
           else
             echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
           fi
