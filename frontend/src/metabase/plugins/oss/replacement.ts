@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { ReplaceSourceEntry } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
@@ -13,11 +14,13 @@ export type ReplaceDataSourceModalProps = {
 
 type ReplacementPlugin = {
   isEnabled: boolean;
+  canUserReplaceSource: (state: State) => boolean;
   ReplaceDataSourceModal: ComponentType<ReplaceDataSourceModalProps>;
 };
 
 const getDefaultReplacementPlugin = (): ReplacementPlugin => ({
   isEnabled: false,
+  canUserReplaceSource: () => false,
   ReplaceDataSourceModal: PluginPlaceholder,
 });
 
