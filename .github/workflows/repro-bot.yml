@@ -44,7 +44,7 @@ jobs:
         with:
           repository: metabase/repro-bot
           ref: ci-support
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Pre-clone metabase bare git repo
         run: git clone --bare https://github.com/metabase/metabase.git git/metabase
