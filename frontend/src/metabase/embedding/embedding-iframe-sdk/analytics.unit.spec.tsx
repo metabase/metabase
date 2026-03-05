@@ -200,6 +200,14 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "with_subscriptions",
               values: [{ group: "false", value: 1 }],
             },
+            {
+              name: "auto_refresh_interval",
+              values: [{ group: "false", value: 1 }],
+            },
+            {
+              name: "enable_entity_navigation",
+              values: [{ group: "false", value: 1 }],
+            },
           ]),
         });
 
@@ -233,6 +241,14 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
             {
               name: "with_subscriptions",
               values: [{ group: "true", value: 1 }],
+            },
+            {
+              name: "auto_refresh_interval",
+              values: [{ group: "false", value: 1 }],
+            },
+            {
+              name: "enable_entity_navigation",
+              values: [{ group: "false", value: 1 }],
             },
           ]),
         });
@@ -281,6 +297,14 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
                 { group: "true", value: 1 },
                 { group: "false", value: 2 },
               ]),
+            },
+            {
+              name: "auto_refresh_interval",
+              values: [{ group: "false", value: 3 }],
+            },
+            {
+              name: "enable_entity_navigation",
+              values: [{ group: "false", value: 3 }],
             },
           ]),
         });
@@ -704,6 +728,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "read_only",
               values: [{ group: "true", value: 1 }],
             },
+            {
+              name: "enable_entity_navigation",
+              values: [{ group: "false", value: 1 }],
+            },
           ]),
         });
 
@@ -721,6 +749,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: expect.arrayContaining([
             {
               name: "read_only",
+              values: [{ group: "false", value: 1 }],
+            },
+            {
+              name: "enable_entity_navigation",
               values: [{ group: "false", value: 1 }],
             },
           ]),
@@ -746,6 +778,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
                 { group: "true", value: 2 },
                 { group: "false", value: 1 },
               ]),
+            },
+            {
+              name: "enable_entity_navigation",
+              values: [{ group: "false", value: 3 }],
             },
           ]),
         });
