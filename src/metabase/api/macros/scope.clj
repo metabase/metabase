@@ -58,7 +58,7 @@
                     :body    {:error   "insufficient_scope"
                               :message (str "Token does not have required scope: " required-scope)}}))))))
 
-(def ensure-scopes-checked
+(defn ensure-scopes-checked
   "Security middleware that prevents scoped authorization tokens from accessing endpoints that have not
    declared a required scope. When authorization is scoped (i.e. `:token-scopes` is present on the request),
    only endpoints with an explicit `:scope` in their metadata — or that sit behind a namespace-level
@@ -69,14 +69,14 @@
    - `:token-scopes` is nil (request did not go through scope-aware auth)
    - `:token-scopes` contains [[unrestricted]] (session auth or unscoped JWT)
    - `:token-scopes-checked` is true ([[enforce-scope]] already ran, e.g. at the namespace level)"
-  (fn [handler]
-    (fn [request respond raise]
-      (let [token-scopes (:token-scopes request)]
-        (if (or (nil? token-scopes)
-                (contains? token-scopes unrestricted)
-                (:token-scopes-checked request))
-          (handler request respond raise)
-          (respond {:status  403
-                    :headers {"Content-Type" "application/json"}
-                    :body    {:error   "scope_not_permitted"
-                              :message "Scoped tokens cannot access this endpoint."}}))))))
+  [handler]
+  (fn [request respond raise]
+    (let [token-scopes (:token-scopes request)]
+      (if (or (nil? token-scopes)
+              (contains? token-scopes unrestricted)
+              (:token-scopes-checked request))
+        (handler request respond raise)
+        (respond {:status  403
+                  :headers {"Content-Type" "application/json"}
+                  :body    {:error   "scope_not_permitted"
+                            :message "Scoped tokens cannot access this endpoint."}})))))
