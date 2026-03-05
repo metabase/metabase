@@ -121,8 +121,6 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/display-name :postgres [_] "PostgreSQL")
-
 (defmethod driver/humanize-connection-error-message :postgres
   [_ messages]
   (let [message (first messages)]
