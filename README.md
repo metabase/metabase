@@ -42,8 +42,8 @@ Metabase can be run just about anywhere. Check out our [Installation Guides](htt
 
 ## Documentation
 
-- [Metabase docs (for using Metabase](https://www.metabase.com/docs/latest/).
-- [Developer docs (for contributing to Metabase](./docs/developers-guide/start.md).
+- [Metabase docs](https://www.metabase.com/docs/latest/) (for using Metabase).
+- [Developer docs](./docs/developers-guide/start.md) (for contributing to Metabase).
 
 ## Internationalization
 
