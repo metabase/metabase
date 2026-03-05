@@ -563,13 +563,13 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         );
 
         const questionComponent = usage.components.find(
-          (c) => c.name === "question",
+          (component) => component.name === "question",
         );
         const idNewNativeProp = questionComponent?.properties.find(
-          (p) => p.name === "id_new_native",
+          (property) => property.name === "id_new_native",
         );
         const idNewProp = questionComponent?.properties.find(
-          (p) => p.name === "id_new",
+          (property) => property.name === "id_new",
         );
 
         expect(idNewNativeProp?.values).toEqual([{ group: "false", value: 1 }]);
