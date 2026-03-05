@@ -154,7 +154,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>
-      <Box ref={footerRef}>
+      <Box ref={footerRef} className={ViewMainContainerS.Footer}>
         <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
         <ViewFooter className={CS.flexNoShrink} />
       </Box>

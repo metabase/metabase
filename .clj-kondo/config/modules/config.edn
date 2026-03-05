@@ -548,7 +548,7 @@
            metabase.driver.common.parameters
            metabase.driver.common.parameters.parse
            metabase.driver.connection
-          metabase.driver.connection.workspaces
+           metabase.driver.connection.workspaces
            metabase.driver.ddl.interface
            metabase.driver.h2
            metabase.driver.impl
@@ -741,7 +741,6 @@
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.protocols
-           metabase.lib.options
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -2531,7 +2530,12 @@
            transforms
            transforms-base
            util
-           enterprise/transforms-python}}}
+           enterprise/transforms-python}}
+
+  enterprise/writable-connection
+  {:team "Querying"
+   :api  #{}
+   :uses #{premium-features}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

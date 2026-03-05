@@ -1,7 +1,6 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as React from "react";
 import { usePrevious } from "react-use";
 
 import type { BoxProps } from "metabase/ui";
@@ -165,7 +164,7 @@ export function VirtualizedTree({
   }, [selectedId, previouslySelectedId, flatItems, virtualizer]);
 
   if (data.length === 0) {
-    return <React.Fragment>{emptyState}</React.Fragment>;
+    return <>{emptyState}</>;
   }
 
   return (

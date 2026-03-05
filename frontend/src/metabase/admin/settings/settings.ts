@@ -1,12 +1,16 @@
+import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
+
 import { createThunkAction } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { SettingsApi } from "metabase/services";
+import type { State } from "metabase-types/store";
 
 // ACTION TYPES AND ACTION CREATORS
 
-export const reloadSettings = () => async (dispatch) => {
-  await dispatch(refreshSiteSettings());
-};
+export const reloadSettings =
+  () => async (dispatch: ThunkDispatch<State, unknown, UnknownAction>) => {
+    await dispatch(refreshSiteSettings());
+  };
 
 export const INITIALIZE_SETTINGS =
   "metabase/admin/settings/INITIALIZE_SETTINGS";

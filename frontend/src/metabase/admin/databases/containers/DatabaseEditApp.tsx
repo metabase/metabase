@@ -16,11 +16,11 @@ import CS from "metabase/css/core/index.css";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/lib/redux";
 import {
-  PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
   PLUGIN_TABLE_EDITING,
   PLUGIN_WORKSPACES,
+  PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
@@ -104,7 +104,7 @@ function DatabaseEditAppInner({
                 >
                   <DatabaseConnectionInfoSection database={database} />
 
-                  <PLUGIN_ADVANCED_PERMISSIONS.WritableConnectionInfoSection
+                  <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
                     database={database}
                   />
 

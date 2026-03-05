@@ -43,7 +43,10 @@ export const UpsellCardContent = ({
   upgradeUrl,
   variant = "image-card",
 }: UpsellCardContentProps) => {
-  const { data: trialData } = useCheckTrialAvailableQuery();
+  const isHosted = useSelector(getIsHosted);
+  const { data: trialData } = useCheckTrialAvailableQuery(undefined, {
+    skip: !isHosted,
+  });
   const isTrialAvailable = trialData?.available ?? false;
 
   const leftSideSize = rem(280);
@@ -121,8 +124,8 @@ type UpsellCardLeftColumnContentProps = {
   title: string;
   description: string;
   bulletPoints?: string[];
-  upgradeOnClick: (() => void) | undefined;
-  upgradeUrl: string | undefined;
+  upgradeOnClick?: () => void;
+  upgradeUrl?: string;
 };
 
 const UpsellCardLeftColumnContent = ({

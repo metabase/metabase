@@ -1,15 +1,16 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { useField } from "formik";
 import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
 import { isDefaultGroup } from "metabase/lib/groups";
 import { Icon, Tooltip } from "metabase/ui";
+import type { Group, GroupId } from "metabase-types/api";
 
 import AddMappingRow from "./AddMappingRow";
 import {
@@ -23,16 +24,16 @@ import {
 } from "./GroupMappingsWidget.styled";
 import { MappingRow } from "./MappingRow";
 
-const groupIsMappable = (group) => !isDefaultGroup(group);
+const groupIsMappable = (group: Group) => !isDefaultGroup(group);
 
-const helpText = (mappingSetting) => {
+const helpText = (mappingSetting: string) => {
   if (mappingSetting === "jwt-group-mappings") {
     return t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If no mappings are defined, groups will automatically be assigned based on exactly matching names.`;
   }
   return t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced.`;
 };
 
-const noMappingText = (mappingSetting, syncSwitchValue) => {
+const noMappingText = (mappingSetting: string, syncSwitchValue: boolean) => {
   if (!syncSwitchValue) {
     return `No mappings yet, group sync is not on`;
   }
@@ -41,6 +42,24 @@ const noMappingText = (mappingSetting, syncSwitchValue) => {
   }
   return t`No mappings yet`;
 };
+
+interface GroupMappingsWidgetViewProps {
+  groupHeading: string;
+  groupPlaceholder: string;
+  allGroups: Group[];
+  mappingSetting: string; // seems like this should be SettingKey but we pass in values like "jwt-group-mappings"
+  deleteGroup: ({ id }: { id: number }) => Promise<void>;
+  clearGroupMember: ({ id }: { id: number }) => Promise<void>;
+  updateSetting: ({
+    key,
+    value,
+  }: {
+    key: string;
+    value: Record<string, GroupId[]>;
+  }) => Promise<void>;
+  mappings: Record<string, GroupId[]>;
+  setting: { key: string };
+}
 
 export function GroupMappingsWidgetView({
   groupHeading,
@@ -51,10 +70,10 @@ export function GroupMappingsWidgetView({
   clearGroupMember,
   updateSetting,
   mappings,
-  ...props
-}) {
+  setting,
+}: GroupMappingsWidgetViewProps) {
   const [showAddRow, setShowAddRow] = useState(false);
-  const [saveError, setSaveError] = useState({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const groups = allGroups.filter(groupIsMappable);
 
@@ -66,7 +85,7 @@ export function GroupMappingsWidgetView({
     setShowAddRow(false);
   };
 
-  const handleAddMapping = async (name) => {
+  const handleAddMapping = async (name: string) => {
     const mappingsPlusNewMapping = { ...mappings, [name]: [] };
 
     try {
@@ -77,27 +96,34 @@ export function GroupMappingsWidgetView({
       setShowAddRow(false);
       setSaveError(null);
     } catch (error) {
-      setSaveError(error);
+      setSaveError(getErrorMessage(error));
     }
   };
 
-  const handleChangeMapping = (name) => async (group, selected) => {
-    const updatedMappings = selected
-      ? { ...mappings, [name]: [...mappings[name], group.id] }
-      : {
-          ...mappings,
-          [name]: mappings[name].filter((id) => id !== group.id),
-        };
+  const handleChangeMapping =
+    (name: string) => async (group: { id: GroupId }, selected: boolean) => {
+      const updatedMappings = selected
+        ? { ...mappings, [name]: [...mappings[name], group.id] }
+        : {
+            ...mappings,
+            [name]: mappings[name].filter((id) => id !== group.id),
+          };
 
-    try {
-      await updateSetting({ key: mappingSetting, value: updatedMappings });
-      setSaveError(null);
-    } catch (error) {
-      setSaveError(error);
-    }
-  };
+      try {
+        await updateSetting({ key: mappingSetting, value: updatedMappings });
+        setSaveError(null);
+      } catch (error) {
+        setSaveError(getErrorMessage(error));
+      }
+    };
 
-  const handleDeleteMapping = async ({ name, onSuccess }) => {
+  const handleDeleteMapping = async ({
+    name,
+    onSuccess,
+  }: {
+    name: string;
+    onSuccess?: () => void;
+  }) => {
     const mappingsMinusDeletedMapping = _.omit(mappings, name);
 
     try {
@@ -106,14 +132,16 @@ export function GroupMappingsWidgetView({
         value: mappingsMinusDeletedMapping,
       });
 
-      onSuccess && (await onSuccess());
+      if (onSuccess) {
+        await onSuccess();
+      }
       setSaveError(null);
     } catch (error) {
-      setSaveError(error);
+      setSaveError(getErrorMessage(error));
     }
   };
 
-  const [{ value: groupSyncSwitchValue }] = useField(props.setting.key);
+  const [{ value: groupSyncSwitchValue }] = useField<boolean>(setting.key);
 
   return (
     <WidgetAndErrorRoot>
@@ -121,10 +149,7 @@ export function GroupMappingsWidgetView({
         <Header>
           <ToggleRoot>
             <span>{t`Synchronize Group Memberships`}</span>
-            <FormSwitch
-              data-testid="group-sync-switch"
-              name={props.setting.key}
-            />
+            <FormSwitch data-testid="group-sync-switch" name={setting.key} />
           </ToggleRoot>
           <About>
             <Tooltip
@@ -184,10 +209,8 @@ export function GroupMappingsWidgetView({
           </div>
         </div>
       </Root>
-      {saveError?.data?.message && (
-        <div className={cx(CS.textError, CS.textBold, CS.m1)}>
-          {saveError.data.message}
-        </div>
+      {saveError && (
+        <div className={cx(CS.textError, CS.textBold, CS.m1)}>{saveError}</div>
       )}
     </WidgetAndErrorRoot>
   );

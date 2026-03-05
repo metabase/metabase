@@ -14,6 +14,7 @@ import {
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
+import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
@@ -27,7 +28,6 @@ import {
   Modal as NewModal,
   Text,
 } from "metabase/ui";
-import type { PermissionsGraph } from "metabase-types/api";
 
 import {
   clearSaveError as clearPermissionsSaveError,
@@ -50,7 +50,7 @@ type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
   confirmBar?: ReactNode;
-  diff?: PermissionsGraph;
+  diff?: PermissionsGraphDiff;
   isDirty?: boolean;
   onSave?: () => void;
   onLoad?: () => void;

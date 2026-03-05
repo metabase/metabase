@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import * as React from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
@@ -73,7 +72,7 @@ function BaseTree<TData = unknown>({
   );
 
   if (data.length === 0) {
-    return <React.Fragment>{emptyState}</React.Fragment>;
+    return <>{emptyState}</>;
   }
 
   return (

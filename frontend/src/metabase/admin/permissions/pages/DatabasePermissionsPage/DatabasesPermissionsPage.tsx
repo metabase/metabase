@@ -1,6 +1,4 @@
-import { bindActionCreators } from "@reduxjs/toolkit";
-import PropTypes from "prop-types";
-import { Fragment, useCallback } from "react";
+import { Fragment, type ReactNode, useCallback } from "react";
 import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { t } from "ttag";
@@ -10,8 +8,8 @@ import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/perm
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
-import { PermissionsApi } from "metabase/services";
 import { Center, Loader } from "metabase/ui";
+import type { State } from "metabase-types/store";
 
 import {
   PermissionsEditor,
@@ -20,35 +18,45 @@ import {
 import { PermissionsEditorSplitPermsMessage } from "../../components/PermissionsEditor/PermissionsEditorSplitPermsMessage";
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 import {
-  LOAD_DATA_PERMISSIONS_FOR_DB,
+  type UpdateDataPermissionParams,
+  loadDataPermissionsForDb,
   updateDataPermission,
 } from "../../permissions";
 import {
+  type DataSidebarProps,
+  type DataTreeNodeItem,
   getDataFocusSidebar,
   getGroupsDataPermissionEditor,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
 } from "../../selectors/data-permissions";
+import type {
+  DataPermissionValue,
+  PermissionAction,
+  PermissionEditorBreadcrumb,
+  PermissionEditorEntity,
+  PermissionSectionConfig,
+  RawDataRouteParams,
+} from "../../types";
+import { assertNumericId, parseDataRouteParams } from "../../types";
 import {
   DATABASES_BASE_PATH,
   getDatabaseFocusPermissionsUrl,
 } from "../../utils/urls";
 
-const mapDispatchToProps = (dispatch) => ({
-  dispatch,
-  ...bindActionCreators(
-    {
-      updateDataPermission,
-      switchView: (entityType) => push(`/admin/permissions/data/${entityType}`),
-      navigateToDatabaseList: () => push(DATABASES_BASE_PATH),
-      navigateToItem: (item) =>
-        push(getDatabaseFocusPermissionsUrl(item.entityId)),
-    },
-    dispatch,
-  ),
-});
+const mapDispatchToProps = {
+  updateDataPermission,
+  switchView: (entityType: string) =>
+    push(`/admin/permissions/data/${entityType}`),
+  navigateToDatabaseList: () => push(DATABASES_BASE_PATH),
+  navigateToItem: (item: DataTreeNodeItem) =>
+    push(getDatabaseFocusPermissionsUrl(item.entityId)),
+};
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (
+  state: State,
+  props: { params: RawDataRouteParams },
+) => {
   return {
     sidebar: getDataFocusSidebar(state, props),
     isSidebarLoading: getIsLoadingDatabaseTables(state, props),
@@ -56,21 +64,17 @@ const mapStateToProps = (state, props) => {
   };
 };
 
-const propTypes = {
-  params: PropTypes.shape({
-    databaseId: PropTypes.string,
-    schemaName: PropTypes.string,
-    tableId: PropTypes.string,
-  }),
-  children: PropTypes.node,
-  sidebar: PropTypes.object,
-  navigateToItem: PropTypes.func.isRequired,
-  switchView: PropTypes.func.isRequired,
-  updateDataPermission: PropTypes.func.isRequired,
-  navigateToDatabaseList: PropTypes.func.isRequired,
-  isSidebarLoading: PropTypes.bool,
-  sidebarError: PropTypes.string,
-};
+interface DatabasesPermissionsPageInnerProps {
+  sidebar: DataSidebarProps | null;
+  params: RawDataRouteParams;
+  children: ReactNode;
+  navigateToItem: (item: any) => void;
+  navigateToDatabaseList: () => void;
+  switchView: (entityType: string) => void;
+  updateDataPermission: (params: UpdateDataPermissionParams) => void;
+  isSidebarLoading: boolean | undefined;
+  sidebarError: string | undefined;
+}
 
 function DatabasesPermissionsPageInner({
   sidebar,
@@ -82,10 +86,11 @@ function DatabasesPermissionsPageInner({
   updateDataPermission,
   isSidebarLoading,
   sidebarError,
-}) {
+}: DatabasesPermissionsPageInnerProps) {
+  const dataRouteParams = parseDataRouteParams(params);
   const dispatch = useDispatch();
   const permissionEditor = useSelector((state) =>
-    getGroupsDataPermissionEditor(state, { params }),
+    getGroupsDataPermissionEditor(state, { params: dataRouteParams }),
   );
 
   const showSplitPermsMessage = useSelector((state) =>
@@ -93,28 +98,29 @@ function DatabasesPermissionsPageInner({
   );
 
   const { loading: isLoading } = useAsync(async () => {
-    if (params.databaseId) {
-      const response = await PermissionsApi.graphForDB({
-        databaseId: params.databaseId,
-      });
-      await dispatch({
-        type: LOAD_DATA_PERMISSIONS_FOR_DB,
-        payload: response,
-      });
+    if (dataRouteParams.databaseId) {
+      await dispatch(loadDataPermissionsForDb(dataRouteParams.databaseId));
     }
-  }, [params.databaseId]);
+  }, [dataRouteParams.databaseId]);
 
   const handleEntityChange = useCallback(
-    (entityType) => {
+    (entityType: string) => {
       switchView(entityType);
     },
     [switchView],
   );
 
   const handlePermissionChange = useCallback(
-    async (item, permission, value) => {
-      await updateDataPermission({
-        groupId: item.id,
+    (
+      item: PermissionEditorEntity,
+      permission: PermissionSectionConfig,
+      value: DataPermissionValue,
+    ) => {
+      if (!item.entityId) {
+        return;
+      }
+      updateDataPermission({
+        groupId: assertNumericId(item.id),
         permission,
         value,
         entityId: item.entityId,
@@ -124,11 +130,20 @@ function DatabasesPermissionsPageInner({
     [updateDataPermission],
   );
 
-  const handleAction = (action, item) => {
-    dispatch(action.actionCreator(item.entityId, item.id, "database"));
+  const handleAction = (
+    action: PermissionAction,
+    item: PermissionEditorEntity,
+  ) => {
+    dispatch(
+      action.actionCreator(item.entityId, assertNumericId(item.id), "database"),
+    );
   };
 
-  const handleBreadcrumbsItemSelect = (item) => dispatch(push(item.url));
+  const handleBreadcrumbsItemSelect = (item: PermissionEditorBreadcrumb) => {
+    if (item.url) {
+      dispatch(push(item.url));
+    }
+  };
 
   const showLegacyNoSelfServiceWarning =
     PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
@@ -137,11 +152,11 @@ function DatabasesPermissionsPageInner({
   return (
     <Fragment>
       <PermissionsSidebar
-        {...sidebar}
+        {...(sidebar ?? { entityGroups: [], filterPlaceholder: "" })}
         error={sidebarError}
         isLoading={isSidebarLoading}
         onSelect={navigateToItem}
-        onBack={params.databaseId == null ? null : navigateToDatabaseList}
+        onBack={params.databaseId == null ? undefined : navigateToDatabaseList}
         onEntityChange={handleEntityChange}
       />
       {isLoading && (
@@ -181,8 +196,6 @@ function DatabasesPermissionsPageInner({
     </Fragment>
   );
 }
-
-DatabasesPermissionsPageInner.propTypes = propTypes;
 
 export const DatabasesPermissionsPage = _.compose(
   connect(mapStateToProps, mapDispatchToProps),

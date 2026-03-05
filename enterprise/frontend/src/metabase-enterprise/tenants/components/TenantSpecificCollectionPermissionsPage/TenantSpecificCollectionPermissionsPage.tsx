@@ -12,16 +12,19 @@ import {
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
 import { PermissionsSidebar } from "metabase/admin/permissions/components/PermissionsSidebar";
 import {
+  type UpdateTenantCollectionPermissionParams,
   initializeTenantSpecificCollectionPermissions,
   loadTenantSpecificCollectionPermissions,
   saveTenantSpecificCollectionPermissions,
   updateTenantSpecificCollectionPermission,
 } from "metabase/admin/permissions/permissions";
 import type { CollectionIdProps } from "metabase/admin/permissions/selectors/collection-permissions";
+import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
+import { assertNumericId } from "metabase/admin/permissions/types";
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import type { Collection, CollectionId, GroupId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import {
   getIsTenantSpecificDirty,
@@ -30,13 +33,6 @@ import {
   getTenantSpecificCollectionsSidebar,
   tenantSpecificCollectionsQuery,
 } from "./selectors";
-
-type UpdateCollectionPermissionParams = {
-  groupId: GroupId;
-  collection: Collection;
-  value: unknown;
-  shouldPropagateToChildren: boolean;
-};
 
 type TenantSpecificCollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
@@ -86,7 +82,7 @@ function TenantSpecificCollectionPermissionsPageView({
       collection,
       value,
       shouldPropagateToChildren,
-    }: UpdateCollectionPermissionParams) => {
+    }: UpdateTenantCollectionPermissionParams) => {
       dispatch(
         updateTenantSpecificCollectionPermission({
           groupId,
@@ -105,17 +101,17 @@ function TenantSpecificCollectionPermissionsPageView({
 
   const handlePermissionChange = useCallback(
     (
-      item: { id: GroupId },
+      item: PermissionEditorEntity,
       _permission: unknown,
       value: unknown,
-      _toggleState: boolean,
+      _toggleState: boolean | null,
     ) => {
       if (!collection) {
         return;
       }
       // Always propagate to sub-collections for tenant-specific collections
       updateCollectionPermission({
-        groupId: item.id,
+        groupId: assertNumericId(item.id),
         collection: collection as Collection,
         value,
         shouldPropagateToChildren: true,

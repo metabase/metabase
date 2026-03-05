@@ -10,10 +10,18 @@ interface RequiredParamToggleProps {
   value: boolean;
   onChange: (value: boolean) => void;
   disabledTooltip: React.ReactNode;
+  parametersAreUserVisible?: boolean;
 }
 
 export function RequiredParamToggle(props: RequiredParamToggleProps) {
-  const { disabled, value, onChange, uniqueId, disabledTooltip } = props;
+  const {
+    disabled,
+    value,
+    onChange,
+    uniqueId,
+    disabledTooltip,
+    parametersAreUserVisible = true,
+  } = props;
   const id = `required_param_toggle_${uniqueId}`;
 
   return (
@@ -41,10 +49,12 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
           )}
         </label>
 
-        <Text
-          mt="sm"
-          lh={1.2}
-        >{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</Text>
+        {parametersAreUserVisible && (
+          <Text
+            mt="sm"
+            lh={1.2}
+          >{t`When enabled, people can change the value or reset it, but can't clear it entirely.`}</Text>
+        )}
       </div>
     </Flex>
   );

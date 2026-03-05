@@ -37,6 +37,11 @@ export function QuestionNotebookButton({
     <Button
       data-testid="notebook-button"
       className={ViewTitleHeaderS.NotebookButton}
+      classNames={{
+        root: ViewTitleHeaderS.ActionButtonRoot,
+        label: ViewTitleHeaderS.ActionButtonLabel,
+        section: ViewTitleHeaderS.ActionButtonSection,
+      }}
       leftSection={
         isShowingNotebook ? (
           <Icon name="lineandbar" />

@@ -148,6 +148,8 @@ describe("scenarios > admin > transforms", () => {
         .icon("close")
         .click();
 
+      assertNoParameterSettingsAreVisible();
+
       editorSidebar()
         .findByText("Always require a value")
         .scrollIntoView()
@@ -156,9 +158,7 @@ describe("scenarios > admin > transforms", () => {
 
       queryEditor().button("Save").should("be.disabled");
 
-      editorSidebar()
-        .findByText(/Default filter widget value/)
-        .scrollIntoView();
+      editorSidebar().findByText("Default value").scrollIntoView();
       setDefaultValue();
 
       queryEditor().button("Save").should("be.enabled").click();
@@ -188,6 +188,8 @@ describe("scenarios > admin > transforms", () => {
       H.popover().findByText("Schema a").click();
       H.popover().findByText("Animals").click();
       H.popover().findByText("Score").click();
+
+      assertNoParameterSettingsAreVisible();
 
       editorSidebar()
         .findByText("Always require a value")
@@ -232,6 +234,8 @@ describe("scenarios > admin > transforms", () => {
 
       H.popover().findByText("Schema a").click();
       H.popover().findByText("Animals").click();
+
+      assertNoParameterSettingsAreVisible();
 
       queryEditor().button("Save").should("be.enabled").click();
       H.undoToast()
@@ -363,4 +367,16 @@ function assertIsTransformRunnable() {
 
 function getRunButton(options: { timeout?: number } = {}) {
   return cy.findAllByTestId("run-button").eq(0, options);
+}
+
+function assertNoParameterSettingsAreVisible() {
+  editorSidebar().within(() => {
+    cy.findByText("How should users filter on this variable?").should(
+      "not.exist",
+    );
+    cy.findByText("People can pick").should("not.exist");
+    cy.findByText("Time grouping options").should("not.exist");
+    cy.findByText("Parameter widget label").should("not.exist");
+    cy.findByText("Filter widget label").should("not.exist");
+  });
 }

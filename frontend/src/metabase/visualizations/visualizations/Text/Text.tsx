@@ -1,12 +1,11 @@
-/* eslint-disable react/prop-types */
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Options } from "react-markdown";
 import rehypeExternalLinks from "rehype-external-links";
 import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
-import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { updateParameterMappingsForDashcardText } from "metabase/dashboard/actions";
 import { getParameterValues } from "metabase/dashboard/selectors";
@@ -14,6 +13,12 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
+import type { VisualizationGridSize } from "metabase/visualizations/types";
+import type {
+  Dashboard,
+  VirtualDashboardCard,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   DisplayContainer,
@@ -22,7 +27,20 @@ import {
   TextInput,
 } from "./Text.styled";
 
-const getSettingsStyle = (settings) => ({
+type TextProps = {
+  onUpdateVisualizationSettings?: (settings: VisualizationSettings) => void;
+  className?: string;
+  dashboard?: Dashboard;
+  dashcard?: VirtualDashboardCard;
+  gridSize?: VisualizationGridSize;
+  settings?: VisualizationSettings;
+  isEditing?: boolean;
+  isMobile?: boolean;
+};
+
+const getSettingsStyle = (
+  settings: VisualizationSettings,
+): Record<string, boolean> => ({
   [CS.textCentered]: settings["text.align_horizontal"] === "center",
   [CS.textRight]: settings["text.align_horizontal"] === "right",
   [CS.justifyCenter]: settings["text.align_vertical"] === "middle",
@@ -30,7 +48,7 @@ const getSettingsStyle = (settings) => ({
 });
 
 const REMARK_PLUGINS = [remarkGfm];
-const REHYPE_PLUGINS = [
+const REHYPE_PLUGINS: Options["rehypePlugins"] = [
   [rehypeExternalLinks, { rel: ["noreferrer"], target: "_blank" }],
 ];
 
@@ -40,52 +58,55 @@ export function Text({
   dashboard,
   dashcard,
   gridSize,
-  settings,
-  isEditing,
-  isMobile,
-}) {
+  settings = {},
+  isEditing = false,
+  isMobile = false,
+}: TextProps) {
   const dispatch = useDispatch();
   const parameterValues = useSelector(getParameterValues);
+  const settingsText = typeof settings.text === "string" ? settings.text : "";
+
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
-  const [textValue, setTextValue] = useState(settings.text);
+  const [textValue, setTextValue] = useState(settingsText);
 
   const tc = useTranslateContent();
-  const translatedText = tc(settings.text);
+  const translatedText = tc(settingsText);
 
-  const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
-    useToggle(justAdded);
+  const [isFocused, { open: toggleFocusOn, close: toggleFocusOff }] =
+    useDisclosure(justAdded);
   const isPreviewing = !isFocused;
 
-  const preventDragging = (e) => e.stopPropagation();
+  const preventDragging = (e: React.MouseEvent) => e.stopPropagation();
 
   const isSingleRow = gridSize?.height === 1;
 
-  // handles a case when settings are updated externally
   useEffect(() => {
-    setTextValue(settings.text);
-  }, [settings.text]);
+    setTextValue(settingsText);
+  }, [settingsText]);
 
   const content = useMemo(
     () =>
-      fillParametersInText({
-        dashcard,
-        dashboard,
-        parameterValues,
-        text: translatedText,
-        escapeMarkdown: true,
-      }),
+      dashboard
+        ? fillParametersInText({
+            dashcard,
+            dashboard,
+            parameterValues,
+            text: translatedText,
+            escapeMarkdown: true,
+          })
+        : translatedText,
     [dashcard, dashboard, parameterValues, translatedText],
   );
 
   const updateParameterMappings = useCallback(() => {
-    if (!dashcard.id) {
+    if (typeof dashcard?.id !== "number") {
       return;
     }
 
-    dispatch(updateParameterMappingsForDashcardText(dashcard?.id));
-  }, [dashcard?.id, dispatch]);
+    dispatch(updateParameterMappingsForDashcardText(dashcard.id));
+  }, [dashcard, dispatch]);
 
-  const hasContent = !isEmpty(settings.text);
+  const hasContent = !isEmpty(settingsText);
   const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
 
   if (isEditing) {
@@ -105,7 +126,6 @@ export function Text({
             data-testid="editing-dashboard-text-preview"
             onMouseDown={preventDragging}
           >
-            {/* ReactMarkdown does not allow adding an onMouseDown event handler */}
             <ReactMarkdown
               remarkPlugins={REMARK_PLUGINS}
               rehypePlugins={REHYPE_PLUGINS}
@@ -119,7 +139,7 @@ export function Text({
                 getSettingsStyle(settings),
               )}
             >
-              {hasContent ? settings.text : placeholder}
+              {hasContent ? settingsText : placeholder}
             </ReactMarkdown>
           </ReactMarkdownStyleWrapper>
         ) : (
@@ -134,8 +154,8 @@ export function Text({
             onBlur={() => {
               toggleFocusOff();
 
-              if (settings.text !== textValue) {
-                onUpdateVisualizationSettings({ text: textValue });
+              if (settingsText !== textValue) {
+                onUpdateVisualizationSettings?.({ text: textValue });
                 updateParameterMappings();
               }
             }}
@@ -156,8 +176,6 @@ export function Text({
     >
       <ReactMarkdownStyleWrapper>
         <ReactMarkdown
-          remarkPlugins={REMARK_PLUGINS}
-          rehypePlugins={REHYPE_PLUGINS}
           className={cx(
             CS.full,
             CS.flexFull,
@@ -166,6 +184,8 @@ export function Text({
             "text-card-markdown",
             getSettingsStyle(settings),
           )}
+          remarkPlugins={REMARK_PLUGINS}
+          rehypePlugins={REHYPE_PLUGINS}
         >
           {content}
         </ReactMarkdown>
