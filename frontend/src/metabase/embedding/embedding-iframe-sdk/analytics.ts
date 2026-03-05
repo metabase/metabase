@@ -1,13 +1,12 @@
-import { assocIn, getIn, merge, updateIn } from "icepick";
+import { merge } from "icepick";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
-import type { FlattenObjectKeys } from "metabase/embedding-sdk/types/utils";
 import type {
   AUTH_TYPES,
   DefaultValues,
-  EmbeddedAnalyticsJsEvent,
   EmbeddedAnalyticsJsEventSchema,
+  PropertyValue,
 } from "metabase-types/analytics/embedded-analytics-js";
 
 import type { MetabaseEmbedElement } from "./embed";
@@ -22,6 +21,8 @@ const DEFAULT_VALUES: DefaultValues = {
     with_title: true,
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L161} */
     with_subscriptions: false,
+    auto_refresh_interval: false, // NEW: EMB-1334 - default: no auto-refresh configured
+    enable_entity_navigation: false, // NEW: EMB-1334 - default: entity navigation disabled
   },
   question: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L241} */
@@ -37,6 +38,8 @@ const DEFAULT_VALUES: DefaultValues = {
     is_save_enabled: false,
     /** @see {@link https://github.com/metabase/metabase/blob/c1b57eeb3f6f99126cc52e3a960b98f5c8bbc109/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.tsx#L137} */
     with_alerts: false,
+    id_new_native: false, // NEW: EMB-1334 - computed from questionId, default: not new-native
+    id_new: false, // NEW: EMB-1334 - computed from questionId, default: not new
   },
   exploration: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
@@ -45,6 +48,11 @@ const DEFAULT_VALUES: DefaultValues = {
   browser: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/MetabaseBrowser.tsx#L39} */
     read_only: true,
+    enable_entity_navigation: false, // NEW: EMB-1334 - default: entity navigation disabled
+  },
+  metabot: {
+    // NEW: EMB-1334 - new component
+    layout: "auto", // default: auto layout (responsive)
   },
 };
 
@@ -90,123 +98,251 @@ export function createEmbeddedAnalyticsJsUsage(
   activeEmbeds: Set<MetabaseEmbedElement>,
 ): EmbeddedAnalyticsJsEventSchema {
   const [firstEmbed] = activeEmbeds;
-  let usage = {
+  const event: EmbeddedAnalyticsJsEventSchema = {
     event: "setup",
     global: {
       auth_method: getAuthMethod(firstEmbed),
+      locale_used: hasLocaleUsed(activeEmbeds), // NEW: EMB-1334
     },
-  } as EmbeddedAnalyticsJsEventSchema;
+    components: [],
+  };
 
-  activeEmbeds.forEach((embed) => {
-    match(embed.properties)
-      .with({ componentName: "metabase-dashboard" }, (properties) => {
-        if (!usage.dashboard) {
-          usage = assocIn(usage, ["dashboard"], {
-            drills: { true: 0, false: 0 },
-            with_downloads: { true: 0, false: 0 },
-            with_title: { true: 0, false: 0 },
-            with_subscriptions: { true: 0, false: 0 },
-          } satisfies EmbeddedAnalyticsJsEvent["dashboard"]);
-        }
-        usage = incrementComponentPropertyCount(
-          "dashboard.drills",
-          properties.drills,
-          usage,
-          properties.isGuest
-            ? (path) => getIn(DEFAULT_GUEST_EMBED_VALUES, path)
-            : undefined,
-        );
-        usage = incrementComponentPropertyCount(
-          "dashboard.with_downloads",
-          properties.withDownloads,
-          usage,
-        );
-        usage = incrementComponentPropertyCount(
-          "dashboard.with_title",
-          properties.withTitle,
-          usage,
-        );
-        usage = incrementComponentPropertyCount(
-          "dashboard.with_subscriptions",
-          properties.withSubscriptions,
-          usage,
-        );
-      })
-      .with(
-        { componentName: "metabase-question", questionId: "new" },
-        { componentName: "metabase-question", questionId: "new-native" },
-        (properties) => {
-          if (!usage.exploration) {
-            usage = assocIn(usage, ["exploration"], {
-              is_save_enabled: { true: 0, false: 0 },
-            } satisfies EmbeddedAnalyticsJsEvent["exploration"]);
-          }
-          usage = incrementComponentPropertyCount(
-            "exploration.is_save_enabled",
-            properties.isSaveEnabled,
-            usage,
-          );
-        },
-      )
-      .with(
+  // Filter embeds by type
+  const dashboardEmbeds = Array.from(activeEmbeds).filter(
+    (element) => element.properties.componentName === "metabase-dashboard",
+  );
+  const questionEmbeds = Array.from(activeEmbeds).filter(
+    (element) =>
+      element.properties.componentName === "metabase-question" &&
+      element.properties.questionId !== "new" &&
+      element.properties.questionId !== "new-native",
+  );
+  const explorationEmbeds = Array.from(activeEmbeds).filter(
+    (element) =>
+      element.properties.componentName === "metabase-question" &&
+      (element.properties.questionId === "new" ||
+        element.properties.questionId === "new-native"),
+  );
+  const browserEmbeds = Array.from(activeEmbeds).filter(
+    (element) => element.properties.componentName === "metabase-browser",
+  );
+  const metabotEmbeds = Array.from(activeEmbeds).filter(
+    (element) => element.properties.componentName === "metabase-metabot",
+  );
+
+  // Build dashboard component
+  if (dashboardEmbeds.length > 0) {
+    event.components.push({
+      name: "dashboard",
+      properties: [
         {
-          componentName: "metabase-question",
+          name: "drills",
+          values: countPropertyValues(
+            dashboardEmbeds,
+            "drills",
+            (drills, properties) =>
+              String(
+                drills ??
+                  (properties.isGuest
+                    ? DEFAULT_GUEST_EMBED_VALUES.dashboard.drills
+                    : DEFAULT_VALUES.dashboard.drills),
+              ),
+          ),
         },
-        (properties) => {
-          if (!usage.question) {
-            usage = assocIn(usage, ["question"], {
-              drills: { true: 0, false: 0 },
-              with_downloads: { true: 0, false: 0 },
-              with_title: { true: 0, false: 0 },
-              is_save_enabled: { true: 0, false: 0 },
-              with_alerts: { true: 0, false: 0 },
-            } satisfies EmbeddedAnalyticsJsEvent["question"]);
-          }
-          usage = incrementComponentPropertyCount(
-            "question.drills",
-            properties.drills,
-            usage,
-            properties.isGuest
-              ? (path) => getIn(DEFAULT_GUEST_EMBED_VALUES, path)
-              : undefined,
-          );
-          usage = incrementComponentPropertyCount(
-            "question.with_downloads",
-            properties.withDownloads,
-            usage,
-          );
-          usage = incrementComponentPropertyCount(
-            "question.with_title",
-            properties.withTitle,
-            usage,
-          );
-          usage = incrementComponentPropertyCount(
-            "question.is_save_enabled",
-            properties.isSaveEnabled,
-            usage,
-          );
-          usage = incrementComponentPropertyCount(
-            "question.with_alerts",
-            properties.withAlerts,
-            usage,
-          );
+        {
+          name: "with_downloads",
+          values: countPropertyValues(
+            dashboardEmbeds,
+            "withDownloads",
+            (withDownloads) =>
+              String(withDownloads ?? DEFAULT_VALUES.dashboard.with_downloads),
+          ),
         },
-      )
-      .with({ componentName: "metabase-browser" }, (properties) => {
-        if (!usage.browser) {
-          usage = assocIn(usage, ["browser"], {
-            read_only: { true: 0, false: 0 },
-          } satisfies EmbeddedAnalyticsJsEvent["browser"]);
-        }
-        usage = incrementComponentPropertyCount(
-          "browser.read_only",
-          properties.readOnly,
-          usage,
-        );
-      });
-  });
+        {
+          name: "with_title",
+          values: countPropertyValues(
+            dashboardEmbeds,
+            "withTitle",
+            (withTitle) =>
+              String(withTitle ?? DEFAULT_VALUES.dashboard.with_title),
+          ),
+        },
+        {
+          name: "with_subscriptions",
+          values: countPropertyValues(
+            dashboardEmbeds,
+            "withSubscriptions",
+            (withSubscriptions) =>
+              String(
+                withSubscriptions ??
+                  DEFAULT_VALUES.dashboard.with_subscriptions,
+              ),
+          ),
+        },
+        {
+          name: "auto_refresh_interval", // NEW: EMB-1334
+          values: countPropertyValues(
+            dashboardEmbeds,
+            "autoRefreshInterval",
+            (autoRefreshInterval) => String(autoRefreshInterval != null),
+          ),
+        },
+        {
+          name: "enable_entity_navigation", // NEW: EMB-1334
+          values: countPropertyValues(
+            dashboardEmbeds,
+            "enableEntityNavigation",
+            (enableEntityNavigation) =>
+              String(
+                enableEntityNavigation ??
+                  DEFAULT_VALUES.dashboard.enable_entity_navigation,
+              ),
+          ),
+        },
+      ],
+    });
+  }
 
-  return usage;
+  // Build question component
+  if (questionEmbeds.length > 0) {
+    event.components.push({
+      name: "question",
+      properties: [
+        {
+          name: "drills",
+          values: countPropertyValues(
+            questionEmbeds,
+            "drills",
+            (drills, properties) =>
+              String(
+                drills ??
+                  (properties.isGuest
+                    ? DEFAULT_GUEST_EMBED_VALUES.question.drills
+                    : DEFAULT_VALUES.question.drills),
+              ),
+          ),
+        },
+        {
+          name: "with_downloads",
+          values: countPropertyValues(
+            questionEmbeds,
+            "withDownloads",
+            (withDownloads) =>
+              String(withDownloads ?? DEFAULT_VALUES.question.with_downloads),
+          ),
+        },
+        {
+          name: "with_title",
+          values: countPropertyValues(
+            questionEmbeds,
+            "withTitle",
+            (withTitle) =>
+              String(withTitle ?? DEFAULT_VALUES.question.with_title),
+          ),
+        },
+        {
+          name: "is_save_enabled",
+          values: countPropertyValues(
+            questionEmbeds,
+            "isSaveEnabled",
+            (isSaveEnabled) =>
+              String(isSaveEnabled ?? DEFAULT_VALUES.question.is_save_enabled),
+          ),
+        },
+        {
+          name: "with_alerts",
+          values: countPropertyValues(
+            questionEmbeds,
+            "withAlerts",
+            (withAlerts) =>
+              String(withAlerts ?? DEFAULT_VALUES.question.with_alerts),
+          ),
+        },
+        {
+          name: "id_new_native", // NEW: EMB-1334
+          values: countPropertyValues(
+            questionEmbeds,
+            "questionId",
+            (questionId) => String(questionId === "new-native"),
+          ),
+        },
+        {
+          name: "id_new", // NEW: EMB-1334
+          values: countPropertyValues(
+            questionEmbeds,
+            "questionId",
+            (questionId) => String(questionId === "new"),
+          ),
+        },
+      ],
+    });
+  }
+
+  // Build exploration component
+  if (explorationEmbeds.length > 0) {
+    event.components.push({
+      name: "exploration",
+      properties: [
+        {
+          name: "is_save_enabled",
+          values: countPropertyValues(
+            explorationEmbeds,
+            "isSaveEnabled",
+            (isSaveEnabled) =>
+              String(
+                isSaveEnabled ?? DEFAULT_VALUES.exploration.is_save_enabled,
+              ),
+          ),
+        },
+      ],
+    });
+  }
+
+  // Build browser component
+  if (browserEmbeds.length > 0) {
+    event.components.push({
+      name: "browser",
+      properties: [
+        {
+          name: "read_only",
+          values: countPropertyValues(browserEmbeds, "readOnly", (readOnly) =>
+            String(readOnly ?? DEFAULT_VALUES.browser.read_only),
+          ),
+        },
+        {
+          name: "enable_entity_navigation", // NEW: EMB-1334
+          values: countPropertyValues(
+            browserEmbeds,
+            "enableEntityNavigation",
+            (enableEntityNavigation) =>
+              String(
+                enableEntityNavigation ??
+                  DEFAULT_VALUES.browser.enable_entity_navigation,
+              ),
+          ),
+        },
+      ],
+    });
+  }
+
+  // Build metabot component - NEW: EMB-1334
+  if (metabotEmbeds.length > 0) {
+    event.components.push({
+      name: "metabot",
+      properties: [
+        {
+          name: "layout",
+          values: countPropertyValues(
+            metabotEmbeds,
+            "layout",
+            (layout) => layout ?? DEFAULT_VALUES.metabot.layout,
+          ),
+        },
+      ],
+    });
+  }
+
+  return event;
 }
 
 function getAuthMethod(firstEmbed: MetabaseEmbedElement): AUTH_TYPES {
@@ -235,21 +371,35 @@ function getAuthMethod(firstEmbed: MetabaseEmbedElement): AUTH_TYPES {
     });
 }
 
-function incrementComponentPropertyCount(
-  propertyPath: FlattenObjectKeys<DefaultValues>,
-  value: boolean | undefined,
-  usage: EmbeddedAnalyticsJsEventSchema,
-  getDefaultValue: (path: string[]) => boolean = defaultGetDefaultValue,
-) {
-  const path = propertyPath.split(".");
-
-  return updateIn(
-    usage,
-    [...path, String(value ?? getDefaultValue(path))],
-    (value) => value + 1,
+// NEW: EMB-1334 - check if any embed has locale configured
+function hasLocaleUsed(activeEmbeds: Set<MetabaseEmbedElement>): boolean {
+  return Array.from(activeEmbeds).some(
+    (embed) => embed.properties.locale != null,
   );
 }
 
-function defaultGetDefaultValue(path: string[]): boolean {
-  return getIn(DEFAULT_VALUES, path);
+/**
+ * Count property values across embeds and return PropertyValue array
+ */
+function countPropertyValues(
+  embeds: MetabaseEmbedElement[],
+  propertyName: string,
+  getValue: (
+    propertyValue: any,
+    properties: MetabaseEmbedElement["properties"],
+  ) => string,
+): PropertyValue[] {
+  const counts = new Map<string, number>();
+
+  embeds.forEach((embed) => {
+    const propertyValue = (embed.properties as any)[propertyName];
+    const value = getValue(propertyValue, embed.properties);
+    const groupStr = String(value);
+    counts.set(groupStr, (counts.get(groupStr) || 0) + 1);
+  });
+
+  return Array.from(counts.entries()).map(([group, value]) => ({
+    group,
+    value,
+  }));
 }
