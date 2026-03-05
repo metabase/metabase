@@ -667,13 +667,14 @@
 (mu/defn source-tables-map->vec :- [:sequential ::source-table-entry]
   "Convert map format `{alias -> value}` to vec format `[{:alias alias ...}]`.
   Handles both int values (`{alias: table_id}`) and ref map values (`{alias: {:database_id ...}}`.
+  Accepts both keyword and string keys for alias.
   Enriches entries with full metadata via [[normalize-source-tables]]."
-  [m :- [:map-of :string [:or :int :map]]]
+  [m :- [:map-of [:or :string :keyword] [:or :int :map]]]
   (normalize-source-tables
    (mapv (fn [[alias v]]
            (if (int? v)
-             {:alias alias :table_id v}
-             (assoc v :alias alias)))
+             {:alias (name alias) :table_id v}
+             (assoc v :alias (name alias))))
          m)))
 
 ;;; ------------------------------------------------- Timestamp Helpers -------------------------------------------------

@@ -352,12 +352,12 @@ is_sample: false
                   (is (sequential? source-tables)))
                 (testing "entry has correct alias and table_id"
                   (let [entry (first source-tables)]
-                    (is (= "orders" (get entry "alias")))
-                    (is (= (mt/id :orders) (get entry "table_id")))))
+                    (is (= "orders" (:alias entry)))
+                    (is (= (mt/id :orders) (:table_id entry)))))
                 (testing "entry is enriched with table metadata"
                   (let [entry (first source-tables)]
-                    (is (= (mt/id) (get entry "database_id")))
-                    (is (some? (get entry "table")))))))))))))
+                    (is (= (mt/id) (:database_id entry)))
+                    (is (some? (:table entry)))))))))))))
 
 (deftest archived-transforms-namespace-collection-excluded-from-export-test
   (testing "When a transforms-namespace collection is archived, it and its children are excluded from export"

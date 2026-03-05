@@ -335,10 +335,7 @@
                                                   (m/update-existing :source-tables
                                                                      (fn [st]
                                                                        (if (map? st)
-                                                                        ;; YAML parser keywordizes map keys, but
-                                                                        ;; source-tables-map->vec expects string keys
-                                                                         (transforms-base.u/source-tables-map->vec
-                                                                          (update-keys st name))
+                                                                         (transforms-base.u/source-tables-map->vec st)
                                                                          st)))
                                                   (m/update-existing :query serdes/import-mbql)))}
                :target             {:export serdes/export-mbql :import serdes/import-mbql}

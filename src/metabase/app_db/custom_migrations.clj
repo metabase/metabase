@@ -1887,8 +1887,11 @@
         (when (map? st)
           (let [entries (mapv (fn [[alias v]]
                                 (if (int? v)
+                                  ;; Integer value: backfill all metadata (database_id, schema, table) from DB.
                                   (merge {"alias" alias "table_id" v}
                                          (get metadata v))
+                                  ;; Ref-map value: already has database_id/schema/table; table_id is
+                                  ;; resolved lazily by normalize-source-tables when the transform is saved via the API.
                                   (assoc v "alias" alias)))
                               st)
                 pks     (::pks row)]

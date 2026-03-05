@@ -34,7 +34,7 @@
      ;; decode/normalize: convert FE map format to vec and enrich with DB metadata
      [:source-tables   [:sequential {:decode/normalize (fn [st]
                                                          (if (map? st)
-                                                           (transforms-base.u/source-tables-map->vec (update-keys st name))
+                                                           (transforms-base.u/source-tables-map->vec st)
                                                            st))}
                         ::transforms-base.u/source-table-entry]]
      [:type {:decode/normalize lib.schema.common/normalize-keyword} [:= :python]]
