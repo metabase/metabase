@@ -102,22 +102,23 @@ export const buildIncrementalSource = (
   }
 
   // Build strategy fields based on which checkpoint field is present
-  // Priority: checkpoint-filter (native) > checkpoint-filter-field-id (MBQL/Python) > checkpoint-filter-unique-key (legacy)
-  const strategyFields = formValues.checkpointFilter
-    ? { "checkpoint-filter": formValues.checkpointFilter }
-    : formValues.checkpointFilterFieldId != null
+  // Priority: checkpoint-filter-field-id (MBQL/Python/Native with table tags) > checkpoint-filter (legacy native) > checkpoint-filter-unique-key (legacy)
+  const strategyFields =
+    formValues.checkpointFilterFieldId != null
       ? {
           // Convert string back to number for API
           "checkpoint-filter-field-id": Number(
             formValues.checkpointFilterFieldId,
           ),
         }
-      : formValues.checkpointFilterUniqueKey
-        ? {
-            "checkpoint-filter-unique-key":
-              formValues.checkpointFilterUniqueKey,
-          }
-        : {};
+      : formValues.checkpointFilter
+        ? { "checkpoint-filter": formValues.checkpointFilter }
+        : formValues.checkpointFilterUniqueKey
+          ? {
+              "checkpoint-filter-unique-key":
+                formValues.checkpointFilterUniqueKey,
+            }
+          : {};
 
   return {
     ...source,

@@ -23,7 +23,17 @@ const getQueryForComplexityCheck = (
   }
 
   const tags = Lib.templateTags(query);
+
+  // No complexity check needed if query has checkpoint template tag (legacy)
   if (CHECKPOINT_TEMPLATE_TAG in tags) {
+    return;
+  }
+
+  // No complexity check needed if query has table template tags (new approach)
+  const hasTableTags = Object.values(tags).some(
+    (tag) => tag.type === "table" && tag["table-id"] != null,
+  );
+  if (hasTableTags) {
     return;
   }
 

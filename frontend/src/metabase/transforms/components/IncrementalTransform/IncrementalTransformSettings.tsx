@@ -14,6 +14,7 @@ import {
 } from "metabase/transforms/constants";
 import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
 import {
+  Alert,
   Anchor,
   Box,
   Divider,
@@ -23,11 +24,12 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
 
 import {
   MBQLKeysetColumnSelect,
+  NativeQueryTableTagFieldSelect,
   PythonKeysetColumnSelect,
 } from "./KeysetColumnSelect";
 import { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";
@@ -67,6 +69,17 @@ export const IncrementalTransformSettings = ({
     .with({ isMbqlQuery: true }, () => "query" as const)
     .with({ isPythonTransform: true }, () => "python" as const)
     .otherwise(() => "native" as const);
+
+  // Check if native query has table template tags
+  // Incremental transforms for native queries require table template tags
+  const hasTableTemplateTags = libQuery
+    ? Object.values(Lib.templateTags(libQuery)).some(
+        (tag) => tag.type === "table" && tag["table-id"] != null,
+      )
+    : false;
+
+  const isNativeWithoutTableTags =
+    transformType === "native" && !hasTableTemplateTags;
   const { url: incrementalTransformsDocsUrl, showMetabaseLinks } = useDocsUrl(
     isPythonTransform
       ? "data-studio/transforms/python-transforms#incremental-python-transforms"
@@ -77,14 +90,19 @@ export const IncrementalTransformSettings = ({
     const switchContent = (
       <Switch
         disabled={
-          readOnly || isMultiTablePythonTransform || isRemoteSyncReadOnly
+          readOnly ||
+          isMultiTablePythonTransform ||
+          isRemoteSyncReadOnly ||
+          isNativeWithoutTableTags
         }
         checked={incremental}
         size="sm"
         label={
           isMultiTablePythonTransform
             ? t`Incremental transforms are only supported for single data source transforms.`
-            : t`Only process new and changed data`
+            : isNativeWithoutTableTags
+              ? t`Incremental transforms for native queries require at least one table template tag.`
+              : t`Only process new and changed data`
         }
         wrapperProps={{
           "data-testid": "incremental-switch",
@@ -216,6 +234,29 @@ function SourceStrategyFields({
   readOnly,
 }: SourceStrategyFieldsProps) {
   const { values } = useFormikContext<IncrementalSettingsFormValues>();
+
+  // Check if native query has table template tags
+  const hasTableTags =
+    type === "native" && query
+      ? Object.values(Lib.templateTags(query)).some(
+          (tag) => tag.type === "table" && tag["table-id"] != null,
+        )
+      : false;
+
+  // For native queries:
+  // - If query has table tags -> use new NativeQueryTableTagFieldSelect (field ID based)
+  // - Otherwise -> use legacy NativeQueryColumnSelect (column name based)
+  const shouldUseLegacyNativeSelect = type === "native" && !hasTableTags;
+
+  // Show warning for legacy configurations that have checkpoint-filter but should migrate
+  const isLegacyNativeCheckpoint =
+    source.type === "query" &&
+    type === "native" &&
+    hasTableTags &&
+    source["source-incremental-strategy"]?.type === "checkpoint" &&
+    source["source-incremental-strategy"]["checkpoint-filter"] != null &&
+    source["source-incremental-strategy"]["checkpoint-filter-field-id"] == null;
+
   return (
     <>
       {SOURCE_STRATEGY_OPTIONS.length > 1 && (
@@ -229,6 +270,11 @@ function SourceStrategyFields({
       )}
       {values.sourceStrategy === "checkpoint" && (
         <>
+          {isLegacyNativeCheckpoint && (
+            <Alert variant="warning" mb="md">
+              {t`This transform uses a legacy configuration. Please update the checkpoint field selection to ensure compatibility with future versions.`}
+            </Alert>
+          )}
           {type === "query" && query && (
             <MBQLKeysetColumnSelect
               name="checkpointFilterFieldId"
@@ -241,17 +287,29 @@ function SourceStrategyFields({
               disabled={readOnly}
             />
           )}
-          {type === "native" && query && (
-            <NativeQueryColumnSelect
-              name="checkpointFilter"
-              label={t`Column to check for new values`}
-              placeholder={t`Pick a column`}
-              description={t`Pick the column that we should scan to determine which records are new or changed`}
-              descriptionProps={{ lh: "1rem" }}
-              query={query}
-              disabled={readOnly}
-            />
-          )}
+          {type === "native" &&
+            query &&
+            (shouldUseLegacyNativeSelect ? (
+              <NativeQueryColumnSelect
+                name="checkpointFilter"
+                label={t`Column to check for new values`}
+                placeholder={t`Pick a column`}
+                description={t`Pick the column that we should scan to determine which records are new or changed`}
+                descriptionProps={{ lh: "1rem" }}
+                query={query}
+                disabled={readOnly}
+              />
+            ) : (
+              <NativeQueryTableTagFieldSelect
+                name="checkpointFilterFieldId"
+                label={t`Field to check for new values`}
+                placeholder={t`Pick a field`}
+                description={t`Pick the field that we should scan to determine which records are new or changed`}
+                descriptionProps={{ lh: "1rem" }}
+                query={query}
+                disabled={readOnly}
+              />
+            ))}
           {type === "python" && "source-tables" in source && (
             <PythonKeysetColumnSelect
               name="checkpointFilterFieldId"
