@@ -121,9 +121,9 @@ export function getXValues({
         continue;
       }
       const value = parseXValue(row[columnIndex], parseOptions, warn);
-      if (lastValue != null && value != null) {
-        isAscending = isAscending && lastValue <= value;
-        isDescending = isDescending && value <= lastValue;
+      if (lastValue !== undefined && value != null) {
+        isAscending = isAscending && (lastValue ?? 0) <= value;
+        isDescending = isDescending && value <= (lastValue ?? 0);
       }
       lastValue = value;
       if (value != null) {
