@@ -48,7 +48,7 @@ export interface EntityCopyModalProps<T extends CopyableEntityType> {
  * still being safe in practice (forms validate their own values).
  */
 export interface GenericEntityCopyModalProps {
-  entityType: string;
+  entityType: string | undefined;
   entityObject: any;
   copy: (data: any) => Promise<any>;
   title?: string;

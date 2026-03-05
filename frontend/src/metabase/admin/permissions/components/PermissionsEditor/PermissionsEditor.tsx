@@ -1,5 +1,3 @@
-import PropTypes from "prop-types";
-
 import { UpsellPermissions } from "metabase/admin/upsells";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box } from "metabase/ui";
@@ -7,16 +5,19 @@ import { Box } from "metabase/ui";
 import S from "./PermissionsEditor.module.css";
 import {
   PermissionsEditorContent,
-  permissionEditorContentPropTypes,
+  type PermissionsEditorContentProps,
 } from "./PermissionsEditorContent";
 
-export const permissionEditorPropTypes = {
-  isLoading: PropTypes.bool,
-  error: PropTypes.string,
-  ...permissionEditorContentPropTypes,
-};
+interface PermissionsEditorProps extends PermissionsEditorContentProps {
+  isLoading?: boolean;
+  error?: string;
+}
 
-export const PermissionsEditor = ({ isLoading, error, ...contentProps }) => {
+export const PermissionsEditor = ({
+  isLoading,
+  error,
+  ...contentProps
+}: PermissionsEditorProps) => {
   return (
     <div className={S.PermissionsEditorRoot}>
       <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
@@ -30,5 +31,3 @@ export const PermissionsEditor = ({ isLoading, error, ...contentProps }) => {
     </div>
   );
 };
-
-PermissionsEditor.propTypes = permissionEditorPropTypes;

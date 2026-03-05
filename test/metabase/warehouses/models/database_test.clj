@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -133,39 +134,41 @@
 
 (deftest health-check-write-connection-test
   (mt/test-drivers (mt/normal-drivers)
-    (with-redefs [quick-task/submit-task! (fn [task] (task))]
-      (binding [driver.settings/*allow-testing-h2-connections* true]
-        (testing "database with write_data_details checks both connections"
-          (mt/with-prometheus-system! [_ system]
-            (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
-              (database/health-check-database! (assoc (mt/db) :write_data_details (:details (mt/db))))
-              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))
-                  "default connection healthy")
-              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "write-data"}))
-                  "write-data connection healthy"))))
-
-        (testing "database without write_data_details only checks default connection"
-          (mt/with-prometheus-system! [_ system]
-            (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
-              (database/health-check-database! (mt/db))
-              (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))
-                  "default connection healthy")
-              (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "write-data"}))
-                  "no write-data connection checked"))))
-
-        (testing "write connection failure does not prevent default check"
-          (let [call-count (atom 0)]
-            (with-redefs [driver/can-connect? (fn [& _args]
-                                                (if (< (swap! call-count inc) 2)
-                                                  true
-                                                  (throw (Exception. "write connection failed"))))]
+    (when config/ee-available?
+      (mt/with-premium-features #{:writable-connection}
+        (with-redefs [quick-task/submit-task! (fn [task] (task))]
+          (binding [driver.settings/*allow-testing-h2-connections* true]
+            (testing "database with write_data_details checks both connections"
               (mt/with-prometheus-system! [_ system]
                 (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
                   (database/health-check-database! (assoc (mt/db) :write_data_details (:details (mt/db))))
                   (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))
                       "default connection healthy")
-                  (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "write-data"}))
-                      "write-data connection failed"))))))))))
+                  (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "write-data"}))
+                      "write-data connection healthy"))))
+
+            (testing "database without write_data_details only checks default connection"
+              (mt/with-prometheus-system! [_ system]
+                (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+                  (database/health-check-database! (mt/db))
+                  (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))
+                      "default connection healthy")
+                  (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "write-data"}))
+                      "no write-data connection checked"))))
+
+            (testing "write connection failure does not prevent default check"
+              (let [call-count (atom 0)]
+                (with-redefs [driver/can-connect? (fn [& _args]
+                                                    (if (< (swap! call-count inc) 2)
+                                                      true
+                                                      (throw (Exception. "write connection failed"))))]
+                  (mt/with-prometheus-system! [_ system]
+                    (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
+                      (database/health-check-database! (assoc (mt/db) :write_data_details (:details (mt/db))))
+                      (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"}))
+                          "default connection healthy")
+                      (is (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "write-data"}))
+                          "write-data connection failed"))))))))))))
 
 (deftest can-read-database-setting-test
   (let [encode-decode (comp json/decode json/encode)
