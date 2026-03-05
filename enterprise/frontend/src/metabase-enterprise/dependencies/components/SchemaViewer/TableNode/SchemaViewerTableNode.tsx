@@ -8,14 +8,7 @@ import {
   useUpdateNodeInternals,
 } from "@xyflow/react";
 import cx from "classnames";
-import {
-  Fragment,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { getAccentColors } from "metabase/lib/colors/groups";
@@ -40,11 +33,7 @@ import { getNodesWithPositions } from "../utils";
 
 import { SchemaViewerFieldRow } from "./SchemaViewerFieldRow";
 import S from "./SchemaViewerTableNode.module.css";
-import {
-  COLLAPSE_THRESHOLD,
-  COLLAPSED_FIELD_COUNT,
-  COMPACT_ZOOM_THRESHOLD,
-} from "../constants";
+import { COMPACT_ZOOM_THRESHOLD } from "../constants";
 
 const ICON_COLORS = getAccentColors({ light: false, dark: false, gray: false });
 
@@ -69,9 +58,6 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
     updateNodeInternals(id);
   }, [isCompactMode, id, updateNodeInternals]);
   const iconColor = ICON_COLORS[Number(data.table_id) % ICON_COLORS.length];
-
-  const canCollapse = data.fields.length > COLLAPSE_THRESHOLD;
-  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const handleDoubleClick = useCallback(() => {
     if (isCompactMode) {
@@ -162,20 +148,11 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
     );
   }
 
-  const visibleFields =
-    canCollapse && isCollapsed
-      ? data.fields.slice(0, COLLAPSED_FIELD_COUNT)
-      : data.fields;
-
   return (
     <Stack
-      className={cx(S.card, {
-        [S.focal]: data.is_focal,
-        [S.expanded]: !isCollapsed,
-      })}
+      className={cx(S.card, { [S.focal]: data.is_focal })}
       gap={0}
       onDoubleClick={handleDoubleClick}
-      style={!isCollapsed ? { zIndex: 10 } : undefined}
     >
       <Group className={S.header} gap={8} px={16} py={20} wrap="nowrap">
         <FixedSizeIcon name="table2" style={{ color: iconColor }} />
@@ -191,28 +168,6 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
         >
           {data.name}
         </Box>
-        {canCollapse && (
-          <Tooltip
-            label={
-              isCollapsed
-                ? t`Show all ${data.fields.length} fields`
-                : t`Show first ${COLLAPSED_FIELD_COUNT} fields`
-            }
-            openDelay={TOOLTIP_OPEN_DELAY_MS}
-          >
-            <ActionIcon
-              variant="subtle"
-              c="text-tertiary"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsCollapsed(!isCollapsed);
-              }}
-            >
-              <Icon name={isCollapsed ? "field" : "dash"} size={14} />
-            </ActionIcon>
-          </Tooltip>
-        )}
         <Tooltip
           label={t`View table details`}
           openDelay={TOOLTIP_OPEN_DELAY_MS}
@@ -232,7 +187,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
         </Tooltip>
       </Group>
       <Box className={S.fields}>
-        {visibleFields.map((field) => (
+        {data.fields.map((field) => (
           <SchemaViewerFieldRow
             key={field.id}
             field={field}
@@ -241,21 +196,6 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
           />
         ))}
       </Box>
-      {canCollapse && isCollapsed && (
-        <Box
-          px={16}
-          py={8}
-          style={{
-            textAlign: "center",
-            color: "var(--mb-color-text-tertiary)",
-            fontSize: "20px",
-            lineHeight: "1",
-            letterSpacing: "2px",
-          }}
-        >
-          •••
-        </Box>
-      )}
     </Stack>
   );
 });

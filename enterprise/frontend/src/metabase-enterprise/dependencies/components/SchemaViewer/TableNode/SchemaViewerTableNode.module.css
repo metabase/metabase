@@ -1,8 +1,3 @@
-:global([class$="schemaViewerNode"]:has(.card.expanded)) {
-  z-index: 1;
-}
-
-
 .card {
   position: relative;
   min-width: 20rem;
@@ -16,10 +11,6 @@
 
 .card.focal {
   border-color: var(--mb-color-brand);
-}
-
-.card.expanded {
-  box-shadow: 0 1px 0.25rem 0 var(--mb-color-brand);
 }
 
 .header {
@@ -45,20 +36,6 @@
 
 .detailsLink:hover {
   opacity: 1;
-}
-
-.collapseButton {
-  padding: 0.5rem 1rem;
-  border-top: 1px solid rgba(7, 23, 34, 0.14);
-  transition: background-color 0.15s ease;
-}
-
-.collapseButton:hover {
-  background-color: var(--mb-color-background-hover);
-}
-
-.focal .collapseButton {
-  border-top-color: var(--mb-color-brand);
 }
 
 /* Compact mode styles - shown when zoomed out */

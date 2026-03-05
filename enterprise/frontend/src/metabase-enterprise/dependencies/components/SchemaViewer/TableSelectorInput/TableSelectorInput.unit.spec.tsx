@@ -83,10 +83,11 @@ describe("TableSelectorInput", () => {
 
     it("should show count when user modified with 1 table", () => {
       const tables = [createTable(1, "ORDERS"), createTable(2, "PRODUCTS")];
+      const nodes = [createNode(1, "ORDERS")];
 
       renderWithProvider(
         <TableSelectorInput
-          nodes={[]}
+          nodes={nodes}
           allTables={tables}
           selectedTableIds={[1 as ConcreteTableId]}
           isUserModified={true}
@@ -99,10 +100,11 @@ describe("TableSelectorInput", () => {
 
     it("should show count when user modified with multiple tables", () => {
       const tables = [createTable(1, "ORDERS"), createTable(2, "PRODUCTS")];
+      const nodes = [createNode(1, "ORDERS"), createNode(2, "PRODUCTS")];
 
       renderWithProvider(
         <TableSelectorInput
-          nodes={[]}
+          nodes={nodes}
           allTables={tables}
           selectedTableIds={[1 as ConcreteTableId, 2 as ConcreteTableId]}
           isUserModified={true}
@@ -113,12 +115,12 @@ describe("TableSelectorInput", () => {
       expect(screen.getByText("2 tables selected")).toBeInTheDocument();
     });
 
-    it("should update count when selection changes", () => {
+    it("should update count when nodes change", () => {
       const tables = [createTable(1, "ORDERS"), createTable(2, "PRODUCTS")];
 
       const { rerender } = renderWithProvider(
         <TableSelectorInput
-          nodes={[]}
+          nodes={[createNode(1, "ORDERS")]}
           allTables={tables}
           selectedTableIds={[1 as ConcreteTableId]}
           isUserModified={true}
@@ -131,7 +133,7 @@ describe("TableSelectorInput", () => {
       rerender(
         <MantineProvider>
           <TableSelectorInput
-            nodes={[]}
+            nodes={[createNode(1, "ORDERS"), createNode(2, "PRODUCTS")]}
             allTables={tables}
             selectedTableIds={[1 as ConcreteTableId, 2 as ConcreteTableId]}
             isUserModified={true}
@@ -140,6 +142,33 @@ describe("TableSelectorInput", () => {
         </MantineProvider>,
       );
 
+      expect(screen.getByText("2 tables selected")).toBeInTheDocument();
+    });
+
+    it("should show visible count, not selectedTableIds count, when some tables don't exist", () => {
+      const tables = [
+        createTable(1, "ORDERS"),
+        createTable(2, "PRODUCTS"),
+        createTable(3, "PEOPLE"),
+      ];
+      // Only 2 nodes exist on canvas, but 3 IDs are "selected" (one deleted)
+      const nodes = [createNode(1, "ORDERS"), createNode(2, "PRODUCTS")];
+
+      renderWithProvider(
+        <TableSelectorInput
+          nodes={nodes}
+          allTables={tables}
+          selectedTableIds={[
+            1 as ConcreteTableId,
+            2 as ConcreteTableId,
+            99 as ConcreteTableId,
+          ]}
+          isUserModified={true}
+          onSelectionChange={jest.fn()}
+        />,
+      );
+
+      // Should show 2 (nodes.length), not 3 (selectedTableIds.length)
       expect(screen.getByText("2 tables selected")).toBeInTheDocument();
     });
   });

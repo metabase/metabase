@@ -1,9 +1,6 @@
 import type { ErdEdge, ErdField, ErdNode, ErdResponse } from "metabase-types/api";
 
 import {
-  COLLAPSE_BUTTON_HEIGHT,
-  COLLAPSE_THRESHOLD,
-  COLLAPSED_FIELD_COUNT,
   COMPACT_NODE_HEIGHT,
   HEADER_HEIGHT,
   NODE_WIDTH,
@@ -114,7 +111,7 @@ describe("SchemaViewer utils", () => {
   });
 
   describe("getNodeHeight", () => {
-    it("should calculate height for nodes with few fields (no collapse)", () => {
+    it("should calculate height based on field count", () => {
       const fields = Array.from({ length: 5 }, (_, i) =>
         createField(i, `field${i}`),
       );
@@ -125,59 +122,24 @@ describe("SchemaViewer utils", () => {
       expect(flowNode.style?.height).toBe(expectedHeight);
     });
 
-    it("should calculate height for nodes at collapse threshold", () => {
-      const fields = Array.from({ length: COLLAPSE_THRESHOLD }, (_, i) =>
-        createField(i, `field${i}`),
-      );
-      const node = createNode(1, "threshold_table", fields);
-      const flowNode = toFlowGraph({ nodes: [node], edges: [] }).nodes[0];
-
-      // At threshold, no collapse
-      const expectedHeight = HEADER_HEIGHT + COLLAPSE_THRESHOLD * ROW_HEIGHT;
-      expect(flowNode.style?.height).toBe(expectedHeight);
-    });
-
-    it("should calculate collapsed height for nodes above threshold", () => {
-      const fields = Array.from({ length: COLLAPSE_THRESHOLD + 5 }, (_, i) =>
+    it("should calculate height for larger tables without collapse", () => {
+      const fields = Array.from({ length: 25 }, (_, i) =>
         createField(i, `field${i}`),
       );
       const node = createNode(1, "large_table", fields);
       const flowNode = toFlowGraph({ nodes: [node], edges: [] }).nodes[0];
 
-      // Above threshold, collapsed by default
-      const expectedHeight =
-        HEADER_HEIGHT +
-        COLLAPSED_FIELD_COUNT * ROW_HEIGHT +
-        COLLAPSE_BUTTON_HEIGHT;
+      // All fields are shown without collapsing
+      const expectedHeight = HEADER_HEIGHT + 25 * ROW_HEIGHT;
       expect(flowNode.style?.height).toBe(expectedHeight);
     });
 
-    it("should include collapse button height only when collapsible", () => {
-      const smallFields = Array.from({ length: 5 }, (_, i) =>
-        createField(i, `field${i}`),
-      );
-      const largeFields = Array.from({ length: 25 }, (_, i) =>
-        createField(i, `field${i}`),
-      );
+    it("should handle empty field list", () => {
+      const node = createNode(1, "empty_table", []);
+      const flowNode = toFlowGraph({ nodes: [node], edges: [] }).nodes[0];
 
-      const smallNode = toFlowGraph({
-        nodes: [createNode(1, "small", smallFields)],
-        edges: [],
-      }).nodes[0];
-      const largeNode = toFlowGraph({
-        nodes: [createNode(2, "large", largeFields)],
-        edges: [],
-      }).nodes[0];
-
-      // Small node should not include collapse button
-      expect(smallNode.style?.height).toBe(HEADER_HEIGHT + 5 * ROW_HEIGHT);
-
-      // Large node should include collapse button
-      expect(largeNode.style?.height).toBe(
-        HEADER_HEIGHT +
-          COLLAPSED_FIELD_COUNT * ROW_HEIGHT +
-          COLLAPSE_BUTTON_HEIGHT,
-      );
+      const expectedHeight = HEADER_HEIGHT;
+      expect(flowNode.style?.height).toBe(expectedHeight);
     });
   });
 
@@ -461,7 +423,7 @@ describe("SchemaViewer utils", () => {
       expect(positionedNodes[0].style?.height).toBe(expectedHeight);
     });
 
-    it("should handle collapsed state for large tables in non-compact mode", () => {
+    it("should show all fields for large tables in non-compact mode", () => {
       const fields = Array.from({ length: 25 }, (_, i) =>
         createField(i, `field${i}`),
       );
@@ -480,10 +442,8 @@ describe("SchemaViewer utils", () => {
       };
 
       const positionedNodes = getNodesWithPositions([node], [], false);
-      const expectedHeight =
-        HEADER_HEIGHT +
-        COLLAPSED_FIELD_COUNT * ROW_HEIGHT +
-        COLLAPSE_BUTTON_HEIGHT;
+      // All fields are shown without collapsing
+      const expectedHeight = HEADER_HEIGHT + 25 * ROW_HEIGHT;
       expect(positionedNodes[0].style?.height).toBe(expectedHeight);
     });
   });

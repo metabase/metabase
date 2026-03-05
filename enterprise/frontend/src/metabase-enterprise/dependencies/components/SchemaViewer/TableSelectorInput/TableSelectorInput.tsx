@@ -224,6 +224,9 @@ export function TableSelectorInput({
     return null;
   }
 
+  // Use nodes.length for display (actual visible tables on canvas)
+  // Use selectedTableIds.length for checkbox state (what user has checked)
+  const visibleCount = nodes.length;
   const selectedCount = selectedTableIds.length;
   const allSelected = selectedCount === allTables.length;
   const someSelected = selectedCount > 0 && selectedCount < allTables.length;

@@ -11,9 +11,6 @@ import type {
 } from "metabase-types/api";
 
 import {
-  COLLAPSE_BUTTON_HEIGHT,
-  COLLAPSE_THRESHOLD,
-  COLLAPSED_FIELD_COUNT,
   COMPACT_NODE_HEIGHT,
   DAGRE_NODE_SEP,
   DAGRE_RANK_SEP,
@@ -54,12 +51,7 @@ export function getNodeId(node: { table_id: TableId }): string {
 }
 
 function getNodeHeight(node: ErdNode): number {
-  const fieldCount = node.fields.length;
-  const canCollapse = fieldCount > COLLAPSE_THRESHOLD;
-  // Nodes start collapsed by default, so use visible field count
-  const visibleFieldCount = canCollapse ? COLLAPSED_FIELD_COUNT : fieldCount;
-  const collapseButtonHeight = canCollapse ? COLLAPSE_BUTTON_HEIGHT : 0;
-  return HEADER_HEIGHT + visibleFieldCount * ROW_HEIGHT + collapseButtonHeight;
+  return HEADER_HEIGHT + node.fields.length * ROW_HEIGHT;
 }
 
 function toFlowNode(
@@ -158,11 +150,7 @@ function getLayoutNodeHeight(
     return COMPACT_NODE_HEIGHT;
   }
   const fieldCount = node.data.fields?.length ?? 0;
-  const canCollapse = fieldCount > COLLAPSE_THRESHOLD;
-  // Nodes start collapsed by default, so use visible field count
-  const visibleFieldCount = canCollapse ? COLLAPSED_FIELD_COUNT : fieldCount;
-  const collapseButtonHeight = canCollapse ? COLLAPSE_BUTTON_HEIGHT : 0;
-  return HEADER_HEIGHT + visibleFieldCount * ROW_HEIGHT + collapseButtonHeight;
+  return HEADER_HEIGHT + fieldCount * ROW_HEIGHT;
 }
 
 export function getNodesWithPositions(

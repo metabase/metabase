@@ -41,7 +41,12 @@ import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
 import { SchemaViewerTableNode } from "./TableNode";
 import { TableSelectorInput } from "./TableSelectorInput";
-import { COMPACT_ZOOM_THRESHOLD, MAX_ZOOM, MIN_ZOOM } from "./constants";
+import {
+  AUTO_COMPACT_NODE_THRESHOLD,
+  COMPACT_ZOOM_THRESHOLD,
+  MAX_ZOOM,
+  MIN_ZOOM,
+} from "./constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { useSchemaViewerShareUrl } from "./useSchemaViewerShareUrl";
 import { toFlowGraph } from "./utils";
@@ -240,11 +245,13 @@ export function SchemaViewer({
   // before the cleanup effect and applies stale savedPrefs to the new context.
   const appliedPrefsRef = useRef(false);
   const compactModeInitializedRef = useRef<string | null>(null);
+  const prevNodeCountRef = useRef<number | null>(null);
   if (prevPrefsKeyRef.current !== prefsKey) {
     prevPrefsKeyRef.current = prefsKey;
     appliedPrefsRef.current = false;
     initializedContextRef.current = null;
     compactModeInitializedRef.current = null;
+    prevNodeCountRef.current = null;
   }
 
   // Fetch all tables in the database/schema for the dropdown
@@ -556,13 +563,49 @@ export function SchemaViewer({
       compactModeInitializedRef.current !== currentContextKey
     ) {
       compactModeInitializedRef.current = currentContextKey;
-      const tablesWithManyFields = data.nodes.filter(
-        (node) => node.fields.length > 20,
-      ).length;
-      const shouldStartCompact = tablesWithManyFields > 1;
+      const shouldStartCompact =
+        data.nodes.length > AUTO_COMPACT_NODE_THRESHOLD;
       setIsCompactMode(shouldStartCompact);
     }
   }, [data, currentContextKey]);
+
+  // Auto-switch to compact mode when node count increases
+  // Only switch detailed -> compact, never compact -> detailed
+  // Don't switch if user explicitly set detailed mode via toggle button
+  useEffect(() => {
+    // Skip if no nodes or first render (initial load handled by above effect)
+    if (nodes.length === 0 || prevNodeCountRef.current === null) {
+      prevNodeCountRef.current = nodes.length;
+      return;
+    }
+
+    // If node count increased and we're in detailed mode and user didn't explicitly set it
+    if (
+      nodes.length > prevNodeCountRef.current &&
+      !isCompactMode &&
+      !explicitFullMode
+    ) {
+      setIsCompactMode(true);
+      // Save preference
+      if (effectiveSelectedTableIds != null) {
+        setSavedPrefs({
+          table_ids: effectiveSelectedTableIds,
+          hops,
+          is_compact_mode: true,
+          explicit_full_mode: explicitFullMode,
+        });
+      }
+    }
+
+    prevNodeCountRef.current = nodes.length;
+  }, [
+    nodes.length,
+    isCompactMode,
+    explicitFullMode,
+    effectiveSelectedTableIds,
+    hops,
+    setSavedPrefs,
+  ]);
 
   // User explicitly cleared all tables - show empty canvas
   const isExplicitlyEmpty =

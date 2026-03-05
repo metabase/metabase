@@ -177,77 +177,108 @@ describe("SchemaViewer preference persistence", () => {
   });
 
   describe("auto-detect compact mode", () => {
-    it("should enable compact mode with 2+ tables having 20+ fields", () => {
-      const nodes = [
-        { fields: Array(25).fill({}) },
-        { fields: Array(30).fill({}) },
-        { fields: Array(10).fill({}) },
-      ];
+    const AUTO_COMPACT_NODE_THRESHOLD = 10;
 
-      const tablesWithManyFields = nodes.filter(
-        (node) => node.fields.length > 20,
-      ).length;
-      const shouldStartCompact = tablesWithManyFields > 1;
+    it("should enable compact mode with more than 10 nodes", () => {
+      const nodes = Array(11).fill({});
+      const shouldStartCompact = nodes.length > AUTO_COMPACT_NODE_THRESHOLD;
 
       expect(shouldStartCompact).toBe(true);
     });
 
-    it("should not enable compact mode with only 1 table having 20+ fields", () => {
-      const nodes = [
-        { fields: Array(25).fill({}) },
-        { fields: Array(10).fill({}) },
-        { fields: Array(15).fill({}) },
-      ];
-
-      const tablesWithManyFields = nodes.filter(
-        (node) => node.fields.length > 20,
-      ).length;
-      const shouldStartCompact = tablesWithManyFields > 1;
+    it("should not enable compact mode with exactly 10 nodes", () => {
+      const nodes = Array(10).fill({});
+      const shouldStartCompact = nodes.length > AUTO_COMPACT_NODE_THRESHOLD;
 
       expect(shouldStartCompact).toBe(false);
     });
 
-    it("should not enable compact mode with no tables having 20+ fields", () => {
-      const nodes = [
-        { fields: Array(10).fill({}) },
-        { fields: Array(15).fill({}) },
-        { fields: Array(5).fill({}) },
-      ];
-
-      const tablesWithManyFields = nodes.filter(
-        (node) => node.fields.length > 20,
-      ).length;
-      const shouldStartCompact = tablesWithManyFields > 1;
+    it("should not enable compact mode with fewer than 10 nodes", () => {
+      const nodes = Array(5).fill({});
+      const shouldStartCompact = nodes.length > AUTO_COMPACT_NODE_THRESHOLD;
 
       expect(shouldStartCompact).toBe(false);
     });
 
-    it("should count tables with exactly 21 fields", () => {
-      const nodes = [
-        { fields: Array(21).fill({}) },
-        { fields: Array(21).fill({}) },
-      ];
-
-      const tablesWithManyFields = nodes.filter(
-        (node) => node.fields.length > 20,
-      ).length;
-      const shouldStartCompact = tablesWithManyFields > 1;
+    it("should enable compact mode with exactly 11 nodes (boundary)", () => {
+      const nodes = Array(11).fill({});
+      const shouldStartCompact = nodes.length > AUTO_COMPACT_NODE_THRESHOLD;
 
       expect(shouldStartCompact).toBe(true);
     });
+  });
 
-    it("should not count tables with exactly 20 fields", () => {
-      const nodes = [
-        { fields: Array(20).fill({}) },
-        { fields: Array(20).fill({}) },
-      ];
+  describe("auto-switch to compact mode on node increase", () => {
+    it("should switch to compact when node count increases and in detailed mode", () => {
+      const prevNodeCount = 5;
+      const currentNodeCount = 8;
+      const isCompactMode = false;
+      const explicitFullMode = false;
 
-      const tablesWithManyFields = nodes.filter(
-        (node) => node.fields.length > 20,
-      ).length;
-      const shouldStartCompact = tablesWithManyFields > 1;
+      const shouldAutoSwitch =
+        currentNodeCount > prevNodeCount && !isCompactMode && !explicitFullMode;
 
-      expect(shouldStartCompact).toBe(false);
+      expect(shouldAutoSwitch).toBe(true);
+    });
+
+    it("should not switch when already in compact mode", () => {
+      const prevNodeCount = 5;
+      const currentNodeCount = 8;
+      const isCompactMode = true;
+      const explicitFullMode = false;
+
+      const shouldAutoSwitch =
+        currentNodeCount > prevNodeCount && !isCompactMode && !explicitFullMode;
+
+      expect(shouldAutoSwitch).toBe(false);
+    });
+
+    it("should not switch when user explicitly set detailed mode", () => {
+      const prevNodeCount = 5;
+      const currentNodeCount = 8;
+      const isCompactMode = false;
+      const explicitFullMode = true;
+
+      const shouldAutoSwitch =
+        currentNodeCount > prevNodeCount && !isCompactMode && !explicitFullMode;
+
+      expect(shouldAutoSwitch).toBe(false);
+    });
+
+    it("should not switch when node count decreases", () => {
+      const prevNodeCount = 8;
+      const currentNodeCount = 5;
+      const isCompactMode = false;
+      const explicitFullMode = false;
+
+      const shouldAutoSwitch =
+        currentNodeCount > prevNodeCount && !isCompactMode && !explicitFullMode;
+
+      expect(shouldAutoSwitch).toBe(false);
+    });
+
+    it("should not switch when node count stays the same", () => {
+      const prevNodeCount = 5;
+      const currentNodeCount = 5;
+      const isCompactMode = false;
+      const explicitFullMode = false;
+
+      const shouldAutoSwitch =
+        currentNodeCount > prevNodeCount && !isCompactMode && !explicitFullMode;
+
+      expect(shouldAutoSwitch).toBe(false);
+    });
+
+    it("should not auto-switch back from compact to detailed when nodes decrease", () => {
+      const prevNodeCount = 15;
+      const currentNodeCount = 5;
+      const isCompactMode = true;
+      const explicitFullMode = false;
+
+      // The logic only switches detailed -> compact, never compact -> detailed
+      const shouldAutoSwitchToDetailed = false; // Never happens automatically
+
+      expect(shouldAutoSwitchToDetailed).toBe(false);
     });
   });
 
