@@ -19,6 +19,7 @@
   [_route-params
    _query-params
    flags :- schema/StatusMap]
+  (api/check-404 (models/release-flags-enabled?))
   (api/check-superuser)
   (models/update-statuses! flags)
   (models/all-flags))
