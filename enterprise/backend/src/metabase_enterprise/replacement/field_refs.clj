@@ -93,19 +93,21 @@
                     (not= dataset-query dataset-query')
                     (assoc :dataset_query dataset-query')
 
-                    ;; result_metadata is set to nil for native queries if not present in changes
-                    (and (not= dataset-query dataset-query') (lib/native-only-query? dataset-query'))
-                    (assoc :result_metadata (:result_metadata card))
-
                     (not= viz viz')
-                    (assoc :visualization_settings viz'))]
+                    (assoc :visualization_settings viz'))
+          ;; result_metadata is set to nil for native queries if not present in changes
+          changes (cond-> changes
+                    (and (seq changes)
+                         (lib/native-only-query? dataset-query'))
+                    (assoc :result_metadata (:result_metadata card)))]
       (when (seq changes)
         (t2/update! :model/Card (:id card) changes)))))
 
 (defn- transform-upgrade-field-refs!
   [transform]
   (let [source (:source transform)]
-    (when (and (= :query (:type source) (replacement.util/valid-query? (:query source))))
+    (when (and (= :query (:type source))
+               (replacement.util/valid-query? (:query source)))
       (let [query (:query source)
             query' (lib-be/upgrade-field-refs-in-query query)]
         (when (not= query query')
