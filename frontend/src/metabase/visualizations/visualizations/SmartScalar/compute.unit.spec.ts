@@ -1,5 +1,6 @@
 import { color, colors } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
+import { isNumber } from "metabase/lib/types";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import {
   CHANGE_ARROW_ICONS,
@@ -2388,9 +2389,13 @@ function getComparisonValueProperties({
     };
   }
 
+  if (!isNumber(comparisonValue) || !isNumber(metricValue)) {
+    throw new TypeError();
+  }
+
   if (changeType === "no change") {
     return {
-      comparisonValue: comparisonValue,
+      comparisonValue,
       comparisonDescStr: `vs. ${dateStr}`,
       display: {
         comparisonValue: CHANGE_TYPE_OPTIONS.SAME.COMPARISON_VALUE_STR,
@@ -2401,7 +2406,7 @@ function getComparisonValueProperties({
   }
 
   return {
-    comparisonValue: comparisonValue,
+    comparisonValue,
     comparisonDescStr: `vs. ${dateStr}`,
     display: {
       percentChange: formatChange(computeChange(comparisonValue, metricValue)),
