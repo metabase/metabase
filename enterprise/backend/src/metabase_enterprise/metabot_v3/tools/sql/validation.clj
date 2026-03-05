@@ -101,12 +101,12 @@
             (nil? mapped-dialect)
             (contains-template-tags? sql))
       {:valid? true
-       :dialect mapped-dialect
+       :dialect dialect
        :transpiled-sql sql}
       (let [{:keys [error-message transpiled-sql status]}
             (sql-tools/transpile-sql sql mapped-dialect mapped-dialect)]
         (merge
-         {:dialect mapped-dialect}
+         {:dialect dialect}
          (case status
            :success {:valid? true
                      :transpiled-sql transpiled-sql}
