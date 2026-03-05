@@ -24,14 +24,12 @@
    Supports hierarchical wildcards: `\"agent:*\"` covers `\"agent:workspaces\"`."
   [token-scopes required-scope]
   (boolean
-   (or (contains? token-scopes "*")
-       (contains? token-scopes required-scope)
-       ;; Check wildcards: "agent:*" matches "agent:workspaces"
-       (let [parts (str/split required-scope #":")]
-         (some (fn [i]
-                 (contains? token-scopes
-                            (str (str/join ":" (take i parts)) ":*")))
-               (range 1 (count parts)))))))
+   (or (contains? token-scopes required-scope)
+       (contains? token-scopes "*")
+       (some (fn [token-scope]
+               (and (str/ends-with? token-scope ":*")
+                    (str/starts-with? required-scope (subs token-scope 0 (dec (count token-scope))))))
+             token-scopes))))
 
 (defn enforce-scope
   "Returns a Ring middleware that checks `:token-scopes` on the request against `required-scope` (a string).
