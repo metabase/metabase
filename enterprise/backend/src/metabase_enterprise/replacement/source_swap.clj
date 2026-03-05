@@ -1,14 +1,18 @@
 (ns metabase-enterprise.replacement.source-swap
   (:require
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.replacement.parameters :as replacement.parameters]
    [metabase-enterprise.replacement.swap.mbql :as swap.mbql]
    [metabase-enterprise.replacement.swap.native :as swap.native]
-   [metabase-enterprise.replacement.swap.viz :as swap.viz]
+
    [metabase-enterprise.replacement.util :as replacement.util]
+   [metabase-enterprise.replacement.viz :as replacement.viz]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
+   [metabase.lib-be.source-swap :as lib-be.source-swap]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
 
 (defn source-ref->source-map
@@ -77,10 +81,7 @@
           ;; todo: we still want to publish the card changed event here, but we should suppress the depdency analysis
           ;; and do it ourselves. This probably should be moved higher up so it's a bit more generic than this
           ;; paritcular spot
-          )
-        (swap.viz/dashboard-card-update-field-refs! entity-id
-                                                    (source-ref->source-map old-source)
-                                                    (source-ref->source-map new-source))))))
+          )))))
 
 (defn- segment-swap!
   [[entity-type entity-id] old-source new-source]
@@ -128,13 +129,42 @@
           (events/publish-event! :event/measure-update
                                  {:object (merge measure changes) :user-id (:id @api/*current-user*)}))))))
 
+(defn- dashcard-swap!
+  [dashcard card-id->query old-source new-source]
+  (let [update-fn           #(lib-be.source-swap/swap-source-in-parameter-target %1 %2
+                                                                                 (source-ref->source-map old-source)
+                                                                                 (source-ref->source-map new-source))
+        parameter-mappings  (:parameter_mappings dashcard)
+        parameter-mappings' (replacement.parameters/update-parameter-mappings parameter-mappings card-id->query update-fn)
+        viz-settings        (:visualization_settings dashcard)
+        viz-settings'       (some-> viz-settings
+                                    vs/db->norm
+                                    (replacement.viz/update-dashcard-viz-settings card-id->query update-fn)
+                                    vs/norm->db)
+        changes (cond-> {}
+                  (not= parameter-mappings parameter-mappings')
+                  (assoc :parameter_mappings parameter-mappings')
+                  (not= viz-settings viz-settings')
+                  (assoc :visualization_settings viz-settings'))]
+    (when (seq changes)
+      (t2/update! :model/DashboardCard (:id dashcard) changes))))
+
 (defn- dashboard-swap!
   [[_entity-type dashboard-id] old-source new-source]
-  (let [old-source-map (source-ref->source-map old-source)
-        new-source-map (source-ref->source-map new-source)]
-    (swap.viz/dashboard-update-field-refs! dashboard-id old-source-map new-source-map)
-    (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard
-                                                                           :id dashboard-id)})))
+  (let [dashcards      (t2/select :model/DashboardCard :dashboard_id dashboard-id)
+        all-card-ids   (into #{}
+                             (mapcat (fn [dashcard]
+                                       (concat
+                                        (replacement.parameters/parameter-mappings->card-ids (:parameter_mappings dashcard))
+                                        (replacement.viz/dashcard-viz-settings->card-ids (-> dashcard :visualization_settings vs/db->norm)))))
+                             dashcards)
+        card-id->query (when (seq all-card-ids)
+                         (t2/select-pk->fn :dataset_query :model/Card :id [:in all-card-ids]))]
+    (doseq [dashcard dashcards]
+      (dashcard-swap! dashcard card-id->query old-source new-source))
+    (events/publish-event! :event/dashboard-update {:object  (t2/select-one :model/Dashboard
+                                                                            :id dashboard-id)
+                                                    :user-id (:id @api/*current-user*)})))
 
 (defn do-swap!
   "Swap old-source to new-source in an entity."
