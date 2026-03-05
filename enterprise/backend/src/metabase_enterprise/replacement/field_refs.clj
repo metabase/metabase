@@ -129,20 +129,20 @@
                 (let [dim' (lib-be/upgrade-field-ref-in-parameter-target query dim)]
                   (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] dim'))
                 mapping)))
-          (upgrade-click-behavior [cb]
-            (or (when-let [card-id (click-behavior->card-id cb)]
+          (upgrade-click-behavior [click-behavior]
+            (or (when-let [card-id (click-behavior->card-id click-behavior)]
                   (when-let [query (some-> (get cards-by-id card-id) :dataset_query)]
                     (when (replacement.util/valid-query? query)
-                      (m/update-existing cb ::vs/parameter-mapping
+                      (m/update-existing click-behavior ::vs/parameter-mapping
                                          (fn [mappings]
                                            (m/map-vals #(upgrade-mapping query %) mappings))))))
-                cb))]
+                click-behavior))
+          (upgrade-column-settings [col-settings]
+            (m/map-vals #(m/update-existing % ::vs/click-behavior upgrade-click-behavior)
+                        col-settings))]
     (-> viz-settings
         (m/update-existing ::vs/click-behavior upgrade-click-behavior)
-        (m/update-existing ::vs/column-settings
-                           (fn [col-settings]
-                             (m/map-vals #(m/update-existing % ::vs/click-behavior upgrade-click-behavior)
-                                         col-settings))))))
+        (m/update-existing ::vs/column-settings upgrade-column-settings))))
 
 (defn- dashcard-upgrade-field-refs!
   [dashcard cards-by-id]
