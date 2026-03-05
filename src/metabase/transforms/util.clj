@@ -31,7 +31,6 @@
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -61,8 +60,7 @@
   (= :query (transform-type transform)))
 
 (defn native-query-transform?
-  "Check if this is a native query transform.
-  Note: The transform should be normalized (via `normalize-transform`) before calling this function."
+  "Check if this is a native query transform."
   [transform]
   (when (query-transform? transform)
     (let [query (-> transform :source :query)]
@@ -287,11 +285,6 @@
       remap/disable-remaps
       lib/disable-default-limit))
 
-(defn- checkpoint-incremental?
-  "Returns true if `source` uses checkpoint-based incremental strategy."
-  [source]
-  (= :checkpoint (some-> source :source-incremental-strategy :type keyword)))
-
 (defn supported-incremental-filter-type?
   "Returns true if the given base-type is supported for incremental filtering.
 
@@ -300,129 +293,103 @@
   (or (isa? base-type :type/Temporal)
       (isa? base-type :type/Number)))
 
-(defn- source->checkpoint-filter-unique-key
-  "Extract the checkpoint filter column from `query` using the unique key specified in `source-incremental-strategy`."
-  [query source-incremental-strategy]
-  (some->> source-incremental-strategy :checkpoint-filter-unique-key (lib/column-with-unique-key query)))
+(defn- build-filtered-subquery
+  "Build a HoneySQL subquery for a table tag with incremental filtering applied.
 
-(defn- source->checkpoint-filter-column
-  "Resolve the checkpoint filter column for an incremental transform.
+   Returns [sql & params]"
+  [table-metadata checkpoint-column source-range-params driver]
+  (let [{:keys [schema name]} table-metadata
+        table-hsql (if schema
+                     [(keyword schema name)]
+                     [(keyword name)])
+        col-name   (:name checkpoint-column)
+        col-hsql   (keyword col-name)
+        {:keys [lo hi]} source-range-params
+        base-query {:select [:*]
+                    :from   table-hsql}
+        ;; Build WHERE clause: > lo AND <= hi
+        where-clause (cond
+                       (and lo hi)
+                       [:and
+                        [:> col-hsql [:lift (:value lo)]]
+                        [:<= col-hsql [:lift (:value hi)]]]
 
-  Supports three strategies:
-  - field-id: MBQL/Python transforms with field ID from source table
-  - unique-key: Legacy MBQL/Python or native query fallback
-  - checkpoint-filter: Native queries with plain column name
+                       lo
+                       [:> col-hsql [:lift (:value lo)]]
 
-  Validates that the resolved column has a supported type for checkpoint filtering (numeric or temporal).
-  Throws an exception if the column type is not supported."
-  [query source-incremental-strategy table metadata-provider]
-  (let [{:keys [checkpoint-filter checkpoint-filter-unique-key checkpoint-filter-field-id]}
-        source-incremental-strategy]
-    (when-some [{column-name :name
-                 :keys [base-type]
-                 :as column}
-                (cond
-                  ;; New approach: field-id for MBQL/Python
-                  checkpoint-filter-field-id
-                  (lib.metadata/field metadata-provider checkpoint-filter-field-id)
+                       hi
+                       [:<= col-hsql [:lift (:value hi)]]
 
-                  ;; Existing approaches: unique-key or column name
-                  checkpoint-filter-unique-key
-                  (source->checkpoint-filter-unique-key query source-incremental-strategy)
+                       :else nil)
+        filtered (cond-> base-query
+                   where-clause (assoc :where where-clause
+                                       :order-by [[col-hsql :asc]]))]
+    (sql.qp/format-honeysql driver filtered)))
 
-                  checkpoint-filter
-                  (when-some [field-id (t2/select-one-pk :model/Field
-                                                         :table_id (:id table)
-                                                         :name checkpoint-filter)]
-                    (lib.metadata/field metadata-provider field-id)))]
-      (when-not (supported-incremental-filter-type? base-type)
-        (throw (ex-info (str "Checkpoint column '" column-name "' has unsupported type " (pr-str base-type) ". "
-                             "Only numeric and temporal columns are supported for incremental filtering.")
-                        {:column-name column-name
-                         :base-type   base-type})))
-      column)))
+(defn- expand-table-tag-to-subquery
+  "Expand the table template tag containing the checkpoint field to a filtered subquery.
 
-(defn next-checkpoint
-  "Build a query to compute the MAX of the checkpoint column from the target table.
+   For queries with multiple table tags, only the tag referencing the table that contains
+   the checkpoint field is expanded. Other table tags are processed normally by the QP.
 
-  Returns a map with `:query` (MBQL query selecting the max) and `:filter-column` (column metadata),
-  or `nil` if the transform doesn't use checkpoint-based incremental strategy or the target table doesn't exist."
-  [{:keys [source target] :as transform}]
-  (let [db-id (transforms.i/target-db-id transform)]
-    (when (checkpoint-incremental? source)
-      (when-let [table (target-table db-id target)]
-        (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
-              table-metadata (lib.metadata/table metadata-provider (:id table))
-              query (lib/query metadata-provider table-metadata)]
-          (when-let [filter-column (source->checkpoint-filter-column query
-                                                                     (:source-incremental-strategy source)
-                                                                     table metadata-provider)]
-            {:query (-> query (lib/aggregate (lib/max filter-column)))
-             :filter-column filter-column}))))))
-
-(defn- next-checkpoint-value
-  "Execute the checkpoint query and normalize the result for database insertion.
-  Returns `nil` if the target table is empty."
-  [{:keys [query filter-column]}]
-  (let [{:keys [base-type]} filter-column
-        v (some-> query qp/process-query :data :rows first first)]
-    ;; QP return values are lossy, we do a bit of parsing to ensure they're of the right
-    ;; shape for reinsertion
-    (cond
-      (nil? v)
-      nil
-
-      (isa? base-type :type/Integer)
-      (bigint v)
-
-      ;; any other number that's not an integer, should be a decimal/float
-      (number? v)
-      (bigdec v)
-
-      :else v)))
+   Finds the table tag matching the checkpoint field's table, builds a filtered subquery,
+   replaces {{tag}} in SQL with the subquery, and prepends subquery params to the param list."
+  [query source-range-params]
+  (let [template-tags       (get-in query [:stages 0 :template-tags])
+        checkpoint-field-id (:checkpoint-filter-field-id source-range-params)
+        _                   (when-not checkpoint-field-id
+                              (throw (ex-info "No checkpoint-filter-field-id in source-range-params"
+                                              {:source-range-params source-range-params})))
+        db-id               (:database query)
+        metadata-provider   (lib-be/application-database-metadata-provider db-id)
+        checkpoint-column   (lib.metadata/field metadata-provider checkpoint-field-id)
+        _                   (when (or (nil? checkpoint-column) (not (:active checkpoint-column)))
+                              (throw (ex-info "Checkpoint field does not exist or is not active" {:checkpoint-field-id checkpoint-field-id})))
+        checkpoint-table-id (:table-id checkpoint-column)
+        ;; Find the table tag that references the checkpoint field's table
+        table-tag           (some (fn [[k v]]
+                                    (when (and (#{:table "table"} (:type v))
+                                               (= checkpoint-table-id (:table-id v)))
+                                      [k v]))
+                                  template-tags)
+        _                   (when-not table-tag
+                              (throw (ex-info "No table template tag found for checkpoint field's table"
+                                              {:checkpoint-table-id checkpoint-table-id
+                                               :template-tags       template-tags})))
+        [tag-name _tag-value] table-tag
+        driver              (some->> db-id (t2/select-one :model/Database) :engine keyword)
+        table-metadata      (lib.metadata/table metadata-provider checkpoint-table-id)
+        [sql & params] (build-filtered-subquery table-metadata checkpoint-column source-range-params driver)
+        native-sql          (get-in query [:stages 0 :native])
+        ;; Replace {{tag-name}} with (subquery-sql)
+        expanded-sql        (str/replace native-sql
+                                         (re-pattern (str "\\{\\{" tag-name "\\}\\}"))
+                                         (str "(" sql ")"))
+        ;; Remove the table tag from template-tags since we've expanded it
+        ;; Other table tags remain and will be processed by QP normally
+        updated-tags        (dissoc template-tags tag-name)]
+    (-> query
+        (assoc-in [:stages 0 :native] expanded-sql)
+        (assoc-in [:stages 0 :template-tags] updated-tags)
+        (assoc ::subquery-params params))))
 
 (defn preprocess-incremental-query
   "Add checkpoint filtering to a query for incremental execution.
 
-  For native queries with a `checkpoint` template tag, adds the checkpoint as a parameter.
-  For MBQL queries, adds a filter clause `WHERE checkpoint_column > checkpoint`.
-  Returns the query unchanged on first run (no checkpoint) or for native queries without the checkpoint tag."
-  [query checkpoint source-range-params]
+   For native queries, expands the table tag containing the checkpoint field to a filtered subquery.
+   For MBQL queries, adds filter clauses `WHERE checkpoint_column > lo AND checkpoint_column <= hi`.
+   Returns the query unchanged when source-range-params is nil."
+  [query source-range-params]
   (if source-range-params
     (if (lib/native? query)
-      (throw (ex-info "native appdb watermarks are not yet implemented" {}))
+      ;; Native: expand table tag to filtered subquery
+      (expand-table-tag-to-subquery query source-range-params)
+      ;; MBQL: add filter clauses
       (cond-> query
         (:lo source-range-params) (lib/filter (lib/>  (:column source-range-params) (:value (:lo source-range-params))))
         (:hi source-range-params) (lib/filter (lib/<= (:column source-range-params) (:value (:hi source-range-params))))))
-    (if-let [checkpoint-value (next-checkpoint-value checkpoint)]
-      (if (lib/native? query)
-        ;; native query with explicit checkpoint filter
-        (if (get-in query [:stages 0 :template-tags "checkpoint"])
-          (update query :parameters conj
-                  {:type   (if (number? checkpoint-value) :number :text)
-                   :target [:variable [:template-tag "checkpoint"]]
-                   :value  checkpoint-value})
-          query)
-        query)
-      query)))
-
-(defn- post-process-incremental-query
-  "Wrap a compiled native query with checkpoint filtering for native queries without explicit checkpoint tags.
-
-  Generates SQL that wraps the original query as a subquery and filters by `checkpoint_filter > (checkpoint_query)`. "
-  [outer-query driver {:keys [source-incremental-strategy] :as source} {checkpoint-query :query :as checkpoint}]
-  (let [{:keys [checkpoint-filter]} source-incremental-strategy]
-    (if (and (lib/native? (:query source))
-             (not (get-in (:query source) [:stages 0 :template-tags "checkpoint"]))
-             (next-checkpoint-value checkpoint))
-      (let [wrap-query (fn [query]
-                         (let [honeysql-query {:select [:*]
-                                               :from [[[:raw (str "(" query ")")] :subquery]]
-                                               :where [:> (h2x/identifier :field checkpoint-filter)
-                                                       [:raw (str "(" (:query (qp.compile/compile checkpoint-query)) ")")]]}]
-                           (first (sql.qp/format-honeysql driver honeysql-query))))]
-        (update outer-query :query wrap-query))
-      outer-query)))
+    ;; No range params - return unchanged
+    query))
 
 (mu/defn validate-transform-query :- [:maybe [:map [:error :string]]]
   "Verifies that a query transform's query can actually be run as is.  Returns nil on success and an error map on failure."
@@ -435,11 +402,7 @@
       (catch Exception e
         (qp.catch-exceptions/exception-response e)))))
 
-(defn- serialize-checkpoint-value [type value]
-  (case type
-    "DateTime" value
-    nil nil
-    (str value)))
+(defn- parse-datetime [^String s] (u.date/parse s))
 
 (defn save-watermark!
   "Commits the incremental transforms :hi watermark value to the appdb."
@@ -447,30 +410,71 @@
   (t2/update! :model/Transform
               transform-id
               {:last_checkpoint_type  (:type (:hi source-range-params))
-               :last_checkpoint_value (serialize-checkpoint-value (:type (:hi source-range-params)) (:value (:hi source-range-params)))}))
+               :last_checkpoint_value (some-> source-range-params :hi :value str)}))
 
 (defn- deserialize-checkpoint-value [last_checkpoint_type last_checkpoint_value]
   (case last_checkpoint_type
-    "DateTime" last_checkpoint_value
-    "Integer"  (bigint last_checkpoint_value)
+    "DateTime" (parse-datetime last_checkpoint_value)
+    "Integer"  (biginteger last_checkpoint_value)
     "Float"    (bigdec last_checkpoint_value)
     "Decimal"  (bigdec last_checkpoint_value)))
 
 (defn- interpret-database-checkpoint-value [base-type qp-value]
   (case base-type
-    :type/Integer  {:type "Integer",  :value  (bigint qp-value)}
+    :type/Integer  {:type "Integer",  :value  (biginteger qp-value)}
     :type/Float    {:type "Float",    :value  (bigdec qp-value)}
     :type/Decimal  {:type "Decimal",  :value  (bigdec qp-value)}
-    :type/DateTime {:type "DateTime", :value qp-value}))
+    :type/DateTime {:type "DateTime", :value  (parse-datetime qp-value)}))
+
+(defn- get-max-from-native-query
+  "Compute MAX(checkpoint-col) from a native query by wrapping it in SELECT MAX().
+   This preserves the user's query logic (LIMITs, filters, etc.).
+   Reuses expand-table-tag-to-subquery with only lo filter (no hi) to avoid computing max of future data."
+  [source-query checkpoint-column checkpoint-field-id lo]
+  (let [db-id (:database source-query)
+        driver (some->> db-id (t2/select-one :model/Database) :engine keyword)
+
+        ;; Build source-range-params with only lo (no hi) - we're computing the new hi!
+        range-params {:lo                         (when lo {:value lo})
+                      :hi                         nil  ; No hi filter for watermark computation
+                      :column                     checkpoint-column
+                      :checkpoint-filter-field-id checkpoint-field-id}
+
+        ;; Expand table tags using the same logic as execution
+        ;; This replaces {{source_table}} with (SELECT * FROM table WHERE col > lo)
+        expanded-query (expand-table-tag-to-subquery source-query range-params)
+
+        ;; Get the expanded SQL and params
+        expanded-sql (get-in expanded-query [:stages 0 :native])
+        subquery-params (::subquery-params expanded-query)
+
+        ;; Wrap the entire user query in SELECT MAX()
+        col-name (:name checkpoint-column)
+        col-kw (keyword col-name)
+        max-query {:select [[[:max col-kw] :max]]
+                   :from [[[:raw (str "(" expanded-sql ")")] :subquery]]}
+        [max-sql & max-params] (sql.qp/format-honeysql driver max-query)
+
+        ;; Combine params: subquery params + max params
+        all-params (concat subquery-params (or max-params []))
+
+        ;; Execute the query
+        native-max-query {:database db-id
+                          :type :native
+                          :native {:query max-sql
+                                   :params all-params}}
+        result (qp/process-query native-max-query)]
+    (some-> result :data :rows first first)))
 
 (defn get-source-range-params
   "Returns information on the incremental range filters that ought to be applied to a source query.
 
   Returns a map:
-   :column (the lib column value of the incremental filter column)
+   :column                     (the lib column value of the incremental filter column)
+   :checkpoint-filter-field-id (the field ID of the checkpoint column)
    Range predicate terms (maps :type, :value), can be nil (in which case the filter clause should be omitted):
-   :lo     values in the source table must be > this :value.
-   :hi     values in the source table must be <= this :value."
+   :lo                         values in the source table must be > this :value.
+   :hi                         values in the source table must be <= this :value."
   [{:keys [source] :as transform}]
   (let [{source-query :query, :keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
@@ -479,44 +483,61 @@
             db-id             (transforms.i/target-db-id transform)
             metadata-provider (lib-be/application-database-metadata-provider db-id)
             column            (lib.metadata/field metadata-provider checkpoint-filter-field-id)
-            table-id          (:table-id column)
-            limit             (-> transform :source :limit)
-            table-metadata    (lib.metadata/table metadata-provider table-id)
-            base-query        (or source-query (lib/query metadata-provider table-metadata))
+            _                   (when (or (nil? column) (not (:active column)))
+                                  (throw (ex-info "Checkpoint field does not exist or is not active"
+                                                  {:checkpoint-filter-field-id checkpoint-filter-field-id})))
             lo                (when last_checkpoint_type (deserialize-checkpoint-value last_checkpoint_type last_checkpoint_value))
-            filtered-query    (if lo (lib/filter base-query (lib/> column lo)) base-query)
-            ;; if limited need to order by the column otherwise you will get the MAX for the first N rows in arbitrary order instead of top-k
-            limited-query     (if limit
-                                (-> (lib/order-by filtered-query column)
-                                    (lib/limit limit))
-                                filtered-query)
-            query             (lib/aggregate (lib/append-stage limited-query) (lib/max column))
-            query-result      (qp/process-query query)
-            {:keys [results_metadata rows]} (:data query-result)
-            [{:keys [base_type]}] (:columns results_metadata)
-            max-value         (ffirst rows)
-            hi                max-value]
-        {:column column
-         :lo     (when last_checkpoint_type {:type last_checkpoint_type, :value lo})
-         :hi     (cond (some? hi) (interpret-database-checkpoint-value base_type hi)
-                       last_checkpoint_type {:type last_checkpoint_type, :value lo})}))))
+
+            _ (when-not (supported-incremental-filter-type? (:base-type column))
+                (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type " (pr-str (:base-type column)) ". "
+                                     "Only numeric and temporal columns are supported for incremental filtering.")
+                                {:column column})))
+            [max-value base_type]
+            (if (and source-query (lib/native? source-query))
+              ;; native
+              [(get-max-from-native-query source-query column checkpoint-filter-field-id lo)
+               (:base-type column)]
+              ;; mbql/python
+              (let [table-id          (:table-id column)
+                    limit             (-> transform :source :limit)
+                    table-metadata    (lib.metadata/table metadata-provider table-id)
+                    base-query        (or source-query (lib/query metadata-provider table-metadata))
+                    filtered-query    (if lo (lib/filter base-query (lib/> column lo)) base-query)
+                    ;; if limited need to order by the column otherwise you will get the MAX for the first N rows in arbitrary order instead of top-k
+                    limited-query     (if limit
+                                        (-> (lib/order-by filtered-query column)
+                                            (lib/limit limit))
+                                        filtered-query)
+                    query             (lib/aggregate (lib/append-stage limited-query) (lib/max column))
+                    query-result      (qp/process-query query)
+                    {:keys [results_metadata rows]} (:data query-result)
+                    [{:keys [base_type]}] (:columns results_metadata)]
+                [(ffirst rows) base_type]))
+            hi max-value]
+        {:column                     column
+         :checkpoint-filter-field-id checkpoint-filter-field-id
+         :lo                         (when last_checkpoint_type {:type last_checkpoint_type, :value lo})
+         :hi                         (cond (some? hi) (interpret-database-checkpoint-value base_type hi)
+                                           last_checkpoint_type {:type last_checkpoint_type, :value lo})}))))
 
 (defn compile-source
   "Compile the source query of a transform to SQL, applying incremental filtering if required."
-  [{:keys [source] :as transform} source-range-params]
+  [{:keys [source]} source-range-params]
   (let [{query-type :type} source]
     (assert (= :query query-type))
-    (let [checkpoint          (next-checkpoint transform)
-          query               (:query source)
-          driver              (some->> query :database (t2/select-one :model/Database) :engine keyword)]
+    (let [query  (:query source)
+          driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
       (binding [driver/*compile-with-inline-parameters*
                 (or (= :clickhouse driver)
                     driver/*compile-with-inline-parameters*)]
-        (-> query
-            (preprocess-incremental-query checkpoint source-range-params)
-            massage-sql-query
-            qp.compile/compile
-            (post-process-incremental-query driver source checkpoint))))))
+        (let [preprocessed (-> query
+                               (preprocess-incremental-query source-range-params)
+                               massage-sql-query)
+              compiled     (qp.compile/compile preprocessed)]
+          ;; Prepend subquery params before regular template tag params
+          (if-let [subquery-params (::subquery-params preprocessed)]
+            (update compiled :params #(into subquery-params %))
+            compiled))))))
 
 (defn required-database-features
   "Returns the database features necessary to execute `transform`."
