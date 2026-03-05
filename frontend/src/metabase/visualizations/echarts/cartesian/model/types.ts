@@ -7,6 +7,7 @@ import type {
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
+import type { Extent } from "metabase/visualizations/types";
 import type {
   Card,
   CardId,
@@ -92,7 +93,6 @@ export type Datum = Record<DataKey, RowValue> & {
   [INDEX_KEY]?: number;
 };
 export type ChartDataset<D extends Datum = Datum> = D[];
-export type Extent = [number, number];
 export type SeriesExtents = Record<DataKey, Extent>;
 export type RawValueFormatter = (value: RowValue) => string;
 export type LabelFormatter = RawValueFormatter;

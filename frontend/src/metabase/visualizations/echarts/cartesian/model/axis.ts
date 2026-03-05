@@ -25,7 +25,6 @@ import type {
   DataKey,
   DateRange,
   DimensionModel,
-  Extent,
   NumericAxisScaleTransforms,
   NumericXAxisModel,
   SeriesExtents,
@@ -49,6 +48,7 @@ import { getLineAreaBarComparisonSettings } from "metabase/visualizations/lib/se
 import type {
   ColumnSettings,
   ComputedVisualizationSettings,
+  Extent,
   VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type {
