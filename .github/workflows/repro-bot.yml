@@ -1,9 +1,6 @@
 name: "Repro Bot"
 
 on:
-  push:
-    branches:
-      - repro-bot
   issues:
     types:
       - labeled
@@ -73,7 +70,7 @@ jobs:
       - name: Run repro-bot with Claude Code
         uses: anthropics/claude-code-action@v1
         env:
-          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.MB_PREMIUM_EMBEDDING_TOKEN }}
+          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           GITHUB_ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
