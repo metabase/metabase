@@ -34,16 +34,16 @@
 
             (testing "completed run appears in rolling-basic-runs"
               (let [stats (premium-features/transform-stats)]
-                (is (= (inc rolling-basic-before) (:transform-rolling-basic-runs stats)))
-                (is (= 0                         (:transform-rolling-advanced-runs stats)))
-                (is (= basic-before               (:transform-basic-runs stats)))))
+                (is (= (inc rolling-basic-before)    (:transform-rolling-basic-runs stats)))
+                (is (= rolling-advanced-before        (:transform-rolling-advanced-runs stats)))
+                (is (= basic-before                   (:transform-basic-runs stats)))))
 
             (testing "backdated run appears in basic-runs"
               (t2/update! :model/TransformRun :id run-id {:end_time yesterday-utc})
               (let [stats (premium-features/transform-stats)]
                 (is (= rolling-basic-before (:transform-rolling-basic-runs stats)))
                 (is (= (inc basic-before)   (:transform-basic-runs stats)))
-                (is (= 0                   (:transform-advanced-runs stats)))))))
+                (is (= advanced-before      (:transform-advanced-runs stats)))))))
 
         (testing "with advanced add-on, all runs go to advanced-runs"
           (mt/with-premium-features #{:transforms :transforms-python}
