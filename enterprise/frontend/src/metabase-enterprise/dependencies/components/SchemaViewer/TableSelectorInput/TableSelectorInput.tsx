@@ -220,14 +220,20 @@ export function TableSelectorInput({
     setShowSelectAllWarning(false);
   }, []);
 
+  const allTableIdSet = useMemo(
+    () => new Set(allTables.map((t) => t.id as ConcreteTableId)),
+    [allTables],
+  );
+
   if (allTables.length === 0) {
     return null;
   }
 
-  // Use nodes.length for display (actual visible tables on canvas)
-  // Use selectedTableIds.length for checkbox state (what user has checked)
-  const visibleCount = nodes.length;
-  const selectedCount = selectedTableIds.length;
+  // Filter selectedTableIds to only count tables that actually exist
+  // (some IDs from URL/shared links may reference deleted tables)
+  const selectedCount = selectedTableIds.filter((id) =>
+    allTableIdSet.has(id),
+  ).length;
   const allSelected = selectedCount === allTables.length;
   const someSelected = selectedCount > 0 && selectedCount < allTables.length;
 
