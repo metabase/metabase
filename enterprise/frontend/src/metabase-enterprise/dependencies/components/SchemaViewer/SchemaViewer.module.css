@@ -9,6 +9,11 @@
   z-index: 5;
 }
 
+.appSwitcher {
+  margin-right: 2.5rem;
+  background-color: var(--mb-color-background-secondary);
+}
+
 @keyframes schema-viewer-edge-animation {
   from {
     stroke-dashoffset: 20;

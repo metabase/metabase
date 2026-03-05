@@ -15,6 +15,7 @@ import { t } from "ttag";
 import { skipToken, useListDatabaseSchemaTablesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
   ActionIcon,
   Group,
@@ -647,26 +648,29 @@ export function SchemaViewer({
             onToggle={handleToggleCompactMode}
           />
         </Controls>
-        {shareUrl != null && (
-          <Panel position="top-right">
-            <Tooltip
-              label={
-                <Text fw={700} c="inherit">
-                  {clipboard.copied ? t`Copied!` : t`Share this schema`}
-                </Text>
-              }
-              opened={clipboard.copied ? true : undefined}
-            >
-              <ActionIcon
-                variant="default"
-                onClick={handleShare}
-                aria-label={t`Copy link`}
+        <Panel position="top-right">
+          <Group gap="sm">
+            {shareUrl != null && (
+              <Tooltip
+                label={
+                  <Text fw={700} c="inherit">
+                    {clipboard.copied ? t`Copied!` : t`Share this schema`}
+                  </Text>
+                }
+                opened={clipboard.copied ? true : undefined}
               >
-                <Icon name="link" />
-              </ActionIcon>
-            </Tooltip>
-          </Panel>
-        )}
+                <ActionIcon
+                  variant="default"
+                  onClick={handleShare}
+                  aria-label={t`Copy link`}
+                >
+                  <Icon name="link" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            <AppSwitcher className={S.appSwitcher} />
+          </Group>
+        </Panel>
         {nodes.length > 0 && <SchemaViewerNodeLayout />}
         <Panel className={S.entryInput} position="top-left">
           <Group gap="sm">
