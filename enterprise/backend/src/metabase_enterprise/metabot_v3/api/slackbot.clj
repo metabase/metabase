@@ -400,7 +400,8 @@
         (when (and channel_id message_ts)
           (let [client  {:token (channel.settings/unobfuscated-slack-app-token)}
                 message (slackbot.client/fetch-message client channel_id message_ts)]
-            (replace-feedback-buttons-with-thanks client channel_id message_ts (:blocks message))))
+            (when message
+              (replace-feedback-buttons-with-thanks client channel_id message_ts (:blocks message)))))
         (catch Exception e
           (log/error e "[slackbot] Error replacing feedback buttons"))))))
 
@@ -409,29 +410,30 @@
   "Handle interactive payloads from Slack (button clicks, modal submissions)."
   [_route-params _query-params _body request]
   (assert-valid-slack-req request)
-  (let [payload (-> (get-in request [:params :payload])
-                    (json/decode true))]
-    (case (:type payload)
-      "block_actions"
-      (let [actions    (:actions payload)
-            slack-user (get-in payload [:user :id])
-            trigger-id (:trigger_id payload)
-            channel-id (get-in payload [:channel :id])
-            message-ts (get-in payload [:message :ts])]
-        (doseq [action actions]
-          (when (= (:action_id action) "metabot_feedback")
-            (handle-feedback-action {:action        action
-                                     :trigger-id    trigger-id
-                                     :slack-user-id slack-user
-                                     :channel-id    channel-id
-                                     :message-ts    message-ts}))))
+  (when (premium-features/enable-metabot-v3?)
+    (let [payload (-> (get-in request [:params :payload])
+                      (json/decode true))]
+      (case (:type payload)
+        "block_actions"
+        (let [actions    (:actions payload)
+              slack-user (get-in payload [:user :id])
+              trigger-id (:trigger_id payload)
+              channel-id (get-in payload [:channel :id])
+              message-ts (get-in payload [:message :ts])]
+          (doseq [action actions]
+            (when (= (:action_id action) "metabot_feedback")
+              (handle-feedback-action {:action        action
+                                       :trigger-id    trigger-id
+                                       :slack-user-id slack-user
+                                       :channel-id    channel-id
+                                       :message-ts    message-ts}))))
 
-      "view_submission"
-      (when (= (get-in payload [:view :callback_id]) "metabot_feedback_modal")
-        (handle-feedback-modal-submission payload))
+        "view_submission"
+        (when (= (get-in payload [:view :callback_id]) "metabot_feedback_modal")
+          (handle-feedback-modal-submission payload))
 
-      nil)
-    {:status 200 :body ""}))
+        nil)))
+  {:status 200 :body ""}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3/slack` routes."
