@@ -587,7 +587,6 @@
            query-processor
            settings
            sql-tools
-           startup
            system
            util
            warehouse-schema
@@ -1404,7 +1403,6 @@
            models
            mq
            premium-features
-           startup
            util
            enterprise/advanced-permissions}}
 
@@ -1891,7 +1889,6 @@
            models
            mq
            query-processor
-           startup
            util
            warehouse-schema}}
 
