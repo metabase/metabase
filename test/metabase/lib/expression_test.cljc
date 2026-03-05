@@ -502,20 +502,20 @@
 
 (deftest ^:parallel diagnose-expression-test-2
   (testing "type errors are reported"
-    (are [mode expr] (=? {:message  "Types are incompatible."
-                          :friendly true}
-                         (lib.expression/diagnose-expression
-                          (lib.tu/venues-query) 0 mode
-                          (lib.convert/->pMBQL expr)
-                          #?(:clj nil :cljs js/undefined)))
-      :expression  [:/ [:field 1 {:base-type :type/Address}] 100]
-        ;; To make this test case work, the aggregation schema has to be
-        ;; tighter and not allow anything. That's a bigger piece of work,
-        ;; because it makes expressions and aggregations mutually recursive
-        ;; or requires a large amount of duplication.
+    (are [mode expr msg] (=? {:message  msg
+                              :friendly true}
+                             (lib.expression/diagnose-expression
+                              (lib.tu/venues-query) 0 mode
+                              (lib.convert/->pMBQL expr)
+                              #?(:clj nil :cljs js/undefined)))
+      :expression  [:/ [:field 1 {:base-type :type/Address}] 100] "Types are incompatible: / expects a number."
+      ;; To make this test case work, the aggregation schema has to be
+      ;; tighter and not allow anything. That's a bigger piece of work,
+      ;; because it makes expressions and aggregations mutually recursive
+      ;; or requires a large amount of duplication.
       #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
-      :filter      [:sum [:field 1 {:base-type :type/Integer}]]
-      :filter      [:value "not a boolean" {:base_type :type/Text}])))
+      :filter      [:sum [:field 1 {:base-type :type/Integer}]] "Types are incompatible."
+      :filter      [:value "not a boolean" {:base_type :type/Text}] "Types are incompatible.")))
 
 (deftest ^:parallel diagnose-expression-test-3
   (testing "correct expression are accepted silently"
