@@ -124,7 +124,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:10.4.0
+        image: circleci/mariadb:10.4.6
         ports:
           - "3306:3306"
     steps:
