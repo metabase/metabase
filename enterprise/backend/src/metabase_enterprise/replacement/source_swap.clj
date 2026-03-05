@@ -159,7 +159,9 @@
                                         (replacement.viz/dashcard-viz-settings->card-ids (-> dashcard :visualization_settings vs/db->norm)))))
                              dashcards)
         card-id->query (when (seq all-card-ids)
-                         (t2/select-pk->fn :dataset_query :model/Card :id [:in all-card-ids]))]
+                         (into {}
+                               (filter (fn [[_id query]] (replacement.util/valid-query? query)))
+                               (t2/select-pk->fn :dataset_query :model/Card :id [:in all-card-ids])))]
     (doseq [dashcard dashcards]
       (dashcard-swap! dashcard card-id->query old-source new-source))
     (events/publish-event! :event/dashboard-update {:object  (t2/select-one :model/Dashboard
