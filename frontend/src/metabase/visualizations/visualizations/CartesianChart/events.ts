@@ -239,7 +239,11 @@ const computeDiffWithPreviousPeriod = (
   const currentDate = getXAxisDataForComparison(datum);
   const previousValue = previousDatum?.[seriesModel.dataKey];
 
-  if (previousValue == null || currentValue == null || currentDate == null) {
+  if (
+    typeof previousValue !== "number" ||
+    typeof currentValue !== "number" ||
+    currentDate == null
+  ) {
     return null;
   }
 
