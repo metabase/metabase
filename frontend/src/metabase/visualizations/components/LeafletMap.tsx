@@ -16,6 +16,17 @@ import type { Series } from "metabase-types/api";
 import type { Point } from "metabase-types/api/dataset";
 import { isObject } from "metabase-types/guards/common";
 
+/**
+ * Checks if a hostname belongs to openstreetmap.org or one of its subdomains.
+ * Uses exact matching to prevent bypass via malicious domains like
+ * "openstreetmap.org.evil.com" or "fake-openstreetmap.org".
+ */
+export function isOpenStreetMapHost(hostname: string): boolean {
+  return (
+    hostname === "openstreetmap.org" || hostname.endsWith(".openstreetmap.org")
+  );
+}
+
 type MapSettings = {
   "map.latitude_column"?: string;
   "map.longitude_column"?: string;
@@ -101,10 +112,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
       try {
         mapTileHostname = new URL(mapTileUrl).host;
       } catch {}
-      const isOpenStreetMap =
-        mapTileHostname === "openstreetmap.org" ||
-        mapTileHostname.endsWith(".openstreetmap.org");
-      const mapTileAttribution = isOpenStreetMap
+      const mapTileAttribution = isOpenStreetMapHost(mapTileHostname)
         ? 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
         : undefined;
 
