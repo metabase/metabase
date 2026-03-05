@@ -7,6 +7,8 @@
   Because functions here don't know where the JDBC spec came from, you can use them to perform the usual application
   DB setup steps on arbitrary databases -- useful for functionality like the `load-from-h2` or `dump-to-h2` commands."
   (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -121,12 +123,16 @@
         [result]    (vals first-row)]
     (= result 1)))
 
+(defn- load-supported-db-versions
+  []
+  (if-let [resource (io/resource "metabase/app_db/supported-db-versions.edn")]
+    (edn/read-string (slurp resource))
+    (throw (ex-info "Resource not found: metabase/app_db/supported-db-versions.edn"
+                    {:path "metabase/app_db/supported-db-versions.edn"}))))
+
 (def supported-db-versions
   "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"
-  {:h2       {:major 2 :minor 1 :patch 214}
-   :postgres {:major 12 :minor 0 :patch 0}
-   :mysql    {:major 8 :minor 0 :patch 17}
-   :mariadb  {:major 10 :minor 2 :patch 2}})
+  (load-supported-db-versions))
 
 (defn- parse-db-version
   [product-version]
