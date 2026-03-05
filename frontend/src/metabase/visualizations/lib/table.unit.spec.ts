@@ -131,7 +131,7 @@ describe("metabase/visualization/lib/table", () => {
             row: [0],
             rowIndex: 0,
           },
-          data: null,
+          data: undefined,
         });
       });
 
@@ -157,7 +157,7 @@ describe("metabase/visualization/lib/table", () => {
             rowIndex: 0,
           },
           settings: {},
-          data: null,
+          data: undefined,
         });
       });
 
@@ -189,7 +189,7 @@ describe("metabase/visualization/lib/table", () => {
             rowIndex: 0,
           },
           settings: {},
-          data: null,
+          data: undefined,
         });
       });
     });
