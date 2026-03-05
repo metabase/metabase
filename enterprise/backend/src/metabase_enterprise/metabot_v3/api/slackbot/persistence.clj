@@ -32,3 +32,14 @@
                  (when-let [parts (seq (extract-history-messages msg))]
                    [slack_msg_id parts])))
          (into {}))))
+
+(defn response-owner-user-id
+  "Find the Metabase user ID who triggered the assistant response with this Slack message timestamp.
+   Returns nil when the message is not tracked."
+  [slack-msg-id]
+  (when-let [conversation-id (t2/select-one-fn :conversation_id
+                                               :model/MetabotMessage
+                                               :slack_msg_id slack-msg-id
+                                               :role "assistant"
+                                               {:order-by [[:id :desc]]})]
+    (t2/select-one-fn :user_id :model/MetabotConversation :id conversation-id)))

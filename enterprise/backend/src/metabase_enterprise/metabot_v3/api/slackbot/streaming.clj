@@ -15,6 +15,7 @@
    [metabase-enterprise.metabot-v3.persistence :as metabot-v3.persistence]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
+   [metabase.channel.slack :as channel.slack]
    [metabase.permissions.core :as perms]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -111,21 +112,24 @@
       full-link             (str "📊 <" full-link "|Open in Metabase>")
       :else                 nil)))
 
-(defn- deliver-viz!
-  "Post the visualization as a new message with a title and link.
-   Both tables and images follow the same pattern: post content with title."
-  [client channel thread-ts {:keys [type content]} filename title link]
+(declare feedback-blocks)
+
+(defn- viz-output->blocks
+  "Build blocks for a visualization to be included in the finalized stop-stream message."
+  [client {:keys [type content]} filename title link]
   (let [text (or (format-viz-title title link) "Query results")]
     (case type
       :table (let [title-block {:type "section"
                                 :text {:type "mrkdwn" :text text}}
                    blocks      (into [title-block] content)]
-               (slackbot.client/post-message client {:channel   channel
-                                                     :thread_ts thread-ts
-                                                     :blocks    blocks
-                                                     :text      text}))
-      :image (slackbot.client/post-image client content (str filename ".png") channel thread-ts
-                                         :initial-comment text))))
+               blocks)
+      :image (let [{:keys [id]} (channel.slack/upload-file-with-token! (:token client) content (str filename ".png"))
+                   blocks          [{:type "section"
+                                     :text {:type "mrkdwn" :text text}}
+                                    {:type       "image"
+                                     :slack_file {:id id}
+                                     :alt_text   (or title filename "Visualization")}]]
+               blocks))))
 
 (def ^:private tool-friendly-names
   "Map of tool names to user-friendly gerund descriptions for slackbot profile tools."
@@ -261,24 +265,27 @@
     (catch Exception post-e
       (log/error post-e "Failed to post visualization error"))))
 
-(defn- send-visualizations!
-  "Wait for all in-flight visualization futures and post results to Slack.
-   Called after stop-stream so results always appear after streamed text.
+(defn- collect-viz-blocks
+  "Wait for all in-flight visualization futures and return blocks to include in stop-stream.
+   Returns {:blocks [...], :errors [Exception ...]}.
    For saved cards (static_viz), uses the actual card name as the title."
-  [client channel thread-ts prefetched-viz]
-  (doseq [[idx {:keys [^Future future filename title link]}] (sort-by first prefetched-viz)]
-    (try
-      (let [output   (.get future)
-            title    (or (:card-name output) title)
-            filename (or (some-> title (u/slugify {:max-length 80})) filename)]
-        (deliver-viz! client channel thread-ts output filename title link))
-      (catch ExecutionException e
-        (let [cause (or (.getCause e) e)]
-          (log/errorf cause "Visualization future %d failed" idx)
-          (post-viz-error! client channel thread-ts cause)))
-      (catch Exception e
-        (log/errorf e "Visualization future %d failed" idx)
-        (post-viz-error! client channel thread-ts e)))))
+  [client prefetched-viz]
+  (reduce
+   (fn [{:keys [blocks errors] :as acc} [idx {:keys [^Future future filename title link]}]]
+     (try
+       (let [output         (.get future)
+             resolved-title (or (:card-name output) title)
+             filename       (or (some-> resolved-title (u/slugify {:max-length 80})) filename)]
+         (assoc acc :blocks (into blocks (viz-output->blocks client output filename resolved-title link))))
+       (catch ExecutionException e
+         (let [cause (or (.getCause e) e)]
+           (log/errorf cause "Visualization future %d failed" idx)
+           {:blocks blocks :errors (conj errors cause)}))
+       (catch Exception e
+         (log/errorf e "Visualization future %d failed" idx)
+         {:blocks blocks :errors (conj errors e)})))
+   {:blocks [] :errors []}
+   (sort-by first prefetched-viz)))
 
 (defn- ensure-stream-started!
   "Ensure the Slack stream has been started, attempting once if not already tried."
@@ -451,6 +458,12 @@
                 :negative_button {:text  {:type "plain_text" :text "Bad"}
                                   :value (json/encode {:conversation_id conversation-id :positive false})}}]}])
 
+(defn- remove-block-type
+  "Return blocks with the given block type removed, or nil if empty."
+  [blocks block-type]
+  (when blocks
+    (not-empty (vec (remove #(= block-type (:type %)) blocks)))))
+
 (defn send-response
   "Send a metabot response using Slack's streaming API for progressive updates.
    Shows tool execution status and streams text as it arrives."
@@ -478,8 +491,42 @@
                                            :user-id   (:user event)})]
      (start-with-thinking!)
      (let [conversation-id (slack-thread->conversation-id (:team_id auth-info) channel thread-ts)]
-       (letfn [(send-fallback [text]
-                 (slackbot.client/post-message client (merge message-ctx {:text text})))]
+       (letfn [(send-fallback
+                 ([text]
+                  (send-fallback text nil))
+                 ([text blocks]
+                  (slackbot.client/post-message client
+                                                (cond-> (merge message-ctx {:text text})
+                                                  blocks (assoc :blocks blocks)))))
+               (send-fallback-with-retries
+                 [text blocks]
+                 (let [candidate-blocks [blocks
+                                         (remove-block-type blocks "context_actions")
+                                         nil]]
+                   (loop [remaining candidate-blocks
+                          seen      #{}
+                          attempt   1
+                          last-res  nil]
+                     (if-let [candidate (first remaining)]
+                       (if (contains? seen candidate)
+                         (recur (rest remaining) seen attempt last-res)
+                         (let [res (send-fallback text candidate)]
+                           (if (:ok res)
+                             (do
+                               (log/debugf "[slackbot] fallback post-message attempt=%d succeeded (block_count=%d block_types=%s)"
+                                           attempt
+                                           (count (or candidate []))
+                                           (pr-str (when candidate (mapv :type candidate))))
+                               res)
+                             (do
+                               (log/warnf "[slackbot] fallback post-message attempt=%d failed: %s (block_count=%d block_types=%s response_messages=%s)"
+                                          attempt
+                                          (:error res)
+                                          (count (or candidate []))
+                                          (pr-str (when candidate (mapv :type candidate)))
+                                          (pr-str (get-in res [:response_metadata :messages])))
+                               (recur (rest remaining) (conj seen candidate) (inc attempt) res)))))
+                       last-res))))]
          (try
            ;; Start stream early so assistant persistence has :slack_msg_id.
            (request-flush! true)
@@ -499,9 +546,20 @@
              (request-flush! true)
              (await slack-writer)
              (if-let [{:keys [stream_ts channel]} @stream-state]
-               (do
-                 (slackbot.client/stop-stream client channel stream_ts (feedback-blocks conversation-id))
-                 (send-visualizations! client channel thread-ts @prefetched-viz))
+               ;; Prototype: hold stop-stream until all viz futures finish so text + viz + controls
+               ;; finalize as a single message.
+               (let [{:keys [blocks errors]} (collect-viz-blocks client @prefetched-viz)]
+                 (let [final-blocks (into blocks (feedback-blocks conversation-id))
+                       stop-result  (slackbot.client/stop-stream client channel stream_ts final-blocks)]
+                   (log/debugf "[slackbot] stop-stream finalize attempt channel=%s thread_ts=%s stream_ts=%s block_count=%d block_types=%s"
+                               channel thread-ts stream_ts (count final-blocks) (pr-str (mapv :type final-blocks)))
+                   (when-not (:ok stop-result)
+                     (log/warnf "[slackbot] stop-stream fallback to post-message: %s" (:error stop-result))
+                     (let [fallback-result (send-fallback-with-retries "I generated a response, but Slack failed to finalize streaming. Sharing results below." final-blocks)]
+                       (when-not (:ok fallback-result)
+                         (log/errorf "[slackbot] fallback post-message failed after stop-stream error: %s" (:error fallback-result))))))
+                 (doseq [e errors]
+                   (post-viz-error! client channel thread-ts e)))
                (send-fallback "I wasn't able to generate a response. Please try again.")))
            (catch Exception e
              (run! #(.cancel ^Future (:future %) true) (vals @prefetched-viz))
@@ -511,7 +569,12 @@
                (try
                  (slackbot.client/append-markdown-text client channel stream_ts
                                                        "\nSomething went wrong. Please try again.")
-                 (slackbot.client/stop-stream client channel stream_ts)
+                 (let [stop-result (slackbot.client/stop-stream client channel stream_ts)]
+                   (when-not (:ok stop-result)
+                     (log/warnf "[slackbot] stop-stream during error cleanup failed: %s" (:error stop-result))
+                     (let [fallback-result (send-fallback-with-retries "Something went wrong. Please try again." nil)]
+                       (when-not (:ok fallback-result)
+                         (log/errorf "[slackbot] cleanup fallback post-message failed: %s" (:error fallback-result))))))
                  (catch Exception stop-e
                    (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
                (send-fallback "Something went wrong. Please try again.")))))))))

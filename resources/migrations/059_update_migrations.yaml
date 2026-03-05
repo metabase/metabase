@@ -3620,6 +3620,19 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v59.2026-03-06T15:20:00
+      author: noahmoss
+      comment: Index on metabot_message.slack_msg_id
+      changes:
+        - createIndex:
+            indexName: idx_metabot_message_slack_msg_id
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: slack_msg_id
+      rollback: # will be dropped with table
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -44,12 +44,14 @@
                                  "files:read"
                                  "files:write"
                                  "mpim:read"
+                                 "reactions:read"
                                  "users:read"]}}
    :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
                                     :bot_events ["app_home_opened"
                                                  "app_mention"
                                                  "message.channels"
                                                  "message.im"
+                                                 "reaction_added"
                                                  "assistant_thread_started"
                                                  "assistant_thread_context_changed"]}
               :interactivity {:is_enabled true

@@ -113,8 +113,8 @@
 
 (defn post-image
   "Upload a PNG image and send in a message.
-   Optional initial-comment adds context text alongside the image."
-  [client image-bytes filename channel thread-ts & {:keys [initial-comment]}]
+   Optional blocks are attached to the resulting message."
+  [client image-bytes filename channel thread-ts & {:keys [blocks]}]
   (let [{:keys [ok upload_url file_id] :as res} (get-upload-url client {:filename filename
                                                                         :length (alength ^bytes image-bytes)})]
     (when ok
@@ -126,7 +126,7 @@
                                                      :title filename}]
                                        :channel_id channel
                                        :thread_ts  thread-ts}
-                                initial-comment (assoc :initial_comment initial-comment))))
+                                blocks (assoc :blocks blocks))))
       res)))
 
 (defn fetch-message
@@ -170,19 +170,24 @@
 (defn start-stream
   "Start a Slack message stream. Returns the stream timestamp on success (acts as an identifier)."
   [client {:keys [channel thread_ts team_id user_id]}]
-  (let [body (:body (slack-post-json client "/chat.startStream"
-                                     {:channel           channel
-                                      :thread_ts         thread_ts
-                                      :recipient_team_id team_id
-                                      :recipient_user_id user_id}
-                                     :connection-timeout streaming-connection-timeout-ms
-                                     :socket-timeout     streaming-socket-timeout-ms))]
+  (let [payload {:channel           channel
+                 :thread_ts         thread_ts
+                 :recipient_team_id team_id
+                 :recipient_user_id user_id}
+        body    (:body (slack-post-json client "/chat.startStream"
+                                        payload
+                                        :connection-timeout streaming-connection-timeout-ms
+                                        :socket-timeout     streaming-socket-timeout-ms))]
     (log/debugf "[slackbot] start-stream response: %s" (pr-str body))
     (if (:ok body)
       {:stream_ts (:ts body)
        :channel   (:channel body)
        :thread_ts thread_ts}
-      (log/warnf "[slackbot] start-stream failed: %s" (:error body)))))
+      (do
+        (log/warnf "[slackbot] start-stream failed: %s (channel=%s thread_ts=%s recipient_team_id=%s recipient_user_id=%s)"
+                   (:error body) channel thread_ts team_id user_id)
+        (log/debugf "[slackbot] start-stream failure body=%s payload=%s"
+                    (pr-str body) (pr-str payload))))))
 
 (defn append-stream
   "Append chunks to an active stream. Each chunk is a map with :type and type-specific keys,
@@ -208,12 +213,17 @@
   ([client channel stream-ts]
    (stop-stream client channel stream-ts nil))
   ([client channel stream-ts blocks]
-   (let [body (:body (slack-post-json client "/chat.stopStream"
-                                      (cond-> {:channel channel
-                                               :ts      stream-ts}
-                                        blocks (assoc :blocks blocks))
+   (let [payload (cond-> {:channel channel
+                          :ts      stream-ts}
+                   blocks (assoc :blocks blocks))
+         block-types (when blocks (mapv :type blocks))
+         body (:body (slack-post-json client "/chat.stopStream"
+                                      payload
                                       :connection-timeout streaming-connection-timeout-ms
                                       :socket-timeout     streaming-socket-timeout-ms))]
      (when-not (:ok body)
-       (log/warnf "[slackbot] stop-stream failed: %s" (:error body)))
+       (log/warnf "[slackbot] stop-stream failed: %s (channel=%s stream_ts=%s block_count=%d block_types=%s)"
+                  (:error body) channel stream-ts (count (or blocks [])) (pr-str block-types))
+       (log/debugf "[slackbot] stop-stream failure body=%s payload=%s"
+                   (pr-str body) (pr-str (update payload :blocks #(when % "[redacted-blocks]")))))
      body)))
