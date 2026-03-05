@@ -15,7 +15,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn- upgrade-card-viz-settings :- :map
+(mu/defn- card-upgrade-viz-settings :- :map
   [query         :- ::lib.schema/query
    viz-settings  :- :map]
   (letfn [(ref->maybe-name [ref]
@@ -57,7 +57,7 @@
     (let [query         (:dataset_query card)
           query'        (lib-be/upgrade-field-refs-in-query query)
           viz-settings  (:visualization_settings card)
-          viz-settings' (some->> viz-settings vs/db->norm (upgrade-card-viz-settings query') vs/norm->db)
+          viz-settings' (some->> viz-settings vs/db->norm (card-upgrade-viz-settings query') vs/norm->db)
           changes       (cond-> {}
                           (not= query query') (assoc :dataset_query query')
                           (not= viz-settings viz-settings') (assoc :visualization_settings viz-settings'))
@@ -121,36 +121,28 @@
            (click-behavior->card-id (::vs/click-behavior col-viz)))
          (::vs/column-settings viz-settings))))
 
-(defn- click-behavior-upgrade-field-refs
-  "Upgrade dimension field refs in a click behavior's parameter mapping.
-   Uses the target card's query (from cards-by-id) when the click behavior links to a question."
-  [click-behavior cards-by-id]
-  (or (when-let [card-id (click-behavior->card-id click-behavior)]
-        (when-let [query (some-> (get cards-by-id card-id) :dataset_query)]
-          (when (replacement.util/valid-query? query)
-            (m/update-existing click-behavior ::vs/parameter-mapping
-                               (fn [mappings]
-                                 (m/map-vals (fn [mapping]
-                                               (let [target (::vs/param-mapping-target mapping)]
-                                                 (if-let [target (::vs/param-dimension target)]
-                                                   (let [target' (lib-be/upgrade-field-ref-in-parameter-target query target)]
-                                                     (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] target'))
-                                                   mapping)))
-                                             mappings))))))
-      click-behavior))
-
 (defn- dashcard-upgrade-viz-settings
   [viz-settings cards-by-id]
-  (-> viz-settings
-      ;; global click behavior (non-table cards)
-      (m/update-existing ::vs/click-behavior click-behavior-upgrade-field-refs cards-by-id)
-      ;; per-column click behaviors
-      (m/update-existing ::vs/column-settings
-                         (fn [col-settings]
-                           (m/map-vals (fn [col-viz]
-                                         (m/update-existing col-viz ::vs/click-behavior
-                                                            click-behavior-upgrade-field-refs cards-by-id))
-                                       col-settings)))))
+  (letfn [(upgrade-mapping [query mapping]
+            (let [target (::vs/param-mapping-target mapping)]
+              (if-let [dim (::vs/param-dimension target)]
+                (let [dim' (lib-be/upgrade-field-ref-in-parameter-target query dim)]
+                  (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] dim'))
+                mapping)))
+          (upgrade-click-behavior [cb]
+            (or (when-let [card-id (click-behavior->card-id cb)]
+                  (when-let [query (some-> (get cards-by-id card-id) :dataset_query)]
+                    (when (replacement.util/valid-query? query)
+                      (m/update-existing cb ::vs/parameter-mapping
+                                         (fn [mappings]
+                                           (m/map-vals #(upgrade-mapping query %) mappings))))))
+                cb))]
+    (-> viz-settings
+        (m/update-existing ::vs/click-behavior upgrade-click-behavior)
+        (m/update-existing ::vs/column-settings
+                           (fn [col-settings]
+                             (m/map-vals #(m/update-existing % ::vs/click-behavior upgrade-click-behavior)
+                                         col-settings))))))
 
 (defn- dashcard-upgrade-field-refs!
   [dashcard cards-by-id]
