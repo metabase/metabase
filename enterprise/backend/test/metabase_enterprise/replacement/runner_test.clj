@@ -3,13 +3,11 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
-   [metabase-enterprise.replacement.field-refs :as field-refs]
    [metabase-enterprise.replacement.runner :as runner]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -19,8 +17,8 @@
 (deftest bulk-load-metadata-for-entities-test
   (testing "bulk-load-metadata-for-entities! fetches all entity types in bulk"
     (mt/with-temp [:model/Card {card-id-1 :id} {:name          "Card 1"
-                                                 :database_id   (mt/id)
-                                                 :dataset_query (mt/mbql-query venues)}
+                                                :database_id   (mt/id)
+                                                :dataset_query (mt/mbql-query venues)}
                    :model/Card {card-id-2 :id} {:name          "Card 2"
                                                 :database_id   (mt/id)
                                                 :dataset_query (mt/mbql-query checkins)}
@@ -73,11 +71,11 @@
                    :model/Card {dep-1-card-id :id} {:name          "Dependent Card 1"
                                                     :database_id   (mt/id)
                                                     :dataset_query (mt/mbql-query venues
-                                                                                  {:source-table (str "card__" source-card-id)})}
+                                                                     {:source-table (str "card__" source-card-id)})}
                    :model/Card {dep-2-card-id :id} {:name          "Dependent Card 2"
                                                     :database_id   (mt/id)
                                                     :dataset_query (mt/mbql-query venues
-                                                                                  {:source-table (str "card__" dep-1-card-id)})}]
+                                                                     {:source-table (str "card__" dep-1-card-id)})}]
       (lib-be/with-metadata-provider-cache
         (let [entities          [[:card source-card-id]
                                  [:card dep-1-card-id]
@@ -110,7 +108,7 @@
                    :model/Segment {segment-id :id} {:table_id   (mt/id :venues)
                                                     :name       "Test Segment"
                                                     :definition (mt/mbql-query venues
-                                                                               {:filter [:> $price 3]})}
+                                                                  {:filter [:> $price 3]})}
                    :model/Measure {measure-id :id} {:table_id   (mt/id :venues)
                                                     :name       "Test Measure"
                                                     :definition (let [mp (mt/metadata-provider)

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.replacement.runner
   (:require
-   [metabase-enterprise.replacement.field-refs :as field-refs]
+   [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source :as source]
    [metabase-enterprise.replacement.source-swap :as source-swap]
@@ -113,7 +113,7 @@
           (doseq [entity batch
                   :let   [object (get loaded entity)]]
             ;; upgrade! knows how to handle all entity types including dashboards
-            (field-refs/upgrade! entity object)
+            (replacement.field-refs/upgrade-field-refs! entity object)
             (replacement.protocols/advance! progress)))))
 
     (when *compilation-tracker*

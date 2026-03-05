@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
-   [metabase-enterprise.replacement.field-refs :as field-refs]
+   [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.runner :as runner]
    [metabase-enterprise.replacement.source-swap :as source-swap]
    [metabase-enterprise.replacement.test-util :as test-util]
@@ -122,7 +122,7 @@
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [old-source (card/create-card! (test-util/card-with-query "Old source" :products) user)
                   child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              (field-refs/upgrade! [:card (:id child)] child)
+              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
               (source-swap/do-swap! [:card (:id child)]
                                     [:card (:id old-source)]
                                     [:table (mt/id :products)])
@@ -140,7 +140,7 @@
                   native-card (card/create-card! (native-card-with-query "Native target" :products) user)
                   _           (test-util/wait-for-result-metadata (:id native-card))
                   child       (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              (field-refs/upgrade! [:card (:id child)] child)
+              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
               (source-swap/do-swap! [:card (:id child)]
                                     [:card (:id old-source)]
                                     [:card (:id native-card)])
@@ -159,7 +159,7 @@
                   _           (test-util/wait-for-result-metadata (:id native-card))
                   new-source  (card/create-card! (test-util/card-with-query "New source" :products) user)
                   child       (card/create-card! (card-sourced-from "Child card" native-card) user)]
-              (field-refs/upgrade! [:card (:id child)] child)
+              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
               (source-swap/do-swap! [:card (:id child)]
                                     [:card (:id native-card)]
                                     [:card (:id new-source)])
@@ -177,7 +177,7 @@
                   new-native (card/create-card! (native-card-with-query "New native" :products) user)
                   _          (test-util/wait-for-result-metadata (:id new-native))
                   child      (card/create-card! (card-sourced-from "Child card" old-native) user)]
-              (field-refs/upgrade! [:card (:id child)] child)
+              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
               (source-swap/do-swap! [:card (:id child)]
                                     [:card (:id old-native)]
                                     [:card (:id new-native)])
@@ -193,7 +193,7 @@
             (let [native-card (card/create-card! (native-card-with-query "Native source" :products) user)
                   _           (test-util/wait-for-result-metadata (:id native-card))
                   child       (card/create-card! (card-sourced-from "Child card" native-card) user)]
-              (field-refs/upgrade! [:card (:id child)] child)
+              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
               (source-swap/do-swap! [:card (:id child)]
                                     [:card (:id native-card)]
                                     [:table (mt/id :products)])
@@ -212,7 +212,7 @@
             (test-util/with-restored-card-queries
               (let [new-source (card/create-card! (test-util/card-with-query "New source" :products) user)
                     child      (card/create-card! (test-util/card-with-query "Child card" :products) user)]
-                (field-refs/upgrade! [:card (:id child)] child)
+                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:table (mt/id :products)]
                                       [:card (:id new-source)])
@@ -228,7 +228,7 @@
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (test-util/with-restored-card-queries
               (let [child (card/create-card! (test-util/card-with-query "Child card" :products) user)]
-                (field-refs/upgrade! [:card (:id child)] child)
+                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:table (mt/id :products)]
                                       [:table (mt/id :products)])
@@ -245,7 +245,7 @@
               (let [native-card (card/create-card! (native-card-with-query "Native target" :products) user)
                     _           (test-util/wait-for-result-metadata (:id native-card))
                     child       (card/create-card! (test-util/card-with-query "Child card" :products) user)]
-                (field-refs/upgrade! [:card (:id child)] child)
+                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:table (mt/id :products)]
                                       [:card (:id native-card)])
@@ -283,7 +283,7 @@
                   new-source (card/create-card! (test-util/card-with-query "New source" :products) user)]
               (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_c2c" old-source)]
                 (let [transform-obj (t2/select-one :model/Transform transform-id)]
-                  (field-refs/upgrade! [:transform transform-id] transform-obj))
+                  (replacement.field-refs/upgrade-field-refs! [:transform transform-id] transform-obj))
                 (source-swap/do-swap! [:transform transform-id]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -300,7 +300,7 @@
               (let [new-source (card/create-card! (test-util/card-with-query "New source" :products) user)]
                 (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-table "test_transform_t2c" :products)]
                   (let [transform-obj (t2/select-one :model/Transform transform-id)]
-                    (field-refs/upgrade! [:transform transform-id] transform-obj))
+                    (replacement.field-refs/upgrade-field-refs! [:transform transform-id] transform-obj))
                   (source-swap/do-swap! [:transform transform-id]
                                         [:table (mt/id :products)]
                                         [:card (:id new-source)])
@@ -317,7 +317,7 @@
             (let [old-source (card/create-card! (test-util/card-with-query "Old source" :products) user)]
               (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_c2t" old-source)]
                 (let [transform-obj (t2/select-one :model/Transform transform-id)]
-                  (field-refs/upgrade! [:transform transform-id] transform-obj))
+                  (replacement.field-refs/upgrade-field-refs! [:transform transform-id] transform-obj))
                 (source-swap/do-swap! [:transform transform-id]
                                       [:card (:id old-source)]
                                       [:table (mt/id :products)])
@@ -335,11 +335,11 @@
                   new-source (card/create-card! (test-util/card-with-query "New source" :products) user)
                   child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
               (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_both" old-source)]
-                (field-refs/upgrade! [:card (:id child)] child)
+                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
-                (field-refs/upgrade! [:transform transform-id])
+                (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
                 (source-swap/do-swap! [:transform transform-id]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -389,7 +389,7 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings vis-settings}]
-                (field-refs/upgrade! [:card (:id child)] child)
+                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -410,7 +410,7 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings {:some_setting "value"}}]
-                (field-refs/upgrade! [:card (:id child)] child)
+                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -433,7 +433,7 @@
                              {:dashboard_id dashboard-id
                               :card_id (:id child)
                               :visualization_settings {:column_settings {name-key {:column_title "Custom"}}}}]
-                (field-refs/upgrade! [:card (:id child)] child)
+                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
                 (source-swap/do-swap! [:card (:id child)]
                                       [:card (:id old-source)]
                                       [:card (:id new-source)])
@@ -461,8 +461,8 @@
                   _           (test-util/wait-for-result-metadata (:id native-card))
                   mbql-card   (card/create-card! (card-sourced-from "MBQL Card" native-card) user)]
               ;; Swap the model at the root
-              (field-refs/upgrade! [:card (:id native-card)] native-card)
-              (field-refs/upgrade! [:card (:id mbql-card)] mbql-card)
+              (replacement.field-refs/upgrade-field-refs! [:card (:id native-card)] native-card)
+              (replacement.field-refs/upgrade-field-refs! [:card (:id mbql-card)] mbql-card)
               (source-swap/do-swap! [:card (:id native-card)]
                                     [:card (:id old-model)]
                                     [:card (:id new-model)])
@@ -514,7 +514,7 @@
             (testing message
               (mt/with-temp [:model/Card card {:dataset_query query}]
                 ;; first, upgrade the card
-                (field-refs/upgrade! [:card (:id card)] card)
+                (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
                 ;; sanity check that card points to original table
                 (is (= (mt/id :orders_a) (-> card :table_id)))
                 (is (= (mt/id :orders_a) (-> card :dataset_query :stages (get 0) :source-table)))
@@ -562,7 +562,7 @@
             (mt/with-temp [:model/Card card {:dataset_query query}
                            :model/Card new-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_c)))}]
               ;; first, upgrade the card
-              (field-refs/upgrade! [:card (:id card)] card)
+              (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
               ;; sanity check that card points to original table
               (is (= (mt/id :orders_a) (-> card :table_id)))
               (is (= (mt/id :orders_a) (-> card :dataset_query :stages (get 0) :source-table)))
@@ -610,7 +610,7 @@
                 (mt/with-temp [:model/Card card {:dataset_query query}
                                :model/Card new-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_c)))}]
                   ;; first, upgrade the card
-                  (field-refs/upgrade! [:card (:id card)] card)
+                  (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
                   ;; sanity check that card points to original table
                   (is (= (mt/id :orders_a) (-> card :table_id)))
                   (is (= (:id old-source) (-> card :dataset_query :stages (get 0) :source-card)))
@@ -657,7 +657,7 @@
               (testing message
                 (mt/with-temp [:model/Card card {:dataset_query query}]
                   ;; first, upgrade the card
-                  (field-refs/upgrade! [:card (:id card)] card)
+                  (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
                   ;; sanity check that card points to original card
                   (is (= (mt/id :orders_a) (-> card :table_id)))
                   (is (= (:id old-source) (-> card :dataset_query :stages (get 0) :source-card)))
@@ -715,7 +715,7 @@
               (testing message
                 (mt/with-temp [:model/Card card {:dataset_query query}]
                   ;; first, upgrade the card
-                  (field-refs/upgrade! [:card (:id card)] card)
+                  (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
                   (try
                     (let [results (qp/process-query (:dataset_query card))]
                       (source-swap/do-swap! [:card (:id card)]
@@ -745,7 +745,7 @@
                            [:segment (:id segment)]))
             (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_b)]))
                                 [:segment (:id segment)])))
-            (field-refs/upgrade! [:segment (:id segment)] segment)
+            (replacement.field-refs/upgrade-field-refs! [:segment (:id segment)] segment)
             (source-swap/do-swap! [:segment (:id segment)]
                                   [:table (mt/id :orders_a)]
                                   [:table (mt/id :orders_b)])
@@ -773,7 +773,7 @@
                            [:measure (:id measure)]))
             (is (not (contains? (set (usages/transitive-usages [:table (mt/id :orders_b)]))
                                 [:measure (:id measure)])))
-            (field-refs/upgrade! [:measure (:id measure)] measure)
+            (replacement.field-refs/upgrade-field-refs! [:measure (:id measure)] measure)
             (source-swap/do-swap! [:measure (:id measure)]
                                   [:table (mt/id :orders_a)]
                                   [:table (mt/id :orders_b)])
@@ -794,7 +794,7 @@
         (mt/with-temp [:model/User user {:email "run-swap-dash-params@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [card (card/create-card! (test-util/card-with-query "Orders A card" :orders_a) user)]
-              (field-refs/upgrade! [:card (:id card)] card)
+              (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
                              :model/DashboardCard {dashcard-id :id}
                              {:dashboard_id       dashboard-id

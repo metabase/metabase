@@ -1,7 +1,7 @@
 (ns metabase-enterprise.replacement.field-refs-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.replacement.field-refs :as field-refs]
+   [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase.lib.core :as lib]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
@@ -59,7 +59,7 @@
       (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
                                        :visualization_settings {:column_settings
                                                                 {(ref-key (mt/id :products :title)) {:column_title "Product Name"}}}}]
-        (field-refs/upgrade! [:card (:id card)] card)
+        (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               cs          (:column_settings updated-viz)]
           (is (contains? cs (name-key "TITLE"))
@@ -75,7 +75,7 @@
       (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
                                        :visualization_settings {:column_settings
                                                                 {(name-key "TITLE") {:column_title "Custom Title"}}}}]
-        (field-refs/upgrade! [:card (:id card)] card)
+        (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               cs          (:column_settings updated-viz)]
           (is (= {:column_title "Custom Title"} (get cs (name-key "TITLE")))
@@ -86,7 +86,7 @@
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
                                        :visualization_settings {:some_setting "hello"}}]
-        (field-refs/upgrade! [:card (:id card)] card)
+        (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))]
           (is (= "hello" (:some_setting updated-viz))
               "other settings should be preserved"))))))
@@ -105,7 +105,7 @@
                         (fn [query stage field-ref]
                           (when-let [col (original-resolve query stage field-ref)]
                             (assoc col :lib/deduplicated-name "TITLE_2")))]
-            (field-refs/upgrade! [:card (:id card)] card)
+            (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
             (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
                   cs          (:column_settings updated-viz)]
               (is (contains? cs (name-key "TITLE_2"))
@@ -124,7 +124,7 @@
                                                                  {:column_title "Product Name"}
                                                                  (ref-key (mt/id :orders :total))
                                                                  {:column_title "Order Total"}}}}]
-        (field-refs/upgrade! [:card (:id card)] card)
+        (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               cs          (:column_settings updated-viz)]
           (is (= {:column_title "Product Name"} (get cs (name-key "TITLE")))
@@ -143,7 +143,7 @@
                                                                  {:column_title "Base Title"}
                                                                  (ref-key (mt/id :products :title) {"join-alias" "Products - Category"})
                                                                  {:column_title "Joined Title"}}}}]
-        (field-refs/upgrade! [:card (:id card)] card)
+        (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               cs          (:column_settings updated-viz)]
           ;; Both refs resolve to "TITLE" — the settings get merged, with join-alias ref winning
@@ -163,7 +163,7 @@
                                                                 {:rows    [[:field (mt/id :products :category) nil]]
                                                                  :columns [[:field (mt/id :products :title) {"join-alias" "Products - Category"}]]
                                                                  :values  ["count"]}}}]
-        (field-refs/upgrade! [:card (:id card)] card)
+        (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               split       (:pivot_table.column_split updated-viz)]
           (is (= ["CATEGORY"] (:rows split))
@@ -183,7 +183,7 @@
                                                                 {:rows    [[:field (mt/id :products :category) nil]]
                                                                  :columns [[:field (mt/id :products :created_at) {:temporal-unit :quarter}]]
                                                                  :values  ["count"]}}}]
-        (field-refs/upgrade! [:card (:id card)] card)
+        (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               split       (:pivot_table.column_split updated-viz)]
           (is (= ["CATEGORY"] (:rows split))
@@ -201,7 +201,7 @@
                                                                 {:rows  [[:field (mt/id :products :category) nil]
                                                                          [:field (mt/id :products :title) nil]]
                                                                  :value ["2"]}}}]
-        (field-refs/upgrade! [:card (:id card)] card)
+        (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               collapsed   (:pivot_table.collapsed_rows updated-viz)]
           (is (= ["CATEGORY" "TITLE"] (:rows collapsed))
@@ -219,7 +219,7 @@
                                                                 [{:columns [[:field (mt/id :products :price) nil]]
                                                                   :type    "range"
                                                                   :color   "#509EE3"}]}}]
-        (field-refs/upgrade! [:card (:id card)] card)
+        (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               fmt         (first (:table.column_formatting updated-viz))]
           (is (= ["PRICE"] (:columns fmt))
@@ -238,7 +238,7 @@
                                                                  {:columns ["CREATED_AT"]
                                                                   :type    "date"
                                                                   :color   "#EF8C8C"}]}}]
-        (field-refs/upgrade! [:card (:id card)] card)
+        (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               fmts        (:table.column_formatting updated-viz)]
           (is (= ["PRICE" "RATING"] (:columns (first fmts)))
@@ -274,7 +274,7 @@
                                      :dimension ["dimension"
                                                  ["field" (mt/id :products :category)
                                                   {"base-type" "type/Text"}]]}}}}}}}}]
-        (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+        (replacement.field-refs/dashboard-upgrade-field-refs! dashboard-id)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
               cs          (:column_settings updated-viz)]
           (is (some? cs) "column_settings should exist after upgrade"))))))
@@ -304,7 +304,7 @@
                               :source {:type "column" :id "TITLE"}
                               :target {:type      "dimension"
                                        :dimension original-dimension}}}}}}}}]
-          (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+          (replacement.field-refs/dashboard-upgrade-field-refs! dashboard-id)
           (let [updated-viz  (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
                 param-map    (get-in updated-viz [:column_settings (name-key "TITLE")
                                                   :click_behavior :parameterMapping])
@@ -340,7 +340,7 @@
                             :parameterMapping
                             {"key1"
                              {:target {:dimension malformed-dimension}}}}}}}}]
-          (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+          (replacement.field-refs/dashboard-upgrade-field-refs! dashboard-id)
           (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
                 target-dim  (get-in updated-viz [:column_settings (name-key "TITLE")
                                                  :click_behavior :parameterMapping
@@ -358,7 +358,7 @@
                      {:dashboard_id dashboard-id
                       :card_id (:id card)
                       :visualization_settings {:some_setting "value"}}]
-        (field-refs/dashboard-upgrade-field-refs! dashboard-id)
+        (replacement.field-refs/dashboard-upgrade-field-refs! dashboard-id)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)]
           (is (= "value" (:some_setting updated-viz))
               "unrelated settings should be preserved"))))))
@@ -367,7 +367,7 @@
 
 (deftest upgrade-dispatch-table-test
   (testing "upgrade! with :table entity is a no-op"
-    (is (nil? (field-refs/upgrade! [:table 123])))))
+    (is (nil? (replacement.field-refs/upgrade-field-refs! [:table 123])))))
 
 (deftest upgrade-dispatch-dashboard-via-upgrade!-test
   (testing "upgrade! with [:dashboard id] dispatches to dashboard-upgrade-field-refs!"
@@ -383,7 +383,7 @@
                         :parameter_mappings [{:parameter_id "test-param"
                                               :card_id     (:id card)
                                               :target      [:dimension [:field field-id {:base-type :type/Text}]]}]}]
-          (field-refs/upgrade! [:dashboard dashboard-id])
+          (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
           (let [updated-pm (:parameter_mappings (t2/select-one :model/DashboardCard :id dashcard-id))]
             (is (some? updated-pm)
                 "should process dashboard parameter_mappings via dispatch")))))))
@@ -392,17 +392,17 @@
 
 (deftest upgrade-dispatch-transform-no-loaded-object-test
   (testing "upgrade! with [:transform id] and nil loaded-object is a no-op"
-    (is (nil? (field-refs/upgrade! [:transform 42]))
+    (is (nil? (replacement.field-refs/upgrade-field-refs! [:transform 42]))
         "should return nil without loaded-object")))
 
 (deftest upgrade-dispatch-segment-no-loaded-object-test
   (testing "upgrade! with [:segment id] and nil loaded-object is a no-op"
-    (is (nil? (field-refs/upgrade! [:segment 42]))
+    (is (nil? (replacement.field-refs/upgrade-field-refs! [:segment 42]))
         "should return nil without loaded-object")))
 
 (deftest upgrade-dispatch-measure-no-loaded-object-test
   (testing "upgrade! with [:measure id] and nil loaded-object is a no-op"
-    (is (nil? (field-refs/upgrade! [:measure 42]))
+    (is (nil? (replacement.field-refs/upgrade-field-refs! [:measure 42]))
         "should return nil without loaded-object")))
 
 ;;; ----------------------------------------- upgrade! with loaded-object ------------------------------------
@@ -413,7 +413,7 @@
       (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
                                        :visualization_settings {:column_settings
                                                                 {(ref-key (mt/id :products :title)) {:column_title "Via Upgrade"}}}}]
-        (field-refs/upgrade! [:card (:id card)] card)
+        (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               cs          (:column_settings updated-viz)]
           (is (= {:column_title "Via Upgrade"} (get cs (name-key "TITLE")))
@@ -430,7 +430,7 @@
                                                           ;; add a legacy field ref (id-based)
                                                           (lib/filter q (lib/> [:field {:lib/uuid (str (random-uuid))}
                                                                                 (:id (first (lib/filterable-columns q)))] 0)))}]
-          (field-refs/upgrade! [:card (:id card)] card)
+          (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
           (let [saved-query (t2/select-one-fn :dataset_query :model/Card :id (:id card))]
             (is (pos?    (get-in (lib/filters (:dataset_query card)) [0 2 2])))
             (is (string? (get-in (lib/filters saved-query)           [0 2 2])))))))))

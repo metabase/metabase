@@ -1,12 +1,10 @@
 (ns metabase-enterprise.replacement.source-swap
   (:require
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase-enterprise.replacement.parameters :as replacement.parameters]
    [metabase-enterprise.replacement.swap.mbql :as swap.mbql]
    [metabase-enterprise.replacement.swap.native :as swap.native]
-
    [metabase-enterprise.replacement.util :as replacement.util]
-   [metabase-enterprise.replacement.viz :as replacement.viz]
+   [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib-be.source-swap :as lib-be.source-swap]
@@ -135,11 +133,11 @@
                                                                                  (source-ref->source-map old-source)
                                                                                  (source-ref->source-map new-source))
         parameter-mappings  (:parameter_mappings dashcard)
-        parameter-mappings' (replacement.parameters/update-parameter-mappings parameter-mappings card-id->query update-fn)
+        parameter-mappings' (replacement.walk/walk-parameter-mapping-targets parameter-mappings update-fn)
         viz-settings        (:visualization_settings dashcard)
         viz-settings'       (some-> viz-settings
                                     vs/db->norm
-                                    (replacement.viz/update-dashcard-viz-settings card-id->query update-fn)
+                                    (replacement.walk/walk-viz-settings-click-behaviors update-fn)
                                     vs/norm->db)
         changes (cond-> {}
                   (not= parameter-mappings parameter-mappings')
@@ -155,8 +153,8 @@
         all-card-ids   (into #{}
                              (mapcat (fn [dashcard]
                                        (concat
-                                        (replacement.parameters/parameter-mappings->card-ids (:parameter_mappings dashcard))
-                                        (replacement.viz/dashcard-viz-settings->card-ids (-> dashcard :visualization_settings vs/db->norm)))))
+                                        (replacement.walk/parameter-mapping-card-ids (:parameter_mappings dashcard))
+                                        (replacement.walk/viz-settings-click-behavior-card-ids (-> dashcard :visualization_settings vs/db->norm)))))
                              dashcards)
         card-id->query (when (seq all-card-ids)
                          (into {}

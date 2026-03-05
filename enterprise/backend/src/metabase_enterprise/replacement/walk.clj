@@ -17,8 +17,8 @@
   [parameter-mappings target-fn]
   (mapv (fn [mapping]
           (or (when-some [card-id (:card_id mapping)]
-                (when-some [new-target (target-fn (::vs/param-mapping-target mapping) card-id)]
-                  (assoc-in mapping [::vs/param-mapping-target] new-target)))
+                (when-some [target' (target-fn (::vs/param-mapping-target mapping) card-id)]
+                  (assoc-in mapping [::vs/param-mapping-target] target')))
               mapping))
         parameter-mappings))
 
@@ -31,17 +31,17 @@
   (letfn [(update-legacy-ref-or-name [ref-or-name]
             (or (when (vector? ref-or-name)
                   (when-some [ref (try (lib/->pMBQL ref-or-name) (catch Exception _ nil))]
-                    (when-some [new-ref-or-name (ref-fn ref)]
+                    (when-some [ref-or-name' (ref-fn ref)]
                       (cond
-                        (string? new-ref-or-name)
-                        new-ref-or-name
-                        (lib.util/clause? new-ref-or-name)
-                        (lib/->legacy-MBQL new-ref-or-name)))))
+                        (string? ref-or-name')
+                        ref-or-name'
+                        (lib.util/clause? ref-or-name')
+                        (lib/->legacy-MBQL ref-or-name')))))
                 ref-or-name))
           (update-legacy-refs-or-names [refs-or-names]
             (into [] (keep update-legacy-ref-or-name) refs-or-names))
           (column-setting-ref [#::vs{:keys [field-id field-metadata]}]
-            (-> [:field field-id field-metadata]
+            (-> [:field (or field-metadata {}) field-id]
                 lib/ensure-uuid))
           (update-column-setting [k v]
             (or (when (::vs/field-id k)
@@ -86,13 +86,13 @@
 
 (defn walk-viz-settings-click-behaviors
   "Walk the click behaviors in the viz settings and update the targets using the provided function.
-  
+
   `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
   [viz-settings target-fn]
   (letfn [(update-mapping [card-id mapping]
             (or (when-some [target (some-> mapping ::vs/param-mapping-target ::vs/param-dimension)]
-                  (when-some [new-target (target-fn target card-id)]
-                    (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] new-target)))
+                  (when-some [target' (target-fn target card-id)]
+                    (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] target')))
                 mapping))
           (update-click-behavior [click-behavior]
             (or (when-some [card-id (click-behavior-card-id click-behavior)]

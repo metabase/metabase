@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
-   [metabase-enterprise.replacement.field-refs :as field-refs]
+   [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.source-swap :as source-swap]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -94,8 +94,8 @@
                   _           (wait-for-result-metadata (:id native-card))
                   mbql-card   (card/create-card! (card-sourced-from "MBQL Card" native-card) user)]
               ;; Swap the model at the root
-              (field-refs/upgrade! [:card (:id native-card)] native-card)
-              (field-refs/upgrade! [:card (:id mbql-card)] mbql-card)
+              (replacement.field-refs/upgrade-field-refs! [:card (:id native-card)] native-card)
+              (replacement.field-refs/upgrade-field-refs! [:card (:id mbql-card)] mbql-card)
               (source-swap/do-swap! [:card (:id native-card)]
                                     [:card (:id old-model)]
                                     [:card (:id new-model)])
