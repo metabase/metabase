@@ -184,4 +184,3 @@
           (mapcat #(->> (resolve-field driver native-query %)
                         (keep :col)))
           used-fields)))
-
