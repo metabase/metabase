@@ -2,19 +2,16 @@ import { Fragment } from "react";
 
 import { Icon, Text } from "metabase/ui";
 
+import type { PermissionEditorBreadcrumb } from "../../types";
+
 import {
   BreadcrumbsLink,
   BreadcrumbsSeparator,
 } from "./PermissionsEditorBreadcrumbs.styled";
 
-interface BreadcrumbItem {
-  text: string;
-  subtext?: string;
-}
-
-interface PermissionsEditorBreadcrumbsProps {
-  items: BreadcrumbItem[];
-  onBreadcrumbsItemSelect: (item: BreadcrumbItem) => void;
+export interface PermissionsEditorBreadcrumbsProps {
+  items: PermissionEditorBreadcrumb[];
+  onBreadcrumbsItemSelect: (item: PermissionEditorBreadcrumb) => void;
 }
 
 export const PermissionsEditorBreadcrumbs = ({
