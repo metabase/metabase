@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.api
   "`/api/ee/replacement/` routes"
   (:require
+   [environ.core :as env]
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.runner :as replacement.runner]
@@ -14,6 +15,15 @@
 
 (set! *warn-on-reflection* true)
 
+;; We want to merge this without enabling it in prod
+;; we still want tests to run in ci
+;; we will remove these two functions when it's ready
+(defn- enable? []
+  (not= "prod" (or (env/env :mb-run-mode) "prod")))
+
+(defn- guard-endpoint []
+  (api/check-404 (enable?)))
+
 (api.macros/defendpoint :post "/check-replace-source" :- ::replacement.schema/check-replace-source-response
   "Check whether a source entity can be replaced by a target entity. Returns compatibility
   errors describing column mismatches, type mismatches, primary key mismatches, and foreign
@@ -26,6 +36,7 @@
        [:source_entity_type ::replacement.schema/source-entity-type]
        [:target_entity_id   ::replacement.schema/source-entity-id]
        [:target_entity_type ::replacement.schema/source-entity-type]]]
+  (guard-endpoint)
   (api/check-superuser)
   (replacement.source-check/check-replace-source
    [source_entity_type source_entity_id]
@@ -45,6 +56,7 @@
        [:source_entity_type ::replacement.schema/source-entity-type]
        [:target_entity_id   ::replacement.schema/source-entity-id]
        [:target_entity_type ::replacement.schema/source-entity-type]]]
+  (guard-endpoint)
   (api/check-superuser)
   (let [result (replacement.source-check/check-replace-source
                 [source_entity_type source_entity_id]
@@ -69,13 +81,15 @@
 (api.macros/defendpoint :get "/runs/:id" :- ::replacement.schema/run
   "Get the status of a source replacement run."
   [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
+  (guard-endpoint)
   (api/check-superuser)
   (or (t2/select-one :model/ReplacementRun :id id)
       (throw (ex-info "Run not found" {:status-code 404}))))
 
-(api.macros/defendpoint :post "/runs/:id/cancel"
+(api.macros/defendpoint :post "/runs/:id/cancel" :- [:map [:success boolean?]]
   "Cancel a running source replacement."
   [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
+  (guard-endpoint)
   (api/check-superuser)
   (let [run (t2/select-one :model/ReplacementRun :id id)]
     (when-not run
