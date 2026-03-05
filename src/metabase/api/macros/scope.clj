@@ -14,9 +14,9 @@
 
 (defn parse-scopes
   "Parse a space-delimited OAuth scope string into a set of scope strings.
-   Returns nil if `scope-string` is nil."
+   Returns nil if `scope-string` is nil or blank."
   [scope-string]
-  (when scope-string
+  (when-not (str/blank? scope-string)
     (into #{} (str/split (str/trim scope-string) #"\s+"))))
 
 (defn scope-satisfied?
@@ -62,14 +62,17 @@
    `defendpoint` to any endpoint without `:scope` metadata to enforce that invariant.
 
    Passes through when:
-   - `:token-scopes` is nil (normal session auth, no scoped token)
+   - `:token-scopes` is nil (request did not go through scope-aware auth)
+   - `:token-scopes` contains `\"*\"` (unrestricted token, e.g. session auth or unscoped JWT)
    - `:token-scopes-checked` is true ([[enforce-scope]] already ran, e.g. at the namespace level)"
   (fn [handler]
     (fn [request respond raise]
-      (if (and (:token-scopes request)
-               (not (:token-scopes-checked request)))
-        (respond {:status  403
-                  :headers {"Content-Type" "application/json"}
-                  :body    {:error   "scope_not_permitted"
-                            :message "Scoped tokens cannot access this endpoint."}})
-        (handler request respond raise)))))
+      (let [token-scopes (:token-scopes request)]
+        (if (or (nil? token-scopes)
+                (contains? token-scopes "*")
+                (:token-scopes-checked request))
+          (handler request respond raise)
+          (respond {:status  403
+                    :headers {"Content-Type" "application/json"}
+                    :body    {:error   "scope_not_permitted"
+                              :message "Scoped tokens cannot access this endpoint."}}))))))

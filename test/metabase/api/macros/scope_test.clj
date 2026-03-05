@@ -6,6 +6,10 @@
 (deftest ^:parallel parse-scopes-test
   (testing "nil input returns nil"
     (is (nil? (scope/parse-scopes nil))))
+  (testing "empty string returns nil"
+    (is (nil? (scope/parse-scopes ""))))
+  (testing "blank string returns nil"
+    (is (nil? (scope/parse-scopes "   "))))
   (testing "single scope"
     (is (= #{"agent:workspaces"}
            (scope/parse-scopes "agent:workspaces"))))
@@ -77,9 +81,13 @@
 (deftest ^:parallel ensure-scopes-checked-test
   (let [ok-handler (fn [_request respond _raise]
                      (respond {:status 200 :body "ok"}))]
-    (testing "nil token-scopes (normal session auth) passes through"
+    (testing "nil token-scopes (not in scope context) passes through"
       (let [result (promise)]
         ((scope/ensure-scopes-checked ok-handler) {} result identity)
+        (is (= {:status 200 :body "ok"} @result))))
+    (testing "wildcard scope (unrestricted token) passes through"
+      (let [result (promise)]
+        ((scope/ensure-scopes-checked ok-handler) {:token-scopes #{"*"}} result identity)
         (is (= {:status 200 :body "ok"} @result))))
     (testing "scoped request without prior check is rejected with 403"
       (let [result (promise)]

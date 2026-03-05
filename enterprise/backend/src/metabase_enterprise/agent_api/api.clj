@@ -481,6 +481,10 @@
 (defn- enforce-authentication
   "Middleware that ensures requests are authenticated.
 
+   Always sets `:token-scopes` on authenticated requests — `#{\"*\"}` for unrestricted access (session auth
+   or unscoped JWTs), or the parsed scope set for scoped JWTs. This ensures downstream scope enforcement
+   never has to special-case nil within the agent API.
+
    Supports two authentication modes:
    - **Session-based**: Uses `X-Metabase-Session` header, validated by standard Metabase
      session middleware (which runs before this). If `:metabase-user-id` is set on the
@@ -492,7 +496,7 @@
     (cond
       ;; Already authenticated via X-Metabase-Session (standard middleware handled it)
       metabase-user-id
-      (handler request respond raise)
+      (handler (assoc request :token-scopes #{"*"}) respond raise)
 
       ;; Not authenticated via session - check for Bearer JWT
       :else
@@ -514,9 +518,7 @@
           (let [result (authenticate-with-jwt bearer-token)]
             (if-let [user (:user result)]
               (request/with-current-user (:id user)
-                (handler (cond-> request
-                           (:scopes result)
-                           (assoc :token-scopes (:scopes result)))
+                (handler (assoc request :token-scopes (or (:scopes result) #{"*"}))
                          respond raise))
               (respond (error-response (:error result) (:message result))))))))))
 
