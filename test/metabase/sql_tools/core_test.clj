@@ -172,4 +172,3 @@
       (let [{:keys [status reason]} (sql-tools/transpile-sql "SELECT 1" nil nil)]
         (is (= :skipped status))
         (is (= :missing-dialect reason))))))
-
