@@ -14,12 +14,9 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.util]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
-<<<<<<< HEAD
    [metabase.system.core :as system]
    [metabase.util :as u]
-=======
    [metabase.util.json :as json]
->>>>>>> 92c01ff24b9 (wire up feedback buttons)
    [metabase.util.log :as log])
   (:import
    (java.util.concurrent Callable ExecutionException ExecutorService Executors Future ThreadFactory)))
@@ -463,5 +460,5 @@
                  (slackbot.client/stop-stream client channel stream_ts)
                  (catch Exception stop-e
                    (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
-               (send-fallback "Something went wrong. Please try again."))))))))))
+               (send-fallback "Something went wrong. Please try again.")))))))))
 
