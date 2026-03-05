@@ -110,6 +110,25 @@ export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
   event_detail: "download-diagnostics" | "submit-report";
 }>;
 
+export type DependencyEntitySelected = ValidateEvent<{
+  event: "dependency_entity_selected";
+  triggered_from:
+    | "dependency-graph"
+    | "diagnostics-broken-list"
+    | "diagnostics-unreferenced-list"
+    | "data-structure"
+    | "transform-run-list";
+  event_detail?: string;
+  target_id: number;
+}>;
+
+export type DependencyDiagnosticsEntitySelected = ValidateEvent<{
+  event: "dependency_diagnostics_entity_selected";
+  triggered_from: "broken" | "unreferenced";
+  target_id: number;
+  event_detail?: string;
+}>;
+
 export type GsheetsConnectionClickedEvent = ValidateEvent<{
   event: "sheets_connection_clicked";
   triggered_from: "db-page" | "add-data-modal";
@@ -281,6 +300,46 @@ export type TransformCreatedEvent = ValidateEvent<{
   target_id: number;
 }>;
 
+export type TransformRunTagsUpdated = ValidateEvent<{
+  event: "transform_tags_updated";
+  result: "success" | "failure";
+  triggered_from: "transform_run_page";
+  event_detail: "tag_added" | "tag_removed";
+  target_id: number;
+}>;
+
+export type TransformInspectLensLoadedEvent = ValidateEvent<{
+  event: "transform_inspect_lens_loaded";
+  target_id: TransformId;
+  event_detail: string;
+  duration_ms: number;
+}>;
+
+export type TransformInspectDrillLensClickedEvent = ValidateEvent<{
+  event: "transform_inspect_drill_lens_clicked";
+  target_id: TransformId;
+  event_detail: string;
+  triggered_from: "card_drills" | "join_analysis";
+}>;
+
+export type TransformInspectAlertClickedEvent = ValidateEvent<{
+  event: "transform_inspect_alert_clicked";
+  target_id: TransformId;
+  event_detail: string;
+}>;
+
+export type TransformInspectDrillLensClosedEvent = ValidateEvent<{
+  event: "transform_inspect_drill_lens_closed";
+  target_id: TransformId;
+  event_detail: string;
+}>;
+
+export type TransformInspectEvent =
+  | TransformInspectLensLoadedEvent
+  | TransformInspectDrillLensClickedEvent
+  | TransformInspectAlertClickedEvent
+  | TransformInspectDrillLensClosedEvent;
+
 export type DocumentCreatedEvent = ValidateEvent<{
   event: "document_created";
   target_id: number;
@@ -303,6 +362,11 @@ export type DocumentAddSmartLinkEvent = ValidateEvent<{
 
 export type DocumentReplaceCardEvent = ValidateEvent<{
   event: "document_replace_card";
+  target_id: number | null;
+}>;
+
+export type DocumentDuplicatedEvent = ValidateEvent<{
+  event: "document_duplicated";
   target_id: number | null;
 }>;
 
@@ -522,6 +586,11 @@ export type BookmarkEvent =
   | BookmarkCollectionEvent
   | BookmarkDocumentEvent;
 
+export type DataStudioOpenedEvent = ValidateEvent<{
+  event: "data_studio_opened";
+  triggered_from: "nav_menu";
+}>;
+
 export type DataStudioLibraryCreatedEvent = ValidateEvent<{
   event: "data_studio_library_created";
   target_id: number | null;
@@ -589,7 +658,46 @@ export type DataStudioTableFieldValuesDiscardedEvent = ValidateEvent<{
   result: "success" | "failure";
 }>;
 
+export type MeasureCreateStartedEvent = ValidateEvent<{
+  event: "measure_create_started";
+  triggered_from: "data_studio_measures_list";
+  target_id: number;
+}>;
+
+export type MeasureCreatedEvent = ValidateEvent<{
+  event: "measure_created";
+  triggered_from: "data_studio_measures";
+  result: "success" | "failure";
+  target_id: number | null;
+}>;
+
+export type SegmentCreateStartedEvent = ValidateEvent<{
+  event: "segment_create_started";
+  triggered_from: "data_studio_segments" | "admin_datamodel_segments";
+  target_id: number | null;
+}>;
+
+export type SegmentCreatedEvent = ValidateEvent<{
+  event: "segment_created";
+  triggered_from: "data_studio_segments" | "admin_datamodel_segments";
+  result: "success" | "failure";
+  target_id: number | null;
+}>;
+
+export type MetricCreateStartedEvent = ValidateEvent<{
+  event: "metric_create_started";
+  triggered_from: "browse_metrics" | "data_studio_library" | "command_palette";
+}>;
+
+export type MetricCreatedEvent = ValidateEvent<{
+  event: "metric_created";
+  triggered_from: "data_studio" | "main_app";
+  result: "success" | "failure";
+  target_id: number | null;
+}>;
+
 export type DataStudioEvent =
+  | DataStudioOpenedEvent
   | DataStudioLibraryCreatedEvent
   | DataStudioTablePublishedEvent
   | DataStudioGlossaryCreatedEvent
@@ -603,7 +711,13 @@ export type DataStudioEvent =
   | DataStudioBulkAttributeUpdatedEvent
   | DataStudioTableSchemaSyncedEvent
   | DataStudioTableFieldsRescannedEvent
-  | DataStudioTableFieldValuesDiscardedEvent;
+  | DataStudioTableFieldValuesDiscardedEvent
+  | MeasureCreateStartedEvent
+  | MeasureCreatedEvent
+  | SegmentCreateStartedEvent
+  | SegmentCreatedEvent
+  | MetricCreateStartedEvent
+  | MetricCreatedEvent;
 
 export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   event: "unsaved_changes_warning_displayed";
@@ -617,6 +731,8 @@ export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
   | DatabaseEngineSelectedEvent
+  | DependencyEntitySelected
+  | DependencyDiagnosticsEntitySelected
   | NewIFrameCardCreatedEvent
   | NewsletterToggleClickedEvent
   | OnboardingChecklistOpenedEvent
@@ -646,12 +762,15 @@ export type SimpleEvent =
   | TransformJobTriggerManualRunEvent
   | TransformCreatedEvent
   | TransformCreateEvent
+  | TransformRunTagsUpdated
+  | TransformInspectEvent
   | DocumentAddCardEvent
   | DocumentAddSmartLinkEvent
   | DocumentAddSupportingTextEvent
   | DocumentAskMetabotEvent
   | DocumentCreatedEvent
   | DocumentReplaceCardEvent
+  | DocumentDuplicatedEvent
   | DocumentUpdatedEvent
   | DocumentPrintEvent
   | DatabaseHelpClickedEvent

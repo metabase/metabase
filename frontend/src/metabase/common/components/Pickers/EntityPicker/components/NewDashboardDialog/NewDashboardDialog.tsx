@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useCreateDashboardMutation } from "metabase/api";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
+import { canPlaceEntityInCollection } from "metabase/data-studio/utils";
 import {
   Form,
   FormErrorMessage,
@@ -11,7 +12,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { PLUGIN_DATA_STUDIO, PLUGIN_TENANTS } from "metabase/plugins";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Button, Flex, Modal } from "metabase/ui";
 
 import { useOmniPickerContext } from "../../context";
@@ -60,10 +61,7 @@ export const NewDashboardDialog = () => {
       entityType: "dashboard",
       collection: lastCollection,
     }) &&
-    PLUGIN_DATA_STUDIO.canPlaceEntityInCollection(
-      "dashboard",
-      getCollectionType(lastCollection),
-    );
+    canPlaceEntityInCollection("dashboard", getCollectionType(lastCollection));
 
   const onCreateNewDashboard = async ({ name }: { name: string }) => {
     if (!canCreateHere) {

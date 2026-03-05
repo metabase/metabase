@@ -57,4 +57,5 @@
     :is-superuser? is-superuser?
     :is-data-analyst? is-data-analyst?}
    {:perms/view-data :unrestricted
-    :perms/create-queries :query-builder}))
+    :perms/create-queries :query-builder}
+   {:include-published-via-collection? true}))

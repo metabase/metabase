@@ -58,6 +58,18 @@
    table-id              :- ::lib.schema.id/table]
   (fields* metadata-providerable table-id nil))
 
+(defn active-column-filter-xform
+  "A `filter` transducer that removes columns that should not be visible based on `:active` status and
+  `:visibility-type` (e.g., `:sensitive`, `:retired`). Reuses [[metabase.lib.metadata.protocols/active-column-pred]]
+  to keep the filtering logic in one place.
+
+  Options:
+    - `:include-sensitive?` - if true, does not filter out `:sensitive` columns (default false)"
+  ([]
+   (active-column-filter-xform nil))
+  ([opts]
+   (filter (lib.metadata.protocols/active-column-pred opts))))
+
 (mu/defn active-fields :- [:sequential ::lib.schema.metadata/column]
   "Like [[fields]], but filters out any Fields that are not `:active` or with `:visibility-type`s that mean they
   should not be included in queries.

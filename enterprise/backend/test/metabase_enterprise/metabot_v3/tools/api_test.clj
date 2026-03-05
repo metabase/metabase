@@ -18,7 +18,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -257,7 +256,7 @@
               rating-col (lib.metadata/field mp (mt/id :products :rating))
               created-at-col (lib.metadata/field mp (mt/id :products :created_at))
               expected-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                 (lib/aggregate (lib.options/ensure-uuid [:metric {} metric-id]))
+                                 (lib/aggregate (lib/ensure-uuid [:metric {} metric-id]))
                                  (lib/breakout (lib/with-temporal-bucket created-at-col :week))
                                  (lib/breakout (lib/with-temporal-bucket created-at-col :day))
                                  (lib/filter (lib/> id-col 50))
@@ -1271,7 +1270,7 @@
           (is (= "PRODUCT_ID" (:related_by products-table))))))))
 
 (deftest get-transforms-test
-  (mt/with-premium-features #{:metabot-v3 :transforms}
+  (mt/with-premium-features #{:metabot-v3 :transforms :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
@@ -1314,7 +1313,7 @@
                                                         (sort-by :id))))))))))))
 
 (deftest get-transform-test
-  (mt/with-premium-features #{:metabot-v3 :transforms}
+  (mt/with-premium-features #{:metabot-v3 :transforms :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
@@ -1471,7 +1470,7 @@
 (deftest check-transform-dependencies-test
   ;; This is just a quick sanity check for the API endpoint. The function powering this endpoint is tested more
   ;; thoroughly in metabase-enterprise.metabot-v3.tools.dependencies-test.
-  (mt/with-premium-features #{:metabot-v3 :transforms :dependencies}
+  (mt/with-premium-features #{:metabot-v3 :transforms :dependencies :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))

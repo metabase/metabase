@@ -84,7 +84,7 @@ If you are getting an error when using field filters with BigQuery or Oracle, ma
 
 If your filter dropdown menu displays the wrong values for a column:
 
-1. Go to **Admin settings** > **Table Metadata**.
+1. Go to **Admin** > **Table Metadata**.
 2. Find your database, table, and column.
 3. Click the **gear** icon at the right of a column's settings box.
 4. Scroll to **Cached field values**.

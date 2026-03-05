@@ -75,6 +75,15 @@
         (contains? module-api-namespaces ns-symb)
         (contains? module-friends current-module))))
 
+(defn- rest-module? [module]
+  (str/ends-with? module "-rest"))
+
+(defn- routes-module? [module]
+  (str/ends-with? module "-routes"))
+
+(defn- core-module? [module]
+  (str/ends-with? module "core"))
+
 (defn usage-error
   "Find usage errors when a `required-namespace` is required in the `current-module`. Returns a string describing the
   error type if there is one, otherwise `nil` if there are no errors."
@@ -93,4 +102,15 @@
         (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"
                 required-namespace
                 required-module
-                required-module)))))
+                required-module)
+
+        ;; (for now) rest modules are allowed to use one another; `routes` is ok because it collects routes together
+        ;; and `core` is ok because [[metabase.core.init]] might need to init some of the `-routes` modules'
+        ;; namespaces
+        (and (not ((some-fn rest-module? routes-module? core-module?) current-module))
+             (rest-module? required-module))
+        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
+                required-module
+                current-module
+                required-module
+                (symbol (str/replace required-module #"-rest$" "")))))))

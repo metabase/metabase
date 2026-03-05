@@ -10,4 +10,6 @@
   background-color: var(--mb-color-background-primary);
   position: relative;
   z-index: 3;
+  container-name: query-builder;
+  container-type: inline-size;
 }

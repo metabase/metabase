@@ -1,33 +1,10 @@
 import { useCallback, useMemo } from "react";
 
-import type { RemoteSyncEntity } from "metabase-types/api";
+import type { RemoteSyncDirtyState } from "metabase/plugins/oss/remote-sync";
 
 import { useGetRemoteSyncChangesQuery } from "../../api";
 
 import { useGitSyncVisible } from "./use-git-sync-visible";
-
-export interface RemoteSyncDirtyState {
-  /** Array of all dirty entities */
-  dirty: RemoteSyncEntity[];
-  /** Map of collection IDs that have dirty child entities */
-  changedCollections: Record<number, boolean>;
-  /** Whether any dirty changes exist globally */
-  isDirty: boolean;
-  /** Whether any entities have "removed" status */
-  hasRemovedItems: boolean;
-  /** Whether data is loading */
-  isLoading: boolean;
-  /** Check if a specific collection has dirty items */
-  isCollectionDirty: (collectionId: number | string | undefined) => boolean;
-  /** Check if any collection in a set has dirty items */
-  hasAnyCollectionDirty: (collectionIds: Set<number> | number[]) => boolean;
-  /** Check if any dirty entity (including collections) is in the given set of IDs */
-  hasDirtyInCollectionTree: (collectionIds: Set<number>) => boolean;
-  /** Refetch the dirty state data */
-  refetch: () => ReturnType<
-    ReturnType<typeof useGetRemoteSyncChangesQuery>["refetch"]
-  >;
-}
 
 export function useRemoteSyncDirtyState(): RemoteSyncDirtyState {
   const { isVisible: isGitSyncVisible } = useGitSyncVisible();

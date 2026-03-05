@@ -3,7 +3,6 @@
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
@@ -12,8 +11,8 @@
 (defn- desugar*
   [stage-or-join]
   (letfn [(desugar** [x]
-            (lib.util.match/replace x
-              (clause :guard lib.util/clause?)
+            (lib.util.match/replace-lite x
+              (clause :guard lib/clause?)
               (lib/desugar-filter-clause clause)))]
     (merge
      (desugar** (dissoc stage-or-join :joins :stages :lib/stage-metadata :parameters))

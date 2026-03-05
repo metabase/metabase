@@ -15,7 +15,8 @@ import type {
 export type QueryEditorSidebarType =
   | "data-reference"
   | "snippet"
-  | "native-query";
+  | "native-query"
+  | "template-tags";
 
 export type QueryEditorModalType = "preview-query";
 
@@ -48,6 +49,7 @@ export type QueryEditorUiOptions = {
   canConvertToNative?: boolean;
   convertToNativeTitle?: string;
   convertToNativeButtonLabel?: string;
+  disableDefaultLimit?: boolean;
   shouldDisableDataPickerItem?: (item: QueryEditorDataPickerItem) => boolean;
   shouldDisableDatabasePickerItem?: (
     item: QueryEditorDatabasePickerItem,

@@ -4,7 +4,7 @@ title: Databricks
 
 # Databricks
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**. Then select **Databricks**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**. Then select **Databricks**.
 
 You can edit these settings at any time. Just remember to save your changes.
 
@@ -100,6 +100,10 @@ See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
+
+## Writeable connection
+
+Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Model features
 

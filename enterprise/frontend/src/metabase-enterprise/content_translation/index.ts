@@ -8,8 +8,7 @@ import {
 } from "./constants";
 import { useTranslateContent } from "./use-translate-content";
 import {
-  getTranslatedFilterDisplayName,
-  translateAggregationDisplayName,
+  translateColumnDisplayName,
   translateDisplayNames,
   useSortByContentTranslation,
   useTranslateFieldValuesInHoveredObject,
@@ -47,8 +46,7 @@ export function initializePlugin() {
         );
       },
       translateDisplayNames,
-      translateAggregationDisplayName,
-      getTranslatedFilterDisplayName,
+      translateColumnDisplayName,
       ContentTranslationConfiguration,
     });
   }

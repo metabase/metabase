@@ -7,6 +7,7 @@ import { uuid } from "metabase/lib/uuid";
 import type {
   MetabotCodeEdit,
   MetabotHistory,
+  MetabotSuggestedTransform,
   SuggestedTransform,
 } from "metabase-types/api";
 
@@ -25,7 +26,6 @@ import type {
   MetabotAgentChatMessage,
   MetabotChatMessage,
   MetabotErrorMessage,
-  MetabotSuggestedTransform,
   MetabotToolCall,
   MetabotUserChatMessage,
 } from "./types";

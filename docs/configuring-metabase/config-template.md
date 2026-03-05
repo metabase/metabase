@@ -146,7 +146,6 @@ config:
     enable-password-login: true
     enable-pivoted-exports: true
     enable-public-sharing: true
-    enable-query-caching: true
     enable-xrays: true
     follow-up-email-sent: false
     google-auth-auto-create-accounts-domain: null
@@ -168,6 +167,7 @@ config:
     jwt-attribute-groups: groups
     jwt-attribute-lastname: last_name
     jwt-attribute-tenant: '@tenant'
+    jwt-attribute-tenant-attributes: '@tenant.attributes'
     jwt-enabled: false
     jwt-group-mappings: {}
     jwt-group-sync: false
@@ -214,6 +214,9 @@ config:
     notification-system-event-thread-pool-size: 5
     notification-temp-file-size-max-bytes: 10485760
     notification-thread-pool-size: 3
+    oidc-allowed-networks: allow-all
+    oidc-providers: []
+    oidc-user-provisioning-enabled: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
@@ -281,12 +284,15 @@ config:
     smtp-override-enabled: false
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
+    sql-tools-parser-backend: sqlglot
     ssh-heartbeat-interval-sec: 180
     start-of-week: sunday
     subscription-allowed-domains: null
     surveys-enabled: true
     sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
+    thread-interrupt-escalation-timeout-ms: 0
+    transforms-enabled: false
     unaggregated-query-row-limit: null
     uploads-settings: null
     user-visibility: all

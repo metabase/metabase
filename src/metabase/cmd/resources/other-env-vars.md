@@ -65,6 +65,8 @@ Default: `null`
 
 A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#mb_db_host). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#mb_db_type).
 
+Note that the `currentSchema` JDBC parameter has no effect. [The schema used for PostgreSQL application databases must be `public`](https://github.com/metabase/metabase/issues/37836).
+
 Examples:
 
 ```
@@ -319,6 +321,20 @@ Type: Boolean<br>
 Default: True
 
 Whether to include the Sample Database in your Metabase. To exclude the Sample Database, set `MB_LOAD_SAMPLE_CONTENT=false`.
+
+### `MB_MONITOR_PERFORMANCE`
+
+Type: string<br>
+Default: `""`
+
+When set, starts a Java Flight Recorder (JFR) recording at startup that can be analyzed with JDK Mission Control or other JFR tools.
+
+- `"true"` generates a timestamped output file like `metabase-2026_01_15.jfr`
+- Any other non-empty value is used as the output filename (`.jfr` extension is appended if missing)
+- `""` or `"false"` disables monitoring (the default)
+
+The performance recording stores only method signature calls and other code execution metrics.
+It does not store any sensitive information such as environment variables, system properties, or other machine information.
 
 ### `MB_NO_SURVEYS`
 

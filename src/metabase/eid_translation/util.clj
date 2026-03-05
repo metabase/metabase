@@ -37,6 +37,7 @@
    :segment           :model/Segment
    :snippet           :model/NativeQuerySnippet
    :timeline          :model/Timeline
+   :transform         :model/Transform
    :user              :model/User})
 
 (defn- ->model

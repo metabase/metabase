@@ -1,10 +1,10 @@
 (ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms-python.ordering-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.interface :as transforms.i]
-   [metabase-enterprise.transforms.ordering :as ordering]
-   [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase.test :as mt]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.ordering :as ordering]
+   [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
 
 (defn- make-transform [query & [name schema]]
@@ -33,7 +33,7 @@
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
-    (#'transforms.i/table-dependencies transform)))
+    (transforms-base.i/table-dependencies transform)))
 
 (deftest python-transform-basic-dependencies-test
   (testing "Python transforms with source-tables dependencies are extracted correctly"

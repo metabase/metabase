@@ -79,7 +79,7 @@ You can put any Metabase into Read-write mode. We also offer [Development instan
 
 In the Metabase instance that you use for development:
 
-1. Go to **Admin settings** > **Settings** > **Remote sync**.
+1. Go to **Admin** > **Settings** > **Remote sync**.
 
 2. Enter your repository URL:
 
@@ -136,7 +136,7 @@ Copy the token immediately after generating it — you'll need to paste it into 
 
 In your production Metabase instance:
 
-1. Go to **Admin settings** > **Settings** > **Remote sync**.
+1. Go to **Admin** > **Settings** > **Remote sync**.
 
 2. Enter your repository URL:
 
@@ -160,11 +160,11 @@ In Read-only mode, synced collections appear in the regular collections list wit
 
 ![Production Metabase](./images/read-only-view.png)
 
-At this point, you should be all set up. Exit Admin settings, then reload your browser. You should see your synced collections in your production Metabase.
+At this point, you should be all set up. Exit Admin, then reload your browser. You should see your synced collections in your production Metabase.
 
 ### 8. Configure transforms syncing (optional)
 
-To version control your data transformation logic, you can sync your [Transforms](../data-modeling/transforms.md) including all your tags and jobs. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
+To version control your data transformation logic, you can sync your [Transforms](../data-studio/transforms/transforms-overview.md) including all your tags and jobs. Transform syncing is all or nothing: Metabase will sync your entire transforms namespace. You can't selectively sync specific transform folders.
 
 ## An example dev-to-production workflow
 
@@ -363,7 +363,7 @@ If changes don't appear after pulling:
 - Hard refresh your browser (Cmd/Ctrl + Shift + R).
 - If you encounter sync errors, review error messages in the sync dialog, manually resolve conflicts in your Git repository, then pull again.
 
-In Read-only mode, go to **Admin settings** > **Settings** > **Remote sync** and click **Pull changes**.
+In Read-only mode, go to **Admin** > **Settings** > **Remote sync** and click **Pull changes**.
 
 ### Handling unsynced changes
 
@@ -379,18 +379,18 @@ When in doubt, create a new branch and push changes to that branch. That way you
 
 In Read-only mode, you can set Metabase to auto-sync changes from your main branch.
 
-1. Navigate to **Admin settings** > **Settings** > **Remote sync**.
+1. Navigate to **Admin** > **Settings** > **Remote sync**.
 2. Enable Auto-sync with Git.
 
 By default, Metabase will check for and pull changes from the branch you specify every five minutes. You can also manually sync as needed.
 
 ## Disabling Remote Sync
 
-To disable Remote Sync, go to the Remote Sync settings page in Admin settings.
+To disable Remote Sync, go to the Remote Sync settings page in Admin.
 
 To disable Remote Sync:
 
-1. Go to **Admin settings** > **Settings** > **Remote sync**.
+1. Go to **Admin** > **Settings** > **Remote sync**.
 2. Click **Disable Remote Sync**.
 3. In the confirmation dialog, click **Disable**.
 
@@ -416,4 +416,9 @@ If you want to switch fully to Remote Sync, we recommend starting with a new rep
 3. Move the content you want to sync into a synced collection.
 4. Push up your changes to the new repo.
 
-Remote Sync doesn't sync table metadata, so if you're importing and exporting your [table metadata](../data-modeling/metadata-editing.md), you should stick with serialization.
+Remote Sync does NOT sync table metadata, so if you're importing and exporting your [table metadata](../data-modeling/metadata-editing.md), you should stick with serialization.
+
+## Further reading
+
+- [Library](../data-studio/library.md)
+- [Serialization](./serialization.md)

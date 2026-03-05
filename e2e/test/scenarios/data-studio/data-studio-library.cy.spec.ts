@@ -19,7 +19,23 @@ describe("scenarios > data studio > library", () => {
     cy.intercept("GET", "/api/collection/tree*").as("getCollectionTree");
 
     cy.log("Navigate to Data Studio Library");
-    H.DataModel.visitDataStudio();
+    /**
+     * Let's use the profile menu to navigate to Data Studio in this test, just
+     * to make sure it works, and to test the analytics event
+     */
+    cy.visit("/");
+    H.getProfileLink().click();
+    H.popover()
+      .findByText(/Data studio/)
+      .click();
+
+    cy.log(
+      "Verify tracking event when opening Data Studio from the profile menu",
+    );
+    H.expectUnstructuredSnowplowEvent({
+      event: "data_studio_opened",
+      triggered_from: "nav_menu",
+    });
     H.DataStudio.nav().findByLabelText("Library").click();
 
     cy.log("Create library via inline empty state");
@@ -207,7 +223,9 @@ describe("scenarios > data studio > library", () => {
       cy.log("Verify Data section shows the table (empty state hidden)");
       H.DataStudio.Library.tableItem("Orders").should("be.visible");
       H.DataStudio.Library.libraryPage()
-        .findByText("Cleaned, pre-transformed data sources ready for exploring")
+        .findByText(
+          "Cleaned, pre-transformed data sources ready for exploring.",
+        )
         .should("not.exist");
 
       cy.log(

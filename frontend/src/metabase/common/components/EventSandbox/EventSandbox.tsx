@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import * as React from "react";
 import _ from "underscore";
 type Options = {
   preventDefault?: boolean;
@@ -123,7 +122,7 @@ export function EventSandbox({
   ]);
 
   return disabled === true ? (
-    <React.Fragment>{children}</React.Fragment>
+    <>{children}</>
   ) : (
     <div className={className} {...sandboxProps}>
       {children}

@@ -14,7 +14,9 @@
 (p/import-vars
  [user-stats
   email-domain-count
-  external-users-count])
+  external-users-count
+  tenant-users-count
+  tenants-with-active-users-count])
 
 (p/import-vars
  [query-execution-stats

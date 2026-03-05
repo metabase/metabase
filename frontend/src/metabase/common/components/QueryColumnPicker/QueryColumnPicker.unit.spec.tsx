@@ -2,7 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+} from "metabase-lib/test-helpers";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import type { QueryColumnPickerProps } from "./QueryColumnPicker";
 import { QueryColumnPicker } from "./QueryColumnPicker";
@@ -17,16 +22,28 @@ type SetupOpts = Partial<
 };
 
 function createQueryWithBreakout() {
-  const plainQuery = createQuery();
-  const [column] = Lib.breakoutableColumns(plainQuery, 0);
-  const query = Lib.breakout(plainQuery, 0, column);
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        breakouts: [
+          {
+            type: "column",
+            name: "CREATED_AT",
+            sourceName: "ORDERS",
+          },
+        ],
+      },
+    ],
+  });
+
   const [clause] = Lib.breakouts(query, 0);
   const clauseInfo = Lib.displayInfo(query, 0, clause);
   return { query, clause, clauseInfo };
 }
 
 function setup({
-  query = createQuery(),
+  query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   stageIndex = 0,
   columns = Lib.breakoutableColumns(query, stageIndex),
   hasBinning = true,

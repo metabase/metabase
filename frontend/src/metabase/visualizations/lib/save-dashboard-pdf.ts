@@ -2,6 +2,8 @@ import Color from "color";
 import { t } from "ttag";
 
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { isStorybookActive } from "metabase/env";
+import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -271,6 +273,17 @@ export const saveDashboardPdf = async ({
       }
     },
   });
+
+  // For Storybook/Loki visual testing, display the canvas as an image and skip PDF generation
+  if (isStorybookActive) {
+    const blob = await new Promise<Blob | null>((resolve) =>
+      image.toBlob(resolve, "image/png"),
+    );
+    if (blob) {
+      openImageBlobOnStorybook({ canvas: image, blob });
+    }
+    return;
+  }
 
   const { default: jspdf } = await import("jspdf");
 

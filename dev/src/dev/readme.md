@@ -6,7 +6,7 @@ In this namespace, you can run `(help)` to get a bit of help. It's principle usa
 
 ### NOTE!
 
-You must build the js bundle used to create the svgs with visx. Run `yarn build-static-viz` to ensure that this bundle is created and the file `resources/frontend_client/app/dist/lib-static-viz.bundle.js` exists
+You must build the js bundle used to create the svgs with visx. Run `bun run build-static-viz` to ensure that this bundle is created and the file `resources/frontend_client/app/dist/lib-static-viz.bundle.js` exists
 
 Example usage below:
 

@@ -23,8 +23,8 @@ if (!BASE_ENV.PREMIUM_EMBEDDING_TOKEN) {
 }
 
 const BASE_SETUP_CONFIG = {
-  "docker-up-command": "yarn docker:local-dist:up",
-  "docker-down-command": "yarn docker:rm",
+  "docker-up-command": "bun run docker:local-dist:up",
+  "docker-down-command": "bun run docker:rm",
   "docker-env-example-path": ".env.docker.example",
   "docker-env-path": ".env.docker",
   defaultBranch: BRANCH_NAME,
@@ -53,6 +53,14 @@ export const SAMPLE_APP_SETUP_CONFIGS = {
   },
   "shoppy-e2e": {
     ...BASE_SETUP_CONFIG,
+    env: {
+      ...BASE_SETUP_CONFIG.env,
+      DATADOG_APPLICATION_ID: process.env.SHOPPY_DATADOG_APPLICATION_ID,
+      DATADOG_CLIENT_TOKEN: process.env.SHOPPY_DATADOG_CLIENT_TOKEN,
+      DATADOG_SITE: process.env.SHOPPY_DATADOG_SITE,
+      DATADOG_SERVICE: "shoppy",
+      DATADOG_ENV: process.env.SHOPPY_DATADOG_ENV,
+    },
     appName: "shoppy",
   },
 };

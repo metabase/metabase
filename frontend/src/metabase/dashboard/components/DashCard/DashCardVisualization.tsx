@@ -169,7 +169,7 @@ const DashCardLoadingView = ({
  *
  * @param series the series to sanitize
  */
-function sanitizeSeriesData(series: RawSeries | { card: Card }[]) {
+function sanitizeSeriesData(series: Series): Series {
   return series.map((s) => {
     if ("data" in s) {
       // If the series already has data, we're good
@@ -177,6 +177,7 @@ function sanitizeSeriesData(series: RawSeries | { card: Card }[]) {
     }
 
     return {
+      // @ts-expect-error according to TS this branch is impossible
       ...s,
       data: { cols: [], rows: [] },
     };
@@ -257,6 +258,7 @@ export function DashCardVisualization({
     isFullscreen = false,
     isEditingParameter,
     onChangeLocation,
+    enableEntityNavigation,
   } = useDashboardContext();
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
@@ -629,6 +631,7 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
+          enableEntityNavigation={enableEntityNavigation}
         />
       </EmbeddingEntityContextProvider>
     </div>

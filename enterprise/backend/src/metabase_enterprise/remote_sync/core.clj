@@ -78,6 +78,15 @@
   [model-key instances]
   (spec/batch-model-editable? model-key instances))
 
+(defenterprise batch-model-eligible?
+  "Batch check if model instances are eligible for remote sync based on spec rules.
+   Returns a map of instance-id -> eligible? boolean."
+  :feature :none
+  [model-key instances]
+  (if-let [spec (spec/spec-for-model-key model-key)]
+    (spec/batch-check-eligibility spec instances)
+    (into {} (map (fn [inst] [(:id inst) false])) instances)))
+
 (mu/defn bulk-set-remote-sync :- :nil
   "Sets remote sync to true/false on one or collections in a single transaction. Checks that the remote sync state
   afterwards is consistent in terms of dependency rules. Collections are provided as a map of collection-id -> sync state."

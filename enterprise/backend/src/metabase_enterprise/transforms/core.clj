@@ -1,30 +1,14 @@
 (ns metabase-enterprise.transforms.core
-  "API namespace for the `metabase-enterprise.transform` module."
+  "Enterprise module for transforms used for both tests and metering.
+
+  Transforms are weird: they have different behavior on OSS vs EE. We need to test this, so we need tests
+  in `enterprise/backend/test/metabase_enterprise/transforms/api_test.clj`.
+
+  But we need a 'real' module, because all tests must belong to a module."
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.transforms.models.transform]
-   [metabase-enterprise.transforms.models.transform-run]
-   [metabase-enterprise.transforms.settings]
-   [metabase-enterprise.transforms.util]
    [metabase.premium-features.core :refer [defenterprise]]
-   [potemkin :as p]
    [toucan2.core :as t2]))
-
-(p/import-vars
- [metabase-enterprise.transforms.settings
-  transform-timeout]
- [metabase-enterprise.transforms.util
-  native-query-transform?
-  python-transform?
-  query-transform?
-  transform-source-database
-  transform-source-type
-  transform-type
-  has-db-transforms-permission?]
- [metabase-enterprise.transforms.models.transform-run
-  timeout-run!]
- [metabase-enterprise.transforms.models.transform
-  update-transform-tags!])
 
 (defenterprise transform-stats
   "Calculate successful transform runs over a window of the previous UTC day 00:00-23:59.

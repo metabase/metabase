@@ -14,7 +14,7 @@ import {
 } from "metabase/common/hooks";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { type DispatchFn, useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_DATA_STUDIO, PLUGIN_TENANTS } from "metabase/plugins";
+import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import type {
   Collection,
@@ -63,10 +63,9 @@ export const useRootItems = () => {
   const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
     useGetPersonalCollection();
 
-  const { data: libraryCollection } =
-    PLUGIN_DATA_STUDIO.useGetLibraryCollection({
-      skip: !options.hasLibrary,
-    });
+  const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection({
+    skip: !options.hasLibrary,
+  });
 
   const {
     data: personalCollectionItems,

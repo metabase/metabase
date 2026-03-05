@@ -124,7 +124,6 @@ Open it from **+ New → AI exploration**, then ask a question or pick one of th
 
 When answering questions in AI exploration, Metabot searches a limited set of content instead of your entire Metabase. Admins can set a **Collection for natural language querying** to scope AI exploration to a specific collection and its subcollections. You can still refer to content outside that scope by explicitly @-mentioning it in your prompt. See [Metabot AI settings](../ai/settings.md) for more details.
 
-
 ## Giving feedback on Metabot responses
 
 When you hover over Metabot's responses, you'll see options to give feedback.

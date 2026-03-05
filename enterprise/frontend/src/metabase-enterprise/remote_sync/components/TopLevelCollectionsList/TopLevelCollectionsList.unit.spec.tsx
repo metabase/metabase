@@ -1,10 +1,17 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import type { CollectionSyncPreferences } from "metabase-types/api";
-import { createMockCollectionItem } from "metabase-types/api/mocks";
+import {
+  createMockCollectionItem,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { COLLECTIONS_KEY, TYPE_KEY } from "../../constants";
 
@@ -73,6 +80,16 @@ const setup = ({
 
   const onSubmit = jest.fn();
 
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures(),
+  });
+  const state = createMockState({
+    settings,
+  });
+
+  const enterprisePlugins: ENTERPRISE_PLUGIN_NAME[] = ["transforms"];
+  enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
+
   renderWithProviders(
     <FormProvider
       initialValues={{
@@ -86,6 +103,9 @@ const setup = ({
         <FormSubmitButton label="Save" />
       </Form>
     </FormProvider>,
+    {
+      storeInitialState: state,
+    },
   );
 
   return { onSubmit };

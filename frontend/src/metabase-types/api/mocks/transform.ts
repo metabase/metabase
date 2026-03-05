@@ -1,5 +1,7 @@
 import type {
   DatabaseId,
+  InspectorCard,
+  InspectorSource,
   ListTransformRunsResponse,
   PythonTransformTableAliases,
   Transform,
@@ -12,7 +14,10 @@ import type {
   UpdateTransformRequest,
 } from "metabase-types/api";
 
-import { createMockStructuredDatasetQuery } from "./query";
+import {
+  createMockNativeDatasetQuery,
+  createMockStructuredDatasetQuery,
+} from "./query";
 
 export function createMockTransformOwner(
   opts?: Partial<TransformOwner>,
@@ -165,6 +170,33 @@ export function createMockUpdateTransformRequest(
 ): UpdateTransformRequest {
   return {
     id: 1,
+    ...opts,
+  };
+}
+
+export function createMockTransformInspectSource(
+  opts?: Partial<InspectorSource>,
+): InspectorSource {
+  return {
+    table_name: "Table",
+    column_count: 0,
+    fields: [],
+    ...opts,
+  };
+}
+
+export function createMockInspectorCard(
+  opts?: Partial<InspectorCard>,
+): InspectorCard {
+  return {
+    id: "card-1",
+    title: "Card",
+    display: "scalar",
+    dataset_query: createMockNativeDatasetQuery(),
+    metadata: {
+      card_type: "table_count",
+      dedup_key: ["table-1"],
+    },
     ...opts,
   };
 }

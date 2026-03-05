@@ -269,7 +269,7 @@
                   new-child-metadata (-> (:result_metadata child-card)
                                          (assoc-in [0 :display_name]
                                                    "child-name")
-                                         (assoc-in [0 :lib/model-display-name]
+                                         (assoc-in [0 :lib/original-display-name]
                                                    "new-name"))]
               (t2/update! :model/Card parent-id {:result_metadata new-parent-metadata})
               (t2/update! :model/Card child-id {:result_metadata new-child-metadata})

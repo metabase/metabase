@@ -92,7 +92,7 @@ const DATE_QUESTION = {
   },
 };
 
-describe("extract action", () => {
+describe("extract action", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -242,7 +242,7 @@ describe("extract action", () => {
       H.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
-        option: "Tag in der Woche",
+        option: "Wochentag",
         value: "Dienstag",
         extraction: "Auszug Tag, Monat…",
       });
@@ -395,7 +395,7 @@ function extractColumnAndCheck({
   }
 }
 
-describe("extract action", () => {
+describe("extract action", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

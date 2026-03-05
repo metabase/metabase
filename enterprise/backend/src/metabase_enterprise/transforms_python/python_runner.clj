@@ -7,8 +7,6 @@
    [medley.core :as m]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
-   [metabase-enterprise.transforms.util :as transforms.u]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
@@ -16,6 +14,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
@@ -275,8 +275,9 @@
         metadata-provider (lib-be/application-database-metadata-provider db-id)
         table-metadata    (lib.metadata/table metadata-provider table-id)
         transform         (t2/select-one :model/Transform transform-id)]
-    (cond-> (lib/query metadata-provider table-metadata)
-      source-incremental-strategy (transforms.u/preprocess-incremental-query source-incremental-strategy (transforms.u/next-checkpoint transform))
+    (cond-> (-> (lib/query metadata-provider table-metadata)
+                lib/disable-default-limit)
+      source-incremental-strategy (transforms-base.u/preprocess-incremental-query source-incremental-strategy (transforms-base.u/next-checkpoint transform))
       limit                       (lib/limit limit))))
 
 ;; TODO break this up such that s3 can be swapped out for other transfer mechanisms.
@@ -293,6 +294,7 @@
              (> (count (:source-tables source)) 1))
     (throw (ex-info "Incremental transforms for python only supports one source table" {})))
   (doseq [[table-name v] (:source-tables source)
+          ;; TODO (Chris 2026-03-03) We should also handle the case where table-id has not been backfilled yet...
           :let [table-id                                (if (int? v) v (:table_id v))
                 {:keys [s3-client bucket-name objects]} shared-storage
                 {data-path :path}                       (get objects [:table table-id :data])

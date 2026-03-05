@@ -23,11 +23,10 @@ import {
 } from "metabase/selectors/user";
 import type {
   MetabotChatContext,
+  MetabotSuggestedTransform,
   MetabotTransformInfo,
   TaggedTransform,
 } from "metabase-types/api";
-
-import type { MetabotSuggestedTransform } from "./state";
 
 export type ApplySuggestionPayload = {
   editorTransform: MetabotTransformInfo | undefined;

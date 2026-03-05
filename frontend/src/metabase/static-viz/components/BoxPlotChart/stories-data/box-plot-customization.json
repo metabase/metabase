@@ -1,0 +1,269 @@
+[
+  {
+    "card": {
+      "display": "boxplot",
+      "visualization_settings": {
+        "column_settings": {
+          "[\"name\",\"CREATED_AT\"]": {
+            "date_style": "MMMM D, YYYY"
+          },
+          "[\"name\",\"count\"]": {
+            "number_style": "currency",
+            "number_separators": ",.",
+            "currency_style": "code",
+            "decimals": 2,
+            "scale": 4,
+            "prefix": "((((",
+            "suffix": "))))"
+          }
+        },
+        "series_settings": {
+          "count": {
+            "color": "#F7C41F",
+            "title": "",
+            "axis": "right"
+          }
+        },
+        "boxplot.points_mode": "all",
+        "boxplot.whisker_type": "tukey",
+        "graph.show_values": true,
+        "boxplot.show_values_mode": "all",
+        "graph.y_axis.title_text": "___Count___",
+        "graph.y_axis.split_number": 20,
+        "graph.x_axis.title_text": "___Created At: Year___",
+        "graph.x_axis.axis_enabled": "rotate-45",
+        "graph.y_axis.auto_range": false,
+        "graph.y_axis.max": 1999,
+        "graph.y_axis.min": -400,
+        "graph.show_goal": true,
+        "graph.goal_value": -300
+      }
+    },
+    "data": {
+      "rows": [
+        ["2022-01-01T00:00:00Z", 0, 6],
+        ["2022-01-01T00:00:00Z", 20, 212],
+        ["2022-01-01T00:00:00Z", 40, 242],
+        ["2022-01-01T00:00:00Z", 60, 95],
+        ["2022-01-01T00:00:00Z", 80, 184],
+        ["2022-01-01T00:00:00Z", 100, 5],
+        ["2023-01-01T00:00:00Z", -60, 1],
+        ["2023-01-01T00:00:00Z", 0, 37],
+        ["2023-01-01T00:00:00Z", 20, 1014],
+        ["2023-01-01T00:00:00Z", 40, 1104],
+        ["2023-01-01T00:00:00Z", 60, 649],
+        ["2023-01-01T00:00:00Z", 80, 751],
+        ["2023-01-01T00:00:00Z", 100, 54],
+        ["2024-01-01T00:00:00Z", 0, 5],
+        ["2024-01-01T00:00:00Z", 20, 377],
+        ["2024-01-01T00:00:00Z", 40, 1155],
+        ["2024-01-01T00:00:00Z", 60, 1331],
+        ["2024-01-01T00:00:00Z", 80, 662],
+        ["2024-01-01T00:00:00Z", 100, 963],
+        ["2024-01-01T00:00:00Z", 120, 992],
+        ["2024-01-01T00:00:00Z", 140, 349],
+        ["2025-01-01T00:00:00Z", 0, 3],
+        ["2025-01-01T00:00:00Z", 20, 449],
+        ["2025-01-01T00:00:00Z", 40, 1239],
+        ["2025-01-01T00:00:00Z", 60, 1495],
+        ["2025-01-01T00:00:00Z", 80, 805],
+        ["2025-01-01T00:00:00Z", 100, 1062],
+        ["2025-01-01T00:00:00Z", 120, 1121],
+        ["2025-01-01T00:00:00Z", 140, 404],
+        ["2026-01-01T00:00:00Z", 20, 138],
+        ["2026-01-01T00:00:00Z", 40, 367],
+        ["2026-01-01T00:00:00Z", 60, 437],
+        ["2026-01-01T00:00:00Z", 80, 247],
+        ["2026-01-01T00:00:00Z", 100, 345],
+        ["2026-01-01T00:00:00Z", 120, 343],
+        ["2026-01-01T00:00:00Z", 140, 117]
+      ],
+      "cols": [
+        {
+          "name": "CREATED_AT",
+          "display_name": "Created At: Year",
+          "base_type": "type/DateTime",
+          "effective_type": "type/DateTime",
+          "semantic_type": "type/CreationTimestamp",
+          "field_ref": [
+            "field",
+            13,
+            {
+              "temporal-unit": "year"
+            }
+          ],
+          "source": "breakout",
+          "unit": "year",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          }
+        },
+        {
+          "name": "TOTAL",
+          "display_name": "Total: 8 bins",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "field_ref": [
+            "field",
+            5,
+            {
+              "binning": {
+                "strategy": "num-bins",
+                "min-value": 0,
+                "max-value": 160,
+                "num-bins": 8,
+                "bin-width": 20
+              }
+            }
+          ],
+          "source": "breakout",
+          "binning_info": {
+            "binning_strategy": "num-bins",
+            "strategy": "num-bins",
+            "min_value": 0,
+            "max_value": 160,
+            "num_bins": 8,
+            "bin_width": 20
+          },
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4426,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 8.93914247937167,
+                "q1": 51.34535490743823,
+                "q3": 110.29428389265787,
+                "max": 159.34900526552292,
+                "sd": 34.26469575709948,
+                "avg": 80.35871658771228
+              }
+            }
+          }
+        },
+        {
+          "name": "count",
+          "display_name": "Count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "source": "aggregation"
+        }
+      ],
+      "results_metadata": {
+        "columns": [
+          {
+            "name": "CREATED_AT",
+            "display_name": "Created At: Year",
+            "base_type": "type/DateTime",
+            "effective_type": "type/DateTime",
+            "semantic_type": "type/CreationTimestamp",
+            "field_ref": [
+              "field",
+              13,
+              {
+                "temporal-unit": "year"
+              }
+            ],
+            "source": "breakout",
+            "unit": "year",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            }
+          },
+          {
+            "name": "TOTAL",
+            "display_name": "Total: 8 bins",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              5,
+              {
+                "binning": {
+                  "strategy": "num-bins",
+                  "min-value": 0,
+                  "max-value": 160,
+                  "num-bins": 8,
+                  "bin-width": 20
+                }
+              }
+            ],
+            "source": "breakout",
+            "binning_info": {
+              "binning_strategy": "num-bins",
+              "strategy": "num-bins",
+              "min_value": 0,
+              "max_value": 160,
+              "num_bins": 8,
+              "bin_width": 20
+            },
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4426,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 8.93914247937167,
+                  "q1": 51.34535490743823,
+                  "q3": 110.29428389265787,
+                  "max": 159.34900526552292,
+                  "sd": 34.26469575709948,
+                  "avg": 80.35871658771228
+                }
+              }
+            }
+          },
+          {
+            "name": "count",
+            "display_name": "Count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "source": "aggregation",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 35,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 127.5,
+                  "q3": 977.5,
+                  "max": 1495,
+                  "sd": 451.9696435936364,
+                  "avg": 521.1111111111111
+                }
+              }
+            }
+          }
+        ]
+      },
+      "results_timezone": "UTC"
+    }
+  }
+]

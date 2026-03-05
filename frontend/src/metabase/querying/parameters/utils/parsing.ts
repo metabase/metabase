@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 
 import { parseNumber } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
-import type { DateFilterValue } from "metabase/querying/filters/types";
+import type { DateFilterValue } from "metabase/querying/common/types";
 import { isDatePickerTruncationUnit } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import type {

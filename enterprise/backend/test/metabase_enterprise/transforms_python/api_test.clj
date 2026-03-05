@@ -4,9 +4,9 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.transforms.test-dataset :as transforms-dataset]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -106,7 +106,7 @@
 (defn- test-run [& {:keys [program user features source-tables extra-opts]
                     :or   {program       ["import pandas as pd" "def transform():" "  return pd.DataFrame()"]
                            user          :crowberto
-                           source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                           source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id) :active true)}
                            features      #{:transforms :transforms-python}}}]
   (let [body (merge {:source_tables source-tables, :code (str/join "\n" program)} extra-opts)]
     (mt/with-premium-features features
@@ -154,12 +154,12 @@
           (is (=? {:status 200} (test-run :user :lucky))))))))
 
 (deftest test-run-input-limit-test
-  (testing "maximum"
-    (is (=? {:status 400} (test-run :extra-opts {:per_input_row_limit 10000}))))
-  (testing "minimum"
-    (is (=? {:status 400} (test-run :extra-opts {:per_input_row_limit 0}))))
-  (testing "truncates sources"
-    (mt/dataset transforms-dataset/transforms-test
+  (mt/dataset transforms-dataset/transforms-test
+    (testing "maximum"
+      (is (=? {:status 400} (test-run :extra-opts {:per_input_row_limit 10000}))))
+    (testing "minimum"
+      (is (=? {:status 400} (test-run :extra-opts {:per_input_row_limit 0}))))
+    (testing "truncates sources"
       (let [program       ["def transform(customers):" "  return customers"]
             source-tables {"customers" (mt/id :transforms_customers)}
             response      (test-run :program program :source-tables source-tables :extra-opts {:per_input_row_limit 2})]

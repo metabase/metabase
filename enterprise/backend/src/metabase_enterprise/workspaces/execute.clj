@@ -1,36 +1,19 @@
 (ns metabase-enterprise.workspaces.execute
-  "This namespace is concerned with executing non-AppDB transforms, with optional reference re-mappings.
+  "Executing transforms with optional reference re-mappings, without writing to AppDB.
 
-  It currently lives inside the workspace module, but eventually will become part of the transform module, so it should
-  not make any assumptions about being run within a workspace, having the input / output semantics of a workspace, and
-  especially it should not touch any of the Workspace entities inside AppDb, or any of the other workspace namespaces.
-
-  For now, it uses AppDB as a side-channel with the transforms module, but in future this module should be COMPLETELY
-  decoupled from AppDb."
+  Uses transforms-base.core/execute! to run transforms in-memory. No Transform or TransformRun
+  rows are created in AppDB. Warehouse DB changes (actual table data) persist in the isolated schema."
   (:require
    [clojure.string :as str]
-   [macaw.core :as macaw]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
-   [metabase-enterprise.transforms.core :as transforms]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
-   [metabase-enterprise.transforms.util :as transforms.util]
-   [metabase.api.common :as api]
    [metabase.query-processor :as qp]
-   [metabase.util :as u]
+   [metabase.sql-tools.core :as sql-tools]
+   [metabase.transforms-base.core :as transforms-base]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- execution-results
-  "Extract execution metadata from transform_run and target table info.
-   Must be called within the transaction before rollback."
-  [{xf-id :id :keys [target]}]
-  (let [run (t2/select-one :model/TransformRun :transform_id xf-id)]
-    (merge
-     (select-keys run [:status :start_time :end_time :message])
-     {:table {:name   (:name target)
-              :schema (:schema target)}})))
 
 (defn- remap-python-source
   "Remap source-tables in a Python transform source to point to isolated tables.
@@ -58,9 +41,11 @@
                    {:schemas {}
                     :tables  {}}
                    ;; Strip out the numeric keys (table ids)
-                   (filter (comp vector? key) table-mapping))]
-    ;; We may need to set other options, like the case insensitivity (driver dependent)
-    (update-in source [:query :stages 0 :native] #(macaw/replace-names % remapping {:allow-unused? true}))))
+                   (filter (comp vector? key) table-mapping))
+        database-id (get-in source [:query :database])
+        driver      (some->> database-id (t2/select-one-fn :engine :model/Database))]
+    (update-in source [:query :stages 0 :native]
+               #(sql-tools/replace-names driver % remapping {:allow-unused? true}))))
 
 (defn- remap-mbql-source [_table-mapping _field-map source]
   (throw (ex-info "Remapping MBQL queries is not supported yet" {:source source})))
@@ -111,7 +96,7 @@
   [{:keys [source]} remapping]
   (let [table-mapping          (:tables remapping no-mapping)
         remapped-source        (remap-python-source table-mapping source)
-        resolved-source-tables (transforms.util/resolve-source-tables (:source-tables remapped-source))
+        resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables remapped-source))
         {:as   result
          :keys [cols rows]}    (python-runner/execute-and-read-output!
                                 {:code          (:body remapped-source)
@@ -127,74 +112,88 @@
       {:status  :failed
        :message (:message result)})))
 
-(defn- dry-run-sql
-  "Run SQL transform query and return first 2000 rows without persisting.
-   Returns a ::ws.t/dry-run-result map with data nested under :data to match /api/dataset format."
-  [{:keys [source]} remapping]
+(defn- run-query
+  "Remap source, execute query, and format as ::ws.t/query-result.
+   Options: :row-limit (default 2000), :error-context (for logging).
+   Returns {:status :succeeded :data {...} :running_time ...} or {:status :failed :message ...}."
+  [source source-type remapping {:keys [row-limit error-context]
+                                 :or   {row-limit preview-row-limit}}]
   (try
-    (let [s-type          (transforms/transform-source-type source)
-          table-mapping   (:tables remapping no-mapping)
+    (let [table-mapping   (:tables remapping no-mapping)
           field-mapping   (:fields remapping no-mapping)
-          remapped-source (remap-source table-mapping field-mapping s-type source)
-          query           (:query remapped-source)
-          result          (qp/process-query
-                           (assoc query :constraints {:max-results           preview-row-limit
-                                                      :max-results-bare-rows preview-row-limit}))
+          remapped-source (remap-source table-mapping field-mapping source-type source)
+          query           (-> (:query remapped-source)
+                              (qp/userland-query)
+                              (assoc :constraints {:max-results           row-limit
+                                                   :max-results-bare-rows row-limit}))
+          result          (qp/process-query query)
           data            (:data result)]
       (if (= :completed (:status result))
-        {:status :succeeded
-         :data   (select-keys data [:rows :cols :results_metadata])}
+        {:status       :succeeded
+         :data         (select-keys data [:rows :cols :results_metadata])
+         :running_time (:running_time result)
+         :started_at   (:started_at result)}
         {:status  :failed
          :message (or (:error result) "Query execution failed")}))
     (catch Exception e
-      (log/error e "Failed to run sql dry-run")
+      (log/error e error-context)
       {:status  :failed
        :message (ex-message e)})))
 
+(defn- dry-run-sql
+  "Run SQL transform query and return first 2000 rows without persisting.
+   Returns a ::ws.t/query-result map with data nested under :data to match /api/dataset format."
+  [{:keys [source]} remapping]
+  (run-query source (transforms-base.u/transform-source-type source) remapping
+             {:error-context "Failed to run sql dry-run"}))
+
+(defn execute-adhoc-sql
+  "Execute an arbitrary SQL query against a database and return up to row-limit rows (default 2000).
+   Applies workspace table remapping so queries can reference global table names.
+   Returns a ::ws.t/query-result map with data nested under :data."
+  ([database-id sql remapping]
+   (execute-adhoc-sql database-id sql remapping {}))
+  ([database-id sql remapping opts]
+   (let [source {:query {:database database-id
+                         :lib/type :mbql/query
+                         :stages   [{:lib/type :mbql.stage/native
+                                     :native   sql}]}}]
+     (run-query source :native remapping
+                (merge {:error-context "Failed to execute adhoc SQL query"} opts)))))
+
 (defn run-transform-preview
   "Execute transform and return first 2000 rows without persisting.
-   Returns a ::ws.t/dry-run-result map with data nested under :data."
+   Returns a ::ws.t/query-result map with data nested under :data."
   [{:keys [source] :as transform} remapping]
-  (let [s-type (transforms/transform-source-type source)]
+  (let [s-type (transforms-base.u/transform-source-type source)]
     (case s-type
       (:native :mbql) (dry-run-sql transform remapping)
       :python         (dry-run-python transform remapping))))
 
 (defn run-transform-with-remapping
-  "Execute a given collection with the given table and field re-mappings.
+  "Execute a given transform with the given table and field re-mappings.
 
    This is used by Workspaces to re-route the output of each transform to a non-production table, and
    to re-write their queries where these outputs transitively become inputs to other transforms.
 
    Returns an ::ws.t/execution-result map with status, timing, and table metadata.
 
-   -------
-
-   NOTE: currently execution is done using transaction-rollback pattern, as a short-term hack.
-
-   1. Creating temporary Transform/TransformRun records in a transaction
-   2. Executing using existing transform infrastructure
-   3. Scraping metadata (execution stats + table schema)
-   4. Rolling back the transaction (no app DB records persist)
-
-   The warehouse DB changes (actual table data) DO persist in the isolated schema."
+   Uses transforms-base.core/execute! to run the transform in-memory without writing
+   Transform or TransformRun rows to AppDB. The warehouse DB changes (actual table data)
+   DO persist in the isolated schema."
   [{:keys [source target] :as transform} remapping]
-  (t2/with-transaction [_conn]
-    (let [s-type          (transforms/transform-source-type source)
-          table-mapping   (:tables remapping no-mapping)
-          target-fallback (:target-fallback remapping no-mapping)
-          field-mapping   (:fields remapping no-mapping)
-          new-xf          (-> (select-keys transform [:name :description])
-                              (assoc :creator_id api/*current-user-id*
-                                     :source (remap-source table-mapping field-mapping s-type source)
-                                     :target (remap-target table-mapping target-fallback target)))
-          _               (assert (:target new-xf) "Target mapping must not be nil")
-          temp-xf         (t2/insert-returning-instance! :model/Transform new-xf)]
-      (try
-        (transforms.execute/execute! temp-xf {:run-method :manual})
-        (catch Exception _e
-          ;; Execution failed - the TransformRun record has been updated with failure status and message
-          nil))
-      ;; Return execution results whether succeeded or failed
-      (u/prog1 (execution-results temp-xf)
-        (t2/delete! :model/Transform (:id temp-xf))))))
+  (let [s-type          (transforms-base.u/transform-source-type source)
+        table-mapping   (:tables remapping no-mapping)
+        target-fallback (:target-fallback remapping no-mapping)
+        field-mapping   (:fields remapping no-mapping)
+        remapped-xf     (-> (select-keys transform [:name :description])
+                            (assoc :source (remap-source table-mapping field-mapping s-type source)
+                                   :target (remap-target table-mapping target-fallback target)))
+        _               (assert (:target remapped-xf) "Target mapping must not be nil")
+        start-time      (java.time.Instant/now)
+        result          (transforms-base/execute! remapped-xf {:publish-events? false})]
+    {:status     (:status result)
+     :start_time start-time
+     :end_time   (java.time.Instant/now)
+     :message    (or (:logs result) (some-> (:error result) ex-message))
+     :table      (select-keys (:target remapped-xf) [:name :schema])}))

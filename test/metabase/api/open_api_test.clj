@@ -4,6 +4,7 @@
    [metabase.api-routes.core :as routes]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
+   [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -186,6 +187,13 @@
 (deftest ^:parallel openapi-all-routes
   (testing "Make sure we can successfully generate an OpenAPI spec for the entire API"
     (is (open-api/root-open-api-object #'routes/routes))))
+
+(deftest ^:parallel openapi-info-version-test
+  (testing "OpenAPI spec includes required info.version field (see #67748)"
+    (let [spec (open-api/root-open-api-object #'routes/routes)]
+      (is (= "3.1.0" (:openapi spec)))
+      (is (= "Metabase API" (get-in spec [:info :title])))
+      (is (= (:tag config/mb-version-info) (get-in spec [:info :version]))))))
 
 (deftest ^:parallel get-core-fn!-test
   (is (= {:status 200, :headers {}, :body 12345}

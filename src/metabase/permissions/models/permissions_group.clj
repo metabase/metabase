@@ -252,7 +252,7 @@
 
   This is idempotent: if the magic group has no members, nothing happens."
   []
-  (when-not (premium-features/enable-data-studio?)
+  (when-not (premium-features/enable-advanced-permissions?)
     (when-let [existing-group (t2/select-one :model/PermissionsGroup :magic_group_type data-analyst-magic-group-type)]
       (when (pos? (t2/count :model/PermissionsGroupMembership :group_id (:id existing-group)))
         (log/info "Converting Data Analysts group to normal group for OSS")

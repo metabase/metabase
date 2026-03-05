@@ -1,4 +1,4 @@
-import type { BooleanFilterValue } from "metabase/querying/filters/types";
+import type { BooleanFilterValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 
 export function getFilterValue(

@@ -55,9 +55,12 @@ export function formatUrl(value: string, options: OptionsType = {}) {
 
     const onClickCaptureInSdk = isEmbeddingSdk()
       ? {
-          onClickCapture: (e: React.MouseEvent<HTMLAnchorElement>) => {
-            if (handleLinkSdkPlugin(url).handled) {
-              e.preventDefault();
+          onClickCapture: async (e: React.MouseEvent<HTMLAnchorElement>) => {
+            e.preventDefault(); // Prevent immediately while we await the response
+            const result = await handleLinkSdkPlugin(url);
+            if (!result.handled) {
+              // Parent didn't handle it - proceed with default navigation
+              window.open(url, "_blank", "noopener");
             }
           },
         }

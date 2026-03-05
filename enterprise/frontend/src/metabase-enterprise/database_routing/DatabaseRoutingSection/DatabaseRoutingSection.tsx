@@ -18,6 +18,7 @@ import { useToast } from "metabase/common/hooks/use-toast";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
+  Alert,
   Box,
   Button,
   Flex,
@@ -133,7 +134,7 @@ export const DatabaseRoutingSection = ({
         </Stack>
         <Flex gap="md">
           <Tooltip label={disabledFeatMsg} disabled={!disabledFeatMsg}>
-            <Box>
+            <Box data-testid="database-routing-toggle-wrapper">
               <Switch
                 id="database-routing-toggle"
                 checked={enabled}
@@ -142,16 +143,42 @@ export const DatabaseRoutingSection = ({
               />
             </Box>
           </Tooltip>
-          <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} px="xs">
-            <Icon name={isExpanded ? "chevronup" : "chevrondown"} />
-          </UnstyledButton>
+          {disabledFeatMsg == null && (
+            <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} px="xs">
+              <Icon name={isExpanded ? "chevronup" : "chevrondown"} />
+            </UnstyledButton>
+          )}
         </Flex>
       </Flex>
+
+      {disabledFeatMsg != null && (
+        <>
+          <DatabaseInfoSectionDivider />
+          <Alert
+            variant="light"
+            color="info"
+            icon={<Icon name="info" />}
+            mb="md"
+          >
+            {disabledFeatMsg}
+          </Alert>
+        </>
+      )}
 
       {isExpanded && (
         <>
           <DatabaseInfoSectionDivider />
 
+          {hasDbRoutingEnabled(database) && (
+            <Alert
+              variant="light"
+              color="info"
+              icon={<Icon name="info" />}
+              mb="md"
+            >
+              {t`In guest embeds, database queries will always be routed to the router database.`}
+            </Alert>
+          )}
           <Stack mb="xl" gap="sm">
             <Flex justify="space-between" align="center" gap="sm">
               <Box>

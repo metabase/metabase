@@ -9,6 +9,12 @@ export const createMockAdminState = (
     deletionError: null,
     deletes: [],
   },
+  datamodel: {
+    revisions: null,
+  },
+  people: {
+    temporaryPasswords: {},
+  },
   ...opts,
 });
 
@@ -25,10 +31,16 @@ export const createMockPermissionsState = (
   return {
     dataPermissions: {},
     originalDataPermissions: {},
+    dataPermissionsRevision: null,
     collectionPermissions: {},
     originalCollectionPermissions: {},
+    collectionPermissionsRevision: null,
     tenantCollectionPermissions: {},
     originalTenantCollectionPermissions: {},
+    tenantCollectionPermissionsRevision: null,
+    tenantSpecificCollectionPermissions: {},
+    originalTenantSpecificCollectionPermissions: {},
+    tenantSpecificCollectionPermissionsRevision: null,
     isHelpReferenceOpen: false,
     hasRevisionChanged: {
       revision: null,

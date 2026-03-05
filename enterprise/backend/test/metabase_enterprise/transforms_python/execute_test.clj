@@ -2,11 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.test :as mt]
    [metabase.test.util :as test.util]
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase.transforms.util :as transforms.u]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent CountDownLatch)))
@@ -48,10 +49,10 @@
                                                                 "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
 
                   (let [swap-latch (CountDownLatch. 1)
-                        original-rename-tables-atomic! transforms.util/rename-tables!]
-                    (with-redefs [transforms.util/rename-tables! (fn [driver db-id rename-pairs]
-                                                                   (.await swap-latch)
-                                                                   (original-rename-tables-atomic! driver db-id rename-pairs))]
+                        original-rename-tables-atomic! transforms-base.u/rename-tables!]
+                    (mt/with-dynamic-fn-redefs [transforms-base.u/rename-tables! (fn [driver db-id rename-pairs]
+                                                                                   (.await swap-latch)
+                                                                                   (original-rename-tables-atomic! driver db-id rename-pairs))]
                       (let [transform-future (future
                                                (transforms-python.execute/execute-python-transform!
                                                 (t2/select-one :model/Transform (:id transform))
@@ -91,7 +92,7 @@
 
                   (let [db-id (mt/id)
                         tables (t2/select :model/Table :db_id db-id :active true)]
-                    (is (not-any? transforms.util/is-temp-transform-table? tables)
+                    (is (not-any? transforms.u/is-temp-transform-table? tables)
                         "No temp tables should remain after successful Python transform")
 
                     (is (= [[1 "a"] [2 "b"] [3 "c"]] (transforms.tu/table-rows table-name))

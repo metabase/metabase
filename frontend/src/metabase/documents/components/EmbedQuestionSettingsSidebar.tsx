@@ -156,7 +156,7 @@ export const EmbedQuestionSettingsSidebar = ({
 
                 {nonsensibleItems.length > 0 && (
                   <>
-                    <Menu.Label>{t`Other charts`}</Menu.Label>
+                    <Menu.Label>{t`More charts`}</Menu.Label>
                     {nonsensibleItems.map(
                       ({ iconName, label, value }, index) => (
                         <Menu.Item

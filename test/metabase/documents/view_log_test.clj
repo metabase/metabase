@@ -37,16 +37,17 @@
              (latest-view (:id user) (:id document))))))))
 
 (deftest document-read-oss-no-view-logging-test
-  (mt/with-temp [:model/Collection collection {}
-                 :model/User user {}
-                 :model/Document document {:collection_id (:id collection)
-                                           :name "Test Document"
-                                           :document "{\"type\":\"doc\",\"content\":[]}"
-                                           :creator_id (:id user)}]
-    (testing "A basic document read event is not recorded without audit-app"
-      (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
-      (is (nil? (latest-view (:id user) (:id document)))
-          "view log entries should not be made without audit-app feature"))))
+  (mt/with-premium-features #{}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/User user {}
+                   :model/Document document {:collection_id (:id collection)
+                                             :name "Test Document"
+                                             :document "{\"type\":\"doc\",\"content\":[]}"
+                                             :creator_id (:id user)}]
+      (testing "A basic document read event is not recorded without audit-app"
+        (events/publish-event! :event/document-read {:object-id (:id document) :user-id (:id user)})
+        (is (nil? (latest-view (:id user) (:id document)))
+            "view log entries should not be made without audit-app feature")))))
 
 (deftest document-read-view-count-test
   (mt/test-helpers-set-global-values!
@@ -99,6 +100,23 @@
                (-> (t2/select-one-fn :last_viewed_at :model/Document (:id document))
                    t/offset-date-time
                    (.withNano 0))))))))
+
+(deftest update-last-viewed-at-does-not-trigger-after-update-test
+  (testing "updating last_viewed_at should not trigger the Document after-update hook"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/User user {}
+                   :model/Document document {:collection_id (:id collection)
+                                             :name "Test Document"
+                                             :document "{\"type\":\"doc\",\"content\":[]}"
+                                             :creator_id (:id user)}]
+      (let [events-published (atom [])]
+        (with-redefs [events/publish-event! (fn [topic event]
+                                              (swap! events-published conj topic)
+                                              event)]
+          (#'documents.view-log/update-document-last-viewed-at!*
+           [{:id (:id document) :timestamp (t/offset-date-time)}])
+          (is (not (contains? (set @events-published) :event/document-update))
+              "updating last_viewed_at should not publish :event/document-update"))))))
 
 (deftest document-event-derivation-test
   (testing "Document events are properly derived from base events"

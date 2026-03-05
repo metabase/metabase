@@ -557,7 +557,7 @@
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
     :development-mode
-    :data-studio
+    :library
     :embedding
     :embedding-sdk
     :embedding-simple
@@ -568,7 +568,8 @@
     :llm-autodescription
     :query-reference-validation
     :cloud-custom-smtp
-    :session-timeout-config})
+    :session-timeout-config
+    :sso-oidc})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"

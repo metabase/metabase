@@ -104,8 +104,8 @@ describe("scenarios > question > saved", () => {
     });
 
     cy.url().should("include", "/dashboard/");
-    cy.location("hash").should("match", /scrollTo=\d+/); // url should have hash param to auto-scroll
-    H.dashboardCards().findByText("Orders - Duplicate").should("exist");
+    cy.location("hash").should("not.include", "scrollTo");
+    H.dashboardCards().findByText("Orders - Duplicate").should("be.visible");
   });
 
   it("should duplicate a saved question to a collection created on the go", () => {

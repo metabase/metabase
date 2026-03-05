@@ -97,6 +97,7 @@
    "PermissionsGroupMembership"
    "PermissionsRevision"
    "PersistedInfo"
+   "PremiumFeaturesCache"
    "Pulse"
    "PulseCard"
    "PulseChannel"
@@ -133,6 +134,7 @@
    ;; serialization, hence we should revisit this later in the project.
    "WorkspaceInput"
    "WorkspaceInputExternal"
+   "WorkspaceInputTransform"
    "WorkspaceLog"
    "WorkspaceMerge"
    "WorkspaceMergeTransform"

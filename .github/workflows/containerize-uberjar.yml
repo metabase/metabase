@@ -55,13 +55,13 @@ jobs:
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
-      commit: ${{ github.event.inputs.commit || github.sha }}
+      edition: ${{ matrix.edition }}
+      commit: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
       repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
       tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}
       release: "false"
       build-args: |
-        GIT_COMMIT_SHA=${{ github.event.inputs.commit || github.sha }}
+        GIT_COMMIT_SHA=${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
 
   run-trivy:
     needs: [get-container-info, containerize]
@@ -74,7 +74,7 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.commit || github.sha }}
+          ref: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.29.0
         env:

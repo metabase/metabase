@@ -44,9 +44,6 @@ export const HeaderCellWithColumnInfo = memo(
     className,
     renderTableHeader,
   }: HeaderCellWithColumnInfoProps) {
-    const query = question?.query();
-    const stageIndex = -1;
-
     const headerCellOverride = useMemo(() => {
       return renderTableHeader != null
         ? renderTableHeader(column, columnIndex, theme)
@@ -63,23 +60,33 @@ export const HeaderCellWithColumnInfo = memo(
       </div>
     );
 
+    let headerContent: React.ReactNode;
+
+    if (getInfoPopoversDisabled()) {
+      headerContent = cellContent;
+    } else {
+      // question.query will throw when used in the visualizer
+      // we don't go down this code path in the visualizer because isDashboard is true
+      const query = question?.query();
+      const stageIndex = -1;
+      headerContent = (
+        <QueryColumnInfoPopover
+          position="bottom-start"
+          query={query}
+          stageIndex={stageIndex}
+          column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
+          timezone={timezone}
+          openDelay={500}
+          showFingerprintInfo
+        >
+          {cellContent}
+        </QueryColumnInfoPopover>
+      );
+    }
+
     return (
       <HeaderCellWrapper className={className} variant={variant} align={align}>
-        {getInfoPopoversDisabled() ? (
-          cellContent
-        ) : (
-          <QueryColumnInfoPopover
-            position="bottom-start"
-            query={query}
-            stageIndex={-1}
-            column={query && Lib.fromLegacyColumn(query, stageIndex, column)}
-            timezone={timezone}
-            openDelay={500}
-            showFingerprintInfo
-          >
-            {cellContent}
-          </QueryColumnInfoPopover>
-        )}
+        {headerContent}
       </HeaderCellWrapper>
     );
   },

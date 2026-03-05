@@ -180,9 +180,9 @@ The first rule of frontend style, is we want to avoid talking about frontend sty
 
 ### Prettier + Eslint
 
-We use [Prettier](https://prettier.io/) to format our JavaScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `yarn prettier`, and verify it has been formatted correctly using `yarn lint-prettier`.
+We use [Prettier](https://prettier.io/) to format our JavaScript code, and it is enforced by CI. We recommend setting your editor to "format on save". You can also format code using `bun run prettier`, and verify it has been formatted correctly using `bun run lint-prettier`.
 
-We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `yarn lint-eslint` to check. Nitpicky things like import order, spacing, etc. are all enforced by eslint.
+We use ESLint to enforce additional rules. It is integrated into the Webpack build, or you can manually run `bun run lint-eslint` to check. Nitpicky things like import order, spacing, etc. are all enforced by eslint.
 
 ### Miscellaneous notes on coding style
 

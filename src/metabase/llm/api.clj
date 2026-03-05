@@ -15,7 +15,6 @@
    [metabase.driver :as driver]
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
-   [metabase.llm.costs :as llm.costs]
    [metabase.llm.settings :as llm.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
@@ -92,9 +91,8 @@
                                 codecs/bytes->hex)
         token-or-uuid   (or hashed-token
                             (str "oss__" (analytics/analytics-uuid)))
-        estimated-costs (llm.costs/estimate {:model      model
-                                             :prompt     prompt
-                                             :completion completion})]
+        ;; Just report 0.0 as estimated cost rather than providing an estimate that is guaranteed to get stale.
+        estimated-costs 0.0]
     (snowplow/track-event! :snowplow/token_usage
                            {:hashed-metabase-license-token token-or-uuid
                             :request-id                    request-id

@@ -4,6 +4,7 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { getAllDescendantIds } from "metabase/common/components/tree/utils";
 import { useSetting } from "metabase/common/hooks";
 import { buildCollectionTree } from "metabase/entities/collections";
+import { TRANSFORMS_ROOT_ID } from "metabase-enterprise/remote_sync/utils";
 
 import { useGitSyncVisible } from "./use-git-sync-visible";
 import { useRemoteSyncDirtyState } from "./use-remote-sync-dirty-state";
@@ -20,8 +21,24 @@ export function useHasTransformDirtyChanges(): boolean {
   );
 
   return useMemo(() => {
-    // Only show if git sync is visible and transforms setting is enabled
-    if (!isGitSyncVisible || !transformsSetting || !isDirty) {
+    // Only show if git sync is visible and there are dirty entities
+    if (!isGitSyncVisible || !isDirty) {
+      return false;
+    }
+
+    // Check for Transforms root collection (sentinel value id=-1)
+    // This needs to show even when transforms setting is off (to show pending delete)
+    const hasTransformsRootChange = dirty.some(
+      (entity) =>
+        entity.model === "collection" && entity.id === TRANSFORMS_ROOT_ID,
+    );
+
+    if (hasTransformsRootChange) {
+      return true;
+    }
+
+    // For other transform-related changes, only show if transforms setting is enabled
+    if (!transformsSetting) {
       return false;
     }
 

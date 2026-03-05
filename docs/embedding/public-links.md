@@ -156,8 +156,8 @@ Public sharing is enabled by default.
 
 To disable public sharing:
 
-1. Click on the **Gear** icon in the upper right.
-2. Select **Admin settings**.
+1. Click the **grid** icon in the upper right.
+2. Select **Admin**.
 3. In the **Settings** tab, select **Public sharing**.
 4. Toggle off **Public sharing**.
 
@@ -178,15 +178,15 @@ If you disable public sharing, then re-enable public sharing, all your previousl
 
 Admins can view and deactivate all public links for a Metabase.
 
-1. Click on the **gear** icon in the upper right.
-2. Select **Admin settings**.
+1. Click the **grid** icon in the upper right.
+2. Select **Admin**.
 3. Go to the **Settings** tab.
 4. Go to the **Public sharing** tab in the left sidebar.
 5. For each item you want to deactivate, click on the **X** to revoke its public link.
 
 ## See all publicly shared content
 
-Admins can see all publicly shared questions, dashboards, documents, and actions in **Admin Settings > Public Sharing**.
+Admins can see all publicly shared questions, dashboards, documents, and actions in **Admin > Public Sharing**.
 
 ![See shared content](./images/see-shared-content.png)
 

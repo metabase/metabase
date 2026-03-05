@@ -20,7 +20,7 @@ import { initializePlugin as initializeCleanUp } from "./clean_up";
 import { initializePlugin as initializeCollections } from "./collections";
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
 import { initializePlugin as initializeContentVerification } from "./content_verification";
-import { initializePlugin as initializeDataStudio } from "./data-studio";
+import { initializePlugin as initializeLibrary } from "./data-studio/library";
 import { initializePlugin as initializeWorkspaces } from "./data-studio/workspaces";
 import { initializePlugin as initializeDatabaseReplication } from "./database_replication";
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
@@ -50,6 +50,7 @@ import { initializePlugin as initializeTransformsPython } from "./transforms-pyt
 import { initializePlugin as initializeUploadManagement } from "./upload_management";
 import { initializePlugin as initializeUserProvisioning } from "./user_provisioning";
 import { initializePlugin as initializeWhitelabel } from "./whitelabel";
+import { initializePlugin as initializeWritableConnection } from "./writable_connection";
 
 /**
  * Initialize all enterprise plugins that use hasPremiumFeature.
@@ -64,7 +65,6 @@ export function initializePlugins() {
   initializeContentTranslation();
   initializeContentVerification();
   initializeDatabaseRouting();
-  initializeDataStudio();
   initializeRemoteSync();
   initializeWhitelabel();
   initializeEmbedding();
@@ -83,6 +83,7 @@ export function initializePlugins() {
   initializeFeatureLevelPermissions();
   initializeApplicationPermissions();
   initializeGroupManagers();
+  initializeLibrary();
   initializeUploadManagement();
   initializeResourceDownloads();
   initializeUserProvisioning();
@@ -97,4 +98,5 @@ export function initializePlugins() {
   initializeSupport();
   initializeTenants?.();
   initializeWorkspaces();
+  initializeWritableConnection();
 }

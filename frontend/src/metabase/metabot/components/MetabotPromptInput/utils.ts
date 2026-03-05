@@ -1,4 +1,10 @@
 import type { JSONContent } from "@tiptap/core";
+import {
+  Fragment,
+  Node,
+  type Node as ProseMirrorNode,
+  Slice,
+} from "@tiptap/pm/model";
 import { match } from "ts-pattern";
 
 import {
@@ -52,6 +58,23 @@ function serializeNode(node: JSONContent): string {
 export function serializeTiptapToMetabotMessage(content: JSONContent): string {
   return serializeNodes(content?.content || []).trim();
 }
+
+export const parseClipboardTextAsParagraphs = (
+  text: string,
+  context: { doc: ProseMirrorNode },
+): Slice => {
+  const blocks = text.split(/(?:\r\n?|\n)/);
+
+  const nodes = blocks.map((line) => {
+    return Node.fromJSON(context.doc.type.schema, {
+      type: "paragraph",
+      ...(line.length > 0 ? { content: [{ type: "text", text: line }] } : {}),
+    });
+  });
+
+  const fragment = Fragment.fromArray(nodes);
+  return Slice.maxOpen(fragment);
+};
 
 const MENTION_REGEX = new RegExp(METABSE_PROTOCOL_MD_LINK, "g");
 

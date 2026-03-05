@@ -15,7 +15,8 @@ export function useHasSsoEnabled() {
     settings?.["google-auth-enabled"] ||
     settings?.["ldap-enabled"] ||
     settings?.["saml-enabled"] ||
-    settings?.["jwt-enabled"];
+    settings?.["jwt-enabled"] ||
+    settings?.["oidc-enabled"];
 
   return hasAnySsoProviderEnabled;
 }

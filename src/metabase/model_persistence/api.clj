@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
@@ -272,18 +273,19 @@
     (if (-> database :settings :persist-models-enabled)
       ;; todo: some other response if already persisted?
       api/generic-204-no-content
-      (let [[success? error] (ddl.i/check-can-persist database)
-            schema           (ddl.i/schema-name database (system/site-uuid))]
-        (if success?
-          ;; do secrets require special handling to not clobber them or mess up encryption?
-          (do (t2/update! :model/Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
-              (task.persist-refresh/schedule-persistence-for-database!
-               database
-               (model-persistence.settings/persisted-model-refresh-cron-schedule))
-              api/generic-204-no-content)
-          (throw (ex-info (ddl.i/error->message error schema)
-                          {:error error
-                           :database (:name database)})))))))
+      (driver.conn/with-write-connection
+        (let [[success? error] (ddl.i/check-can-persist database)
+              schema           (ddl.i/schema-name database (system/site-uuid))]
+          (if success?
+            ;; do secrets require special handling to not clobber them or mess up encryption?
+            (do (t2/update! :model/Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
+                (task.persist-refresh/schedule-persistence-for-database!
+                 database
+                 (model-persistence.settings/persisted-model-refresh-cron-schedule))
+                api/generic-204-no-content)
+            (throw (ex-info (ddl.i/error->message error schema)
+                            {:error    error
+                             :database (:name database)}))))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

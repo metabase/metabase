@@ -3,7 +3,6 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -111,10 +110,25 @@
                                :status-code 400}))))
           (some-> value name))})
 
+(def ^:private transform-data-layer
+  {:in  (:in mi/transform-keyword)
+   :out (comp (some-fn data-layers
+                       ;; some databases may retain prior medallion values
+                       ;; this is due to race conditions with migrations (migration runs can contend with running writes)
+                       ;; e.g. we saw the prior values retained for the sync of a new search index table in stats.
+                       ;; we might later have a second migration and risk removing this map or find a better way
+                       ;; to make breaking enum migrations.
+                       {:copper :hidden
+                        :bronze :final
+                        :silver :final
+                        :gold   :final}
+                       identity)
+              (:out mi/transform-keyword))})
+
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-layers))
+   :data_layer      (mi/transform-validator transform-data-layer (partial mi/assert-optional-enum data-layers))
    :field_order     mi/transform-keyword
    :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
@@ -241,9 +255,8 @@
 (defmethod mi/can-read? :model/Table
   ;; Check if user can see this table's metadata.
   ;; True if user has:
-  ;; - Data access permissions (and (view-data :unrestricted) (create-queries :query-builder)), OR
+  ;; - Data access permissions (view-data :unrestricted) and either query perms or published-collection access, OR
   ;; - Metadata management permission (manage-table-metadata :yes), OR
-  ;; - Access via published table in a collection (EE feature)
   ([instance]
    (or
     ;; Has data access permissions
@@ -253,31 +266,31 @@
           :unrestricted
           (:db_id instance)
           (:id instance))
-         (perms/user-has-permission-for-table?
-          api/*current-user-id*
-          :perms/create-queries
-          :query-builder
-          (:db_id instance)
-          (:id instance)))
+         (or
+          (perms/user-has-permission-for-table?
+           api/*current-user-id*
+           :perms/create-queries
+           :query-builder
+           (:db_id instance)
+           (:id instance))
+          ;; Can access via published collection (EE feature)
+          (perms/can-access-via-collection? instance)))
     ;; Has manage-table-metadata permission (allows viewing metadata without data access)
     (perms/user-has-permission-for-table?
      api/*current-user-id*
      :perms/manage-table-metadata
      :yes
      (:db_id instance)
-     (:id instance))
-    ;; Can access via published collection (EE feature)
-    (perms/can-access-via-collection? instance)))
+     (:id instance))))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Table pk))))
 
 (defmethod mi/can-query? :model/Table
   ;; Check if user can execute queries against this table.
   ;; True if user has:
-  ;; - Both view-data AND create-queries permissions, OR
-  ;; - Access via published table in a collection (EE feature)
+  ;; - view-data permission and either create-queries permission or published-collection access (EE feature)
   ([instance]
-   (or
+   (boolean
     ;; Has both view-data and create-queries permissions
     (and (perms/user-has-permission-for-table?
           api/*current-user-id*
@@ -285,14 +298,15 @@
           :unrestricted
           (:db_id instance)
           (:id instance))
-         (perms/user-has-permission-for-table?
-          api/*current-user-id*
-          :perms/create-queries
-          :query-builder
-          (:db_id instance)
-          (:id instance)))
-    ;; Can access via published collection (EE feature)
-    (perms/can-access-via-collection? instance)))
+         (or
+          (perms/user-has-permission-for-table?
+           api/*current-user-id*
+           :perms/create-queries
+           :query-builder
+           (:db_id instance)
+           (:id instance))
+          ;; Can access via published collection (EE feature)
+          (perms/can-access-via-collection? instance)))))
   ([_ pk]
    (mi/can-query? (t2/select-one :model/Table pk))))
 
@@ -364,8 +378,21 @@
   [_                  :- :keyword
    column-or-exp      :- :any
    user-info          :- perms/UserInfo
-   permission-mapping :- perms/PermissionMapping]
-  (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping))
+   permission-mapping :- perms/PermissionMapping
+   & [{:keys [include-published-via-collection?]}]]
+  (let [{:keys [clause with]} (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping)]
+    (if-let [published-clause (and include-published-via-collection?
+                                   (perms/published-table-visible-clause column-or-exp user-info))]
+      {:clause [:or clause
+                [:and
+                 [:in column-or-exp (perms/visible-table-filter-select
+                                     :id
+                                     user-info
+                                     {:perms/view-data :unrestricted})]
+                 published-clause]]
+       :with with}
+      {:clause clause
+       :with with})))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
@@ -439,21 +466,19 @@
 (methodical/defmethod t2/batched-hydrate [:model/Table :transform]
   "Hydrate transforms that created the tables."
   [_model k tables]
-  (if config/ee-available?
-    (mi/instances-with-hydrated-data
-     tables k
-     #(let [table-ids                (map :id tables)
-            table-id->transform-id   (t2/select-fn->fn :from_entity_id :to_entity_id :model/Dependency
-                                                       :from_entity_type "table"
-                                                       :from_entity_id [:in table-ids]
-                                                       :to_entity_type "transform")
-            transform-id->transform  (when-let [transform-ids (seq (vals table-id->transform-id))]
-                                       (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
-        (update-vals table-id->transform-id transform-id->transform))
-     :id
-     {:default nil})
-    ;; EE not available, so no transforms
-    tables))
+  (mi/instances-with-hydrated-data
+   tables k
+   #(let [transform-ids (->> tables (keep :transform_id) distinct)
+          id->transform (when (seq transform-ids)
+                          (t2/select-fn->fn :id identity :model/Transform
+                                            :id [:in transform-ids]))]
+      (into {}
+            (keep (fn [{:keys [id transform_id]}]
+                    (when transform_id
+                      [id (get id->transform transform_id)])))
+            tables))
+   :id
+   {:default nil}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
   [_model k tables]
@@ -580,7 +605,8 @@
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
                :db_id          (serdes/fk :model/Database :name)
-               :collection_id  (serdes/fk :model/Collection)}})
+               :collection_id  (serdes/fk :model/Collection)
+               :transform_id   (serdes/fk :model/Transform)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))

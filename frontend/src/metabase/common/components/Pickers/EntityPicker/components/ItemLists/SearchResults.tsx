@@ -6,8 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { getIcon } from "metabase/lib/icon";
-import { PLUGIN_DATA_STUDIO, PLUGIN_MODERATION } from "metabase/plugins";
-// import { trackSearchClick } from "metabase/search/analytics";
+import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Icon, NavLink, SegmentedControl, Text } from "metabase/ui";
 
 import type { OmniPickerItem, OmniPickerTableItem, SearchScope } from "../..";
@@ -193,8 +192,7 @@ export function SearchScopeSelector() {
   const { setSearchScope } = useOmniPickerContext();
   const searchScope = useCurrentSearchScope();
 
-  const { data: libraryCollection } =
-    PLUGIN_DATA_STUDIO.useGetLibraryCollection();
+  const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
 
   const lastCollection = useGetLastCollection();
 
