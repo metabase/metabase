@@ -551,7 +551,7 @@ describe("issue 40635", () => {
       cy.findByRole("button", { name: "Add or remove columns" }).click();
       cy.findAllByText("ID").should("have.length", 4);
       cy.findAllByText("Products").should("have.length", 1);
-      cy.findAllByText("Products 2").should("have.length", 1);
+      cy.findAllByText("Products - User").should("have.length", 1);
     });
 
     cy.button("Done").click();
