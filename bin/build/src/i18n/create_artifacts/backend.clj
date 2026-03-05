@@ -10,7 +10,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- backend-message? [{:keys [source-references]}]
+(defn backend-message?
+  "Returns true if the `message` comes from a backend source file."
+  [{:keys [source-references]}]
   (boolean
    (let [paths (eduction
                 ;; Sometimes 2 paths exist in a single string, space separated
