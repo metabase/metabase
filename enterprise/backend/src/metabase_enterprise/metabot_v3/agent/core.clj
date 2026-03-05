@@ -152,6 +152,14 @@
   "Profile identifier keyword."
   [:enum :embedding_next :internal :transforms_codegen :sql :nlq :document-generate-content])
 
+(mr/def ::tracking-opts
+  "Options for snowplow and prometheus analytics tracking."
+  [:map
+   [:session-id          {:optional true} [:maybe ms/UUIDString]]
+   [:source              {:optional true} [:maybe :string]]
+   [:tag                 {:optional true} [:maybe :string]]
+   [:track-user-intent?  {:optional true} [:maybe :boolean]]])
+
 ;;; Iteration control
 
 (defn- has-tool-calls?
@@ -425,11 +433,7 @@
             [:profile-id ::profile-id]
             [:state {:optional true} [:maybe ::state]]
             [:context {:optional true} [:maybe ::context]]
-            [:tracking-opts {:optional true} [:maybe [:map
-                                                      [:session-id {:optional true} [:maybe ms/UUIDString]]
-                                                      [:source {:optional true} [:maybe :string]]
-                                                      [:tag {:optional true} [:maybe :string]]
-                                                      [:track-user-intent? {:optional true} [:maybe :boolean]]]]]
+            [:tracking-opts {:optional true} [:maybe ::tracking-opts]]
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
