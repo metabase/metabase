@@ -209,6 +209,10 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
 }
 ```
 
+## Writeable connection
+
+Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
+
 ## Model features
 
 There aren't (yet) any model features available for Athena.

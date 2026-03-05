@@ -1,5 +1,9 @@
 import { createMockMetadata } from "__support__/metadata";
-import { SAMPLE_DATABASE, createQuery } from "metabase-lib/test-helpers";
+import * as Lib from "metabase-lib";
+import {
+  SAMPLE_DATABASE,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import { createMockSegment, createMockTable } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
@@ -41,15 +45,20 @@ describe("suggestSegments", () => {
       segments: [SEGMENT_FOO, SEGMENT_BAR],
     });
 
-    const query = createQuery({
+    const provider = createMetadataProvider({
       metadata,
-      query: {
-        database: DATABASE.id,
-        type: "query",
-        query: {
-          "source-table": TABLE.id,
+      databaseId: DATABASE.id,
+    });
+
+    const query = Lib.createTestQuery(provider, {
+      stages: [
+        {
+          source: {
+            type: "table",
+            id: TABLE.id,
+          },
         },
-      },
+      ],
     });
 
     const source = suggestSegments({

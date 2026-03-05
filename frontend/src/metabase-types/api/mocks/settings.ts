@@ -146,6 +146,7 @@ export const createMockTokenFeatures = (
   "support-users": false,
   tenants: false,
   workspaces: false,
+  writable_connection: false,
   ...opts,
 });
 
@@ -312,7 +313,7 @@ export const createMockSettings = (
   "ldap-group-mappings": null,
   "ldap-group-membership-filter": "(member={dn})",
   "loading-message": "doing-science",
-  "llm-sql-generation-enabled": false,
+  "llm-anthropic-api-key-configured?": false,
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   "native-query-autocomplete-match-style": "substring",
   "openai-api-key": null,
@@ -367,6 +368,8 @@ export const createMockSettings = (
   "show-homepage-data": false,
   "show-homepage-pin-message": false,
   "show-homepage-xrays": false,
+  "metabot-enabled?": true,
+  "embedded-metabot-enabled?": true,
   "show-metabase-links": true,
   "show-metabot": true,
   "show-updated-permission-modal": false,

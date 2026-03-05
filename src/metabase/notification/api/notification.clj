@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
+   [metabase.channel.models.channel :as models.channel]
    [metabase.channel.settings :as channel.settings]
    [metabase.embedding.util :as embed.util]
    [metabase.events.core :as events]
@@ -15,11 +16,36 @@
    [metabase.notification.models :as models.notification]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
+
+(mr/def ::NotificationApiInput
+  "Notification schema for API input. Like FullyHydratedNotification but restricts templates
+  to user-provided types only (no handlebars-resource)."
+  [:merge
+   ::models.notification/FullyHydratedNotification
+   [:map
+    [:handlers {:optional true}
+     [:sequential
+      [:merge
+       ::models.notification/NotificationHandler
+       [:map
+        [:template   {:optional true} [:maybe ::models.channel/ChannelTemplateUserProvided]]
+        [:channel    {:optional true} [:maybe ::models.channel/Channel]]
+        [:recipients {:optional true} [:sequential ::models.notification/NotificationRecipient]]]]]]]])
+
+(defn- check-no-resource-templates!
+  "Validate that no handler uses handlebars-resource templates. That type is internal only."
+  [handlers]
+  (doseq [{:keys [template]} handlers
+          :when template
+          :let [template-type (some-> template :details :type keyword)]]
+    (when (= :email/handlebars-resource template-type)
+      (throw (ex-info "invalid template" {:status-code 400})))))
 
 (defn get-notification
   "Get a notification by id."
@@ -164,7 +190,8 @@
 
 (api.macros/defendpoint :post "/" :- ::models.notification/FullyHydratedNotification
   "Create a new notification, return the created notification."
-  [_route _query body :- ::models.notification/FullyHydratedNotification request]
+  [_route _query body :- ::NotificationApiInput request]
+  (check-no-resource-templates! (:handlers body))
   (create-notification!
    (-> body
        (update :payload_type keyword)
@@ -207,7 +234,8 @@
   Return the updated notification."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query
-   body :- ::models.notification/FullyHydratedNotification]
+   body :- ::NotificationApiInput]
+  (check-no-resource-templates! (:handlers body))
   (let [existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (models.notification/update-notification! existing-notification body)
@@ -250,7 +278,8 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/send"
   "Send an unsaved notification."
-  [_route _query body :- ::models.notification/FullyHydratedNotification request]
+  [_route _query body :- ::NotificationApiInput request]
+  (check-no-resource-templates! (:handlers body))
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
   (let [notification (-> body

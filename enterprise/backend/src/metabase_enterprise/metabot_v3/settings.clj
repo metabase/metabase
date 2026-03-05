@@ -52,6 +52,24 @@
   :export?    false
   :doc        false)
 
+(defsetting metabot-enabled?
+  (deferred-tru "Whether Metabot is enabled for regular usage.")
+  :type       :boolean
+  :visibility :public
+  :default    true
+  :feature    :metabot-v3
+  :export?    true
+  :doc        false)
+
+(defsetting embedded-metabot-enabled?
+  (deferred-tru "Whether Metabot is enabled for embedding.")
+  :type       :boolean
+  :visibility :public
+  :default    true
+  :feature    :metabot-v3
+  :export?    true
+  :doc        false)
+
 (defsetting metabot-slack-signing-secret
   (deferred-tru "Signing secret for verifying requests from the Metabot Slack app")
   :type       :string

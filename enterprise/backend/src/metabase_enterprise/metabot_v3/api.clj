@@ -12,6 +12,7 @@
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.feedback :as metabot-v3.feedback]
    [metabase-enterprise.metabot-v3.persistence :as metabot-v3.persistence]
+   [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -21,11 +22,21 @@
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
 
+(defn- check-metabot-enabled!
+  "Checks that the Metabot instance identified by `metabot-id` is enabled. Throws a 403 if it's not."
+  [metabot-id]
+  (if (= metabot-id metabot-v3.config/embedded-metabot-id)
+    (api/check (metabot-v3.settings/embedded-metabot-enabled?)
+               [403 "Embedded Metabot is not enabled."])
+    (api/check (metabot-v3.settings/metabot-enabled?)
+               [403 "Metabot is not enabled."])))
+
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
   [{:keys [metabot_id profile_id message context history conversation_id state]}]
   (let [message    (metabot-v3.envelope/user-message message)
         metabot-id (metabot-v3.config/resolve-dynamic-metabot-id metabot_id)
+        _          (check-metabot-enabled! metabot-id)
         profile-id (metabot-v3.config/resolve-dynamic-profile-id profile_id metabot-id)
         session-id (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)]
     (metabot-v3.persistence/store-message! conversation_id profile-id [message])

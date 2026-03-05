@@ -1,7 +1,9 @@
 import { Route } from "react-router";
 
 import type { MetabotContext as MetabotContextType } from "metabase/metabot";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -28,6 +30,19 @@ import {
 } from "./state";
 
 /**
+ * A wrapper component that renders MetabotQueryBuilder if metabot is enabled,
+ * otherwise falls back to the regular QueryBuilder.
+ */
+function MetabotQueryBuilderOrFallback(props: any) {
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  return isMetabotEnabled ? (
+    <MetabotQueryBuilder {...props} />
+  ) : (
+    <QueryBuilder {...props} />
+  );
+}
+
+/**
  * This is for Metabot in embedding
  *
  * TODO: Move this under a feature flag, but then we need to make our
@@ -48,7 +63,6 @@ export function initializePlugin() {
   if (hasPremiumFeature("metabot_v3")) {
     Object.assign(PLUGIN_METABOT, {
       // helpers
-      isEnabled: () => true,
       getNewMenuItemAIExploration,
       getMetabotVisible,
       // routes
@@ -60,7 +74,7 @@ export function initializePlugin() {
         </>
       ),
       getMetabotQueryBuilderRoute: () => (
-        <Route path="ask" component={MetabotQueryBuilder} />
+        <Route path="ask" component={MetabotQueryBuilderOrFallback} />
       ),
       // components
       Metabot,
