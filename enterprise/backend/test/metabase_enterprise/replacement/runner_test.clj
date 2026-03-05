@@ -3,13 +3,12 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
-   [metabase-enterprise.replacement.runner :as runner]
+   [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (comment
   metabase-enterprise.dependencies.events/keep-me)
@@ -34,7 +33,7 @@
                                [:table table-id]
                                [:segment segment-id]]
             metadata-provider (lib-be/application-database-metadata-provider (mt/id))
-            loaded            (#'runner/bulk-load-metadata-for-entities!
+            loaded            (#'replacement.runner/bulk-load-metadata-for-entities!
                                metadata-provider
                                entities)]
 
@@ -81,7 +80,7 @@
                                  [:card dep-1-card-id]
                                  [:card dep-2-card-id]]
               metadata-provider (lib-be/application-database-metadata-provider (mt/id))
-              value             (#'runner/bulk-load-metadata-for-entities!
+              value             (#'replacement.runner/bulk-load-metadata-for-entities!
                                  metadata-provider
                                  entities)
               ;; After bulk loading, the source card should be in the metadata provider's cache
@@ -119,7 +118,7 @@
                                [:segment segment-id]
                                [:measure measure-id]]
             metadata-provider (lib-be/application-database-metadata-provider (mt/id))
-            loaded            (#'runner/bulk-load-metadata-for-entities!
+            loaded            (#'replacement.runner/bulk-load-metadata-for-entities!
                                metadata-provider
                                entities)]
 
@@ -138,7 +137,7 @@
   (testing "bulk-load-metadata-for-entities! handles empty batch gracefully"
     (let [entities          []
           metadata-provider (lib-be/application-database-metadata-provider (mt/id))
-          loaded            (#'runner/bulk-load-metadata-for-entities!
+          loaded            (#'replacement.runner/bulk-load-metadata-for-entities!
                              metadata-provider
                              entities)]
 
@@ -151,7 +150,7 @@
       (let [entities          [[:dashboard dashboard-id]
                                [:document 123]]
             metadata-provider (lib-be/application-database-metadata-provider (mt/id))
-            loaded            (#'runner/bulk-load-metadata-for-entities!
+            loaded            (#'replacement.runner/bulk-load-metadata-for-entities!
                                metadata-provider
                                entities)]
 

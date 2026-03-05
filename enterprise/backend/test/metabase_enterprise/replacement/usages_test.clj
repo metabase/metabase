@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
-   [metabase-enterprise.replacement.usages :as usages]
+   [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -37,7 +37,7 @@
   "Create an in-memory dependency graph from a seq of edges.
 
    Each edge is `[dependent dependency]` - meaning the first entity depends on the second.
-   Returns a graph suitable for passing to `usages/transitive-usages`."
+   Returns a graph suitable for passing to `replacement.usages/transitive-usages`."
   [edges]
   (graph/in-memory (deps->adjacency-map edges)))
 
@@ -76,7 +76,7 @@
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [source-card (card/create-card! (card-with-query "Source card" :products) user)
                   child-card  (card/create-card! (card-sourced-from "Child card" source-card) user)
-                  found-usages (usages/transitive-usages [:card (:id source-card)])]
+                  found-usages (replacement.usages/transitive-usages [:card (:id source-card)])]
               (is (some #(= [:card (:id child-card)] %) found-usages)
                   "Child card should appear in usages"))))))))
 
@@ -89,7 +89,7 @@
             (let [source-card      (card/create-card! (card-with-query "Source card" :products) user)
                   child-card       (card/create-card! (card-sourced-from "Child card" source-card) user)
                   grandchild-card  (card/create-card! (card-sourced-from "Grandchild card" child-card) user)
-                  found-usages     (usages/transitive-usages [:card (:id source-card)])]
+                  found-usages     (replacement.usages/transitive-usages [:card (:id source-card)])]
               (is (some #(= [:card (:id child-card)] %) found-usages)
                   "Child card should appear in usages")
               (is (some #(= [:card (:id grandchild-card)] %) found-usages)
@@ -102,7 +102,7 @@
         (mt/with-temp [:model/User user {:email "usages-empty@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [lonely-card  (card/create-card! (card-with-query "Lonely card" :products) user)
-                  found-usages (usages/transitive-usages [:card (:id lonely-card)])]
+                  found-usages (replacement.usages/transitive-usages [:card (:id lonely-card)])]
               (is (empty? found-usages)
                   "Card with no dependents should have empty usages"))))))))
 
@@ -113,7 +113,7 @@
         (mt/with-temp [:model/User user {:email "usages-table@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [card-on-table (card/create-card! (card-with-query "Card on products" :products) user)
-                  found-usages  (usages/transitive-usages [:table (mt/id :products)])]
+                  found-usages  (replacement.usages/transitive-usages [:table (mt/id :products)])]
               (is (some #(= [:card (:id card-on-table)] %) found-usages)
                   "Card using table should appear in usages"))))))))
 
@@ -127,7 +127,7 @@
                              [[:card 2] [:card 1]]        ; card 2 depends on card 1
                              [[:card 3] [:card 2]]        ; card 3 depends on card 2
                              [[:dashboard 1] [:card 3]]]) ; dashboard 1 depends on card 3
-          found-usages (set (usages/transitive-usages graph [:table 1]))]
+          found-usages (set (replacement.usages/transitive-usages graph [:table 1]))]
       (testing "Card A (direct dependent of table) is included"
         (is (contains? found-usages [:card 1])))
       (testing "Card B (depends on Card A) is included"
@@ -143,7 +143,7 @@
     (let [graph (test-graph [[[:card 2] [:card 1]]        ; card 2 depends on card 1
                              [[:card 3] [:card 2]]        ; card 3 depends on card 2
                              [[:dashboard 1] [:card 3]]]) ; dashboard 1 depends on card 3
-          found-usages (set (usages/transitive-usages graph [:card 1]))]
+          found-usages (set (replacement.usages/transitive-usages graph [:card 1]))]
       (testing "Card B (depends on Card A) is included"
         (is (contains? found-usages [:card 2])))
       (testing "Card C (depends on Card B) is included"
@@ -156,6 +156,6 @@
     ;; Graph: Card A depends on nothing relevant, Dashboard D contains unrelated Card X
     (let [graph (test-graph [[[:card 2] [:table 2]]       ; unrelated card depends on table 2
                              [[:dashboard 1] [:card 2]]]) ; dashboard depends on unrelated card
-          found-usages (set (usages/transitive-usages graph [:card 1]))]
+          found-usages (set (replacement.usages/transitive-usages graph [:card 1]))]
       (testing "Dashboard is NOT in the transitive usages since it doesn't contain dependent cards"
         (is (not (contains? found-usages [:dashboard 1])))))))

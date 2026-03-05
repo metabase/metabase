@@ -1,7 +1,7 @@
 (ns metabase-enterprise.replacement.execute-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.replacement.execute :as execute]
+   [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase.test :as mt]
@@ -21,7 +21,7 @@
                           (swap! writes conj progress))]
             (let [record (replacement-run/create-run! :card 1 :card 2 (mt/user->id :rasta))
                   progress (replacement-run/run-row->progress record done?)]
-              (execute/execute-async!
+              (replacement.execute/execute-async!
                (fn [progress]
                  (replacement.protocols/set-total! progress 120)
                  ;; advance one-at-a-time for 120 items
@@ -47,7 +47,7 @@
                           (swap! writes conj progress))]
             (let [record (replacement-run/create-run! :card 1 :card 2 (mt/user->id :rasta))
                   progress (replacement-run/run-row->progress record done?)]
-              (execute/execute-async!
+              (replacement.execute/execute-async!
                (fn [progress]
                  (replacement.protocols/set-total! progress 100)
                  ;; advance by 30 four times: 30, 60, 90, then by 10 to finish
@@ -76,7 +76,7 @@
                           (swap! writes conj progress))]
             (let [record (replacement-run/create-run! :card 1 :card 2 (mt/user->id :rasta))
                   progress (replacement-run/run-row->progress record done?)]
-              (execute/execute-async!
+              (replacement.execute/execute-async!
                (fn [progress]
                  (replacement.protocols/set-total! progress 130)
                  ;; enough to trigger one boundary

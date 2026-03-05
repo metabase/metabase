@@ -2,9 +2,8 @@
   (:require
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
-   [metabase-enterprise.replacement.source :as source]
-   [metabase-enterprise.replacement.source-swap :as source-swap]
-   [metabase-enterprise.replacement.usages :as usages]
+   [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
+   [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -134,7 +133,7 @@
             (doseq [entity batch]
               (try
                 ;; do-swap! knows how to handle all entity types including dashboards
-                (source-swap/do-swap! entity old-source new-source)
+                (replacement.source-swap/do-swap! entity old-source new-source)
                 (catch Exception e
                   (log/warnf e "Failed to swap %s, continuing with next entity" entity)
                   (swap! failures conj {:entity entity :error (ex-message e)})))
@@ -166,17 +165,9 @@
    Returns {:swapped [...]} with the list of entities that were updated."
   ([old-source new-source]
    (run-swap old-source new-source noop-progress))
-  ;; todo: replace schemas of  :- ::source/source-ref
   ([old-source
     new-source
     progress]
-   (let [check-result (source/check-replace-source old-source new-source)]
-     (when-not (:success check-result)
-       (throw (ex-info "Source replacement check failed"
-                       {:old-source old-source
-                        :new-source new-source
-                        :check-result check-result}))))
-
-   (let [all-transitive        (usages/transitive-usages old-source)]
+   (let [all-transitive        (replacement.usages/transitive-usages old-source)]
      (run-swap* {:all-transitive-dependents all-transitive}
                 old-source new-source progress))))

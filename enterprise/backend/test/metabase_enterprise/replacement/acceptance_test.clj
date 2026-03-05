@@ -13,7 +13,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
-   [metabase-enterprise.replacement.runner :as runner]
+   [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase-enterprise.replacement.swap.native]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -138,7 +138,7 @@
                               :card_id      (:id mbql-child-1)}]
 
                 ;; ── Execute the replacement via runner (synchronous) ──
-                (runner/run-swap [:card (:id old-model)] [:card (:id new-model)])
+                (replacement.runner/run-swap [:card (:id old-model)] [:card (:id new-model)])
 
                 ;; ── Verify MBQL children point to new model ──
                 (testing "MBQL children have updated source-card"

@@ -1,8 +1,8 @@
-(ns metabase-enterprise.replacement.source-test
+(ns metabase-enterprise.replacement.source-check-test
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.replacement.source :as replacement.source]
+   [metabase-enterprise.replacement.source-check :as replacement.source-check]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -28,7 +28,7 @@
   (testing "Table cannot be replaced with itself"
     (mt/dataset test-data
       (is (=? {:success false}
-              (replacement.source/check-replace-source [:table (mt/id :orders)] [:table (mt/id :orders)]))))))
+              (replacement.source-check/check-replace-source [:table (mt/id :orders)] [:table (mt/id :orders)]))))))
 
 (deftest card-swappable-with-underlying-table-test
   (testing "A card built on a table is swappable with that table in both directions"
@@ -45,11 +45,11 @@
               (testing (str "table: " (:name table))
                 (testing "card -> table"
                   (is (=? {:success true}
-                          (replacement.source/check-replace-source [:card (:id card)] [:table (:id table)]))))
+                          (replacement.source-check/check-replace-source [:card (:id card)] [:table (:id table)]))))
                 ;; table -> card is blocked for tables with incoming FKs (implicit joins check)
                 ;; so we only assert success false for tables with incoming FKs
                 (testing "table -> card"
-                  (let [result (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)])]
+                  (let [result (replacement.source-check/check-replace-source [:table (:id table)] [:card (:id card)])]
                     (if (t2/exists? :model/Field
                                     :fk_target_field_id [:in (t2/select-pks-set :model/Field :table_id (:id table) :active true)]
                                     :active true)
@@ -75,10 +75,10 @@
             (testing (str "table: " (:name table))
               (testing "card-a -> card-b"
                 (is (=? {:success true}
-                        (replacement.source/check-replace-source [:card (:id card-a)] [:card (:id card-b)]))))
+                        (replacement.source-check/check-replace-source [:card (:id card-a)] [:card (:id card-b)]))))
               (testing "card-b -> card-a"
                 (is (=? {:success true}
-                        (replacement.source/check-replace-source [:card (:id card-b)] [:card (:id card-a)])))))))))))
+                        (replacement.source-check/check-replace-source [:card (:id card-b)] [:card (:id card-a)])))))))))))
 
 (deftest card-with-expression-reports-extra-column-test
   (testing "A card with an added expression column reports missing columns in the card→table direction"
@@ -94,10 +94,10 @@
                                          :type          :question}]
           (testing "table -> card with expression: no missing columns (card is a superset)"
             (is (=? {:success true}
-                    (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)]))))
+                    (replacement.source-check/check-replace-source [:table (:id table)] [:card (:id card)]))))
           (testing "card with expression -> table: expression column is missing"
             (is (=? {:success false}
-                    (replacement.source/check-replace-source [:card (:id card)] [:table (:id table)])))))))))
+                    (replacement.source-check/check-replace-source [:card (:id card)] [:table (:id table)])))))))))
 
 (deftest card-with-subset-of-fields-reports-missing-columns-test
   (testing "A card selecting a subset of fields reports missing columns in the table→card direction"
@@ -112,10 +112,10 @@
           (testing "table -> card with fewer fields: dropped columns are missing from new source"
             (is (=? {:success         false
                      :column_mappings #(some (fn [m] (and (:source m) (not (:target m)))) %)}
-                    (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)]))))
+                    (replacement.source-check/check-replace-source [:table (:id table)] [:card (:id card)]))))
           (testing "card with fewer fields -> table: no missing columns (table is a superset)"
             (is (=? {:success true}
-                    (replacement.source/check-replace-source [:card (:id card)] [:table (:id table)])))))))))
+                    (replacement.source-check/check-replace-source [:card (:id card)] [:table (:id table)])))))))))
 
 (defn- table-has-fks?
   "Returns true if any column of `table` has :type/FK semantic type."
@@ -143,7 +143,7 @@
                                          :type          :question}]
           (is (=? {:success false
                    :errors  #(some #{:incompatible-implicit-joins} %)}
-                  (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)])))))))
+                  (replacement.source-check/check-replace-source [:table (:id table)] [:card (:id card)])))))))
   (testing "table→card without incoming FKs does not report :incompatible-implicit-joins"
     (mt/dataset test-data
       (let [mp    (mt/metadata-provider)
@@ -154,7 +154,7 @@
                                          :database_id   (mt/id)
                                          :type          :question}]
           (is (=? {:success true}
-                  (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)])))))))
+                  (replacement.source-check/check-replace-source [:table (:id table)] [:card (:id card)])))))))
   (testing "card→table does not trigger implicit joins check"
     (mt/dataset test-data
       (let [mp    (mt/metadata-provider)
@@ -165,13 +165,13 @@
                                          :database_id   (mt/id)
                                          :type          :question}]
           (is (=? {:success true}
-                  (replacement.source/check-replace-source [:card (:id card)] [:table (:id table)])))))))
+                  (replacement.source-check/check-replace-source [:card (:id card)] [:table (:id table)])))))))
   (testing "table→table with incoming FKs reports :incompatible-implicit-joins"
     (mt/dataset test-data
       ;; PEOPLE has incoming FKs (ORDERS.USER_ID → PEOPLE.ID)
       (is (=? {:success false
                :errors  #(some #{:incompatible-implicit-joins} %)}
-              (replacement.source/check-replace-source [:table (mt/id :people)] [:table (mt/id :products)]))))))
+              (replacement.source-check/check-replace-source [:table (mt/id :people)] [:table (mt/id :products)]))))))
 
 (deftest native-card-on-fk-table-reports-fk-mismatch-test
   ;; Native query result_metadata does not include :type/FK semantic types or
@@ -199,10 +199,10 @@
                   (testing "table -> native card: not swappable"
                     (is (=? {:success         false
                              :column_mappings #(some (fn [{:keys [errors]}] (some #{:missing-foreign-key} errors)) %)}
-                            (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)]))))
+                            (replacement.source-check/check-replace-source [:table (:id table)] [:card (:id card)]))))
                   (testing "native card -> table: swappable"
                     (is (=? {:success true}
-                            (replacement.source/check-replace-source [:card (:id card)] [:table (:id table)])))))))))))))
+                            (replacement.source-check/check-replace-source [:card (:id card)] [:table (:id table)])))))))))))))
 
 (deftest native-card-swappable-with-table-test
   ;; We only test tables without FK columns because native query result_metadata
@@ -226,7 +226,7 @@
             (testing (str "table: " (:name table))
               (testing "table -> native card"
                 (is (=? {:success true}
-                        (replacement.source/check-replace-source [:table (:id table)] [:card (:id card)]))))
+                        (replacement.source-check/check-replace-source [:table (:id table)] [:card (:id card)]))))
               (testing "native card -> table"
                 (is (=? {:success true}
-                        (replacement.source/check-replace-source [:card (:id card)] [:table (:id table)])))))))))))
+                        (replacement.source-check/check-replace-source [:card (:id card)] [:table (:id table)])))))))))))

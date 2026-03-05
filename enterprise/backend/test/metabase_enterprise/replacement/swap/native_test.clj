@@ -4,9 +4,9 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
-   [metabase-enterprise.replacement.source-swap :as source-swap]
+   [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
    [metabase-enterprise.replacement.swap.native :as swap.native]
-   [metabase-enterprise.replacement.test-util :as test-util]
+   [metabase-enterprise.replacement.test-util :as replacement.test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
@@ -20,7 +20,7 @@
 
 (deftest swap-card-in-native-query-basic-test
   (testing "Simple card tag replacement"
-    (let [query  (test-util/make-native-query
+    (let [query  (replacement.test-util/make-native-query
                   "SELECT * FROM {{#3}}"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
           result (#'swap.native/swap-card-in-native-query query 3 99)]
@@ -29,7 +29,7 @@
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))))
 
   (testing "Multiple card tags, only matching one is replaced"
-    (let [query  (test-util/make-native-query
+    (let [query  (replacement.test-util/make-native-query
                   "SELECT * FROM {{#3}} JOIN {{#7}} ON 1=1"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "#7" {:type :card :card-id 7 :name "#7" :display-name "#7"}})
@@ -41,7 +41,7 @@
 
 (deftest swap-card-in-native-query-with-field-filters-test
   (testing "Card tag with field filter tags present"
-    (let [query  (test-util/make-native-query
+    (let [query  (replacement.test-util/make-native-query
                   "SELECT * FROM {{#3}} WHERE {{created_at}}"
                   {"#3"        {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "created_at" {:type :dimension :name "created_at" :display-name "Created At"}})
@@ -54,7 +54,7 @@
 
 (deftest swap-card-in-native-query-with-optional-clauses-test
   (testing "Card tag with optional clause containing field filter"
-    (let [query  (test-util/make-native-query
+    (let [query  (replacement.test-util/make-native-query
                   "SELECT * FROM {{#3}} [[WHERE {{created_at}}]]"
                   {"#3"         {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "created_at" {:type :dimension :name "created_at" :display-name "Created At"}})
@@ -64,7 +64,7 @@
       (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))))
 
   (testing "Card tag inside optional clause"
-    (let [query  (test-util/make-native-query
+    (let [query  (replacement.test-util/make-native-query
                   "SELECT * FROM foo [[JOIN {{#3}} ON 1=1]]"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
           result (#'swap.native/swap-card-in-native-query query 3 99)]
@@ -74,7 +74,7 @@
 
 (deftest swap-card-in-native-query-comment-test
   (testing "Card tag inside a line comment should NOT be replaced"
-    (let [query  (test-util/make-native-query
+    (let [query  (replacement.test-util/make-native-query
                   "SELECT * FROM {{#3}}\n-- old: {{#3}}"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
           result (#'swap.native/swap-card-in-native-query query 3 99)]
@@ -83,7 +83,7 @@
           "The tag in the comment should be left alone")))
 
   (testing "Card tag inside a block comment should NOT be replaced"
-    (let [query  (test-util/make-native-query
+    (let [query  (replacement.test-util/make-native-query
                   "SELECT * FROM {{#3}} /* see also {{#3}} */"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
           result (#'swap.native/swap-card-in-native-query query 3 99)]
@@ -93,7 +93,7 @@
 
 (deftest swap-card-in-native-query-string-literal-test
   (testing "Card tag inside a SQL string literal is also replaced (parser does not distinguish string literals)"
-    (let [query  (test-util/make-native-query
+    (let [query  (replacement.test-util/make-native-query
                   "SELECT * FROM {{#3}} WHERE col = '{{#3}}'"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
           result (#'swap.native/swap-card-in-native-query query 3 99)]
@@ -103,7 +103,7 @@
 
 (deftest swap-card-in-native-query-multiple-cards-test
   (testing "Multiple different card tags, replace only the target"
-    (let [query  (test-util/make-native-query
+    (let [query  (replacement.test-util/make-native-query
                   "SELECT a.* FROM {{#3}} a JOIN {{#5}} b ON a.id = b.id JOIN {{#3}} c ON a.id = c.id"
                   {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}
                    "#5" {:type :card :card-id 5 :name "#5" :display-name "#5"}})
@@ -124,9 +124,9 @@
                        :model/Card {card-id :id :as card} {:dataset_query
                                                            (lib/native-query mp "SELECT * FROM {{#999-old-query-name}} WHERE x > 1")}]
           (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (source-swap/do-swap! [:card card-id]
-                                [:card 999]
-                                [:card new-card-id])
+          (replacement.source-swap/do-swap! [:card card-id]
+                                            [:card 999]
+                                            [:card new-card-id])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
                 query         (lib/raw-native-query updated-query)]
             ;; Should have new card ID with slugified name
@@ -150,9 +150,9 @@
                                                   "JOIN {{#" orders-a-id "-all-orders-a}} o ON p.id = o.product_id"))}]
           ;; Swap orders A -> orders B
           (replacement.field-refs/upgrade-field-refs! [:card native-card-id] native-card)
-          (source-swap/do-swap! [:card native-card-id]
-                                [:card orders-a-id]
-                                [:card orders-b-id])
+          (replacement.source-swap/do-swap! [:card native-card-id]
+                                            [:card orders-a-id]
+                                            [:card orders-b-id])
           (let [updated-card  (t2/select-one :model/Card :id native-card-id)
                 updated-query (:dataset_query updated-card)
                 sql           (lib/raw-native-query updated-query)
@@ -199,9 +199,9 @@
                                                   "LEFT JOIN order_data o ON p.id = o.product_id"))}]
           ;; Swap products A -> products B (orders should stay as-is)
           (replacement.field-refs/upgrade-field-refs! [:card kitchen-sink-id] kitchen-sink-card)
-          (source-swap/do-swap! [:card kitchen-sink-id]
-                                [:card products-a-id]
-                                [:card products-b-id])
+          (replacement.source-swap/do-swap! [:card kitchen-sink-id]
+                                            [:card products-a-id]
+                                            [:card products-b-id])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id kitchen-sink-id))
                 sql           (lib/raw-native-query updated-query)
                 template-tags (get-in updated-query [:stages 0 :template-tags])]
@@ -224,13 +224,13 @@
         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
                                                            (lib/native-query mp "SELECT * FROM {{ #999 }} WHERE x > 1")}]
           (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (source-swap/do-swap! [:card card-id]
-                                [:card 999]
-                                [:card 888])
+          (replacement.source-swap/do-swap! [:card card-id]
+                                            [:card 999]
+                                            [:card 888])
           (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (source-swap/do-swap! [:card card-id]
-                                [:card 999]
-                                [:card 888])
+          (replacement.source-swap/do-swap! [:card card-id]
+                                            [:card 999]
+                                            [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
                 query         (lib/raw-native-query updated-query)]
             (is (str/includes? query "{{#888}}"))
@@ -243,9 +243,9 @@
         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
                                                            (lib/native-query mp "SELECT * FROM {{#999}} a JOIN {{#999}} b ON a.id = b.id")}]
           (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (source-swap/do-swap! [:card card-id]
-                                [:card 999]
-                                [:card 888])
+          (replacement.source-swap/do-swap! [:card card-id]
+                                            [:card 999]
+                                            [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
                 query         (lib/raw-native-query updated-query)]
             (is (= 2 (count (re-seq #"\{\{#888\}\}" query))))
@@ -258,9 +258,9 @@
         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
                                                            (lib/native-query mp "WITH base AS {{#999}} SELECT * FROM base WHERE x > 1")}]
           (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (source-swap/do-swap! [:card card-id]
-                                [:card 999]
-                                [:card 888])
+          (replacement.source-swap/do-swap! [:card card-id]
+                                            [:card 999]
+                                            [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
                 query         (lib/raw-native-query updated-query)]
             (is (str/includes? query "WITH base AS {{#888}}"))
@@ -273,9 +273,9 @@
         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
                                                            (lib/native-query mp "SELECT t.* FROM {{#999}} AS t WHERE t.x > 1")}]
           (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (source-swap/do-swap! [:card card-id]
-                                [:card 999]
-                                [:card 888])
+          (replacement.source-swap/do-swap! [:card card-id]
+                                            [:card 999]
+                                            [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
                 query         (lib/raw-native-query updated-query)]
             (is (str/includes? query "{{#888}} AS t"))
@@ -288,9 +288,9 @@
         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
                                                            (lib/native-query mp "SELECT * FROM {{#999}} WHERE status = {{status}} AND total > {{min_total}}")}]
           (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (source-swap/do-swap! [:card card-id]
-                                [:card 999]
-                                [:card 888])
+          (replacement.source-swap/do-swap! [:card card-id]
+                                            [:card 999]
+                                            [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
                 query         (lib/raw-native-query updated-query)
                 tags          (lib/template-tags updated-query)]
@@ -307,9 +307,9 @@
         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
                                                            (lib/native-query mp "SELECT * FROM {{#999}} a JOIN {{#777}} b ON a.id = b.id")}]
           (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (source-swap/do-swap! [:card card-id]
-                                [:card 999]
-                                [:card 888])
+          (replacement.source-swap/do-swap! [:card card-id]
+                                            [:card 999]
+                                            [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
                 query         (lib/raw-native-query updated-query)]
             (is (str/includes? query "{{#888}}"))
@@ -323,9 +323,9 @@
         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
                                                            (lib/native-query mp "SELECT * FROM orders WHERE product_id IN (SELECT id FROM {{#999}})")}]
           (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (source-swap/do-swap! [:card card-id]
-                                [:card 999]
-                                [:card 888])
+          (replacement.source-swap/do-swap! [:card card-id]
+                                            [:card 999]
+                                            [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
                 query         (lib/raw-native-query updated-query)]
             (is (str/includes? query "FROM {{#888}}"))
@@ -338,9 +338,9 @@
         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
                                                            (lib/native-query mp "SELECT * FROM orders WHERE 1=1 [[AND product_id IN (SELECT id FROM {{#999}})]]\n")}]
           (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (source-swap/do-swap! [:card card-id]
-                                [:card 999]
-                                [:card 888])
+          (replacement.source-swap/do-swap! [:card card-id]
+                                            [:card 999]
+                                            [:card 888])
           (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
                 query         (lib/raw-native-query updated-query)]
             (is (str/includes? query "{{#888}}"))
@@ -482,7 +482,7 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "swap-table-table-native@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (test-util/with-restored-card-queries
+            (replacement.test-util/with-restored-card-queries
               (let [mp    (mt/metadata-provider)
                     child (card/create-card!
                            {:name                   "Native from Products"
@@ -494,9 +494,9 @@
                             :visualization_settings {}}
                            user)]
                 (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (source-swap/do-swap! [:card (:id child)]
-                                      [:table (mt/id :products)]
-                                      [:table (mt/id :orders)])
+                (replacement.source-swap/do-swap! [:card (:id child)]
+                                                  [:table (mt/id :products)]
+                                                  [:table (mt/id :orders)])
                 (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                       sql           (get-in updated-query [:stages 0 :native])]
                   (is (str/includes? sql "ORDERS"))
@@ -508,7 +508,7 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "swap-table-table-native-params@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (test-util/with-restored-card-queries
+            (replacement.test-util/with-restored-card-queries
               (let [mp    (mt/metadata-provider)
                     child (card/create-card!
                            {:name                   "Native Products with Params"
@@ -520,9 +520,9 @@
                             :visualization_settings {}}
                            user)]
                 (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (source-swap/do-swap! [:card (:id child)]
-                                      [:table (mt/id :products)]
-                                      [:table (mt/id :orders)])
+                (replacement.source-swap/do-swap! [:card (:id child)]
+                                                  [:table (mt/id :products)]
+                                                  [:table (mt/id :orders)])
                 (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                       sql           (get-in updated-query [:stages 0 :native])]
                   (is (str/includes? sql "ORDERS"))
@@ -535,7 +535,7 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "swap-table-native-join@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (test-util/with-restored-card-queries
+            (replacement.test-util/with-restored-card-queries
               (let [mp    (mt/metadata-provider)
                     child (card/create-card!
                            {:name                   "Native Join Query"
@@ -548,9 +548,9 @@
                            user)]
                 ;; Swap ORDERS table to REVIEWS table
                 (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (source-swap/do-swap! [:card (:id child)]
-                                      [:table (mt/id :orders)]
-                                      [:table (mt/id :reviews)])
+                (replacement.source-swap/do-swap! [:card (:id child)]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
                 (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                       sql           (get-in updated-query [:stages 0 :native])]
                   (is (str/includes? sql "REVIEWS"))
@@ -565,10 +565,10 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "swap-table-card-native@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (test-util/with-restored-card-queries
+            (replacement.test-util/with-restored-card-queries
               (let [mp         (mt/metadata-provider)
-                    new-source (card/create-card! (test-util/card-with-query "New Source Card" :orders) user)
-                    _          (test-util/wait-for-result-metadata (:id new-source))
+                    new-source (card/create-card! (replacement.test-util/card-with-query "New Source Card" :orders) user)
+                    _          (replacement.test-util/wait-for-result-metadata (:id new-source))
                     child      (card/create-card!
                                 {:name                   "Native from Products"
                                  :database_id            (mt/id)
@@ -579,9 +579,9 @@
                                  :visualization_settings {}}
                                 user)]
                 (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (source-swap/do-swap! [:card (:id child)]
-                                      [:table (mt/id :products)]
-                                      [:card (:id new-source)])
+                (replacement.source-swap/do-swap! [:card (:id child)]
+                                                  [:table (mt/id :products)]
+                                                  [:card (:id new-source)])
                 (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                       sql            (get-in updated-query [:stages 0 :native])
                       template-tags  (get-in updated-query [:stages 0 :template-tags])]
@@ -599,10 +599,10 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "swap-table-card-native-params@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (test-util/with-restored-card-queries
+            (replacement.test-util/with-restored-card-queries
               (let [mp         (mt/metadata-provider)
-                    new-source (card/create-card! (test-util/card-with-query "New Source Card" :orders) user)
-                    _          (test-util/wait-for-result-metadata (:id new-source))
+                    new-source (card/create-card! (replacement.test-util/card-with-query "New Source Card" :orders) user)
+                    _          (replacement.test-util/wait-for-result-metadata (:id new-source))
                     child      (card/create-card!
                                 {:name                   "Native Products with Params"
                                  :database_id            (mt/id)
@@ -613,9 +613,9 @@
                                  :visualization_settings {}}
                                 user)]
                 (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (source-swap/do-swap! [:card (:id child)]
-                                      [:table (mt/id :products)]
-                                      [:card (:id new-source)])
+                (replacement.source-swap/do-swap! [:card (:id child)]
+                                                  [:table (mt/id :products)]
+                                                  [:card (:id new-source)])
                 (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                       sql            (get-in updated-query [:stages 0 :native])
                       template-tags  (get-in updated-query [:stages 0 :template-tags])]
@@ -635,13 +635,13 @@
         (mt/with-temp [:model/User user {:email "swap-card-table-native@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [mp         (mt/metadata-provider)
-                  old-source (card/create-card! (test-util/card-with-query "Old Source Card" :products) user)
-                  _          (test-util/wait-for-result-metadata (:id old-source))
-                  child      (card/create-card! (test-util/native-card-sourced-from "Native Child" old-source) user)]
+                  old-source (card/create-card! (replacement.test-util/card-with-query "Old Source Card" :products) user)
+                  _          (replacement.test-util/wait-for-result-metadata (:id old-source))
+                  child      (card/create-card! (replacement.test-util/native-card-sourced-from "Native Child" old-source) user)]
               (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-              (source-swap/do-swap! [:card (:id child)]
-                                    [:card (:id old-source)]
-                                    [:table (mt/id :orders)])
+              (replacement.source-swap/do-swap! [:card (:id child)]
+                                                [:card (:id old-source)]
+                                                [:table (mt/id :orders)])
               (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                     sql            (get-in updated-query [:stages 0 :native])
                     template-tags  (get-in updated-query [:stages 0 :template-tags])]
@@ -658,8 +658,8 @@
         (mt/with-temp [:model/User user {:email "swap-card-table-native-params@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
             (let [mp         (mt/metadata-provider)
-                  old-source (card/create-card! (test-util/card-with-query "Old Source Card" :products) user)
-                  _          (test-util/wait-for-result-metadata (:id old-source))
+                  old-source (card/create-card! (replacement.test-util/card-with-query "Old Source Card" :products) user)
+                  _          (replacement.test-util/wait-for-result-metadata (:id old-source))
                   child      (card/create-card!
                               {:name                   "Native with Params"
                                :database_id            (mt/id)
@@ -670,9 +670,9 @@
                                :visualization_settings {}}
                               user)]
               (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-              (source-swap/do-swap! [:card (:id child)]
-                                    [:card (:id old-source)]
-                                    [:table (mt/id :orders)])
+              (replacement.source-swap/do-swap! [:card (:id child)]
+                                                [:card (:id old-source)]
+                                                [:table (mt/id :orders)])
               (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                     sql            (get-in updated-query [:stages 0 :native])
                     template-tags  (get-in updated-query [:stages 0 :template-tags])]
@@ -687,7 +687,7 @@
 
 (deftest swap-table-to-table-with-table-tag-test
   (testing "swap-source table → table: {{table}} tag's :table-id is updated"
-    (let [query  (test-util/make-native-query
+    (let [query  (replacement.test-util/make-native-query
                   "SELECT * FROM {{my_table}}"
                   {"my_table" {:type :table :table-id 1 :name "my_table" :display-name "My Table"}})
           result (#'swap.native/update-table-tags-for-table-swap
@@ -760,7 +760,7 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "swap-table-schema@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (test-util/with-restored-card-queries
+            (replacement.test-util/with-restored-card-queries
               (let [mp    (mt/metadata-provider)
                     child (card/create-card!
                            {:name                   "Native with Schema"
@@ -772,9 +772,9 @@
                             :visualization_settings {}}
                            user)]
                 (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (source-swap/do-swap! [:card (:id child)]
-                                      [:table (mt/id :products)]
-                                      [:table (mt/id :orders)])
+                (replacement.source-swap/do-swap! [:card (:id child)]
+                                                  [:table (mt/id :products)]
+                                                  [:table (mt/id :orders)])
                 (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                       sql           (get-in updated-query [:stages 0 :native])]
                   (is (str/includes? sql "ORDERS"))
@@ -786,10 +786,10 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "swap-table-card-schema@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (test-util/with-restored-card-queries
+            (replacement.test-util/with-restored-card-queries
               (let [mp         (mt/metadata-provider)
-                    new-source (card/create-card! (test-util/card-with-query "New Source Card" :orders) user)
-                    _          (test-util/wait-for-result-metadata (:id new-source))
+                    new-source (card/create-card! (replacement.test-util/card-with-query "New Source Card" :orders) user)
+                    _          (replacement.test-util/wait-for-result-metadata (:id new-source))
                     child      (card/create-card!
                                 {:name                   "Native with Schema"
                                  :database_id            (mt/id)
@@ -800,9 +800,9 @@
                                  :visualization_settings {}}
                                 user)]
                 (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (source-swap/do-swap! [:card (:id child)]
-                                      [:table (mt/id :products)]
-                                      [:card (:id new-source)])
+                (replacement.source-swap/do-swap! [:card (:id child)]
+                                                  [:table (mt/id :products)]
+                                                  [:card (:id new-source)])
                 (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                       sql            (get-in updated-query [:stages 0 :native])
                       template-tags  (get-in updated-query [:stages 0 :template-tags])]
@@ -824,13 +824,13 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "swap-card-table-schema@test.com"}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [old-source (card/create-card! (test-util/card-with-query "Old Source Card" :products) user)
-                  _          (test-util/wait-for-result-metadata (:id old-source))
-                  child      (card/create-card! (test-util/native-card-sourced-from "Native Child" old-source) user)]
+            (let [old-source (card/create-card! (replacement.test-util/card-with-query "Old Source Card" :products) user)
+                  _          (replacement.test-util/wait-for-result-metadata (:id old-source))
+                  child      (card/create-card! (replacement.test-util/native-card-sourced-from "Native Child" old-source) user)]
               (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-              (source-swap/do-swap! [:card (:id child)]
-                                    [:card (:id old-source)]
-                                    [:table (mt/id :orders)])
+              (replacement.source-swap/do-swap! [:card (:id child)]
+                                                [:card (:id old-source)]
+                                                [:table (mt/id :orders)])
               (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
                     sql            (get-in updated-query [:stages 0 :native])
                     template-tags  (get-in updated-query [:stages 0 :template-tags])]

@@ -5,7 +5,7 @@
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase-enterprise.replacement.schema :as replacement.schema]
-   [metabase-enterprise.replacement.source :as replacement.source]
+   [metabase-enterprise.replacement.source-check :as replacement.source-check]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -27,7 +27,7 @@
        [:target_entity_id   ::replacement.schema/source-entity-id]
        [:target_entity_type ::replacement.schema/source-entity-type]]]
   (api/check-superuser)
-  (replacement.source/check-replace-source
+  (replacement.source-check/check-replace-source
    [source_entity_type source_entity_id]
    [target_entity_type target_entity_id]))
 
@@ -46,7 +46,7 @@
        [:target_entity_id   ::replacement.schema/source-entity-id]
        [:target_entity_type ::replacement.schema/source-entity-type]]]
   (api/check-superuser)
-  (let [result (replacement.source/check-replace-source
+  (let [result (replacement.source-check/check-replace-source
                 [source_entity_type source_entity_id]
                 [target_entity_type target_entity_id])]
     (when-not (:success result)

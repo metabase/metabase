@@ -1,7 +1,7 @@
-(ns metabase-enterprise.replacement.source
+(ns metabase-enterprise.replacement.source-check
   (:require
    [metabase-enterprise.replacement.schema :as replacement.schema]
-   [metabase-enterprise.replacement.usages :as usages]
+   [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema.source-swap :as lib-be.schema.source-swap]
    [metabase.lib.core :as lib]
@@ -64,7 +64,7 @@
     (let [{source-db :database-id, source-query :query} (fetch-source old-type old-id)
           {target-db :database-id, target-query :query} (fetch-source new-type new-id)
           db-mismatch?   (not= source-db target-db)
-          cycle?         (some #(= new-ref %) (usages/transitive-usages old-ref))
+          cycle?         (some #(= new-ref %) (replacement.usages/transitive-usages old-ref))
           mappings       (format-column-mappings (lib-be/check-column-mappings source-query target-query))
           has-missing?   (some (fn [m] (and (:source m) (nil? (:target m)))) mappings)
           has-col-errors? (seq (mapcat :errors mappings))
