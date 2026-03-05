@@ -439,7 +439,8 @@
      :inherited-temporal-unit
      :lib/original-binning
      ::original-effective-type
-     ::original-temporal-unit])
+     ::original-temporal-unit
+     :qp.pivot/pivot-grouping?])
    {:metabase.lib.field/binning       :binning
     :metabase.lib.field/temporal-unit :temporal-unit
     :lib/ref-name                     :name
@@ -630,7 +631,7 @@
                  "hidden in the UI.")))
 
 (mu/defn add-field :- ::lib.schema/query
-  "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
+  "Adds a given field (column metadata), as returned from eg. [[visible-columns]]) to the fields returned by the query.
   Exactly what this means depends on the source of the field:
   - Source table/card, previous stage of the query, custom expression, aggregation or breakout:
       - Add it to the `:fields` list
