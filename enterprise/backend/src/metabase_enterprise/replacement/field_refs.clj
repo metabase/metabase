@@ -16,9 +16,6 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-;; I tried putting the various {dashboard-card,card,transform}-upgrade-field-refs! functions in the respective models
-;; namespaces, but there were cyclical dependencies.
-
 (mu/defn- upgrade-card-viz-settings :- :map
   [query         :- ::lib.schema/query
    viz-settings  :- :map]
@@ -82,23 +79,17 @@
 (defn- card-upgrade-field-refs!
   [card]
   (when (replacement.util/valid-query? (:dataset_query card))
-    (let [dataset-query  (:dataset_query card)
-          dataset-query' (lib-be/upgrade-field-refs-in-query dataset-query)
-          viz            (:visualization_settings card)
-          viz'           (some->> viz
-                                  vs/db->norm
-                                  (upgrade-card-viz-settings dataset-query')
-                                  vs/norm->db)
+    (let [query  (:dataset_query card)
+          query' (lib-be/upgrade-field-refs-in-query query)
+          viz    (:visualization_settings card)
+          viz'   (some->> viz vs/db->norm (upgrade-card-viz-settings query') vs/norm->db)
           changes (cond-> {}
-                    (not= dataset-query dataset-query')
-                    (assoc :dataset_query dataset-query')
-
-                    (not= viz viz')
-                    (assoc :visualization_settings viz'))
+                    (not= query query') (assoc :dataset_query query')
+                    (not= viz viz') (assoc :visualization_settings viz'))
           ;; result_metadata is set to nil for native queries if not present in changes
           changes (cond-> changes
                     (and (seq changes)
-                         (lib/native-only-query? dataset-query'))
+                         (lib/native-only-query? query'))
                     (assoc :result_metadata (:result_metadata card)))]
       (when (seq changes)
         (t2/update! :model/Card (:id card) changes)))))
@@ -116,18 +107,18 @@
 (defn- segment-upgrade-field-refs!
   [segment]
   (when (replacement.util/valid-query? (:definition segment))
-    (let [definition  (:definition segment)
-          definition' (lib-be/upgrade-field-refs-in-query definition)]
-      (when (not= definition definition')
-        (t2/update! :model/Segment (:id segment) {:definition definition'})))))
+    (let [query  (:definition segment)
+          query' (lib-be/upgrade-field-refs-in-query query)]
+      (when (not= query query')
+        (t2/update! :model/Segment (:id segment) {:definition query'})))))
 
 (defn- measure-upgrade-field-refs!
   [measure]
   (when (replacement.util/valid-query? (:definition measure))
-    (let [definition  (:definition measure)
-          definition' (lib-be/upgrade-field-refs-in-query definition)]
+    (let [query  (:definition measure)
+          query' (lib-be/upgrade-field-refs-in-query query)]
       (when (not= definition definition')
-        (t2/update! :model/Measure (:id measure) {:definition definition'})))))
+        (t2/update! :model/Measure (:id measure) {:definition query'})))))
 
 (defn dashboard-upgrade-field-refs!
   "Upgrade field refs in parameter_mappings and column_settings for all dashcards in a dashboard.
@@ -147,14 +138,14 @@
             parameter-mappings' (mapv (fn [pm]
                                         (if-let [card (get cards-by-id (:card_id pm))]
                                           (if (replacement.util/valid-query? (:dataset_query card))
-                                            (let [query (lib-be/upgrade-field-refs-in-query (:dataset_query card))]
+                                            (let [query (:dataset_query card)]
                                               (upgrade-parameter-mappings query pm))
                                             pm)
                                           pm))
                                       parameter-mappings)
             primary-card    (get cards-by-id (:card_id dashcard))
             primary-query   (when (replacement.util/valid-query? (:dataset_query primary-card))
-                              (lib-be/upgrade-field-refs-in-query (:dataset_query primary-card)))
+                              (:dataset_query primary-card))
             viz             (vs/db->norm (:visualization_settings dashcard))
             column-settings (::vs/column-settings viz)
             column-settings' (if primary-query
