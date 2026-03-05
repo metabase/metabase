@@ -66,6 +66,7 @@ function toFlowNode(
     style: {
       width: NODE_WIDTH,
       height: getNodeHeight(node),
+      opacity: 0, // Hide until positioned by dagre layout
     },
   };
 }
@@ -193,6 +194,7 @@ export function getNodesWithPositions(
         ...node.style,
         width,
         height,
+        opacity: 1, // Show after positioning
       },
     };
   });
