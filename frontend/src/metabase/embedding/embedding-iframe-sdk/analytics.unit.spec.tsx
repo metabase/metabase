@@ -139,7 +139,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usage.components).toContainEqual({
           name: "dashboard",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "drills",
               values: [{ group: "true", value: 1 }],
@@ -164,7 +164,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "enable_entity_navigation",
               values: [{ group: "false", value: 1 }],
             },
-          ]),
+          ],
         });
       });
 
@@ -183,7 +183,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usageWithDefaults.components).toContainEqual({
           name: "dashboard",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "drills",
               values: [{ group: "true", value: 1 }],
@@ -208,7 +208,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "enable_entity_navigation",
               values: [{ group: "false", value: 1 }],
             },
-          ]),
+          ],
         });
 
         // Flip the default values
@@ -225,7 +225,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usageWithInvertedDefaults.components).toContainEqual({
           name: "dashboard",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "drills",
               values: [{ group: "false", value: 1 }],
@@ -250,7 +250,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "enable_entity_navigation",
               values: [{ group: "false", value: 1 }],
             },
-          ]),
+          ],
         });
 
         // Multiple components
@@ -269,34 +269,34 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usageWithMultipleComponents.components).toContainEqual({
           name: "dashboard",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "drills",
-              values: expect.arrayContaining([
+              values: [
                 { group: "true", value: 2 },
                 { group: "false", value: 1 },
-              ]),
+              ],
             },
             {
               name: "with_downloads",
-              values: expect.arrayContaining([
-                { group: "true", value: 1 },
+              values: [
                 { group: "false", value: 2 },
-              ]),
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_title",
-              values: expect.arrayContaining([
+              values: [
                 { group: "true", value: 2 },
                 { group: "false", value: 1 },
-              ]),
+              ],
             },
             {
               name: "with_subscriptions",
-              values: expect.arrayContaining([
-                { group: "true", value: 1 },
+              values: [
                 { group: "false", value: 2 },
-              ]),
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "auto_refresh_interval",
@@ -306,7 +306,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "enable_entity_navigation",
               values: [{ group: "false", value: 3 }],
             },
-          ]),
+          ],
         });
       });
 
@@ -327,12 +327,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           (property) => property.name === "auto_refresh_interval",
         );
 
-        expect(autoRefreshProp?.values).toEqual(
-          expect.arrayContaining([
-            { group: "true", value: 1 },
-            { group: "false", value: 1 },
-          ]),
-        );
+        expect(autoRefreshProp?.values).toEqual([
+          { group: "true", value: 1 },
+          { group: "false", value: 1 },
+        ]);
       });
 
       it("should track enable_entity_navigation property", () => {
@@ -355,12 +353,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           (property) => property.name === "enable_entity_navigation",
         );
 
-        expect(enableEntityNavigationProp?.values).toEqual(
-          expect.arrayContaining([
-            { group: "true", value: 1 },
-            { group: "false", value: 2 },
-          ]),
-        );
+        expect(enableEntityNavigationProp?.values).toEqual([
+          { group: "true", value: 1 },
+          { group: "false", value: 2 },
+        ]);
       });
     });
 
@@ -376,7 +372,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usage.components).toContainEqual({
           name: "question",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "drills",
               values: [{ group: "true", value: 1 }],
@@ -405,7 +401,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "id_new",
               values: [{ group: "false", value: 1 }],
             },
-          ]),
+          ],
         });
       });
 
@@ -426,7 +422,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usageWithDefaults.components).toContainEqual({
           name: "question",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "drills",
               values: [{ group: "true", value: 1 }],
@@ -447,7 +443,15 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "with_alerts",
               values: [{ group: "false", value: 1 }],
             },
-          ]),
+            {
+              name: "id_new_native",
+              values: [{ group: "false", value: 1 }],
+            },
+            {
+              name: "id_new",
+              values: [{ group: "false", value: 1 }],
+            },
+          ],
         });
 
         // Flip the default values
@@ -466,7 +470,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usageWithInvertedDefaults.components).toContainEqual({
           name: "question",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "drills",
               values: [{ group: "false", value: 1 }],
@@ -487,7 +491,15 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "with_alerts",
               values: [{ group: "true", value: 1 }],
             },
-          ]),
+            {
+              name: "id_new_native",
+              values: [{ group: "false", value: 1 }],
+            },
+            {
+              name: "id_new",
+              values: [{ group: "false", value: 1 }],
+            },
+          ],
         });
 
         // Multiple components
@@ -507,43 +519,51 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usageWithMultipleComponents.components).toContainEqual({
           name: "question",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "drills",
-              values: expect.arrayContaining([
+              values: [
                 { group: "true", value: 2 },
                 { group: "false", value: 1 },
-              ]),
+              ],
             },
             {
               name: "with_downloads",
-              values: expect.arrayContaining([
-                { group: "true", value: 1 },
+              values: [
                 { group: "false", value: 2 },
-              ]),
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_title",
-              values: expect.arrayContaining([
+              values: [
                 { group: "true", value: 2 },
                 { group: "false", value: 1 },
-              ]),
+              ],
             },
             {
               name: "is_save_enabled",
-              values: expect.arrayContaining([
-                { group: "true", value: 1 },
+              values: [
                 { group: "false", value: 2 },
-              ]),
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_alerts",
-              values: expect.arrayContaining([
-                { group: "true", value: 1 },
+              values: [
                 { group: "false", value: 2 },
-              ]),
+                { group: "true", value: 1 },
+              ],
             },
-          ]),
+            {
+              name: "id_new_native",
+              values: [{ group: "false", value: 3 }],
+            },
+            {
+              name: "id_new",
+              values: [{ group: "false", value: 3 }],
+            },
+          ],
         });
       });
 
@@ -660,10 +680,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "is_save_enabled",
-              values: expect.arrayContaining([
-                { group: "true", value: 1 },
+              values: [
                 { group: "false", value: 2 },
-              ]),
+                { group: "true", value: 1 },
+              ],
             },
           ],
         });
@@ -698,7 +718,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usage.components).toContainEqual({
           name: "browser",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "read_only",
               values: [{ group: "true", value: 1 }],
@@ -707,7 +727,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "enable_entity_navigation",
               values: [{ group: "false", value: 1 }],
             },
-          ]),
+          ],
         });
       });
 
@@ -723,7 +743,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usageWithDefaults.components).toContainEqual({
           name: "browser",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "read_only",
               values: [{ group: "true", value: 1 }],
@@ -732,7 +752,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "enable_entity_navigation",
               values: [{ group: "false", value: 1 }],
             },
-          ]),
+          ],
         });
 
         // Flip the default values
@@ -746,7 +766,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usageWithInvertedDefaults.components).toContainEqual({
           name: "browser",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "read_only",
               values: [{ group: "false", value: 1 }],
@@ -755,7 +775,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "enable_entity_navigation",
               values: [{ group: "false", value: 1 }],
             },
-          ]),
+          ],
         });
 
         // Multiple components
@@ -771,19 +791,19 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
         expect(usageWithMultipleComponents.components).toContainEqual({
           name: "browser",
-          properties: expect.arrayContaining([
+          properties: [
             {
               name: "read_only",
-              values: expect.arrayContaining([
+              values: [
                 { group: "true", value: 2 },
                 { group: "false", value: 1 },
-              ]),
+              ],
             },
             {
               name: "enable_entity_navigation",
               values: [{ group: "false", value: 3 }],
             },
-          ]),
+          ],
         });
       });
 
@@ -807,12 +827,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           (property) => property.name === "enable_entity_navigation",
         );
 
-        expect(enableEntityNavigationProp?.values).toEqual(
-          expect.arrayContaining([
-            { group: "true", value: 1 },
-            { group: "false", value: 2 },
-          ]),
-        );
+        expect(enableEntityNavigationProp?.values).toEqual([
+          { group: "true", value: 1 },
+          { group: "false", value: 2 },
+        ]);
       });
     });
 
@@ -838,11 +856,11 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "layout",
-              values: expect.arrayContaining([
+              values: [
                 { group: "auto", value: 2 },
                 { group: "sidebar", value: 1 },
                 { group: "stacked", value: 1 },
-              ]),
+              ],
             },
           ],
         });
@@ -873,12 +891,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         (property) => property.name === "drills",
       );
 
-      expect(drillsProp?.values).toEqual(
-        expect.arrayContaining([
-          { group: "false", value: 1 }, // Guest default
-          { group: "true", value: 1 }, // Explicit true
-        ]),
-      );
+      expect(drillsProp?.values).toEqual([
+        { group: "false", value: 1 }, // Guest default
+        { group: "true", value: 1 }, // Explicit true
+      ]);
     });
 
     it("should use different default for drills in guest question embeds", () => {
@@ -906,12 +922,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         (property) => property.name === "drills",
       );
 
-      expect(drillsProp?.values).toEqual(
-        expect.arrayContaining([
-          { group: "false", value: 1 }, // Guest default
-          { group: "true", value: 1 }, // Explicit true
-        ]),
-      );
+      expect(drillsProp?.values).toEqual([
+        { group: "false", value: 1 }, // Guest default
+        { group: "true", value: 1 }, // Explicit true
+      ]);
     });
   });
 });
