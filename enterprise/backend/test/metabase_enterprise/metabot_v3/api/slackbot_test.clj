@@ -7,6 +7,7 @@
    [metabase-enterprise.metabot-v3.api.slackbot :as slackbot]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
    [metabase-enterprise.metabot-v3.api.slackbot.config :as slackbot.config]
+   [metabase-enterprise.metabot-v3.api.slackbot.persistence :as slackbot.persistence]
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase-enterprise.metabot-v3.api.slackbot.streaming :as slackbot.streaming]
    [metabase-enterprise.metabot-v3.api.slackbot.uploads :as slackbot.uploads]
@@ -22,7 +23,8 @@
    [metabase.upload.impl :as upload.impl]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -238,13 +240,18 @@
        (fn [opts]
          (swap! ai-request-calls conj opts)
          ;; Generate AISDK-format lines from text and data-parts
-         (let [text-lines (when ai-text [(str "0:" (json/encode ai-text))])
-               data-lines (map #(str "2:" (json/encode %)) data-parts)
-               mock-lines (vec (concat text-lines data-lines))]
+         (let [text-lines   (when ai-text [(str "0:" (json/encode ai-text))])
+               data-lines   (map #(str "2:" (json/encode %)) data-parts)
+               finish-line  (str "d:" (json/encode {:finishReason "stop"
+                                                    :usage        {"model" {:prompt 10 :completion 5}}}))
+               mock-lines   (vec (concat text-lines data-lines [finish-line]))]
            ;; Call on-line callback for each line if provided
            (when-let [on-line (:on-line opts)]
              (doseq [line mock-lines]
                (on-line line)))
+           ;; Call on-complete callback with collected lines
+           (when-let [on-complete (:on-complete opts)]
+             (on-complete mock-lines))
            mock-lines))
        slackbot.query/generate-card-output     (fn [card-id]
                                                  (swap! generate-card-output-calls conj {:card-id card-id})
@@ -442,6 +449,33 @@
                        (get-in opts [:message :content])))
                 (is (vector? (:history opts)))
                 (is (fn? (:on-line opts)))))))))))
+
+(deftest slack-msg-id-stored-test
+  (testing "User and bot messages are stored with their Slack ts as slack_msg_id"
+    (with-slackbot-setup
+      ;; Text must be > 50 chars to trigger stream start via request-flush!
+      (let [event-ts  "1709567890.000001"
+            long-text (apply str (repeat 60 "x"))]
+        (with-slackbot-mocks
+          {:ai-text long-text}
+          (fn [{:keys [stop-stream-calls]}]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (let [event (assoc-in base-dm-event [:event :ts] event-ts)]
+                (mt/client :post 200 "ee/metabot-v3/slack/events"
+                           (slack-request-options event) event)
+                (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                         :done? true?
+                         :timeout-ms 5000})
+                ;; Filter by expected slack_msg_ids to avoid picking up messages from other tests
+                (let [user-msg (t2/select-one :model/MetabotMessage :slack_msg_id event-ts)
+                      bot-msg  (t2/select-one :model/MetabotMessage :slack_msg_id "stream123")]
+                  (testing "user message has event ts"
+                    (is (some? user-msg))
+                    (is (= event-ts (:slack_msg_id user-msg))))
+                  (testing "bot message has stream ts"
+                    (is (some? bot-msg))
+                    (is (= "stream123" (:slack_msg_id bot-msg)))))))))))))
 
 (deftest ^:parallel slack-thread-conversation-id-test
   (testing "Same thread produces same conversation ID"
@@ -1225,6 +1259,84 @@
         (is (str/includes? (:content (first result)) "Product"))
         (is (str/includes? (:content (first result)) "Widget"))
         (is (str/includes? (:content (first result)) "$100")))))
+
+;; -------------------------------- thread->history Unit Tests --------------------------------
+
+(deftest thread->history-strips-bot-mentions-test
+  (testing "User messages have bot mentions stripped"
+    (with-redefs [slackbot.persistence/message-history (constantly {})]
+      (let [thread {:messages [{:ts "1709567890.000001" :text "<@UBOT123> hello" :user "U123"}]}
+            result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
+        (is (= [{:role :user :content "hello"}] result))))))
+
+(deftest thread->history-merges-tool-calls-test
+  (testing "Bot messages include tool call data from DB before text"
+    (with-redefs [slackbot.persistence/message-history
+                  (constantly {"1709567890.000002"
+                               [{:role :assistant :tool_calls [{:id "tc1" :name "run_query"}]}
+                                {:role :tool :tool_call_id "tc1" :content "42"}]})]
+      (let [thread {:messages [{:ts "1709567890.000002" :text "The answer is 42" :bot_id "B123"}]}
+            result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
+        (is (= 3 (count result)))
+        (is (= [{:id "tc1" :name "run_query"}] (:tool_calls (first result))))
+        (is (= "tc1" (:tool_call_id (second result))))
+        (is (= {:role :assistant :content "The answer is 42"} (last result)))))))
+
+(deftest thread->history-excludes-thinking-test
+  (testing "Thinking placeholder messages are excluded from history"
+    (with-redefs [slackbot.persistence/message-history (constantly {})]
+      (let [thread {:messages [{:ts "1709567890.000001" :text "question" :user "U123"}
+                               {:ts "1709567890.000002" :text "_Thinking..._" :bot_id "B123"}]}
+            result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
+        (is (= 1 (count result)))
+        (is (= :user (:role (first result))))))))
+
+(deftest thread->history-excludes-blank-bot-messages-test
+  (testing "Bot messages with blank text are excluded"
+    (with-redefs [slackbot.persistence/message-history (constantly {})]
+      (let [thread {:messages [{:ts "1709567890.000001" :text "" :bot_id "B123"}
+                               {:ts "1709567890.000002" :text "   " :bot_id "B123"}
+                               {:ts "1709567890.000003" :text "real" :bot_id "B123"}]}
+            result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
+        (is (= [{:role :assistant :content "real"}] result))))))
+
+;; -------------------------------- Message Persistence Tests --------------------------------
+
+(deftest message-history-test
+  (let [conv-id (str (random-uuid))]
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+      ;; User message - should be excluded (query filters by role=assistant)
+      (t2/insert! :model/MetabotMessage
+                  {:conversation_id conv-id
+                   :slack_msg_id    "1709567890.000001"
+                   :role            "user"
+                   :profile_id      "test"
+                   :total_tokens    0
+                   :data            [{:_type "TEXT" :role "user" :content "what is 2+2?"}]})
+      ;; Assistant message with tool calls
+      (t2/insert! :model/MetabotMessage
+                  {:conversation_id conv-id
+                   :slack_msg_id    "1709567890.000002"
+                   :role            "assistant"
+                   :profile_id      "test"
+                   :total_tokens    10
+                   :data            [{:_type "TEXT" :role "assistant" :content "hi"}
+                                     {:_type "TOOL_CALL" :role "assistant" :tool_calls [{:id "x"}]}
+                                     {:_type "TOOL_RESULT" :role "tool" :tool_call_id "x" :content "y"}]})
+
+      (testing "only TOOL_CALL and TOOL_RESULT are included, TEXT is filtered out"
+        (let [result (slackbot.persistence/message-history conv-id #{"1709567890.000002"})]
+          (is (= 2 (count (get result "1709567890.000002"))))
+          (is (every? #(#{:assistant :tool} (:role %)) (get result "1709567890.000002")))))
+
+      (testing "user messages are excluded, only assistant role is queried"
+        (let [result (slackbot.persistence/message-history conv-id #{"1709567890.000001"})]
+          (is (empty? result))))
+
+      (testing "non-matching slack_msg_ids return empty map"
+        (let [result (slackbot.persistence/message-history conv-id #{"nonexistent-id"})]
+          (is (empty? result)))))))
 
 ;; -------------------------------- PUT /slack/settings Tests --------------------------------
 
