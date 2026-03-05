@@ -1,6 +1,5 @@
 (ns metabase-enterprise.replacement.field-refs
   (:require
-   [clojure.walk :as clojure.walk]
    [medley.core :as m]
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.util :as replacement.util]
@@ -52,45 +51,21 @@
         (m/update-existing-in [:pivot_table.column_split :values] legacy-refs-or-names->names)
         (m/update-existing-in [:pivot_table.collapsed_rows :rows] legacy-refs-or-names->names))))
 
-(defn- upgrade-column-settings-keys
-  "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
-  return a new column_settings map with upgraded parameter-mapping. Keys are JSON-encoded strings."
-  [query column-settings]
-  (clojure.walk/postwalk
-   (fn [form]
-     ;; some forms don't get converted to keywords, so hack it
-     (if (and (vector? form)
-              (= "dimension" (first form)))
-       (try
-         (let [dim (-> form
-                       (update 0 keyword)
-                       (update-in [1 0] keyword)
-                       (update-in [1 2 :base-type] keyword))]
-           (lib-be/upgrade-field-ref-in-parameter-target query dim))
-         (catch Exception _
-           form))
-       form))
-   column-settings))
-
-(defn- upgrade-parameter-mappings
-  [query parameter-mapping]
-  (update parameter-mapping :target #(lib-be/upgrade-field-ref-in-parameter-target query %)))
-
 (defn- card-upgrade-field-refs!
   [card]
   (when (replacement.util/valid-query? (:dataset_query card))
-    (let [query  (:dataset_query card)
-          query' (lib-be/upgrade-field-refs-in-query query)
-          viz    (:visualization_settings card)
-          viz'   (some->> viz vs/db->norm (upgrade-card-viz-settings query') vs/norm->db)
-          changes (cond-> {}
-                    (not= query query') (assoc :dataset_query query')
-                    (not= viz viz') (assoc :visualization_settings viz'))
+    (let [query         (:dataset_query card)
+          query'        (lib-be/upgrade-field-refs-in-query query)
+          viz-settings  (:visualization_settings card)
+          viz-settings' (some->> viz-settings vs/db->norm (upgrade-card-viz-settings query') vs/norm->db)
+          changes       (cond-> {}
+                          (not= query query') (assoc :dataset_query query')
+                          (not= viz-settings viz-settings') (assoc :visualization_settings viz-settings'))
           ;; result_metadata is set to nil for native queries if not present in changes
-          changes (cond-> changes
-                    (and (seq changes)
-                         (lib/native-only-query? query'))
-                    (assoc :result_metadata (:result_metadata card)))]
+          changes       (cond-> changes
+                          (and (seq changes)
+                               (lib/native-only-query? query'))
+                          (assoc :result_metadata (:result_metadata card)))]
       (when (seq changes)
         (t2/update! :model/Card (:id card) changes)))))
 
@@ -117,49 +92,76 @@
   (when (replacement.util/valid-query? (:definition measure))
     (let [query  (:definition measure)
           query' (lib-be/upgrade-field-refs-in-query query)]
-      (when (not= definition definition')
+      (when (not= query query')
         (t2/update! :model/Measure (:id measure) {:definition query'})))))
+
+(defn- dashcard-upgrade-parameter-mappings
+  [parameter-mappings cards-by-id]
+  (mapv (fn [mapping]
+          (or (when-let [card (get cards-by-id (:card_id mapping))]
+                (let [query (:dataset_query card)]
+                  (when (replacement.util/valid-query? query)
+                    (m/update-existing mapping :target #(lib-be/upgrade-field-ref-in-parameter-target query %)))))
+              mapping))
+        parameter-mappings))
+
+;; TODO - this is incorrect - it doesn't take the target into account
+;; TODO - use normalized click behavior API
+
+;; (defn- upgrade-column-settings-keys
+;;   "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
+;;   return a new column_settings map with upgraded parameter-mapping. Keys are JSON-encoded strings."
+;;   [query column-settings]
+;;   (clojure.walk/postwalk
+;;    (fn [form]
+;;      ;; some forms don't get converted to keywords, so hack it
+;;      (if (and (vector? form)
+;;               (= "dimension" (first form)))
+;;        (try
+;;          (let [dim (-> form
+;;                        (update 0 keyword)
+;;                        (update-in [1 0] keyword)
+;;                        (update-in [1 2 :base-type] keyword))]
+;;            (lib-be/upgrade-field-ref-in-parameter-target query dim))
+;;          (catch Exception _
+;;            form))
+;;        form))
+;;    column-settings))
+
+(defn- dashcard-upgrade-viz-settings
+  [viz-settings]
+  viz-settings)
+
+(defn- dashcard-upgrade-field-refs!
+  [dashcard cards-by-id]
+  (let [parameter-mappings  (:parameter_mappings dashcard)
+        parameter-mappings' (dashcard-upgrade-parameter-mappings parameter-mappings cards-by-id)
+        viz-settings        (:visualization_settings dashcard)
+        viz-settings'       (some-> viz-settings
+                                    vs/db->norm
+                                    dashcard-upgrade-viz-settings
+                                    vs/norm->db)
+        changes (cond-> {}
+                  (not= parameter-mappings parameter-mappings')
+                  (assoc :parameter_mappings parameter-mappings')
+                  (not= viz-settings viz-settings')
+                  (assoc :visualization_settings viz-settings'))]
+    (when (seq changes)
+      (t2/update! :model/DashboardCard (:id dashcard) changes))))
 
 (defn dashboard-upgrade-field-refs!
   "Upgrade field refs in parameter_mappings and column_settings for all dashcards in a dashboard.
    Each parameter_mapping's :card_id determines which card's query to use for the upgrade."
   [dashboard-id]
   (let [dashcards    (t2/select :model/DashboardCard :dashboard_id dashboard-id)
-        all-card-ids (into #{} (comp (mapcat (fn [dc]
-                                               (cons (:card_id dc)
-                                                     (keep :card_id (:parameter_mappings dc)))))
-                                     (remove nil?))
+        all-card-ids (into #{} (mapcat (fn [dashcard]
+                                         (keep :card_id (:parameter_mappings dashcard))))
                            dashcards)
         cards-by-id  (when (seq all-card-ids)
-                       (into {} (map (juxt :id identity))
-                             (t2/select :model/Card :id [:in all-card-ids])))]
+                       (->> (t2/select :model/Card :id [:in all-card-ids])
+                            (m/index-by :id)))]
     (doseq [dashcard dashcards]
-      (let [parameter-mappings  (:parameter_mappings dashcard)
-            parameter-mappings' (mapv (fn [pm]
-                                        (if-let [card (get cards-by-id (:card_id pm))]
-                                          (if (replacement.util/valid-query? (:dataset_query card))
-                                            (let [query (:dataset_query card)]
-                                              (upgrade-parameter-mappings query pm))
-                                            pm)
-                                          pm))
-                                      parameter-mappings)
-            primary-card    (get cards-by-id (:card_id dashcard))
-            primary-query   (when (replacement.util/valid-query? (:dataset_query primary-card))
-                              (:dataset_query primary-card))
-            viz             (vs/db->norm (:visualization_settings dashcard))
-            column-settings (::vs/column-settings viz)
-            column-settings' (if primary-query
-                               (upgrade-column-settings-keys primary-query column-settings)
-                               column-settings)
-            changes (cond-> {}
-                      (not= parameter-mappings parameter-mappings')
-                      (assoc :parameter_mappings parameter-mappings')
-                      (not= column-settings column-settings')
-                      (assoc :visualization_settings (-> viz
-                                                         (assoc ::vs/column-settings column-settings')
-                                                         vs/norm->db)))]
-        (when (seq changes)
-          (t2/update! :model/DashboardCard (:id dashcard) changes))))))
+      (dashcard-upgrade-field-refs! dashcard cards-by-id))))
 
 (mu/defn upgrade!
   "Upgrade field refs in an entity.
