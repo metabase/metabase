@@ -2,7 +2,7 @@
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
   border-left: none;
-  border-top-right-radius: var(--default-border-radius);
-  border-bottom-right-radius: var(--default-border-radius);
+  border-top-right-radius: 1rem;
+  border-bottom-right-radius: 1rem;
   overflow: auto;
 }

@@ -4,7 +4,6 @@ import { t } from "ttag";
 import { useUpdateTableMutation } from "metabase/api";
 import { EditableText } from "metabase/common/components/EditableText";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
-import TAS from "metabase/data-studio/data-model/components/TableSection/components/TableAttributes.module.css";
 import { isNullOrUndefined } from "metabase/lib/types";
 import {
   DataSourceInput,
@@ -154,13 +153,16 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
   return (
     <Stack gap={0} align="stretch">
       {/* Entity Type Selector */}
-
       <Box className={S.contentSectionGridContainer} px="lg" py="md">
         <EntityTypeInput
           value={table.entity_type ?? "entity/GenericTable"}
           onChange={handleEntityTypeChange}
-          classNames={{ input: TAS.input, label: TAS.label }}
-          className={TAS.gridLabelInput}
+          classNames={{
+            input: S.input,
+            label: S.label,
+            section: table.entity_type ? S.entityTypeLeftSection : "",
+          }}
+          className={S.gridLabelInput}
         />
       </Box>
 
@@ -177,48 +179,61 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
       </Box>
 
       {/* Metadata Sections */}
-
-      <Card mx="lg" bg="background-secondary" shadow="none">
+      <Card mx="lg" bg="background-secondary" shadow="none" radius="1rem">
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
-            <Icon name="refresh" size={20} color="brand" />
-            <Text size="md" fw={600}>
+            <Icon name="refresh" c="brand" />
+            <Text size="md" fw={600} lh="1rem">
               {formattedDate}
             </Text>
           </Group>
-          <Text size="sm" color="text-medium" ml={28}>
+          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
             {t`Last update`}
           </Text>
         </Card.Section>
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
-            <Icon name="database" size={20} color="brand" />
-            <Text size="md" fw={600}>
+            <Icon name="database" c="brand" />
+            <Text size="md" fw={600} lh="1rem">
               {table.db?.name || "—"}
             </Text>
           </Group>
-          <Text size="sm" color="text-medium" ml={28}>
+          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
             {t`Database`}
           </Text>
         </Card.Section>
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
-            <Icon name="table" size={20} color="brand" />
+            <Icon
+              name="refresh_downstream"
+              c={table.data_source ? "brand" : "icon-secondary"}
+            />
 
             <DataSourceInput
               disabled={table.data_source === "metabase-transform"}
               value={table.data_source ?? "unknown"}
               label={null}
+              classNames={{
+                root: S.textStyleWrapper,
+                input: cx(
+                  S.textStyleInput,
+                  table.data_source && S.selectedInput,
+                ),
+                section: S.textStyleSection,
+              }}
               onChange={handleDataSourceChange}
             />
           </Group>
-          <Text size="sm" color="text-medium" ml={28}>
+          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
             {t`Source`}
           </Text>
         </Card.Section>
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
-            <Icon name="person" size={20} color="brand" />
+            <Icon
+              name="person"
+              c={isOwnerSpecified ? "brand" : "icon-secondary"}
+            />
 
             <UserInput
               email={table.owner_email}
@@ -227,12 +242,16 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               onUserIdChange={handleOwnerUserIdChange}
               unknownUserLabel={t`No owner`}
               classNames={{
-                input: cx(TAS.input, !isOwnerSpecified && TAS.unset),
-                label: TAS.label,
+                root: S.textStyleWrapper,
+                input: cx(
+                  S.textStyleInput,
+                  isOwnerSpecified && S.selectedInput,
+                ),
+                section: S.textStyleSection,
               }}
             />
           </Group>
-          <Text size="sm" color="text-medium" ml={28}>
+          <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
             {t`Owner`}
           </Text>
         </Card.Section>
@@ -242,7 +261,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
       <Card mx="lg" my="lg" shadow="none">
         <Card.Section withBorder py={rem(12)} px="md">
           <Flex justify="space-between" align="center">
-            <Text size="md" color="text-medium">
+            <Text size="md" c="text-secondary">
               {t`Fields`}
             </Text>
             <Text size="xl" fw={600}>
@@ -254,7 +273,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
         {!isNullOrUndefined(table.estimated_row_count) && (
           <Card.Section withBorder py={rem(12)} px="md">
             <Flex justify="space-between" align="center">
-              <Text size="md" color="text-medium">
+              <Text size="md" c="text-secondary">
                 {t`Rows`}
               </Text>
               <Text size="xl" fw={600}>
@@ -267,7 +286,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
         {isDependenciesEnabled && (
           <Card.Section withBorder py={rem(12)} px="md">
             <Flex justify="space-between" align="center">
-              <Text size="md" color="text-medium">
+              <Text size="md" c="text-secondary">
                 {t`Dependents`}
               </Text>
               <Text size="xl" fw={600}>
