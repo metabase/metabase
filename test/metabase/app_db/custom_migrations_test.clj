@@ -2804,27 +2804,27 @@
                                                           :display_name display-name
                                                           :created_at :%now
                                                           :updated_at :%now}))
-             ;; An uploads table in a good state, created before uploads_schema_name was set to null
+                ;; An uploads table in a good state, created before uploads_schema_name was set to null
                 uploaded-0 (insert-table! db-id "uploads_test_table_0" "db_foo" true true "Test Table 0")
-             ;; Two upload tables in a bad state, created after uploads_schema_name was set to null
+                ;; Two upload tables in a bad state, created after uploads_schema_name was set to null
                 uploaded-1 (insert-table! db-id "uploads_test_table_1" nil false true "Test Table 1")
                 uploaded-2 (insert-table! db-id "uploads_test_table_2" nil false true "Test Table 2")
-             ;; The two non-upload versions of the above tables, created by the sync process
+                ;; The two non-upload versions of the above tables, created by the sync process
                 synced-1 (insert-table! db-id "uploads_test_table_1" "db_foo" true false "Uploads Test Table 1")
                 synced-2 (insert-table! db-id "uploads_test_table_2" "db_foo" true false "Uploads Test Table 2")
-             ;; An unrelated non-upload table in the same schema that should be left alone
+                ;; An unrelated non-upload table in the same schema that should be left alone
                 unrelated (insert-table! db-id "unrelated_table" "db_foo" true false "Unrelated Table")]
             (migrate!)
-         ;; The uploads db has the correct uploads_schema_name from the details
+            ;; The uploads db has the correct uploads_schema_name from the details
             (is (= "db_foo" (:uploads_schema_name (t2/select-one :metabase_database :id db-id))))
             (are [exp table-id] (= exp
                                    (t2/select-one [:metabase_table :name :schema :active :is_upload] :id table-id))
-           ;; The upload table that was already in a good state remains unchanged
+              ;; The upload table that was already in a good state remains unchanged
               {:name "uploads_test_table_0"
                :schema "db_foo"
                :active true
                :is_upload true} uploaded-0
-           ;; The two upload tables in a bad state are updated to be active and have the correct schema
+              ;; The two upload tables in a bad state are updated to be active and have the correct schema
               {:name "uploads_test_table_1"
                :schema "db_foo"
                :active true
@@ -2833,7 +2833,7 @@
                :schema "db_foo"
                :active true
                :is_upload true} uploaded-2
-           ;; The two non-upload tables created by the sync have been renamed and set as inactive
+              ;; The two non-upload tables created by the sync have been renamed and set as inactive
               {:name "uploads_test_table_1_retired_69667"
                :schema "db_foo"
                :active false
@@ -2842,7 +2842,7 @@
                :schema "db_foo"
                :active false
                :is_upload false} synced-2
-           ;; The unrelated table remains unchanged
+              ;; The unrelated table remains unchanged
               {:name "unrelated_table"
                :schema "db_foo"
                :active true
