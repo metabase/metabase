@@ -1,3 +1,4 @@
+import { Flex } from "@mantine/core";
 import {
   CollectionBrowser,
   InteractiveQuestion,
@@ -19,7 +20,6 @@ import {
   mockAuthProviderAndJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
-import { Flex } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

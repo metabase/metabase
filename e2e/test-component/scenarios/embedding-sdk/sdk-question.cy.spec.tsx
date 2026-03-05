@@ -1,3 +1,4 @@
+import { Box, Button, Modal } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   InteractiveQuestion,
@@ -30,7 +31,6 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Box, Button, Modal } from "metabase/ui";
 const { H } = cy;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

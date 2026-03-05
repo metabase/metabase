@@ -1,3 +1,4 @@
+import { Flex } from "@mantine/core";
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { popover } from "e2e/support/helpers";
@@ -8,7 +9,6 @@ import {
   mockAuthProviderAndJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
-import { Flex } from "metabase/ui";
 
 describe("scenarios > embedding-sdk > content-translations-rerender-reproduction", () => {
   const setupEditor = () => {
