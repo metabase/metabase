@@ -97,6 +97,11 @@
   (or (= (:subtype event) "message_changed")
       (some? (:edited event))))
 
+(defn message-deleted?
+  "True when event is a message deletion notification."
+  [event]
+  (= (:subtype event) "message_deleted"))
+
 (defn app-mention-with-files?
   "Check if event is an app_mention with file attachments.
    These are skipped because file_share events handle file uploads."
@@ -104,17 +109,17 @@
   (and (app-mention? event)
        (has-files? event)))
 
-(defn bot-tag
-  "Convert bot user id to a the tag template syntax used in message text"
-  [bot-user-id]
-  (str "<@" bot-user-id ">"))
+(defn user-mention
+  "Convert a Slack user id to the mention syntax used in message text."
+  [user-id]
+  (str "<@" user-id ">"))
 
 (defn mentions-bot?
   "Check if event @mentions the bot.
    Some events, like file uploads in channels, don't come through as app_mention."
   [event bot-user-id]
   (some-> (:text event)
-          (str/includes? (bot-tag bot-user-id))))
+          (str/includes? (user-mention bot-user-id))))
 
 (defn dm-or-channel-mention?
   "Check if event is an dm or channel w/ mention of the bot."
@@ -127,7 +132,7 @@
 (defn event->prompt
   "Prepare the message event as a prompt that can be sent to an agent"
   [event bot-user-id]
-  (str/replace (:text event) (bot-tag bot-user-id) "@Metabot"))
+  (str/replace (:text event) (user-mention bot-user-id) "@Metabot"))
 
 (defn event->reply-context
   "Extract the necessary context for a reply from the given `event`"
@@ -140,5 +145,5 @@
   "Remove bot mention prefix from text (e.g., '<@U123> hello' -> 'hello')"
   [text bot-user-id]
   (if bot-user-id
-    (str/replace text (re-pattern (str (bot-tag bot-user-id) "\\s?")) "")
+    (str/replace text (re-pattern (str (user-mention bot-user-id) "\\s?")) "")
     text))
