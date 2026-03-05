@@ -79,9 +79,9 @@
                               :card_id (:id child)
                               :visualization_settings vis-settings}]
                 (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/do-swap! [:card (:id child)]
-                                                  [:card (:id old-source)]
-                                                  [:card (:id new-source)])
+                (replacement.source-swap/swap-source! [:card (:id child)]
+                                                      [:card (:id old-source)]
+                                                      [:card (:id new-source)])
                 ;; TODO (eric): Add assertions
                 ))))))))
 
@@ -100,9 +100,9 @@
                               :card_id (:id child)
                               :visualization_settings {:some_setting "value"}}]
                 (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/do-swap! [:card (:id child)]
-                                                  [:card (:id old-source)]
-                                                  [:card (:id new-source)])
+                (replacement.source-swap/swap-source! [:card (:id child)]
+                                                      [:card (:id old-source)]
+                                                      [:card (:id new-source)])
                 (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)]
                   (is (= {:some_setting "value"} (select-keys updated-viz [:some_setting]))
                       "Visualization settings without column_settings should be unchanged"))))))))))
@@ -123,9 +123,9 @@
                               :card_id (:id child)
                               :visualization_settings {:column_settings {name-key {:column_title "Custom"}}}}]
                 (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/do-swap! [:card (:id child)]
-                                                  [:card (:id old-source)]
-                                                  [:card (:id new-source)])
+                (replacement.source-swap/swap-source! [:card (:id child)]
+                                                      [:card (:id old-source)]
+                                                      [:card (:id new-source)])
                 (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
                       updated-cs  (:column_settings updated-viz)]
                   (is (contains? updated-cs name-key)
@@ -136,7 +136,7 @@
 ;;; ----------------------------------------- Series card parameter mapping swap ------------------------------------------
 
 (deftest swap-source-series-card-updates-dashcard-params-test
-  (testing "do-swap! updates parameter_mappings on dashcards where the card is a series card"
+  (testing "swap-source! updates parameter_mappings on dashcards where the card is a series card"
     (mt/dataset source-swap
       (mt/with-premium-features #{:dependencies}
         (mt/with-test-user :rasta
@@ -155,16 +155,16 @@
                                {:dashboardcard_id dashcard-id
                                 :card_id          (:id series-card)
                                 :position         0}]
-                  (replacement.source-swap/do-swap! [:dashboard dashboard-id]
-                                                    [:table (mt/id :products_a)]
-                                                    [:table (mt/id :products_b)])
+                  (replacement.source-swap/swap-source! [:dashboard dashboard-id]
+                                                        [:table (mt/id :products_a)]
+                                                        [:table (mt/id :products_b)])
                   (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
                         target     (get-in updated-dc [:parameter_mappings 0 :target])]
                     (is (=? [:dimension [:field (mt/id :products_b :id) {}]] target)
                         "Parameter mapping should no longer reference the old products_a field")))))))))))
 
 (deftest swap-source-series-card-no-duplicate-updates-test
-  (testing "do-swap! deduplicates when card is both primary and series"
+  (testing "swap-source! deduplicates when card is both primary and series"
     (mt/dataset source-swap
       (mt/with-premium-features #{:dependencies}
         (mt/with-test-user :rasta
@@ -182,9 +182,9 @@
                                {:dashboardcard_id dashcard-id
                                 :card_id          (:id card)
                                 :position         0}]
-                  (replacement.source-swap/do-swap! [:dashboard dashboard-id]
-                                                    [:table (mt/id :products_a)]
-                                                    [:table (mt/id :products_b)])
+                  (replacement.source-swap/swap-source! [:dashboard dashboard-id]
+                                                        [:table (mt/id :products_a)]
+                                                        [:table (mt/id :products_b)])
                   (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
                         target     (get-in updated-dc [:parameter_mappings 0 :target])]
                     (is (=? [:dimension [:field (mt/id :products_b :id) {}]] target)

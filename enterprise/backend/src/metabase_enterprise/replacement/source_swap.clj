@@ -36,7 +36,7 @@
     (swap.mbql/swap-mbql-stages (source-ref->source-map old-source)
                                 (source-ref->source-map new-source))))
 
-(defn- transform-swap!
+(defn- transform-swap-source!
   [transform old-source new-source]
   (when-let [query (get-in transform [:source :query])]
     (when (replacement.util/valid-query? query)
@@ -46,7 +46,7 @@
           (t2/update! :model/Transform (:id transform)
                       {:source (assoc (:source transform) :query new-query)}))))))
 
-(defn- card-swap!
+(defn- card-swap-source!
   [card old-source new-source]
   (when (replacement.util/valid-query? (:dataset_query card))
     (let [query (:dataset_query card)
@@ -76,7 +76,7 @@
         ;; paritcular spot
         ))))
 
-(defn- segment-swap!
+(defn- segment-swap-source!
   [segment old-source new-source]
   (when (replacement.util/valid-query? (:definition segment))
     (let [query (:definition segment)
@@ -96,7 +96,7 @@
         (events/publish-event! :event/segment-update
                                {:object (merge segment changes) :user-id (:id @api/*current-user*)})))))
 
-(defn- measure-swap!
+(defn- measure-swap-source!
   [measure old-source new-source]
   (when (replacement.util/valid-query? (:definition measure))
     (let [query (:definition measure)
@@ -128,7 +128,7 @@
              (source-ref->source-map new-source)))))
       target))
 
-(defn- dashcard-swap!
+(defn- dashcard-swap-source!
   [dashcard card-id->card old-source new-source]
   (let [update-fn           #(swap-parameter-target %1 %2 card-id->card old-source new-source)
         parameter-mappings  (:parameter_mappings dashcard)
@@ -146,7 +146,7 @@
     (when (seq changes)
       (t2/update! :model/DashboardCard (:id dashcard) changes))))
 
-(defn- dashboard-swap!
+(defn- dashboard-swap-source!
   [dashboard-id old-source new-source]
   (let [dashcards      (t2/select :model/DashboardCard :dashboard_id dashboard-id)
         all-card-ids   (into #{}
@@ -159,31 +159,31 @@
                         (t2/select-pk->fn identity :model/Card :id [:in all-card-ids])
                         {})]
     (doseq [dashcard dashcards]
-      (dashcard-swap! dashcard card-id->card old-source new-source))
+      (dashcard-swap-source! dashcard card-id->card old-source new-source))
     (events/publish-event! :event/dashboard-update {:object  (t2/select-one :model/Dashboard
                                                                             :id dashboard-id)
                                                     :user-id (:id @api/*current-user*)})))
 
-(defn do-swap!
+(defn swap-source!
   "Swap old-source to new-source in an entity.
 
   `entity-ref` is a [type id] tuple like [:card 123] or [:dashboard 456].
   `entity` is an optional pre-fetched entity. Dashboards don't use `entity`."
   ([entity-ref old-source new-source]
    (let [[entity-type entity-id] entity-ref]
-     (do-swap! entity-ref
-               (case entity-type
-                 :card      (t2/select-one :model/Card :id entity-id)
-                 :transform (t2/select-one :model/Transform :id entity-id)
-                 :segment   (t2/select-one :model/Segment :id entity-id)
-                 :measure   (t2/select-one :model/Measure :id entity-id)
-                 nil)
-               old-source new-source)))
+     (swap-source! entity-ref
+                   (case entity-type
+                     :card      (t2/select-one :model/Card :id entity-id)
+                     :transform (t2/select-one :model/Transform :id entity-id)
+                     :segment   (t2/select-one :model/Segment :id entity-id)
+                     :measure   (t2/select-one :model/Measure :id entity-id)
+                     nil)
+                   old-source new-source)))
   ([[entity-type entity-id] entity old-source new-source]
    (case entity-type
-     :card      (card-swap!      entity old-source new-source)
-     :transform (transform-swap! entity old-source new-source)
-     :segment   (segment-swap!   entity old-source new-source)
-     :measure   (measure-swap!   entity old-source new-source)
-     :dashboard (dashboard-swap! entity-id old-source new-source)
+     :card      (card-swap-source!      entity old-source new-source)
+     :transform (transform-swap-source! entity old-source new-source)
+     :segment   (segment-swap-source!   entity old-source new-source)
+     :measure   (measure-swap-source!   entity old-source new-source)
+     :dashboard (dashboard-swap-source! entity-id old-source new-source)
      nil)))
