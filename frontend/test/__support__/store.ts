@@ -8,6 +8,7 @@ import {
   DatabaseSchema,
   DocumentSchema,
   FieldSchema,
+  GroupSchema,
   IndexedEntitySchema,
   MeasureSchema,
   MetricSchema,
@@ -65,6 +66,7 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   snippets: [SnippetSchema],
   indexedEntities: [IndexedEntitySchema],
   questions: [QuestionSchema],
+  groups: [GroupSchema],
 };
 
 export const createMockEntitiesState = (

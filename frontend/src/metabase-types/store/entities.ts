@@ -5,6 +5,7 @@ import type {
   NormalizedDatabase,
   NormalizedDocument,
   NormalizedField,
+  NormalizedGroup,
   NormalizedIndexedEntity,
   NormalizedMeasure,
   NormalizedMetric,
@@ -30,4 +31,5 @@ export interface EntitiesState {
   indexedEntities: Record<string, NormalizedIndexedEntity>;
   snippets: Record<string, NormalizedNativeQuerySnippet>;
   questions: Record<string, NormalizedCard>;
+  groups: Record<string, NormalizedGroup>;
 }

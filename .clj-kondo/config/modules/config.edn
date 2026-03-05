@@ -133,7 +133,7 @@
            version}}
 
   analyze
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.analyze.core
            metabase.analyze.query-results}
    :uses #{config
@@ -548,7 +548,7 @@
            metabase.driver.common.parameters
            metabase.driver.common.parameters.parse
            metabase.driver.connection
-          metabase.driver.connection.workspaces
+           metabase.driver.connection.workspaces
            metabase.driver.ddl.interface
            metabase.driver.h2
            metabase.driver.impl
@@ -694,7 +694,7 @@
            util}}
 
   graph
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.graph.core}
    :uses #{util}}
 
@@ -741,7 +741,6 @@
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.protocols
-           metabase.lib.options
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -896,6 +895,7 @@
            metabase.models.interface
            metabase.models.resolution
            metabase.models.serialization
+           metabase.models.transforms.transform
            metabase.models.util.spec-update
            metabase.models.visualization-settings}
    :uses #{api
@@ -912,6 +912,7 @@
            search
            settings
            transforms
+           transforms-base
            util}
    :friends #{transforms}}
 
@@ -1495,7 +1496,7 @@
            util}}
 
   sync
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.sync.api
            metabase.sync.core
            metabase.sync.init
@@ -1601,7 +1602,6 @@
    :api  #{metabase.transforms.core
            metabase.transforms.feature-gating
            metabase.transforms.init
-           metabase.transforms.interface
            metabase.transforms.schema
            metabase.transforms.util}
    :uses #{analytics
@@ -1611,18 +1611,33 @@
            driver
            events
            lib
-           lib-be
            models
            premium-features
            queries
            query-processor
            revisions
            settings
-           sync
            task
            task-history
+           transforms-base
            util}
    :friends #{models
+              enterprise/transforms-python
+              enterprise/workspaces}}
+
+  transforms-base
+  {:team "Querying"
+   :api  #{metabase.transforms-base.init
+           metabase.transforms-base.interface
+           metabase.transforms-base.util}
+   :uses #{driver
+           events
+           lib
+           lib-be
+           query-processor
+           sync
+           util}
+   :friends #{transforms
               enterprise/transforms-python
               enterprise/workspaces}}
 
@@ -1635,7 +1650,7 @@
            lib-be
            query-processor
            sql-tools
-           transforms
+           transforms-base
            util}}
 
   transforms-rest
@@ -1652,6 +1667,7 @@
            server
            sql-tools
            transforms
+           transforms-base
            transforms-inspector
            util}}
 
@@ -2137,7 +2153,7 @@
            warehouses}}
 
   enterprise/dependencies
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
@@ -2163,6 +2179,7 @@
            settings
            task
            transforms
+           transforms-base
            util}}
 
   enterprise/email
@@ -2280,6 +2297,7 @@
               system
               task
               transforms
+              transforms-base
               users
               util
               warehouses
@@ -2503,6 +2521,7 @@
            query-processor
            settings
            transforms
+           transforms-base
            util}}
 
   enterprise/upload-management
@@ -2536,8 +2555,14 @@
            sql-tools
            system
            transforms
+           transforms-base
            util
-           enterprise/transforms-python}}}
+           enterprise/transforms-python}}
+
+  enterprise/writable-connection
+  {:team "Querying"
+   :api  #{}
+   :uses #{premium-features}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

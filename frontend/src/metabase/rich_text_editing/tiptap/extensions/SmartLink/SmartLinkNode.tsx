@@ -440,7 +440,7 @@ export const useEntityData = (
 };
 
 export const SmartLinkComponent = memo(
-  ({ node }: NodeViewProps) => {
+  ({ node, updateAttributes }: NodeViewProps) => {
     const { entityId, model, label } = node.attrs;
 
     const {
@@ -456,9 +456,10 @@ export const SmartLinkComponent = memo(
       if (entity) {
         const name =
           "display_name" in entity ? entity.display_name : entity?.name;
+        updateAttributes({ label: name });
         dispatch(updateMentionsCache({ entityId, model, name }));
       }
-    }, [dispatch, entity, entityId, model]);
+    }, [updateAttributes, dispatch, entity, entityId, model]);
 
     const showLoading = isLoading && !entity;
     if (showLoading) {

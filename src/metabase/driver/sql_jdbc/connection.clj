@@ -157,7 +157,7 @@
                                               (log/warn "jdbc-data-warehouse-debug-unreturned-connection-stack-traces"
                                                         "is enabled, but INFO logging is not enabled for the"
                                                         "com.mchange namespace. You must raise the log level for"
-                                                        "com.mchange to INFO via a custom log4j config in order to"
+                                                        "com.mchange to INFO via a custom Log4j config in order to"
                                                         "see stacktraces in the logs.")))
    ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
    ;; and name from the details
