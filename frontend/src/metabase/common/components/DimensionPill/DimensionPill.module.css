@@ -20,6 +20,10 @@
   cursor: default;
 }
 
+.dropdown {
+  overflow-y: auto;
+}
+
 .dimensionList {
   color: var(--mb-color-brand);
 }

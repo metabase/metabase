@@ -5,10 +5,12 @@ import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
+import { groupIntoSections } from "metabase/common/components/DimensionPill";
 import { HoverParent } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon } from "metabase/ui";
 import type {
+  DimensionGroup,
   DimensionMetadata,
   MetricDefinition,
   ProjectionClause,
@@ -26,6 +28,7 @@ type DimensionItem = {
   displayName: string;
   dimension: DimensionMetadata;
   icon: IconName;
+  group?: DimensionGroup;
   selected?: boolean;
 };
 
@@ -50,42 +53,16 @@ export function BreakoutDimensionPicker({
   );
 
   const sections: Section<DimensionItem>[] = useMemo(() => {
-    const dims = [...dimensions.values()];
-    const groups = new Map<
-      string | undefined,
-      { groupName: string; items: DimensionItem[] }
-    >();
-
-    for (const dim of dims) {
-      const groupId = dim.group?.id;
-      const entry = groups.get(groupId);
-      const item: DimensionItem = {
-        name: dim.name ?? "",
-        displayName: dim.displayName,
-        dimension: dim.dimension,
-        icon: getDimensionIcon(dim.dimension),
-        selected: currentBreakoutDimensionName === dim.name,
-      };
-
-      if (entry) {
-        entry.items.push(item);
-      } else {
-        groups.set(groupId, {
-          groupName: dim.group?.displayName ?? "",
-          items: [item],
-        });
-      }
-    }
-
-    if (groups.size <= 1) {
-      const items = groups.size === 1 ? [...groups.values()][0].items : [];
-      return [{ items }];
-    }
-
-    return [...groups.values()].map(({ groupName, items }) => ({
-      name: groupName || undefined,
-      items,
+    const items: DimensionItem[] = [...dimensions.values()].map((dim) => ({
+      name: dim.name ?? "",
+      displayName: dim.displayName,
+      dimension: dim.dimension,
+      icon: getDimensionIcon(dim.dimension),
+      group: dim.group,
+      selected: currentBreakoutDimensionName === dim.name,
     }));
+
+    return groupIntoSections(items);
   }, [dimensions, currentBreakoutDimensionName]);
 
   const handleSelect = useCallback(

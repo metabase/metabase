@@ -11,6 +11,7 @@ import { Divider, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
 
 import S from "./DimensionPill.module.css";
+import { groupIntoSections } from "./utils";
 
 export interface DimensionOptionGroup {
   id: string;
@@ -61,7 +62,11 @@ function renderItemIcon(item: DimensionOption | RemoveAction) {
   return <Icon name={item.icon} />;
 }
 
-function itemIsSelected() {
+function dimensionItemIsSelected(item: DimensionOption) {
+  return item.selected ?? false;
+}
+
+function removeItemIsSelected() {
   return false;
 }
 
@@ -105,34 +110,10 @@ export function DimensionPill({
     pillLabel = label;
   }
 
-  const sections: Section<DimensionOption>[] = useMemo(() => {
-    const groups = new Map<
-      string | undefined,
-      { groupName: string; items: DimensionOption[] }
-    >();
-
-    for (const option of options) {
-      const groupId = option.group?.id;
-      const entry = groups.get(groupId);
-      if (entry) {
-        entry.items.push(option);
-      } else {
-        groups.set(groupId, {
-          groupName: option.group?.displayName ?? "",
-          items: [option],
-        });
-      }
-    }
-
-    if (groups.size <= 1) {
-      return [{ items: options }];
-    }
-
-    return [...groups.values()].map(({ groupName, items }) => ({
-      name: groupName,
-      items,
-    }));
-  }, [options]);
+  const sections: Section<DimensionOption>[] = useMemo(
+    () => groupIntoSections(options),
+    [options],
+  );
 
   const pillContent = (
     <Flex
@@ -159,7 +140,7 @@ export function DimensionPill({
       disabled={!canOpenPopover}
     >
       <Popover.Target>{pillContent}</Popover.Target>
-      <Popover.Dropdown px={0} py="xs" mah={300} style={{ overflowY: "auto" }}>
+      <Popover.Dropdown px={0} py="xs" mah={300} className={S.dropdown}>
         {hasMultipleOptions && (
           <AccordionList
             className={S.dimensionList}
@@ -167,7 +148,7 @@ export function DimensionPill({
             onChange={handleSelect}
             renderItemName={renderItemName}
             renderItemIcon={renderItemIcon}
-            itemIsSelected={itemIsSelected}
+            itemIsSelected={dimensionItemIsSelected}
             alwaysExpanded
             maxHeight={Infinity}
             width={240}
@@ -182,14 +163,14 @@ export function DimensionPill({
               onChange={handleRemove}
               renderItemName={renderItemName}
               renderItemIcon={renderItemIcon}
-              itemIsSelected={itemIsSelected}
+              itemIsSelected={removeItemIsSelected}
               alwaysExpanded
               maxHeight={Infinity}
               width={240}
             />
           </>
         )}
-      </Popover.Dropdown>
+      </>
     </Popover>
   );
 }
