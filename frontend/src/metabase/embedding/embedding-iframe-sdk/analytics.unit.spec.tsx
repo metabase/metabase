@@ -393,14 +393,6 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "with_alerts",
               values: [{ group: "false", value: 1 }],
             },
-            {
-              name: "id_new_native",
-              values: [{ group: "false", value: 1 }],
-            },
-            {
-              name: "id_new",
-              values: [{ group: "false", value: 1 }],
-            },
           ],
         });
       });
@@ -443,14 +435,6 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "with_alerts",
               values: [{ group: "false", value: 1 }],
             },
-            {
-              name: "id_new_native",
-              values: [{ group: "false", value: 1 }],
-            },
-            {
-              name: "id_new",
-              values: [{ group: "false", value: 1 }],
-            },
           ],
         });
 
@@ -491,14 +475,6 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "with_alerts",
               values: [{ group: "true", value: 1 }],
             },
-            {
-              name: "id_new_native",
-              values: [{ group: "false", value: 1 }],
-            },
-            {
-              name: "id_new",
-              values: [{ group: "false", value: 1 }],
-            },
           ],
         });
 
@@ -555,14 +531,6 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
                 { group: "true", value: 1 },
               ],
             },
-            {
-              name: "id_new_native",
-              values: [{ group: "false", value: 3 }],
-            },
-            {
-              name: "id_new",
-              values: [{ group: "false", value: 3 }],
-            },
           ],
         });
       });
@@ -582,18 +550,24 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        const questionComponent = usage.components.find(
-          (component) => component.name === "question",
+        const explorationComponent = usage.components.find(
+          (component) => component.name === "exploration",
         );
-        const idNewNativeProp = questionComponent?.properties.find(
+        const idNewNativeProp = explorationComponent?.properties.find(
           (property) => property.name === "id_new_native",
         );
-        const idNewProp = questionComponent?.properties.find(
+        const idNewProp = explorationComponent?.properties.find(
           (property) => property.name === "id_new",
         );
 
-        expect(idNewNativeProp?.values).toEqual([{ group: "false", value: 1 }]);
-        expect(idNewProp?.values).toEqual([{ group: "false", value: 1 }]);
+        expect(idNewNativeProp?.values).toEqual([
+          { group: "true", value: 1 },
+          { group: "false", value: 1 },
+        ]);
+        expect(idNewProp?.values).toEqual([
+          { group: "false", value: 1 },
+          { group: "true", value: 1 },
+        ]);
       });
     });
 
@@ -613,6 +587,14 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
             {
               name: "is_save_enabled",
               values: [{ group: "false", value: 1 }],
+            },
+            {
+              name: "id_new_native",
+              values: [{ group: "false", value: 1 }],
+            },
+            {
+              name: "id_new",
+              values: [{ group: "true", value: 1 }],
             },
           ],
         });
@@ -636,6 +618,14 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
               name: "is_save_enabled",
               values: [{ group: "false", value: 1 }],
             },
+            {
+              name: "id_new_native",
+              values: [{ group: "false", value: 1 }],
+            },
+            {
+              name: "id_new",
+              values: [{ group: "true", value: 1 }],
+            },
           ],
         });
 
@@ -654,6 +644,14 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "is_save_enabled",
+              values: [{ group: "true", value: 1 }],
+            },
+            {
+              name: "id_new_native",
+              values: [{ group: "false", value: 1 }],
+            },
+            {
+              name: "id_new",
               values: [{ group: "true", value: 1 }],
             },
           ],
@@ -685,6 +683,14 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
                 { group: "true", value: 1 },
               ],
             },
+            {
+              name: "id_new_native",
+              values: [{ group: "false", value: 3 }],
+            },
+            {
+              name: "id_new",
+              values: [{ group: "true", value: 3 }],
+            },
           ],
         });
       });
@@ -703,6 +709,14 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "is_save_enabled",
+              values: [{ group: "false", value: 1 }],
+            },
+            {
+              name: "id_new_native",
+              values: [{ group: "true", value: 1 }],
+            },
+            {
+              name: "id_new",
               values: [{ group: "false", value: 1 }],
             },
           ],

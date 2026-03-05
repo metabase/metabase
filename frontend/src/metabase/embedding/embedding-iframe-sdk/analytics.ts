@@ -45,13 +45,6 @@ const DEFAULT_VALUES: DefaultValues = {
     isSaveEnabled: false,
     /** @see {@link https://github.com/metabase/metabase/blob/c1b57eeb3f6f99126cc52e3a960b98f5c8bbc109/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.tsx#L137} */
     withAlerts: false,
-    /**
-     * @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/types.ts#L3-L16}
-     * Since this is optional, the default value is undefined.
-     *
-     * Unused, but documented for completeness.
-     */
-    questionId: undefined, // NEW: EMB-1334 - used to derive id_new/id_new_native
   },
   exploration: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
@@ -62,6 +55,11 @@ const DEFAULT_VALUES: DefaultValues = {
     readOnly: true,
     /** @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embedding/embedding-iframe-sdk/types/embed.ts#L166} */
     enableEntityNavigation: false, // NEW: EMB-1334
+    /**
+     * @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embedding/embedding-iframe-sdk/types/embed.ts#L170-L171}
+     * Since this is optional, the default value is undefined.
+     */
+    questionId: undefined, // NEW: EMB-1334 - used to derive exploration id_new/id_new_native
   },
   // NEW: EMB-1334 - new component
   metabot: {
@@ -282,24 +280,6 @@ export function createEmbeddedAnalyticsJsUsage(
               String(withAlerts ?? DEFAULT_VALUES.question.withAlerts),
           ),
         },
-        {
-          name: "id_new_native", // NEW: EMB-1334
-          values: countPropertyValues(
-            questionEmbeds,
-            "question",
-            "questionId",
-            (questionId) => String(questionId === "new-native"),
-          ),
-        },
-        {
-          name: "id_new", // NEW: EMB-1334
-          values: countPropertyValues(
-            questionEmbeds,
-            "question",
-            "questionId",
-            (questionId) => String(questionId === "new"),
-          ),
-        },
       ],
     });
   }
@@ -317,6 +297,24 @@ export function createEmbeddedAnalyticsJsUsage(
             "isSaveEnabled",
             (isSaveEnabled) =>
               String(isSaveEnabled ?? DEFAULT_VALUES.exploration.isSaveEnabled),
+          ),
+        },
+        {
+          name: "id_new_native", // NEW: EMB-1334
+          values: countPropertyValues(
+            explorationEmbeds,
+            "browser",
+            "questionId",
+            (questionId) => String(questionId === "new-native"),
+          ),
+        },
+        {
+          name: "id_new", // NEW: EMB-1334
+          values: countPropertyValues(
+            explorationEmbeds,
+            "browser",
+            "questionId",
+            (questionId) => String(questionId === "new"),
           ),
         },
       ],

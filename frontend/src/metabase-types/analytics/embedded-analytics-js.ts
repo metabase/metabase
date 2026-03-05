@@ -48,7 +48,6 @@ export type DefaultValues = {
     withTitle: boolean;
     isSaveEnabled: boolean;
     withAlerts: boolean;
-    questionId: undefined; // NEW: EMB-1334
   };
   exploration: {
     isSaveEnabled: boolean;
@@ -56,6 +55,7 @@ export type DefaultValues = {
   browser: {
     readOnly: boolean;
     enableEntityNavigation: boolean; // NEW: EMB-1334
+    questionId: undefined; // NEW: EMB-1334
   };
   // NEW: EMB-1334
   metabot: {
