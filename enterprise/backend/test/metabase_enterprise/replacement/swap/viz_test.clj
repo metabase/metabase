@@ -4,7 +4,6 @@
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.field-refs :as field-refs]
    [metabase-enterprise.replacement.source-swap :as source-swap]
-   [metabase-enterprise.replacement.swap.viz :as swap.viz]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
@@ -137,61 +136,56 @@
 ;;; ----------------------------------------- Series card parameter mapping swap ------------------------------------------
 
 (deftest swap-source-series-card-updates-dashcard-params-test
-  (testing "dashboard-card-update-field-refs! updates parameter_mappings on dashcards where the card is a series card"
+  (testing "do-swap! updates parameter_mappings on dashcards where the card is a series card"
     (mt/dataset source-swap
       (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-series-card@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [;; primary card queries products_a
-                  primary-card (card/create-card! (card-with-query "Primary card" :products_a) user)
-                  ;; series card also queries products_a
-                  series-card  (card/create-card! (card-with-query "Series card" :products_a) user)]
-              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Series Dashboard"}
-                             :model/DashboardCard {dashcard-id :id}
-                             {:dashboard_id       dashboard-id
-                              :card_id            (:id primary-card)
-                              :parameter_mappings [{:parameter_id "series-param"
-                                                    :card_id      (:id series-card)
-                                                    :target       [:dimension [:field (mt/id :products_a :id) nil]]}]}
-                             :model/DashboardCardSeries _
-                             {:dashboardcard_id dashcard-id
-                              :card_id          (:id series-card)
-                              :position         0}]
-                ;; Swap products_a → products_b on the series card
-                (swap.viz/dashboard-card-update-field-refs!
-                 (:id series-card)
-                 {:type :table, :id (mt/id :products_a)}
-                 {:type :table, :id (mt/id :products_b)})
-                ;; The dashcard's parameter_mappings should now reference products_b field name
-                (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
-                      target     (get-in updated-dc [:parameter_mappings 0 :target])]
-                  (is (=? [:dimension [:field (mt/id :products_b :id) {}]] target)
-                      "Parameter mapping should no longer reference the old products_a field"))))))))))
+        (mt/with-test-user :rasta
+          (mt/with-temp [:model/User user {:email "swap-series-card@test.com"}]
+            (mt/with-model-cleanup [:model/Card :model/Dependency]
+              (let [primary-card (card/create-card! (card-with-query "Primary card" :products_a) user)
+                    series-card  (card/create-card! (card-with-query "Series card" :products_a) user)]
+                (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Series Dashboard"}
+                               :model/DashboardCard {dashcard-id :id}
+                               {:dashboard_id       dashboard-id
+                                :card_id            (:id primary-card)
+                                :parameter_mappings [{:parameter_id "series-param"
+                                                      :card_id      (:id series-card)
+                                                      :target       [:dimension [:field (mt/id :products_a :id) nil]]}]}
+                               :model/DashboardCardSeries _
+                               {:dashboardcard_id dashcard-id
+                                :card_id          (:id series-card)
+                                :position         0}]
+                  (source-swap/do-swap! [:dashboard dashboard-id]
+                                        [:table (mt/id :products_a)]
+                                        [:table (mt/id :products_b)])
+                  (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
+                        target     (get-in updated-dc [:parameter_mappings 0 :target])]
+                    (is (=? [:dimension [:field (mt/id :products_b :id) {}]] target)
+                        "Parameter mapping should no longer reference the old products_a field")))))))))))
 
 (deftest swap-source-series-card-no-duplicate-updates-test
-  (testing "dashboard-card-update-field-refs! deduplicates when card is both primary and series"
+  (testing "do-swap! deduplicates when card is both primary and series"
     (mt/dataset source-swap
       (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-series-dedup@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [card (card/create-card! (card-with-query "Both card" :products_a) user)]
-              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dedup Dashboard"}
-                             :model/DashboardCard {dashcard-id :id}
-                             {:dashboard_id       dashboard-id
-                              :card_id            (:id card)
-                              :parameter_mappings [{:parameter_id "my-param"
-                                                    :card_id      (:id card)
-                                                    :target       [:dimension [:field (mt/id :products_a :id) nil]]}]}
-                             ;; Also add as series card on the same dashcard
-                             :model/DashboardCardSeries _
-                             {:dashboardcard_id dashcard-id
-                              :card_id          (:id card)
-                              :position         0}]
-                (swap.viz/dashboard-card-update-field-refs!
-                 (:id card)
-                 {:type :table, :id (mt/id :products_a)}
-                 {:type :table, :id (mt/id :products_b)})
-                (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
-                      target     (get-in updated-dc [:parameter_mappings 0 :target])]
-                  (is (=? [:dimension [:field (mt/id :products_b :id) {}]] target)
-                      "Parameter mapping should no longer reference the old field"))))))))))
+        (mt/with-test-user :rasta
+          (mt/with-temp [:model/User user {:email "swap-series-dedup@test.com"}]
+            (mt/with-model-cleanup [:model/Card :model/Dependency]
+              (let [card (card/create-card! (card-with-query "Both card" :products_a) user)]
+                (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dedup Dashboard"}
+                               :model/DashboardCard {dashcard-id :id}
+                               {:dashboard_id       dashboard-id
+                                :card_id            (:id card)
+                                :parameter_mappings [{:parameter_id "my-param"
+                                                      :card_id      (:id card)
+                                                      :target       [:dimension [:field (mt/id :products_a :id) nil]]}]}
+                               :model/DashboardCardSeries _
+                               {:dashboardcard_id dashcard-id
+                                :card_id          (:id card)
+                                :position         0}]
+                  (source-swap/do-swap! [:dashboard dashboard-id]
+                                        [:table (mt/id :products_a)]
+                                        [:table (mt/id :products_b)])
+                  (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
+                        target     (get-in updated-dc [:parameter_mappings 0 :target])]
+                    (is (=? [:dimension [:field (mt/id :products_b :id) {}]] target)
+                        "Parameter mapping should no longer reference the old field")))))))))))

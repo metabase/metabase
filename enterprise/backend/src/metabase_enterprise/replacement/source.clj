@@ -33,8 +33,8 @@
                            [:query       ::lib.schema/query]
                            [:database-id ::lib.schema.id/database]]
   "Fetch source metadata, its database ID, and a query for the source."
-  [entity-type :- ::replacement.schema/entity-type
-   entity-id   :- ::replacement.schema/entity-id]
+  [entity-type :- ::replacement.schema/source-entity-type
+   entity-id   :- ::replacement.schema/source-entity-id]
   (case entity-type
     :card  (let [mp   (lib-be/application-database-metadata-provider
                        (t2/select-one-fn :database_id :model/Card :id entity-id))
@@ -57,8 +57,8 @@
   "Check whether `old-source` can be replaced by `new-source`. Returns a map with
   `:success`, `:errors` (unique top-level error types), and `:column_mappings`.
   Arguments match `swap-source`: each is a `[entity-type entity-id]` pair."
-  [[old-type old-id :as old-ref] :- ::replacement.schema/entity-ref
-   [new-type new-id :as new-ref] :- ::replacement.schema/entity-ref]
+  [[old-type old-id :as old-ref]
+   [new-type new-id :as new-ref]]
   (if (= old-ref new-ref)
     {:success false}
     (let [{source-db :database-id, source-query :query} (fetch-source old-type old-id)

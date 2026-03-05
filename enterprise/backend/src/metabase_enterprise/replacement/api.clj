@@ -22,10 +22,10 @@
    _query-params
    {:keys [source_entity_id source_entity_type target_entity_id target_entity_type]}
    :- [:map
-       [:source_entity_id   ::replacement.schema/entity-id]
-       [:source_entity_type ::replacement.schema/entity-type]
-       [:target_entity_id   ::replacement.schema/entity-id]
-       [:target_entity_type ::replacement.schema/entity-type]]]
+       [:source_entity_id   ::replacement.schema/source-entity-id]
+       [:source_entity_type ::replacement.schema/source-entity-type]
+       [:target_entity_id   ::replacement.schema/source-entity-id]
+       [:target_entity_type ::replacement.schema/source-entity-type]]]
   (api/check-superuser)
   (replacement.source/check-replace-source
    [source_entity_type source_entity_id]
@@ -41,10 +41,10 @@
    _query-params
    {:keys [source_entity_id source_entity_type target_entity_id target_entity_type]}
    :- [:map
-       [:source_entity_id   ::replacement.schema/entity-id]
-       [:source_entity_type ::replacement.schema/entity-type]
-       [:target_entity_id   ::replacement.schema/entity-id]
-       [:target_entity_type ::replacement.schema/entity-type]]]
+       [:source_entity_id   ::replacement.schema/source-entity-id]
+       [:source_entity_type ::replacement.schema/source-entity-type]
+       [:target_entity_id   ::replacement.schema/source-entity-id]
+       [:target_entity_type ::replacement.schema/source-entity-type]]]
   (api/check-superuser)
   (let [result (replacement.source/check-replace-source
                 [source_entity_type source_entity_id]

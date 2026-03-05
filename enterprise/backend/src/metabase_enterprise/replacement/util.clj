@@ -5,5 +5,5 @@
    [metabase.util.malli.registry :as mr]))
 
 (mu/defn valid-query? :- :boolean
-  [maybe-query :- :any]
+  [maybe-query :- [:maybe :map]]
   (mr/validate ::lib.schema/query maybe-query))
