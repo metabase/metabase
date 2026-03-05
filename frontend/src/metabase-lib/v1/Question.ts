@@ -48,7 +48,6 @@ import type {
   ParameterValuesMap,
   TableId,
   UserInfo,
-  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
@@ -233,11 +232,11 @@ class Question {
   /**
    * The visualization type of the question
    */
-  display(): VisualizationDisplay {
+  display(): CardDisplayType {
     return this._card && this._card.display;
   }
 
-  setDisplay(display: VisualizationDisplay) {
+  setDisplay(display: CardDisplayType) {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
