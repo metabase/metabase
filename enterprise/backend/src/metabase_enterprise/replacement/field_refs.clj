@@ -176,9 +176,9 @@
    (let [[entity-type entity-id] entity-ref]
      (case entity-type
        :dashboard (dashboard-upgrade-field-refs! entity-id)
-       :card      (when loaded-object (card-upgrade-field-refs! loaded-object))
-       :transform (when loaded-object (transform-upgrade-field-refs! loaded-object))
-       :segment   (when loaded-object (segment-upgrade-field-refs! loaded-object))
-       :measure   (when loaded-object (measure-upgrade-field-refs! loaded-object))
+       :card      (card-upgrade-field-refs! (or loaded-object (t2/select-one :model/Card :id entity-id)))
+       :transform (transform-upgrade-field-refs! (or loaded-object (t2/select-one :model/Transform :id entity-id)))
+       :segment   (segment-upgrade-field-refs! (or loaded-object (t2/select-one :model/Segment :id entity-id)))
+       :measure   (measure-upgrade-field-refs! (or loaded-object (t2/select-one :model/Measure :id entity-id)))
        ;; table - no-op
        nil))))
