@@ -112,9 +112,6 @@
 (defn- document-generate-content-endpoint []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/document/generate-content"))
 
-(defn- generate-embeddings-endpoint []
-  (str (metabot-v3.settings/ai-service-base-url) "/v1/embeddings"))
-
 (defn- quick-closing-body
   "Some requests come with body wrapped in ContentLengthInputStream, and that will never close the underlying stream.
   So we just close the client itself.
@@ -357,14 +354,3 @@
         options (build-request-options payload)
         response (post! url options)]
     (check-response! response payload)))
-
-(defn generate-embeddings
-  "Generate vector embeddings for a batch of inputs questions for the given models and metrics."
-  [model-name texts]
-  (let [url (generate-embeddings-endpoint)
-        body {:model model-name
-              :input texts
-              :encoding_format "base64"}
-        options (build-request-options body)
-        response (post! url options)]
-    (check-response! response body)))
