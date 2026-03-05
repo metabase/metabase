@@ -12,6 +12,12 @@
   (:require
    [clojure.string :as str]))
 
+(def unrestricted
+  "Sentinel value for `:token-scopes` indicating an unrestricted token (session auth or unscoped JWT).
+   Unlike `\"*\"` which is a valid wildcard scope that could appear in a JWT claim, this keyword can never
+   be confused with an externally-supplied scope string."
+  ::unrestricted)
+
 (defn parse-scopes
   "Parse a space-delimited OAuth scope string into a set of scope strings.
    Returns nil if `scope-string` is nil or blank."
@@ -61,13 +67,13 @@
 
    Passes through when:
    - `:token-scopes` is nil (request did not go through scope-aware auth)
-   - `:token-scopes` contains `\"*\"` (unrestricted token, e.g. session auth or unscoped JWT)
+   - `:token-scopes` contains [[unrestricted]] (session auth or unscoped JWT)
    - `:token-scopes-checked` is true ([[enforce-scope]] already ran, e.g. at the namespace level)"
   (fn [handler]
     (fn [request respond raise]
       (let [token-scopes (:token-scopes request)]
         (if (or (nil? token-scopes)
-                (contains? token-scopes "*")
+                (contains? token-scopes unrestricted)
                 (:token-scopes-checked request))
           (handler request respond raise)
           (respond {:status  403

@@ -85,10 +85,14 @@
       (let [result (promise)]
         ((scope/ensure-scopes-checked ok-handler) {} result identity)
         (is (= {:status 200 :body "ok"} @result))))
-    (testing "wildcard scope (unrestricted token) passes through"
+    (testing "unrestricted token passes through"
+      (let [result (promise)]
+        ((scope/ensure-scopes-checked ok-handler) {:token-scopes #{scope/unrestricted}} result identity)
+        (is (= {:status 200 :body "ok"} @result))))
+    (testing "wildcard string scope does NOT pass through (must use sentinel)"
       (let [result (promise)]
         ((scope/ensure-scopes-checked ok-handler) {:token-scopes #{"*"}} result identity)
-        (is (= {:status 200 :body "ok"} @result))))
+        (is (= 403 (:status @result)))))
     (testing "scoped request without prior check is rejected with 403"
       (let [result (promise)]
         ((scope/ensure-scopes-checked ok-handler) {:token-scopes #{"agent:workspaces"}} result identity)
