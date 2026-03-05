@@ -45,7 +45,7 @@ interface ColumnValueProps {
   settings: ComputedVisualizationSettings;
   rawValue: any;
   style?: React.CSSProperties;
-  rows: RowValues;
+  rows: RowValues[];
   cols: DatasetColumn[];
 }
 
