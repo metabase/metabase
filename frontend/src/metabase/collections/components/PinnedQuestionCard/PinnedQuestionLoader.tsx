@@ -26,14 +26,6 @@ export interface PinnedQuestionChildrenProps {
   errorIcon?: IconName;
 }
 
-export interface QuestionResultLoaderProps {
-  loading: boolean;
-  error?: any;
-  result?: any;
-  results?: any;
-  rawSeries?: RawSeries;
-}
-
 const PinnedQuestionLoader = ({
   id,
   children,
@@ -68,13 +60,7 @@ const PinnedQuestionLoader = ({
 
   return (
     <QuestionResultLoader question={question} collectionPreview>
-      {({
-        loading,
-        error,
-        result,
-        results,
-        rawSeries,
-      }: QuestionResultLoaderProps) =>
+      {({ loading, error, result, results, rawSeries }) =>
         children({
           question,
           loading: loading || results == null,
@@ -87,7 +73,7 @@ const PinnedQuestionLoader = ({
   );
 };
 
-const getRawSeries = (rawSeries?: any[]) => {
+const getRawSeries = (rawSeries: RawSeries | null | undefined) => {
   return rawSeries?.map((series) => ({
     ...series,
     card: {

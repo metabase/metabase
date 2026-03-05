@@ -41,7 +41,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -63,7 +62,7 @@
   (-> order-bys
       (lib.walk/walk-clauses*
        (fn [clause]
-         (when (and (lib.util/clause-of-type? clause #{:field :expression})
+         (when (and (lib/clause-of-type? clause #{:field :expression})
                     (not (lib/raw-temporal-bucket clause))
                     (not (lib/binning clause)))
            (let [col (lib.walk/apply-f-for-stage-at-path lib/metadata query stage-path clause)]

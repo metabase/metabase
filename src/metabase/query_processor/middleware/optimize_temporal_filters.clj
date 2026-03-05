@@ -9,7 +9,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
@@ -23,7 +22,7 @@
   #{:second :minute :hour :day :week :month :quarter :year})
 
 (defn- temporal-ref? [x]
-  (and (lib.util/clause-of-type? x #{:field :expression})
+  (and (lib/clause-of-type? x #{:field :expression})
        (or (lib/raw-temporal-bucket x)
            (let [[_field opts _id-or-name] x]
              (when-let [expr-type ((some-fn :effective-type :base-type) opts)]
@@ -145,8 +144,8 @@
   (:end (u.date/range t unit)))
 
 (defn- change-temporal-unit-to-default [field]
-  (lib.util.match/replace field
-    [(_tag :guard #{:field :expression}) (_opts :guard (comp optimizable-units :temporal-unit)) _id-or-name]
+  (lib.util.match/replace-lite field
+    [#{:field :expression} {:temporal-unit (_ :guard optimizable-units)} _id-or-name]
     (lib/update-options &match assoc :temporal-unit :default)
 
     [:absolute-datetime _opts t _unit]
@@ -292,7 +291,7 @@
   (set (keys (methods optimize-filter))))
 
 (defn- optimize-temporal-filters* [query path clause]
-  (when (lib.util/clause-of-type? clause optimizable-filter-types)
+  (when (lib/clause-of-type? clause optimizable-filter-types)
     (or (when (can-optimize-filter? clause)
           (u/prog1 (optimize-filter query path clause)
             (if <>

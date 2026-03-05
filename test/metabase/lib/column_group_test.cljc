@@ -6,7 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field.util :as lib.field.util]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util.malli.registry :as mr]))
@@ -281,10 +280,10 @@
                     ::lib.column-group/group-type :group-type/join.explicit
                     ::lib.column-group/columns    [{:name                 "ID"
                                                     :table-id             (meta/id :categories)
-                                                    ::lib.join/join-alias "Cat"}
+                                                    :lib/join-alias "Cat"}
                                                    {:name                 "NAME"
                                                     :table-id             (meta/id :categories)
-                                                    ::lib.join/join-alias "Cat"}]}]
+                                                    :lib/join-alias "Cat"}]}]
                   groups)))
         (testing `lib/display-info
           (is (=? [{:name         "Cat"
@@ -499,3 +498,22 @@
                 :fk-join-alias                "Reviews - Product"
                 :fk-field-id                  (meta/id :reviews :product-id)}]
               (lib/group-columns cols))))))
+
+(deftest ^:parallel multiple-joins-same-table-display-names-test
+  (testing "Multiple joins to the same table should have distinguishable display names (#37025)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :orders :product-id)
+                                                       (meta/field-metadata :products :id))]))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :orders :product-id)
+                                                       (meta/field-metadata :products :id))])))
+          cols   (lib/visible-columns query)
+          groups (lib/group-columns cols)
+          infos  (mapv #(lib/display-info query %) groups)
+          join-infos (filterv :is-from-join infos)]
+      (is (= 2 (count join-infos))
+          "There should be two join column groups")
+      (is (not= (:display-name (first join-infos))
+                (:display-name (second join-infos)))
+          "Join column groups for the same table should have different display names"))))

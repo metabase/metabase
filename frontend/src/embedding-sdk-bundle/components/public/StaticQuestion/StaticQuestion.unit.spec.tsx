@@ -217,10 +217,9 @@ describe("StaticQuestion", () => {
         withAlerts: false,
       });
 
-      const topBar = screen.getByTestId("static-question-top-bar");
-
-      expect(topBar).not.toBeVisible();
-      expect(topBar).toHaveStyle({ display: "none" });
+      expect(
+        screen.queryByTestId("static-question-top-bar"),
+      ).not.toBeInTheDocument();
     });
 
     it("should show the TopBar when title is provided", async () => {
@@ -330,7 +329,9 @@ describe("StaticQuestion", () => {
           expect(
             within(screen.getByRole("gridcell")).getByText("Test Row"),
           ).toBeVisible();
-          expect(screen.getByRole("button", { name: "Alerts" })).toBeVisible();
+          expect(
+            await screen.findByRole("button", { name: "Alerts" }),
+          ).toBeVisible();
         });
 
         it("should show the alert button for custom layouts when withAlerts is true", async () => {
@@ -476,7 +477,9 @@ describe("StaticQuestion", () => {
         within(screen.getByRole("gridcell")).getByText("Test Row"),
       ).toBeVisible();
 
-      await userEvent.click(screen.getByRole("button", { name: "Alerts" }));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Alerts" }),
+      );
 
       // Verify the alert list modal appears, not the create modal
       const withinModal = within(await findModal());
@@ -507,7 +510,9 @@ describe("StaticQuestion", () => {
       expect(
         within(screen.getByRole("gridcell")).getByText("Test Row"),
       ).toBeVisible();
-      await userEvent.click(screen.getByRole("button", { name: "Alerts" }));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Alerts" }),
+      );
 
       const withinModal = within(await findModal());
       expect(

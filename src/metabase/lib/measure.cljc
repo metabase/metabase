@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [metabase.graph.core :as graph]
    [metabase.lib.aggregation :as lib.aggregation]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
@@ -136,7 +135,7 @@
           (into []
                 (map (fn [measure-metadata]
                        (let [positions (-> measure-metadata
-                                           ((juxt :id ::lib.join/join-alias))
+                                           ((juxt :id :lib/join-alias))
                                            measure-aggregations)]
                          (cond-> measure-metadata
                            positions (assoc :aggregation-positions positions)))))

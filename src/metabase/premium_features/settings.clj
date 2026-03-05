@@ -150,6 +150,10 @@
   "Should we enable Slack Connect (OIDC) authentication?"
   :sso-slack)
 
+(define-premium-feature ^{:added "0.59.0"} enable-sso-oidc?
+  "Should we enable OIDC-based authentication?"
+  :sso-oidc)
+
 (define-premium-feature enable-sso-ldap?
   "Should we enable advanced configuration for LDAP authentication?"
   :sso-ldap)
@@ -168,6 +172,7 @@
   (or (enable-sso-jwt?)
       (enable-sso-saml?)
       (enable-sso-slack?)
+      (enable-sso-oidc?)
       (enable-sso-ldap?)
       (enable-sso-google?)))
 
@@ -320,6 +325,10 @@
   "Should we allow users to use workspaces?"
   :workspaces)
 
+(define-premium-feature enable-writable-connection?
+  "Should we allow admins to configure separate write connection credentials?"
+  :writable-connection)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -364,6 +373,7 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :sso_oidc                       (enable-sso-oidc?)
    :sso_slack                      (enable-sso-slack?)
    :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
@@ -372,7 +382,8 @@
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
-   :workspaces                     (enable-workspaces?)})
+   :workspaces                     (enable-workspaces?)
+   :writable_connection            (enable-writable-connection?)})
 
 (defsetting token-features
   "Features registered for this instance's token"

@@ -220,12 +220,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          <DataStudioTab
-            label={t`Exit`}
-            icon="exit"
-            to={"/"}
-            showLabel={isNavbarOpened}
-          />
         </Stack>
         <PLUGIN_REMOTE_SYNC.GitSettingsModal
           isOpen={isGitSettingsOpen}

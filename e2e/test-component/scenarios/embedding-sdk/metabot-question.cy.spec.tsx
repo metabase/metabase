@@ -313,6 +313,27 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   });
 });
 
+describe("scenarios > embedding-sdk > metabot-question > enablement", () => {
+  it("should show an error when embedded-metabot-enabled? is false", () => {
+    signInAsAdminAndEnableEmbeddingSdk();
+
+    cy.log("Disable embedded metabot");
+    H.updateEnterpriseSettings({ "embedded-metabot-enabled?": false });
+
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      cy.findByText("Metabot is not enabled for embedded analytics.").should(
+        "be.visible",
+      );
+      cy.findByTestId("metabot-question-container").should("not.exist");
+    });
+  });
+});
+
 const mockSuggestedPrompts = () => {
   cy.intercept(
     "GET",

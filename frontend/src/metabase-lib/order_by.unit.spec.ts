@@ -2,16 +2,32 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   SAMPLE_DB_ID,
   createProductsTitleField,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { columnFinder, createQuery } from "./test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+  createMetadataProvider,
+} from "./test-helpers";
 
 describe("order by", () => {
   describe("orderableColumns", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: {
+            type: "table",
+            id: ORDERS_ID,
+          },
+        },
+      ],
+    });
+
     const findOrderableColumn = columnFinder(
       query,
       Lib.orderableColumns(query, 0),
@@ -79,15 +95,20 @@ describe("order by", () => {
         databases: [createSampleDatabase()],
         questions: [card],
       });
-
-      const query = createQuery({
+      const provider = createMetadataProvider({
         databaseId: SAMPLE_DB_ID,
         metadata,
-        query: {
-          type: "query",
-          database: SAMPLE_DB_ID,
-          query: { "source-table": `card__${card.id}` },
-        },
+      });
+
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: {
+              type: "card",
+              id: card.id,
+            },
+          },
+        ],
       });
 
       const columns = Lib.orderableColumns(query, 0);
@@ -115,7 +136,7 @@ describe("order by", () => {
     });
 
     it("should preserve order-by positions between v1-v2 roundtrip", () => {
-      const query = createQuery();
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
       const taxColumn = findOrderableColumn("ORDERS", "TAX");
       const nextQuery = Lib.orderBy(query, 0, taxColumn);
       const nextQueryColumns = Lib.orderableColumns(nextQuery, 0);
@@ -128,9 +149,10 @@ describe("order by", () => {
         0,
       );
 
-      const roundtripQuery = createQuery({
-        query: Lib.toJsQuery(nextQuery),
-      });
+      const roundtripQuery = Lib.fromJsQuery(
+        SAMPLE_PROVIDER,
+        Lib.toJsQuery(nextQuery),
+      );
       const roundtripQueryColumns = Lib.orderableColumns(roundtripQuery, 0);
       const roundtripTaxColumn = columnFinder(
         roundtripQuery,
@@ -144,7 +166,7 @@ describe("order by", () => {
   });
 
   describe("add order by", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const findOrderableColumn = columnFinder(
       query,
       Lib.orderableColumns(query, 0),
@@ -167,7 +189,7 @@ describe("order by", () => {
   });
 
   describe("replace order by", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const findOrderableColumn = columnFinder(
       query,
       Lib.orderableColumns(query, 0),
@@ -197,7 +219,7 @@ describe("order by", () => {
   });
 
   describe("remove order by", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const findOrderableColumn = columnFinder(
       query,
       Lib.orderableColumns(query, 0),

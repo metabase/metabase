@@ -1,8 +1,11 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  Dataset,
+  InspectorLensId,
   ListTransformRunsResponse,
   Transform,
+  TransformId,
   TransformJob,
   TransformJobId,
   TransformTag,
@@ -71,4 +74,15 @@ export function setupDeleteTransformJobEndpointWithError(
   jobId: TransformJobId,
 ) {
   fetchMock.delete(`path:/api/transform-job/${jobId}`, 500);
+}
+
+export function setupRunInspectorQueryEndpoint(
+  transformId: TransformId,
+  lensId: InspectorLensId,
+  response: Dataset,
+) {
+  fetchMock.post(
+    `path:/api/transform/${transformId}/inspect/${lensId}/query`,
+    response,
+  );
 }

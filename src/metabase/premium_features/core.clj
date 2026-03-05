@@ -76,14 +76,16 @@
   enable-sso-google?
   enable-sso-jwt?
   enable-sso-ldap?
+  enable-sso-oidc?
   enable-sso-saml?
-  enable-support-users?
   enable-sso-slack?
+  enable-support-users?
   enable-transforms?
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
   enable-workspaces?
+  enable-writable-connection?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?

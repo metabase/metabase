@@ -41,7 +41,7 @@
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.options]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.page]
    [metabase.lib.parameters]
@@ -52,6 +52,8 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.serialize]
@@ -64,6 +66,7 @@
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
    [metabase.lib.walk.util]
+   [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
@@ -102,7 +105,7 @@
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
-         metabase.lib.options/keep-me
+         lib.options/keep-me
          lib.order-by/keep-me
          metabase.lib.parameters/keep-me
          lib.parse/keep-me
@@ -285,6 +288,8 @@
   fieldable-columns
   fields
   find-visible-column-for-ref
+  infer-has-field-values ; Single-use
+  json-field? ; Single-use
   remove-field
   with-fields]
  [metabase.lib.field.util
@@ -399,7 +404,7 @@
   with-native-extras
   with-native-query
   with-template-tags]
- [metabase.lib.options
+ [lib.options
   ensure-uuid
   options
   update-options]
@@ -437,6 +442,7 @@
   can-run
   can-save
   check-card-overwrite
+  native?
   preview-query
   query
   query-from-legacy-inner-query
@@ -503,8 +509,6 @@
   previous-stage
   previous-stage-number
   query-stage
-  source-table-id
-  source-card-id
   update-query-stage]
  [metabase.lib.util.unique-name-generator
   non-truncating-unique-name-generator
@@ -545,3 +549,45 @@
      [hook-fn & body]
      `(binding [lib.convert/*card-clean-hook* ~hook-fn]
         ~@body)))
+
+(mu/defn primary-source-table-id :- [:maybe ::lib.schema.id/table]
+  "If the first stage of `a-query` is an MBQL stage with a `:source-table`, return that table ID. For a native stage or
+  a `:source-card`, returns nil.
+
+  Prefer [[primary-source-table]] instead, when you want the `:metadata/table` rather than just its ID.
+
+  **DO NOT** use this for permissions - this is only the *primary* source, not a complete list of table IDs required
+  by `a-query`.
+
+  **Code Health:** Discouraged; there are few legitimate use cases for working with raw table IDs outside lib."
+  [a-query :- :metabase.lib.schema/query]
+  (lib.util/source-table-id a-query))
+
+(mu/defn primary-source-card-id :- [:maybe ::lib.schema.id/card]
+  "If the first stage of `a-query` is an MBQL stage with a `:source-card`, return that card ID. For a native stage or
+  a `:source-table`, returns nil.
+
+  Prefer [[primary-source-card]] instead, when you want the `:metadata/card` rather than just its ID.
+
+  **DO NOT** use this for permissions - this is only the *primary* source, not a complete list of card IDs required
+  by `a-query`.
+
+  **Code Health:** Discouraged; there are few legitimate use cases for working with raw card IDs outside lib."
+  [a-query :- :metabase.lib.schema/query]
+  (lib.util/source-card-id a-query))
+
+(mu/defn display-name-without-id :- :string
+  "Given a display name like `\"Something ID\"`, remove the \"ID\" portion and trim whitespace.
+
+  Useful to turn a FK field's name into a pseudo table name, when doing an implicit join.
+
+  **Code Health:** Healthy."
+  [field-display-name :- :string]
+  (lib.util/strip-id field-display-name))
+
+(mu/defn ignore-case :- ::lib.schema.expression/boolean
+  "Given a boolean expression on strings, sets the options to ignore case.
+
+  Prefer this over setting the `:case-sensitive false` option directly."
+  [boolean-expression :- ::lib.schema.expression/boolean]
+  (lib.options/update-options boolean-expression assoc :case-sensitive false))
