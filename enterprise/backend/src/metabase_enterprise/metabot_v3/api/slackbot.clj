@@ -433,7 +433,7 @@
           (handle-feedback-modal-submission payload))
 
         nil)))
-  {:status 200 :body ""}))
+  {:status 200 :body ""})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3/slack` routes."
