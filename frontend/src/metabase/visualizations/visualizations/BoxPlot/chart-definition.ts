@@ -30,14 +30,7 @@ export const BOXPLOT_CHART_DEFINITION: VisualizationDefinition = {
   maxMetricsSupported: Infinity,
   maxDimensionsSupported: 2,
   noHeader: true,
-  transformSeries: (series) => {
-    if ("_raw" in series) {
-      return series;
-    }
-
-    const transformed = transformSeries(series);
-    return Object.assign([...transformed], { _raw: series });
-  },
+  transformSeries,
 
   isSensible: ({ cols, rows }: DatasetData) => {
     return (

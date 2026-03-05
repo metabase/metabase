@@ -40,8 +40,8 @@ interface ExplicitSizeProps<T> {
 }
 
 type ExplicitSizeState = {
-  width: number;
-  height: number;
+  width: number | null;
+  height: number | null;
 };
 
 type InnerProps = {
@@ -70,8 +70,8 @@ export function ExplicitSize<T>({
       static contextType = ExplicitSizeRefreshModeContext;
 
       state: ExplicitSizeState = {
-        width: 0,
-        height: 0,
+        width: null,
+        height: null,
       };
 
       timeoutId: ReturnType<typeof setTimeout> | null = null;
