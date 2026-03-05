@@ -96,7 +96,9 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
         })
       : points;
 
-    const markers = pinMarkerLayer.getLayers() as L.Marker[];
+    const markers = pinMarkerLayer
+      .getLayers()
+      .filter((layer): layer is L.Marker => layer instanceof L.Marker);
     const max = Math.max(wrappedPoints.length, markers.length);
     for (let i = 0; i < max; i++) {
       if (i >= wrappedPoints.length) {
@@ -153,7 +155,7 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
           value: String(rows[rowIndex][colIndex] ?? ""),
           column: col,
         })),
-        element: (marker as unknown as { _icon: HTMLElement })._icon,
+        element: marker.getElement(),
       };
       onHoverChange(hover);
     });
@@ -187,7 +189,7 @@ export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
       onVisualizationClick({
         value: hasPk ? rows[rowIndex][pkIndex] : null,
         column: hasPk ? cols[pkIndex] : undefined,
-        element: (marker as unknown as { _icon: HTMLElement })._icon,
+        element: marker.getElement(),
         origin: { row: rows[rowIndex], cols },
         settings,
         data,
