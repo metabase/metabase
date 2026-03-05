@@ -142,7 +142,13 @@
 
 (def ^:private min-text-batch-size
   "Minimum characters to accumulate before considering a flush."
-  50)
+  250)
+
+(def ^:private min-flush-interval-ms
+  "Minimum milliseconds between consecutive text flushes to Slack.
+   At Slack's rate limit of ~100 calls/minute, 600ms spacing leaves
+   headroom for tool-update and other non-text API calls."
+  600)
 
 (defn- make-streaming-ai-request
   "Make a streaming AI request with callbacks for each message type.
@@ -355,12 +361,20 @@
                            :team_id   team-id
                            :user_id   user-id}
 
-        ;; Schedule an agent drain. Cheap to call frequently — if the agent is already busy,
-        ;; text just accumulates in pending-text and gets coalesced into the next drain.
-        request-flush! (fn []
-                         (ensure-stream-started! client stream-opts stream-attempted? stream-state)
-                         (when @stream-state
-                           (send-off slack-writer (fn [_] (drain-pending-text! client stream-state pending-text thinking-ts) nil))))
+        ;; Nil means "no flush has happened yet", so the first flush should always pass.
+        last-flush-timer (volatile! nil)
+
+        request-flush!  (fn do-request-flush
+                          ([] (do-request-flush false))
+                          ([force?]
+                           (ensure-stream-started! client stream-opts stream-attempted? stream-state)
+                           (when @stream-state
+                             (when (or force?
+                                       (nil? @last-flush-timer)
+                                       (>= (u/since-ms @last-flush-timer) min-flush-interval-ms))
+                               (vreset! last-flush-timer (u/start-timer))
+                               (send-off slack-writer
+                                         (bound-fn* (fn [_] (drain-pending-text! client stream-state pending-text thinking-ts) nil)))))))
 
         start-with-thinking! (fn []
                                (let [response (slackbot.client/post-message client {:channel   channel
@@ -410,11 +424,11 @@
                               :filename filename
                               :title    title
                               :link     link}))))]
-    {:on-text              on-text
+    {:on-text              (bound-fn* on-text)
      :on-tool-start        on-tool-start
      :on-tool-end          on-tool-end
      :on-data              on-data
-     :request-flush!       request-flush!
+     :request-flush!       (bound-fn* request-flush!)
      :start-with-thinking! start-with-thinking!
      :stream-state         stream-state
      :slack-writer         slack-writer
@@ -467,6 +481,8 @@
        (letfn [(send-fallback [text]
                  (slackbot.client/post-message client (merge message-ctx {:text text})))]
          (try
+           ;; Start stream early so assistant persistence has :slack_msg_id.
+           (request-flush! true)
            (let [_data-parts (make-streaming-ai-request
                               conversation-id
                               prompt
@@ -474,13 +490,13 @@
                               bot-user-id
                               channel-id
                               extra-history
-                              {:on-text               on-text
-                               :on-tool-start         on-tool-start
-                               :on-tool-end           on-tool-end
-                               :on-data               on-data
-                               :req-slack-msg-id      (:ts event)
-                               :get-res-slack-msg-id  (fn [] (:stream_ts @stream-state))})]
-             (request-flush!)
+                              {:on-text              on-text
+                               :on-tool-start        on-tool-start
+                               :on-tool-end          on-tool-end
+                               :on-data              on-data
+                               :req-slack-msg-id     (:ts event)
+                               :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
+             (request-flush! true)
              (await slack-writer)
              (if-let [{:keys [stream_ts channel]} @stream-state]
                (do

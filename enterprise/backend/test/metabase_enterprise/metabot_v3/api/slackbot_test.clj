@@ -1694,3 +1694,62 @@
           @result
           (is (= 1 (count @harbormaster-calls)))
           (is (= "ui-bug" (get-in (first @harbormaster-calls) [:feedback :issue_type]))))))))
+
+;;; ------------------------------------------------ Flush throttle tests ------------------------------------------------
+
+(defn- make-test-callbacks
+  "Create streaming callbacks with mocked Slack client functions.
+   Returns the callbacks map plus atoms tracking append calls."
+  []
+  (let [append-calls (atom [])
+        client       {:token "xoxb-test"}]
+    (mt/with-dynamic-fn-redefs
+      [slackbot.client/start-stream         (fn [_ opts]
+                                              {:stream_ts "s1" :channel (:channel opts) :thread_ts (:thread_ts opts)})
+       slackbot.client/append-stream        (constantly {:ok true})
+       slackbot.client/append-markdown-text (fn [_ _ _ text]
+                                              (swap! append-calls conj text)
+                                              {:ok true})
+       slackbot.client/delete-message       (constantly {:ok true})]
+      (let [cbs (#'slackbot.streaming/make-streaming-callbacks
+                 client {:channel "C1" :thread-ts "t1" :team-id "T1" :user-id "U1"})]
+        {:cbs          cbs
+         :append-calls append-calls}))))
+
+(deftest ^:parallel on-text-respects-batch-size-test
+  (testing "on-text does not flush until pending text reaches min-text-batch-size"
+    (let [{:keys [cbs append-calls]} (make-test-callbacks)
+          {:keys [on-text request-flush! slack-writer]} cbs
+          batch-size @#'slackbot.streaming/min-text-batch-size]
+      ;; Send text just under the threshold — should not trigger a flush
+      (on-text (apply str (repeat (dec batch-size) "a")))
+      (await slack-writer)
+      (is (= 0 (count @append-calls))
+          "No flush should occur when text is under the batch size threshold")
+      ;; Push over the threshold
+      (on-text "ab")
+      (await slack-writer)
+      (is (= 1 (count @append-calls))
+          "Flush should occur once text crosses the batch size threshold")
+      ;; Force-flush to clean up
+      (request-flush! true)
+      (await slack-writer))))
+
+(deftest ^:parallel flush-throttle-test
+  (testing "rapid flushes are throttled by min-flush-interval-ns"
+    (let [{:keys [cbs append-calls]} (make-test-callbacks)
+          {:keys [on-text request-flush! slack-writer]} cbs
+          batch-size @#'slackbot.streaming/min-text-batch-size
+          big-text   (apply str (repeat (inc batch-size) "x"))]
+      ;; First flush should go through immediately (last-flush-at starts at 0)
+      (on-text big-text)
+      (await slack-writer)
+      (is (= 1 (count @append-calls)) "First flush should succeed immediately")
+      ;; Second flush right after should be throttled
+      (on-text big-text)
+      (await slack-writer)
+      (is (= 1 (count @append-calls)) "Second flush should be throttled")
+      ;; Force flush bypasses throttle
+      (request-flush! true)
+      (await slack-writer)
+      (is (= 2 (count @append-calls)) "Force flush should bypass throttle"))))
