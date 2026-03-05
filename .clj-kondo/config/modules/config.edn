@@ -2317,7 +2317,7 @@
            enterprise/transforms-python}}
 
   enterprise/replacement
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.replacement.api}
    :uses #{api
            app-db
