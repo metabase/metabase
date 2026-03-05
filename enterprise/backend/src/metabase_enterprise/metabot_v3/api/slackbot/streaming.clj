@@ -361,17 +361,20 @@
                            :team_id   team-id
                            :user_id   user-id}
 
-        last-flush-timer (volatile! (u/start-timer))
+        ;; Nil means "no flush has happened yet", so the first flush should always pass.
+        last-flush-timer (volatile! nil)
 
         request-flush!  (fn do-request-flush
                           ([] (do-request-flush false))
                           ([force?]
                            (ensure-stream-started! client stream-opts stream-attempted? stream-state)
                            (when @stream-state
-                             (when (or force? (>= (u/since-ms @last-flush-timer) min-flush-interval-ms))
+                             (when (or force?
+                                       (nil? @last-flush-timer)
+                                       (>= (u/since-ms @last-flush-timer) min-flush-interval-ms))
                                (vreset! last-flush-timer (u/start-timer))
                                (send-off slack-writer
-                                         (fn [_] (drain-pending-text! client stream-state pending-text thinking-ts) nil))))))
+                                         (bound-fn* (fn [_] (drain-pending-text! client stream-state pending-text thinking-ts) nil)))))))
 
         start-with-thinking! (fn []
                                (let [response (slackbot.client/post-message client {:channel   channel
@@ -421,11 +424,11 @@
                               :filename filename
                               :title    title
                               :link     link}))))]
-    {:on-text              on-text
+    {:on-text              (bound-fn* on-text)
      :on-tool-start        on-tool-start
      :on-tool-end          on-tool-end
      :on-data              on-data
-     :request-flush!       request-flush!
+     :request-flush!       (bound-fn* request-flush!)
      :start-with-thinking! start-with-thinking!
      :stream-state         stream-state
      :slack-writer         slack-writer
@@ -478,6 +481,8 @@
        (letfn [(send-fallback [text]
                  (slackbot.client/post-message client (merge message-ctx {:text text})))]
          (try
+           ;; Start stream early so assistant persistence has :slack_msg_id.
+           (request-flush! true)
            (let [_data-parts (make-streaming-ai-request
                               conversation-id
                               prompt
