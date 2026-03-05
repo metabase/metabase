@@ -124,16 +124,14 @@
     ;; phase 2: Swap sources for ALL transitive dependents (with batched metadata warming)
     (let [failures (atom [])]
       (doseq [batch (partition-all batch-size all-transitive-dependents)]
-        ;; Warm the metadata provider cache for this batch
-        ;; Even though do-swap! fetches entities itself, the metadata provider cache helps
         (lib-be/with-metadata-provider-cache
-          (let [metadata-provider (lib-be/application-database-metadata-provider db-id)]
-            (bulk-load-metadata-for-entities! metadata-provider batch)
+          (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+                loaded            (bulk-load-metadata-for-entities! metadata-provider batch)]
 
-            (doseq [entity batch]
+            (doseq [entity batch
+                    :let   [object (get loaded entity)]]
               (try
-                ;; do-swap! knows how to handle all entity types including dashboards
-                (replacement.source-swap/do-swap! entity old-source new-source)
+                (replacement.source-swap/do-swap! entity object old-source new-source)
                 (catch Exception e
                   (log/warnf e "Failed to swap %s, continuing with next entity" entity)
                   (swap! failures conj {:entity entity :error (ex-message e)})))
