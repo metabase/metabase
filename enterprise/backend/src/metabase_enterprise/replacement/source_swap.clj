@@ -1,8 +1,8 @@
 (ns metabase-enterprise.replacement.source-swap
   (:require
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
-   [metabase-enterprise.replacement.swap.mbql :as swap.mbql]
-   [metabase-enterprise.replacement.swap.native :as swap.native]
+   [metabase-enterprise.replacement.source-swap.mbql :as source-swap.mbql]
+   [metabase-enterprise.replacement.source-swap.native :as source-swap.native]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.api.common :as api]
@@ -18,10 +18,10 @@
 (defn- update-query [query old-source new-source id-updates]
   (cond-> query
     (lib/any-native-stage? query)
-    (swap.native/update-native-stages old-source new-source id-updates)
+    (source-swap.native/update-native-stages old-source new-source id-updates)
 
     (not (lib/native-only-query? query))
-    (swap.mbql/swap-mbql-stages old-source new-source)))
+    (source-swap.mbql/swap-mbql-stages old-source new-source)))
 
 (defn- transform-swap-source!
   [transform old-source new-source]
@@ -36,20 +36,21 @@
 (defn- card-swap-source!
   [card old-source new-source]
   (when (replacement.util/valid-query? (:dataset_query card))
-    (let [query  (:dataset_query card)
-          query' (update-query query old-source new-source {})
-          old-table-id (:table-id (queries.query/query->database-and-table-ids query))
-          new-table-id (:table-id (queries.query/query->database-and-table-ids query'))
-          changes (cond-> {}
-                    (not= query query')
-                    (assoc :dataset_query query')
+    (let [query     (:dataset_query card)
+          query'    (update-query query old-source new-source {})
+          table-id  (:table_id card)
+          table-id' (:table-id (queries.query/query->database-and-table-ids query'))
+          changes   (cond-> {}
+                      (not= query query')
+                      (assoc :dataset_query query')
 
-                    ;; result_metadata is set to nil for native queries if not present in changes
-                    (and (not= query query') (lib/native-only-query? query'))
-                    (assoc :result_metadata (:result_metadata card))
-
-                    (= (:table_id card) old-table-id)
-                    (assoc :table_id new-table-id))]
+                      (not= table-id table-id')
+                      (assoc :table_id table-id'))
+          ;; result_metadata is set to nil for native queries if not present in changes
+          changes   (cond-> changes
+                      (and (seq changes)
+                           (lib/native-only-query? query'))
+                      (assoc :result_metadata (:result_metadata card)))]
       ;; no changes, so don't update
       (models.dependency/swap-dependency! :card (:id card) old-source new-source)
       (when (seq changes)
@@ -69,15 +70,14 @@
   [segment old-source new-source]
   (when (replacement.util/valid-query? (:definition segment))
     (let [query     (:definition segment)
-          new-query (update-query query old-source new-source {})
-          old-table-id (:table-id (queries.query/query->database-and-table-ids query))
-          new-table-id (:table-id (queries.query/query->database-and-table-ids new-query))
-          changes (cond-> {}
-                    (not= query new-query)
-                    (assoc :definition new-query)
-
-                    (= (:table_id segment) old-table-id)
-                    (assoc :table_id new-table-id))]
+          query'    (update-query query old-source new-source {})
+          table-id  (:table_id segment)
+          table-id' (:table-id (queries.query/query->database-and-table-ids query'))
+          changes   (cond-> {}
+                      (not= query query')
+                      (assoc :definition query')
+                      (not= table-id table-id')
+                      (assoc :table_id table-id'))]
       ;; no changes, so don't update
       (models.dependency/swap-dependency! :segment (:id segment) old-source new-source)
       (when (seq changes)
@@ -89,15 +89,14 @@
   [measure old-source new-source]
   (when (replacement.util/valid-query? (:definition measure))
     (let [query     (:definition measure)
-          new-query (update-query query old-source new-source {})
-          old-table-id (:table-id (queries.query/query->database-and-table-ids query))
-          new-table-id (:table-id (queries.query/query->database-and-table-ids new-query))
-          changes (cond-> {}
-                    (not= query new-query)
-                    (assoc :definition new-query)
-
-                    (= (:table_id measure) old-table-id)
-                    (assoc :table_id new-table-id))]
+          query'    (update-query query old-source new-source {})
+          table-id  (:table_id measure)
+          table-id' (:table-id (queries.query/query->database-and-table-ids query'))
+          changes   (cond-> {}
+                      (not= query query')
+                      (assoc :definition query')
+                      (not= table-id table-id')
+                      (assoc :table_id table-id'))]
       (models.dependency/swap-dependency! :measure (:id measure) old-source new-source)
       ;; no changes, so don't update
       (when (seq changes)

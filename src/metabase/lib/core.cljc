@@ -179,6 +179,7 @@
   ->legacy-MBQL
   ->pMBQL
   legacy-default-join-alias
+  with-aggregation-list
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -284,8 +285,6 @@
   default-filter-clause
   default-filter-parts
   filter-args-display-name]
- [lib.field.resolution
-  resolve-field-ref]
  [lib.field
   add-field
   fieldable-columns

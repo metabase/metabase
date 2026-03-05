@@ -1,4 +1,4 @@
-(ns metabase-enterprise.replacement.swap.mbql-test
+(ns metabase-enterprise.replacement.source-swap.mbql-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]

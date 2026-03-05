@@ -1,4 +1,4 @@
-(ns metabase-enterprise.replacement.swap.mbql
+(ns metabase-enterprise.replacement.source-swap.mbql
   (:require
    [metabase.lib-be.core :as lib-be]))
 

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.replacement.swap.viz-test
+(ns metabase-enterprise.replacement.source-swap.viz-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]

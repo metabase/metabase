@@ -4,7 +4,6 @@
    [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
 
@@ -13,9 +12,8 @@
 (defn- ref->column-name
   "Resolve a `ref` to a deduplicated column name used in `:visualization_settings`."
   [query ref]
-  (when (lib.util/field-clause? ref)
-    (when-some [column (lib/resolve-field-ref query -1 ref)]
-      ((some-fn :lib/deduplicated-name :name) column))))
+  (when-some [column (lib/metadata query -1 ref)]
+    ((some-fn :lib/deduplicated-name :name) column)))
 
 (defn- card-upgrade-field-refs!
   "Upgrade field refs in `:dataset_query` and `:visualization_settings` for a card."
@@ -24,10 +22,11 @@
     (let [query         (:dataset_query card)
           query'        (lib-be/upgrade-field-refs-in-query query)
           viz-settings  (:visualization_settings card)
-          viz-settings' (some-> viz-settings
-                                vs/db->norm
-                                (replacement.walk/walk-viz-settings-refs #(ref->column-name query %))
-                                vs/norm->db)
+          viz-settings' (lib/with-aggregation-list (lib/aggregations query)
+                          (some-> viz-settings
+                                  vs/db->norm
+                                  (replacement.walk/walk-viz-settings-refs #(ref->column-name query %))
+                                  vs/norm->db))
           changes       (cond-> {}
                           (not= query query') (assoc :dataset_query query')
                           (not= viz-settings viz-settings') (assoc :visualization_settings viz-settings'))

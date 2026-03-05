@@ -14,7 +14,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.runner :as replacement.runner]
-   [metabase-enterprise.replacement.swap.native]
+   [metabase-enterprise.replacement.source-swap.native]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
@@ -86,7 +86,7 @@
 ;;; ------------------------------------------------ card-slug Tests ------------------------------------------------
 
 (deftest ^:parallel card-slug-test
-  (let [card-slug #'metabase-enterprise.replacement.swap.native/card-slug]
+  (let [card-slug #'metabase-enterprise.replacement.source-swap.native/card-slug]
     (testing "simple name"
       (is (= "my-cool-query" (card-slug "My Cool Query"))))
     (testing "collapses consecutive hyphens from parentheses (matches frontend slugg behavior)"
