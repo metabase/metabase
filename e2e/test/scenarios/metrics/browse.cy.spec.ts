@@ -468,12 +468,6 @@ describe("scenarios > browse > metrics", () => {
   });
 });
 
-function createMetrics(
-  metrics: StructuredQuestionDetailsWithName[] = ALL_METRICS,
-) {
-  metrics.forEach((metric) => H.createQuestion(metric));
-}
-
 function metricsTable() {
   return cy.findByLabelText("Table of metrics").should("be.visible");
 }
