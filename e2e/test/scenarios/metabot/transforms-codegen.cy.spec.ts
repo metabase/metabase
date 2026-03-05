@@ -308,7 +308,8 @@ describe(
             sourceQuery: "SELECT 1",
             targetTable: "table_a",
             targetSchema: "Schema A",
-          }).as("transformId");
+            wrapId: true,
+          });
 
           visitTransformListPage();
           getMetabotButton().click();
@@ -385,23 +386,21 @@ describe(
                   return pd.DataFrame({'value': [1]})
               `,
                 sourceTables: { foo: tableId },
-              }).then((transformId) => {
+              }).then(({ body: transform }) => {
                 visitTransformListPage();
                 getMetabotButton().click();
 
                 // Ask metabot for a change to existing transform
-                cy.get("@transformId").then((transformId) => {
-                  H.mockMetabotResponse({
-                    body: createMockTransformSuggestionResponse(
-                      "Let me make that update for you.",
-                      createMockPythonTransformJSON(
-                        Number(transformId),
-                        WRITABLE_DB_ID,
-                        { foo: tableId },
-                        "import pandas as pd\\n\\ndef transform(foo):\\n    return pd.DataFrame({'value': [2]})",
-                      ),
+                H.mockMetabotResponse({
+                  body: createMockTransformSuggestionResponse(
+                    "Let me make that update for you.",
+                    createMockPythonTransformJSON(
+                      Number(transform.id),
+                      WRITABLE_DB_ID,
+                      { foo: tableId },
+                      "import pandas as pd\\n\\ndef transform(foo):\\n    return pd.DataFrame({'value': [2]})",
                     ),
-                  });
+                  ),
                 });
                 sendCodgenBotMessage(
                   "Update my SQL transform to select 2 instead of 1.",
@@ -438,7 +437,7 @@ describe(
                   body: createMockTransformSuggestionResponse(
                     "Let me make that change for you.",
                     createMockPythonTransformJSON(
-                      Number(transformId),
+                      Number(transform.id),
                       WRITABLE_DB_ID,
                       { metabase_table_df: 152 },
                       "import pandas as pd\\n\\ndef transform(foo):\\n    return pd.DataFrame({'value': [4]})",
