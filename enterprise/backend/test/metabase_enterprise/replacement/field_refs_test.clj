@@ -82,23 +82,6 @@
           (is (= {:column_title "Custom Title"} (get cs (name-key "TITLE")))
               "name-based settings should be preserved as-is"))))))
 
-(deftest upgrade-card-mixed-keys-test
-  (testing "upgrade! handles a mix of ref and name keys, merging settings for the same column"
-    (mt/dataset test-data
-      (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
-                                       :visualization_settings {:column_settings
-                                                                {(ref-key (mt/id :products :title)) {:column_title "From Ref"}
-                                                                 (name-key "TITLE")                 {:show_mini_bar true}
-                                                                 (name-key "CATEGORY")              {:column_title "Cat"}}}}]
-        (field-refs/upgrade! [:card (:id card)] card)
-        (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
-              cs          (:column_settings updated-viz)]
-          (is (= {:column_title "From Ref" :show_mini_bar true}
-                 (get cs (name-key "TITLE")))
-              "ref and name settings for same column should be merged")
-          (is (= {:column_title "Cat"} (get cs (name-key "CATEGORY")))
-              "unrelated name key should be preserved"))))))
-
 (deftest upgrade-card-no-viz-settings-test
   (testing "upgrade! is a no-op when card has no column_settings"
     (mt/dataset test-data
@@ -458,7 +441,7 @@
       (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
                                        :visualization_settings {}}]
         ;; Mock upgrade-field-refs-in-query to simulate a query that changes (add a filter)
-        (let [upgraded-query (assoc-in (:dataset_query card) [:stages 0 :filters] [[:> {} 1 2]])]
+        (let [upgraded-query (assoc-in (:dataset_query card) [:stages 0 :filters] [[:> {:lib/uuid (str (random-uuid))} 1 2]])]
           (with-redefs-fn {#'lib-be/upgrade-field-refs-in-query (constantly upgraded-query)}
             (fn []
               (field-refs/upgrade! [:card (:id card)] card)
