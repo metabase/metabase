@@ -631,8 +631,7 @@
      (some #(invalid-nesting % (conj path-tags (first expr))) (nnext expr)))))
 
 (defn- find-type-error
-  "Given a Malli explanation, find the most informative type-mismatch error.
-   Returns the first error whose schema has `:error/expected-type`, or nil."
+  "Given a malli explanation, return the first error with an `:error/expected-type`."
   [explanation]
   (some (fn [error]
           (let [schema (:schema error)
@@ -644,35 +643,30 @@
         (:errors explanation)))
 
 (defn- parent-operator-name
-  "Given an expression and an error's `:in` path, determine the MBQL operator tag
-   of the clause containing the failing subexpression. Returns nil if the path is
-   empty (root-level error) or the parent cannot be determined.
-   Return a user-facing display name for an MBQL operator tag"
+  "Given an expression and a path into it, return the name of expression at the end of the path."
   [expr in-path]
   (when (and (seq in-path) (every? integer? in-path))
     (let [parent-path (pop (vec in-path))
           parent (if (empty? parent-path)
                    expr
                    (get-in expr parent-path))]
-      (when (vector? parent)
-        (when-let [tag (and (keyword? (first parent)) (first parent))]
-          (or (get infix-operator-display-name tag) (name tag)))))))
+      (when (and (vector? parent) (first parent))
+        (name (first parent))))))
 
 (defn- expected-type-description
-  "Return a translated, user-facing description of an expected type."
+  "Return a user-facing description of a type."
   [expected-type]
-  (when (keyword? expected-type)
-    (condp = expected-type
-      :type/Boolean (i18n/tru "a boolean")
-      :type/Text (i18n/tru "a string")
-      :type/Integer (i18n/tru "an integer")
-      :type/Float (i18n/tru "a number")
-      :type/Number (i18n/tru "a number")
-      :type/Date (i18n/tru "a date")
-      :type/Time (i18n/tru "a time")
-      :type/DateTime (i18n/tru "a date time")
-      :type/Temporal (i18n/tru "a date, time, or date time")
-      nil)))
+  (condp = expected-type
+    :type/Boolean (i18n/tru "a boolean")
+    :type/Text (i18n/tru "a string")
+    :type/Integer (i18n/tru "an integer")
+    :type/Float (i18n/tru "a number")
+    :type/Number (i18n/tru "a number")
+    :type/Date (i18n/tru "a date")
+    :type/Time (i18n/tru "a time")
+    :type/DateTime (i18n/tru "a date time")
+    :type/Temporal (i18n/tru "a date, time, or date time")
+    nil))
 
 (defn- friendly-error-message
   [explanation]
@@ -689,8 +683,8 @@
 (defn- type-error-message
   [explanation expr]
   (let [[type-error expected-type] (find-type-error explanation)
-        op-name (when type-error (parent-operator-name expr (:in type-error)))
-        type-desc (when expected-type (expected-type-description expected-type))]
+        op-name (parent-operator-name expr (:in type-error))
+        type-desc (expected-type-description expected-type)]
     (if (and op-name type-desc)
       (i18n/tru "Types are incompatible: {0} expects {1}." op-name type-desc)
       (i18n/tru "Types are incompatible."))))
