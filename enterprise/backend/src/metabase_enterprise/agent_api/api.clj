@@ -462,9 +462,10 @@
       ;; The provider uses jwt-attribute-email setting to extract the email from claims
       (if-let [user (when-let [email (get-in result [:user-data :email])]
                       (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))]
-        (cond-> {:user user}
-          (get (:jwt-data result) "scope")
-          (assoc :scopes (scope/parse-scopes (get (:jwt-data result) "scope"))))
+        (let [jwt-data (:jwt-data result)]
+          (cond-> {:user user}
+            (contains? jwt-data "scope")
+            (assoc :scopes (or (scope/parse-scopes (get jwt-data "scope")) #{}))))
         ;; Don't reveal whether the user exists or not - use same error as invalid JWT
         {:error   "invalid_jwt"
          :message "Invalid or expired JWT token."})
