@@ -80,15 +80,18 @@ const REPLACED_ELEMENTS = new Set([
 ]);
 
 function hasVisibleContent(element: HTMLElement): boolean {
-  if (element.textContent?.trim()) {
-    return true;
-  }
-
   if (REPLACED_ELEMENTS.has(element.tagName.toUpperCase())) {
     return true;
   }
 
-  return Array.from(element.children).some((child) => {
+  const children = Array.from(element.children);
+
+  // Leaf node: check for direct text content
+  if (children.length === 0) {
+    return !!element.textContent?.trim();
+  }
+
+  return children.some((child) => {
     const el = child as HTMLElement;
 
     if (el.hidden || el.style?.display === "none") {
