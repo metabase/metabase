@@ -144,11 +144,11 @@
   "Minimum characters to accumulate before considering a flush."
   250)
 
-(def ^:private min-flush-interval-ns
-  "Minimum nanoseconds between consecutive text flushes to Slack.
+(def ^:private min-flush-interval-ms
+  "Minimum milliseconds between consecutive text flushes to Slack.
    At Slack's rate limit of ~100 calls/minute, 600ms spacing leaves
    headroom for tool-update and other non-text API calls."
-  (* 600 1000 1000))
+  600)
 
 (defn- make-streaming-ai-request
   "Make a streaming AI request with callbacks for each message type.
@@ -368,9 +368,9 @@
                          ([force?]
                           (ensure-stream-started! client stream-opts stream-attempted? stream-state)
                           (when @stream-state
-                            (let [elapsed (- (System/nanoTime) @last-flush-at)]
-                              (when (or force? (>= elapsed min-flush-interval-ns))
-                                (vreset! last-flush-at (System/nanoTime))
+                            (let [elapsed (- (System/currentTimeMillis) @last-flush-at)]
+                              (when (or force? (>= elapsed min-flush-interval-ms))
+                                (vreset! last-flush-at (System/currentTimeMillis))
                                 (send-off slack-writer
                                           (fn [_] (drain-pending-text! client stream-state pending-text thinking-ts) nil)))))))
 
