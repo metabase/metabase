@@ -440,3 +440,34 @@
           (let [saved-query (t2/select-one-fn :dataset_query :model/Card :id (:id card))]
             (is (pos?    (get-in (lib/filters (:dataset_query card)) [0 2 2])))
             (is (string? (get-in (lib/filters saved-query)           [0 2 2])))))))))
+
+;;; ----------------------------------------- measure-upgrade-field-refs! -------------------------------------------
+
+(deftest measure-upgrade-field-refs-basic-test
+  (testing "upgrade! with [:measure id] doesn't change anything (segments are always on tables)"
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)
+            q  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                   (lib/aggregate (lib/count)))]
+        (mt/with-temp [:model/Measure m {:name        "Test Measure"
+                                         :description "test"
+                                         :definition  q
+                                         :table_id    (mt/id :orders)}]
+          (field-refs/upgrade! [:measure (:id m)] m)
+          (is (= q (t2/select-one-fn :definition :model/Measure (:id m)))
+              "no changes needed for a clean pMBQL measure"))))))
+
+;;; ----------------------------------------- segment-upgrade-field-refs! -------------------------------------------
+
+(deftest segment-upgrade-field-refs-basic-test
+  (testing "upgrade! with [:segment id] doesn't change anything (segments are always on tables)"
+    (mt/dataset test-data
+      (let [mp (mt/metadata-provider)
+            q  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                   (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :total)) 100)))]
+        (mt/with-temp [:model/Segment s {:name       "Test Segment"
+                                         :definition q
+                                         :table_id   (mt/id :orders)}]
+          (field-refs/upgrade! [:segment (:id s)] s)
+          (is (= q (t2/select-one-fn :definition :model/Segment (:id s)))
+              "no changes needed for a clean pMBQL segment"))))))
