@@ -1,19 +1,31 @@
-/* eslint-disable react/prop-types */
 import { jt, msgid, ngettext, t } from "ttag";
 
+import type {
+  DatabasePermissionsDiff,
+  GroupPermissionsDiff,
+  PermissionsGraphDiff,
+} from "metabase/admin/permissions/types";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import CS from "metabase/css/core/index.css";
 import { Tooltip } from "metabase/ui";
 
-const GroupName = ({ group }) => (
+const GroupName = ({ group }: { group: GroupPermissionsDiff }) => (
   <span className={CS.textBrand}>{group.name}</span>
 );
 
-const DatabaseName = ({ database }) => (
+const DatabaseName = ({ database }: { database: DatabasePermissionsDiff }) => (
   <span className={CS.textBrand}>{database.name}</span>
 );
 
-const TableAccessChange = ({ tables, verb, colorClassName }) => {
+const TableAccessChange = ({
+  tables,
+  verb,
+  colorClassName,
+}: {
+  tables: NonNullable<DatabasePermissionsDiff["grantedTables"]>;
+  verb: string;
+  colorClassName: string;
+}) => {
   const tableEntries = Object.entries(tables);
   return (
     <span>
@@ -40,7 +52,11 @@ const TableAccessChange = ({ tables, verb, colorClassName }) => {
   );
 };
 
-export const PermissionsConfirm = ({ diff }) => (
+export const PermissionsConfirm = ({
+  diff,
+}: {
+  diff: PermissionsGraphDiff;
+}) => (
   <div>
     {Object.values(diff.groups).map((group, groupIndex) =>
       Object.values(group.databases).map((database, databaseIndex) => (
