@@ -36,8 +36,9 @@
    "sqlserver" "tsql",
    ;; Embedded/lightweight
    "sqlite" "sqlite",
-   ;; H2 uses PostgreSQL compatibility mode as approximation
-   "h2" "postgres"})
+   ;; H2 and Vertica are not fully supported by parser hence skipping the validation
+   "h2" nil
+   "vertica" nil})
 
 (defn database-id->dialect
   "Get dialect for database id."

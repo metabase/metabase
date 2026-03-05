@@ -18,11 +18,13 @@
                 queries-state {query-id {:database db-id
                                          :type :native
                                          :native {:query original-sql}}}
-                result (edit-sql-query/edit-sql-query
-                        {:query-id query-id
-                         :queries-state queries-state
-                         :edits [{:old_string "id = 1"
-                                  :new_string "id = 2"}]})]
+
+                {result :action-result}
+                (edit-sql-query/edit-sql-query
+                 {:query-id query-id
+                  :queries-state queries-state
+                  :edits [{:old_string "id = 1"
+                           :new_string "id = 2"}]})]
             (is (= query-id (:query-id result)))
             (is (= "SELECT * FROM users WHERE id = 2" (:query-content result)))))
 
@@ -32,12 +34,14 @@
                 queries-state {query-id {:database db-id
                                          :type :native
                                          :native {:query original-sql}}}
-                result (edit-sql-query/edit-sql-query
-                        {:query-id query-id
-                         :queries-state queries-state
-                         :edits [{:old_string "id"
-                                  :new_string "user_id"
-                                  :replace_all true}]})]
+
+                {result :action-result}
+                (edit-sql-query/edit-sql-query
+                 {:query-id query-id
+                  :queries-state queries-state
+                  :edits [{:old_string "id"
+                           :new_string "user_id"
+                           :replace_all true}]})]
             (is (= "SELECT user_id, user_id FROM users WHERE user_id = 1"
                    (:query-content result)))))
 
@@ -67,10 +71,12 @@
                 queries-state {query-id {:database db-id
                                          :type :native
                                          :native {:query original-sql}}}
-                result (replace-sql-query/replace-sql-query
-                        {:query-id query-id
-                         :queries-state queries-state
-                         :sql new-sql})]
+
+                {result :action-result}
+                (replace-sql-query/replace-sql-query
+                 {:query-id query-id
+                  :queries-state queries-state
+                  :sql new-sql})]
             (is (= new-sql (:query-content result)))
             (is (= db-id (:database result)))))
 
@@ -79,12 +85,14 @@
                 queries-state {query-id {:database db-id
                                          :type :native
                                          :native {:query "SELECT 1"}}}
-                result (replace-sql-query/replace-sql-query
-                        {:query-id query-id
-                         :queries-state queries-state
-                         :sql "SELECT 2"
-                         :name "New Name"
-                         :description "New Description"})]
+
+                {result :action-result}
+                (replace-sql-query/replace-sql-query
+                 {:query-id query-id
+                  :queries-state queries-state
+                  :sql "SELECT 2"
+                  :name "New Name"
+                  :description "New Description"})]
             (is (= "SELECT 2" (:query-content result)))
             (is (= db-id (:database result)))))))))
 
@@ -93,15 +101,18 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Database {db-id :id} {}]
         (testing "full workflow: create and edit in memory"
-          (let [create-result (create-sql-query/create-sql-query
-                               {:database-id db-id
-                                :sql "SELECT * FROM products WHERE category = 'electronics'"
-                                :name "Electronics Products"})
+          (let [{create-result :action-result} (create-sql-query/create-sql-query
+                                                {:database-id db-id
+                                                 :sql "SELECT * FROM products WHERE category = 'electronics'"
+                                                 :name "Electronics Products"})
+
                 query-id (:query-id create-result)
                 queries-state {query-id (:query create-result)}
-                edit-result (edit-sql-query/edit-sql-query
-                             {:query-id query-id
-                              :queries-state queries-state
-                              :edits [{:old_string "electronics"
-                                       :new_string "furniture"}]})]
+
+                {edit-result :action-result}
+                (edit-sql-query/edit-sql-query
+                 {:query-id query-id
+                  :queries-state queries-state
+                  :edits [{:old_string "electronics"
+                           :new_string "furniture"}]})]
             (is (str/includes? (:query-content edit-result) "furniture"))))))))
