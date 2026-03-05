@@ -2,19 +2,22 @@
 
 import { jt, t } from "ttag";
 
+import expressSnippet from "docs-snippets/authentication/express-server-interactive-and-sdk.ts";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
-import { Anchor, Button, Group, Stack, Text, TextInput } from "metabase/ui";
-
-import S from "./SetupSsoPage.module.css";
+import {
+  Anchor,
+  Button,
+  Code,
+  Group,
+  Stack,
+  Text,
+  TextInput,
+} from "metabase/ui";
 
 export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
   const jwtSharedSecret = useSetting("jwt-shared-secret");
-
-  // TODO(EMB-1337): replace this with standalone JWT backend docs page.
   const { url: jwtDocsUrl } = useDocsUrl("embedding/authentication");
-
-  const jwtDocsIframeUrl = `${jwtDocsUrl}?hide_nav=true&no_gdpr=true`;
 
   return (
     <Stack gap="lg">
@@ -27,11 +30,7 @@ export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
         rightSectionWidth={40}
       />
 
-      <iframe
-        src={jwtDocsIframeUrl}
-        title={t`JWT Authentication Documentation`}
-        className={S.docsIframe}
-      />
+      <Code block>{expressSnippet}</Code>
 
       <Text size="sm" c="text-secondary">
         {jt`You can view more examples in the ${(
