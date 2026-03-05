@@ -802,6 +802,10 @@
                               :parameter_mappings [{:parameter_id "my-param"
                                                     :card_id      (:id card)
                                                     :target       [:dimension [:field (mt/id :orders_a :id) nil]]}]}]
+                ;; Publish event so the dependency graph includes the dashboard
+                (events/publish-event! :event/dashboard-update
+                                       {:object  (t2/select-one :model/Dashboard :id dashboard-id)
+                                        :user-id (:id user)})
                 (replacement.runner/run-swap [:table (mt/id :orders_a)] [:table (mt/id :orders_b)])
                 ;; Card's source-table should be updated
                 (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id card))]
@@ -836,6 +840,10 @@
                              {:dashboardcard_id dashcard-id
                               :card_id          (:id series-card)
                               :position         0}]
+                ;; Publish event so the dependency graph includes the dashboard
+                (events/publish-event! :event/dashboard-update
+                                       {:object  (t2/select-one :model/Dashboard :id dashboard-id)
+                                        :user-id (:id user)})
                 (replacement.runner/run-swap [:table (mt/id :orders_a)] [:table (mt/id :orders_b)])
                 ;; Both cards' source-tables should be updated
                 (is (= (mt/id :orders_b)
