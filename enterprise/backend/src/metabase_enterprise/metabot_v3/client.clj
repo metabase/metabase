@@ -244,10 +244,10 @@
             (swap! lines conj line)
             (when on-line (on-line line))
             (recur (.readLine response-reader)))))
+      (when on-complete
+        (on-complete @lines))
       (catch java.io.IOException e
         (log/debugf e "Stream closed while reading AI response (%d lines collected)" (count @lines))))
-    (when on-complete
-      (on-complete @lines))
     @lines))
 
 (mu/defn select-metric-request
