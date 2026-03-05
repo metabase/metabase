@@ -1,6 +1,6 @@
 // @ts-check
 /* eslint-env node */
-/* eslint-disable import/no-commonjs */
+
 const fs = require("fs");
 
 const rspack = require("@rspack/core");
@@ -25,6 +25,7 @@ const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
+const DOCS_SNIPPETS_PATH = __dirname + "/docs/embedding/sdk/snippets";
 
 const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
 const isDevMode = IS_DEV_MODE;
@@ -130,8 +131,20 @@ const config = {
         use: [BABEL_LOADER],
       },
       {
+        // Embedding onboarding flow requires sharing snippets from
+        // docs, so we treat TypeScript files inside docs/ as raw text
+        test: /\.ts$/,
+        include: [DOCS_SNIPPETS_PATH],
+        type: "asset/source",
+      },
+      {
         test: /\.(tsx?|jsx?)$/,
-        exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
+        exclude: [
+          /node_modules/,
+          /cljs/,
+          /css\/core\/fonts\.styled\.ts/,
+          DOCS_SNIPPETS_PATH,
+        ],
         use: [SWC_LOADER],
         type: "javascript/auto",
       },
@@ -194,7 +207,10 @@ const config = {
       ".css",
       ".svg",
     ],
-    alias: RESOLVE_ALIASES,
+    alias: {
+      ...RESOLVE_ALIASES,
+      "docs-snippets": DOCS_SNIPPETS_PATH,
+    },
     fallback: {
       buffer: require.resolve("buffer/"),
       url: require.resolve("url/"),
