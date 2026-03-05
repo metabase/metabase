@@ -258,8 +258,9 @@ export function getColumnExtent(
   cols: DatasetColumn[],
   rows: RowValues[],
   index: number,
-) {
+): ReturnType<typeof d3.extent> {
   const col = cols[index];
+
   if (!extentCache.has(col)) {
     extentCache.set(
       col,
@@ -269,7 +270,9 @@ export function getColumnExtent(
       }),
     );
   }
-  return extentCache.get(col);
+
+  // ok to cast since the code above will put the value in the map if it's not there
+  return extentCache.get(col) as ReturnType<typeof d3.extent>;
 }
 
 // TODO Atte Keinänen 5/30/17 Extract to metabase-lib card/question logic
