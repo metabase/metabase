@@ -84,12 +84,7 @@
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
     (tracing/with-span :tasks "task.transform.execute" {:transform/id   transform-id
                                                         :transform/name (:name transform)}
-      (when (transform-run/running-run-for-transform-id transform-id)
-        (log/warn "Transform" (pr-str transform-id) "already running, waiting")
-        (loop []
-          (Thread/sleep 2000)
-          (when (transform-run/running-run-for-transform-id transform-id)
-            (recur))))
+      (block-until-not-already-running transform-id)
       (let [try-exec
             (fn []
               (try

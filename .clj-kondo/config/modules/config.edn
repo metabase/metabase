@@ -670,7 +670,8 @@
            metabase.events.init}
    :uses #{models
            tracing
-           util}}
+           util}
+   :friends #{tracing}}
 
   formatter
   {:team "UX West"
@@ -1592,7 +1593,8 @@
   {:team "DevEx"
    :api  #{metabase.tracing.core
            metabase.tracing.init}
-   :uses #{settings
+   :uses #{events
+           settings
            task
            util}}
 
