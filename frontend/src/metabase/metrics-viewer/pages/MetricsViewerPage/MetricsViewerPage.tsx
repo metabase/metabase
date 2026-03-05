@@ -8,7 +8,6 @@ import {
   MetricsViewerNoTabsEmptyState,
 } from "../../components/EmptyState";
 import { MetricSearchPanel } from "../../components/MetricSearchPanel";
-import { MetricsViewerCardsGrid } from "../../components/MetricsViewerCardsGrid";
 import {
   MetricsViewerTabContent,
   MetricsViewerTabs,
@@ -27,7 +26,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     tabs,
     activeTab,
     activeTabId,
-    isAllTabActive,
     resultsByDefinitionId,
     errorsByDefinitionId,
     modifiedDefinitions,
@@ -44,7 +42,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     changeTab,
     addAndSelectTab,
     removeTab,
-    updateTab,
     updateActiveTab,
     changeTabDimension,
     removeTabDimension,
@@ -99,15 +96,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
             >
               {!hasDefinitions ? (
                 <MetricsViewerEmptyState />
-              ) : isAllTabActive ? (
-                <MetricsViewerCardsGrid
-                  definitions={definitions}
-                  tabs={tabs}
-                  updateTab={updateTab}
-                  onDimensionChange={changeTabDimension}
-                  onDimensionRemove={removeTabDimension}
-                  sourceColors={sourceColors}
-                />
               ) : activeTab ? (
                 <MetricsViewerTabContent
                   definitions={definitions}

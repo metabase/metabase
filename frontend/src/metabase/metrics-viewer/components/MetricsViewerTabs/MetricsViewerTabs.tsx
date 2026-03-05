@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { ActionIcon, Icon, Tabs } from "metabase/ui";
 
-import { ALL_TAB_ID } from "../../constants";
 import type {
   MetricSourceId,
   MetricsViewerTabState,
@@ -52,8 +51,6 @@ export function MetricsViewerTabs({
   const hasAvailableDimensions = hasSharedDimensions || hasAnySourceDimensions;
   const hasMultipleSources = sourceOrder.length > 1;
 
-  const showAllTab = tabs.length > 1;
-
   if (tabs.length <= 1 && !hasAvailableDimensions) {
     return null;
   }
@@ -65,16 +62,6 @@ export function MetricsViewerTabs({
       w="auto"
     >
       <Tabs.List className={S.list} justify="flex-start">
-        {showAllTab && (
-          <Tabs.Tab
-            value={ALL_TAB_ID}
-            aria-label={t`All dimensions`}
-            className={S.allTab}
-            px="md"
-          >
-            <Icon name="grid_2x2" size={16} />
-          </Tabs.Tab>
-        )}
         {tabs.map((tab) => (
           <Tabs.Tab
             key={tab.id}

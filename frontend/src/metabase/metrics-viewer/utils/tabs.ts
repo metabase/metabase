@@ -173,7 +173,7 @@ function resolveTabDimensionNames(
   for (const [sourceId, dimensionId] of getObjectEntries(dimensionMapping)) {
     const dimensionInfo = dimensionsBySource.get(sourceId)?.get(dimensionId);
     if (dimensionInfo) {
-      names.push(dimensionInfo.name ?? dimensionInfo.displayName);
+      names.push(dimensionInfo.displayName);
     }
   }
 

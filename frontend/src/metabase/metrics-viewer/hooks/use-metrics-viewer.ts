@@ -9,7 +9,6 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 
-import { ALL_TAB_ID } from "../constants";
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type {
   MetricSourceId,
@@ -51,7 +50,6 @@ export interface UseMetricsViewerResult {
   tabs: MetricsViewerTabState[];
   activeTab: MetricsViewerTabState | null;
   activeTabId: string | null;
-  isAllTabActive: boolean;
 
   loadingIds: Set<MetricSourceId>;
   resultsByDefinitionId: Map<MetricSourceId, Dataset>;
@@ -188,7 +186,7 @@ export function useMetricsViewer({
   useViewerUrl(state, initialize, handleLoadSources, location);
 
   const activeTab = useMemo((): MetricsViewerTabState | null => {
-    if (state.selectedTabId === ALL_TAB_ID || state.tabs.length === 0) {
+    if (state.tabs.length === 0) {
       return null;
     }
     return (
@@ -213,9 +211,6 @@ export function useMetricsViewer({
     () => computeSourceColors(state.definitions, breakoutValuesBySourceId),
     [state.definitions, breakoutValuesBySourceId],
   );
-
-  const isAllTabActive =
-    state.selectedTabId === ALL_TAB_ID && state.tabs.length > 1;
 
   const definitionsBySourceId = useMemo(
     () =>
@@ -279,7 +274,7 @@ export function useMetricsViewer({
         const sourceDimensions = dimsBySource.get(sourceId);
         const dimensionInfo = sourceDimensions?.get(dimensionId);
         if (dimensionInfo) {
-          names.push(dimensionInfo.name ?? dimensionInfo.displayName);
+          names.push(dimensionInfo.displayName);
         }
       }
       const label = resolveCommonTabLabel(names, tab.label);
@@ -366,7 +361,6 @@ export function useMetricsViewer({
     tabs: effectiveTabs,
     activeTab,
     activeTabId: state.selectedTabId,
-    isAllTabActive,
 
     loadingIds,
     resultsByDefinitionId,

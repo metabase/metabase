@@ -14,7 +14,6 @@ import * as LibMetric from "metabase-lib/metric";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
-import { ALL_TAB_ID } from "../constants";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -72,9 +71,7 @@ function getValidSelectedTabId(
   currentSelectedId: string | null,
   newTabs: MetricsViewerTabState[],
 ): string | null {
-  const selectedTabExists =
-    currentSelectedId === ALL_TAB_ID ||
-    newTabs.some((tab) => tab.id === currentSelectedId);
+  const selectedTabExists = newTabs.some((tab) => tab.id === currentSelectedId);
 
   return selectedTabExists ? currentSelectedId : (newTabs[0]?.id ?? null);
 }
@@ -319,9 +316,7 @@ export function useViewerState(): UseViewerStateResult {
     (tabId: string) =>
       setState((prev) => {
         const newTabs = prev.tabs.filter((t) => t.id !== tabId);
-        const needsTabSwitch =
-          prev.selectedTabId === tabId ||
-          (prev.selectedTabId === ALL_TAB_ID && newTabs.length <= 1);
+        const needsTabSwitch = prev.selectedTabId === tabId;
 
         return {
           ...prev,
