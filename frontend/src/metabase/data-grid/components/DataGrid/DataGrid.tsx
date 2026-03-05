@@ -249,7 +249,9 @@ export const DataGrid = function DataGrid<TData>({
                       const isPinned = header.column.getIsPinned();
                       const isLastPinned =
                         header.column.id === lastPinnedColumn?.id;
-                      const totalWidth = isPinned
+                      const hasSeparator =
+                        isLastPinned && !isLastPinnedColumnRowId;
+                      const totalWidth = hasSeparator
                         ? width + PINNED_BORDER_SEPARATOR_WIDTH
                         : width;
                       const style: React.CSSProperties = isPinned
@@ -264,32 +266,32 @@ export const DataGrid = function DataGrid<TData>({
                             width: totalWidth,
                           };
 
-                      const headerContent = isPinned ? (
-                        headerCell
-                      ) : (
-                        <SortableHeader
-                          className={cx(S.headerCell, classNames?.headerCell)}
-                          style={{
-                            backgroundColor: stickyElementsBackgroundColor,
-                            ...styles?.headerCell,
-                          }}
-                          isColumnReorderingDisabled={
-                            isColumnReorderingDisabled
-                          }
-                          header={header}
-                          onClick={onHeaderCellClick}
-                        >
-                          {headerCell}
-                        </SortableHeader>
-                      );
+                      const headerContent =
+                        header.column.id === ROW_ID_COLUMN_ID ? (
+                          headerCell
+                        ) : (
+                          <SortableHeader
+                            className={cx(S.headerCell, classNames?.headerCell)}
+                            style={{
+                              backgroundColor: stickyElementsBackgroundColor,
+                              ...styles?.headerCell,
+                            }}
+                            isColumnReorderingDisabled={
+                              isColumnReorderingDisabled
+                            }
+                            header={header}
+                            onClick={onHeaderCellClick}
+                          >
+                            {headerCell}
+                          </SortableHeader>
+                        );
 
                       return (
                         <div
                           key={header.id}
                           style={style}
                           className={cx({
-                            [S.cellWithRightSeparator]:
-                              isLastPinned && !isLastPinnedColumnRowId,
+                            [S.cellWithRightSeparator]: hasSeparator,
                           })}
                           data-header-id={header.id}
                         >
@@ -369,7 +371,9 @@ export const DataGrid = function DataGrid<TData>({
                       const isLastPinned =
                         cell.column.id === lastPinnedColumn?.id;
                       const width = cell.column.getSize();
-                      const totalWidth = isPinned
+                      const hasSeparator =
+                        isLastPinned && !isLastPinnedColumnRowId;
+                      const totalWidth = hasSeparator
                         ? width + PINNED_BORDER_SEPARATOR_WIDTH
                         : width;
                       const columnDef = cell.column.columnDef;
@@ -399,8 +403,7 @@ export const DataGrid = function DataGrid<TData>({
                           data-selectable-cell={isSelectable ? "" : undefined}
                           className={cx(S.bodyCell, classNames?.bodyCell, {
                             [S.focusedCell]: selection.isCellFocused(cell),
-                            [S.cellWithRightSeparator]:
-                              isLastPinned && !isLastPinnedColumnRowId,
+                            [S.cellWithRightSeparator]: hasSeparator,
                           })}
                           onClick={(e) => {
                             if (hasModifierKeys(e)) {
