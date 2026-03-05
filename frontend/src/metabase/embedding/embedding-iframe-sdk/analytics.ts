@@ -149,72 +149,79 @@ export function createEmbeddedAnalyticsJsUsage(
       properties: [
         {
           name: "drills",
-          values: countPropertyValues(
-            dashboardEmbeds,
-            "dashboard",
-            "drills",
-            (drills, properties) =>
+          values: countPropertyValues({
+            embeds: dashboardEmbeds,
+            component: "dashboard",
+            propertyName: "drills",
+            getValue: (drills, properties) =>
               String(
                 drills ??
                   (properties.isGuest
                     ? DEFAULT_GUEST_EMBED_VALUES.dashboard.drills
                     : DEFAULT_VALUES.dashboard.drills),
               ),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "with_downloads",
-          values: countPropertyValues(
-            dashboardEmbeds,
-            "dashboard",
-            "withDownloads",
-            (withDownloads) =>
+          values: countPropertyValues({
+            embeds: dashboardEmbeds,
+            component: "dashboard",
+            propertyName: "withDownloads",
+            getValue: (withDownloads) =>
               String(withDownloads ?? DEFAULT_VALUES.dashboard.withDownloads),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "with_title",
-          values: countPropertyValues(
-            dashboardEmbeds,
-            "dashboard",
-            "withTitle",
-            (withTitle) =>
+          values: countPropertyValues({
+            embeds: dashboardEmbeds,
+            component: "dashboard",
+            propertyName: "withTitle",
+            getValue: (withTitle) =>
               String(withTitle ?? DEFAULT_VALUES.dashboard.withTitle),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "with_subscriptions",
-          values: countPropertyValues(
-            dashboardEmbeds,
-            "dashboard",
-            "withSubscriptions",
-            (withSubscriptions) =>
+          values: countPropertyValues({
+            embeds: dashboardEmbeds,
+            component: "dashboard",
+            propertyName: "withSubscriptions",
+            getValue: (withSubscriptions) =>
               String(
                 withSubscriptions ?? DEFAULT_VALUES.dashboard.withSubscriptions,
               ),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "auto_refresh_interval", // NEW: EMB-1334
-          values: countPropertyValues(
-            dashboardEmbeds,
-            "dashboard",
-            "autoRefreshInterval",
-            (autoRefreshInterval) => String(autoRefreshInterval != null),
-          ),
+          values: countPropertyValues({
+            embeds: dashboardEmbeds,
+            component: "dashboard",
+            propertyName: "autoRefreshInterval",
+            getValue: (autoRefreshInterval) =>
+              String(autoRefreshInterval != null),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "enable_entity_navigation", // NEW: EMB-1334
-          values: countPropertyValues(
-            dashboardEmbeds,
-            "dashboard",
-            "enableEntityNavigation",
-            (enableEntityNavigation) =>
+          values: countPropertyValues({
+            embeds: dashboardEmbeds,
+            component: "dashboard",
+            propertyName: "enableEntityNavigation",
+            getValue: (enableEntityNavigation) =>
               String(
                 enableEntityNavigation ??
                   DEFAULT_VALUES.dashboard.enableEntityNavigation,
               ),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
       ],
     });
@@ -227,58 +234,63 @@ export function createEmbeddedAnalyticsJsUsage(
       properties: [
         {
           name: "drills",
-          values: countPropertyValues(
-            questionEmbeds,
-            "question",
-            "drills",
-            (drills, properties) =>
+          values: countPropertyValues({
+            embeds: questionEmbeds,
+            component: "question",
+            propertyName: "drills",
+            getValue: (drills, properties) =>
               String(
                 drills ??
                   (properties.isGuest
                     ? DEFAULT_GUEST_EMBED_VALUES.question.drills
                     : DEFAULT_VALUES.question.drills),
               ),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "with_downloads",
-          values: countPropertyValues(
-            questionEmbeds,
-            "question",
-            "withDownloads",
-            (withDownloads) =>
+          values: countPropertyValues({
+            embeds: questionEmbeds,
+            component: "question",
+            propertyName: "withDownloads",
+            getValue: (withDownloads) =>
               String(withDownloads ?? DEFAULT_VALUES.question.withDownloads),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "with_title",
-          values: countPropertyValues(
-            questionEmbeds,
-            "question",
-            "withTitle",
-            (withTitle) =>
+          values: countPropertyValues({
+            embeds: questionEmbeds,
+            component: "question",
+            propertyName: "withTitle",
+            getValue: (withTitle) =>
               String(withTitle ?? DEFAULT_VALUES.question.withTitle),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "is_save_enabled",
-          values: countPropertyValues(
-            questionEmbeds,
-            "question",
-            "isSaveEnabled",
-            (isSaveEnabled) =>
+          values: countPropertyValues({
+            embeds: questionEmbeds,
+            component: "question",
+            propertyName: "isSaveEnabled",
+            getValue: (isSaveEnabled) =>
               String(isSaveEnabled ?? DEFAULT_VALUES.question.isSaveEnabled),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "with_alerts",
-          values: countPropertyValues(
-            questionEmbeds,
-            "question",
-            "withAlerts",
-            (withAlerts) =>
+          values: countPropertyValues({
+            embeds: questionEmbeds,
+            component: "question",
+            propertyName: "withAlerts",
+            getValue: (withAlerts) =>
               String(withAlerts ?? DEFAULT_VALUES.question.withAlerts),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
       ],
     });
@@ -291,31 +303,34 @@ export function createEmbeddedAnalyticsJsUsage(
       properties: [
         {
           name: "is_save_enabled",
-          values: countPropertyValues(
-            explorationEmbeds,
-            "exploration",
-            "isSaveEnabled",
-            (isSaveEnabled) =>
+          values: countPropertyValues({
+            embeds: explorationEmbeds,
+            component: "exploration",
+            propertyName: "isSaveEnabled",
+            getValue: (isSaveEnabled) =>
               String(isSaveEnabled ?? DEFAULT_VALUES.exploration.isSaveEnabled),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "id_new_native", // NEW: EMB-1334
-          values: countPropertyValues(
-            explorationEmbeds,
-            "browser",
-            "questionId",
-            (questionId) => String(questionId === "new-native"),
-          ),
+          values: countPropertyValues({
+            embeds: explorationEmbeds,
+            component: "browser",
+            propertyName: "questionId",
+            getValue: (questionId) => String(questionId === "new-native"),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "id_new", // NEW: EMB-1334
-          values: countPropertyValues(
-            explorationEmbeds,
-            "browser",
-            "questionId",
-            (questionId) => String(questionId === "new"),
-          ),
+          values: countPropertyValues({
+            embeds: explorationEmbeds,
+            component: "browser",
+            propertyName: "questionId",
+            getValue: (questionId) => String(questionId === "new"),
+            allPossibleValues: ["false", "true"],
+          }),
         },
       ],
     });
@@ -328,25 +343,28 @@ export function createEmbeddedAnalyticsJsUsage(
       properties: [
         {
           name: "read_only",
-          values: countPropertyValues(
-            browserEmbeds,
-            "browser",
-            "readOnly",
-            (readOnly) => String(readOnly ?? DEFAULT_VALUES.browser.readOnly),
-          ),
+          values: countPropertyValues({
+            embeds: browserEmbeds,
+            component: "browser",
+            propertyName: "readOnly",
+            getValue: (readOnly) =>
+              String(readOnly ?? DEFAULT_VALUES.browser.readOnly),
+            allPossibleValues: ["false", "true"],
+          }),
         },
         {
           name: "enable_entity_navigation", // NEW: EMB-1334
-          values: countPropertyValues(
-            browserEmbeds,
-            "browser",
-            "enableEntityNavigation",
-            (enableEntityNavigation) =>
+          values: countPropertyValues({
+            embeds: browserEmbeds,
+            component: "browser",
+            propertyName: "enableEntityNavigation",
+            getValue: (enableEntityNavigation) =>
               String(
                 enableEntityNavigation ??
                   DEFAULT_VALUES.browser.enableEntityNavigation,
               ),
-          ),
+            allPossibleValues: ["false", "true"],
+          }),
         },
       ],
     });
@@ -359,12 +377,13 @@ export function createEmbeddedAnalyticsJsUsage(
       properties: [
         {
           name: "layout",
-          values: countPropertyValues(
-            metabotEmbeds,
-            "metabot",
-            "layout",
-            (layout) => String(layout ?? DEFAULT_VALUES.metabot.layout),
-          ),
+          values: countPropertyValues({
+            embeds: metabotEmbeds,
+            component: "metabot",
+            propertyName: "layout",
+            getValue: (layout) =>
+              String(layout ?? DEFAULT_VALUES.metabot.layout),
+          }),
         },
       ],
     });
@@ -409,28 +428,40 @@ function hasLocaleUsed(activeEmbeds: Set<MetabaseEmbedElement>): boolean {
 function countPropertyValues<
   ComponentName extends keyof DefaultValues,
   PropertyName extends Extract<keyof DefaultValues[ComponentName], string>,
->(
-  embeds: MetabaseEmbedElement[],
-  _component: ComponentName,
-  propertyName: PropertyName,
+>(options: {
+  embeds: MetabaseEmbedElement[];
+  component: ComponentName;
+  propertyName: PropertyName;
   getValue: (
     propertyValue: any,
     properties: MetabaseEmbedElement["properties"],
-  ) => string,
-): PropertyValue[] {
+  ) => string;
+  allPossibleValues?: string[];
+}): PropertyValue[] {
   const counts = new Map<string, number>();
 
-  embeds.forEach((embed) => {
+  options.embeds.forEach((embed) => {
     const propertyValue = (embed.properties as Record<string, any>)[
-      propertyName
+      options.propertyName
     ];
-    const value = getValue(propertyValue, embed.properties);
+    const value = options.getValue(propertyValue, embed.properties);
     const group = String(value);
     counts.set(group, (counts.get(group) || 0) + 1);
   });
 
-  return Array.from(counts.entries()).map(([group, value]) => ({
-    group,
-    value,
-  }));
+  // Fill in missing values with 0
+  if (options.allPossibleValues) {
+    options.allPossibleValues.forEach((value) => {
+      if (!counts.has(value)) {
+        counts.set(value, 0);
+      }
+    });
+  }
+
+  return Array.from(counts.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([group, value]) => ({
+      group,
+      value,
+    }));
 }

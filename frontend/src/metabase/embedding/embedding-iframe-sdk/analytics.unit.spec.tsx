@@ -142,27 +142,45 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "drills",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_downloads",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "with_title",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_subscriptions",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "auto_refresh_interval",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "enable_entity_navigation",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
           ],
         });
@@ -186,27 +204,45 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "drills",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_downloads",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "with_title",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_subscriptions",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "auto_refresh_interval",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "enable_entity_navigation",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
           ],
         });
@@ -228,27 +264,45 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "drills",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "with_downloads",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_title",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "with_subscriptions",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "auto_refresh_interval",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "enable_entity_navigation",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
           ],
         });
@@ -273,8 +327,8 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
             {
               name: "drills",
               values: [
-                { group: "true", value: 2 },
                 { group: "false", value: 1 },
+                { group: "true", value: 2 },
               ],
             },
             {
@@ -287,8 +341,8 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
             {
               name: "with_title",
               values: [
-                { group: "true", value: 2 },
                 { group: "false", value: 1 },
+                { group: "true", value: 2 },
               ],
             },
             {
@@ -300,11 +354,17 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
             },
             {
               name: "auto_refresh_interval",
-              values: [{ group: "false", value: 3 }],
+              values: [
+                { group: "false", value: 3 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "enable_entity_navigation",
-              values: [{ group: "false", value: 3 }],
+              values: [
+                { group: "false", value: 3 },
+                { group: "true", value: 0 },
+              ],
             },
           ],
         });
@@ -328,8 +388,8 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         );
 
         expect(autoRefreshProp?.values).toEqual([
-          { group: "true", value: 1 },
           { group: "false", value: 1 },
+          { group: "true", value: 1 },
         ]);
       });
 
@@ -354,8 +414,8 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         );
 
         expect(enableEntityNavigationProp?.values).toEqual([
-          { group: "true", value: 1 },
           { group: "false", value: 2 },
+          { group: "true", value: 1 },
         ]);
       });
     });
@@ -375,23 +435,38 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "drills",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_downloads",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "with_title",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "is_save_enabled",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "with_alerts",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
           ],
         });
@@ -417,23 +492,38 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "drills",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_downloads",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "with_title",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "is_save_enabled",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "with_alerts",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
           ],
         });
@@ -457,23 +547,38 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "drills",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "with_downloads",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_title",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "is_save_enabled",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "with_alerts",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
           ],
         });
@@ -499,8 +604,8 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
             {
               name: "drills",
               values: [
-                { group: "true", value: 2 },
                 { group: "false", value: 1 },
+                { group: "true", value: 2 },
               ],
             },
             {
@@ -513,8 +618,8 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
             {
               name: "with_title",
               values: [
-                { group: "true", value: 2 },
                 { group: "false", value: 1 },
+                { group: "true", value: 2 },
               ],
             },
             {
@@ -561,8 +666,8 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         );
 
         expect(idNewNativeProp?.values).toEqual([
-          { group: "true", value: 1 },
           { group: "false", value: 1 },
+          { group: "true", value: 1 },
         ]);
         expect(idNewProp?.values).toEqual([
           { group: "false", value: 1 },
@@ -586,15 +691,24 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "is_save_enabled",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "id_new_native",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "id_new",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
           ],
         });
@@ -616,15 +730,24 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "is_save_enabled",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "id_new_native",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "id_new",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
           ],
         });
@@ -644,15 +767,24 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "is_save_enabled",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "id_new_native",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "id_new",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
           ],
         });
@@ -685,11 +817,17 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
             },
             {
               name: "id_new_native",
-              values: [{ group: "false", value: 3 }],
+              values: [
+                { group: "false", value: 3 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "id_new",
-              values: [{ group: "true", value: 3 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 3 },
+              ],
             },
           ],
         });
@@ -709,15 +847,24 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "is_save_enabled",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "id_new_native",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "id_new",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
           ],
         });
@@ -735,11 +882,17 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "read_only",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "enable_entity_navigation",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
           ],
         });
@@ -760,11 +913,17 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "read_only",
-              values: [{ group: "true", value: 1 }],
+              values: [
+                { group: "false", value: 0 },
+                { group: "true", value: 1 },
+              ],
             },
             {
               name: "enable_entity_navigation",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
           ],
         });
@@ -783,11 +942,17 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           properties: [
             {
               name: "read_only",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
             {
               name: "enable_entity_navigation",
-              values: [{ group: "false", value: 1 }],
+              values: [
+                { group: "false", value: 1 },
+                { group: "true", value: 0 },
+              ],
             },
           ],
         });
@@ -809,13 +974,16 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
             {
               name: "read_only",
               values: [
-                { group: "true", value: 2 },
                 { group: "false", value: 1 },
+                { group: "true", value: 2 },
               ],
             },
             {
               name: "enable_entity_navigation",
-              values: [{ group: "false", value: 3 }],
+              values: [
+                { group: "false", value: 3 },
+                { group: "true", value: 0 },
+              ],
             },
           ],
         });
@@ -842,8 +1010,8 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         );
 
         expect(enableEntityNavigationProp?.values).toEqual([
-          { group: "true", value: 1 },
           { group: "false", value: 2 },
+          { group: "true", value: 1 },
         ]);
       });
     });

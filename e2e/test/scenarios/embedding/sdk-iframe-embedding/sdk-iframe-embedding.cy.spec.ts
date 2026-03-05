@@ -522,27 +522,45 @@ describe("scenarios > embedding > modular embedding", () => {
             properties: [
               {
                 name: "drills",
-                values: [{ group: "true", value: 1 }],
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
               },
               {
                 name: "with_downloads",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
               },
               {
                 name: "with_title",
-                values: [{ group: "true", value: 1 }],
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
               },
               {
                 name: "with_subscriptions",
-                values: [{ group: "true", value: 1 }],
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
               },
               {
                 name: "auto_refresh_interval",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
               },
               {
                 name: "enable_entity_navigation",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
               },
             ],
           },
@@ -551,31 +569,38 @@ describe("scenarios > embedding > modular embedding", () => {
             properties: [
               {
                 name: "drills",
-                values: [{ group: "true", value: 1 }],
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
               },
               {
                 name: "with_downloads",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
               },
               {
                 name: "with_title",
-                values: [{ group: "true", value: 1 }],
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
               },
               {
                 name: "is_save_enabled",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
               },
               {
                 name: "with_alerts",
-                values: [{ group: "false", value: 1 }],
-              },
-              {
-                name: "id_new_native",
-                values: [{ group: "false", value: 1 }],
-              },
-              {
-                name: "id_new",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
               },
             ],
           },
@@ -584,7 +609,24 @@ describe("scenarios > embedding > modular embedding", () => {
             properties: [
               {
                 name: "is_save_enabled",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "id_new_native",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "id_new",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
               },
             ],
           },
@@ -593,11 +635,17 @@ describe("scenarios > embedding > modular embedding", () => {
             properties: [
               {
                 name: "read_only",
-                values: [{ group: "true", value: 1 }],
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
               },
               {
                 name: "enable_entity_navigation",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
               },
             ],
           },
@@ -638,23 +686,47 @@ describe("scenarios > embedding > modular embedding", () => {
           {
             name: "dashboard",
             properties: [
-              { name: "drills", values: [{ group: "true", value: 1 }] },
+              {
+                name: "drills",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
               {
                 name: "with_downloads",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
               },
-              { name: "with_title", values: [{ group: "true", value: 1 }] },
+              {
+                name: "with_title",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
               {
                 name: "with_subscriptions",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
               },
               {
                 name: "auto_refresh_interval",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
               },
               {
                 name: "enable_entity_navigation",
-                values: [{ group: "false", value: 1 }],
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
               },
             ],
           },
