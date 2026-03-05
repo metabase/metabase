@@ -327,7 +327,11 @@ export function getSingleSeriesDimensionsAndMetrics(
   series: SingleSeries,
   maxDimensions: number = 2,
   maxMetrics: number = Infinity,
-) {
+): {
+  dimensions: string[] | [null];
+  metrics: string[] | [null];
+  bubble?: null;
+} {
   const { data } = series;
   if (!data) {
     return {
@@ -419,14 +423,14 @@ export function computeMaxDecimalsForValues(
 
 export const preserveExistingColumnsOrder = (
   prevColumns: string[] | null,
-  newColumns: string[],
+  newColumns: string[] | [null],
 ) => {
   if (!prevColumns || prevColumns.length === 0) {
     return newColumns;
   }
 
-  const newSet = new Set(newColumns);
-  const prevSet = new Set(prevColumns);
+  const newSet = new Set<string | null>(newColumns);
+  const prevSet = new Set<string | null>(prevColumns);
 
   const addedColumns = newColumns.filter((column) => !prevSet.has(column));
   const prevOrderedColumnsExceptRemoved = prevColumns.map((column) =>
