@@ -56,13 +56,13 @@
       (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 16}))))
 
     (testing "for mariadb"
-      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 4 :patch 0})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 11 :minor 4 :patch 0})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 5 :patch 0})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 4 :patch 1})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 9 :minor 4 :patch 0})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 3 :patch 0})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 4 :patch -1}))))))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 2 :patch 2})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 11 :minor 2 :patch 2})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 3 :patch 2})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 2 :patch 3})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 9 :minor 2 :patch 2})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 1 :patch 2})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 2 :patch 1}))))))
 
 (deftest parse-db-version-test
   (testing "Can parse H2 version strings"

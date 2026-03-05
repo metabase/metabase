@@ -130,7 +130,7 @@
    ;; Do the tests need to be upgraded?
    ;; Temporarily require only 10.2.23 so we can get tests passing for now while I investigate
    ;; what version tests should use.
-   :mariadb  {:major 10 :minor 2 :patch 0}})
+   :mariadb  {:major 10 :minor 2 :patch 2}})
 
 (defn- parse-db-version
   [product-version]
