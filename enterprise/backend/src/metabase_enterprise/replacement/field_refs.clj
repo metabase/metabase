@@ -49,11 +49,11 @@
             (into [] (map #(m/update-existing % :columns legacy-refs-or-names->names)) column-formatting))]
     (-> viz-settings
         (m/update-existing ::vs/column-settings update-column-settings)
+        (m/update-existing :table.column_formatting update-column-formatting)
         (m/update-existing-in [:pivot_table.column_split :rows] legacy-refs-or-names->names)
         (m/update-existing-in [:pivot_table.column_split :columns] legacy-refs-or-names->names)
         (m/update-existing-in [:pivot_table.column_split :values] legacy-refs-or-names->names)
-        (m/update-existing-in [:pivot_table.collapsed_rows :rows] legacy-refs-or-names->names)
-        (m/update-existing :table.column_formatting update-column-formatting))))
+        (m/update-existing-in [:pivot_table.collapsed_rows :rows] legacy-refs-or-names->names))))
 
 (defn- upgrade-column-settings-keys
   "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
