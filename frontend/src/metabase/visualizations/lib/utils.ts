@@ -456,7 +456,7 @@ export const preserveExistingColumnsOrder = (
   return mergedColumnsResult;
 };
 
-export function getCardKey(cardId: CardId) {
+export function getCardKey(cardId: CardId | undefined) {
   return `${cardId ?? "unsaved"}`;
 }
 
