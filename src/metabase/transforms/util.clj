@@ -31,7 +31,6 @@
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.formatting.date :as fmt.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -453,19 +452,13 @@
 
 (defn- parse-datetime [^String s] (u.date/parse s))
 
-(defn- serialize-checkpoint-value [type value]
-  (case type
-    "DateTime" (fmt.date/datetime->iso-string value)
-    nil nil
-    (str value)))
-
 (defn save-watermark!
   "Commits the incremental transforms :hi watermark value to the appdb."
   [transform-id source-range-params]
   (t2/update! :model/Transform
               transform-id
               {:last_checkpoint_type  (:type (:hi source-range-params))
-               :last_checkpoint_value (serialize-checkpoint-value (:type (:hi source-range-params)) (:value (:hi source-range-params)))}))
+               :last_checkpoint_value (some-> source-range-params :hi :value str)}))
 
 (defn- deserialize-checkpoint-value [last_checkpoint_type last_checkpoint_value]
   (case last_checkpoint_type
