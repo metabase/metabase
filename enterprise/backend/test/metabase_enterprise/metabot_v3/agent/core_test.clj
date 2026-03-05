@@ -619,7 +619,7 @@
                                 :profile-id      :internal
                                 :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000001"}})
               ;; Filter for just token_usage events (other events may also be present)
-              (let [events      (snowplow-test/pop-event-data-and-user-id!)
+              (let [events       (snowplow-test/pop-event-data-and-user-id!)
                     token-events (filter #(contains? (:data %) "total_tokens") events)]
                 (is (=? [{:user-id (str rasta-id)
                           :data    {"model_id"            "test-model"
@@ -657,7 +657,7 @@
   (testing "fires :snowplow/ai_service_event 'user_intent' when :track-user-intent? is true"
     (let [rasta-id (mt/user->id :rasta)]
       (with-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
-                    self/call-llm       (fn [& _] [{:type :text :text "<category>query_data</category>"}])]
+                    self/call-llm         (fn [& _] [{:type :text :text "<category>query_data</category>"}])]
         (mt/with-current-user rasta-id
           (snowplow-test/with-fake-snowplow-collector
             (run-agent-loop! {:messages            [{:role :user :content "Show sales by region"}]
@@ -682,8 +682,11 @@
 (deftest user-intent-not-tracked-when-disabled-test
   (testing "does not fire user_intent event when :track-user-intent? is false"
     (let [classify-called (atom false)]
-      (with-redefs [openrouter/openrouter                                   (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
-                    agent-analytics/classify-and-track-user-intent-async! (fn [_ _] (reset! classify-called true))]
+      (with-redefs [openrouter/openrouter
+                    (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
+
+                    agent-analytics/classify-and-track-user-intent-async!
+                    (fn [_ _] (reset! classify-called true))]
         (run-agent-loop! {:messages        [{:role :user :content "test"}]
                           :state           {}
                           :context         {}
@@ -695,9 +698,9 @@
   (testing "does not propagate exception if classify-user-intent throws"
     (let [classify-called (atom false)]
       (with-redefs [openrouter/openrouter (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
-                    self/call-llm       (fn [& _]
-                                          (reset! classify-called true)
-                                          (throw (ex-info "LLM error" {})))]
+                    self/call-llm         (fn [& _]
+                                            (reset! classify-called true)
+                                            (throw (ex-info "LLM error" {})))]
         ;; Should not throw — exception is caught inside the background future
         (run-agent-loop! {:messages            [{:role :user :content "test"}]
                           :state               {}
