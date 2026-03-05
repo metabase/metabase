@@ -7,6 +7,8 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import type { ClickObject } from "../types";
+
 type Dimension = {
   col: DatasetColumn;
   value: RowValue;
@@ -45,7 +47,7 @@ export function getTableCellClickedObject(
   columnIndex: number,
   isPivoted: boolean,
   clickedRowData: Dimension[] | null,
-) {
+): ClickObject {
   const { rows, cols } = data;
 
   const column = cols[columnIndex];
@@ -67,8 +69,10 @@ export function getTableCellClickedObject(
         value,
         column,
         settings,
-        dimensions: [row._dimension, column._dimension],
-        data: clickedRowData,
+        dimensions: [row._dimension, column._dimension].filter(
+          (dimension) => dimension != null,
+        ),
+        data: clickedRowData ?? undefined,
       };
     }
   } else if (column.source === "aggregation") {
@@ -80,7 +84,7 @@ export function getTableCellClickedObject(
         .map((col, index) => ({ value: row[index], column: col }))
         .filter((dimension) => dimension.column.source === "breakout"),
       origin: { rowIndex, row, cols },
-      data: clickedRowData,
+      data: clickedRowData ?? undefined,
     };
   } else {
     // Clicks on aggregation columns can wind up here if the query has stages after the aggregation / breakout
@@ -91,7 +95,7 @@ export function getTableCellClickedObject(
       column,
       settings,
       origin: { rowIndex, row, cols },
-      data: clickedRowData,
+      data: clickedRowData ?? undefined,
     };
   }
 }
