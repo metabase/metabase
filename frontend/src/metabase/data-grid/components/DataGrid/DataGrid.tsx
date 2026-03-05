@@ -251,6 +251,8 @@ export const DataGrid = function DataGrid<TData>({
                         header.column.id === lastPinnedColumn?.id;
                       const hasSeparator =
                         isLastPinned && !isLastPinnedColumnRowId;
+                      const isRowIdColumn =
+                        header.column.id === ROW_ID_COLUMN_ID;
                       const totalWidth = hasSeparator
                         ? width + PINNED_BORDER_SEPARATOR_WIDTH
                         : width;
@@ -266,25 +268,24 @@ export const DataGrid = function DataGrid<TData>({
                             width: totalWidth,
                           };
 
-                      const headerContent =
-                        header.column.id === ROW_ID_COLUMN_ID ? (
-                          headerCell
-                        ) : (
-                          <SortableHeader
-                            className={cx(S.headerCell, classNames?.headerCell)}
-                            style={{
-                              backgroundColor: stickyElementsBackgroundColor,
-                              ...styles?.headerCell,
-                            }}
-                            isColumnReorderingDisabled={
-                              isColumnReorderingDisabled
-                            }
-                            header={header}
-                            onClick={onHeaderCellClick}
-                          >
-                            {headerCell}
-                          </SortableHeader>
-                        );
+                      const headerContent = isRowIdColumn ? (
+                        headerCell
+                      ) : (
+                        <SortableHeader
+                          className={cx(S.headerCell, classNames?.headerCell)}
+                          style={{
+                            backgroundColor: stickyElementsBackgroundColor,
+                            ...styles?.headerCell,
+                          }}
+                          isColumnReorderingDisabled={
+                            isColumnReorderingDisabled || isRowIdColumn
+                          }
+                          header={header}
+                          onClick={onHeaderCellClick}
+                        >
+                          {headerCell}
+                        </SortableHeader>
+                      );
 
                       return (
                         <div
