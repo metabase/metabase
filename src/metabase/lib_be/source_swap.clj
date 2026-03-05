@@ -5,7 +5,6 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.parameters :as lib.parameters]
    [metabase.lib.query :as lib.query]
@@ -58,12 +57,21 @@
          (not= (:fk-target-field-id old-column) (:fk-target-field-id new-column)))
     (conj :foreign-key-mismatch)))
 
+(mu/defn- source-columns :- [:sequential ::lib.schema.metadata/column]
+  "Get columns for a source. For cards, filters out remapped columns."
+  [mp
+   [source-type source-id] :- ::lib-be.schema.source-swap/source]
+  (case source-type
+    :table (lib.metadata/fields mp source-id)
+    :card  (into [] (remove :remapped-from) (lib.card/saved-question-metadata mp source-id))))
+
 (mu/defn check-column-mappings :- [:sequential ::lib-be.schema.source-swap/column-mapping]
-  "Build column mappings between source and target query columns."
-  [source-query :- ::lib.schema/query
-   target-query :- ::lib.schema/query]
-  (let [old-columns    (into [] (remove :remapped-from) (lib.metadata.calculation/returned-columns source-query))
-        new-columns    (into [] (remove :remapped-from) (lib.metadata.calculation/returned-columns target-query))
+  "Build column mappings between source and target columns."
+  [mp
+   old-source :- ::lib-be.schema.source-swap/source
+   new-source :- ::lib-be.schema.source-swap/source]
+  (let [old-columns    (source-columns mp old-source)
+        new-columns    (source-columns mp new-source)
         old-by-name    (m/index-by column-match-key old-columns)
         new-by-name    (m/index-by column-match-key new-columns)
         all-names      (distinct (concat (map column-match-key old-columns)
@@ -234,26 +242,21 @@
 
 (mu/defn- build-field-id-mapping :- ::field-id-mapping
   "Builds a mapping of old field IDs to new columns."
-  [query                                    :- ::lib.schema/query
-   [old-source-type old-source-id]          :- ::lib-be.schema.source-swap/source
-   [new-source-type new-source-id]          :- ::lib-be.schema.source-swap/source]
-  (letfn [(source->columns [source-type source-id]
-            (case source-type
-              :table (lib.metadata/fields query source-id)
-              :card  (lib.card/saved-question-metadata query source-id)))
-          (old-column-id->new-column [old-columns new-column-by-key]
-            (into {}
-                  (keep (fn [old-column]
-                          (when-let [new-column (get new-column-by-key (column-match-key old-column))]
-                            (when (and (:id old-column))
-                              [(:id old-column) new-column]))))
-                  old-columns))]
-    (let [old-columns (source->columns old-source-type old-source-id)
-          new-columns (source->columns new-source-type new-source-id)
-          new-column-by-key (m/index-by column-match-key new-columns)]
-      {:old-id->new-column (old-column-id->new-column old-columns new-column-by-key)
-       :old-source-type old-source-type
-       :new-source-type new-source-type})))
+  [query                                         :- ::lib.schema/query
+   [old-source-type _old-id :as old-source]      :- ::lib-be.schema.source-swap/source
+   [new-source-type _new-id :as new-source]      :- ::lib-be.schema.source-swap/source]
+  (let [old-columns       (source-columns query old-source)
+        new-columns       (source-columns query new-source)
+        new-column-by-key (m/index-by column-match-key new-columns)
+        old-id->new-column (into {}
+                                 (keep (fn [old-column]
+                                         (when-let [new-column (get new-column-by-key (column-match-key old-column))]
+                                           (when (:id old-column)
+                                             [(:id old-column) new-column]))))
+                                 old-columns)]
+    {:old-id->new-column old-id->new-column
+     :old-source-type    old-source-type
+     :new-source-type    new-source-type}))
 
 (mu/defn- swap-field-ref :- ::lib.schema.ref/ref
   "Swaps a field ref to reference the new source. Assumes that query has been upgraded to use alias-based field refs.

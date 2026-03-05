@@ -4,9 +4,6 @@
    [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema.source-swap :as lib-be.schema.source-swap]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
@@ -29,21 +26,13 @@
    :effective_type (some-> (:effective-type col) u/qualified-name)
    :semantic_type  (some-> (:semantic-type col) u/qualified-name)})
 
-(mu/defn- fetch-source :- [:map
-                           [:query       ::lib.schema/query]
-                           [:database-id ::lib.schema.id/database]]
-  "Fetch source metadata, its database ID, and a query for the source."
+(mu/defn- fetch-source-database-id :- ::lib.schema.id/database
+  "Fetch a database ID for a source."
   [entity-type :- ::replacement.schema/source-entity-type
    entity-id   :- ::replacement.schema/source-entity-id]
   (case entity-type
-    :card  (let [mp   (lib-be/application-database-metadata-provider
-                       (t2/select-one-fn :database_id :model/Card :id entity-id))
-                 card (lib.metadata/card mp entity-id)]
-             {:query (lib/query mp card) :database-id (:database-id card)})
-    :table (let [db-id (t2/select-one-fn :db_id :model/Table :id entity-id)
-                 mp    (lib-be/application-database-metadata-provider db-id)
-                 table (lib.metadata/table mp entity-id)]
-             {:query (lib/query mp table) :database-id (:db-id table)})))
+    :card  (t2/select-one-fn :database_id :model/Card :id entity-id)
+    :table (t2/select-one-fn :db_id :model/Table :id entity-id)))
 
 (mu/defn- format-column-mappings :- [:sequential ::replacement.schema/column-mapping]
   "Format column mappings by applying format-column to source and target columns."
@@ -61,15 +50,18 @@
    [new-type new-id :as new-ref]]
   (if (= old-ref new-ref)
     {:success false}
-    (let [{source-db :database-id, source-query :query} (fetch-source old-type old-id)
-          {target-db :database-id, target-query :query} (fetch-source new-type new-id)
-          db-mismatch?   (not= source-db target-db)
-          cycle?         (some #(= new-ref %) (replacement.usages/transitive-usages old-ref))
-          mappings       (format-column-mappings (lib-be/check-column-mappings source-query target-query))
-          has-missing?   (some (fn [m] (and (:source m) (nil? (:target m)))) mappings)
+    (let [source-db-id    (fetch-source-database-id old-type old-id)
+          target-db-id    (fetch-source-database-id new-type new-id)
+          db-mismatch?    (not= source-db-id target-db-id)
+          cycle?          (some #(= new-ref %) (replacement.usages/transitive-usages old-ref))
+          mappings        (when-not db-mismatch?
+                            (-> (lib-be/application-database-metadata-provider source-db-id)
+                                (lib-be/check-column-mappings old-ref new-ref)
+                                format-column-mappings))
+          has-missing?    (some (fn [m] (and (:source m) (nil? (:target m)))) mappings)
           has-col-errors? (seq (mapcat :errors mappings))
           implicit-joins? (and (= old-type :table) (has-incoming-fks? old-id))
-          success?       (not (or db-mismatch? cycle? has-missing? has-col-errors? implicit-joins?))
+          success?        (not (or db-mismatch? cycle? has-missing? has-col-errors? implicit-joins?))
           reported-errors (cond-> []
                             db-mismatch?    (conj :database-mismatch)
                             cycle?          (conj :cycle-detected)
