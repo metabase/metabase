@@ -50,7 +50,14 @@ export function getURLForCardState(
     objectId?: string;
   }
   const options: Options = {
-    hash: card && dirty ? serializeCardForUrl(card) : "",
+    hash:
+      card && dirty
+        ? serializeCardForUrl(card, {
+            includeOriginalCardId: true,
+            includeDatasetQuery: true,
+            includeDisplayIsLocked: true,
+          })
+        : "",
     query,
   };
   const isAdHocQuestion = !card.id;

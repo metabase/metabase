@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { trackMeasureCreateStarted } from "metabase/data-studio/analytics";
 import {
   EntityList,
   EntityListItem,
@@ -8,7 +9,7 @@ import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex } from "metabase/ui";
-import type { Table } from "metabase-types/api";
+import type { ConcreteTableId, Table } from "metabase-types/api";
 
 type TableMeasuresProps = {
   table: Table;
@@ -19,13 +20,6 @@ export function TableMeasures({ table }: TableMeasuresProps) {
     getUserCanWriteMeasures(state, table.is_published),
   );
   const measures = table.measures ?? [];
-  let newButtonLabel: string | undefined;
-  let newButtonUrl: string | undefined;
-
-  if (canWriteMeasures) {
-    newButtonLabel = t`New measure`;
-    newButtonUrl = Urls.dataStudioPublishedTableMeasureNew(table.id);
-  }
 
   return (
     <Flex direction="column" flex={1}>
@@ -37,8 +31,16 @@ export function TableMeasures({ table }: TableMeasuresProps) {
           title: t`No measures yet`,
           message: t`Create a measure to define aggregations for this table.`,
         }}
-        newButtonLabel={newButtonLabel}
-        newButtonUrl={newButtonUrl}
+        newButtonProps={
+          canWriteMeasures
+            ? {
+                label: t`New measure`,
+                trackClickEvent: () =>
+                  trackMeasureCreateStarted(table.id as ConcreteTableId),
+                url: Urls.dataStudioPublishedTableMeasureNew(table.id),
+              }
+            : undefined
+        }
         renderItem={(measure) => (
           <EntityListItem
             key={measure.id}
