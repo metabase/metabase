@@ -24,7 +24,7 @@
   [req]
   (let [enabled-count (count (filter identity
                                      [(sso-settings/saml-enabled)
-                                      (sso-settings/jwt-enabled)
+                                      (sso-settings/jwt-enabled-and-configured)
                                       (sso-settings/slack-connect-enabled)]))]
     (cond
       ;; Multiple SSO methods enabled - use preferred_method or selection logic
@@ -32,7 +32,7 @@
 
       ;; Single SSO method enabled
       (sso-settings/saml-enabled) :saml
-      (sso-settings/jwt-enabled)  :jwt
+      (sso-settings/jwt-enabled-and-configured)  :jwt
       (sso-settings/slack-connect-enabled)  :slack-connect
 
       ;; No SSO method enabled
