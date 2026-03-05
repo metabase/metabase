@@ -7,8 +7,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.util :as lib.util]
-   [metabase.models.visualization-settings :as vs]
-   [metabase.util.malli :as mu]))
+   [metabase.models.visualization-settings :as vs]))
 
 (defn update-card-viz-settings
   [query
@@ -64,22 +63,22 @@
 
 (defn update-dashcard-viz-settings
   [viz-settings card-id->query update-fn]
-  (letfn [(upgrade-mapping [query mapping]
+  (letfn [(update-mapping [query mapping]
             (let [target (::vs/param-mapping-target mapping)]
               (if-let [dimension (::vs/param-dimension target)]
                 (let [dimension' (update-fn query dimension)]
                   (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] dimension'))
                 mapping)))
-          (upgrade-click-behavior [click-behavior]
+          (update-click-behavior [click-behavior]
             (or (when-let [card-id (click-behavior->card-id click-behavior)]
                   (when-let [query (get card-id->query card-id)]
                     (m/update-existing click-behavior ::vs/parameter-mapping
                                        (fn [mappings]
-                                         (m/map-vals #(upgrade-mapping query %) mappings)))))
+                                         (m/map-vals #(update-mapping query %) mappings)))))
                 click-behavior))
-          (upgrade-column-settings [col-settings]
-            (m/map-vals #(m/update-existing % ::vs/click-behavior upgrade-click-behavior)
+          (update-column-settings [col-settings]
+            (m/map-vals #(m/update-existing % ::vs/click-behavior update-click-behavior)
                         col-settings))]
     (-> viz-settings
-        (m/update-existing ::vs/click-behavior upgrade-click-behavior)
-        (m/update-existing ::vs/column-settings upgrade-column-settings))))
+        (m/update-existing ::vs/click-behavior update-click-behavior)
+        (m/update-existing ::vs/column-settings update-column-settings))))
