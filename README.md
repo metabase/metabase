@@ -10,7 +10,9 @@
 
 ## Get started
 
-The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get expert support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving a major open-source project). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase) Metabase at any time (or vice versa).
+The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout).
+
+You get expert support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving a major open-source project). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase) Metabase at any time (or vice versa).
 
 ## Key Features
 
@@ -38,56 +40,14 @@ Take a [tour of Metabase](https://www.metabase.com/learn/metabase-basics/overvie
 
 Metabase can be run just about anywhere. Check out our [Installation Guides](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase).
 
-## Contributing
+## Documentation
 
-## Quick Setup: Dev environment
-
-In order to spin up a development environment, you need to start the front end and the backend as follows:
-
-### Frontend quick setup
-
-The following command will install the JavaScript dependencies:
-
-```bash
-bun install
-```
-
-To build and run without watching changes:
-
-```bash
-bun run build
-```
-
-To build and run with hot-reload:
-
-```bash
-bun run build-hot
-```
-
-### Backend  quick setup
-
-To run the backend, you'll need to build the drivers first, and then start the backend:
-
-```bash
-./bin/build-drivers.sh
-clojure -M:run
-```
-
-For a more detailed setup of a dev environment for Metabase, check out our [Developers Guide](./docs/developers-guide/start.md).
+- [Metabase docs (for using Metabase](https://www.metabase.com/docs/latest/).
+- [Developer docs (for working on Metabase](./docs/developers-guide/start.md).
 
 ## Internationalization
 
 We want Metabase to be available in as many languages as possible. See which translations are available and help contribute to internationalization using our project over at [Crowdin](https://crowdin.com/project/metabase-i18n). You can also check out our [policies on translations](https://www.metabase.com/docs/latest/administration-guide/localization.html).
-
-## Extending Metabase
-
-Hit our Query API from JavaScript to integrate analytics. Metabase enables your application to:
-
-- Build moderation interfaces.
-- Export subsets of your users to third party marketing automation software.
-- Provide a custom customer lookup application for the people in your company.
-
-Check out our guide, [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).
 
 ## Security Disclosure
 
