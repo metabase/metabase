@@ -162,7 +162,6 @@
            events
            models
            settings
-           tracing
            util}}
 
   api-keys
@@ -669,7 +668,6 @@
    :api  #{metabase.events.core
            metabase.events.init}
    :uses #{models
-           tracing
            util}
    :friends #{tracing}}
 
