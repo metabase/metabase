@@ -50,7 +50,7 @@ function useShouldRender(node: HTMLElement | null): boolean {
       setShouldRender(hasVisibleContent(node));
     };
 
-    // Initial check runs synchronously to avoid a flash of content
+    // Run an initial check as soon as the node is attached, before the first observer event
     update();
 
     const observer = new MutationObserver(update);
