@@ -627,6 +627,37 @@
       (is (=? {:message (str "Cycle detected: " expr-name " → " expr-name)}
               (lib.expression/diagnose-expression query2 0 :aggregation expr 1))))))
 
+(deftest ^:parallel diagnose-expression-incompatible-types-test
+  (testing "expressions with incompatible types show correct error messages"
+    (are [expr msg] (= {:message msg
+                        :friendly true}
+                       (lib.expression/diagnose-expression
+                        (lib.tu/venues-query) 0 :expression
+                        (lib.convert/->pMBQL expr)
+                        #?(:clj nil :cljs js/undefined)))
+      ;; basic checks with different types
+      [:+ 1 true]  "Types are incompatible: + expects a number."
+      [:- 1 "str"] "Types are incompatible: - expects a number."
+      [:* false 1] "Types are incompatible: * expects a number."
+      [:/ "str" 1] "Types are incompatible: / expects a number."
+      ;; functions that expect different types
+      [:upper 1]   "Types are incompatible: upper expects a string."
+      [:get-day 1] "Types are incompatible: get-day expects a date or time."
+      [:not 1]     "Types are incompatible: not expects a boolean."
+      ;; function with multiple args of different types
+      [:substring 1 1 1]        "Types are incompatible: substring expects a string."
+      [:substring "str" 1 true] "Types are incompatible: substring expects an integer."
+      [:substring "str" true 1] "Types are incompatible: substring expects an integer."
+      [:substring 1 true false] "Types are incompatible: substring expects a string."
+      ;; nested expressions
+      [:+ 1 [:- 1 true] 1] "Types are incompatible: - expects a number."
+      [:+ true [:- 1 1] 1] "Types are incompatible: + expects a number."
+      [:+ 1 [:- 1 1] true] "Types are incompatible: + expects a number."
+      [:+ true [:- 1 true] 1] "Types are incompatible: + expects a number."
+      [:+ 1 [:- 1 true] true] "Types are incompatible: - expects a number."
+      [:+ 1 [:- 1 [:* 1 [:/ 1 true]]]] "Types are incompatible: / expects a number."
+      [:+ 1 [:- 1 [:* true [:/ 1 1]]]] "Types are incompatible: * expects a number.")))
+
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
     #{:type/Date :type/Text} "2024-07-02"))

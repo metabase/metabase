@@ -660,12 +660,8 @@
     :type/Boolean (i18n/tru "a boolean")
     :type/Text (i18n/tru "a string")
     :type/Integer (i18n/tru "an integer")
-    :type/Float (i18n/tru "a number")
     :type/Number (i18n/tru "a number")
-    :type/Date (i18n/tru "a date")
-    :type/Time (i18n/tru "a time")
-    :type/DateTime (i18n/tru "a date time")
-    :type/Temporal (i18n/tru "a date, time, or date time")
+    :type/Temporal (i18n/tru "a date or time")
     nil))
 
 (defn- friendly-error-message
