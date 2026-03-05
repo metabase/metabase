@@ -19,14 +19,14 @@ You get expert support, backups, upgrades, an SMTP server, SSL certificate, SoC2
 - [Set up in five minutes](https://www.metabase.com/docs/latest/configuring-metabase/setting-up-metabase) (we're not kidding), or have us [host Metabase for you](https://www.metabase.com/cloud/) so you don't even need to think about it.
 - Let anyone on your team [ask questions](https://www.metabase.com/docs/latest/questions/introduction) without knowing SQL.
 - Use the [SQL editor](https://www.metabase.com/docs/latest/questions/native-editor/writing-sql) for more complex queries.
+- Ask AI: [Metabot](https://www.metabase.com/docs/latest/ai/metabot) gives you answers you can trust, helps you write queries, and more. Or build your own [AI agent](https://www.metabase.com/docs/latest/ai/agent-api) to query your data.
 - Build handsome, interactive [dashboards](https://www.metabase.com/docs/latest/dashboards/introduction) with filters, auto-refresh, fullscreen, custom click behavior, and more.
 - Use [documents](https://www.metabase.com/docs/latest/documents/introduction) for long-form data analysis, and invite people to comment.
-- Ask AI: [Metabot](https://www.metabase.com/docs/latest/ai/metabot) gives you answers you can trust, helps you write queries, and more. Or build your own [AI agent](https://www.metabase.com/docs/latest/ai/agent-api) to query your data.
-- Metabase's [Data Studio](https://www.metabase.com/docs/latest/data-studio/overview?use_case=bi) is a workbench for analysts to transform raw data into analytics-ready tables, track down broken dependencies, and define canonical [segments and metrics](https://www.metabase.com/docs/latest/data-modeling/metrics).
+- [Transform](https://www.metabase.com/docs/latest/data-studio/transforms/transforms-overview) raw data into analytics-ready tables, track down broken dependencies, and define canonical metrics in Metabase's [Data Studio](https://www.metabase.com/docs/latest/data-studio/overview).
 - Set up [alerts on your data](https://www.metabase.com/docs/latest/questions/alerts), or schedule [dashboard subscriptions](https://www.metabase.com/docs/latest/dashboards/subscriptions) to email, Slack, or even a webhook.
 - Curate content in a [Library](https://www.metabase.com/docs/latest/data-studio/library), and [version your work with Git](https://www.metabase.com/docs/latest/installation-and-operation/remote-sync).
-- Sophisticated, set-and-forget [permissions](https://www.metabase.com/docs/latest/permissions/introduction) that work for both internal teams and embedded analytics, whether you co-locate your customer data, or give each customer their own database.
-- [Modular embedding (with an SDK)](https://www.metabase.com/docs/latest/embedding/introduction). Components for charts, dashboards, data browser, AI chat, and more. You can even put [an entire Metabase](https://www.metabase.com/docs/latest/embedding/interactive-embedding) in your app.
+- [Embed Metabase in your app](https://www.metabase.com/docs/latest/embedding/introduction), with components for charts, dashboards, data browser, AI chat, and more. You can even put [an entire Metabase](https://www.metabase.com/docs/latest/embedding/interactive-embedding) in your app.
+- Set granular [permissions](https://www.metabase.com/docs/latest/permissions/introduction) that work for both internal teams and embedded analytics, whether you co-locate your customer data, or give each customer their own database.
 - Dark mode, content translations, and way more stuff than we can list here.
 
 Take a [tour of Metabase](https://www.metabase.com/learn/metabase-basics/overview/tour-of-metabase).
