@@ -75,6 +75,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
               <MetricsViewerTabs
                 tabs={tabs}
                 activeTabId={activeTabId}
+                isLoading={!hasLoadedDefinitions}
                 availableDimensions={availableDimensions}
                 sourceOrder={sourceOrder}
                 sourceDataById={sourceDataById}

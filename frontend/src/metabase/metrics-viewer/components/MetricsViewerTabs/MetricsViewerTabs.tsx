@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { ActionIcon, Icon, Tabs } from "metabase/ui";
+import { ActionIcon, Icon, Skeleton, Tabs } from "metabase/ui";
 
 import type {
   MetricSourceId,
@@ -18,6 +18,7 @@ import S from "./MetricsViewerTabs.module.css";
 type MetricsViewerTabsProps = {
   tabs: MetricsViewerTabState[];
   activeTabId: string | null;
+  isLoading?: boolean;
   availableDimensions: AvailableDimensionsResult;
   sourceOrder: MetricSourceId[];
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
@@ -29,6 +30,7 @@ type MetricsViewerTabsProps = {
 export function MetricsViewerTabs({
   tabs,
   activeTabId,
+  isLoading,
   availableDimensions,
   sourceOrder,
   sourceDataById,
@@ -70,7 +72,11 @@ export function MetricsViewerTabs({
             aria-label={tab.label}
             className={S.tab}
           >
-            {tab.label}
+            {isLoading ? (
+              <Skeleton display="inline-block" w={70} h="1em" />
+            ) : (
+              tab.label
+            )}
             <ActionIcon
               className={S.closeButton}
               size="xs"
