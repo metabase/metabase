@@ -172,9 +172,6 @@
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (let [metadata (.getMetaData conn)
           db-version (db-version metadata)
-          ; Should we use one of these existing approaches?
-          ; https://github.com/metabase/metabase/blob/71606de98c4079ef37255ca71e3f848dcbe6a7a9/src/metabase/driver/mysql.clj#L127
-          ;
           db-type (or (when (= "MariaDB" (.getDatabaseProductName metadata)) :mariadb)
                       db-type)]
       (log/warn "Found DB metadata" {:product-name (.getDatabaseProductName metadata)
@@ -184,7 +181,6 @@
       (if (supported-app-db-version? db-type db-version)
         (log/infof "Successfully verified %s %s application database connection. %s"
                    (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅"))
-        ; TODO make this message better
         (throw (ex-info (str/join \newline [(trs "Metabase {0} DB version not supported (found {1}, required {2}). Please upgrade your database to a supported version and try again."
                                                  (name db-type)
                                                  (.getDatabaseProductVersion metadata)
