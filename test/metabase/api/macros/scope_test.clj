@@ -3,6 +3,15 @@
    [clojure.test :refer :all]
    [metabase.api.macros.scope :as scope]))
 
+(defn- invoke-handler
+  "Invoke an async Ring handler and return the response, with a generous timeout in case things go wrong."
+  [handler request]
+  (let [result (promise)]
+    (handler request result identity)
+    (let [response (deref result 10000 ::timeout)]
+      (is (not= ::timeout response) "Handler did not respond within 1000ms")
+      response)))
+
 (deftest ^:parallel parse-scopes-test
   (testing "nil input returns nil"
     (is (nil? (scope/parse-scopes nil))))
@@ -49,62 +58,49 @@
                      (respond {:status 200 :body "ok"}))
         middleware (scope/enforce-scope "agent:workspaces")]
     (testing "nil token-scopes (normal session auth) passes through"
-      (let [result (promise)]
-        ((middleware ok-handler) {} result identity)
-        (is (= {:status 200 :body "ok"} @result))))
+      (is (= {:status 200 :body "ok"}
+             (invoke-handler (middleware ok-handler) {}))))
     (testing "matching scope passes through"
-      (let [result (promise)]
-        ((middleware ok-handler) {:token-scopes #{"agent:workspaces"}} result identity)
-        (is (= {:status 200 :body "ok"} @result))))
+      (is (= {:status 200 :body "ok"}
+             (invoke-handler (middleware ok-handler) {:token-scopes #{"agent:workspaces"}}))))
     (testing "wildcard scope passes through"
-      (let [result (promise)]
-        ((middleware ok-handler) {:token-scopes #{"agent:*"}} result identity)
-        (is (= {:status 200 :body "ok"} @result))))
+      (is (= {:status 200 :body "ok"}
+             (invoke-handler (middleware ok-handler) {:token-scopes #{"agent:*"}}))))
     (testing "insufficient scope returns 403"
-      (let [result (promise)]
-        ((middleware ok-handler) {:token-scopes #{"agent:queries"}} result identity)
-        (is (= 403 (:status @result)))
-        (is (= "insufficient_scope" (get-in @result [:body :error])))))
+      (let [response (invoke-handler (middleware ok-handler) {:token-scopes #{"agent:queries"}})]
+        (is (= 403 (:status response)))
+        (is (= "insufficient_scope" (get-in response [:body :error])))))
     (testing "empty scopes set returns 403"
-      (let [result (promise)]
-        ((middleware ok-handler) {:token-scopes #{}} result identity)
-        (is (= 403 (:status @result))))))
+      (is (= 403 (:status (invoke-handler (middleware ok-handler) {:token-scopes #{}}))))))
   (testing "sets :token-scopes-checked on the request"
     (let [seen-request (promise)
           spy-handler  (fn [request respond _raise]
                          (deliver seen-request request)
                          (respond {:status 200}))
           middleware   (scope/enforce-scope "agent:workspaces")]
-      ((middleware spy-handler) {:token-scopes #{"agent:workspaces"}} identity identity)
-      (is (true? (:token-scopes-checked @seen-request))))))
+      (invoke-handler (middleware spy-handler) {:token-scopes #{"agent:workspaces"}})
+      (is (true? (:token-scopes-checked (deref seen-request 1000 ::timeout)))))))
 
 (deftest ^:parallel ensure-scopes-checked-test
   (let [ok-handler (fn [_request respond _raise]
                      (respond {:status 200 :body "ok"}))]
     (testing "nil token-scopes (not in scope context) passes through"
-      (let [result (promise)]
-        ((scope/ensure-scopes-checked ok-handler) {} result identity)
-        (is (= {:status 200 :body "ok"} @result))))
+      (is (= {:status 200 :body "ok"}
+             (invoke-handler (scope/ensure-scopes-checked ok-handler) {}))))
     (testing "unrestricted token passes through"
-      (let [result (promise)]
-        ((scope/ensure-scopes-checked ok-handler) {:token-scopes #{scope/unrestricted}} result identity)
-        (is (= {:status 200 :body "ok"} @result))))
+      (is (= {:status 200 :body "ok"}
+             (invoke-handler (scope/ensure-scopes-checked ok-handler) {:token-scopes #{scope/unrestricted}}))))
     (testing "wildcard string scope does NOT pass through (must use sentinel)"
-      (let [result (promise)]
-        ((scope/ensure-scopes-checked ok-handler) {:token-scopes #{"*"}} result identity)
-        (is (= 403 (:status @result)))))
+      (is (= 403
+             (:status (invoke-handler (scope/ensure-scopes-checked ok-handler) {:token-scopes #{"*"}})))))
     (testing "scoped request without prior check is rejected with 403"
-      (let [result (promise)]
-        ((scope/ensure-scopes-checked ok-handler) {:token-scopes #{"agent:workspaces"}} result identity)
-        (is (= 403 (:status @result)))
-        (is (= "scope_not_permitted" (get-in @result [:body :error])))))
+      (let [response (invoke-handler (scope/ensure-scopes-checked ok-handler) {:token-scopes #{"agent:workspaces"}})]
+        (is (= 403 (:status response)))
+        (is (= "scope_not_permitted" (get-in response [:body :error])))))
     (testing "scoped request with :token-scopes-checked passes through"
-      (let [result (promise)]
-        ((scope/ensure-scopes-checked ok-handler)
-         {:token-scopes #{"agent:workspaces"} :token-scopes-checked true}
-         result identity)
-        (is (= {:status 200 :body "ok"} @result))))
+      (is (= {:status 200 :body "ok"}
+             (invoke-handler (scope/ensure-scopes-checked ok-handler)
+                             {:token-scopes #{"agent:workspaces"} :token-scopes-checked true}))))
     (testing "empty token-scopes set without prior check is rejected"
-      (let [result (promise)]
-        ((scope/ensure-scopes-checked ok-handler) {:token-scopes #{}} result identity)
-        (is (= 403 (:status @result)))))))
+      (is (= 403
+             (:status (invoke-handler (scope/ensure-scopes-checked ok-handler) {:token-scopes #{}})))))))
