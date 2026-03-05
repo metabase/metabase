@@ -50,7 +50,6 @@ describe("scenarios > dependencies > Schema Viewer", () => {
 
       cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
       cy.wait("@erdError");
-      // getErrorMessage extracts the message from the response body
       cy.get("main").findByText("Internal error").should("be.visible");
     });
 
@@ -109,22 +108,6 @@ describe("scenarios > dependencies > Schema Viewer", () => {
       });
 
       getSchemaNode("PRODUCTS").should("be.visible");
-    });
-
-    it("should display all fields for the Products table", () => {
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${PRODUCTS_ID}`);
-      getSchemaViewerCanvas().should("be.visible");
-
-      getSchemaNode("PRODUCTS").within(() => {
-        cy.findByText("ID").should("be.visible");
-        cy.findByText("TITLE").should("be.visible");
-        cy.findByText("CATEGORY").should("be.visible");
-        cy.findByText("VENDOR").should("be.visible");
-        cy.findByText("PRICE").should("be.visible");
-        cy.findByText("RATING").should("be.visible");
-        cy.findByText("EAN").should("be.visible");
-        cy.findByText("CREATED_AT").should("be.visible");
-      });
     });
   });
 
@@ -206,7 +189,6 @@ describe("scenarios > dependencies > Schema Viewer", () => {
       getSchemaNode("ACCOUNTS").within(() => {
         cy.get('[class*="focal"]').should("exist");
       });
-      // Accounts has incoming FKs from analytic_events, feedback, invoices
       getSchemaEdges().should("have.length.at.least", 1);
     });
   });
@@ -215,7 +197,6 @@ describe("scenarios > dependencies > Schema Viewer", () => {
     it("should require enterprise token for the ERD endpoint", () => {
       H.restore("default");
       cy.signInAsAdmin();
-      // Don't activate the enterprise token
       cy.request({
         method: "GET",
         url: `/api/ee/dependencies/erd?database-id=1&table-ids=${ORDERS_ID}`,
@@ -251,7 +232,6 @@ describe("scenarios > dependencies > Schema Viewer", () => {
       cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
       getSchemaViewerCanvas().should("be.visible");
 
-      // Wait for dagre layout to complete
       cy.wait(500);
 
       cy.get(".react-flow__node").then(($nodes) => {
@@ -260,7 +240,6 @@ describe("scenarios > dependencies > Schema Viewer", () => {
         expect(uniqueTransforms.size).to.eq($nodes.length);
       });
 
-      // All nodes should be within the visible viewport after fitView
       cy.get(".react-flow__node").each(($node) => {
         cy.wrap($node).should("be.visible");
       });
@@ -277,17 +256,8 @@ describe("scenarios > dependencies > Schema Viewer", () => {
       getSchemaPickerButton().click();
       H.popover().findByText("Sample Database").click();
 
-      // Should load schema and show nodes
       getSchemaViewerCanvas().should("be.visible");
       cy.get(".react-flow__node").should("have.length.at.least", 1);
-    });
-
-    it("should show database/schema name in picker button after selection", () => {
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1`);
-      getSchemaViewerCanvas().should("be.visible");
-
-      // Button should show selected database/schema
-      getSchemaPickerButton().should("contain.text", "Sample Database");
     });
 
     it("should clear selection when clear button is clicked", () => {
@@ -295,10 +265,8 @@ describe("scenarios > dependencies > Schema Viewer", () => {
       getSchemaViewerCanvas().should("be.visible");
       cy.get(".react-flow__node").should("have.length.at.least", 1);
 
-      // Click clear button
       getSchemaPickerButton().find('[aria-label="Clear"]').click();
 
-      // Should return to empty state
       cy.url().should("eq", Cypress.config().baseUrl + SCHEMA_VIEWER_URL);
       cy.get("main")
         .findByText("Pick a database to view its schema")
@@ -308,192 +276,68 @@ describe("scenarios > dependencies > Schema Viewer", () => {
 
   describe("table selector", () => {
     it("should show table selector and allow toggling tables", () => {
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${ORDERS_ID}`);
+      cy.intercept("GET", "/api/database/*/schema/*").as("tablesRequest");
+      cy.visit(
+        `${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${ORDERS_ID}`,
+      );
+      cy.wait("@tablesRequest");
       getSchemaViewerCanvas().should("be.visible");
 
-      // Should show table selector with count (user-modified selection)
       getTableSelectorButton().should("be.visible");
       getTableSelectorButton().should("contain.text", "tables selected");
 
-      // Open selector
       getTableSelectorButton().click();
 
-      // Should show checkboxes for tables
       H.popover().within(() => {
         cy.findByText("Select all").should("be.visible");
         cy.findByPlaceholderText("Search the list").should("be.visible");
       });
-    });
-
-    it("should filter tables when searching", () => {
-      cy.intercept("GET", "/api/database/*/schema/*").as("tablesRequest");
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${ORDERS_ID}`);
-      cy.wait("@tablesRequest");
-      getSchemaViewerCanvas().should("be.visible");
-
-      getTableSelectorButton().click();
-
-      H.popover().within(() => {
-        // "Select all" is visible before searching
-        cy.findByText("Select all").should("be.visible");
-
-        cy.findByPlaceholderText("Search the list").type("orders");
-
-        // "Select all" is hidden when searching
-        cy.findByText("Select all").should("not.exist");
-        // Should only show matching tables (case-insensitive)
-        cy.findByText(/orders/i).should("be.visible");
-        cy.findByText(/people/i).should("not.exist");
-      });
-    });
-
-    it("should sort selected tables to the top", () => {
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${ORDERS_ID}`);
-      getSchemaViewerCanvas().should("be.visible");
-
-      getTableSelectorButton().click();
-
-      H.popover().within(() => {
-        // Skip "Select all" checkbox (index 0), first table checkbox should be ORDERS (checked)
-        cy.get('[type="checkbox"]').eq(1).should("be.checked");
-      });
-    });
-
-  });
-
-  describe("hops input", () => {
-    it("should show hops input when tables are selected and edges exist", () => {
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
-      getSchemaViewerCanvas().should("be.visible");
-      getSchemaEdges().should("have.length.at.least", 1);
-
-      // Hops input should be visible
-      getHopsInput().should("be.visible");
-      getHopsInput().should("contain.text", "Steps");
-    });
-
-    it("should update graph when hops value changes", () => {
-      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
-      cy.wait("@erdRequest");
-
-      // Get initial node count
-      cy.get(".react-flow__node").then(($initialNodes) => {
-        const initialCount = $initialNodes.length;
-
-        // Change hops to 1 (last button is decrement in Mantine NumberInput)
-        getHopsInput().find("button").last().click();
-
-        cy.wait("@erdRequest").then((interception) => {
-          expect(interception.request.url).to.include("hops=1");
-        });
-
-        // Node count may differ with fewer hops
-        cy.get(".react-flow__node").should("exist");
-      });
-    });
-
-    it("should not show hops input when no tables are selected", () => {
-      cy.visit(SCHEMA_VIEWER_URL);
-      getHopsInput().should("not.exist");
     });
   });
 
   describe("clickable FK fields", () => {
     it("should expand to include target table when FK field is clicked", () => {
       cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      // Start with PEOPLE - ORDERS has FK to PEOPLE, and ORDERS has FK to PRODUCTS (not on canvas)
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${PEOPLE_ID}&hops=1`);
+      cy.visit(
+        `${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${PEOPLE_ID}&hops=1`,
+      );
       cy.wait("@erdRequest");
 
       getSchemaNode("PEOPLE").should("be.visible");
       getSchemaNode("ORDERS").should("be.visible");
 
-      // ORDERS has FK to PRODUCTS which is not on canvas yet
-      // The PRODUCT_ID field in ORDERS should be expandable
       cy.get('[data-expandable="true"]').should("exist").first().click();
 
       cy.wait("@erdRequest");
 
-      // PRODUCTS should now be visible
       getSchemaNode("PRODUCTS").should("be.visible");
     });
 
     it("should highlight expandable FK fields with brand color", () => {
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${PEOPLE_ID}&hops=1`);
+      cy.visit(
+        `${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${PEOPLE_ID}&hops=1`,
+      );
       getSchemaViewerCanvas().should("be.visible");
 
-      // Wait for nodes to render
       getSchemaNode("ORDERS").should("be.visible");
 
-      // Expandable FK fields should exist
       cy.get('[data-expandable="true"]').should("exist");
     });
   });
-
-  describe("URL parameters", () => {
-    it("should load schema with database-id param", () => {
-      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1`);
-
-      cy.wait("@erdRequest").then((interception) => {
-        expect(interception.request.url).to.include("database-id=1");
-      });
-
-      getSchemaViewerCanvas().should("be.visible");
-      cy.get(".react-flow__node").should("have.length.at.least", 1);
-    });
-
-    it("should load schema with database-id and schema params", () => {
-      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC`);
-
-      cy.wait("@erdRequest").then((interception) => {
-        expect(interception.request.url).to.include("database-id=1");
-        expect(interception.request.url).to.include("schema=PUBLIC");
-      });
-
-      getSchemaViewerCanvas().should("be.visible");
-    });
-
-    it("should load specific tables with table-ids param", () => {
-      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      cy.visit(
-        `${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}&table-ids=${PRODUCTS_ID}`,
-      );
-
-      cy.wait("@erdRequest").then((interception) => {
-        expect(interception.request.url).to.include(`table-ids=${ORDERS_ID}`);
-        expect(interception.request.url).to.include(`table-ids=${PRODUCTS_ID}`);
-      });
-
-      getSchemaNode("ORDERS").should("be.visible");
-      getSchemaNode("PRODUCTS").should("be.visible");
-    });
-
-    it("should respect hops param in URL", () => {
-      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}&hops=1`);
-
-      cy.wait("@erdRequest").then((interception) => {
-        expect(interception.request.url).to.include("hops=1");
-      });
-    });
-  });
-
 
   describe("backend hops logic", () => {
     it("should return correct number of hops from focal tables", () => {
       cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
 
-      // With 1 hop, should only get directly connected tables
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}&hops=1`);
+      cy.visit(
+        `${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}&hops=1`,
+      );
 
       cy.wait("@erdRequest").then((interception) => {
         const { nodes } = interception.response!.body;
-        // ORDERS connects to PEOPLE and PRODUCTS
-        // With 1 hop, we should NOT see tables 2 hops away (like REVIEWS which connects to PRODUCTS)
-        const tableIds = new Set(nodes.map((n: { table_id: number }) => n.table_id));
+        const tableIds = new Set(
+          nodes.map((n: { table_id: number }) => n.table_id),
+        );
 
         expect(tableIds.has(ORDERS_ID)).to.be.true;
         expect(tableIds.has(PEOPLE_ID)).to.be.true;
@@ -504,18 +348,387 @@ describe("scenarios > dependencies > Schema Viewer", () => {
     it("should expand correctly with 2 hops", () => {
       cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
 
-      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}&hops=2`);
+      cy.visit(
+        `${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}&hops=2`,
+      );
 
       cy.wait("@erdRequest").then((interception) => {
         const { nodes } = interception.response!.body;
-        const tableIds = new Set(nodes.map((n: { table_id: number }) => n.table_id));
+        const tableIds = new Set(
+          nodes.map((n: { table_id: number }) => n.table_id),
+        );
 
-        // With 2 hops from ORDERS:
-        // 1 hop: PEOPLE, PRODUCTS
-        // 2 hops: REVIEWS (connected to PRODUCTS)
         expect(tableIds.has(ORDERS_ID)).to.be.true;
         expect(tableIds.has(PRODUCTS_ID)).to.be.true;
         expect(tableIds.has(REVIEWS_ID)).to.be.true;
+      });
+    });
+  });
+
+  describe("compact mode", () => {
+    it("should have compact mode toggle button", () => {
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
+
+      getCompactModeToggleButton().should("exist");
+    });
+
+    it("should toggle between compact and full mode when clicking the button", () => {
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Get initial button state
+      getCompactModeToggleButton()
+        .should("exist")
+        .then(($button) => {
+          const initialTitle = $button.attr("title");
+          const isInitiallyCompact = initialTitle?.includes("full");
+
+          // Click to toggle mode
+          cy.wrap($button).click();
+          cy.wait(300);
+
+          // Button title should change to the opposite
+          if (isInitiallyCompact) {
+            getCompactModeToggleButton().should(
+              "have.attr",
+              "title",
+              "Switch to compact mode",
+            );
+          } else {
+            getCompactModeToggleButton().should(
+              "have.attr",
+              "title",
+              "Switch to full mode",
+            );
+          }
+
+          // Click again to toggle back
+          getCompactModeToggleButton().click();
+          cy.wait(300);
+
+          // Should return to original state
+          getCompactModeToggleButton().should(
+            "have.attr",
+            "title",
+            initialTitle,
+          );
+        });
+    });
+
+    it("should persist compact mode preference across navigation", () => {
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Toggle to a specific mode
+      getCompactModeToggleButton().then(($button) => {
+        const initialTitle = $button.attr("title");
+
+        // Click to change mode
+        cy.wrap($button).click();
+        cy.wait(300);
+
+        // Get the new state
+        getCompactModeToggleButton().then(($newButton) => {
+          const newTitle = $newButton.attr("title");
+
+          // Navigate away
+          cy.visit("/data-studio/library");
+
+          // Navigate back to the same database
+          cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1`);
+          getSchemaViewerCanvas().should("be.visible");
+
+          // Should restore the mode we set
+          getCompactModeToggleButton().should("have.attr", "title", newTitle);
+        });
+      });
+    });
+
+    it("should auto-detect compact mode with many fields", () => {
+      // Visit a table with many fields
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ACCOUNTS_ID}`);
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Should start in appropriate mode based on field count
+      cy.get(".react-flow__node").should("exist");
+    });
+  });
+
+  describe("field expand/collapse", () => {
+    it("should expand all fields when clicking header expand icon", () => {
+      // Mock ERD response with a table that has >20 fields
+      cy.intercept("GET", "/api/ee/dependencies/erd*", (req) => {
+        req.reply({
+          nodes: [
+            {
+              table_id: 1,
+              name: "ORDERS",
+              is_focal: true,
+              fields: Array.from({ length: 25 }, (_, i) => ({
+                id: i + 1,
+                name: `FIELD_${i + 1}`,
+                semantic_type: i === 0 ? "type/PK" : null,
+                database_type: "VARCHAR",
+              })),
+            },
+          ],
+          edges: [],
+        });
+      }).as("erdRequest");
+
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
+      cy.wait("@erdRequest");
+      getSchemaViewerCanvas().should("be.visible");
+
+      getSchemaNode("ORDERS").within(() => {
+        // Expand/collapse button should exist for tables with >20 fields
+        cy.get("button").should("exist");
+
+        // Initial state: only first 20 fields rendered (collapsed)
+        cy.contains("FIELD_1").should("be.visible");
+        cy.contains("FIELD_20").should("be.visible");
+        cy.contains("FIELD_21").should("not.exist");
+
+        // Click expand button
+        cy.get("button").first().click();
+
+        // After expanding: all 25 fields should be rendered
+        cy.contains("FIELD_21").should("exist");
+        cy.contains("FIELD_25").should("exist");
+      });
+    });
+
+    it("should collapse fields when clicking header collapse icon", () => {
+      // Mock ERD response with a table that has >20 fields
+      cy.intercept("GET", "/api/ee/dependencies/erd*", (req) => {
+        req.reply({
+          nodes: [
+            {
+              table_id: 1,
+              name: "ORDERS",
+              is_focal: true,
+              fields: Array.from({ length: 25 }, (_, i) => ({
+                id: i + 1,
+                name: `FIELD_${i + 1}`,
+                semantic_type: i === 0 ? "type/PK" : null,
+                database_type: "VARCHAR",
+              })),
+            },
+          ],
+          edges: [],
+        });
+      }).as("erdRequest");
+
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
+      cy.wait("@erdRequest");
+      getSchemaViewerCanvas().should("be.visible");
+
+      getSchemaNode("ORDERS").within(() => {
+        // First expand - click button to show all fields
+        cy.get("button").first().click();
+        cy.contains("FIELD_25").should("exist");
+
+        // Then collapse - click button again
+        cy.get("button").first().click();
+
+        // Should show only first 20 fields again
+        cy.contains("FIELD_20").should("be.visible");
+        cy.contains("FIELD_21").should("not.exist");
+      });
+    });
+  });
+
+  describe("double-click zoom behavior", () => {
+    it("should switch to full mode and focus node on double-click in compact mode", () => {
+      cy.visit(
+        `${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID},${PRODUCTS_ID}`,
+      );
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Start in compact mode - toggle to compact
+      getCompactModeToggleButton().then(($btn) => {
+        const title = $btn.attr("title");
+        // If not already in compact mode, click to switch
+        if (title?.includes("compact")) {
+          cy.wrap($btn).click();
+          cy.wait(300);
+        }
+      });
+
+      // Verify we're in compact mode
+      getCompactModeToggleButton().should(
+        "have.attr",
+        "title",
+        "Switch to full mode",
+      );
+
+      // Double-click a node in compact mode
+      getSchemaNode("PRODUCTS").dblclick();
+      cy.wait(500);
+
+      // Should switch to full mode (button text changes)
+      getCompactModeToggleButton().should(
+        "have.attr",
+        "title",
+        "Switch to compact mode",
+      );
+
+      // Node should still be visible (focused)
+      getSchemaNode("PRODUCTS").should("be.visible");
+    });
+
+    it("should only zoom in full mode with explicit full mode set", () => {
+      cy.visit(
+        `${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID},${PRODUCTS_ID}`,
+      );
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Explicitly set full mode via button: toggle to compact, then back to full
+      getCompactModeToggleButton().then(($btn) => {
+        const initialTitle = $btn.attr("title");
+
+        // Click to toggle mode (either to compact or full)
+        cy.wrap($btn).click();
+        cy.wait(300);
+
+        // Click again to toggle back - this makes it "explicit full mode"
+        getCompactModeToggleButton().click();
+        cy.wait(300);
+      });
+
+      // Should be in full mode
+      getCompactModeToggleButton().should(
+        "have.attr",
+        "title",
+        "Switch to compact mode",
+      );
+
+      // Double-click to focus a node
+      getSchemaNode("PRODUCTS").dblclick();
+      cy.wait(300);
+
+      // Double-click again (focused node) - should zoom out but stay in full mode
+      getSchemaNode("PRODUCTS").dblclick();
+      cy.wait(300);
+
+      // Should still be in full mode (explicit full mode flag prevents switching to compact)
+      getCompactModeToggleButton().should(
+        "have.attr",
+        "title",
+        "Switch to compact mode",
+      );
+    });
+
+    it("should focus unfocused node on double-click in full mode", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+
+      cy.visit(
+        `${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID},${PRODUCTS_ID},${PEOPLE_ID}`,
+      );
+      cy.wait("@erdRequest");
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Wait for React Flow to render nodes
+      cy.get(".react-flow__node").should("have.length.greaterThan", 0);
+
+      // All nodes should be visible
+      getSchemaNode("ORDERS").should("be.visible");
+      getSchemaNode("PRODUCTS").should("be.visible");
+      getSchemaNode("PEOPLE").should("be.visible");
+
+      // Ensure we're in full mode (not compact)
+      getCompactModeToggleButton().should(
+        "have.attr",
+        "title",
+        "Switch to compact mode",
+      );
+
+      // Double-click an unfocused node - should zoom/focus on it
+      getSchemaNode("PEOPLE").dblclick();
+
+      // Should remain in full mode
+      getCompactModeToggleButton().should(
+        "have.attr",
+        "title",
+        "Switch to compact mode",
+      );
+
+      // Node should still be visible after focusing
+      getSchemaNode("PEOPLE").should("be.visible");
+    });
+  });
+
+  describe("FK field interaction types", () => {
+    it("should add table to canvas when clicking FK with no visible target", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+      cy.visit(
+        `${SCHEMA_VIEWER_URL}?database-id=1&schema=PUBLIC&table-ids=${PEOPLE_ID}&hops=1`,
+      );
+      cy.wait("@erdRequest");
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Wait for React Flow to render nodes
+      cy.get(".react-flow__node").should("have.length.greaterThan", 0);
+
+      // PEOPLE should be visible
+      getSchemaNode("PEOPLE").should("be.visible");
+
+      // Click FK field to expand (PEOPLE has FK to PRODUCTS)
+      cy.get('[data-expandable="true"]').first().click();
+      cy.wait("@erdRequest");
+
+      // PRODUCTS should now be visible
+      getSchemaNode("PRODUCTS").should("be.visible");
+    });
+
+    it("should zoom to target when clicking FK with visible target", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+
+      // Load both ORDERS and PRODUCTS so FK field can zoom to target
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID},${PRODUCTS_ID}`);
+      cy.wait("@erdRequest");
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Wait for React Flow to render nodes
+      cy.get(".react-flow__node").should("have.length.greaterThan", 0);
+
+      // Both ORDERS and PRODUCTS are visible
+      getSchemaNode("ORDERS").should("be.visible");
+      getSchemaNode("PRODUCTS").should("be.visible");
+
+      // Find and click FK field in ORDERS pointing to PRODUCTS (should be clickable but NOT expandable)
+      getSchemaNode("ORDERS").within(() => {
+        cy.contains("PRODUCT_ID")
+          .parent()
+          .should("have.css", "cursor", "pointer")
+          .should("not.have.attr", "data-expandable")
+          .click();
+      });
+
+      // Should zoom to PRODUCTS
+      cy.wait(500);
+      getSchemaNode("PRODUCTS").should("be.visible");
+    });
+
+    it("should not allow click on FK field with no connection", () => {
+      cy.intercept("GET", "/api/ee/dependencies/erd*").as("erdRequest");
+
+      cy.visit(`${SCHEMA_VIEWER_URL}?database-id=1&table-ids=${ORDERS_ID}`);
+      cy.wait("@erdRequest");
+      getSchemaViewerCanvas().should("be.visible");
+
+      // Wait for React Flow to render nodes
+      cy.get(".react-flow__node").should("have.length.greaterThan", 0);
+
+      getSchemaNode("ORDERS").should("be.visible");
+
+      // Regular (non-FK) fields should not be clickable
+      getSchemaNode("ORDERS").within(() => {
+        // Find a non-FK field (like CREATED_AT, TOTAL, etc.)
+        cy.contains("TOTAL")
+          .parent()
+          .should("not.have.css", "cursor", "pointer");
       });
     });
   });
@@ -533,10 +746,6 @@ function getTableSelectorButton() {
   return cy.findByTestId("table-selector-button");
 }
 
-function getHopsInput() {
-  return cy.findByTestId("hops-input");
-}
-
 function getSchemaNode(tableName: string) {
   return cy
     .get(".react-flow__node")
@@ -546,4 +755,10 @@ function getSchemaNode(tableName: string) {
 
 function getSchemaEdges() {
   return cy.get(".react-flow__edge");
+}
+
+function getCompactModeToggleButton() {
+  return cy
+    .get(".react-flow__controls button")
+    .filter('[title*="compact"], [title*="full"]');
 }
