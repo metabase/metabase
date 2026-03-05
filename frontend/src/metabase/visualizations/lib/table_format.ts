@@ -4,7 +4,7 @@
 import Color from "color";
 
 import { alpha } from "metabase/lib/colors";
-import { getColorScale, getSafeColor } from "metabase/lib/colors/scales";
+import { getLinearColorScale, getSafeColor } from "metabase/lib/colors/scales";
 import { isNumber } from "metabase/lib/types";
 import type {
   ColumnFormattingOperator,
@@ -185,7 +185,7 @@ export function compileFormatter(
       return () => null;
     }
 
-    const scale = getColorScale(
+    const scale = getLinearColorScale(
       [min, max],
       format.colors.map((c) => {
         const color = Color(c);
@@ -194,6 +194,9 @@ export function compileFormatter(
       }),
     ).clamp(true);
     return (value) => {
+      if (!isNumber(value)) {
+        return null;
+      }
       const colorValue = scale(value);
       if (!colorValue) {
         return null;
