@@ -125,9 +125,9 @@
   [viz-settings cards-by-id]
   (letfn [(upgrade-mapping [query mapping]
             (let [target (::vs/param-mapping-target mapping)]
-              (if-let [dim (::vs/param-dimension target)]
-                (let [dim' (lib-be/upgrade-field-ref-in-parameter-target query dim)]
-                  (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] dim'))
+              (if-let [dimension (::vs/param-dimension target)]
+                (let [dimension' (lib-be/upgrade-field-ref-in-parameter-target query dimension)]
+                  (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] dimension'))
                 mapping)))
           (upgrade-click-behavior [click-behavior]
             (or (when-let [card-id (click-behavior->card-id click-behavior)]
