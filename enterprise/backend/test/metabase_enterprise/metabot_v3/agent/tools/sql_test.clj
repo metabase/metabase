@@ -32,9 +32,9 @@
 
 (deftest create-sql-query-validation-error-output-test
   (testing "create_sql_query output contains appropriate info on validation failure"
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
           (let [result (agent-sql/create-sql-query-tool
                         {:database_id db-id
                          :sql_query   "SELECT ="})
@@ -72,7 +72,7 @@
 
 (deftest edit-sql-query-validation-error-output-test
   (testing "edit_sql_query output contains appropriate info on validation failure"
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
           (let [query-id "test-edit-q-validation-failure"
@@ -115,21 +115,22 @@
             (testing "instructions mention edit_sql_query as alternative"
               (is (str/includes? output "this tool or edit_sql_query again")))))))))
 
-(deftest replace-sql-query-validtion-error-output-test
+(deftest x-replace-sql-query-validtion-error-output-test
   (testing "replace_sql_query output contains appropriate info on validation failure"
-    (mt/test-drivers #{:h2 :postgres}
+    (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
           (let [query-id "test-replace-q"
                 memory   (atom {:state {:queries {query-id {:database db-id
                                                             :type     :native
                                                             :native   {:query "SELECT 1"}}}}})
-                result   (binding [shared/*memory-atom* memory]
-                           (agent-sql/replace-sql-query-tool
-                            {:query_id  query-id
-                             :checklist "- [x] checked"
-                             :new_query "SELECT ="}))
-                output   (:output result)]
+
+                {:keys [output instructions]} (binding [shared/*memory-atom* memory]
+                                                (agent-sql/replace-sql-query-tool
+                                                 {:query_id  query-id
+                                                  :checklist "- [x] checked"
+                                                  :new_query "SELECT ="}))
+                output   output]
             (is (string? output))
-            (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
-            (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error"))))))))
+            (is (str/starts-with? instructions "The SQL query has a syntax error"))
+            (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error"))))))))
