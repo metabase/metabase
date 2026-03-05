@@ -651,7 +651,7 @@ export interface ClickObject {
   settings?: Record<string, unknown>;
   columnShortcuts?: boolean;
   origin?: {
-    rowIndex: number;
+    rowIndex?: number;
     row: RowValue[];
     cols: DatasetColumn[];
   };
