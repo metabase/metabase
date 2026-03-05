@@ -151,12 +151,13 @@ export function DimensionPill({
     </Flex>
   );
 
-  if (!canOpenPopover) {
-    return pillContent;
-  }
-
   return (
-    <Popover opened={isOpen} onChange={setIsOpen} position="top-start">
+    <Popover
+      opened={isOpen}
+      onChange={setIsOpen}
+      position="top-start"
+      disabled={!canOpenPopover}
+    >
       <Popover.Target>{pillContent}</Popover.Target>
       <Popover.Dropdown px={0} py="xs" mah={300} style={{ overflowY: "auto" }}>
         {hasMultipleOptions && (
