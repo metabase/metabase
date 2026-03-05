@@ -6,12 +6,14 @@
    [java-time.api :as t]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
    [metabase-enterprise.metabot-v3.api.slackbot.events :as slackbot.events]
+   [metabase-enterprise.metabot-v3.api.slackbot.persistence :as slackbot.persistence]
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
-   [metabase-enterprise.metabot-v3.util :as metabot-v3.util]
+   [metabase-enterprise.metabot-v3.persistence :as metabot-v3.persistence]
+   [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.system.core :as system]
@@ -19,7 +21,13 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
-   (java.util.concurrent Callable ExecutionException ExecutorService Executors Future ThreadFactory)))
+   (java.util.concurrent
+    Callable
+    ExecutionException
+    ExecutorService
+    Executors
+    Future
+    ThreadFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -36,26 +44,43 @@
                       (.setDaemon true))))]
     (Executors/newFixedThreadPool viz-prefetch-pool-size factory)))
 
-(defn- strip-bot-mention
-  "Remove bot mention prefix from text (e.g., '<@U123> hello' -> 'hello')"
-  [text bot-user-id]
-  (if bot-user-id
-    (str/replace text (re-pattern (str "<@" bot-user-id ">\\s?")) "")
-    text))
+(def ^:private thinking-placeholder
+  "Displayed while waiting for AI response. Excluded from history."
+  "_Thinking..._")
+
+(defn- ignore-msg?
+  "True for messages that should be excluded from chat history."
+  [msg]
+  (and (slackbot.events/bot-message? msg)
+       (or (= (:text msg) thinking-placeholder)
+           (str/blank? (:text msg)))))
+
+(defn- thread->bot-msg-ids
+  "Slack message ids produced by our bot."
+  [thread]
+  (->> (:messages thread)
+       (filter slackbot.events/bot-message?)
+       (keep :ts)
+       set))
 
 (defn- thread->history
   "Convert a Slack thread to an ai-service history object.
-   Strips bot mentions from user messages when bot-user-id is provided."
-  [thread bot-user-id]
-  (->> (:messages thread)
-       (filter :text)
-       (mapv (fn [msg]
-               (let [is-bot? (some? (:bot_id msg))
-                     content (if is-bot?
-                               (:text msg)
-                               (strip-bot-mention (:text msg) bot-user-id))]
-                 {:role    (if is-bot? :assistant :user)
-                  :content content})))))
+   For user messages: uses Slack text (respects edits), strips bot mentions.
+   For bot messages: merges tool calls/data from DB with text from Slack.
+   This preserves tool history that Slack doesn't store while respecting edits."
+  [thread bot-user-id conversation-id]
+  (let [bot-msg-ids (thread->bot-msg-ids thread)
+        msg-history (slackbot.persistence/message-history conversation-id bot-msg-ids)]
+    (->> (:messages thread)
+         (filter :text)
+         (remove ignore-msg?)
+         (mapcat (fn [{:keys [ts text] :as msg}]
+                   (if (slackbot.events/bot-message? msg)
+                     ;; bot messages: merge on tool call info from db
+                     (conj (get msg-history ts []) {:role :assistant :content text})
+                     ;; user messages: user slack history instead to respect user edits
+                     [{:role :user :content (slackbot.events/strip-bot-mention text bot-user-id)}])))
+         vec)))
 
 (defn- compute-capabilities
   "Compute capability strings for the current user based on their permissions."
@@ -127,41 +152,46 @@
    - on-text: Called with text content (ai-service already buffers markdown links)
    - on-tool-start: Called with {:id :name} when a tool starts
    - on-tool-end: Called with {:id :result} when a tool completes
-   - on-data: Called with (index, parsed-content) for each DATA line"
+   - on-data: Called with (index, parsed-content) for each DATA line
+   - req-slack-msg-id: The Slack message ts for the user's incoming message
+   - get-response-ts: Function that returns the Slack message ts for the bot's response"
   [conversation-id prompt thread bot-user-id channel-id extra-history
-   {:keys [on-text on-tool-start on-tool-end on-data]}]
+   {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id]}]
   (let [data-idx       (volatile! -1)
         message        (metabot-v3.envelope/user-message prompt)
         metabot-id     (metabot-v3.config/resolve-dynamic-metabot-id nil)
         profile-id     (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
         session-id     (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
         capabilities   (compute-capabilities)
-        thread-history (thread->history thread bot-user-id)
+        thread-history (thread->history thread bot-user-id conversation-id)
         history        (into (vec thread-history) extra-history)
-        handle-line (fn [line]
-                      (when-let [[type content] (metabot-v3.util/parse-aisdk-line line)]
-                        (case type
-                          :TEXT
-                          (when (and on-text (seq content))
-                            (on-text content))
+        handle-line    (fn [line]
+                         (when-let [[type content] (metabot-v3.u/parse-aisdk-line line)]
+                           (case type
+                             :TEXT
+                             (when (and on-text (seq content))
+                               (on-text content))
 
-                          :TOOL_CALL
-                          (when on-tool-start
-                            (on-tool-start {:id        (:toolCallId content)
-                                            :tool-name (:toolName content)}))
+                             :TOOL_CALL
+                             (when on-tool-start
+                               (on-tool-start {:id        (:toolCallId content)
+                                               :tool-name (:toolName content)}))
 
-                          :TOOL_RESULT
-                          (when on-tool-end
-                            (on-tool-end {:id     (:toolCallId content)
-                                          :result (:result content)}))
+                             :TOOL_RESULT
+                             (when on-tool-end
+                               (on-tool-end {:id     (:toolCallId content)
+                                             :result (:result content)}))
 
-                          :DATA
-                          (when on-data
-                            (on-data (vswap! data-idx inc) content))
+                             :DATA
+                             (when on-data
+                               (on-data (vswap! data-idx inc) content))
 
-                          (log/debugf "Ignoring AI SDK line of type %s" type))))
+                             (log/debugf "Ignoring AI SDK line of type %s" type))))
 
+        _              (metabot-v3.persistence/store-message! conversation-id profile-id [message]
+                                                              :slack-msg-id req-slack-msg-id)
         lines          (metabot-v3.client/streaming-request-with-callback
+
                         {:context         (metabot-v3.context/create-context
                                            {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                                             :capabilities               capabilities
@@ -173,8 +203,14 @@
                          :message         message
                          :history         history
                          :state           {}
-                         :on-line         handle-line})]
-    (->> (metabot-v3.util/aisdk->messages :assistant lines)
+                         :on-line         handle-line
+                         :on-complete     (fn [lines]
+                                            (metabot-v3.persistence/store-message!
+                                             conversation-id profile-id
+                                             (metabot-v3.u/aisdk->messages :assistant lines)
+                                             :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id)))
+                                            :store-in-db)})]
+    (->> (metabot-v3.u/aisdk->messages :assistant lines)
          (filter #(= (:_type %) :DATA)))))
 
 (def ^:private viz-data-types
@@ -329,7 +365,7 @@
         start-with-thinking! (fn []
                                (let [response (slackbot.client/post-message client {:channel   channel
                                                                                     :thread_ts thread-ts
-                                                                                    :text      "_Thinking..._"})]
+                                                                                    :text      thinking-placeholder})]
                                  (when (:ok response)
                                    (reset! thinking-ts (:ts response)))))
 
@@ -438,10 +474,12 @@
                               bot-user-id
                               channel-id
                               extra-history
-                              {:on-text       on-text
-                               :on-tool-start on-tool-start
-                               :on-tool-end   on-tool-end
-                               :on-data       on-data})]
+                              {:on-text               on-text
+                               :on-tool-start         on-tool-start
+                               :on-tool-end           on-tool-end
+                               :on-data               on-data
+                               :req-slack-msg-id      (:ts event)
+                               :get-res-slack-msg-id  (fn [] (:stream_ts @stream-state))})]
              (request-flush!)
              (await slack-writer)
              (if-let [{:keys [stream_ts channel]} @stream-state]

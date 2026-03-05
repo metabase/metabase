@@ -3605,6 +3605,21 @@ databaseChangeLog:
                   , now()
               );
 
+  - changeSet:
+      id: v59.2026-03-04T10:00:00
+      author: sloan
+      comment: Add slack_msg_id to metabot_message for tracking Slack message IDs
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: slack_msg_id
+                  type: varchar(255)
+                  remarks: Slack message ID (ts) for correlating with Slack thread history
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

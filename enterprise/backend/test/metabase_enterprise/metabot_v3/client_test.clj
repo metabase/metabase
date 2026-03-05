@@ -145,6 +145,24 @@
               (is (sequential? lines))
               (is (= lines @error-lines)))))))))
 
+(deftest streaming-request-with-callback-on-complete-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [mock-response (make-mock-text-stream-response ["a" "b"] {"m" {:prompt 1 :completion 1}})
+          req           {:context {} :message {:role :user :content "x"} :history []
+                         :profile-id "p" :conversation-id (str (random-uuid))
+                         :session-id "s" :state {}}]
+      (testing "on-complete receives collected lines"
+        (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (let [result (atom nil)
+                  lines  (metabot-v3.client/streaming-request-with-callback
+                          (assoc req :on-complete #(reset! result %)))]
+              (is (= lines @result))))))
+      (testing "works without on-complete"
+        (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (is (sequential? (metabot-v3.client/streaming-request-with-callback req)))))))))
+
 (deftest streaming-request-error-excludes-headers-test
   (testing "When streaming-request gets an error response, the exception should not include headers"
     (mt/with-premium-features #{:metabot-v3}
