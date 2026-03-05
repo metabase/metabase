@@ -17,8 +17,8 @@
   :feature :workspaces
   [{{remapping :workspace-remapping} :middleware :as query}]
   (cond
-    ;; Not in a workspace that requires remapping.
-    (not remapping)
+    ;; Not in a workspace that requires remapping, or no tables to remap.
+    (or (not remapping) (empty? (:tables remapping)))
     query
 
     (not (lib.schema/native-only-query? query))
@@ -26,10 +26,8 @@
                     {:query query, :remapping remapping}))
 
     :else
-    (-> query
-        (u/update-in-if-exists [:stages 0 :native]
-                               (fn [sql] (sql-tools/replace-names driver/*driver*
-                                                                  sql
-                                                                  remapping
-                                                                  {:allow-unused? true})))
-        (update :middleware dissoc :workspace-remapping))))
+    (u/update-in-if-exists query [:stages 0 :native]
+                           (fn [sql] (sql-tools/replace-names driver/*driver*
+                                                              sql
+                                                              remapping
+                                                              {:allow-unused? true})))))
