@@ -30,6 +30,12 @@ type TileLayerWithInternals = L.TileLayer & {
   createTile: (coords: L.Coords, done?: L.DoneCallback) => HTMLElement;
 };
 
+function hasTileLayerInternals(
+  tileLayer: L.TileLayer,
+): tileLayer is TileLayerWithInternals {
+  return "_url" in tileLayer;
+}
+
 interface LeafletTilePinMapProps extends LeafletMapProps {
   dashboard?: {
     id?: DashboardId | null;
@@ -66,12 +72,12 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
 
     try {
       const { pinTileLayer } = this;
-      if (!pinTileLayer) {
+      if (!pinTileLayer || !hasTileLayerInternals(pinTileLayer)) {
         return;
       }
 
       const newUrl = this._getTileUrl({ x: "{x}", y: "{y}" }, "{z}");
-      const currentUrl = (pinTileLayer as TileLayerWithInternals)._url;
+      const currentUrl = pinTileLayer._url;
       const nextUrl = newUrl ?? "";
       if (nextUrl !== currentUrl) {
         pinTileLayer.setUrl(nextUrl);
