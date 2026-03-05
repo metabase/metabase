@@ -10,6 +10,8 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (mu/defn- has-incoming-fks? :- :boolean
   "Returns true if any active field has a FK pointing to a field in `table-id`."
   [table-id :- ::lib.schema.id/table]

@@ -12,6 +12,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 ;;; ====================== Placeholder Helpers for Native SQL ======================
 ;;;
 ;;; These functions convert Metabase template tag syntax to/from placeholder syntax

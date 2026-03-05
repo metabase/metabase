@@ -5,6 +5,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as vs]))
 
+(set! *warn-on-reflection* true)
+
 (defn parameter-mapping-card-ids
   "Get all card IDs referenced by the parameter mappings."
   [parameter-mappings]

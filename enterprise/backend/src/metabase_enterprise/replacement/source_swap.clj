@@ -13,6 +13,8 @@
    [metabase.queries.models.query :as queries.query]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- update-query [query old-source new-source id-updates]
   (cond-> query
     (lib/any-native-stage? query)

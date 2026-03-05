@@ -3,6 +3,8 @@
   (:require
    [metabase-enterprise.dependencies.models.dependency :as deps]))
 
+(set! *warn-on-reflection* true)
+
 (defn transitive-usages
   "Returns a seq of [entity-type entity-id] for all entities that use the given source.
 

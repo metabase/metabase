@@ -2,6 +2,8 @@
   (:require
    [potemkin.types :as p.types]))
 
+(set! *warn-on-reflection* true)
+
 (p.types/defprotocol+ IRunnerProgress
   (set-total! [this total]
     "Set the total number of items to process (across all phases). Called once.")

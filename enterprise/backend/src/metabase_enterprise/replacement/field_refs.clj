@@ -8,6 +8,8 @@
    [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- ref->column-name
   "Resolve a `ref` to a deduplicated column name used in `:visualization_settings`."
   [query ref]
