@@ -53,7 +53,7 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
   };
 
   return (
-    <Stack gap={0} align="stretch">
+    <Stack gap={0} align="stretch" data-testid="metric-description-sidebar">
       {/* Description */}
       <Box data-testid="metric-description-section" p={rem(20)}>
         {card.can_write ? (

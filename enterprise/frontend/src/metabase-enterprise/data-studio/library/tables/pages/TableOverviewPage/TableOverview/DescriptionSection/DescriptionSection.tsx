@@ -151,7 +151,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
   const isOwnerSpecified = table.owner_email || table.owner_user_id;
 
   return (
-    <Stack gap={0} align="stretch">
+    <Stack gap={0} align="stretch" data-testid="table-description-sidebar">
       {/* Entity Type Selector */}
       <Box className={S.contentSectionGridContainer} px="lg" py="md">
         <EntityTypeInput
