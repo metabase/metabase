@@ -346,7 +346,7 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       }
       return (
         settings.number_style !== "currency" ||
-        series[0].card.display !== "table"
+        series[0]?.card.display !== "table"
       );
     },
     readDependencies: ["number_style"],
