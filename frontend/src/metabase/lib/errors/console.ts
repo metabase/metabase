@@ -1,3 +1,9 @@
+declare global {
+  interface Console {
+    errorBuffer: unknown[][];
+  }
+}
+
 export const MAX_ERROR_LOGS = 20;
 
 export function captureConsoleErrors() {
@@ -5,7 +11,7 @@ export function captureConsoleErrors() {
 
   const originalError = console.error;
 
-  console.error = function (...args) {
+  console.error = function (...args: unknown[]) {
     if (console.errorBuffer.length >= MAX_ERROR_LOGS) {
       console.errorBuffer.pop();
     }

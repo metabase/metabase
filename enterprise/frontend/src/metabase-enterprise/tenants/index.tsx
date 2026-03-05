@@ -129,25 +129,12 @@ export function initializePlugin() {
             <IndexRedirect to="/admin/people/tenants/people" />
             <ModalRoute
               path="edit"
-              // @ts-expect-error - params prop can't be inferred
               modal={(props) => <EditUserModal {...props} external />}
               noWrap
             />
-            <ModalRoute
-              path="deactivate"
-              // @ts-expect-error - params prop can't be inferred
-              modal={UserActivationModal}
-              noWrap
-            />
-            <ModalRoute
-              path="reactivate"
-              // @ts-expect-error - params prop can't be inferred
-              modal={UserActivationModal}
-              noWrap
-            />
-            {/* @ts-expect-error - params prop can't be inferred */}
+            <ModalRoute path="deactivate" modal={UserActivationModal} noWrap />
+            <ModalRoute path="reactivate" modal={UserActivationModal} noWrap />
             <ModalRoute path="success" modal={UserSuccessModal} noWrap />
-            {/* @ts-expect-error - params prop can't be inferred */}
             <ModalRoute path="reset" modal={UserPasswordResetModal} noWrap />
             {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
               <Fragment key={index}>{getRoutes()}</Fragment>
