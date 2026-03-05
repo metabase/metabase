@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as buddy-codecs]
    [buddy.core.hash :as buddy-hash]
+   [clojure.set :as set]
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
    [honey.sql :as sql]
@@ -131,11 +132,12 @@
                                        (when-let [root-id (some-> location (str/split #"/" 3) second parse-long)]
                                          [id root-id]))
                                      non-personal)
-          root-id->owner       (when (seq roots)
-                                 (into {}
-                                       (map (juxt :id :personal_owner_id))
+          unknown-roots        (set/difference (set (map second roots)) (set (keys direct)))
+          root-id->owner       (into direct
+                                     (map (juxt :id :personal_owner_id))
+                                     (when (seq unknown-roots)
                                        (t2/select [:model/Collection :id :personal_owner_id]
-                                                  :id [:in (set (map second roots))]
+                                                  :id [:in unknown-roots]
                                                   :personal_owner_id [:not= nil])))]
       (into direct
             (keep (fn [[coll-id root-id]]

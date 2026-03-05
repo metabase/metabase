@@ -46,13 +46,12 @@
         execute!       (fn [q] (jdbc/execute! tx (sql/format q)))
         table-names    (->> (execute! {:select-distinct [:table_name]
                                        :from            [index-metadata]
-                                       :where           [[:< :index_version 2]]
-                                       :group-by        [:table_name]})
+                                       :where           [[:< :index_version 2]]})
                             (mapcat vals))]
     (when (seq table-names)
       (doseq [table-name table-names]
         (execute! {:alter-table [(keyword table-name)]
-                   :add-column  [[:personal_owner_id :int]]}))
+                   :add-column  [[:personal_owner_id :int :if-not-exists]]}))
       (execute! {:update index-metadata
                  :set    {:index_version 2}
                  :where  [[:in :table_name (vec table-names)]]}))))
