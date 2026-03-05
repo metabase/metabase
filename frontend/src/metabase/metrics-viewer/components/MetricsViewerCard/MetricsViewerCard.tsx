@@ -53,14 +53,16 @@ export function MetricsViewerCard({
     () =>
       buildRawSeriesFromDefinitions(
         definitions,
-        tab,
+        tab.dimensionMapping,
+        tab.display,
         resultsByDefinitionId,
         modifiedDefinitions,
         sourceColors,
       ),
     [
       definitions,
-      tab,
+      tab.dimensionMapping,
+      tab.display,
       resultsByDefinitionId,
       modifiedDefinitions,
       sourceColors,
@@ -79,14 +81,14 @@ export function MetricsViewerCard({
     () =>
       buildDimensionItemsFromDefinitions(
         definitions,
-        tab,
+        tab.dimensionMapping,
         modifiedDefinitions,
         cardColors,
         tabConfig.dimensionPredicate,
       ),
     [
       definitions,
-      tab,
+      tab.dimensionMapping,
       modifiedDefinitions,
       cardColors,
       tabConfig.dimensionPredicate,

@@ -8,23 +8,17 @@ import {
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import type { IconName } from "metabase/ui";
 import { Divider, Flex, Icon, Popover, Text } from "metabase/ui";
-import type { DimensionMetadata } from "metabase-lib/metric";
+import type { DimensionGroup, DimensionMetadata } from "metabase-lib/metric";
 
 import S from "./DimensionPill.module.css";
 import { groupIntoSections } from "./utils";
-
-export interface DimensionOptionGroup {
-  id: string;
-  type: "main" | "connection";
-  displayName: string;
-}
 
 export interface DimensionOption {
   name: string;
   displayName: string;
   icon: IconName;
   dimension: DimensionMetadata;
-  group?: DimensionOptionGroup;
+  group?: DimensionGroup;
   selected?: boolean;
 }
 

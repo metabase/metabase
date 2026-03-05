@@ -22,9 +22,10 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  DimensionId,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
-  MetricsViewerTabState,
+  MetricsViewerDisplayType,
   SelectedMetric,
   SourceColorMap,
 } from "../types/viewer-state";
@@ -234,7 +235,8 @@ type SingleSeriesWithDimensionId = SingleSeries & {
 
 export function buildRawSeriesFromDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
-  tab: MetricsViewerTabState,
+  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+  display: MetricsViewerDisplayType,
   resultsByDefinitionId: Map<MetricSourceId, Dataset>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
   sourceColors: SourceColorMap,
@@ -246,7 +248,7 @@ export function buildRawSeriesFromDefinitions(
     if (found) {
       return found;
     }
-    const dimensionId = tab.dimensionMapping[entry.id];
+    const dimensionId = dimensionMapping[entry.id];
     if (!dimensionId || !entry.definition) {
       return null;
     }
@@ -265,13 +267,13 @@ export function buildRawSeriesFromDefinitions(
     return [];
   }
 
-  const vizSettings = DISPLAY_TYPE_REGISTRY[tab.display].getSettings(
+  const vizSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
     firstSettingsEntry.def,
     firstSettingsEntry.dimension,
   );
 
   return definitions.flatMap((entry) => {
-    const dimensionId = tab.dimensionMapping[entry.id];
+    const dimensionId = dimensionMapping[entry.id];
     if (!dimensionId || !entry.definition) {
       return [];
     }
@@ -303,10 +305,10 @@ export function buildRawSeriesFromDefinitions(
     );
 
     const singleSeries: SingleSeriesWithDimensionId = {
-      card: createSeriesCard(cardId, name, tab.display, {
+      card: createSeriesCard(cardId, name, display, {
         ...vizSettings,
         ...computeColorVizSettings({
-          displayType: tab.display,
+          displayType: display,
           seriesKey,
           color: sourceColors[entry.id]?.[0] as string,
         }),
@@ -407,7 +409,7 @@ function computeAvailableOptions(
 
 export function buildDimensionItemsFromDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
-  tab: MetricsViewerTabState,
+  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
   sourceColors: SourceColorMap,
   dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
@@ -417,7 +419,7 @@ export function buildDimensionItemsFromDefinitions(
       return [];
     }
 
-    const dimensionId = tab.dimensionMapping[entry.id];
+    const dimensionId = dimensionMapping[entry.id];
     const entryColors = sourceColors[entry.id];
     const modifiedDefinition = modifiedDefinitions.get(entry.id);
 

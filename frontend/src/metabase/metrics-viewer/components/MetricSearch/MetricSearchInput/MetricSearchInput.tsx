@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { Flex, Popover, TextInput } from "metabase/ui";
@@ -15,6 +15,7 @@ import {
   createMetricSourceId,
 } from "../../../utils/source-ids";
 import { MetricPill } from "../MetricPill";
+import { MetricSearchDropdown } from "../MetricSearchDropdown";
 
 import S from "./MetricSearchInput.module.css";
 
@@ -22,8 +23,6 @@ type MetricSearchInputProps = {
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
   definitions: MetricsViewerDefinitionEntry[];
-  selectedMetricIds: Set<number>;
-  selectedMeasureIds: Set<number>;
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
@@ -31,30 +30,43 @@ type MetricSearchInputProps = {
     id: MetricSourceId,
     dimension: ProjectionClause | undefined,
   ) => void;
-  children: (props: {
-    searchText: string;
-    onSelect: (metric: SelectedMetric) => void;
-  }) => ReactNode;
 };
 
 export function MetricSearchInput({
   selectedMetrics,
   metricColors,
   definitions,
-  selectedMetricIds,
-  selectedMeasureIds,
   onAddMetric,
   onRemoveMetric,
   onSwapMetric,
   onSetBreakout,
-  children,
 }: MetricSearchInputProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const selectedMetricIds = useMemo(
+    () =>
+      new Set(
+        selectedMetrics
+          .filter((metric) => metric.sourceType === "metric")
+          .map((metric) => metric.id),
+      ),
+    [selectedMetrics],
+  );
+
+  const selectedMeasureIds = useMemo(
+    () =>
+      new Set(
+        selectedMetrics
+          .filter((metric) => metric.sourceType === "measure")
+          .map((metric) => metric.id),
+      ),
+    [selectedMetrics],
+  );
+
   const definitionsBySourceId = useMemo(
-    () => new Map(definitions.map((e) => [e.id, e] as const)),
+    () => new Map(definitions.map((entry) => [entry.id, entry] as const)),
     [definitions],
   );
 
@@ -119,7 +131,7 @@ export function MetricSearchInput({
               selectedMeasureIds={selectedMeasureIds}
               onSwap={onSwapMetric}
               onRemove={onRemoveMetric}
-              onSetBreakout={(dim) => onSetBreakout(sid, dim)}
+              onSetBreakout={(dimension) => onSetBreakout(sid, dimension)}
               onOpen={() => setIsOpen(false)}
             />
           );
@@ -143,8 +155,8 @@ export function MetricSearchInput({
                 selectedMetrics.length === 0 ? t`Search for metrics...` : ""
               }
               value={searchText}
-              onChange={(e) => {
-                setSearchText(e.target.value);
+              onChange={(event) => {
+                setSearchText(event.target.value);
                 setIsOpen(true);
               }}
               onClick={handleInputClick}
@@ -153,7 +165,14 @@ export function MetricSearchInput({
             />
           </Popover.Target>
           <Popover.Dropdown p={0} miw={300} maw={400}>
-            {isOpen && children({ searchText, onSelect: handleSelect })}
+            {isOpen && (
+              <MetricSearchDropdown
+                selectedMetricIds={selectedMetricIds}
+                selectedMeasureIds={selectedMeasureIds}
+                onSelect={handleSelect}
+                externalSearchText={searchText}
+              />
+            )}
           </Popover.Dropdown>
         </Popover>
       </Flex>

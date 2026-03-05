@@ -12,6 +12,7 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
+  MetricsViewerTabProjectionConfig,
   MetricsViewerTabState,
   SourceColorMap,
 } from "../../../types/viewer-state";
@@ -74,14 +75,16 @@ export function MetricsViewerTabContent({
     () =>
       buildRawSeriesFromDefinitions(
         definitions,
-        tab,
+        tab.dimensionMapping,
+        tab.display,
         resultsByDefinitionId,
         modifiedDefinitions,
         sourceColors,
       ),
     [
       definitions,
-      tab,
+      tab.dimensionMapping,
+      tab.display,
       resultsByDefinitionId,
       modifiedDefinitions,
       sourceColors,
@@ -95,12 +98,18 @@ export function MetricsViewerTabContent({
     () =>
       buildDimensionItemsFromDefinitions(
         definitions,
-        tab,
+        tab.dimensionMapping,
         modifiedDefinitions,
         sourceColors,
         dimensionFilter,
       ),
-    [definitions, tab, modifiedDefinitions, sourceColors, dimensionFilter],
+    [
+      definitions,
+      tab.dimensionMapping,
+      modifiedDefinitions,
+      sourceColors,
+      dimensionFilter,
+    ],
   );
 
   const definitionForControls = useMemo((): MetricDefinition | null => {
@@ -138,34 +147,34 @@ export function MetricsViewerTabContent({
     return filterDimensions;
   }, [tab.dimensionMapping, modifiedDefinitions]);
 
-  const handleDimensionFilterChange = useCallback(
-    (value: DimensionFilterValue | undefined) => {
+  const updateProjectionConfig = useCallback(
+    (updates: Partial<MetricsViewerTabProjectionConfig>) => {
       onTabUpdate({
-        projectionConfig: {
-          ...tab.projectionConfig,
-          dimensionFilter: value,
-        },
+        projectionConfig: { ...tab.projectionConfig, ...updates },
       });
     },
     [onTabUpdate, tab.projectionConfig],
+  );
+
+  const handleDimensionFilterChange = useCallback(
+    (value: DimensionFilterValue | undefined) => {
+      updateProjectionConfig({ dimensionFilter: value });
+    },
+    [updateProjectionConfig],
   );
 
   const handleTemporalUnitChange = useCallback(
     (unit: TemporalUnit | undefined) => {
-      onTabUpdate({
-        projectionConfig: { ...tab.projectionConfig, temporalUnit: unit },
-      });
+      updateProjectionConfig({ temporalUnit: unit });
     },
-    [onTabUpdate, tab.projectionConfig],
+    [updateProjectionConfig],
   );
 
   const handleBinningChange = useCallback(
     (binningStrategy: string | undefined) => {
-      onTabUpdate({
-        projectionConfig: { ...tab.projectionConfig, binningStrategy },
-      });
+      updateProjectionConfig({ binningStrategy });
     },
-    [onTabUpdate, tab.projectionConfig],
+    [updateProjectionConfig],
   );
 
   const handleDisplayTypeChange = useCallback(
@@ -177,20 +186,16 @@ export function MetricsViewerTabContent({
 
   const handleBrush = useCallback(
     ({ start, end }: { start: number; end: number }) => {
-      const filterValue: DimensionFilterValue = {
-        type: "specific-date",
-        operator: "between",
-        values: [new Date(start), new Date(end)],
-        hasTime: true,
-      };
-      onTabUpdate({
-        projectionConfig: {
-          ...tab.projectionConfig,
-          dimensionFilter: filterValue,
+      updateProjectionConfig({
+        dimensionFilter: {
+          type: "specific-date",
+          operator: "between",
+          values: [new Date(start), new Date(end)],
+          hasTime: true,
         },
       });
     },
-    [onTabUpdate, tab.projectionConfig],
+    [updateProjectionConfig],
   );
 
   const isTimeTab = tab.type === "time";
