@@ -105,35 +105,12 @@
               mapping))
         parameter-mappings))
 
-;; TODO - this is incorrect - it doesn't take the target into account
-;; TODO - use normalized click behavior API
-
-;; (defn- upgrade-column-settings-keys
-;;   "Given a card's dataset_query (pMBQL) and a column_settings map (from visualization_settings),
-;;   return a new column_settings map with upgraded parameter-mapping. Keys are JSON-encoded strings."
-;;   [query column-settings]
-;;   (clojure.walk/postwalk
-;;    (fn [form]
-;;      ;; some forms don't get converted to keywords, so hack it
-;;      (if (and (vector? form)
-;;               (= "dimension" (first form)))
-;;        (try
-;;          (let [dim (-> form
-;;                        (update 0 keyword)
-;;                        (update-in [1 0] keyword)
-;;                        (update-in [1 2 :base-type] keyword))]
-;;            (lib-be/upgrade-field-ref-in-parameter-target query dim))
-;;          (catch Exception _
-;;            form))
-;;        form))
-;;    column-settings))
-
 (defn- click-behavior->card-id
   [click-behavior]
   (when (= ::vs/question (::vs/link-type click-behavior))
     (::vs/link-target-id click-behavior)))
 
-(defn- viz-settings->card-ids
+(defn- click-behaviors->card-ids
   [viz-settings]
   (concat
    ;; global click behavior (non-table cards)
@@ -144,7 +121,7 @@
            (click-behavior->card-id (::vs/click-behavior col-viz)))
          (::vs/column-settings viz-settings))))
 
-(defn- upgrade-click-behavior-dimensions
+(defn- click-behavior-upgrade-field-refs
   "Upgrade dimension field refs in a click behavior's parameter mapping.
    Uses the target card's query (from cards-by-id) when the click behavior links to a question."
   [click-behavior cards-by-id]
@@ -166,13 +143,13 @@
   [viz-settings cards-by-id]
   (-> viz-settings
       ;; global click behavior (non-table cards)
-      (m/update-existing ::vs/click-behavior upgrade-click-behavior-dimensions cards-by-id)
+      (m/update-existing ::vs/click-behavior click-behavior-upgrade-field-refs cards-by-id)
       ;; per-column click behaviors
       (m/update-existing ::vs/column-settings
                          (fn [col-settings]
                            (m/map-vals (fn [col-viz]
                                          (m/update-existing col-viz ::vs/click-behavior
-                                                            upgrade-click-behavior-dimensions cards-by-id))
+                                                            click-behavior-upgrade-field-refs cards-by-id))
                                        col-settings)))))
 
 (defn- dashcard-upgrade-field-refs!
@@ -202,7 +179,7 @@
                                            (cons (:card_id dashcard)
                                                  (concat
                                                   (keep :card_id (:parameter_mappings dashcard))
-                                                  (viz-settings->card-ids (-> dashcard :visualization_settings vs/db->norm))))))
+                                                  (click-behaviors->card-ids (-> dashcard :visualization_settings vs/db->norm))))))
                                  (remove nil?))
                            dashcards)
         cards-by-id  (when (seq all-card-ids)
