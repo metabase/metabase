@@ -599,7 +599,7 @@ export function findSensibleSankeyColumns(data: DatasetData | null) {
 }
 
 export const segmentIsValid = (
-  { min, max }: { min: number; max: number },
+  { min, max }: { min: number | null; max: number | null },
   { allowOpenEnded = false } = {},
 ): boolean => {
   const hasMin = typeof min === "number" && Number.isFinite(min);
