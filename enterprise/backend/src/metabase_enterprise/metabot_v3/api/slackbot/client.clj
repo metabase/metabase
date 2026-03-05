@@ -129,10 +129,31 @@
                                 initial-comment (assoc :initial_comment initial-comment))))
       res)))
 
+(defn fetch-message
+  "Fetch a single Slack message by channel and timestamp."
+  [client channel ts]
+  (let [{:keys [messages]} (:body (slack-get client "/conversations.history"
+                                             {:channel   channel
+                                              :latest    ts
+                                              :limit     1
+                                              :inclusive true}))]
+    (first messages)))
+
 (defn delete-message
   "Remove a Slack message"
   [client message]
   (:body (slack-post-json client "/chat.delete" (select-keys message [:channel :ts]))))
+
+(defn update-message
+  "Update a Slack message"
+  [client message]
+  (slack-post-json client "/chat.update" message))
+
+(defn open-view
+  "Open a Slack modal view, triggered from an interaction."
+  [client {:keys [trigger_id view]}]
+  (:body (slack-post-json client "/views.open" {:trigger_id trigger_id
+                                                :view       view})))
 
 (defn download-file
   "Download a file from Slack using the client's token for authentication.

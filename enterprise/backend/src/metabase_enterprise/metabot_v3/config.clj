@@ -12,12 +12,18 @@
   "The ID of the embedded Metabot instance."
   "c61bf5f5-1025-47b6-9298-bf1827105bb6")
 
+(def slackbot-metabot-id
+  "The ID of the Slack Metabot instance."
+  "9a89fe64-54b9-4ab2-8022-eccd772e5073")
+
 (def metabot-config
   "The name of the collection exposed by the answer-sources tool."
   {internal-metabot-id {:profile-id "internal"
-                        :entity-id "metabotmetabotmetabot"}
+                        :entity-id  "metabotmetabotmetabot"}
    embedded-metabot-id {:profile-id "embedding"
-                        :entity-id "embeddedmetabotmetabo"}})
+                        :entity-id  "embeddedmetabotmetabo"}
+   slackbot-metabot-id {:profile-id "slackbot"
+                        :entity-id  "slackbotmetabotmetabo"}})
 
 (defn metabot-id->profile-id
   "Return the profile-id for the Metabot instance with ID `metabot-id` or \"default\" if no profile-id is configured."
