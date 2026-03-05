@@ -1,13 +1,3 @@
 {
-  "continuations": [
-    {
-      "command": [
-        "branch",
-        "delete",
-        "--force",
-        "emb-1327-show-tenant_identifier-suggestions-in-a-menu-from-row-level"
-      ],
-      "branch": "integration-embedding-onboarding-improvements"
-    }
-  ]
+  "continuations": null
 }
