@@ -158,11 +158,12 @@
 (deftest upgrade-card-self-join-pivot-column-split-test
   (testing "upgrade! with self-join: field refs with join-alias in pivot_table.column_split"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card card {:dataset_query          (self-join-query :products :category)
+      (mt/with-temp [:model/Card card {:dataset_query          (-> (self-join-query :products :category)
+                                                                   (lib/aggregate (lib/count)))
                                        :visualization_settings {:pivot_table.column_split
                                                                 {:rows    [[:field (mt/id :products :category) nil]]
                                                                  :columns [[:field (mt/id :products :title) {"join-alias" "Products - Category"}]]
-                                                                 :values  ["count"]}}}]
+                                                                 :values  [[:aggregation 0]]}}}]
         (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
         (let [updated-viz (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
               split       (:pivot_table.column_split updated-viz)]
@@ -171,7 +172,7 @@
           (is (= ["TITLE"] (:columns split))
               "joined field ref should also resolve to column name")
           (is (= ["count"] (:values split))
-              "string values should be left unchanged"))))))
+              "aggregation ref should be converted to column name"))))))
 
 ;;; ----------------------------------------- upgrade! for pivot_table settings ----------------------------------------
 
