@@ -253,19 +253,19 @@
 (deftest dashboard-upgrade-column-settings-test
   (testing "dashboard-upgrade-field-refs! upgrades column_settings click_behavior parameterMappings"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
-                                       :visualization_settings {}}
+      (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query          (table-query :products)
+                                                         :visualization_settings {}}
                      :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
                      :model/DashboardCard {dashcard-id :id}
                      {:dashboard_id dashboard-id
-                      :card_id (:id card)
+                      :card_id card-id
                       :visualization_settings
                       {:column_settings
                        {(name-key "TITLE")
                         {:click_behavior
                          {:type "link"
                           :linkType "question"
-                          :targetId 1
+                          :targetId card-id
                           :parameterMapping
                           {(json/encode ["dimension" ["field" (mt/id :products :category)
                                                       {"base-type" "type/Text"}]])
@@ -283,26 +283,34 @@
   (testing "dimension vectors in parameterMappings are keywordized and upgraded"
     (mt/dataset test-data
       (let [field-id           (mt/id :products :category)
-            original-dimension ["dimension" ["field" field-id {"base-type" "type/Text"}]]]
-        (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
-                                         :visualization_settings {}}
+            original-dimension ["dimension" ["field" field-id {"base-type" "type/Text"}]]
+            dim-key            (json/encode original-dimension)]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (table-query :products)
+                                                  :visualization_settings {}}
                        :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
                        :model/DashboardCard {dashcard-id :id}
                        {:dashboard_id dashboard-id
-                        :card_id      (:id card)
+                        :card_id      card-id
                         :visualization_settings
                         {:column_settings
                          {(name-key "TITLE")
                           {:click_behavior
-                           {:parameterMapping
-                            {"dim-key"
-                             {:target {:type      "dimension"
+                           {:type "link"
+                            :linkType "question"
+                            :targetId card-id
+                            :parameterMapping
+                            {dim-key
+                             {:id     dim-key
+                              :source {:type "column" :id "TITLE"}
+                              :target {:type      "dimension"
                                        :dimension original-dimension}}}}}}}}]
           (field-refs/dashboard-upgrade-field-refs! dashboard-id)
-          (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
-                target-dim  (get-in updated-viz [:column_settings (name-key "TITLE")
-                                                 :click_behavior :parameterMapping
-                                                 :dim-key :target :dimension])]
+          (let [updated-viz  (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
+                param-map    (get-in updated-viz [:column_settings (name-key "TITLE")
+                                                  :click_behavior :parameterMapping])
+                ;; after norm->db round-trip the key may be re-encoded
+                [_pm-key pm-val] (first param-map)
+                target-dim  (get-in pm-val [:target :dimension])]
             (is (= "dimension" (first target-dim))
                 "first element should remain \"dimension\"")
             (is (= :field (get-in target-dim [1 0]))
@@ -316,17 +324,20 @@
   (testing "malformed dimension vectors pass through unchanged via exception handler"
     (mt/dataset test-data
       (let [malformed-dimension ["dimension" "not-a-vector"]]
-        (mt/with-temp [:model/Card card {:dataset_query          (table-query :products)
-                                         :visualization_settings {}}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (table-query :products)
+                                                  :visualization_settings {}}
                        :model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
                        :model/DashboardCard {dashcard-id :id}
                        {:dashboard_id dashboard-id
-                        :card_id      (:id card)
+                        :card_id      card-id
                         :visualization_settings
                         {:column_settings
                          {(name-key "TITLE")
                           {:click_behavior
-                           {:parameterMapping
+                           {:type "link"
+                            :linkType "question"
+                            :targetId card-id
+                            :parameterMapping
                             {"key1"
                              {:target {:dimension malformed-dimension}}}}}}}}]
           (field-refs/dashboard-upgrade-field-refs! dashboard-id)

@@ -136,17 +136,47 @@
 (defn- viz-settings->card-ids
   [viz-settings]
   (concat
-     ;; global click behavior (non-table cards)
-   (when-let [id (click-behavior->card-id (::vs/click-behavior norm-viz))]
+   ;; global click behavior (non-table cards)
+   (when-let [id (click-behavior->card-id (::vs/click-behavior viz-settings))]
      [id])
-     ;; per-column click behaviors
+   ;; per-column click behaviors
    (keep (fn [[_col-key col-viz]]
            (click-behavior->card-id (::vs/click-behavior col-viz)))
-         (::vs/column-settings norm-viz))))
+         (::vs/column-settings viz-settings))))
+
+(defn- upgrade-click-behavior-dimensions
+  "Upgrade dimension field refs in a click behavior's parameter mapping.
+   Uses the target card's query (from cards-by-id) when the click behavior links to a question."
+  [click-behavior cards-by-id]
+  (if-let [card-id (click-behavior->card-id click-behavior)]
+    (if-let [card (get cards-by-id card-id)]
+      (let [query (:dataset_query card)]
+        (if (replacement.util/valid-query? query)
+          (m/update-existing click-behavior ::vs/parameter-mapping
+                             (fn [param-mapping]
+                               (m/map-vals (fn [pm-val]
+                                             (let [target (::vs/param-mapping-target pm-val)]
+                                               (if-let [dim (::vs/param-dimension target)]
+                                                 (let [dim' (lib-be/upgrade-field-ref-in-parameter-target query dim)]
+                                                   (assoc-in pm-val [::vs/param-mapping-target ::vs/param-dimension] dim'))
+                                                 pm-val)))
+                                           param-mapping)))
+          click-behavior))
+      click-behavior)
+    click-behavior))
 
 (defn- dashcard-upgrade-viz-settings
   [viz-settings cards-by-id]
-  viz-settings)
+  (-> viz-settings
+      ;; global click behavior (non-table cards)
+      (m/update-existing ::vs/click-behavior upgrade-click-behavior-dimensions cards-by-id)
+      ;; per-column click behaviors
+      (m/update-existing ::vs/column-settings
+                         (fn [col-settings]
+                           (m/map-vals (fn [col-viz]
+                                         (m/update-existing col-viz ::vs/click-behavior
+                                                            upgrade-click-behavior-dimensions cards-by-id))
+                                       col-settings)))))
 
 (defn- dashcard-upgrade-field-refs!
   [dashcard cards-by-id]
@@ -171,10 +201,12 @@
   [dashboard-id]
   (let [dashcards    (t2/select :model/DashboardCard :dashboard_id dashboard-id)
         all-card-ids (into #{}
-                           (mapcat (fn [dashcard]
-                                     (concat
-                                      (keep :card_id (:parameter_mappings dashcard))
-                                      (viz-settings->card-ids (-> dashcard :visualization_settings vs/db->norm)))))
+                           (comp (mapcat (fn [dashcard]
+                                           (cons (:card_id dashcard)
+                                                 (concat
+                                                  (keep :card_id (:parameter_mappings dashcard))
+                                                  (viz-settings->card-ids (-> dashcard :visualization_settings vs/db->norm))))))
+                                 (remove nil?))
                            dashcards)
         cards-by-id  (when (seq all-card-ids)
                        (->> (t2/select :model/Card :id [:in all-card-ids])
