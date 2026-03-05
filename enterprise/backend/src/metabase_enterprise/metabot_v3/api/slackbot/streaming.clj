@@ -361,18 +361,17 @@
                            :team_id   team-id
                            :user_id   user-id}
 
-        last-flush-at  (volatile! 0)
+        last-flush-timer (volatile! (u/start-timer))
 
-        request-flush! (fn do-request-flush
-                         ([] (do-request-flush false))
-                         ([force?]
-                          (ensure-stream-started! client stream-opts stream-attempted? stream-state)
-                          (when @stream-state
-                            (let [elapsed (- (System/currentTimeMillis) @last-flush-at)]
-                              (when (or force? (>= elapsed min-flush-interval-ms))
-                                (vreset! last-flush-at (System/currentTimeMillis))
-                                (send-off slack-writer
-                                          (fn [_] (drain-pending-text! client stream-state pending-text thinking-ts) nil)))))))
+        request-flush!  (fn do-request-flush
+                          ([] (do-request-flush false))
+                          ([force?]
+                           (ensure-stream-started! client stream-opts stream-attempted? stream-state)
+                           (when @stream-state
+                             (when (or force? (>= (u/since-ms @last-flush-timer) min-flush-interval-ms))
+                               (vreset! last-flush-timer (u/start-timer))
+                               (send-off slack-writer
+                                         (fn [_] (drain-pending-text! client stream-state pending-text thinking-ts) nil))))))
 
         start-with-thinking! (fn []
                                (let [response (slackbot.client/post-message client {:channel   channel
