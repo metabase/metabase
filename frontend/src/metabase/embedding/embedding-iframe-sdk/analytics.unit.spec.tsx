@@ -98,11 +98,17 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         locale: "de",
       });
 
-      const usage = createEmbeddedAnalyticsJsUsage(
-        new Set([createEmbeddedAnalyticsJsElement("metabase-dashboard")]),
+      expect(
+        createEmbeddedAnalyticsJsUsage(
+          new Set([createEmbeddedAnalyticsJsElement("metabase-dashboard")]),
+        ),
+      ).toEqual(
+        expect.objectContaining({
+          global: expect.objectContaining({
+            locale_used: true,
+          }),
+        }),
       );
-
-      expect(usage.global.locale_used).toBe(true);
     });
 
     it("should track locale_used as false when locale is not set", () => {
@@ -110,11 +116,17 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         instanceUrl: "https://example.com",
       });
 
-      const usage = createEmbeddedAnalyticsJsUsage(
-        new Set([createEmbeddedAnalyticsJsElement("metabase-dashboard")]),
+      expect(
+        createEmbeddedAnalyticsJsUsage(
+          new Set([createEmbeddedAnalyticsJsElement("metabase-dashboard")]),
+        ),
+      ).toEqual(
+        expect.objectContaining({
+          global: expect.objectContaining({
+            locale_used: false,
+          }),
+        }),
       );
-
-      expect(usage.global.locale_used).toBe(false);
     });
   });
 
@@ -158,7 +170,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
       it("should count properties correctly", () => {
         // Explicit default values
-        const usage1 = createEmbeddedAnalyticsJsUsage(
+        const usageWithDefaults = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-dashboard", {
               drills: true,
@@ -169,7 +181,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage1.components).toContainEqual({
+        expect(usageWithDefaults.components).toContainEqual({
           name: "dashboard",
           properties: expect.arrayContaining([
             {
@@ -192,7 +204,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         });
 
         // Flip the default values
-        const usage2 = createEmbeddedAnalyticsJsUsage(
+        const usageWithInvertedDefaults = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-dashboard", {
               drills: false,
@@ -203,7 +215,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage2.components).toContainEqual({
+        expect(usageWithInvertedDefaults.components).toContainEqual({
           name: "dashboard",
           properties: expect.arrayContaining([
             {
@@ -226,7 +238,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         });
 
         // Multiple components
-        const usage3 = createEmbeddedAnalyticsJsUsage(
+        const usageWithMultipleComponents = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-dashboard"),
             createEmbeddedAnalyticsJsElement("metabase-dashboard"),
@@ -239,7 +251,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage3.components).toContainEqual({
+        expect(usageWithMultipleComponents.components).toContainEqual({
           name: "dashboard",
           properties: expect.arrayContaining([
             {
@@ -285,10 +297,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         );
 
         const dashboardComponent = usage.components.find(
-          (c) => c.name === "dashboard",
+          (component) => component.name === "dashboard",
         );
         const autoRefreshProp = dashboardComponent?.properties.find(
-          (p) => p.name === "auto_refresh_interval",
+          (property) => property.name === "auto_refresh_interval",
         );
 
         expect(autoRefreshProp?.values).toEqual(
@@ -313,13 +325,13 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         );
 
         const dashboardComponent = usage.components.find(
-          (c) => c.name === "dashboard",
+          (component) => component.name === "dashboard",
         );
-        const entityNavProp = dashboardComponent?.properties.find(
-          (p) => p.name === "enable_entity_navigation",
+        const enableEntityNavigationProp = dashboardComponent?.properties.find(
+          (property) => property.name === "enable_entity_navigation",
         );
 
-        expect(entityNavProp?.values).toEqual(
+        expect(enableEntityNavigationProp?.values).toEqual(
           expect.arrayContaining([
             { group: "true", value: 1 },
             { group: "false", value: 2 },
@@ -375,7 +387,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
       it("should count properties correctly", () => {
         // Explicit default values
-        const usage1 = createEmbeddedAnalyticsJsUsage(
+        const usageWithDefaults = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-question", {
               "question-id": 1,
@@ -388,7 +400,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage1.components).toContainEqual({
+        expect(usageWithDefaults.components).toContainEqual({
           name: "question",
           properties: expect.arrayContaining([
             {
@@ -415,7 +427,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         });
 
         // Flip the default values
-        const usage2 = createEmbeddedAnalyticsJsUsage(
+        const usageWithInvertedDefaults = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-question", {
               "question-id": 1,
@@ -428,7 +440,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage2.components).toContainEqual({
+        expect(usageWithInvertedDefaults.components).toContainEqual({
           name: "question",
           properties: expect.arrayContaining([
             {
@@ -455,7 +467,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         });
 
         // Multiple components
-        const usage3 = createEmbeddedAnalyticsJsUsage(
+        const usageWithMultipleComponents = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-question"),
             createEmbeddedAnalyticsJsElement("metabase-question"),
@@ -469,7 +481,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage3.components).toContainEqual({
+        expect(usageWithMultipleComponents.components).toContainEqual({
           name: "question",
           properties: expect.arrayContaining([
             {
@@ -564,7 +576,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
       it("should count question components with exploration", () => {
         // Explicit default values
-        const usage1 = createEmbeddedAnalyticsJsUsage(
+        const usageWithDefaults = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-question", {
               "question-id": "new",
@@ -573,7 +585,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage1.components).toContainEqual({
+        expect(usageWithDefaults.components).toContainEqual({
           name: "exploration",
           properties: [
             {
@@ -584,7 +596,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         });
 
         // Flip the default values
-        const usage2 = createEmbeddedAnalyticsJsUsage(
+        const usageWithInvertedDefaults = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-question", {
               "question-id": "new",
@@ -593,7 +605,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage2.components).toContainEqual({
+        expect(usageWithInvertedDefaults.components).toContainEqual({
           name: "exploration",
           properties: [
             {
@@ -604,7 +616,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         });
 
         // Multiple components
-        const usage3 = createEmbeddedAnalyticsJsUsage(
+        const usageWithMultipleComponents = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-question", {
               "question-id": "new",
@@ -619,7 +631,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage3.components).toContainEqual({
+        expect(usageWithMultipleComponents.components).toContainEqual({
           name: "exploration",
           properties: [
             {
@@ -677,7 +689,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
 
       it("should count properties correctly", () => {
         // Explicit default values
-        const usage1 = createEmbeddedAnalyticsJsUsage(
+        const usageWithDefaults = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-browser", {
               "read-only": true,
@@ -685,7 +697,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage1.components).toContainEqual({
+        expect(usageWithDefaults.components).toContainEqual({
           name: "browser",
           properties: expect.arrayContaining([
             {
@@ -696,7 +708,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         });
 
         // Flip the default values
-        const usage2 = createEmbeddedAnalyticsJsUsage(
+        const usageWithInvertedDefaults = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-browser", {
               "read-only": false,
@@ -704,7 +716,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage2.components).toContainEqual({
+        expect(usageWithInvertedDefaults.components).toContainEqual({
           name: "browser",
           properties: expect.arrayContaining([
             {
@@ -715,7 +727,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         });
 
         // Multiple components
-        const usage3 = createEmbeddedAnalyticsJsUsage(
+        const usageWithMultipleComponents = createEmbeddedAnalyticsJsUsage(
           new Set([
             createEmbeddedAnalyticsJsElement("metabase-browser"),
             createEmbeddedAnalyticsJsElement("metabase-browser"),
@@ -725,7 +737,7 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
           ]),
         );
 
-        expect(usage3.components).toContainEqual({
+        expect(usageWithMultipleComponents.components).toContainEqual({
           name: "browser",
           properties: expect.arrayContaining([
             {
@@ -753,13 +765,13 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
         );
 
         const browserComponent = usage.components.find(
-          (c) => c.name === "browser",
+          (component) => component.name === "browser",
         );
-        const entityNavProp = browserComponent?.properties.find(
-          (p) => p.name === "enable_entity_navigation",
+        const enableEntityNavigationProp = browserComponent?.properties.find(
+          (property) => property.name === "enable_entity_navigation",
         );
 
-        expect(entityNavProp?.values).toEqual(
+        expect(enableEntityNavigationProp?.values).toEqual(
           expect.arrayContaining([
             { group: "true", value: 1 },
             { group: "false", value: 2 },
@@ -819,10 +831,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
       );
 
       const dashboardComponent = usage.components.find(
-        (c) => c.name === "dashboard",
+        (component) => component.name === "dashboard",
       );
       const drillsProp = dashboardComponent?.properties.find(
-        (p) => p.name === "drills",
+        (property) => property.name === "drills",
       );
 
       expect(drillsProp?.values).toEqual(
@@ -852,10 +864,10 @@ describe("createEmbeddedAnalyticsJsUsage", () => {
       );
 
       const questionComponent = usage.components.find(
-        (c) => c.name === "question",
+        (component) => component.name === "question",
       );
       const drillsProp = questionComponent?.properties.find(
-        (p) => p.name === "drills",
+        (property) => property.name === "drills",
       );
 
       expect(drillsProp?.values).toEqual(

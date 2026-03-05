@@ -605,6 +605,63 @@ describe("scenarios > embedding > modular embedding", () => {
       });
     });
 
+    it("should send locale_used=true when locale is configured", () => {
+      cy.signOut();
+      cy.visit("http://localhost:4000");
+      const frame = H.loadSdkIframeEmbedTestPage({
+        origin: "http://different-than-metabase-instance.com",
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+            },
+          },
+        ],
+        metabaseConfig: {
+          locale: "de",
+        },
+        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`,
+      });
+
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "setup",
+        global: {
+          auth_method: "sso",
+          locale_used: true,
+        },
+        components: [
+          {
+            name: "dashboard",
+            properties: [
+              { name: "drills", values: [{ group: "true", value: 1 }] },
+              {
+                name: "with_downloads",
+                values: [{ group: "false", value: 1 }],
+              },
+              { name: "with_title", values: [{ group: "true", value: 1 }] },
+              {
+                name: "with_subscriptions",
+                values: [{ group: "false", value: 1 }],
+              },
+              {
+                name: "auto_refresh_interval",
+                values: [{ group: "false", value: 1 }],
+              },
+              {
+                name: "enable_entity_navigation",
+                values: [{ group: "false", value: 1 }],
+              },
+            ],
+          },
+        ],
+      });
+    });
+
     it("should not send an modular embedding usage event in the preview", () => {
       cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
