@@ -340,7 +340,7 @@
   {:type      ::param-ref-type
    :id        ::param-ref-id
    :name      ::param-ref-name
-   :dimension ::param-dimensio`n})
+   :dimension ::param-dimension})
 
 (def ^:private norm->db-param-ref-keys
   (set/map-invert db->norm-param-ref-keys))
