@@ -26,7 +26,7 @@
 
 (defn walk-viz-settings-refs
   "Walk the viz settings and update the refs using the provided function.
-  
+
   `ref-fn` will be called with a ref and should return either a string or a new ref."
   [viz-settings
    ref-fn]

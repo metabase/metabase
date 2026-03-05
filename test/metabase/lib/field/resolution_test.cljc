@@ -1838,11 +1838,11 @@
   (testing "resolve-field-ref should not throw when a nested column's parent-id points to a non-existent field"
     (let [mp    (lib.tu/mock-metadata-provider
                  meta/metadata-provider
-                 {:fields [{:id        999999
+                 {:fields [{:id        999998
                             :table-id  (meta/id :orders)
                             :name      "nested_col"
                             :base-type :type/Text
-                            :parent-id Integer/MAX_VALUE}]})
+                            :parent-id 999999}]})
           query (lib/query mp (meta/table-metadata :orders))
           field-ref (lib/ref (m/find-first #(= (:name %) "nested_col") (lib/fieldable-columns query)))]
       (is (=? {:name "nested_col"}

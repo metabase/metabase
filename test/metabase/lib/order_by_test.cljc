@@ -897,4 +897,3 @@
           ref-no-types (lib.options/update-options ref dissoc :base-type :effective-type)
           query''  (lib/order-by query' ref-no-types)]
       (is (= 1 (count (lib/order-bys query'')))))))
-
