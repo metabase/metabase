@@ -27,6 +27,11 @@
 (def test-tools
   {"search" #'test-search-tool})
 
+(defn- run-agent-loop!
+  "run-agent-loop for side effects, discarding results"
+  [opts]
+  (reduce (fn [_ _]) nil (agent/run-agent-loop opts)))
+
 (deftest has-tool-calls-test
   (testing "detects tool calls in parts"
     (is (#'agent/has-tool-calls? [{:type :tool-input :id "t1"}]))
@@ -453,11 +458,10 @@
                             (mut/mock-llm-response
                              [{:type :text :text "Done"}]))))]
           (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
-            (run! identity (agent/run-agent-loop
-                            {:messages   [{:role :user :content "test"}]
-                             :state      {}
-                             :profile-id :internal
-                             :context    {}})))))
+            (run-agent-loop! {:messages   [{:role :user :content "test"}]
+                              :state      {}
+                              :profile-id :internal
+                              :context    {}}))))
       (is (== 1 (mt/metric-value system :metabase-metabot/agent-requests
                                  {:profile-id "internal"})))
       (is (== 2 (:sum (mt/metric-value system :metabase-metabot/agent-iterations
@@ -482,11 +486,10 @@
     (testing "records agent-errors on failure"
       (with-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]
         (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :fatal]
-          (run! identity (agent/run-agent-loop
-                          {:messages   [{:role :user :content "test"}]
-                           :state      {}
-                           :profile-id :internal
-                           :context    {}}))))
+          (run-agent-loop! {:messages   [{:role :user :content "test"}]
+                            :state      {}
+                            :profile-id :internal
+                            :context    {}})))
       (is (== 1 (mt/metric-value system :metabase-metabot/agent-requests
                                  {:profile-id "internal"})))
       (is (== 0 (:sum (mt/metric-value system :metabase-metabot/agent-iterations
@@ -531,12 +534,11 @@
         (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
-              (run! identity (agent/run-agent-loop
-                              {:messages        [{:role :user :content "test"}]
-                               :state           {}
-                               :context         {}
-                               :profile-id      :internal
-                               :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000001"}}))
+              (run-agent-loop! {:messages        [{:role :user :content "test"}]
+                                :state           {}
+                                :context         {}
+                                :profile-id      :internal
+                                :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000001"}})
               ;; The collector also contains token_usage events; filter for just ai_service_events.
               (let [events (snowplow-test/pop-event-data-and-user-id!)
                     tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
@@ -576,12 +578,11 @@
         (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
-              (run! identity (agent/run-agent-loop
-                              {:messages        [{:role :user :content "test"}]
-                               :state           {}
-                               :context         {}
-                               :profile-id      :internal
-                               :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000002"}}))
+              (run-agent-loop! {:messages        [{:role :user :content "test"}]
+                                :state           {}
+                                :context         {}
+                                :profile-id      :internal
+                                :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000002"}})
               (let [events (snowplow-test/pop-event-data-and-user-id!)
                     tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
                 (is (=? [{:data {"event"  "agent_used_tool"
@@ -612,12 +613,11 @@
         (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
-              (run! identity (agent/run-agent-loop
-                              {:messages        [{:role :user :content "test"}]
-                               :state           {}
-                               :context         {}
-                               :profile-id      :internal
-                               :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000001"}}))
+              (run-agent-loop! {:messages        [{:role :user :content "test"}]
+                                :state           {}
+                                :context         {}
+                                :profile-id      :internal
+                                :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000001"}})
               ;; Filter for just token_usage events (other events may also be present)
               (let [events      (snowplow-test/pop-event-data-and-user-id!)
                     token-events (filter #(contains? (:data %) "total_tokens") events)]
@@ -660,13 +660,12 @@
                     self/call-llm       (fn [& _] [{:type :text :text "<category>query_data</category>"}])]
         (mt/with-current-user rasta-id
           (snowplow-test/with-fake-snowplow-collector
-            (run! identity (agent/run-agent-loop
-                            {:messages            [{:role :user :content "Show sales by region"}]
-                             :state               {}
-                             :context             {}
-                             :profile-id          :internal
-                             :tracking-opts       {:session-id          "00000000-0000-0000-0000-000000000002"
-                                                   :track-user-intent?  true}}))
+            (run-agent-loop! {:messages            [{:role :user :content "Show sales by region"}]
+                              :state               {}
+                              :context             {}
+                              :profile-id          :internal
+                              :tracking-opts       {:session-id          "00000000-0000-0000-0000-000000000002"
+                                                    :track-user-intent?  true}})
             (tu/poll-until 5000
                            (some #(= "user_intent" (get-in % [:properties "data" "data" "event"]))
                                  @snowplow-test/*snowplow-collector*))
@@ -685,12 +684,11 @@
     (let [classify-called (atom false)]
       (with-redefs [openrouter/openrouter                                   (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
                     agent-analytics/classify-and-track-user-intent-async! (fn [_ _] (reset! classify-called true))]
-        (run! identity (agent/run-agent-loop
-                        {:messages        [{:role :user :content "test"}]
-                         :state           {}
-                         :context         {}
-                         :profile-id      :internal
-                         :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000003"}}))
+        (run-agent-loop! {:messages        [{:role :user :content "test"}]
+                          :state           {}
+                          :context         {}
+                          :profile-id      :internal
+                          :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000003"}})
         (is (false? @classify-called))))))
 
 (deftest user-intent-classifier-exception-swallowed-test
@@ -701,12 +699,11 @@
                                           (reset! classify-called true)
                                           (throw (ex-info "LLM error" {})))]
         ;; Should not throw — exception is caught inside the background future
-        (run! identity (agent/run-agent-loop
-                        {:messages            [{:role :user :content "test"}]
-                         :state               {}
-                         :context             {}
-                         :profile-id          :internal
-                         :tracking-opts       {:session-id          "00000000-0000-0000-0000-000000000004"
-                                               :track-user-intent?  true}}))
+        (run-agent-loop! {:messages            [{:role :user :content "test"}]
+                          :state               {}
+                          :context             {}
+                          :profile-id          :internal
+                          :tracking-opts       {:session-id          "00000000-0000-0000-0000-000000000004"
+                                                :track-user-intent?  true}})
         (tu/poll-until 5000 @classify-called)
         (is (true? @classify-called))))))
