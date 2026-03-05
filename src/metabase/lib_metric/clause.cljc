@@ -4,8 +4,13 @@
    and :projections (as typed-projection entries with nested dimension references).
    Each clause has a :lib/uuid in its options map for identification."
   (:require
-   [metabase.lib.options :as lib.options]
+   [metabase.lib.core :as lib]
    [metabase.util.performance :as perf]))
+
+(defn- clause-uuid
+  "Get the :lib/uuid from a clause's options."
+  [clause]
+  (:lib/uuid (lib/options clause)))
 
 (defn- find-clause-location
   "Find a clause by its UUID in the definition's :filters or :projections.
@@ -17,13 +22,13 @@
   [definition target-uuid]
   ;; Search filters: each entry is {:lib/uuid ... :filter <mbql-clause>}
   (or (perf/some (fn [[idx entry]]
-                   (when (= target-uuid (lib.options/uuid (:filter entry)))
+                   (when (= target-uuid (clause-uuid (:filter entry)))
                      [:filters idx :filter]))
                  (map-indexed vector (:filters definition)))
       ;; Search projections: each entry is {:type ... :id ... :projection [dim-refs...]}
       (perf/some (fn [[proj-idx tp]]
                    (perf/some (fn [[dim-idx dim-ref]]
-                                (when (= target-uuid (lib.options/uuid dim-ref))
+                                (when (= target-uuid (clause-uuid dim-ref))
                                   [:projections proj-idx :projection dim-idx]))
                               (map-indexed vector (:projection tp))))
                  (map-indexed vector (:projections definition)))))
@@ -33,7 +38,7 @@
    Finds the target clause by its :lib/uuid and replaces it with new-clause.
    Returns the definition unchanged if target clause is not found."
   [definition target-clause new-clause]
-  (let [target-uuid (lib.options/uuid target-clause)]
+  (let [target-uuid (clause-uuid target-clause)]
     (if-let [path (find-clause-location definition target-uuid)]
       (assoc-in definition path new-clause)
       definition)))
@@ -45,7 +50,7 @@
    For projections: removes the dim-ref from the typed-projection's :projection vector.
    Returns the definition unchanged if clause is not found."
   [definition clause]
-  (let [target-uuid (lib.options/uuid clause)]
+  (let [target-uuid (clause-uuid clause)]
     (if-let [path (find-clause-location definition target-uuid)]
       (case (first path)
         :filters
@@ -68,8 +73,8 @@
    Finds both clauses by their :lib/uuid and swaps their values at their respective paths.
    Returns the definition unchanged if either clause is not found."
   [definition source-clause target-clause]
-  (let [source-uuid (lib.options/uuid source-clause)
-        target-uuid (lib.options/uuid target-clause)]
+  (let [source-uuid (clause-uuid source-clause)
+        target-uuid (clause-uuid target-clause)]
     (if-let [source-path (find-clause-location definition source-uuid)]
       (if-let [target-path (find-clause-location definition target-uuid)]
         (let [source-val (perf/get-in definition source-path)

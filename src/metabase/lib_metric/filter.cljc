@@ -5,7 +5,7 @@
    [metabase.lib-metric.dimension :as dimension]
    [metabase.lib-metric.operators :as operators]
    [metabase.lib-metric.types.isa :as types.isa]
-   [metabase.lib.options :as lib.options]
+   [metabase.lib.core :as lib]
    [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
 
@@ -162,7 +162,7 @@
   "Create a default filter clause (is-null or not-null) from parts.
    Parts: {:operator :is-null/:not-null, :dimension dimension}"
   [{:keys [operator dimension]}]
-  (lib.options/ensure-uuid [operator {} (dimension-ref dimension)]))
+  (lib/ensure-uuid [operator {} (dimension-ref dimension)]))
 
 (defn default-filter-parts
   "Extract default filter parts from an MBQL clause.
@@ -183,7 +183,7 @@
   "Create a boolean filter clause from parts.
    Parts: {:operator := or :is-null/:not-null, :dimension dimension, :values [boolean]}"
   [{:keys [operator dimension values]}]
-  (lib.options/ensure-uuid
+  (lib/ensure-uuid
    (case operator
      (:is-null :not-null) [operator {} (dimension-ref dimension)]
      := [:= {} (dimension-ref dimension) (first values)])))
@@ -216,7 +216,7 @@
   "Create a number filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :values [number]}"
   [{:keys [operator dimension values]}]
-  (lib.options/ensure-uuid
+  (lib/ensure-uuid
    (case operator
      (:is-null :not-null) [operator {} (dimension-ref dimension)]
      :between             [:between {} (dimension-ref dimension) (first values) (second values)]
@@ -255,7 +255,7 @@
   "Create a string filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :values [string], :options map}"
   [{:keys [operator dimension values options]}]
-  (lib.options/ensure-uuid
+  (lib/ensure-uuid
    (case operator
      (:is-empty :not-empty) [operator {} (dimension-ref dimension)]
      ;; Operators that take a single value and may have options
@@ -303,7 +303,7 @@
   "Create a coordinate filter clause from parts.
    Parts: {:operator :keyword, :dimension lat-dimension, :longitude-dimension lon-dimension, :values [number]}"
   [{:keys [operator dimension longitude-dimension values]}]
-  (lib.options/ensure-uuid
+  (lib/ensure-uuid
    (case operator
      :inside [:inside {}
               (dimension-ref dimension)
@@ -354,7 +354,7 @@
    Parts: {:operator :keyword, :dimension dimension, :values [date-string], :has-time boolean}"
   [{:keys [operator dimension values has-time]}]
   (let [values (perf/mapv #(u.time/format-date-for-filter % has-time) values)]
-    (lib.options/ensure-uuid
+    (lib/ensure-uuid
      (case operator
        :between [:between {} (dimension-ref dimension) (first values) (second values)]
        ;; Standard operators: =, >, <
@@ -423,7 +423,7 @@
                        (seq options) (merge options)
                        offset-unit   (assoc :offset-unit offset-unit)
                        offset-value  (assoc :offset-value offset-value))]
-    (lib.options/ensure-uuid
+    (lib/ensure-uuid
      (if (seq base-options)
        [:time-interval base-options (dimension-ref dimension) value unit]
        [:time-interval {} (dimension-ref dimension) value unit]))))
@@ -457,7 +457,7 @@
   "Create an exclude date filter clause from parts.
    Parts: {:operator :keyword, :dimension dimension, :unit :day-of-week/etc, :values [int]}"
   [{:keys [operator dimension unit values]}]
-  (lib.options/ensure-uuid
+  (lib/ensure-uuid
    (case operator
      (:is-null :not-null) [operator {} (dimension-ref dimension)]
      ;; For :!= with unit, we need to wrap the dimension in a temporal extraction
@@ -514,7 +514,7 @@
    Parts: {:operator :keyword, :dimension dimension, :values [time-string]}"
   [{:keys [operator dimension values]}]
   (let [values (perf/mapv #(u.time/format-for-base-type % :type/Time) values)]
-    (lib.options/ensure-uuid
+    (lib/ensure-uuid
      (case operator
        (:is-null :not-null) [operator {} (dimension-ref dimension)]
        :between             [:between {} (dimension-ref dimension) (first values) (second values)]

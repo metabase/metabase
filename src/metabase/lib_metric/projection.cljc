@@ -7,7 +7,6 @@
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -78,7 +77,7 @@
                          :metadata/metric  :metric
                          :metadata/measure :measure)
         source-id      (:id source-metadata)
-        dimension-ref  (lib.options/ensure-uuid [:dimension {} (:id dimension)])
+        dimension-ref  (lib/ensure-uuid [:dimension {} (:id dimension)])
         projections    (or (:projections definition) [])
         existing-idx   (perf/some (fn [[idx tp]]
                                     (when (and (= (:type tp) leaf-type) (= (:id tp) source-id))
@@ -99,7 +98,7 @@
   (let [expression    (:expression definition)
         leaf-type     (lib-metric.definition/expression-leaf-type expression)
         leaf-id       (lib-metric.definition/expression-leaf-id expression)
-        dimension-ref (lib.options/ensure-uuid dimension-ref)
+        dimension-ref (lib/ensure-uuid dimension-ref)
         projections   (or (:projections definition) [])
         ;; Find existing typed-projection entry for this source
         existing-idx  (perf/some (fn [[idx tp]]
@@ -208,11 +207,11 @@
                (nil? bucket) nil
                (keyword? bucket) bucket
                (map? bucket) (:unit bucket))]
-    (lib.options/update-options (lib-metric.dimension/reference projection)
-                                (fn [opts]
-                                  (if unit
-                                    (assoc opts :temporal-unit unit)
-                                    (dissoc opts :temporal-unit))))))
+    (lib/update-options (lib-metric.dimension/reference projection)
+                        (fn [opts]
+                          (if unit
+                            (assoc opts :temporal-unit unit)
+                            (dissoc opts :temporal-unit))))))
 
 ;;; -------------------------------------------------- Binning Functions --------------------------------------------------
 
@@ -300,11 +299,11 @@
                       (nil? binning-option) nil
                       (contains? binning-option :mbql) (:mbql binning-option)
                       :else binning-option)]
-    (lib.options/update-options (lib-metric.dimension/reference projection)
-                                (fn [opts]
-                                  (if binning-val
-                                    (assoc opts :binning binning-val)
-                                    (dissoc opts :binning))))))
+    (lib/update-options (lib-metric.dimension/reference projection)
+                        (fn [opts]
+                          (if binning-val
+                            (assoc opts :binning binning-val)
+                            (dissoc opts :binning))))))
 
 ;;; -------------------------------------------------- Default Breakout Dimensions --------------------------------------------------
 
