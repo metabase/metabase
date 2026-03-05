@@ -6,10 +6,10 @@
    [clojure.test :refer :all]
    [compojure.response]
    [medley.core :as m]
-   [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
+   [metabase-enterprise.metabot-v3.persistence :as persistence]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
    [metabase.search.test-util :as search.tu]
    [metabase.server.instance :as server.instance]
@@ -101,8 +101,8 @@
         (search.tu/with-index-disabled
           (mt/with-premium-features #{:metabot-v3}
             (with-redefs [client/ai-url      (constantly ai-url)
-                          api/store-message! (fn [_conv-id _prof-id msgs]
-                                               (reset! messages msgs))
+                          persistence/store-message! (fn [_conv-id _prof-id msgs]
+                                                       (reset! messages msgs))
                           sr/async-cancellation-poll-interval-ms 5]
               (testing "Closing body stream drops connection"
                 (let [body (mt/user-real-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
@@ -167,6 +167,22 @@
         (testing "Throws when premium token is missing"
           (mt/with-temporary-setting-values [premium-embedding-token nil]
             (mt/user-http-request :rasta :post 400 "ee/metabot-v3/feedback" {:foo "bar"})))))))
+
+(deftest endpoints-require-authentication-test
+  (mt/with-premium-features #{:metabot-v3}
+    (testing "Metabot v3 endpoints require authentication"
+      (testing "/agent-streaming"
+        (is (= "Unauthenticated"
+               (mt/client :post 401 "ee/metabot-v3/agent-streaming"
+                          {:message "Test"
+                           :context {}
+                           :conversation_id (str (random-uuid))
+                           :history []
+                           :state {}}))))
+      (testing "/feedback"
+        (is (= "Unauthenticated"
+               (mt/client :post 401 "ee/metabot-v3/feedback"
+                          {:feedback {}})))))))
 
 (deftest metabot-enabled-setting-test
   (mt/with-premium-features #{:metabot-v3}

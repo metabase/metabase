@@ -9,6 +9,7 @@
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
+   [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
    [metabase.formatter.core :as formatter]
@@ -60,15 +61,6 @@
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   Helper Fns                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn show-in-table?
-  "Should this column be shown in a rendered table in a Pulse?"
-  [{:keys [visibility_type] :as _column}]
-  (not (contains? #{:details-only :retired :sensitive} visibility_type)))
-
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
 (mu/defn- format-scalar-value
@@ -98,15 +90,6 @@
 
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
-(defn- create-remapping-lookup
-  "Creates a map with from column names to a column index. This is used to figure out what a given column name or value
-  should be replaced with"
-  [cols]
-  (into {}
-        (for [[col-idx {:keys [remapped_from]}] (map vector (range) cols)
-              :when remapped_from]
-          [remapped_from col-idx])))
-
 (defn- column-name
   "Returns first column name from a hierarchy of possible column names"
   [card col]
@@ -126,7 +109,7 @@
   [remapping-lookup card cols]
   {:row
    (for [maybe-remapped-col cols
-         :when              (show-in-table? maybe-remapped-col)
+         :when              (table-data/show-in-table? maybe-remapped-col)
          :let               [col (if (:remapped_to maybe-remapped-col)
                                    (nth cols (get remapping-lookup (:name maybe-remapped-col)))
                                    maybe-remapped-col)
@@ -145,7 +128,7 @@
     (for [row rows]
       {:row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
                   :when (and (not (:remapped_from maybe-remapped-col))
-                             (show-in-table? maybe-remapped-col))
+                             (table-data/show-in-table? maybe-remapped-col))
                   :let [[_formatter row-cell] (if (:remapped_to maybe-remapped-col)
                                                 (let [remapped-index (get remapping-lookup (:name maybe-remapped-col))]
                                                   [(nth formatters remapped-index)
@@ -159,7 +142,7 @@
   ([timezone-id :- [:maybe :string]
     card
     {:keys [cols rows viz-settings], :as _data}]
-   (let [remapping-lookup (create-remapping-lookup cols)
+   (let [remapping-lookup (table-data/create-remapping-lookup cols)
          row-limit        (min (channel.settings/attachment-table-row-limit) 100)]
      (cons
       (query-results->header-row remapping-lookup card cols)
@@ -195,7 +178,7 @@
 (mr/def ::RenderedPartCard
   "Schema used for functions that operate on pulse card contents and their attachments"
   [:map
-   [:attachments                  [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
+   [:attachments {:optional true} [:maybe [:map-of :string (ms/InstanceOfClass URL)]]]
    [:content                      [:sequential :any]]
    [:render/text {:optional true} [:maybe :string]]])
 
@@ -242,7 +225,7 @@
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
-        filtered-cols               (filter show-in-table? ordered-cols)
+        filtered-cols               (filter table-data/show-in-table? ordered-cols)
         minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table

@@ -1297,8 +1297,7 @@
                    (get-in [:channels :slack :fields]))))))
 
     (testing "When slack is not configured, `form_input` returns no channels"
-      (mt/with-temporary-setting-values [slack-token nil
-                                         slack-app-token nil]
+      (mt/with-temporary-setting-values [channel.settings/slack-app-token nil]
         (is (empty?
              (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                  (get-in [:channels :slack :fields])

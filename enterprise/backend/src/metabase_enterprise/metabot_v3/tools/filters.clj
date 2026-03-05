@@ -173,9 +173,9 @@
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
-    {:type :query
-     :query-id query-id
-     :query query
+    {:type           :query
+     :query-id       query-id
+     :query          query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
@@ -363,9 +363,9 @@
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
-    {:type :query
-     :query-id query-id
-     :query query
+    {:type           :query
+     :query-id       query-id
+     :query          query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))

@@ -9,7 +9,6 @@ import { disableNotice } from "../../actions";
 import DeprecationNotice from "../../components/DeprecationNotice";
 import {
   hasDeprecatedDatabase,
-  hasSlackBot,
   isDeprecationNoticeEnabled,
 } from "../../selectors";
 
@@ -18,7 +17,6 @@ interface Props {
 }
 
 const mapStateToProps = (state: State, props: Props) => ({
-  hasSlackBot: hasSlackBot(state),
   hasDeprecatedDatabase: hasDeprecatedDatabase(state, props),
   isEnabled: isDeprecationNoticeEnabled(state),
 });

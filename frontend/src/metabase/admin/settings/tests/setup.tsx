@@ -13,6 +13,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingEndpoint,
   setupSettingsEndpoints,
+  setupSlackAppInfoEndpoint,
   setupSlackManifestEndpoint,
   setupTokenStatusEndpoint,
   setupUploadManagementEndpoint,
@@ -39,7 +40,11 @@ export const ossRoutes: RouteMap = {
   root: { path: "", testPattern: /site name/i },
   general: { path: "/general", testPattern: /site name/i },
   email: { path: "/email", testPattern: /SMTP/i },
-  notifications: { path: "/notifications", testPattern: /Connect to Slack/i },
+  slack: {
+    path: "/slack",
+    testPattern: /Create a Slack app and connect to it/i,
+  },
+  webhooks: { path: "/webhooks", testPattern: /Configure webhooks/i },
   authentication: {
     path: "/authentication",
     testPattern: /Sign in with Google/i,
@@ -137,6 +142,7 @@ export const setup = async ({
   setupGroupsEndpoint([]);
   setupDatabasesEndpoints([]);
   setupSlackManifestEndpoint();
+  setupSlackAppInfoEndpoint();
   setupUploadManagementEndpoint([]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",

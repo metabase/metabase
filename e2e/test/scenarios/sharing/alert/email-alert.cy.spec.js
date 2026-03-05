@@ -33,7 +33,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     cy.log(
       "Should not display slack channel if it is not configured metabase#48407",
     );
-    cy.findByTestId("alert-create").within(() => {
+    cy.findByTestId("alert-configured-channel").within(() => {
       cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Slack").should("not.exist");
     });

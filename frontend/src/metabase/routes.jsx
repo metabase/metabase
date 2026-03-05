@@ -126,6 +126,13 @@ export const getRoutes = (store) => {
           <Route path="logout" component={Logout} />
           <Route path="forgot_password" component={ForgotPassword} />
           <Route path="reset_password/:token" component={ResetPassword} />
+          {/* FE routes can sometimes be prioritized over BE
+              reloading will correctly pick the SSO flow back up from the BE  */}
+          <Route path="sso" onEnter={() => window.location.reload()} />
+          <Route
+            path="sso/:provider"
+            onEnter={() => window.location.reload()}
+          />
         </Route>
 
         {/* MAIN */}

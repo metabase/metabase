@@ -120,6 +120,7 @@ export const createMockTokenFeatures = (
   sso_ldap: false,
   sso_oidc: false,
   sso_saml: false,
+  sso_slack: false,
   session_timeout_config: false,
   whitelabel: false,
   dashboard_subscription_filters: false,
@@ -378,7 +379,6 @@ export const createMockSettings = (
   "site-url": "http://localhost:3000",
   "site-uuid": "1234",
   "slack-app-token": null,
-  "slack-token": null,
   "slack-token-valid?": false,
   "start-of-week": "sunday",
   "store-url": "https://store.staging.metabase.com",
@@ -408,5 +408,6 @@ export const createMockSettings = (
   "license-token-missing-banner-dismissal-timestamp": [],
   "sdk-iframe-embed-setup-settings": null,
   "use-tenants": false,
+  "encryption-enabled": false,
   ...opts,
 });

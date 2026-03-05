@@ -1,18 +1,27 @@
 (ns metabase.channel.api.slack
   "/api/slack endpoints"
   (:require
-   [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
+   [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
+
+(defenterprise clear-slack-bot-settings!
+  "Clears enterprise slackbot settings when the Slack token is cleared.
+   OSS implementation is a no-op."
+  metabase-enterprise.metabot-v3.api.slackbot
+  [])
 
 (defn- truncate-url
   "Cut length of long URLs to avoid spamming the Slack channel"
@@ -88,36 +97,37 @@
   3. truthy, valid token   -> refresh "
   [_route-params
    _query-params
-   {:keys [slack-app-token slack-bug-report-channel]}
+   {:keys [slack-app-token slack-bug-report-channel] :as body}
    :- [:map
        [:slack-app-token          {:optional true} [:maybe ms/NonBlankString]]
        [:slack-bug-report-channel {:optional true} [:maybe :string]]]]
   (perms/check-has-application-permission :setting)
   (try
-    ;; Clear settings if no values are provided
-    (when (nil? slack-app-token)
-      (channel.settings/slack-app-token! nil)
-      (slack/clear-channel-cache!))
+    ;; Only handle token changes when the key is explicitly provided in the request
+    (when (contains? body :slack-app-token)
+      (if (nil? slack-app-token)
+        ;; Clear settings when token is explicitly set to nil/empty
+        (do
+          (setting/set-many! {:slack-token-valid?       false
+                              :slack-app-token          nil
+                              :slack-bug-report-channel nil})
+          (slack/clear-channel-cache!)
+          (clear-slack-bot-settings!))
+        ;; Set new token
+        (do
+          (when (and (not config/is-test?)
+                     (not (slack/valid-token? slack-app-token)))
+            (slack/clear-channel-cache!)
+            (throw (ex-info (tru "Invalid Slack token.")
+                            {:errors {:slack-app-token (tru "invalid token")}})))
+          (setting/set-many! {:slack-app-token    slack-app-token
+                              :slack-token-valid? true})
+          (slack/refresh-channels-and-usernames-when-needed!))))
 
-    (when (and slack-app-token
-               (not config/is-test?)
-               (not (slack/valid-token? slack-app-token)))
-      (slack/clear-channel-cache!)
-      (throw (ex-info (tru "Invalid Slack token.")
-                      {:errors {:slack-app-token (tru "invalid token")}})))
-    (channel.settings/slack-app-token! slack-app-token)
-    (if slack-app-token
-      (do (channel.settings/slack-token-valid?! true)
-          ;; Clear the deprecated `slack-token` when setting a new `slack-app-token`
-          (channel.settings/slack-token! nil)
-          ;; refresh user/conversation cache when token is newly valid
-          (slack/refresh-channels-and-usernames-when-needed!))
-      ;; clear user/conversation cache when token is newly empty
-      (slack/clear-channel-cache!))
-
-    (when slack-bug-report-channel
+    (when (contains? body :slack-bug-report-channel)
       (let [processed-bug-channel (channel.settings/process-files-channel-name slack-bug-report-channel)]
-        (when (not (slack/channel-exists? processed-bug-channel))
+        (when (and processed-bug-channel
+                   (not (slack/channel-exists? processed-bug-channel)))
           (throw (ex-info (tru "Slack channel not found.")
                           {:errors {:slack-bug-report-channel (tru "channel not found")}})))
         (channel.settings/slack-bug-report-channel! processed-bug-channel)))
@@ -126,18 +136,125 @@
     (catch clojure.lang.ExceptionInfo info
       {:status 400, :body (ex-data info)})))
 
-(def ^:private slack-manifest
-  (delay (slurp (io/resource "slack-manifest.yaml"))))
+(def SlackManifest
+  "Malli schema for Slack app manifest. OSS uses a simple manifest, while EE with metabot-v3
+   returns a full manifest with additional features like slash commands, event subscriptions, etc."
+  [:map
+   [:display_information [:map
+                          [:name :string]
+                          [:description :string]
+                          [:background_color :string]]]
+   [:features [:map
+               [:bot_user [:map
+                           [:display_name :string]
+                           [:always_online {:optional true} :boolean]]]
+               [:app_home {:optional true} [:map
+                                            [:home_tab_enabled :boolean]
+                                            [:messages_tab_enabled :boolean]
+                                            [:messages_tab_read_only_enabled :boolean]]]
+               [:assistant_view {:optional true} [:map
+                                                  [:assistant_description :string]]]
+               [:slash_commands {:optional true} [:sequential [:map
+                                                               [:command :string]
+                                                               [:url ms/Url]
+                                                               [:description :string]
+                                                               [:should_escape :boolean]]]]]]
+   [:oauth_config [:map
+                   [:redirect_urls {:optional true} [:sequential ms/Url]]
+                   [:scopes [:map
+                             [:bot [:sequential :string]]]]]]
+   [:settings {:optional true} [:map
+                                [:event_subscriptions [:map
+                                                       [:request_url ms/Url]
+                                                       [:bot_events [:sequential :string]]]]
+                                [:interactivity [:map
+                                                 [:is_enabled :boolean]
+                                                 [:request_url ms/Url]]]
+                                [:org_deploy_enabled :boolean]
+                                [:socket_mode_enabled :boolean]
+                                [:token_rotation_enabled :boolean]]]])
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/manifest"
-  "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
+(defenterprise-schema get-slack-manifest :- SlackManifest
+  "Returns the Slack app manifest. OSS returns basic manifest; EE with metabot-v3 returns full MetaBot manifest."
+  metabase-enterprise.metabot-v3.api.slackbot
+  []
+  {:display_information {:name "Metabot"
+                         :description "Bringing the power of Metabase to your Slack #channels!"
+                         :background_color "#509EE3"}
+   :features {:bot_user {:display_name "Metabot"}}
+   :oauth_config {:scopes {:bot ["users:read"
+                                 "channels:read"
+                                 "channels:join"
+                                 "files:write"
+                                 "chat:write"
+                                 "chat:write.customize"
+                                 "chat:write.public"
+                                 "groups:read"]}}})
+
+(api.macros/defendpoint :get "/manifest" :- SlackManifest
+  "Returns the JSON manifest file that should be used to bootstrap new Slack apps"
   []
   (perms/check-has-application-permission :setting)
-  @slack-manifest)
+  (get-slack-manifest))
+
+(def SlackAppInfo
+  "Malli schema for Slack app info response. Fields are nullable when
+   Slack is not configured or the token doesn't provide app info."
+  [:map {:closed true}
+   [:app_id  [:maybe ms/NonBlankString]]
+   [:team_id [:maybe ms/NonBlankString]]
+   [:scopes  [:maybe [:map {:closed true}
+                      [:actual   [:sequential :string]]
+                      [:required [:sequential :string]]
+                      [:missing  [:sequential :string]]
+                      [:extra    [:sequential :string]]]]]])
+
+(defn- app-info
+  "Returns the team_id, scopes, and app_id (requires users:read scope) from Slack's API.
+   Returns nil values if Slack is not configured or the info isn't available."
+  []
+  (let [not-configured {:app_id nil :team_id nil :scopes nil}]
+    (if-not (channel.settings/slack-configured?)
+      not-configured
+      (let [auth-response (try
+                            (slack/GET "auth.test")
+                            (catch Exception e
+                              (if (= :slack/invalid-token (:error-type (ex-data e)))
+                                nil
+                                (throw e))))]
+        (if (nil? auth-response)
+          not-configured
+          (let [team-id         (:team_id auth-response)
+                bot-id          (:bot_id auth-response)
+                app-id          (when bot-id
+                                  (try
+                                    (-> (slack/GET "bots.info" :bot bot-id)
+                                        :bot
+                                        :app_id)
+                                    (catch Exception e
+                                      ;; bots.info requires users:read scope which may not be present
+                                      (log/warn e "Failed to fetch app_id from bots.info (may require users:read scope)")
+                                      nil)))
+                scopes-header   (get-in auth-response [:metabase.channel.slack/headers "x-oauth-scopes"])
+                actual-scopes   (if (str/blank? scopes-header)
+                                  #{}
+                                  (set (str/split scopes-header #",")))
+                required-scopes (-> (get-slack-manifest) :oauth_config :scopes :bot set)
+                missing-scopes  (set/difference required-scopes actual-scopes)
+                extra-scopes    (set/difference actual-scopes required-scopes)]
+            {:app_id  app-id
+             :team_id team-id
+             :scopes  {:actual   (vec (sort actual-scopes))
+                       :required (vec (sort required-scopes))
+                       :missing  (vec (sort missing-scopes))
+                       :extra    (vec (sort extra-scopes))}}))))))
+
+(api.macros/defendpoint :get "/app-info" :- SlackAppInfo
+  "Returns the Slack app_id and team_id. Used by the frontend to construct
+   direct links to the Slack app settings page."
+  []
+  (perms/check-has-application-permission :setting)
+  (app-info))
 
 ;; Handle bug report submissions to Slack
 ;;

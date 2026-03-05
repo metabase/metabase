@@ -65,81 +65,52 @@
 ;;; -------------------------------------------------- Prerequisites Tests --------------------------------------------------
 
 (deftest sso-prereqs-test
-  (sso.test-setup/do-with-other-sso-types-disabled!
-   (fn []
-     (mt/with-additional-premium-features #{:sso-slack}
-       (testing "SSO requests fail if Slack Connect hasn't been configured or enabled"
-         (mt/with-temporary-setting-values
-           [slack-connect-enabled false
-            slack-connect-client-id nil
-            slack-connect-client-secret nil]
-           (is
-            (partial=
-             {:cause "SSO has not been enabled and/or configured",
-              :data {:status "error-sso-disabled", :status-code 400},
-              :message "SSO has not been enabled and/or configured",
-              :status "error-sso-disabled"}
-             (mt/client :get 400 "/auth/sso"
-                        {:request-options {:redirect-strategy :none}}
-                        :preferred_method "slack-connect"))))
+  (with-test-encryption!
+    (sso.test-setup/do-with-other-sso-types-disabled!
+     (fn []
+       (mt/with-additional-premium-features #{:sso-slack}
+         (testing "SSO requests fail if Slack Connect hasn't been configured or enabled"
+           (mt/with-temporary-setting-values
+             [slack-connect-enabled false
+              slack-connect-client-id nil
+              slack-connect-client-secret nil]
+             (is (= "Slack Connect is not enabled"
+                    (mt/client :get 400 "/auth/sso/slack-connect"
+                               {:request-options {:redirect-strategy :none}})))))
 
-         (testing "SSO requests fail if they don't have a valid premium-features token"
-           (sso.test-setup/call-with-default-slack-config!
-            (fn []
-              (mt/with-premium-features #{}
-                (is
-                 (partial=
-                  {:cause "SSO has not been enabled and/or configured",
-                   :data {:status "error-sso-disabled", :status-code 400},
-                   :message "SSO has not been enabled and/or configured",
-                   :status "error-sso-disabled"}
-                  (mt/client :get 400 "/auth/sso"
-                             {:request-options {:redirect-strategy :none}}
-                             :preferred_method "slack-connect"))))))))
+         (testing "SSO requests fail if Slack Connect is enabled but hasn't been configured"
+           (mt/with-temporary-setting-values
+             [slack-connect-enabled true
+              slack-connect-client-id nil]
+             (is (= "Slack Connect is not enabled"
+                    (mt/client :get 400 "/auth/sso/slack-connect"
+                               {:request-options {:redirect-strategy :none}})))))
 
-       (testing "SSO requests fail if Slack Connect is enabled but hasn't been configured"
-         (mt/with-temporary-setting-values
-           [slack-connect-enabled true
-            slack-connect-client-id nil]
-           (is
-            (partial=
-             {:cause "SSO has not been enabled and/or configured",
-              :data {:status "error-sso-disabled", :status-code 400},
-              :message "SSO has not been enabled and/or configured",
-              :status "error-sso-disabled"}
-             (mt/client :get 400 "/auth/sso"
-                        {:request-options {:redirect-strategy :none}}
-                        :preferred_method "slack-connect")))))
+         (testing "SSO requests fail if Slack Connect is configured but hasn't been enabled"
+           (mt/with-temporary-setting-values
+             [slack-connect-enabled false
+              slack-connect-client-id "test-slack-client-id"
+              slack-connect-client-secret "test-slack-client-secret"]
+             (is (= "Slack Connect is not enabled"
+                    (mt/client :get 400 "/auth/sso/slack-connect"
+                               {:request-options {:redirect-strategy :none}})))))
 
-       (testing "SSO requests fail if Slack Connect is configured but hasn't been enabled"
-         (mt/with-temporary-setting-values
-           [slack-connect-enabled false
-            slack-connect-client-id "test-slack-client-id"
-            slack-connect-client-secret "test-slack-client-secret"]
-           (is
-            (partial=
-             {:cause "SSO has not been enabled and/or configured",
-              :data {:status "error-sso-disabled", :status-code 400},
-              :message "SSO has not been enabled and/or configured",
-              :status "error-sso-disabled"}
-             (mt/client :get 400 "/auth/sso"
-                        {:request-options {:redirect-strategy :none}}
-                        :preferred_method "slack-connect")))))
+         (testing "The client secret must also be included for SSO to be configured"
+           (mt/with-temporary-setting-values
+             [slack-connect-enabled true
+              slack-connect-client-id "test-slack-client-id"
+              slack-connect-client-secret nil]
+             (is (= "Slack Connect is not enabled"
+                    (mt/client :get 400 "/auth/sso/slack-connect"
+                               {:request-options {:redirect-strategy :none}}))))))
 
-       (testing "The client secret must also be included for SSO to be configured"
-         (mt/with-temporary-setting-values
-           [slack-connect-enabled true
-            slack-connect-client-id "test-slack-client-id"
-            slack-connect-client-secret nil]
-           (is
-            (partial=
-             {:cause "SSO has not been enabled and/or configured",
-              :data {:status "error-sso-disabled", :status-code 400},
-              :message "SSO has not been enabled and/or configured",
-              :status "error-sso-disabled"}
-             (mt/client :get 400 "/auth/sso"
-                        {:request-options {:redirect-strategy :none}}
-                        :preferred_method "slack-connect")))))))))
+       (testing "SSO requests fail if they don't have a valid premium-features token"
+         (sso.test-setup/call-with-default-slack-config!
+          (fn []
+            (mt/with-premium-features #{}
+              (let [response (mt/client :get 402 "/auth/sso/slack-connect"
+                                        {:request-options {:redirect-strategy :none}})]
+                (is (str/includes? (str (:message response) response) "paid feature")))))))))))
 
 ;;; -------------------------------------------------- Redirect Tests --------------------------------------------------
 
@@ -148,9 +119,8 @@
     (with-test-encryption!
       (sso.test-setup/with-slack-default-setup!
         (with-successful-oidc!
-          (let [result (mt/client-full-response :get 302 "/auth/sso"
+          (let [result (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                 {:request-options {:redirect-strategy :none}}
-                                                :preferred_method "slack-connect"
                                                 :redirect default-redirect-uri)
                 redirect-url (get-in result [:headers "Location"])
                 oidc-state-cookie (->> (get-in result [:headers "Set-Cookie"])
@@ -170,7 +140,7 @@
                   (is (= "slack-connect" (:provider state-data))))))))))))
 
 (deftest multiple-sso-methods-test
-  (testing "with SAML and Slack Connect configured, a GET request with preferred_method=slack-connect should redirect to Slack"
+  (testing "with SAML and Slack Connect configured, a GET request to /auth/sso/slack-connect should redirect to Slack"
     (with-test-encryption!
       (sso.test-setup/with-slack-default-setup!
         (mt/with-temporary-setting-values
@@ -178,9 +148,8 @@
            saml-identity-provider-uri "http://test.idp.metabase.com"
            saml-identity-provider-certificate (slurp "test_resources/sso/auth0-public-idp.cert")]
           (with-successful-oidc!
-            (let [result (mt/client-full-response :get 302 "/auth/sso"
+            (let [result (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                   {:request-options {:redirect-strategy :none}}
-                                                  :preferred_method "slack-connect"
                                                   :redirect default-redirect-uri)
                   redirect-url (get-in result [:headers "Location"])]
               (is (str/starts-with? redirect-url "http://example.com/slack")))))))))
@@ -188,12 +157,15 @@
 ;;; -------------------------------------------------- POST Not Allowed Tests --------------------------------------------------
 
 (deftest post-not-allowed-test
-  (testing "POST requests should return 405 Method Not Allowed for OIDC"
+  (testing "slack-connect is no longer available via the old POST /auth/sso multimethod dispatch"
     (sso.test-setup/with-slack-default-setup!
-      (let [response (mt/client-full-response :post 405 "/auth/sso"
-                                              {:request-options {:content-type :x-www-form-urlencoded
-                                                                 :form-params {:preferred_method "slack-connect"}}})]
-        (is (= "GET" (get-in response [:headers "Allow"])))))))
+      ;; The old endpoint returned 405 via the defmethod sso-post :slack-connect.
+      ;; Now that slack-connect has been removed from the multimethod dispatch and
+      ;; uses dedicated GET routes, POSTing with preferred_method=slack-connect
+      ;; should no longer reach slack-connect code. With no other SSO enabled,
+      ;; the default dispatch returns "SSO has not been enabled and/or configured".
+      (is (some? (mt/client :post 400 "/auth/sso"
+                            {:request-options {:content-type :x-www-form-urlencoded}}))))))
 
 ;;; -------------------------------------------------- Callback Tests --------------------------------------------------
 
@@ -201,7 +173,7 @@
   (testing "callback should fail if state cookie is missing"
     (with-test-encryption!
       (sso.test-setup/with-slack-default-setup!
-        (let [response (mt/client-full-response :get 401 "/auth/sso"
+        (let [response (mt/client-full-response :get 401 "/auth/sso/slack-connect/callback"
                                                 {:request-options {:redirect-strategy :none}}
                                                 :code "test-code"
                                                 :state "some-state")]
@@ -214,16 +186,15 @@
       (sso.test-setup/with-slack-default-setup!
         (with-successful-oidc!
         ;; First, initiate auth to set state cookie
-          (let [init-response (mt/client-full-response :get 302 "/auth/sso"
+          (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                        {:request-options {:redirect-strategy :none}}
-                                                       :preferred_method "slack-connect"
                                                        :redirect default-redirect-uri)
               ;; Convert Set-Cookie headers to Cookie header format (extract name=value parts)
                 set-cookies (get-in init-response [:headers "Set-Cookie"])
                 cookie-header (->> set-cookies
                                    (map #(first (str/split % #";"))) ; Extract name=value before first ;
                                    (str/join "; "))
-                response (mt/client-real-response :get 401 "/auth/sso"
+                response (mt/client-real-response :get 401 "/auth/sso/slack-connect/callback"
                                                   {:request-options {:redirect-strategy :none
                                                                      :headers {"Cookie" cookie-header}}}
                                                   :code "test-code"
@@ -237,16 +208,15 @@
       (sso.test-setup/with-slack-default-setup!
         (with-successful-oidc!
         ;; First, initiate auth to set state cookie
-          (let [init-response (mt/client-full-response :get 302 "/auth/sso"
+          (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                        {:request-options {:redirect-strategy :none}}
-                                                       :preferred_method "slack-connect"
                                                        :redirect default-redirect-uri)
               ;; Convert Set-Cookie headers to Cookie header format
                 set-cookies (get-in init-response [:headers "Set-Cookie"])
                 cookie-header (->> set-cookies
                                    (map #(first (str/split % #";")))
                                    (str/join "; "))
-                response (mt/client-real-response :get 302 "/auth/sso"
+                response (mt/client-real-response :get 302 "/auth/sso/slack-connect/callback"
                                                   {:request-options {:redirect-strategy :none
                                                                      :headers {"Cookie" cookie-header}}}
                                                   :code "test-code"
@@ -262,9 +232,8 @@
       (sso.test-setup/with-slack-default-setup!
         (mt/with-temporary-setting-values
           [slack-connect-authentication-mode "link-only"]
-          (let [response (mt/client-full-response :get 401 "/auth/sso"
+          (let [response (mt/client-full-response :get 401 "/auth/sso/slack-connect"
                                                   {:request-options {:redirect-strategy :none}}
-                                                  :preferred_method "slack-connect"
                                                   :redirect default-redirect-uri)]
             (is (str/includes? (str (get response :body)) "authenticated session"))))))))
 
@@ -276,9 +245,8 @@
           [slack-connect-authentication-mode "link-only"]
           (with-successful-oidc!
             (let [response (mt/user-http-request-full-response
-                            :rasta :get 302 "/auth/sso"
+                            :rasta :get 302 "/auth/sso/slack-connect"
                             {:request-options {:redirect-strategy :none}}
-                            :preferred_method "slack-connect"
                             :redirect default-redirect-uri)]
               (is (str/starts-with? (get-in response [:headers "Location"]) "http://example.com/slack")))))))))
 
@@ -290,15 +258,10 @@
       (doseq [redirect-uri ["https://badsite.com"
                             "//badsite.com"
                             "https:///badsite.com"]]
-        (is
-         (= "Invalid redirect URL"
-            (->
-             (mt/client
-              :get 400 "/auth/sso"
-              {:request-options {:redirect-strategy :none}}
-              :preferred_method "slack-connect"
-              :redirect redirect-uri)
-             :message)))))))
+        (let [result (mt/client :get 400 "/auth/sso/slack-connect"
+                                {:request-options {:redirect-strategy :none}}
+                                :redirect redirect-uri)]
+          (is (str/includes? (str (or (:message result) result)) "Invalid redirect URL")))))))
 
 ;;; -------------------------------------------------- User Provisioning Tests --------------------------------------------------
 
@@ -313,16 +276,15 @@
                       (boolean (seq (t2/select :model/User :%lower.email "example@slack.com"))))]
               (is (false? (new-user-exists?)))
             ;; Initiate auth
-              (let [init-response (mt/client-full-response :get 302 "/auth/sso"
+              (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                            {:request-options {:redirect-strategy :none}}
-                                                           :preferred_method "slack-connect"
                                                            :redirect default-redirect-uri)
                   ;; Convert Set-Cookie headers to Cookie header format
                     set-cookies (get-in init-response [:headers "Set-Cookie"])
                     cookie-header (->> set-cookies
                                        (map #(first (str/split % #";")))
                                        (str/join "; "))
-                    response (mt/client-real-response :get 302 "/auth/sso"
+                    response (mt/client-real-response :get 302 "/auth/sso/slack-connect/callback"
                                                       {:request-options {:redirect-strategy :none
                                                                          :headers {"Cookie" cookie-header}}}
                                                       :code "test-code"
@@ -365,16 +327,15 @@
                              :error :user-provisioning-disabled
                              :message "Sorry, but you'll need a test account to view this page. Please contact your administrator."})]
             ;; Initiate auth
-              (let [init-response (mt/client-full-response :get 302 "/auth/sso"
+              (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                            {:request-options {:redirect-strategy :none}}
-                                                           :preferred_method "slack-connect"
                                                            :redirect default-redirect-uri)
                     set-cookies (get-in init-response [:headers "Set-Cookie"])
                     cookie-header (->> set-cookies
                                        (map #(first (str/split % #";")))
                                        (str/join "; "))]
               ;; Try callback - should fail
-                (mt/client-real-response :get 401 "/auth/sso"
+                (mt/client-real-response :get 401 "/auth/sso/slack-connect/callback"
                                          {:request-options {:redirect-strategy :none
                                                             :headers {"Cookie" cookie-header}}}
                                          :code "test-code"

@@ -3574,6 +3574,52 @@ databaseChangeLog:
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-03-03T21:28:30
+      author: noahmoss
+      comment: Create the Slack Metabot instance
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM metabot WHERE entity_id = 'slackbotmetabotmetabo';
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM metabot WHERE entity_id = 'slackbotmetabotmetabo';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabot (
+                  name
+                  , description
+                  , entity_id
+                  , created_at
+                  , updated_at
+              ) VALUES (
+                  'Slack Metabot'
+                  , 'Metabot instance for Slack users.'
+                  , 'slackbotmetabotmetabo'
+                  , now()
+                  , now()
+              );
+
+  - changeSet:
+      id: v59.2026-03-04T10:00:00
+      author: sloan
+      comment: Add slack_msg_id to metabot_message for tracking Slack message IDs
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: slack_msg_id
+                  type: varchar(255)
+                  remarks: Slack message ID (ts) for correlating with Slack thread history
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
