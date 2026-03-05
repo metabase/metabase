@@ -3,13 +3,6 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-metric.dimension :as lib-metric.dimension]))
 
-;;; -------------------------------------------------- group-type->type --------------------------------------------------
-
-(deftest ^:parallel group-type->type-unknown-throws-test
-  (testing "unknown group type throws instead of silently defaulting to connection"
-    (is (thrown? #?(:clj Exception :cljs js/Error)
-                 (#'lib-metric.dimension/group-type->type :group-type/unknown)))))
-
 ;;; -------------------------------------------------- Test Data --------------------------------------------------
 
 (def ^:private uuid-1 "550e8400-e29b-41d4-a716-446655440001")

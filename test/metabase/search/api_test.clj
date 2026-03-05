@@ -418,7 +418,7 @@
         (is (= #{"dashboard" "table" "dataset" "segment" "measure" "collection" "database" "action" "metric" "card"}
                (get-available-models :q search-term))))
       (testing "return a subset of model for created-by filter"
-        (is (= #{"dashboard" "dataset" "card" "metric" "action"}
+        (is (= #{"dashboard" "dataset" "card" "metric" "action" "measure"}
                (get-available-models :q search-term :created_by (mt/user->id :rasta)))))
       (testing "return a subset of model for verified filter"
         (mt/with-temp
@@ -437,7 +437,7 @@
                 (is (= #{"card"}
                        (get-available-models :q search-term :verified true))))))))
       (testing "return a subset of model for created_at filter"
-        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric" "measure"}
                (get-available-models :q search-term :created_at "today"))))
 
       (testing "return a subset of model for search_native_query filter"
@@ -1324,13 +1324,13 @@
   (let [search-term "created-at-filtering"]
     (with-search-items-in-root-collection search-term
       (testing "returns only applicable models"
-        (is (=? {:available_models #(= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
+        (is (=? {:available_models #(= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric" "measure"}
                                        (set %))}
                 (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today"
                                       :calculate_available_models true))))
 
       (testing "works with others filter too"
-        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
+        (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric" "measure"}
                (-> (mt/user-http-request :crowberto :get 200 "search" :q search-term :created_at "today" :creator_id (mt/user->id :rasta)
                                          :calculate_available_models true)
                    :available_models

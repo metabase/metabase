@@ -11,7 +11,8 @@
    or column aliases. Dimension refs `[:dimension {} \"uuid\"]` are resolved to
    concrete field refs when the definition is converted to an executable MBQL query."
   (:require
-   #?@(:clj [[metabase.lib-metric.metadata.jvm :as lib-metric.metadata.jvm]
+   #?@(:clj [[metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
+             [metabase.lib-metric.metadata.jvm :as lib-metric.metadata.jvm]
              [potemkin :as p]]
        :cljs [[metabase.lib-metric.metadata.js :as lib-metric.metadata.js]])
    [metabase.lib-metric.clause :as lib-metric.clause]
@@ -51,7 +52,6 @@
      ->mbql-query
      ->values-query]
     [lib-metric.dimension
-     compute-dimension-pairs
      dimension
      dimensionable-query
      dimensions-changed?
@@ -64,6 +64,8 @@
      mappings-changed?
      reconcile-dimensions-and-mappings
      resolve-dimension-to-field-id]
+    [lib-metric.dimension.jvm
+     compute-dimension-pairs]
     [lib-metric.metadata.provider
      database-provider-for-table
      metric-context-metadata-provider]

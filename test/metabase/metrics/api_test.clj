@@ -189,6 +189,22 @@
           (is (seq (:dimensions updated-card)))
           (is (seq (:dimension_mappings updated-card))))))))
 
+(deftest fetch-metric-dimensions-have-has-field-values-test
+  (testing "GET /api/metric/:id returns dimensions with has-field-values populated"
+    (mt/with-temp [:model/Card metric {:name          "Metric with HFV"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (let [response   (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+            dimensions (:dimensions response)]
+        (is (seq dimensions) "should have dimensions")
+        (testing "at least some dimensions have has-field-values"
+          (let [dims-with-hfv (filter :has-field-values dimensions)]
+            (is (seq dims-with-hfv)
+                "at least some dimensions should have has-field-values")
+            (doseq [dim dims-with-hfv]
+              (is (#{"list" "search" "none"} (:has-field-values dim))
+                  (str "dimension " (:name dim) " has-field-values should be list, search, or none")))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/metric/dataset                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
