@@ -78,15 +78,15 @@
                     :lib/temporal-unit           :year}))))
 
 (deftest ^:parallel column-metadata->field-ref-source-alias-test
-  (testing "column with :source-alias gets :join-alias in the ref"
+  (testing "column with :lib/join-alias gets :join-alias in the ref"
     (let [col (assoc (meta/field-metadata :orders :total)
-                     :source-alias "MyJoin"
-                     :lib/source :source/table-defaults)]
+                     :lib/join-alias "MyJoin"
+                     :lib/source :source/joins)]
       (is (= "MyJoin"
              (:join-alias (second (lib/ref col)))))))
-  (testing "inherited column does not propagate :source-alias"
+  (testing "inherited column does not propagate :lib/original-join-alias"
     (let [col (assoc (meta/field-metadata :orders :total)
-                     :source-alias "MyJoin"
+                     :lib/original-join-alias "MyJoin"
                      :lib/source :source/previous-stage
                      :lib/source-column-alias "TOTAL")]
       (is (nil? (:join-alias (second (lib/ref col))))))))
