@@ -64,11 +64,26 @@ export function TableSelectorInput({
     return map;
   }, [nodes]);
 
+  // Set of focal table IDs (tables with most relationships, auto-selected by backend)
+  const focalTableIdSet = useMemo(() => {
+    const set = new Set<ConcreteTableId>();
+    for (const node of nodes) {
+      if (node.data.is_focal) {
+        set.add(node.data.table_id as ConcreteTableId);
+      }
+    }
+    return set;
+  }, [nodes]);
+
   const handleOpen = useCallback(() => {
-    setSelectedSnapshot(new Set(selectedTableIds));
+    // When isUserModified is false, focal tables are the auto-selected tables
+    const effectiveSelected = isUserModified
+      ? new Set(selectedTableIds)
+      : focalTableIdSet;
+    setSelectedSnapshot(effectiveSelected);
     setVisibleSnapshot(new Set(nodesByTableId.keys()));
     setOpened(true);
-  }, [selectedTableIds, nodesByTableId]);
+  }, [selectedTableIds, nodesByTableId, isUserModified, focalTableIdSet]);
 
   const handleClose = useCallback(() => {
     setSearchQuery("");
@@ -90,8 +105,15 @@ export function TableSelectorInput({
     [selectedTableIds],
   );
 
+  // When isUserModified is false (showing "Most relationships"),
+  // focal tables are the auto-selected tables
+  const effectiveSelectedSet = useMemo(
+    () => (isUserModified ? selectedTableIdSet : focalTableIdSet),
+    [isUserModified, selectedTableIdSet, focalTableIdSet],
+  );
+
   // Use snapshots when open, current values when closed
-  const activeSelectedSet = opened ? selectedSnapshot : selectedTableIdSet;
+  const activeSelectedSet = opened ? selectedSnapshot : effectiveSelectedSet;
   const activeVisibleSet = useMemo(
     () => (opened ? visibleSnapshot : new Set(nodesByTableId.keys())),
     [opened, visibleSnapshot, nodesByTableId],
@@ -229,11 +251,11 @@ export function TableSelectorInput({
     return null;
   }
 
-  // Filter selectedTableIds to only count tables that actually exist
-  // (some IDs from URL/shared links may reference deleted tables)
-  const selectedCount = selectedTableIds.filter((id) =>
-    allTableIdSet.has(id),
-  ).length;
+  // When isUserModified is false, focal tables are the auto-selected tables
+  // Filter to only count tables that actually exist (some IDs from URL/shared links may reference deleted tables)
+  const selectedCount = isUserModified
+    ? selectedTableIds.filter((id) => allTableIdSet.has(id)).length
+    : focalTableIdSet.size;
   const allSelected = selectedCount === allTables.length;
   const someSelected = selectedCount > 0 && selectedCount < allTables.length;
 
@@ -297,18 +319,26 @@ export function TableSelectorInput({
                   {t`No tables found`}
                 </Text>
               ) : (
-                filteredTables.map((table) => (
-                  <TableListItem
-                    key={table.id}
-                    table={table}
-                    isSelected={selectedTableIdSet.has(
-                      table.id as ConcreteTableId,
-                    )}
-                    isVisible={nodesByTableId.has(table.id as ConcreteTableId)}
-                    onToggle={handleToggle}
-                    onFocus={handleFocus}
-                  />
-                ))
+                filteredTables.map((table) => {
+                  const tableId = table.id as ConcreteTableId;
+                  const isVisible = nodesByTableId.has(tableId);
+                  // When showing "Most relationships" (isUserModified=false),
+                  // focal tables are the auto-selected tables
+                  const isSelected = isUserModified
+                    ? selectedTableIdSet.has(tableId)
+                    : focalTableIdSet.has(tableId);
+
+                  return (
+                    <TableListItem
+                      key={table.id}
+                      table={table}
+                      isSelected={isSelected}
+                      isVisible={isVisible}
+                      onToggle={handleToggle}
+                      onFocus={handleFocus}
+                    />
+                  );
+                })
               )}
             </Stack>
           </Stack>
@@ -352,7 +382,10 @@ function TableListItem({
   onToggle,
   onFocus,
 }: TableListItemProps) {
-  const displayName = table.display_name || table.name;
+  const label =
+    table.display_name && table.display_name !== table.name
+      ? `${table.name} (${table.display_name})`
+      : table.name;
   const tableId = table.id as ConcreteTableId;
   const labelClass = isSelected
     ? S.checkboxLabelBold
@@ -368,7 +401,7 @@ function TableListItem({
       justify="space-between"
     >
       <Checkbox
-        label={displayName}
+        label={label}
         checked={isSelected}
         onChange={(e) => onToggle(tableId, e.currentTarget.checked)}
         classNames={{ label: labelClass }}
@@ -378,7 +411,7 @@ function TableListItem({
           <UnstyledButton
             className={S.focusButton}
             onClick={() => onFocus(tableId)}
-            aria-label={t`Focus ${displayName}`}
+            aria-label={t`Focus ${label}`}
           >
             <FixedSizeIcon name="eye_outline" c="text-tertiary" />
           </UnstyledButton>
