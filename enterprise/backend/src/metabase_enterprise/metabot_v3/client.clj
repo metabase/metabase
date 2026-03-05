@@ -12,7 +12,6 @@
    [malli.transform :as mtx]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
-   [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
@@ -143,7 +142,6 @@
                   :profile_id      profile-id
                   :user_id         api/*current-user-id*
                   :state           state}
-        _        (metabot-v3.context/log body :llm.log/be->llm)
         _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
         options  (cond-> {:headers          {"Accept"                    "text/event-stream"
                                              "Content-Type"              "application/json;charset=UTF-8"
@@ -157,7 +155,6 @@
                           :decompress-body  false}
                    *debug* (assoc :debug true))
         response (post! url options)]
-    (metabot-v3.context/log (:body response) :llm.log/llm->be)
     (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
     (when-not (#{200 202} (:status response))
       (check-response! response body))

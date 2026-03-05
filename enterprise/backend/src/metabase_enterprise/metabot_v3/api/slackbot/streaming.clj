@@ -3,6 +3,7 @@
    (startStream/appendStream/stopStream)."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
    [metabase-enterprise.metabot-v3.api.slackbot.events :as slackbot.events]
    [metabase-enterprise.metabot-v3.api.slackbot.persistence :as slackbot.persistence]
@@ -15,6 +16,9 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
+   [metabase.system.core :as system]
+   [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log])
   (:import
    (java.util.concurrent
@@ -87,19 +91,41 @@
       can-create-queries        (conj "permission:save_questions")
       can-create-native-queries (conj "permission:write_sql_queries"))))
 
-(defn- send-viz-output
-  "Send visualization output to Slack as either table blocks or image."
-  [client channel thread-ts {:keys [type content]} filename]
-  (case type
-    :table (let [response (slackbot.client/post-message client {:channel   channel
-                                                                :thread_ts thread-ts
-                                                                :blocks    content
-                                                                :text      "Query results"})]
-             (when-not (:ok response)
-               (log/errorf "Slack table blocks error: %s" (pr-str response)))
-             response)
-    :image (let [filename (str filename ".png")]
-             (slackbot.client/post-image client content filename channel thread-ts))))
+(defn- escape-slack-link-text
+  "Escape characters that have structural meaning inside Slack mrkdwn links (`<URL|label>`)."
+  [s]
+  (-> s
+      (str/replace "&" "&amp;")
+      (str/replace "<" "&lt;")
+      (str/replace ">" "&gt;")
+      (str/replace "|" "\u2502")))
+
+(defn- format-viz-title
+  "Build the title text for a visualization message.
+   Combines the title with a link to the query in Metabase."
+  [title link]
+  (let [full-link (when link (str (system/site-url) link))]
+    (cond
+      (and title full-link) (str "📊 <" full-link "|" (escape-slack-link-text title) ">")
+      title                 title
+      full-link             (str "📊 <" full-link "|Open in Metabase>")
+      :else                 nil)))
+
+(defn- deliver-viz!
+  "Post the visualization as a new message with a title and link.
+   Both tables and images follow the same pattern: post content with title."
+  [client channel thread-ts {:keys [type content]} filename title link]
+  (let [text (or (format-viz-title title link) "Query results")]
+    (case type
+      :table (let [title-block {:type "section"
+                                :text {:type "mrkdwn" :text text}}
+                   blocks      (into [title-block] content)]
+               (slackbot.client/post-message client {:channel   channel
+                                                     :thread_ts thread-ts
+                                                     :blocks    blocks
+                                                     :text      text}))
+      :image (slackbot.client/post-image client content (str filename ".png") channel thread-ts
+                                         :initial-comment text))))
 
 (def ^:private tool-friendly-names
   "Map of tool names to user-friendly gerund descriptions for slackbot profile tools."
@@ -192,8 +218,7 @@
   #{"static_viz" "adhoc_viz"})
 
 (defn- generate-viz-output
-  "Generate visualization output for a data-part. Called both by the prefetch executor (during streaming)
-   and synchronously by [[resolve-viz-output]] when no prefetched result exists."
+  "Generate visualization output for a data-part. Called by the prefetch executor during streaming."
   [{:keys [type value]}]
   (case type
     "static_viz"
@@ -220,54 +245,34 @@
       :else
       "Query execution failed, please try again.")))
 
-(defn- resolve-viz-output
-  "Get the result of a prefetched visualization Future, or generate synchronously if none exists.
-   Unwraps ExecutionException so callers see the original error."
-  [data-part ^Future prefetched-future]
-  (if prefetched-future
-    (try
-      (.get prefetched-future)
-      (catch ExecutionException e
-        (throw (or (.getCause e) e))))
-    (generate-viz-output data-part)))
-
-(defn- post-viz-error
-  "Post a user-friendly visualization error message to Slack, logging on failure."
+(defn- post-viz-error!
+  "Post a user-friendly error message for a failed visualization."
   [client channel thread-ts e]
   (try
     (slackbot.client/post-message client {:channel   channel
                                           :thread_ts thread-ts
                                           :text      (viz-error-message e)})
     (catch Exception post-e
-      (log/error post-e "Failed to post visualization error message to Slack"))))
+      (log/error post-e "Failed to post visualization error"))))
 
-(defn- send-visualizations
-  "Send visualization data-parts as separate Slack messages after the stream ends.
-   Uses prefetched results when available (submitted during streaming) to reduce latency.
-   Posts a temporary indicator message while visualizations are being generated."
-  [client channel thread-ts data-parts prefetched-viz]
-  (let [vizs (keep-indexed (fn [idx part]
-                             (when (viz-data-types (:type part))
-                               [idx part]))
-                           data-parts)]
-    (when (seq vizs)
-      (let [indicator (slackbot.client/post-message client {:channel   channel
-                                                            :thread_ts thread-ts
-                                                            :text      "_Generating visualizations..._"})]
-        (try
-          (doseq [[idx data-part] vizs]
-            (try
-              (let [output   (resolve-viz-output data-part (get prefetched-viz idx))
-                    filename (case (:type data-part)
-                               "static_viz" (str "chart-" (:entity_id (:value data-part)))
-                               "adhoc_viz"  (str "adhoc-" (System/currentTimeMillis)))]
-                (send-viz-output client channel thread-ts output filename))
-              (catch Exception e
-                (log/errorf e "Failed to generate visualization for %s" (:type data-part))
-                (post-viz-error client channel thread-ts e))))
-          (finally
-            (when-let [ts (:ts indicator)]
-              (slackbot.client/delete-message client {:channel channel :ts ts}))))))))
+(defn- send-visualizations!
+  "Wait for all in-flight visualization futures and post results to Slack.
+   Called after stop-stream so results always appear after streamed text.
+   For saved cards (static_viz), uses the actual card name as the title."
+  [client channel thread-ts prefetched-viz]
+  (doseq [[idx {:keys [^Future future filename title link]}] (sort-by first prefetched-viz)]
+    (try
+      (let [output   (.get future)
+            title    (or (:card-name output) title)
+            filename (or (some-> title (u/slugify {:max-length 80})) filename)]
+        (deliver-viz! client channel thread-ts output filename title link))
+      (catch ExecutionException e
+        (let [cause (or (.getCause e) e)]
+          (log/errorf cause "Visualization future %d failed" idx)
+          (post-viz-error! client channel thread-ts cause)))
+      (catch Exception e
+        (log/errorf e "Visualization future %d failed" idx)
+        (post-viz-error! client channel thread-ts e)))))
 
 (defn- ensure-stream-started!
   "Ensure the Slack stream has been started, attempting once if not already tried."
@@ -295,6 +300,19 @@
         (dismiss-thinking-msg! client channel thinking-ts)
         (slackbot.client/append-markdown-text client channel stream_ts text)))))
 
+(defn- viz-metadata
+  "Extract title, filename, and link metadata from a visualization data-part."
+  [{:keys [type value]}]
+  (let [title    (:title value)
+        filename (or (some-> title (u/slugify {:max-length 80}))
+                     (case type
+                       "static_viz" (str "chart-" (:entity_id value))
+                       "adhoc_viz"  (str "adhoc-" (t/format "yyyy-MM-dd_HH-mm-ss" (t/zoned-date-time)))))
+        link     (case type
+                   "adhoc_viz"  (:link value)
+                   "static_viz" (str "/question/" (:entity_id value)))]
+    {:title title :filename filename :link link}))
+
 (defn- make-streaming-callbacks
   "Create streaming callback functions and associated control functions.
    Slack API writes are dispatched to a background agent so the AI stream reader is never
@@ -319,7 +337,7 @@
    - `:request-flush!` — schedules a drain of pending text to Slack
    - `:stream-state` — volatile holding `{:stream_ts :channel}` once started, nil before
    - `:slack-writer` — agent; callers should `(await slack-writer)` before stopping the stream
-   - `:prefetched-viz` — atom holding `{index -> Future<output>}` for in-flight visualizations"
+   - `:prefetched-viz` — atom holding `{index -> {:future Future :filename str :title str :link str}}` for in-flight visualizations"
   [client {:keys [channel thread-ts team-id user-id]}]
   (let [stream-state      (volatile! nil)
         stream-attempted? (volatile! false)
@@ -385,9 +403,13 @@
         prefetched-viz (atom {})
         on-data (fn [idx content]
                   (when (viz-data-types (:type content))
-                    (let [task (bound-fn* #(generate-viz-output content))]
+                    (let [{:keys [title filename link]} (viz-metadata content)
+                          task (bound-fn* #(generate-viz-output content))]
                       (swap! prefetched-viz assoc idx
-                             (.submit viz-prefetch-executor ^Callable task)))))]
+                             {:future   (.submit viz-prefetch-executor ^Callable task)
+                              :filename filename
+                              :title    title
+                              :link     link}))))]
     {:on-text              on-text
      :on-tool-start        on-tool-start
      :on-tool-end          on-tool-end
@@ -404,6 +426,16 @@
   [team-id channel thread-ts]
   (str (java.util.UUID/nameUUIDFromBytes
         (.getBytes (str "slack:" team-id ":" channel ":" thread-ts)))))
+
+(defn- feedback-blocks [conversation-id]
+  [{:type     "context_actions"
+    :block_id "metabot_feedback"
+    :elements [{:type            "feedback_buttons"
+                :action_id       "metabot_feedback"
+                :positive_button {:text  {:type "plain_text" :text "Good"}
+                                  :value (json/encode {:conversation_id conversation-id :positive true})}
+                :negative_button {:text  {:type "plain_text" :text "Bad"}
+                                  :value (json/encode {:conversation_id conversation-id :positive false})}}]}])
 
 (defn send-response
   "Send a metabot response using Slack's streaming API for progressive updates.
@@ -431,38 +463,39 @@
                                            :team-id   (:team_id auth-info)
                                            :user-id   (:user event)})]
      (start-with-thinking!)
-     (letfn [(send-fallback [text]
-               (slackbot.client/post-message client (merge message-ctx {:text text})))]
-       (try
-         (let [data-parts (make-streaming-ai-request
-                           (slack-thread->conversation-id (:team_id auth-info) channel thread-ts)
-                           prompt
-                           thread
-                           bot-user-id
-                           channel-id
-                           extra-history
-                           {:on-text             on-text
-                            :on-tool-start       on-tool-start
-                            :on-tool-end         on-tool-end
-                            :on-data             on-data
-                            :req-slack-msg-id    (:ts event)
-                            :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
-           (request-flush!)
-           (await slack-writer)
-           (if-let [{:keys [stream_ts channel]} @stream-state]
-             (do
-               (slackbot.client/stop-stream client channel stream_ts)
-               (send-visualizations client channel thread-ts data-parts @prefetched-viz))
-             (send-fallback "I wasn't able to generate a response. Please try again.")))
-         (catch Exception e
-           (run! #(.cancel ^Future % true) (vals @prefetched-viz))
-           (log/error e "[slackbot] Error in streaming response")
-           (await slack-writer)
-           (if-let [{:keys [stream_ts channel]} @stream-state]
-             (try
-               (slackbot.client/append-markdown-text client channel stream_ts
-                                                     "\nSomething went wrong. Please try again.")
-               (slackbot.client/stop-stream client channel stream_ts)
-               (catch Exception stop-e
-                 (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
-             (send-fallback "Something went wrong. Please try again."))))))))
+     (let [conversation-id (slack-thread->conversation-id (:team_id auth-info) channel thread-ts)]
+       (letfn [(send-fallback [text]
+                 (slackbot.client/post-message client (merge message-ctx {:text text})))]
+         (try
+           (let [_data-parts (make-streaming-ai-request
+                              conversation-id
+                              prompt
+                              thread
+                              bot-user-id
+                              channel-id
+                              extra-history
+                              {:on-text               on-text
+                               :on-tool-start         on-tool-start
+                               :on-tool-end           on-tool-end
+                               :on-data               on-data
+                               :req-slack-msg-id      (:ts event)
+                               :get-res-slack-msg-id  (fn [] (:stream_ts @stream-state))})]
+             (request-flush!)
+             (await slack-writer)
+             (if-let [{:keys [stream_ts channel]} @stream-state]
+               (do
+                 (slackbot.client/stop-stream client channel stream_ts (feedback-blocks conversation-id))
+                 (send-visualizations! client channel thread-ts @prefetched-viz))
+               (send-fallback "I wasn't able to generate a response. Please try again.")))
+           (catch Exception e
+             (run! #(.cancel ^Future (:future %) true) (vals @prefetched-viz))
+             (log/error e "[slackbot] Error in streaming response")
+             (await slack-writer)
+             (if-let [{:keys [stream_ts channel]} @stream-state]
+               (try
+                 (slackbot.client/append-markdown-text client channel stream_ts
+                                                       "\nSomething went wrong. Please try again.")
+                 (slackbot.client/stop-stream client channel stream_ts)
+                 (catch Exception stop-e
+                   (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
+               (send-fallback "Something went wrong. Please try again.")))))))))

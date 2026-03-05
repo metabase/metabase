@@ -112,8 +112,9 @@
   (:body (slack-post-json client "/chat.postEphemeral" message)))
 
 (defn post-image
-  "Upload a PNG image and send in a message"
-  [client image-bytes filename channel thread-ts]
+  "Upload a PNG image and send in a message.
+   Optional initial-comment adds context text alongside the image."
+  [client image-bytes filename channel thread-ts & {:keys [initial-comment]}]
   (let [{:keys [ok upload_url file_id] :as res} (get-upload-url client {:filename filename
                                                                         :length (alength ^bytes image-bytes)})]
     (when ok
@@ -121,16 +122,38 @@
                  {:headers {"Content-Type" "image/png"}
                   :body    image-bytes})
       (:body (slack-post-json client "/files.completeUploadExternal"
-                              {:files [{:id file_id
-                                        :title filename}]
-                               :channel_id channel
-                               :thread_ts thread-ts}))
+                              (cond-> {:files      [{:id file_id
+                                                     :title filename}]
+                                       :channel_id channel
+                                       :thread_ts  thread-ts}
+                                initial-comment (assoc :initial_comment initial-comment))))
       res)))
+
+(defn fetch-message
+  "Fetch a single Slack message by channel and timestamp."
+  [client channel ts]
+  (let [{:keys [messages]} (:body (slack-get client "/conversations.history"
+                                             {:channel   channel
+                                              :latest    ts
+                                              :limit     1
+                                              :inclusive true}))]
+    (first messages)))
 
 (defn delete-message
   "Remove a Slack message"
   [client message]
   (:body (slack-post-json client "/chat.delete" (select-keys message [:channel :ts]))))
+
+(defn update-message
+  "Update a Slack message"
+  [client message]
+  (slack-post-json client "/chat.update" message))
+
+(defn open-view
+  "Open a Slack modal view, triggered from an interaction."
+  [client {:keys [trigger_id view]}]
+  (:body (slack-post-json client "/views.open" {:trigger_id trigger_id
+                                                :view       view})))
 
 (defn download-file
   "Download a file from Slack using the client's token for authentication.
