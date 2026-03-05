@@ -50,6 +50,7 @@
       "type": "array",
       "items": {
         "type": "object",
+        "description": "A single embedded component and its properties",
         "properties": {
           "name": {
             "description": "Component name (e.g., dashboard, question, exploration, browser, metabot, etc.)",
@@ -61,6 +62,7 @@
             "type": "array",
             "items": {
               "type": "object",
+              "description": "A single property and its value counts",
               "properties": {
                 "name": {
                   "description": "Property name",
@@ -72,6 +74,7 @@
                   "type": "array",
                   "items": {
                     "type": "object",
+                    "description": "A single property value and its count",
                     "properties": {
                       "group": {
                         "type": "string",
@@ -111,7 +114,8 @@
   },
   "required": [
     "event",
-    "global"
+    "global",
+    "components"
   ],
   "additionalProperties": true
 }
