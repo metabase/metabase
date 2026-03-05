@@ -2,7 +2,7 @@ databaseChangeLog:
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
   - changeSet:
-      id: v60.2026-02-013T21:43:00
+      id: v60.2026-02-13T21:43:00
       author: epaget
       comment: Add dimensions column to measure table
       changes:
