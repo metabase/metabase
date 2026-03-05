@@ -214,7 +214,6 @@
   (testing "POST /api/setup"
     ;; I have seen this fail randomly, no idea why
     (testing "Make sure setup completes successfully if Settings cache needs to be restored"
-      (setting.cache-test/reset-last-update-check!)
       (setting.cache-test/clear-cache!)
       (with-setup! {:user {:email "setupper@setup.net"}}
         (is (= "setupper@setup.net" (t2/select-one-fn :email :model/User :email "setupper@setup.net")))))))

@@ -2,18 +2,13 @@
   "Settings cache. Cache is a 1:1 mapping of what's in the DB. Cached lookup time is ~60µs, compared to ~1800µs for DB
   lookup."
   (:require
-   [clojure.core :as core]
    [clojure.java.jdbc :as jdbc]
    [metabase.app-db.core :as mdb]
    [metabase.mq.core :as mq]
    [metabase.startup.core :as startup]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent.atomic AtomicLong)
-   (java.util.concurrent.locks ReentrantLock)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -48,29 +43,11 @@
     (swap! (cache*) assoc  setting-name new-value)
     (swap! (cache*) dissoc setting-name)))
 
-;; CACHE SYNCHRONIZATION
-;;
-;; When running multiple Metabase instances (horizontal scaling), it is of course possible for one instance to update
-;; a Setting, and, since Settings are cached (to avoid tons of DB calls), for the other instances to then have an
-;; out-of-date cache. Thus we need a way for instances to know when their caches are out of date, so they can update
-;; them accordingly. Here is our solution:
-;;
-;; We will record the last time *any* Setting was updated in a special Setting called `settings-last-updated`.
-;;
-;; Since `settings-last-updated` itself is a Setting, it will get fetched as part of each instance's local cache; we
-;; can then periodically compare the locally cached value of `settings-last-updated` with the value in the DB. If our
-;; locally cached value is older than the one in the DB, we will flush our cache. When the cache is fetched again, it
-;; will have the up-to-date value.
-;;
-;; Because different machines can have out-of-sync clocks, we'll rely entirely on the application DB for calculating
-;; and comparing values of `settings-last-updated`. Because the Setting table itself only stores text values, we'll
-;; need to cast it between TEXT and TIMESTAMP SQL types as needed.
-
 (def ^String settings-last-updated-key
   "Internal key used to store the last updated timestamp for Settings."
   "settings-last-updated")
 
-(defn update-settings-last-updated!
+(defn- update-settings-last-updated-in-db!
   "Update the value of `settings-last-updated` in the DB; if the row does not exist, insert one."
   []
   (log/debug "Updating value of settings-last-updated in DB...")
@@ -92,57 +69,19 @@
                         (with-out-str (jdbc/print-sql-exception-chain e)))))))
   ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
   ;; changes
-  (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value :model/Setting :key settings-last-updated-key))
+  (swap! (cache*) assoc settings-last-updated-key (t2/select-one-fn :value :model/Setting :key settings-last-updated-key)))
 
-  ;; Broadcast to other nodes so they invalidate their caches too.
+(defn broadcast-cache-invalidation!
+  "Update the `settings-last-updated` timestamp in the DB and broadcast a cache invalidation signal to all nodes."
+  []
+  (update-settings-last-updated-in-db!)
   (mq/with-topic :topic/settings-cache-invalidated [t]
     (mq/put t {:invalidated-at (System/currentTimeMillis)})))
 
 (defn cache-last-updated-at
   "Fetch the value of `settings-last-updated`, indicating the timestamp of the settings cache. Possibly null."
   []
-  (let [current-cache (cache)]
-    (core/get current-cache settings-last-updated-key)))
-
-(defn- cache-out-of-date?
-  "Check whether our Settings cache is out of date. We know the cache is out of date if either of the following
-  conditions is true:
-
-   *  The cache is empty (the `(cache*` atom is `nil`), which of course means it needs to be updated
-   *  There is a value of `settings-last-updated` in the cache, and it is older than the value of in the DB. (There
-      will be no value until the first time a normal Setting is updated; thus if it is not yet set, we do not yet need
-      to invalidate our cache.)"
-  []
-  (log/debug "Checking whether settings cache is out of date (requires DB call)...")
-  (let [current-cache (cache)]
-    (boolean
-     (or
-      ;; is the cache empty?
-      (not current-cache)
-      ;; if not, get the cached value of `settings-last-updated`, and if it exists...
-      (when-let [last-known-update (cache-last-updated-at)]
-        ;; compare it to the value in the DB. This is done be seeing whether a row exists
-        ;; WHERE value > <local-value>
-        (u/prog1 (t2/select-one-fn :value :model/Setting
-                                   {:where [:and
-                                            [:= :key settings-last-updated-key]
-                                            [:> :value last-known-update]]})
-          (log/trace "last known Settings update: " (pr-str last-known-update))
-          (log/trace "actual last Settings update:" (pr-str <>))
-          (when <>
-            (log/info (u/format-color :red "Settings have been changed on another instance, and will be reloaded here.")))))))))
-
-(def ^:const cache-update-check-interval-ms
-  "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
-  (u/minutes->ms 1))
-
-(defonce ^:private ^AtomicLong last-update-check (AtomicLong. 0))
-
-(defn- time-for-another-update-check?
-  "Has it has been more than a minute since the last time we checked for updates?"
-  []
-  (> (quot (- (System/nanoTime) (.get last-update-check)) 1000000)
-     cache-update-check-interval-ms))
+  (get (cache) settings-last-updated-key))
 
 (defn restore-cache!
   "Populate cache with the latest hotness from the db"
@@ -157,30 +96,3 @@
    (fn [_msg]
      (log/debug "Received settings cache invalidation signal")
      (restore-cache!))))
-
-(defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
-
-(defn restore-cache-if-needed!
-  "Check whether we need to repopulate the cache with fresh values from the DB (because the cache is either empty or
-  known to be out-of-date), and do so if needed. This is intended to be called every time a Setting value is
-  retrieved, so it should be efficient; thus the calculation (`should-restore-cache?`) is itself TTL-memoized."
-  []
-  ;; There's a potential race condition here where two threads both call this at the exact same moment, and both get
-  ;; `true` when they call `should-restore-cache`, and then both simultaneously try to update the cache (or, one
-  ;; updates the cache, but the other calls `should-restore-cache?` and gets `true` before the other calls
-  ;; `memo-swap!` (see below))
-  ;;
-  ;; This is not desirable, since either situation would result in duplicate work. Better to just add a quick lock
-  ;; here so only one of them does it, since at any rate waiting for the other thread to finish the task in progress is
-  ;; certainly quicker than starting the task ourselves from scratch
-  (when (time-for-another-update-check?)
-    ;; if the lock is not already held by any thread, including this one...
-    (when-not (.isLocked restore-cache-lock)
-      ;; attempt to acquire the lock. Returns immediately if lock is already held.
-      (when (.tryLock restore-cache-lock)
-        (try
-          (.set last-update-check (System/nanoTime))
-          (when (cache-out-of-date?)
-            (restore-cache!))
-          (finally
-            (.unlock restore-cache-lock)))))))
