@@ -7,7 +7,7 @@
   user-select: none;
 }
 
-.pill:hover:not([data-disabled="true"]):not([data-static="true"]) {
+.pill:hover:not([data-disabled="true"], [data-static="true"]) {
   background-color: var(--mb-color-background-hover);
 }
 

@@ -8,7 +8,6 @@
   padding: 0;
   height: auto;
   min-height: unset;
-  font-size: var(--mb-default-font-size);
 }
 
 .inputField::placeholder {
