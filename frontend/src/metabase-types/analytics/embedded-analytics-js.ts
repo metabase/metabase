@@ -51,11 +51,11 @@ export type DefaultValues = {
   };
   exploration: {
     isSaveEnabled: boolean;
+    questionId: undefined; // NEW: EMB-1334
   };
   browser: {
     readOnly: boolean;
     enableEntityNavigation: boolean; // NEW: EMB-1334
-    questionId: undefined; // NEW: EMB-1334
   };
   // NEW: EMB-1334
   metabot: {
