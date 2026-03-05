@@ -2302,12 +2302,15 @@
   {:team "Querying"
    :api  #{metabase-enterprise.replacement.api}
    :uses #{api
+           app-db
            driver
            events
            lib
            lib-be
            models
+           queries
            sql-tools
+           task
            util
            enterprise/dependencies}}
 

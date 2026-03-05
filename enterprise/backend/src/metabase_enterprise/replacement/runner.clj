@@ -166,6 +166,6 @@
   ([old-source
     new-source
     progress]
-   (let [all-transitive        (replacement.usages/transitive-usages old-source)]
+   (let [all-transitive (replacement.usages/transitive-usages old-source)]
      (run-swap* {:all-transitive-dependents all-transitive}
                 old-source new-source progress))))

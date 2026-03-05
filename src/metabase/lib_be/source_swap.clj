@@ -3,11 +3,10 @@
    [medley.core :as m]
    [metabase.lib-be.schema.source-swap :as lib-be.schema.source-swap]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.core :as lib]
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.parameters :as lib.parameters]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -183,8 +182,8 @@
   "Gets the stage number from the parameter target, if it exists and is valid."
   [query  :- ::lib.schema/query
    target :- ::lib.schema.parameter/target]
-  (let [stage-number (lib.parameters/parameter-target-stage-number target)
-        stage-count  (lib.query/stage-count query)]
+  (let [stage-number (lib/parameter-target-stage-number target)
+        stage-count  (lib/stage-count query)]
     (when (and (>= stage-number -1) (< stage-number stage-count) (pos-int? stage-count))
       stage-number)))
 
@@ -192,9 +191,9 @@
   "If the parameter target is a field ref, upgrade it to use a name-based field ref when possible."
   [query  :- ::lib.schema/query
    target :- ::lib.schema.parameter/target]
-  (or (when (lib.parameters/parameter-target-field-ref target)
+  (or (when (lib/parameter-target-field-ref target)
         (when-let [stage-number (parameter-target-stage-number query target)]
-          (lib.parameters/update-parameter-target-field-ref
+          (lib/update-parameter-target-field-ref
            target
            #(upgrade-field-ref query stage-number %))))
       target))
@@ -371,11 +370,11 @@
    target     :- ::lib.schema.parameter/target
    old-source :- ::lib-be.schema.source-swap/source
    new-source :- ::lib-be.schema.source-swap/source]
-  (or (when (lib.parameters/parameter-target-field-ref target)
+  (or (when (lib/parameter-target-field-ref target)
         (when-let [stage-number (parameter-target-stage-number query target)]
           (let [new-query (swap-source-table-or-card-in-query query old-source new-source)
                 field-id-mapping (build-field-id-mapping query old-source new-source)]
-            (lib.parameters/update-parameter-target-field-ref
+            (lib/update-parameter-target-field-ref
              target
              #(swap-field-ref new-query stage-number field-id-mapping %)))))
       target))
