@@ -107,7 +107,8 @@
       (let [message-id (t2/insert-returning-pk! :queue_message_bundle
                                                 {:queue_name (name queue-name)
                                                  :messages (json/encode ["test-message"])
-                                                 :status "processing"})]
+                                                 :status "processing"
+                                                 :owner @#'q.appdb/owner-id})]
         (q.backend/bundle-successful! :queue.backend/appdb queue-name message-id)
         (is (nil? (t2/select-one :queue_message_bundle :id message-id)))))
 

@@ -587,8 +587,8 @@
            query-processor
            settings
            sql-tools
-           system
            startup
+           system
            util
            warehouse-schema
            warehouses}}
@@ -890,6 +890,17 @@
            transforms
            util}
    :friends #{transforms}}
+
+  mq
+  {:team "UX West"
+   :api  #{metabase.mq.core
+           metabase.mq.init}
+   :uses #{analytics
+           app-db
+           models
+           settings
+           startup
+           util}}
 
   native-query-snippets
   {:team "Querying"
@@ -1232,17 +1243,6 @@
            settings
            system
            users
-           util}}
-
-  mq
-  {:team "UX West"
-   :api  #{metabase.mq.core
-           metabase.mq.init}
-   :uses #{analytics
-           app-db
-           models
-           settings
-           startup
            util}}
 
   remote-sync

@@ -2,7 +2,7 @@
   (:require
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.impl :as q.impl]
-   [metabase.mq.queue.sync]
+   [metabase.mq.queue.sync :as q.sync]
    [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.impl :as topic.impl]
    [metabase.mq.topic.sync]))
@@ -33,6 +33,7 @@
        (binding [q.backend/*backend*      :queue.backend/sync
                  q.impl/*listeners*       (atom q-merged#)
                  q.impl/*accumulators*    (atom {})
+                 q.sync/*undelivered*     (atom {})
                  topic.backend/*backend*  :topic.backend/sync
                  topic.impl/*listeners*   (atom @topic.impl/*listeners*)]
          ~@body))))
