@@ -48,7 +48,7 @@ class CardRendererInner extends Component {
 
   renderChart() {
     const { width, height } = this.props;
-    if (!width || !height) {
+    if (width == null || height == null) {
       return;
     }
 
