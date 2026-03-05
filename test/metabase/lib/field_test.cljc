@@ -1347,13 +1347,13 @@
 
 (deftest ^:parallel find-visible-column-for-ref-multi-stage-test
   (testing "2-arity find-visible-column-for-ref uses last stage"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                    (lib/aggregate (lib/count))
-                    lib/append-stage)
-          cols  (lib/visible-columns query)
-          col   (first cols)
-          ref   (lib/ref col)]
-      (is (some? (lib/find-visible-column-for-ref query ref))))))
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/aggregate (lib/count))
+                        lib/append-stage)
+          cols      (lib/visible-columns query)
+          col       (first cols)
+          field-ref (lib/ref col)]
+      (is (some? (lib/find-visible-column-for-ref query field-ref))))))
 
 (deftest ^:parallel self-join-ambiguity-test
   (testing "Even when doing a tree-like self join, fields are matched correctly"
