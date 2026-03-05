@@ -1,5 +1,6 @@
 /* eslint-disable metabase/no-unconditional-metabase-links-render */
 
+import expressSnippet from "sdk-docs-snippets/authentication/express-server-interactive-and-sdk.ts?raw=true";
 import { jt, t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
@@ -13,7 +14,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import expressSnippet from "sdk-docs-snippets/authentication/express-server-interactive-and-sdk.ts";
 
 export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
   const jwtSharedSecret = useSetting("jwt-shared-secret");
