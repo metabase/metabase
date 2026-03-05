@@ -148,22 +148,19 @@
   "Upgrade dimension field refs in a click behavior's parameter mapping.
    Uses the target card's query (from cards-by-id) when the click behavior links to a question."
   [click-behavior cards-by-id]
-  (if-let [card-id (click-behavior->card-id click-behavior)]
-    (if-let [card (get cards-by-id card-id)]
-      (let [query (:dataset_query card)]
-        (if (replacement.util/valid-query? query)
-          (m/update-existing click-behavior ::vs/parameter-mapping
-                             (fn [param-mapping]
-                               (m/map-vals (fn [pm-val]
-                                             (let [target (::vs/param-mapping-target pm-val)]
-                                               (if-let [dim (::vs/param-dimension target)]
-                                                 (let [dim' (lib-be/upgrade-field-ref-in-parameter-target query dim)]
-                                                   (assoc-in pm-val [::vs/param-mapping-target ::vs/param-dimension] dim'))
-                                                 pm-val)))
-                                           param-mapping)))
-          click-behavior))
-      click-behavior)
-    click-behavior))
+  (or (when-let [card-id (click-behavior->card-id click-behavior)]
+        (when-let [query (some-> (get cards-by-id card-id) :dataset_query)]
+          (when (replacement.util/valid-query? query)
+            (m/update-existing click-behavior ::vs/parameter-mapping
+                               (fn [mappings]
+                                 (m/map-vals (fn [mapping]
+                                               (let [target (::vs/param-mapping-target mapping)]
+                                                 (if-let [target (::vs/param-dimension target)]
+                                                   (let [target' (lib-be/upgrade-field-ref-in-parameter-target query target)]
+                                                     (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] target'))
+                                                   mapping)))
+                                             mappings))))))
+      click-behavior))
 
 (defn- dashcard-upgrade-viz-settings
   [viz-settings cards-by-id]
