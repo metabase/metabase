@@ -3596,7 +3596,7 @@ databaseChangeLog:
             baseColumnNames: source_db_id
             referencedTableName: metabase_database
             referencedColumnNames: id
-            constraintName: fk_tranform_source_db_id
+            constraintName: fk_tranform_source_database_id
 
   - changeSet:
       id: v59.2026-03-01T11:03:00
