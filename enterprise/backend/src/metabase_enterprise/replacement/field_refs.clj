@@ -1,6 +1,6 @@
 (ns metabase-enterprise.replacement.field-refs
   (:require
-   [medley.core :as m]
+   [metabase-enterprise.replacement.parameters :as replacement.parameters]
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.viz :as replacement.viz]
@@ -54,18 +54,10 @@
       (when (not= query query')
         (t2/update! :model/Measure (:id measure) {:definition query'})))))
 
-(defn- dashcard-upgrade-parameter-mappings
-  [parameter-mappings card-id->query]
-  (mapv (fn [mapping]
-          (or (when-let [query (get card-id->query (:card_id mapping))]
-                (m/update-existing mapping :target #(lib-be/upgrade-field-ref-in-parameter-target query %)))
-              mapping))
-        parameter-mappings))
-
 (defn- dashcard-upgrade-field-refs!
   [dashcard card-id->query]
   (let [parameter-mappings  (:parameter_mappings dashcard)
-        parameter-mappings' (dashcard-upgrade-parameter-mappings parameter-mappings card-id->query)
+        parameter-mappings' (replacement.parameters/update-parameter-mappings parameter-mappings card-id->query lib-be/upgrade-field-ref-in-parameter-target)
         viz-settings        (:visualization_settings dashcard)
         viz-settings'       (some-> viz-settings
                                     vs/db->norm
@@ -85,12 +77,10 @@
   [dashboard-id]
   (let [dashcards    (t2/select :model/DashboardCard :dashboard_id dashboard-id)
         all-card-ids (into #{}
-                           (comp (mapcat (fn [dashcard]
-                                           (cons (:card_id dashcard)
-                                                 (concat
-                                                  (keep :card_id (:parameter_mappings dashcard))
-                                                  (replacement.viz/dashcard-viz-settings->card-ids (-> dashcard :visualization_settings vs/db->norm))))))
-                                 (remove nil?))
+                           (mapcat (fn [dashcard]
+                                     (concat
+                                      (replacement.parameters/parameter-mappings->card-ids (:parameter_mappings dashcard))
+                                      (replacement.viz/dashcard-viz-settings->card-ids (-> dashcard :visualization_settings vs/db->norm)))))
                            dashcards)
         card-id->query (when (seq all-card-ids)
                          (t2/select-pk->fn :dataset_query :model/Card :id [:in all-card-ids]))]
