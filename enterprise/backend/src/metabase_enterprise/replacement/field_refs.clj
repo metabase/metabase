@@ -89,7 +89,7 @@
                                            (cons (:card_id dashcard)
                                                  (concat
                                                   (keep :card_id (:parameter_mappings dashcard))
-                                                  (replacement.viz/dashboard-viz-settings->card-ids (-> dashcard :visualization_settings vs/db->norm))))))
+                                                  (replacement.viz/dashcard-viz-settings->card-ids (-> dashcard :visualization_settings vs/db->norm))))))
                                  (remove nil?))
                            dashcards)
         card-id->query (when (seq all-card-ids)

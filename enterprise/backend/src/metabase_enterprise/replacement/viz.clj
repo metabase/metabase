@@ -50,7 +50,7 @@
   (when (= ::vs/question (::vs/link-type click-behavior))
     (::vs/link-target-id click-behavior)))
 
-(defn dashboard-viz-settings->card-ids
+(defn dashcard-viz-settings->card-ids
   [viz-settings]
   (concat
    ;; global click behavior (non-table cards)
