@@ -132,36 +132,36 @@
                         :query "SELECT products.BAD FROM products JOIN {{#1}} AS c1 ON products.ID = c1.ID"}
                        {:id    28
                         :query "SELECT xix.x, products.BAD FROM products JOIN {{#1}} AS c1 ON products.ID = c1.ID"}
-                       ;; Card 32: middle of transitive chain, passes through card 1's columns
+                       ;; Mixed table+card, qualified to card alias
+                       {:id    29
+                        :query "SELECT c1.BAD FROM products JOIN {{#1-how-are-you}} AS c1 ON products.ID = c1.ID"}
+                       ;; Multi-card, qualified to second card
+                       {:id    30
+                        :query "SELECT c2.BAD FROM {{#1-im-fine}} AS c1 JOIN {{#2-thank-you}} AS c2 ON c1.ID = c2.ID"}
+                       ;; Card 31: middle of transitive chain, passes through card 1's columns
                        ;; but with CATEGORY removed (simulates upstream card 1 was changed)
-                       {:id      32
+                       {:id      31
                         :query   "SELECT * FROM {{#1}}"
                         :details {:result-metadata
                                   (vec (remove #(= (:name %) "CATEGORY")
                                                (:result-metadata initial-card-a)))}}
-                       ;; Card 33: end of chain, selects CATEGORY which card 32 no longer has
-                       {:id    33
-                        :query "SELECT CATEGORY FROM {{#32}}"}
-                       ;; Mixed table+card, qualified to card alias
-                       {:id    30
-                        :query "SELECT c1.BAD FROM products JOIN {{#1}} AS c1 ON products.ID = c1.ID"}
-                       ;; Multi-card, qualified to second card
-                       {:id    31
-                        :query "SELECT c2.BAD FROM {{#1}} AS c1 JOIN {{#2}} AS c2 ON c1.ID = c2.ID"}
-                       ;; Card 34: MBQL card with subset of products columns (simulates MBQL intermediary)
-                       {:id      34
+                       ;; Card 32: end of chain, selects CATEGORY which card 31 no longer has
+                       {:id    32
+                        :query "SELECT CATEGORY FROM {{#31}}"}
+                       ;; Card 33: MBQL card with subset of products columns (simulates MBQL intermediary)
+                       {:id      33
                         :query   (lib/query initial-mock-mp (meta/table-metadata :products))
                         :details {:result-metadata
                                   (vec (filter #(#{"ID" "TITLE"} (:name %))
                                                (:result-metadata initial-card-a)))}}
-                       ;; Card 35: native referencing MBQL card 34 — CATEGORY not in card 34's metadata
-                       {:id    35
-                        :query "SELECT CATEGORY FROM {{#34}}"}
-                       ;; Card 36: native card with orders columns as result-metadata
-                       {:id      36
+                       ;; Card 34: native referencing MBQL card 33 — CATEGORY not in card 33's metadata
+                       {:id    34
+                        :query "SELECT CATEGORY FROM {{#33}}"}
+                       ;; Card 35: native card with orders columns as result-metadata
+                       {:id      35
                         :query   "SELECT * FROM orders"
                         :details {:result-metadata (:result-metadata initial-card-b)}}
-                       ;; Card 37: native referencing both MBQL card 34 and native card 36
-                       {:id    37
-                        :query "SELECT c1.CATEGORY, c2.BAD FROM {{#34}} AS c1 JOIN {{#36}} AS c2 ON c1.ID = c2.ID"}])
+                       ;; Card 36: native referencing both MBQL card 33 and native card 35
+                       {:id    36
+                        :query "SELECT c1.CATEGORY, c2.BAD FROM {{#33}} AS c1 JOIN {{#35}} AS c2 ON c1.ID = c2.ID"}])
       :snippets snippets})))

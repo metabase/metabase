@@ -400,44 +400,44 @@
     (let [mp     (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
       (testing "mixed table+card, qualified to card - attributed to card"
-        (validates? mp driver 30
+        (validates? mp driver 29
                     #{(merge (lib/missing-column-error "BAD")
                              {:source-entity-type :card
                               :source-entity-id   1})}))
       (testing "multi-card, qualified to second card - attributed to card 2"
-        (validates? mp driver 31
+        (validates? mp driver 30
                     #{(merge (lib/missing-column-error "BAD")
                              {:source-entity-type :card
                               :source-entity-id   2})})))))
 
 (deftest ^:parallel transitive-card-chain-test
-  (testing "Transitive card chain: c33 -> c32 -> c1, where c32's result-metadata lost CATEGORY"
+  (testing "Transitive card chain: c32 -> c31 -> c1, where c31's result-metadata lost CATEGORY"
     (let [mp     (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
-      (is (nil? (some #{"CATEGORY"} (map :name (:result-metadata (lib.metadata/card mp 32)))))
-          "Card 32 should not have CATEGORY in its result-metadata")
-      (validates? mp driver 33
+      (is (nil? (some #{"CATEGORY"} (map :name (:result-metadata (lib.metadata/card mp 31)))))
+          "Card 31 should not have CATEGORY in its result-metadata")
+      (validates? mp driver 32
                   #{(merge (lib/missing-column-error "CATEGORY")
                            {:source-entity-type :card
-                            :source-entity-id   32})}))))
+                            :source-entity-id   31})}))))
 
 (deftest ^:parallel cross-reference-mbql-and-native-cards-test
   (testing "Native query referencing an MBQL card"
     (let [mp     (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
       (testing "error attributed to MBQL card"
-        (validates? mp driver 35
+        (validates? mp driver 34
                     #{(merge (lib/missing-column-error "CATEGORY")
                              {:source-entity-type :card
-                              :source-entity-id   34})}))
+                              :source-entity-id   33})}))
       (testing "mixed MBQL + native card refs - errors attributed to correct cards"
-        (validates? mp driver 37
+        (validates? mp driver 36
                     #{(merge (lib/missing-column-error "CATEGORY")
                              {:source-entity-type :card
-                              :source-entity-id   34})
+                              :source-entity-id   33})
                       (merge (lib/missing-column-error "BAD")
                              {:source-entity-type :card
-                              :source-entity-id   36})})))))
+                              :source-entity-id   35})})))))
 
 (deftest ^:parallel card-with-special-char-column-test
   (testing "Card reference where card has special characters in column names"
