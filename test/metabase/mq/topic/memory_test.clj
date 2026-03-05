@@ -111,7 +111,7 @@
         (mq/put t "error!"))
       (mq/with-topic :topic/errors [t]
         (mq/put t "also-good"))
-      (Thread/sleep 200)
+      (Thread/sleep 500)
 
       (testing "Good messages are received"
         (is (= ["good" "also-good"] @received)))

@@ -1,6 +1,7 @@
 (ns metabase.mq.init
   "Initializes the mq subsystem at startup."
   (:require
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.settings :as mq.settings]
@@ -30,5 +31,6 @@
     (alter-var-root #'topic.backend/*backend* (constantly topic-be))
     (log/infof "Queue backend set to %s" queue-be)
     (log/infof "Topic backend set to %s" topic-be)
+    (mq.impl/register-listeners!)
     (q.impl/start!)
     (topic.impl/start!)))

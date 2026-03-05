@@ -7,14 +7,29 @@
   one listener and removed after successful processing.  Failed messages are retried up to a
   configurable limit.
 
-      (listen! :queue/my-task {} listener-fn)
-      (with-queue :queue/my-task [q]
-        (put q message))
-
   **Topic** — single-consumer pub/sub.  Each active node receives every published message.
   There can be up to one listener per node for each topic. Failed messages are never retried.
 
-      (listen! :topic/my-events {} listener-fn)
+  Listeners for both types are registered with `def-listener`
+
+      (mq/def-listener :queue/simple-task [msg]
+        (process msg))
+
+      (mq/def-listener :topic/my-events [msg]
+        (handle-event msg))
+
+  For queues, a config map enables batching:
+       (mq/def-listener :queue/my-task
+         {:max-batch-messages 10 :max-next-ms 100}
+         [messages]
+         (process messages))
+
+  Publishing is done using `with-queue` or `with-topic` which binds a queue you can put messages on.
+  When the body finishes successfully, the message(s) in the bound queue actually publishes the messages.
+
+      (with-queue :queue/simple-task [q]
+        (put q message))
+
       (with-topic :topic/my-events [t]
         (put t payload))"
   (:require
@@ -44,7 +59,9 @@
 (p/import-vars
  [mq.impl
   put
+  def-listener
   listen!
+  register-listeners!
   unlisten!]
 
  [q.impl

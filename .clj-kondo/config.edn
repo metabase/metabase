@@ -593,6 +593,7 @@
    metabase.model-persistence.test-util/with-persistence-enabled!                                                            hooks.metabase.model-persistence.test-util/with-persistence-enabled!
    metabase.mq.core/with-queue                                                                                              hooks.common/let-second
    metabase.mq.core/with-topic                                                                                              hooks.common/let-second
+   metabase.mq.core/def-listener                                                                                             hooks.metabase.mq.impl/def-listener
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.permissions.core/allow-changing-all-users-group-members                                                          hooks.common/do*

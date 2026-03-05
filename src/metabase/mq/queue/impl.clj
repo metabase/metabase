@@ -176,12 +176,9 @@
                                   :exclusive          (boolean (:exclusive opts))}))
 
 (mu/defn batch-listen!
-  "Registers a batch listener function for the given queue.
-  The listener will be called with a vec of messages, sized up to :max-batch-messages.
-  Batches can span multiple backend bundles, waiting up to :max-next-ms for additional bundles.
-  Pass `:exclusive true` in config to ensure only one node processes messages at a time.
-  Throws if a listener is already registered.
-  Note: This registers the listener. Call [[start!]] to begin backend processing."
+  "Registers a batch listener for a queue.
+   The listener will be called with a vec of messages, sized up to :max-batch-messages.
+   Pass `:exclusive true` in config to ensure only one node processes messages at a time."
   [queue-name :- :metabase.mq.queue/queue-name
    listener :- fn?
    config :- [:map [:max-batch-messages pos-int?] [:max-next-ms nat-int?] [:exclusive {:optional true} :boolean]]]

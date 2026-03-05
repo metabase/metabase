@@ -1,6 +1,7 @@
 (ns metabase.mq.queue.appdb
   "Database-backed implementation of the message queue using the application database."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.backend :as q.backend]
@@ -10,7 +11,8 @@
    [toucan2.core :as t2])
   (:import (java.sql Timestamp)
            (java.time Instant)
-           (java.util.concurrent Future)))
+           (java.util.concurrent Future)
+           (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,6 +21,32 @@
 
 (def ^:private owner-id (str (random-uuid)))
 (def ^:private background-process (atom nil))
+
+(defn- supports-skip-locked?
+  "Returns true if the current app DB supports SELECT ... FOR UPDATE SKIP LOCKED.
+  Postgres (9.5+), H2, and MySQL 8.0+ support it. MariaDB only supports it since 10.6."
+  []
+  (if (= :mysql (mdb/db-type))
+    (with-open [conn (.getConnection ^DataSource (mdb/data-source))]
+      (let [metadata (.getMetaData conn)
+            product  (.getDatabaseProductName metadata)
+            major    (.getDatabaseMajorVersion metadata)
+            minor    (.getDatabaseMinorVersion metadata)]
+        (if (= product "MariaDB")
+          (or (> major 10) (and (= major 10) (>= minor 6)))
+          ;; MySQL 8.0+ supports SKIP LOCKED
+          (>= major 8))))
+    true))
+
+(def ^:private skip-locked-supported? (delay (supports-skip-locked?)))
+
+(defn- for-update-clause
+  "Returns the appropriate FOR UPDATE clause for the current database.
+  Uses SKIP LOCKED when supported; falls back to plain FOR UPDATE otherwise."
+  []
+  (if @skip-locked-supported?
+    [:update :skip-locked]
+    [:update]))
 
 (defn- fetch!
   "Fetches the next pending message from any of the listening queues.
@@ -46,7 +74,7 @@
                                                                       [:= :qmb2.status "processing"]]}]]]]))
                          :order-by [[:id :asc]]
                          :limit    1
-                         :for      [:update :skip-locked]})]
+                         :for      (for-update-clause)})]
           (t2/update! :queue_message_bundle
                       (:id row)
                       {:status_heartbeat (mi/now)

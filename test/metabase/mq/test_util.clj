@@ -1,5 +1,6 @@
 (ns metabase.mq.test-util
   (:require
+   [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.sync :as q.sync]
@@ -18,22 +19,27 @@
   (let [[listeners & body] (if (map? (first body))
                              body
                              (cons {} body))]
-    `(let [q-current#  @q.impl/*listeners*
-           listeners#  ~listeners
-           q-merged#   (reduce-kv (fn [m# k# v#]
-                                    (assoc m# k# (if (fn? v#)
-                                                   (if-let [existing# (get q-current# k#)]
-                                                     (assoc existing# :listener v#)
-                                                     {:listener           v#
-                                                      :max-batch-messages 1
-                                                      :max-next-ms        0})
-                                                   v#)))
-                                  q-current#
-                                  listeners#)]
-       (binding [q.backend/*backend*      :queue.backend/sync
-                 q.impl/*listeners*       (atom q-merged#)
-                 q.impl/*accumulators*    (atom {})
-                 q.sync/*undelivered*     (atom {})
-                 topic.backend/*backend*  :topic.backend/sync
-                 topic.impl/*listeners*   (atom @topic.impl/*listeners*)]
-         ~@body))))
+    `(binding [q.backend/*backend*      :queue.backend/sync
+               q.impl/*listeners*       (atom {})
+               q.impl/*accumulators*    (atom {})
+               q.sync/*undelivered*     (atom {})
+               topic.backend/*backend*  :topic.backend/sync
+               topic.impl/*listeners*   (atom {})]
+       ;; Register all listen!/batch-listen! implementations into the fresh test atoms
+       (mq.impl/register-listeners!)
+       ;; Merge any explicitly-provided listeners on top
+       (let [listeners# ~listeners]
+         (when (seq listeners#)
+           (swap! q.impl/*listeners*
+                  (fn [current#]
+                    (reduce-kv (fn [m# k# v#]
+                                 (assoc m# k# (if (fn? v#)
+                                                (if-let [existing# (get current# k#)]
+                                                  (assoc existing# :listener v#)
+                                                  {:listener           v#
+                                                   :max-batch-messages 1
+                                                   :max-next-ms        0})
+                                                v#)))
+                               current#
+                               listeners#)))))
+       ~@body)))

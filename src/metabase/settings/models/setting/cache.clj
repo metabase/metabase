@@ -5,7 +5,6 @@
    [clojure.java.jdbc :as jdbc]
    [metabase.app-db.core :as mdb]
    [metabase.mq.core :as mq]
-   [metabase.startup.core :as startup]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -89,10 +88,6 @@
   (log/debug "Refreshing Settings cache...")
   (reset! (cache*) (t2/select-fn->fn :key :value :model/Setting)))
 
-(defmethod startup/def-startup-logic! ::CacheInvalidationSubscription [_]
-  (mq/listen!
-   :topic/settings-cache-invalidated
-   {}
-   (fn [_msg]
-     (log/debug "Received settings cache invalidation signal")
-     (restore-cache!))))
+(mq/def-listener :topic/settings-cache-invalidated [_msg]
+  (log/debug "Received settings cache invalidation signal")
+  (restore-cache!))

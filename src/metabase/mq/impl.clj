@@ -78,9 +78,8 @@
   "Registers a listener for a queue or topic. Dispatches on (namespace channel-name).
    For :queue/* names, see metabase.mq.queue.impl.
    For :topic/* names, see metabase.mq.topic.impl.
-   `opts` is an optional map; pass nil for defaults. Queues support `{:exclusive true}`."
-  {:arglists      '([channel-name opts listener])
-   :malli/schema  [:=> [:cat ::channel-name ::listen-opts fn?] :any]}
+    `opts` is an optional map; pass nil for defaults. Queues support `{:exclusive true}`."
+  {:arglists      '([channel-name opts listener])}
   (fn [channel-name _opts _listener] (namespace channel-name)))
 
 (defmulti unlisten!
@@ -95,6 +94,64 @@
 
 (defn- analytics-observe! [& args]
   (apply (requiring-resolve 'metabase.analytics.prometheus/observe!) args))
+
+;;; ------------------------------------------- Listener registration -------------------------------------------
+
+(defmulti def-listener*
+  "Multimethod backing [[def-listener]]. Each implementation registers its listener
+   by calling [[listen!]] or [[metabase.mq.queue.impl/batch-listen!]].
+   Do not call or implement directly — use [[def-listener]] instead."
+  {:arglists '([channel-name])}
+  identity)
+
+(defmacro def-listener
+  "Defines a listener for a queue or topic, detected from the keyword namespace.
+
+   **Topic listener** — receives a single message:
+
+       (mq/def-listener :topic/settings-cache-invalidated [msg]
+         (restore-cache!))
+
+   **Queue listener** — receives a single message, with optional config:
+
+       (mq/def-listener :queue/simple-task {:exclusive true} [msg]
+         (process msg))
+
+   **Queue batch listener** — receives a vec of messages (config must include :max-batch-messages):
+
+       (mq/def-listener :queue/search-reindex
+         {:max-batch-messages 50 :max-next-ms 100 :exclusive true}
+         [messages]
+         (process-batch messages))"
+  {:arglists '([channel-name bindings & body]
+               [channel-name config bindings & body])}
+  [channel-name & args]
+  (let [queue?          (= "queue" (namespace channel-name))
+        [config & args] (if (map? (first args))
+                          args
+                          (cons nil args))
+        [bindings & body] args
+        batch?          (and queue? config (:max-batch-messages config))]
+    (when (and config (not queue?))
+      (throw (ex-info "Config map is only supported for queue listeners" {:channel channel-name})))
+    (if batch?
+      `(defmethod def-listener* ~channel-name [~'_]
+         ((requiring-resolve 'metabase.mq.queue.impl/batch-listen!)
+          ~channel-name
+          (fn [~@bindings] ~@body)
+          ~(merge {:max-batch-messages 1 :max-next-ms 0 :exclusive false} config)))
+      `(defmethod def-listener* ~channel-name [~'_]
+         (listen! ~channel-name ~(or config {}) (fn [~@bindings] ~@body))))))
+
+(defn register-listeners!
+  "Call all [[def-listener]] implementations to register their listeners.
+   Called at startup and in test setup (from `with-sync-mq`)."
+  []
+  (doseq [[k f] (methods def-listener*)]
+    (try
+      (f k)
+      (catch Throwable e
+        (.println System/err (str "Error registering listener " k ": " e))))))
 
 (defn invoke-listener!
   "Common listener invocation skeleton for both queues and topics.

@@ -12,7 +12,6 @@
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.startup.core :as startup]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -25,11 +24,10 @@
   (->> (t2/select :model/Field :id [:in (into #{} cat field-batches)])
        (run! field-values/create-or-update-full-field-values!)))
 
-(defmethod startup/def-startup-logic! ::FieldValueInvalidation [_]
-  (mq/batch-listen! :queue/field-value-invalidation
-                    (fn [messages]
-                      (batch-invalidate-field-values! (into [] cat messages)))
-                    {:max-batch-messages 10 :max-next-ms 10}))
+(mq/def-listener :queue/field-value-invalidation
+  {:max-batch-messages 10 :max-next-ms 10}
+  [messages]
+  (batch-invalidate-field-values! (into [] cat messages)))
 
 (defn select-table-pk-fields
   "Given a table-id, return the :model/Field instances corresponding to its PK columns. Do not assume any ordering."

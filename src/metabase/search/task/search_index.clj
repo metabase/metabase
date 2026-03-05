@@ -59,7 +59,9 @@
                        (simple/repeat-forever))))]
     (task/schedule-task! job trigger)))
 
-(defn- handle-command-message! [msg]
+(defn handle-command-message!
+  "Handle a command message from the search reindex queue."
+  [msg]
   (condp = (keyword (:command msg))
     :init (if (= (:version msg) (search.spec/index-version-hash))
             (if-let [engine (:engine msg)]
@@ -78,21 +80,19 @@
                                       (map :name))]
               (search.engine/delete! e search-model (:ids msg)))))
 
-(defmethod startup/def-startup-logic! ::SearchIndexListener [_]
-  (when (search/supports-index?)
-    (mq/batch-listen! :queue/search-reindex
-                      (fn [messages]
-                        (try
-                          (let [messages (map #(cond-> % (map? %) walk/keywordize-keys) messages)
-                                {commands true updates false} (group-by #(boolean (and (map? %) (:command %))) messages)]
-                            (doseq [cmd commands]
-                              (handle-command-message! cmd))
-                            (when (seq updates)
-                              (ingestion/bulk-ingest! (into [] cat updates))))
-                          (catch Exception e
-                            (analytics/inc! :metabase-search/index-error)
-                            (throw e))))
-                      {:max-batch-messages 50 :max-next-ms 100 :exclusive true})))
+(mq/def-listener :queue/search-reindex
+  {:max-batch-messages 50 :max-next-ms 100 :exclusive true}
+  [messages]
+  (try
+    (let [messages (map #(cond-> % (map? %) walk/keywordize-keys) messages)
+          {commands true updates false} (group-by #(boolean (and (map? %) (:command %))) messages)]
+      (doseq [cmd commands]
+        (handle-command-message! cmd))
+      (when (seq updates)
+        (ingestion/bulk-ingest! (into [] cat updates))))
+    (catch Exception e
+      (analytics/inc! :metabase-search/index-error)
+      (throw e))))
 
 (comment
   (task/job-exists? reindex-job-key)
