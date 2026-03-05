@@ -3606,7 +3606,7 @@ databaseChangeLog:
               );
 
   - changeSet:
-      id: v59.2026-03-03T10:00:00
+      id: v59.2026-03-04T10:00:00
       author: sloan
       comment: Add slack_msg_id to metabot_message for tracking Slack message IDs
       changes:
