@@ -276,6 +276,7 @@ describe("setParameterMapping", () => {
           snippets: {},
           questions: {},
           indexedEntities: {},
+          groups: {},
         },
       });
       const store = setup(state);
@@ -391,6 +392,7 @@ describe("setParameterMapping", () => {
           snippets: {},
           questions: {},
           indexedEntities: {},
+          groups: {},
         },
       });
       const store = setup(state);
