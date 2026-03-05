@@ -2,7 +2,6 @@
 
 import { jt, t } from "ttag";
 
-import expressSnippet from "docs-snippets/authentication/express-server-interactive-and-sdk.ts";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import {
@@ -14,6 +13,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import expressSnippet from "sdk-docs-snippets/authentication/express-server-interactive-and-sdk.ts";
 
 export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
   const jwtSharedSecret = useSetting("jwt-shared-secret");
