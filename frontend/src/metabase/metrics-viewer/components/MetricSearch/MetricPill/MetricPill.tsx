@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";
@@ -113,13 +114,14 @@ export function MetricPill({
     setPopoverState("closed");
   }, [metric]);
 
-  const handleGoToMetric = useCallback(() => {
-    window.open(
-      metricQuestionUrl({ id: metric.id, name: metric.name ?? undefined }),
-      "_blank",
-    );
-    setPopoverState("closed");
-  }, [metric]);
+  // TODO: Decide what to do here
+  // const handleGoToMetric = useCallback(() => {
+  //   window.open(
+  //     metricQuestionUrl({ id: metric.id, name: metric.name ?? undefined }),
+  //     "_blank",
+  //   );
+  //   setPopoverState("closed");
+  // }, [metric]);
 
   const handleOpenBreakoutPicker = useCallback(() => {
     setPopoverState("breakout-picker");
@@ -253,7 +255,11 @@ export function MetricPill({
             <Menu.Item
               leftSection={<Icon name="info" />}
               rightSection={<Icon name="external" />}
-              onClick={handleGoToMetric}
+              component={ForwardRefLink}
+              to={metricQuestionUrl({
+                id: metric.id,
+                name: metric.name ?? undefined,
+              })}
             >
               {t`Go to metric home page`}
             </Menu.Item>

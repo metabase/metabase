@@ -18,6 +18,7 @@ describe("scenarios > metrics > search", () => {
     H.restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/metric/dataset").as("metricDataset");
     cy.intercept("GET", "/api/search?q=*").as("search");
   });
 
@@ -28,8 +29,10 @@ describe("scenarios > metrics > search", () => {
     H.commandPalette()
       .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
       .click();
-    cy.wait("@dataset");
-    cy.findByTestId("scalar-container").should("be.visible");
+    cy.wait("@metricDataset");
+    H.MetricsViewer.searchBarPills()
+      .contains("Count of orders")
+      .should("be.visible");
   });
 
   it("should be able to search for metrics on the search page", () => {
@@ -50,8 +53,10 @@ describe("scenarios > metrics > search", () => {
       cy.findByText("1 result").should("be.visible");
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
     });
-    cy.wait("@dataset");
-    cy.findByTestId("scalar-container").should("be.visible");
+    cy.wait("@metricDataset");
+    H.MetricsViewer.searchBarPills()
+      .contains("Count of orders")
+      .should("be.visible");
   });
 
   it("should see metrics in recent items in global search", () => {
@@ -64,7 +69,9 @@ describe("scenarios > metrics > search", () => {
     H.commandPalette()
       .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
       .click();
-    cy.wait("@dataset");
-    cy.findByTestId("scalar-container").should("be.visible");
+    cy.wait("@metricDataset");
+    H.MetricsViewer.searchBarPills()
+      .contains("Count of orders")
+      .should("be.visible");
   });
 });

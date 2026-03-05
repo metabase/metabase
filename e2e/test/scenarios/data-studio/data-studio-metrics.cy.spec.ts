@@ -266,7 +266,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .closest("a")
       .should("have.attr", "target", "_blank")
       .should("have.attr", "href")
-      .and("match", /\/metric\/\d+/);
+      .and("match", /\/explore\?metricId=\d+/);
   });
 
   it("should duplicate metric via more menu", () => {
