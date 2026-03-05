@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-type HideIfEmptyProps<C extends ElementType> = PropsWithChildren<
+type RenderIfHasContentProps<C extends ElementType> = PropsWithChildren<
   { component: C } & Omit<ComponentPropsWithoutRef<C>, "component" | "children">
 >;
 
@@ -19,11 +19,11 @@ type HideIfEmptyProps<C extends ElementType> = PropsWithChildren<
  * This is useful with CSS `:has()` selectors that rely on the wrapper's class
  * being absent when content is empty (e.g., grid layout adjustments).
  */
-export function HideIfEmpty<C extends ElementType>({
+export function RenderIfHasContent<C extends ElementType>({
   component: Component,
   children,
   ...props
-}: HideIfEmptyProps<C>) {
+}: RenderIfHasContentProps<C>) {
   const [node, setNode] = useState<HTMLElement | null>(null);
   const shouldRender = useShouldRender(node);
 

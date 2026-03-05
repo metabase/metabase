@@ -2,14 +2,14 @@ import { useState } from "react";
 
 import { act, render, screen } from "__support__/ui";
 
-import { HideIfEmpty } from "./HideIfEmpty";
+import { RenderIfHasContent } from "./RenderIfHasContent";
 
-describe("HideIfEmpty", () => {
+describe("RenderIfHasContent", () => {
   it("should render the component when children have text content", () => {
     render(
-      <HideIfEmpty component="section" data-testid="wrapper">
+      <RenderIfHasContent component="section" data-testid="wrapper">
         <span>Hello</span>
-      </HideIfEmpty>,
+      </RenderIfHasContent>,
     );
 
     expect(screen.getByTestId("wrapper")).toBeInTheDocument();
@@ -19,9 +19,9 @@ describe("HideIfEmpty", () => {
 
   it("should not render the component when children are empty", () => {
     render(
-      <HideIfEmpty component="section" data-testid="wrapper">
+      <RenderIfHasContent component="section" data-testid="wrapper">
         <div />
-      </HideIfEmpty>,
+      </RenderIfHasContent>,
     );
 
     expect(screen.queryByTestId("wrapper")).not.toBeInTheDocument();
@@ -29,13 +29,13 @@ describe("HideIfEmpty", () => {
 
   it("should not render the component when children only contain empty wrappers", () => {
     render(
-      <HideIfEmpty component="section" data-testid="wrapper">
+      <RenderIfHasContent component="section" data-testid="wrapper">
         <div>
           <div>
             <span />
           </div>
         </div>
-      </HideIfEmpty>,
+      </RenderIfHasContent>,
     );
 
     expect(screen.queryByTestId("wrapper")).not.toBeInTheDocument();
@@ -43,13 +43,13 @@ describe("HideIfEmpty", () => {
 
   it("should render the component when children contain an SVG", () => {
     render(
-      <HideIfEmpty component="section" data-testid="wrapper">
+      <RenderIfHasContent component="section" data-testid="wrapper">
         <button>
           <svg>
             <path d="M0 0" />
           </svg>
         </button>
-      </HideIfEmpty>,
+      </RenderIfHasContent>,
     );
 
     expect(screen.getByTestId("wrapper")).toBeInTheDocument();
@@ -57,11 +57,11 @@ describe("HideIfEmpty", () => {
 
   it("should skip hidden children when checking for content", () => {
     render(
-      <HideIfEmpty component="section" data-testid="wrapper">
+      <RenderIfHasContent component="section" data-testid="wrapper">
         <div hidden>
           <span>Hidden text</span>
         </div>
-      </HideIfEmpty>,
+      </RenderIfHasContent>,
     );
 
     expect(screen.queryByTestId("wrapper")).not.toBeInTheDocument();
@@ -69,11 +69,11 @@ describe("HideIfEmpty", () => {
 
   it("should skip display:none children when checking for content", () => {
     render(
-      <HideIfEmpty component="section" data-testid="wrapper">
+      <RenderIfHasContent component="section" data-testid="wrapper">
         <div style={{ display: "none" }}>
           <span>Hidden text</span>
         </div>
-      </HideIfEmpty>,
+      </RenderIfHasContent>,
     );
 
     expect(screen.queryByTestId("wrapper")).not.toBeInTheDocument();
@@ -81,14 +81,14 @@ describe("HideIfEmpty", () => {
 
   it("should pass props to the rendered component", () => {
     render(
-      <HideIfEmpty
+      <RenderIfHasContent
         component="section"
         data-testid="wrapper"
         className="my-class"
         aria-label="test"
       >
         <span>Content</span>
-      </HideIfEmpty>,
+      </RenderIfHasContent>,
     );
 
     const wrapper = screen.getByTestId("wrapper");
@@ -102,9 +102,9 @@ describe("HideIfEmpty", () => {
       return (
         <>
           <button onClick={() => setShow(true)}>Show</button>
-          <HideIfEmpty component="section" data-testid="wrapper">
+          <RenderIfHasContent component="section" data-testid="wrapper">
             {show && <span>Dynamic content</span>}
-          </HideIfEmpty>
+          </RenderIfHasContent>
         </>
       );
     };
@@ -127,9 +127,9 @@ describe("HideIfEmpty", () => {
       return (
         <>
           <button onClick={() => setShow(false)}>Hide</button>
-          <HideIfEmpty component="section" data-testid="wrapper">
+          <RenderIfHasContent component="section" data-testid="wrapper">
             {show && <span>Content</span>}
-          </HideIfEmpty>
+          </RenderIfHasContent>
         </>
       );
     };
@@ -146,13 +146,13 @@ describe("HideIfEmpty", () => {
     expect(screen.queryByTestId("wrapper")).not.toBeInTheDocument();
   });
 
-  it("should render nested HideIfEmpty components when content is present", () => {
+  it("should render nested RenderIfHasContent components when content is present", () => {
     render(
-      <HideIfEmpty component="section" data-testid="outer">
-        <HideIfEmpty component="div" data-testid="inner">
+      <RenderIfHasContent component="section" data-testid="outer">
+        <RenderIfHasContent component="div" data-testid="inner">
           <span>Nested content</span>
-        </HideIfEmpty>
-      </HideIfEmpty>,
+        </RenderIfHasContent>
+      </RenderIfHasContent>,
     );
 
     expect(screen.getByTestId("outer")).toBeInTheDocument();
@@ -160,13 +160,13 @@ describe("HideIfEmpty", () => {
     expect(screen.getByText("Nested content")).toBeVisible();
   });
 
-  it("should hide nested HideIfEmpty components when content is empty", () => {
+  it("should hide nested RenderIfHasContent components when content is empty", () => {
     render(
-      <HideIfEmpty component="section" data-testid="outer">
-        <HideIfEmpty component="div" data-testid="inner">
+      <RenderIfHasContent component="section" data-testid="outer">
+        <RenderIfHasContent component="div" data-testid="inner">
           <div />
-        </HideIfEmpty>
-      </HideIfEmpty>,
+        </RenderIfHasContent>
+      </RenderIfHasContent>,
     );
 
     expect(screen.queryByTestId("outer")).not.toBeInTheDocument();

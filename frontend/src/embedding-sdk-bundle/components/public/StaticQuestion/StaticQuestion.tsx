@@ -1,8 +1,8 @@
 import type { PropsWithChildren } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
-import { HideIfEmpty } from "embedding-sdk-bundle/components/private/HideIfEmpty/HideIfEmpty";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { RenderIfHasContent } from "embedding-sdk-bundle/components/private/RenderIfHasContent/RenderIfHasContent";
 import {
   Breakout,
   BreakoutDropdown,
@@ -149,7 +149,7 @@ const StaticQuestionInner = (
             h="100%"
             gap="xs"
           >
-            <HideIfEmpty
+            <RenderIfHasContent
               component={Stack}
               className={InteractiveQuestionS.TopBar}
               gap="sm"
@@ -158,20 +158,20 @@ const StaticQuestionInner = (
             >
               {title && <DefaultViewTitle title={title} />}
 
-              <HideIfEmpty
+              <RenderIfHasContent
                 component={ResultToolbar}
                 data-testid="result-toolbar"
               >
                 {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
 
-                <HideIfEmpty component={Group} gap="sm" ml="auto">
+                <RenderIfHasContent component={Group} gap="sm" ml="auto">
                   <SdkQuestion.DownloadWidgetDropdown />
                   <QuestionAlertsButton />
-                </HideIfEmpty>
-              </HideIfEmpty>
+                </RenderIfHasContent>
+              </RenderIfHasContent>
 
               {isGuestEmbed && <SdkQuestion.SqlParametersList />}
-            </HideIfEmpty>
+            </RenderIfHasContent>
 
             <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
               <Box className={InteractiveQuestionS.Content}>

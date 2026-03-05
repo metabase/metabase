@@ -35,7 +35,7 @@ import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
 } from "../FlexibleSizeComponent";
-import { HideIfEmpty } from "../HideIfEmpty/HideIfEmpty";
+import { RenderIfHasContent } from "../RenderIfHasContent/RenderIfHasContent";
 import { SdkInternalNavigationBackButton } from "../SdkInternalNavigation/SdkInternalNavigationBackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
 import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
@@ -188,32 +188,32 @@ export const SdkQuestionDefaultView = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <HideIfEmpty
+      <RenderIfHasContent
         component={Stack}
         className={InteractiveQuestionS.TopBar}
         gap="sm"
         p="md"
       >
-        <HideIfEmpty
+        <RenderIfHasContent
           component={Group}
           justify="space-between"
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
         >
-          <HideIfEmpty component={Group} gap="xs">
+          <RenderIfHasContent component={Group} gap="xs">
             <Stack align="flex-start">
               <SdkInternalNavigationBackButton />
               <DefaultViewTitle title={title} />
             </Stack>
-          </HideIfEmpty>
+          </RenderIfHasContent>
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
-        </HideIfEmpty>
+        </RenderIfHasContent>
         {queryResults && (
-          <HideIfEmpty
+          <RenderIfHasContent
             component={ResultToolbar}
             data-testid="interactive-question-result-toolbar"
           >
-            <HideIfEmpty component={Group} gap="xs">
+            <RenderIfHasContent component={Group} gap="xs">
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
@@ -253,8 +253,8 @@ export const SdkQuestionDefaultView = ({
                   )}
                 </>
               )}
-            </HideIfEmpty>
-            <HideIfEmpty component={Group} gap="sm" ml="auto">
+            </RenderIfHasContent>
+            <RenderIfHasContent component={Group} gap="sm" ml="auto">
               {!isEditorOpen && (
                 <>
                   <DownloadWidgetDropdown />
@@ -262,8 +262,8 @@ export const SdkQuestionDefaultView = ({
                 </>
               )}
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
-            </HideIfEmpty>
-          </HideIfEmpty>
+            </RenderIfHasContent>
+          </RenderIfHasContent>
         )}
 
         {isGuestEmbed && (
@@ -271,7 +271,7 @@ export const SdkQuestionDefaultView = ({
             <SdkQuestion.SqlParametersList />
           </Box>
         )}
-      </HideIfEmpty>
+      </RenderIfHasContent>
 
       <Box
         className={cx(InteractiveQuestionS.Main, "sdk-question-main")}
