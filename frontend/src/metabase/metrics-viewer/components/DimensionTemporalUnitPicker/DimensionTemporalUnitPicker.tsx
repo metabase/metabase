@@ -6,6 +6,7 @@ import type {
   MetricDefinition,
   ProjectionClause,
   TemporalBucket,
+  TemporalBucketDisplayInfo,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
@@ -20,6 +21,21 @@ interface DimensionTemporalUnitPickerProps {
   activeDimension?: ProjectionClause;
   isEditing: boolean;
   onSelect: (dimension: ProjectionClause) => void;
+}
+
+function isBucketSelected(
+  info: TemporalBucketDisplayInfo,
+  isEditing: boolean,
+  hasExplicitBucket: boolean,
+  activeBucketKey: string | null,
+): boolean {
+  if (!isEditing) {
+    return false;
+  }
+  if (hasExplicitBucket) {
+    return info.shortName === activeBucketKey;
+  }
+  return info.default ?? false;
 }
 
 export function DimensionTemporalUnitPicker({
@@ -54,15 +70,15 @@ export function DimensionTemporalUnitPicker({
     () => [
       ...buckets.map((bucket) => {
         const info = LibMetric.displayInfo(definition, bucket);
-        const isSelected = isEditing
-          ? hasExplicitBucket
-            ? info.shortName === activeBucketKey
-            : (info.default ?? false)
-          : false;
         return {
           displayName: info.displayName,
           isDefault: info.default,
-          isSelected,
+          isSelected: isBucketSelected(
+            info,
+            isEditing,
+            hasExplicitBucket,
+            activeBucketKey,
+          ),
         };
       }),
       {
@@ -73,15 +89,13 @@ export function DimensionTemporalUnitPicker({
     [definition, buckets, hasExplicitBucket, activeBucketKey, isEditing],
   );
 
-  const defaultBucket = useMemo(() => {
-    for (let i = 0; i < buckets.length; i++) {
-      const info = LibMetric.displayInfo(definition, buckets[i]);
-      if (info.default) {
-        return buckets[i];
-      }
-    }
-    return null;
-  }, [definition, buckets]);
+  const defaultBucket = useMemo(
+    () =>
+      buckets.find(
+        (bucket) => LibMetric.displayInfo(definition, bucket).default,
+      ) ?? null,
+    [definition, buckets],
+  );
 
   const triggerLabel = useMemo(() => {
     if (isEditing && activeBucketKey) {

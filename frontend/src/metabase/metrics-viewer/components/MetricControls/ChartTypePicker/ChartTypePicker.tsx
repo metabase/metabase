@@ -3,6 +3,8 @@ import { ActionIcon, Flex, Icon } from "metabase/ui";
 import type { MetricsViewerDisplayType } from "../../../types/viewer-state";
 import type { ChartTypeOption } from "../../../utils/tab-config";
 
+import S from "./ChartTypePicker.module.css";
+
 type ChartTypePickerProps = {
   chartTypes: ChartTypeOption[];
   value: MetricsViewerDisplayType;
@@ -24,10 +26,7 @@ export function ChartTypePicker({
           bg={value === type ? "background-primary" : undefined}
           onClick={() => onChange(type)}
           aria-label={type}
-          style={{
-            boxShadow:
-              value === type ? "0 1px 2px var(--mb-color-shadow)" : undefined,
-          }}
+          className={value === type ? S.selected : undefined}
         >
           <Icon name={icon} c={value === type ? "brand" : "text-primary"} />
         </ActionIcon>

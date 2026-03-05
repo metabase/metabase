@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { getDatePickerValue } from "metabase/metrics/utils/dates";
 import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import * as Lib from "metabase-lib";
@@ -96,5 +98,5 @@ export function getFilterDisplayParts(
     };
   }
 
-  return { label: "", value: null };
+  return { label: t`Unknown filter`, value: null };
 }

@@ -114,15 +114,6 @@ export function MetricPill({
     setPopoverState("closed");
   }, [metric]);
 
-  // TODO: Decide what to do here
-  // const handleGoToMetric = useCallback(() => {
-  //   window.open(
-  //     metricQuestionUrl({ id: metric.id, name: metric.name ?? undefined }),
-  //     "_blank",
-  //   );
-  //   setPopoverState("closed");
-  // }, [metric]);
-
   const handleOpenBreakoutPicker = useCallback(() => {
     setPopoverState("breakout-picker");
   }, []);

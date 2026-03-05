@@ -82,8 +82,13 @@ function buildLegendGroups(
         color: colors[i] ?? colors[colors.length - 1],
       }));
 
+      const header = dimInfo?.longDisplayName ?? dimInfo?.displayName;
+      if (!header) {
+        continue;
+      }
+
       groups.push({
-        header: dimInfo?.longDisplayName ?? dimInfo?.displayName ?? "",
+        header,
         subtitle: defName ?? undefined,
         items,
       });
@@ -120,8 +125,8 @@ export function BreakoutLegend({
     <Box className={S.root} data-testid="metrics-viewer-breakout-legend">
       <Paper withBorder radius="md" p="lg">
         <Stack gap="lg">
-          {groups.map((group, gi) => (
-            <Stack key={gi} gap="sm">
+          {groups.map((group) => (
+            <Stack key={group.header} gap="sm">
               <div>
                 <Title fw="bold" size="md" lh={1.3}>
                   {group.header}
@@ -132,8 +137,8 @@ export function BreakoutLegend({
                   </Text>
                 )}
               </div>
-              {group.items.map((item, ii) => (
-                <Flex key={ii} align="center" gap="sm">
+              {group.items.map((item) => (
+                <Flex key={item.label} align="center" gap="sm">
                   <Box className={S.dot} style={{ background: item.color }} />
                   <Text size="md" lh={1}>
                     {item.label}
