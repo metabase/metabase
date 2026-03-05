@@ -60,8 +60,8 @@ function SmartScalarComponent(props: SmartScalarProps) {
     series,
     rawSeries,
     gridSize,
-    width: normalizedWidth,
-    height: normalizedHeight,
+    width,
+    height,
     fontFamily,
     onRenderError,
   } = props;
@@ -86,9 +86,7 @@ function SmartScalarComponent(props: SmartScalarProps) {
 
   const { value, clicked, comparisons, display, formatOptions } = trend;
 
-  const innerHeight = isDashboard
-    ? normalizedHeight - DASHCARD_HEADER_HEIGHT
-    : normalizedHeight;
+  const innerHeight = isDashboard ? height - DASHCARD_HEADER_HEIGHT : height;
 
   const isClickable = onVisualizationClick != null;
 
@@ -110,7 +108,7 @@ function SmartScalarComponent(props: SmartScalarProps) {
 
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
-    normalizedWidth,
+    width,
     formatOptions,
   );
 
@@ -134,7 +132,7 @@ function SmartScalarComponent(props: SmartScalarProps) {
             height={valueHeight}
             totalNumGridCols={totalNumGridCols}
             value={String(displayValue)}
-            width={getValueWidth(normalizedWidth)}
+            width={getValueWidth(width)}
           />
         </span>
       </ScalarValueContainer>
@@ -147,7 +145,7 @@ function SmartScalarComponent(props: SmartScalarProps) {
             fontFamily={fontFamily}
             formatOptions={formatOptions}
             tooltipComparisons={comparisons}
-            width={normalizedWidth}
+            width={width}
           />
         </Box>
       )}
@@ -160,7 +158,7 @@ function SmartScalarComponent(props: SmartScalarProps) {
               fontFamily={fontFamily}
               formatOptions={formatOptions}
               tooltipComparisons={[comparison]}
-              width={normalizedWidth}
+              width={width}
             />
           </Box>
         ))}
