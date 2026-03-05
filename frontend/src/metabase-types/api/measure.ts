@@ -1,3 +1,4 @@
+import type { FieldValue } from "./field";
 import type { DatasetQuery, OpaqueDatasetQuery } from "./query";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";

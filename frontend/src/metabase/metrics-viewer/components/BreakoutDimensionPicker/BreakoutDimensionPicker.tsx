@@ -60,7 +60,7 @@ export function BreakoutDimensionPicker({
       const groupId = dim.group?.id;
       const entry = groups.get(groupId);
       const item: DimensionItem = {
-        name: dim.name,
+        name: dim.name ?? "",
         displayName: dim.displayName,
         dimension: dim.dimension,
         icon: getDimensionIcon(dim.dimension),

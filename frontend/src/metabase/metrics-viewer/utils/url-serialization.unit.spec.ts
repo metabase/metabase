@@ -57,7 +57,7 @@ describe("url-serialization", () => {
         selectedTabId: null,
       };
 
-      const hash = encodeState(state);
+      const hash = encodeStateOrThrow(state);
       const decoded = decodeState(hash);
       expect(decoded).toEqual(state);
     });
@@ -76,7 +76,7 @@ describe("url-serialization", () => {
         selectedTabId: null,
       };
 
-      const hash = encodeState(state);
+      const hash = encodeStateOrThrow(state);
       const decoded = decodeState(hash);
       expect(decoded).toEqual(state);
     });
@@ -96,7 +96,7 @@ describe("url-serialization", () => {
         selectedTabId: null,
       };
 
-      const hash = encodeState(state);
+      const hash = encodeStateOrThrow(state);
       const decoded = decodeState(hash);
       expect(decoded).toEqual(state);
     });

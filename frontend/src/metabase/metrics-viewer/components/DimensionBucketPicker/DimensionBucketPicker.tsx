@@ -30,7 +30,7 @@ export function DimensionBucketPicker({
   }, []);
 
   const handleSelect = useCallback(
-    (index: number, e: React.MouseEvent) => {
+    (index: number, e: React.SyntheticEvent) => {
       e.stopPropagation();
       onSelect(index);
       setIsOpen(false);

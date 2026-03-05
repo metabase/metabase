@@ -4,7 +4,10 @@ import { t } from "ttag";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { Box, Flex, TextInput } from "metabase/ui";
 
-import { useMetricMeasureSearch } from "../../../hooks/use-metric-measure-search";
+import {
+  type MetricOrMeasureResult,
+  useMetricMeasureSearch,
+} from "../../../hooks/use-metric-measure-search";
 import type { SelectedMetric } from "../../../types/viewer-state";
 import { MetricSearchResults } from "../MetricSearchResults";
 
@@ -80,7 +83,10 @@ export function MetricSearchDropdown({
     [handleSelectResult],
   );
 
-  const { cursorIndex, getRef } = useListKeyboardNavigation({
+  const { cursorIndex, getRef } = useListKeyboardNavigation<
+    MetricOrMeasureResult,
+    HTMLDivElement
+  >({
     list: filteredResults,
     onEnter: handleEnter,
   });

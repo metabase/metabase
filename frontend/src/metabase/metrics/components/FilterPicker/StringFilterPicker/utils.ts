@@ -56,7 +56,7 @@ export function isValidFilter(
   operator: Lib.StringFilterOperator,
   dimension: LibMetric.DimensionMetadata,
   values: string[] = [],
-  options: LibMetric.StringFilterOptions,
+  options: Lib.StringFilterOptions,
 ) {
   return getFilterParts(operator, dimension, values, options) != null;
 }
@@ -65,7 +65,7 @@ export function getFilterClause(
   operator: Lib.StringFilterOperator,
   dimension: LibMetric.DimensionMetadata,
   values: string[],
-  options: LibMetric.StringFilterOptions,
+  options: Lib.StringFilterOptions,
 ) {
   const filterParts = getFilterParts(operator, dimension, values, options);
   return filterParts != null
@@ -77,7 +77,7 @@ function getFilterParts(
   operator: Lib.StringFilterOperator,
   dimension: LibMetric.DimensionMetadata,
   values: string[],
-  options: LibMetric.StringFilterOptions,
+  options: Lib.StringFilterOptions,
 ): LibMetric.StringFilterParts | undefined {
   const { type } = OPERATORS[operator];
   if (values.length === 0 && type !== "empty") {

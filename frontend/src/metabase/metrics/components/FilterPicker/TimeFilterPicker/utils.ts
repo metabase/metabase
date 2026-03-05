@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 
 import { isNotNull } from "metabase/lib/types";
+import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 
 import { OPERATORS } from "./constants";
@@ -13,11 +14,11 @@ export function getAvailableOptions(): TimeFilterOperatorOption[] {
   }));
 }
 
-export function getOptionByOperator(operator: LibMetric.TimeFilterOperator) {
+export function getOptionByOperator(operator: Lib.TimeFilterOperator) {
   return OPERATORS[operator];
 }
 
-export function getDefaultOperator(): LibMetric.TimeFilterOperator {
+export function getDefaultOperator(): Lib.TimeFilterOperator {
   return "<";
 }
 
@@ -26,7 +27,7 @@ function getDefaultValue() {
 }
 
 export function getDefaultValues(
-  operator: LibMetric.TimeFilterOperator,
+  operator: Lib.TimeFilterOperator,
   values: TimeValue[],
 ): TimeValue[] {
   const { valueCount } = OPERATORS[operator];
@@ -37,7 +38,7 @@ export function getDefaultValues(
 }
 
 export function isValidFilter(
-  operator: LibMetric.TimeFilterOperator,
+  operator: Lib.TimeFilterOperator,
   dimension: LibMetric.DimensionMetadata,
   values: TimeValue[],
 ) {
@@ -45,7 +46,7 @@ export function isValidFilter(
 }
 
 export function getFilterClause(
-  operator: LibMetric.TimeFilterOperator,
+  operator: Lib.TimeFilterOperator,
   dimension: LibMetric.DimensionMetadata,
   values: TimeValue[],
 ) {
@@ -58,7 +59,7 @@ export function getFilterClause(
 }
 
 function getFilterParts(
-  operator: LibMetric.TimeFilterOperator,
+  operator: Lib.TimeFilterOperator,
   dimension: LibMetric.DimensionMetadata,
   values: TimeValue[],
 ): LibMetric.TimeFilterParts | undefined {
@@ -84,9 +85,7 @@ function getFilterParts(
   };
 }
 
-function getOperatorDisplayName(
-  operator: LibMetric.TimeFilterOperator,
-): string {
+function getOperatorDisplayName(operator: Lib.TimeFilterOperator): string {
   switch (operator) {
     case "<":
       return "Before";

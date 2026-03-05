@@ -61,7 +61,7 @@ export function useStringFilter({
     getFilterClause: (
       operator: Lib.StringFilterOperator,
       values: string[],
-      options: LibMetric.StringFilterOptions,
+      options: Lib.StringFilterOptions,
     ) => getFilterClause(operator, dimension, values, options),
     setOperator,
     setValues,

@@ -1,12 +1,12 @@
-import type * as LibMetric from "metabase-lib/metric";
+import type * as Lib from "metabase-lib";
 
 import type { FilterOperatorOption } from "../types";
 
 export type TimeFilterOperatorOption =
-  FilterOperatorOption<LibMetric.TimeFilterOperator>;
+  FilterOperatorOption<Lib.TimeFilterOperator>;
 
 export type TimeFilterOperatorInfo = {
-  operator: LibMetric.TimeFilterOperator;
+  operator: Lib.TimeFilterOperator;
   valueCount: number;
 };
 

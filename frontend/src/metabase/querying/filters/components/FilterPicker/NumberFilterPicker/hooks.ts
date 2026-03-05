@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import * as Lib from "metabase-lib";
 
 import type { NumberOrEmptyValue } from "./types";
+export type { NumberOrEmptyValue } from "./types";
 import {
   getAvailableOptions,
   getDefaultOperator,

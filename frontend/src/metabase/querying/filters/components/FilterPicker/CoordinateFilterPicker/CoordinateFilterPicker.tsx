@@ -15,7 +15,8 @@ import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
-import { type NumberOrEmptyValue, useCoordinateFilter } from "./hooks";
+import { useCoordinateFilter } from "./hooks";
+import type { NumberOrEmptyValue } from "./types";
 
 export function CoordinateFilterPicker({
   autoFocus,

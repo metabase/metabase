@@ -9,6 +9,9 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+import type Field from "../v1/metadata/Field";
+import type Metadata from "../v1/metadata/Metadata";
+
 import type {
   AggregationClause,
   AggregationClauseDisplayInfo,
@@ -49,8 +52,6 @@ import type {
   TableDisplayInfo,
   TableMetadata,
 } from "./types";
-import type Field from "./v1/metadata/Field";
-import type Metadata from "./v1/metadata/Metadata";
 
 export function metadataProvider(
   databaseId: DatabaseId | null,

@@ -17,7 +17,7 @@ export function getMetricGroups(
 
     for (const dimension of dimensions) {
       const info = LibMetric.displayInfo(definition, dimension);
-      const groupId = info.group?.id;
+      const groupId = info.group?.id ?? "";
       const groupName = info.group?.displayName ?? "";
       const item: DimensionListItem = {
         name: info.displayName,
@@ -52,9 +52,7 @@ export function getMetricGroups(
   });
 }
 
-export function getSectionName(
-  definition: LibMetric.MetricDefinition,
-): string {
+export function getSectionName(definition: LibMetric.MetricDefinition): string {
   const metric = LibMetric.sourceMetricOrMeasureMetadata(definition);
   if (metric) {
     const metricInfo = LibMetric.displayInfo(definition, metric);

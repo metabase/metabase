@@ -235,7 +235,10 @@ describe("metabase-lib/metric/core", () => {
       const dimensions = LibMetric.projectionableDimensions(definition);
       expect(dimensions.length).toBeGreaterThan(0);
 
-      const updatedDefinition = LibMetric.project(definition, dimensions[0]);
+      const updatedDefinition = LibMetric.project(
+        definition,
+        LibMetric.dimensionReference(dimensions[0]),
+      );
       const projectionClauses = LibMetric.projections(updatedDefinition);
 
       expect(projectionClauses.length).toBe(1);
@@ -246,8 +249,14 @@ describe("metabase-lib/metric/core", () => {
       const dimensions = LibMetric.projectionableDimensions(definition);
       expect(dimensions.length).toBeGreaterThan(1);
 
-      let updatedDefinition = LibMetric.project(definition, dimensions[0]);
-      updatedDefinition = LibMetric.project(updatedDefinition, dimensions[1]);
+      let updatedDefinition = LibMetric.project(
+        definition,
+        LibMetric.dimensionReference(dimensions[0]),
+      );
+      updatedDefinition = LibMetric.project(
+        updatedDefinition,
+        LibMetric.dimensionReference(dimensions[1]),
+      );
       const projectionClauses = LibMetric.projections(updatedDefinition);
 
       expect(projectionClauses.length).toBe(2);
@@ -260,7 +269,10 @@ describe("metabase-lib/metric/core", () => {
       const dimensions = LibMetric.projectionableDimensions(definition);
       expect(dimensions.length).toBeGreaterThan(0);
 
-      const updatedDefinition = LibMetric.project(definition, dimensions[0]);
+      const updatedDefinition = LibMetric.project(
+        definition,
+        LibMetric.dimensionReference(dimensions[0]),
+      );
       const projectionClauses = LibMetric.projections(updatedDefinition);
       expect(projectionClauses.length).toBe(1);
 
@@ -335,7 +347,10 @@ describe("metabase-lib/metric/core", () => {
       const dimensions = LibMetric.projectionableDimensions(definition);
       const dateDimension = dimensions[DIM_IDX.DATE_TIME];
 
-      const updatedDefinition = LibMetric.project(definition, dateDimension);
+      const updatedDefinition = LibMetric.project(
+        definition,
+        LibMetric.dimensionReference(dateDimension),
+      );
       const projections = LibMetric.projections(updatedDefinition);
       expect(projections.length).toBe(1);
 
@@ -422,7 +437,10 @@ describe("metabase-lib/metric/core", () => {
       const dimensions = LibMetric.projectionableDimensions(definition);
       const numericDimension = dimensions[DIM_IDX.NUMBER];
 
-      const updatedDefinition = LibMetric.project(definition, numericDimension);
+      const updatedDefinition = LibMetric.project(
+        definition,
+        LibMetric.dimensionReference(numericDimension),
+      );
       const projectionClauses = LibMetric.projections(updatedDefinition);
       expect(projectionClauses.length).toBe(1);
 
@@ -1957,7 +1975,10 @@ describe("metabase-lib/metric/core", () => {
       const dimensions = LibMetric.projectionableDimensions(definition);
       expect(dimensions.length).toBeGreaterThan(0);
 
-      const updatedDef = LibMetric.project(definition, dimensions[0]);
+      const updatedDef = LibMetric.project(
+        definition,
+        LibMetric.dimensionReference(dimensions[0]),
+      );
       const projectionClauses = LibMetric.projections(updatedDef);
 
       expect(projectionClauses.length).toBe(1);

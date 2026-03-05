@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Box, Flex, Text, TimeInput } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -45,7 +46,7 @@ export function TimeFilterPicker({
     filter,
   });
 
-  const handleOperatorChange = (newOperator: LibMetric.TimeFilterOperator) => {
+  const handleOperatorChange = (newOperator: Lib.TimeFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
   };

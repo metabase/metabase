@@ -6,13 +6,12 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
+import { defaultDisplay } from "./display";
 import {
   DEFAULT_TEST_QUERY,
   SAMPLE_PROVIDER,
   createMetadataProvider,
-} from "../test-helpers";
-
-import { defaultDisplay } from "./display";
+} from "./test-helpers";
 
 const DATABASE_ID = 1;
 const ACCOUNTS_ID = 4;

@@ -12,7 +12,8 @@ import { StringFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
-import { type OperatorType, useStringFilter } from "./hooks";
+import { useStringFilter } from "./hooks";
+import type { OperatorType } from "./types";
 
 export function StringFilterPicker({
   autoFocus,

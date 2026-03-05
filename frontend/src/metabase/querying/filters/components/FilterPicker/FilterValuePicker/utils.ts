@@ -1,26 +1,26 @@
 import { t } from "ttag";
 
-import type { DimensionValuesInfo } from "metabase-lib";
+import type { FieldValuesSearchInfo } from "metabase-lib";
 import * as Lib from "metabase-lib";
 
 export function canListFieldValues({
   fieldId,
   hasFieldValues,
-}: DimensionValuesInfo): boolean {
+}: FieldValuesSearchInfo): boolean {
   return fieldId != null && hasFieldValues === "list";
 }
 
 export function canSearchFieldValues({
   searchFieldId,
   hasFieldValues,
-}: DimensionValuesInfo): boolean {
+}: FieldValuesSearchInfo): boolean {
   return searchFieldId != null && hasFieldValues === "search";
 }
 
 export function canRemapFieldValues({
   fieldId,
   searchFieldId,
-}: DimensionValuesInfo): boolean {
+}: FieldValuesSearchInfo): boolean {
   return fieldId != null && searchFieldId != null && fieldId !== searchFieldId;
 }
 

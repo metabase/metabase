@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 
 import type { TimeValue } from "./types";
@@ -45,10 +46,8 @@ export function useTimeFilter({
     availableOptions,
     isValid,
     getDefaultValues,
-    getFilterClause: (
-      operator: LibMetric.TimeFilterOperator,
-      values: TimeValue[],
-    ) => getFilterClause(operator, dimension, values),
+    getFilterClause: (operator: Lib.TimeFilterOperator, values: TimeValue[]) =>
+      getFilterClause(operator, dimension, values),
     setOperator,
     setValues,
   };

@@ -11,7 +11,8 @@ import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
-import { type TimeValue, useTimeFilter } from "./hooks";
+import { useTimeFilter } from "./hooks";
+import type { TimeValue } from "./types";
 
 export function TimeFilterPicker({
   autoFocus,

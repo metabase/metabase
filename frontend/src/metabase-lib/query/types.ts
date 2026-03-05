@@ -19,6 +19,7 @@ import type {
   DefaultFilterOperator,
   ExcludeDateFilterOperator,
   ExcludeDateFilterUnit,
+  FilterOperator,
   NumberFilterOperator,
   NumberFilterValue,
   RelativeDateFilterOptions,
@@ -320,13 +321,7 @@ export type ExpressionOptions = {
   mode?: DatetimeMode;
 };
 
-// export type FilterOperator =
-//   | StringFilterOperator
-//   | NumberFilterOperator
-//   | BooleanFilterOperator
-//   | SpecificDateFilterOperator
-//   | ExcludeDateFilterOperator
-//   | CoordinateFilterOperator;
+export type { FilterOperator };
 
 export type FilterOperatorVariant = "default" | "number" | "temporal";
 

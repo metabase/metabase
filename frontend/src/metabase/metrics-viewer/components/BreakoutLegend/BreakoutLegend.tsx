@@ -134,7 +134,7 @@ export function BreakoutLegend({
               </div>
               {group.items.map((item, ii) => (
                 <Flex key={ii} align="center" gap="sm">
-                  <Box className={S.dot} bg={item.color} />
+                  <Box className={S.dot} style={{ background: item.color }} />
                   <Text size="md" lh={1}>
                     {item.label}
                   </Text>

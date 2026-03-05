@@ -13,34 +13,35 @@ type MetricResultItemProps = {
   onClick?: () => void;
 };
 
-export const MetricResultItem = forwardRef<HTMLDivElement, MetricResultItemProps>(
-  function MetricResultItem(
-    { name, slug, icon = "metric", active = false, onClick },
-    ref,
-  ) {
-    return (
-      <Flex
-        ref={ref}
-        px="sm"
-        py="xs"
-        align="center"
-        gap="xs"
-        mih={36}
-        c="text-primary"
-        className={S.resultItem}
-        data-active={active || undefined}
-        onClick={onClick}
-      >
-        <Icon name={icon} c="text-tertiary" flex="0 0 auto" />
-        <Text lh="md" lineClamp={1} flex="1">
-          {name}
+export const MetricResultItem = forwardRef<
+  HTMLDivElement,
+  MetricResultItemProps
+>(function MetricResultItem(
+  { name, slug, icon = "metric", active = false, onClick },
+  ref,
+) {
+  return (
+    <Flex
+      ref={ref}
+      px="sm"
+      py="xs"
+      align="center"
+      gap="xs"
+      mih={36}
+      c="text-primary"
+      className={S.resultItem}
+      data-active={active || undefined}
+      onClick={onClick}
+    >
+      <Icon name={icon} c="text-tertiary" flex="0 0 auto" />
+      <Text lh="md" lineClamp={1} flex="1">
+        {name}
+      </Text>
+      {slug && (
+        <Text fz="xs" c="text-tertiary" flex="0 0 auto">
+          {slug}
         </Text>
-        {slug && (
-          <Text fz="xs" c="text-tertiary" flex="0 0 auto">
-            {slug}
-          </Text>
-        )}
-      </Flex>
-    );
-  },
-);
+      )}
+    </Flex>
+  );
+});

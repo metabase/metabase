@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type React from "react";
 import { t } from "ttag";
 
 import { Box, Repeat, Skeleton, Stack, Text } from "metabase/ui";
@@ -12,7 +12,9 @@ type MetricSearchResultsProps = {
   results: MetricOrMeasureResult[];
   isLoading: boolean;
   cursorIndex: number | null;
-  getRef: (item: MetricOrMeasureResult) => RefObject<HTMLElement> | undefined;
+  getRef: (
+    item: MetricOrMeasureResult,
+  ) => React.RefObject<HTMLDivElement> | undefined;
   onSelectResult: (id: number, model: "metric" | "measure") => void;
 };
 
