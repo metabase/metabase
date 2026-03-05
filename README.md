@@ -1,6 +1,6 @@
 # Metabase
 
-[Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data. Use Metabase to clean up and query your data, or embed Metabase charts, dashboards, or AI chat in your application.
+[Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data.
 
 ![Metabase Product Screenshot](https://www.metabase.com/images/metabase-product-screenshot-updated.png)
 
@@ -42,8 +42,15 @@ Metabase can be run just about anywhere. Check out our [Installation Guides](htt
 
 ## Documentation
 
-- [Metabase docs](https://www.metabase.com/docs/latest/) (for using Metabase).
-- [Developer docs](./docs/developers-guide/start.md) (for contributing to Metabase).
+The [Metabase handbook](https://www.metabase.com/docs/latest/).
+
+## Contributing
+
+To contribute to Metabase, see our [Developer docs](./docs/developers-guide/start.md).
+
+## Extending Metabase
+
+Hit our API to integrate analytics. Check out our guide, [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).
 
 ## Internationalization
 
