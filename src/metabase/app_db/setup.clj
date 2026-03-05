@@ -126,7 +126,7 @@
   {:h2       {:major 2 :minor 1 :patch 214}
    :postgres {:major 12 :minor 0 :patch 0}
    :mysql    {:major 8 :minor 0 :patch 17}
-   :maria    {:major 10 :minor 4 :patch 0}})
+   :mariadb  {:major 10 :minor 4 :patch 0}})
 
 (defn- parse-db-version
   [product-version]
