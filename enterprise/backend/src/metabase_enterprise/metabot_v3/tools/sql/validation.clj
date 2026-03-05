@@ -7,7 +7,9 @@
    [metabase.util.malli.registry :as mr]))
 
 (def dialect-mapping
-  "Maps query dialect into parser dialect representation. Matches ai-service py implmentation."
+  "Maps query dialect (Metabase driver name) to parser dialect. Matches ai-service
+  `SQLGLOT_DIALECT_MAP`. Values of `nil` mean the dialect is recognized but validation is skipped.
+  Dialects absent from this map are also skipped."
   {;; PostgreSQL family
    "postgres" "postgres",
    "postgresql" "postgres",
@@ -36,9 +38,22 @@
    "sqlserver" "tsql",
    ;; Embedded/lightweight
    "sqlite" "sqlite",
-   ;; H2 and Vertica are not fully supported by parser hence skipping the validation
+   ;; H2 uses PostgreSQL compatibility mode in sqlglot but this causes incorrect identifier
+   ;; quoting (H2 folds to UPPERCASE internally, postgres quoting forces lowercase), so we
+   ;; skip validation. Vertica is not supported by sqlglot.
    "h2" nil
    "vertica" nil})
+
+;; Dialects where the Python transpilation layer (`sql_tools.py`) passes `identify=True` to
+;; sqlglot, quoting all identifiers. These dialects fold unquoted identifiers to a specific case
+;; and need quoting to preserve the LLM's intended casing. This set is defined in Python's
+;; `CASE_SENSITIVE_DIALECTS`; it is documented here so that any future pure-JVM replacement
+;; knows to replicate the behavior.
+;;
+;;   "snowflake"  — folds unquoted to UPPERCASE
+;;   "oracle"     — folds unquoted to UPPERCASE
+;;   "redshift"   — PostgreSQL-based, folds to lowercase
+;;   "postgres"   — folds unquoted to lowercase
 
 (defn database-id->dialect
   "Get dialect for database id."
@@ -68,34 +83,34 @@
 
   Validation is short-circuited and query is considered valid for following cases:
   - sql string is empty,
-  - dialect is `nil`,
+  - dialect is `nil` or maps to `nil` (e.g. h2, vertica),
+  - dialect is not in [[dialect-mapping]],
   - sql contains Metabase template tags.
 
-  When that is not the case, the query is transpiled into from and into the same dialect. If that action yields
-  successfully, the query is considered valid."
+  When that is not the case, the query is transpiled from and into the same dialect. If that action
+  yields successfully, the query is considered valid.
+
+  Returns the mapped dialect name in `:dialect` (not the raw driver name) for consistency
+  with the Python ai-service."
   [dialect :- [:maybe :string]
    sql :- :string]
-  (if (or (nil? dialect)
-          (str/blank? sql)
-          (not (contains? dialect-mapping dialect))
-          (contains-template-tags? sql))
-    {:valid? true
-     :dialect dialect
-     :transpiled-sql sql}
-    (let [dialect* (dialect-mapping dialect)
-          {:keys [error-message transpiled-sql status]}
-          (sql-tools/transpile-sql sql dialect* dialect*)]
-      (merge
-       ;; Return contains original input dialect, not the mapping.
-       {:dialect dialect}
-       (cond (= :success status)
-             {:valid? true
-              :transpiled-sql transpiled-sql}
-
-             (= :skipped status)
-             {:valid? true
-              :transpiled-sql transpiled-sql}
-
-             (= :error status)
-             {:valid? false
-              :error-message error-message})))))
+  (let [mapped-dialect (get dialect-mapping dialect)]
+    (if (or (nil? dialect)
+            (str/blank? sql)
+            (not (contains? dialect-mapping dialect))
+            (nil? mapped-dialect)
+            (contains-template-tags? sql))
+      {:valid? true
+       :dialect mapped-dialect
+       :transpiled-sql sql}
+      (let [{:keys [error-message transpiled-sql status]}
+            (sql-tools/transpile-sql sql mapped-dialect mapped-dialect)]
+        (merge
+         {:dialect mapped-dialect}
+         (case status
+           :success {:valid? true
+                     :transpiled-sql transpiled-sql}
+           :skipped {:valid? true
+                     :transpiled-sql transpiled-sql}
+           :error   {:valid? false
+                     :error-message error-message}))))))
