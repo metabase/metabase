@@ -3610,6 +3610,15 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_tranforms_source_db_id
             onDelete: SET NULL
+
+  - changeSet:
+      id: v59.2026-03-04T00:00:00
+      author: rileythompson
+      comment: Fix ClickHouse upload DB schema name and models
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
