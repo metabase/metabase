@@ -7,20 +7,11 @@
    [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
-   [metabase.lib-be.source-swap :as lib-be.source-swap]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.visualization-settings :as vs]
+   [metabase.queries.models.query :as queries.query]
    [toucan2.core :as t2]))
-
-(defn- ultimate-table-id
-  [mp [source-type source-id]]
-  (case source-type
-    :table
-    source-id
-
-    :card
-    (:table-id (lib.metadata/card mp source-id))))
 
 (defn- update-query [query old-source new-source id-updates]
   (cond-> query
@@ -43,8 +34,10 @@
 (defn- card-swap-source!
   [card old-source new-source]
   (when (replacement.util/valid-query? (:dataset_query card))
-    (let [query (:dataset_query card)
+    (let [query  (:dataset_query card)
           query' (update-query query old-source new-source {})
+          old-table-id (:table-id (queries.query/query->database-and-table-ids query))
+          new-table-id (:table-id (queries.query/query->database-and-table-ids query'))
           changes (cond-> {}
                     (not= query query')
                     (assoc :dataset_query query')
@@ -53,8 +46,8 @@
                     (and (not= query query') (lib/native-only-query? query'))
                     (assoc :result_metadata (:result_metadata card))
 
-                    (= (:table_id card) (ultimate-table-id query old-source))
-                    (assoc :table_id    (ultimate-table-id query new-source)))]
+                    (= (:table_id card) old-table-id)
+                    (assoc :table_id new-table-id))]
       ;; no changes, so don't update
       (models.dependency/swap-dependency! :card (:id card) old-source new-source)
       (when (seq changes)
@@ -73,16 +66,16 @@
 (defn- segment-swap-source!
   [segment old-source new-source]
   (when (replacement.util/valid-query? (:definition segment))
-    (let [query (:definition segment)
+    (let [query     (:definition segment)
           new-query (update-query query old-source new-source {})
-          table  (:table_id segment)
-          table' (ultimate-table-id query new-source)
+          old-table-id (:table-id (queries.query/query->database-and-table-ids query))
+          new-table-id (:table-id (queries.query/query->database-and-table-ids new-query))
           changes (cond-> {}
                     (not= query new-query)
                     (assoc :definition new-query)
 
-                    (= table (ultimate-table-id query old-source))
-                    (assoc :table_id table'))]
+                    (= (:table_id segment) old-table-id)
+                    (assoc :table_id new-table-id))]
       ;; no changes, so don't update
       (models.dependency/swap-dependency! :segment (:id segment) old-source new-source)
       (when (seq changes)
@@ -93,16 +86,16 @@
 (defn- measure-swap-source!
   [measure old-source new-source]
   (when (replacement.util/valid-query? (:definition measure))
-    (let [query (:definition measure)
+    (let [query     (:definition measure)
           new-query (update-query query old-source new-source {})
-          table  (:table_id measure)
-          table' (ultimate-table-id query new-source)
+          old-table-id (:table-id (queries.query/query->database-and-table-ids query))
+          new-table-id (:table-id (queries.query/query->database-and-table-ids new-query))
           changes (cond-> {}
                     (not= query new-query)
                     (assoc :definition new-query)
 
-                    (= table (ultimate-table-id query old-source))
-                    (assoc :table_id table'))]
+                    (= (:table_id measure) old-table-id)
+                    (assoc :table_id new-table-id))]
       (models.dependency/swap-dependency! :measure (:id measure) old-source new-source)
       ;; no changes, so don't update
       (when (seq changes)
@@ -116,7 +109,7 @@
   (or (when-some [card (get card-id->card card-id)]
         (let [query (:dataset_query card)]
           (when (replacement.util/valid-query? query)
-            (lib-be.source-swap/swap-source-in-parameter-target
+            (lib-be/swap-source-in-parameter-target
              query target old-source new-source))))
       target))
 
