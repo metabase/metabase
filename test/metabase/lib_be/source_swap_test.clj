@@ -25,8 +25,8 @@
                                     (meta/field-metadata :orders :created-at)]))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query (lib-be/swap-source-in-query upgraded-query
-                                                   {:type :table, :id (meta/id :orders)}
-                                                   {:type :table, :id (meta/id :products)})]
+                                                   [:table (meta/id :orders)]
+                                                   [:table (meta/id :products)])]
     (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields       [[:field {} (meta/id :orders :id)]
@@ -51,8 +51,8 @@
                                              (meta/field-metadata :orders :created-at)]))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :card, :id 1}
-                                                    {:type :card, :id 2})]
+                                                    [:card 1]
+                                                    [:card 2])]
     (testing "should convert id-based field refs to name-based field refs when upgrading"
       (is (=? {:stages [{:source-card 1
                          :fields      [[:field {} "ID"]
@@ -74,8 +74,8 @@
                                              (meta/field-metadata :orders :created-at)]))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :card, :id 1}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:card 1]
+                                                    [:table (meta/id :reviews)])]
     (testing "should convert id-based field refs to name-based field refs when upgrading"
       (is (=? {:stages [{:source-card 1
                          :fields      [[:field {} "ID"]
@@ -97,8 +97,8 @@
                                              (meta/field-metadata :orders :created-at)]))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :card, :id 1})]
+                                                    [:table (meta/id :orders)]
+                                                    [:card 1])]
     (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields       [[:field {} (meta/id :orders :id)]
@@ -124,8 +124,8 @@
                            (lib/order-by (meta/field-metadata :orders :created-at)))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields       [[:field {} (meta/id :orders :id)]
@@ -165,8 +165,8 @@
                          (lib/filter q (lib/not-null (find-column (lib/filterable-columns q) "PRODUCT_ID"))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins   [{:stages [{:source-table (meta/id :orders)}]
@@ -194,8 +194,8 @@
                          (lib/filter q (lib/not-null (find-column (lib/filterable-columns q) "PRODUCT_ID"))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :card, :id 1})]
+                                                    [:table (meta/id :orders)]
+                                                    [:card 1])]
     (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins   [{:stages [{:source-table (meta/id :orders)}]
@@ -223,8 +223,8 @@
                                                                        (meta/id :reviews :product-id)]))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "upgrade should preserve the wrong field id as-is"
       (is (=? {:stages [{:filters [[:not-null {} [:field {:join-alias "Orders"}
                                                   (meta/id :reviews :product-id)]]]}]}
@@ -243,8 +243,8 @@
                                                                        (meta/id :reviews :product-id)]))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "upgrade should preserve the wrong field id and missing join-alias as-is"
       (is (=? {:stages [{:filters [[:not-null {} [:field (complement :join-alias)
                                                   (meta/id :reviews :product-id)]]]}]}
@@ -265,8 +265,8 @@
                                                                        (meta/id :orders :created-at)]))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "upgrade should heal the broken ref to a name-based ref without join-alias"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins [{:alias "Orders"
@@ -289,8 +289,8 @@
                                                                        (meta/id :orders :product-id)]))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "upgrade should heal the missing join-alias"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :filters [[:not-null {} [:field {:join-alias "Orders"}
@@ -314,8 +314,8 @@
         join-alias     (-> query lib/joins first lib/current-join-alias)
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :card, :id 1}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:card 1]
+                                                    [:table (meta/id :reviews)])]
     (testing "should preserve id-based base refs and name-based card refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins   [{:stages [{:source-card 1}]
@@ -375,8 +375,8 @@
                            (lib/expression "created-at-expr" (meta/field-metadata :orders :created-at)))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "should preserve id-based ref and :lib/expression-name when upgrading"
       (is (=? {:stages [{:expressions [[:field {:lib/expression-name "created-at-expr"}
                                         (meta/id :orders :created-at)]]}]}
@@ -395,8 +395,8 @@
                            (reduce (fn [q col] (lib/filter q (lib/not-null col))) q cols)))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :orders)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :orders)])]
     (testing "should preserve source-field for implicit joins after upgrade"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :filters [[:not-null {} [:field (complement :source-field) (meta/id :orders :created-at)]]
@@ -418,8 +418,8 @@
                            (reduce (fn [q col] (lib/filter q (lib/not-null col))) q cols)))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :card, :id 1}
-                                                    {:type :card, :id 1})]
+                                                    [:card 1]
+                                                    [:card 1])]
     (testing "should upgrade card column to name-based ref and preserve implicit join refs"
       (is (=? {:stages [{:source-card 1
                          :filters [[:not-null {} [:field (complement :source-field) "CREATED_AT"]]
@@ -438,8 +438,8 @@
                          (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "should preserve IDs for implicit join columns when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :filters [[:= {}
@@ -464,8 +464,8 @@
                          (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :card, :id 1})]
+                                                    [:table (meta/id :orders)]
+                                                    [:card 1])]
     (testing "should preserve IDs for implicit join columns when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :filters [[:= {}
@@ -490,8 +490,8 @@
                          (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "should preserve IDs for implicit join columns when upgrading"
       (is (=? {:stages [{:source-card 1
                          :filters [[:= {}
@@ -516,8 +516,8 @@
                          (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :card, :id 1}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:card 1]
+                                                    [:table (meta/id :reviews)])]
     (testing "should preserve IDs for implicit join columns when upgrading"
       (is (=? {:stages [{:source-card 1
                          :filters [[:= {}
@@ -550,8 +550,8 @@
                          (filter-all-columns q))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :products)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :products)])]
     (testing "should preserve id-based refs in first stage and name-based refs in second stage"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :aggregation  [[:sum {} [:field {} (meta/id :orders :id)]]]
@@ -576,8 +576,8 @@
                          (filter-all-columns q))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :products)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :products)])]
     (testing "should preserve id-based refs in first stage and name-based refs in second stage"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :aggregation  [[:sum {} [:field {} (meta/id :orders :id)]]]
@@ -604,8 +604,8 @@
                            (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/BigInteger} "ID_2"]))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "should upgrade second stage deduplicated ref to canonical name"
       (is (=? {:stages [{:source-table (meta/id :orders)}
                         {:filters [[:not-null {} [:field {} "Products__ID"]]]}]}
@@ -625,8 +625,8 @@
                            (lib/filter (lib/ensure-uuid [:= {} field-ref "Widget"])))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "should preserve non-existent source-field when upgrading"
       (is (=? {:stages [{:filters [[:= {}
                                     [:field {:source-field Integer/MAX_VALUE}
@@ -650,8 +650,8 @@
                            (lib/filter (lib/not-null field-ref)))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :products)}
-                                                    {:type :table, :id (meta/id :orders)})]
+                                                    [:table (meta/id :products)]
+                                                    [:table (meta/id :orders)])]
     (testing "should preserve the wrong table field id when upgrading"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :filters [[:not-null {} [:field {} (meta/id :people :created-at)]]]}]}
@@ -668,8 +668,8 @@
                            (lib/with-fields [(lib/ensure-uuid [:field {:base-type :type/Integer} Integer/MAX_VALUE])]))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "should preserve non-existent field id when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields [[:field {} Integer/MAX_VALUE]]}]}
@@ -686,8 +686,8 @@
                            (lib/with-fields [(lib/ensure-uuid [:field {:base-type :type/Text} "DOES_NOT_EXIST"])]))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :reviews)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :reviews)])]
     (testing "should preserve non-existent field name when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields [[:field {} "DOES_NOT_EXIST"]]}]}
@@ -704,8 +704,8 @@
                            (lib/filter (lib/not-null (lib/ensure-uuid [:field {} (meta/id :orders :id)]))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :products)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :products)])]
     (testing "upgrade should not modify the query when base-type is missing"
       (is (= query upgraded-query)))
     (testing "should swap the field id to the new table"
@@ -719,8 +719,8 @@
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
         upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
         swapped-target  (lib-be/swap-source-in-parameter-target query target
-                                                                {:type :table, :id (meta/id :orders)}
-                                                                {:type :table, :id (meta/id :reviews)})]
+                                                                [:table (meta/id :orders)]
+                                                                [:table (meta/id :reviews)])]
     (testing "should not change implicit join target when upgrading"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
               upgraded-target)))
@@ -738,8 +738,8 @@
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
         upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
         swapped-target  (lib-be/swap-source-in-parameter-target query target
-                                                                {:type :card, :id 1}
-                                                                {:type :table, :id (meta/id :reviews)})]
+                                                                [:card 1]
+                                                                [:table (meta/id :reviews)])]
     (testing "should not change implicit join target when upgrading"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
               upgraded-target)))
@@ -757,8 +757,8 @@
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
         upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
         swapped-target  (lib-be/swap-source-in-parameter-target query target
-                                                                {:type :table, :id (meta/id :orders)}
-                                                                {:type :card, :id 1})]
+                                                                [:table (meta/id :orders)]
+                                                                [:card 1])]
     (testing "should not change implicit join target when upgrading"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
               upgraded-target)))
@@ -776,8 +776,8 @@
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
         upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
         swapped-target  (lib-be/swap-source-in-parameter-target query target
-                                                                {:type :card, :id 1}
-                                                                {:type :table, :id (meta/id :reviews)})]
+                                                                [:card 1]
+                                                                [:table (meta/id :reviews)])]
     (testing "should not change implicit join target when upgrading"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
               upgraded-target)))
@@ -816,8 +816,8 @@
         join-alias     (-> query lib/joins first lib/current-join-alias)
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :card, :id 1}
-                                                    {:type :card, :id 3})]
+                                                    [:card 1]
+                                                    [:card 3])]
     (testing "before upgrade: 2 entries in each clause differing only in ref style"
       (is (=? {:stages [{:fields       [[:field {} (meta/id :orders :created-at)]
                                         [:field {} "CREATED_AT"]
@@ -884,8 +884,8 @@
                            (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/Integer} "expr"]))))
         upgraded-query (lib-be/upgrade-field-refs-in-query query)
         swapped-query  (lib-be/swap-source-in-query upgraded-query
-                                                    {:type :table, :id (meta/id :orders)}
-                                                    {:type :table, :id (meta/id :products)})]
+                                                    [:table (meta/id :orders)]
+                                                    [:table (meta/id :products)])]
     (testing "upgrade should convert :field ref pointing to expression into :expression ref"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :expressions  [[:+ {:lib/expression-name "expr"}
@@ -909,8 +909,8 @@
         target          [:dimension (lib/->legacy-MBQL (lib/ensure-uuid [:field {:base-type :type/Integer} "expr"]))]
         upgraded-target (lib-be/upgrade-field-ref-in-parameter-target query target)
         swapped-target  (lib-be/swap-source-in-parameter-target query target
-                                                                {:type :table, :id (meta/id :orders)}
-                                                                {:type :table, :id (meta/id :products)})]
+                                                                [:table (meta/id :orders)]
+                                                                [:table (meta/id :products)])]
     (testing "upgrade should convert :field ref pointing to expression into :expression ref"
       (is (=? [:dimension [:expression "expr" {:base-type :type/Integer}]]
               upgraded-target)))

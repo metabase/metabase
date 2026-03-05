@@ -13,11 +13,6 @@
    [metabase.models.visualization-settings :as vs]
    [toucan2.core :as t2]))
 
-(defn source-ref->source-map
-  "Convert a [type id] source ref to a {:type type :id id} map for lib-be APIs."
-  [[source-type source-id]]
-  {:type source-type :id source-id})
-
 (defn- ultimate-table-id
   [mp [source-type source-id]]
   (case source-type
@@ -33,8 +28,7 @@
     (swap.native/update-native-stages old-source new-source id-updates)
 
     (not (lib/native-only-query? query))
-    (swap.mbql/swap-mbql-stages (source-ref->source-map old-source)
-                                (source-ref->source-map new-source))))
+    (swap.mbql/swap-mbql-stages old-source new-source)))
 
 (defn- transform-swap-source!
   [transform old-source new-source]
@@ -123,9 +117,7 @@
         (let [query (:dataset_query card)]
           (when (replacement.util/valid-query? query)
             (lib-be.source-swap/swap-source-in-parameter-target
-             query target
-             (source-ref->source-map old-source)
-             (source-ref->source-map new-source)))))
+             query target old-source new-source))))
       target))
 
 (defn- dashcard-swap-source!

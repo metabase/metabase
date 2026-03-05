@@ -196,13 +196,13 @@
 (mu/defn- swap-source-table-or-card :- ::lib.schema/stage
   "Swaps the source table or card in a stage if the stage uses the old source."
   [{:keys [source-table source-card], :as stage} :- ::lib.schema/stage
-   old-source                                    :- ::lib-be.schema.source-swap/source
-   new-source                                    :- ::lib-be.schema.source-swap/source]
-  (if (or (and (= (:type old-source) :table) (= (:id old-source) source-table))
-          (and (= (:type old-source) :card) (= (:id old-source) source-card)))
+   [old-type old-id]                             :- ::lib-be.schema.source-swap/source
+   [new-type new-id]                             :- ::lib-be.schema.source-swap/source]
+  (if (or (and (= old-type :table) (= old-id source-table))
+          (and (= old-type :card) (= old-id source-card)))
     (-> stage
         (dissoc :source-table :source-card)
-        (assoc (case (:type new-source) :table :source-table :card :source-card) (:id new-source)))
+        (assoc (case new-type :table :source-table :card :source-card) new-id))
     stage))
 
 (mu/defn- swap-source-table-or-card-in-stage :- ::lib.schema/stage
@@ -234,9 +234,9 @@
 
 (mu/defn- build-field-id-mapping :- ::field-id-mapping
   "Builds a mapping of old field IDs to new columns."
-  [query                                      :- ::lib.schema/query
-   {old-source-id :id, old-source-type :type} :- ::lib-be.schema.source-swap/source
-   {new-source-id :id, new-source-type :type} :- ::lib-be.schema.source-swap/source]
+  [query                                    :- ::lib.schema/query
+   [old-source-type old-source-id]          :- ::lib-be.schema.source-swap/source
+   [new-source-type new-source-id]          :- ::lib-be.schema.source-swap/source]
   (letfn [(source->columns [source-type source-id]
             (case source-type
               :table (lib.metadata/fields query source-id)

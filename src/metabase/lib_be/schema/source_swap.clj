@@ -13,9 +13,7 @@
   [:or ::lib.schema.id/table ::lib.schema.id/card])
 
 (mr/def ::source
-  [:map
-   [:type ::source-type]
-   [:id ::source-id]])
+  [:tuple ::source-type ::source-id])
 
 (mr/def ::source-error
   [:enum :database-mismatch
