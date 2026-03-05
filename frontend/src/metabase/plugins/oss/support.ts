@@ -1,5 +1,7 @@
 import type { ComponentType } from "react";
 
+import type { ModalComponentProps } from "metabase/hoc/ModalRoute";
+
 import { NotFoundPlaceholder } from "../components/PluginPlaceholder";
 
 const getDefaultPluginSupport = () => ({
@@ -11,7 +13,7 @@ const getDefaultPluginSupport = () => ({
 export const PLUGIN_SUPPORT: {
   isEnabled: boolean;
   SupportSettings: ComponentType;
-  GrantAccessModal: ComponentType<{ onClose: VoidFunction }>;
+  GrantAccessModal: ComponentType<ModalComponentProps>;
 } = getDefaultPluginSupport();
 
 /**

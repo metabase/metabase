@@ -86,7 +86,7 @@ export const EntityNameLink = styled(Link)`
 `;
 
 export const HintIcon = styled(
-  forwardRef<SVGSVGElement, IconProps>(function HintIcon(props, ref) {
+  forwardRef<SVGSVGElement, Partial<IconProps>>(function HintIcon(props, ref) {
     return (
       <Icon
         {...props}

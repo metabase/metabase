@@ -6,7 +6,11 @@ import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { Group } from "metabase-types/api";
 
-import type { DataRouteParams, GroupRouteParams } from "../../types";
+import type {
+  DataRouteParams,
+  GroupRouteParams,
+  PermissionEditorBreadcrumb,
+} from "../../types";
 import {
   getDatabaseEntityId,
   getSchemaEntityId,
@@ -17,17 +21,11 @@ import {
   getGroupFocusPermissionsUrl,
 } from "../../utils/urls";
 
-export type EditorBreadcrumb = {
-  id?: number | string;
-  text: string;
-  url?: string;
-};
-
 export const getDatabasesEditorBreadcrumbs = (
   params: GroupRouteParams,
   metadata: Metadata,
   group: Group,
-): EditorBreadcrumb[] | null => {
+): PermissionEditorBreadcrumb[] | null => {
   const { groupId, databaseId, schemaName } = params;
 
   if (groupId == null) {
@@ -70,7 +68,7 @@ export const getDatabasesEditorBreadcrumbs = (
 export const getGroupsDataEditorBreadcrumbs = (
   params: DataRouteParams,
   metadata: Metadata,
-): EditorBreadcrumb[] | null => {
+): PermissionEditorBreadcrumb[] | null => {
   const { databaseId, schemaName, tableId } = params;
 
   if (databaseId == null) {
