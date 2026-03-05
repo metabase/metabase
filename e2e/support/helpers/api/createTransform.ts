@@ -44,7 +44,7 @@ export function createTransform(
         cy.wrap(response.body.id).as(idAlias);
       }
       if (visitTransform) {
-        cy.visit(`/data-studio/transforms/${body.id}`);
+        cy.visit(`/data-studio/transforms/${response.body.id}`);
       }
       return cy.wrap(response);
     });
