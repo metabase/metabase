@@ -33,7 +33,7 @@ const SPLIT_AXIS_MAX_DEPTH = 8;
 // NOTE Atte Keinänen 8/3/17: Moved from settings.js because this way we
 // are able to avoid circular dependency errors in e2e tests
 export function columnsAreValid(
-  colNames: string[] | undefined,
+  colNames: (string | undefined)[] | undefined,
   data: DatasetData,
   filter: (column: DatasetColumn) => boolean = () => true,
 ): boolean {
