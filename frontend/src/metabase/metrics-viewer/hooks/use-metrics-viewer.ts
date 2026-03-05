@@ -38,9 +38,9 @@ import {
   type AvailableDimensionsResult,
   type SourceDisplayInfo,
   createTabFromDimension,
-  findMostSpecificCommonLabel,
   getAvailableDimensionsForPicker,
   getDimensionsByType,
+  resolveCommonTabLabel,
 } from "../utils/tabs";
 
 import { useDefinitionQueries } from "./use-definition-queries";
@@ -269,16 +269,20 @@ export function useMetricsViewer({
     );
 
     return state.tabs.map((tab) => {
-      const displayNames: string[] = [];
+      const names: string[] = [];
       for (const [sourceId, dimensionId] of getObjectEntries(
         tab.dimensionMapping,
       )) {
-        const dimensionInfo = dimsBySource.get(sourceId)?.get(dimensionId);
+        if (dimensionId == null) {
+          continue;
+        }
+        const sourceDimensions = dimsBySource.get(sourceId);
+        const dimensionInfo = sourceDimensions?.get(dimensionId);
         if (dimensionInfo) {
-          displayNames.push(dimensionInfo.displayName);
+          names.push(dimensionInfo.name ?? dimensionInfo.displayName);
         }
       }
-      const label = findMostSpecificCommonLabel(displayNames, tab.label);
+      const label = resolveCommonTabLabel(names, tab.label);
       return label !== tab.label ? { ...tab, label } : tab;
     });
   }, [state.tabs, state.definitions]);

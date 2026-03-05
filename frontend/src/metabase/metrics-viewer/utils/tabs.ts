@@ -118,25 +118,32 @@ export function getDimensionsByType(
   return result;
 }
 
-export function findMostSpecificCommonLabel(
-  displayNames: string[],
+export function resolveCommonTabLabel(
+  names: string[],
   fallback: string,
 ): string {
-  if (displayNames.length === 0) {
+  if (names.length === 0) {
     return fallback;
   }
-
-  const first = displayNames[0];
-  if (displayNames.every((name) => name === first)) {
-    return first;
+  if (names.length === 1 || names.every((name) => name === names[0])) {
+    return names[0];
   }
 
-  const wordSets = displayNames.map((name) => new Set(name.split(/\s+/)));
-  const commonWords = [...wordSets[0]].filter((word) =>
-    wordSets.every((set) => set.has(word)),
-  );
+  const counts = new Map<string, number>();
+  for (const name of names) {
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
 
-  return commonWords.length > 0 ? commonWords.join(" ") : fallback;
+  let bestName = names[0];
+  let bestCount = 0;
+  for (const [name, count] of counts) {
+    if (count > bestCount) {
+      bestCount = count;
+      bestName = name;
+    }
+  }
+
+  return bestName;
 }
 
 // ── Default tab computation ──
@@ -157,20 +164,20 @@ function classifyDimensionsBySource(
   return result;
 }
 
-function resolveTabDisplayNames(
+function resolveTabDimensionNames(
   dimensionMapping: Record<MetricSourceId, string>,
   dimensionsBySource: Map<MetricSourceId, Map<string, ClassifiedDimension>>,
 ): string[] {
-  const displayNames: string[] = [];
+  const names: string[] = [];
 
   for (const [sourceId, dimensionId] of getObjectEntries(dimensionMapping)) {
     const dimensionInfo = dimensionsBySource.get(sourceId)?.get(dimensionId);
     if (dimensionInfo) {
-      displayNames.push(dimensionInfo.displayName);
+      names.push(dimensionInfo.name ?? dimensionInfo.displayName);
     }
   }
 
-  return displayNames;
+  return names;
 }
 
 function findDimensionOfType(
@@ -423,11 +430,11 @@ export function computeDefaultTabs(
       }
 
       const fallbackLabel = config.fixedLabel ?? config.type;
-      const displayNames = resolveTabDisplayNames(mapping, dimensionsBySource);
+      const names = resolveTabDimensionNames(mapping, dimensionsBySource);
       tabs.push({
         id: config.fixedId!,
         type: config.type,
-        label: findMostSpecificCommonLabel(displayNames, fallbackLabel),
+        label: resolveCommonTabLabel(names, fallbackLabel),
         display: config.defaultDisplayType,
         dimensionMapping: mapping,
         projectionConfig: {},
