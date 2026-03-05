@@ -173,6 +173,9 @@ export const PARAMETER_OPERATOR_TYPES = {
       type: "number/=",
       operator: "=",
       get name() {
+        return t`ID`;
+      },
+      get menuName() {
         return t`Numeric ID`;
       },
     },
@@ -180,6 +183,9 @@ export const PARAMETER_OPERATOR_TYPES = {
       type: "string/=",
       operator: "=",
       get name() {
+        return t`ID`;
+      },
+      get menuName() {
         return t`Text ID`;
       },
     },
