@@ -37,7 +37,7 @@
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZoneId ZoneOffset ZonedDateTime)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
@@ -60,8 +60,7 @@
   (= :query (transform-type transform)))
 
 (defn native-query-transform?
-  "Check if this is a native query transform.
-  Note: The transform should be normalized (via `normalize-transform`) before calling this function."
+  "Check if this is a native query transform."
   [transform]
   (when (query-transform? transform)
     (let [query (-> transform :source :query)]
@@ -286,11 +285,6 @@
       remap/disable-remaps
       lib/disable-default-limit))
 
-(defn- checkpoint-incremental?
-  "Returns true if `source` uses checkpoint-based incremental strategy."
-  [source]
-  (= :checkpoint (some-> source :source-incremental-strategy :type keyword)))
-
 (defn supported-incremental-filter-type?
   "Returns true if the given base-type is supported for incremental filtering.
 
@@ -298,48 +292,6 @@
   [base-type]
   (or (isa? base-type :type/Temporal)
       (isa? base-type :type/Number)))
-
-(defn- source->checkpoint-filter-unique-key
-  "Extract the checkpoint filter column from `query` using the unique key specified in `source-incremental-strategy`."
-  [query source-incremental-strategy]
-  (some->> source-incremental-strategy :checkpoint-filter-unique-key (lib/column-with-unique-key query)))
-
-(defn- source->checkpoint-filter-column
-  "Resolve the checkpoint filter column for an incremental transform.
-
-  Supports three strategies:
-  - field-id: MBQL/Python transforms with field ID from source table
-  - unique-key: Legacy MBQL/Python or native query fallback
-  - checkpoint-filter: Native queries with plain column name
-
-  Validates that the resolved column has a supported type for checkpoint filtering (numeric or temporal).
-  Throws an exception if the column type is not supported."
-  [query source-incremental-strategy table metadata-provider]
-  (let [{:keys [checkpoint-filter checkpoint-filter-unique-key checkpoint-filter-field-id]}
-        source-incremental-strategy]
-    (when-some [{column-name :name
-                 :keys [base-type]
-                 :as column}
-                (cond
-                  ;; New approach: field-id for MBQL/Python
-                  checkpoint-filter-field-id
-                  (lib.metadata/field metadata-provider checkpoint-filter-field-id)
-
-                  ;; Existing approaches: unique-key or column name
-                  checkpoint-filter-unique-key
-                  (source->checkpoint-filter-unique-key query source-incremental-strategy)
-
-                  checkpoint-filter
-                  (when-some [field-id (t2/select-one-pk :model/Field
-                                                         :table_id (:id table)
-                                                         :name checkpoint-filter)]
-                    (lib.metadata/field metadata-provider field-id)))]
-      (when-not (supported-incremental-filter-type? base-type)
-        (throw (ex-info (str "Checkpoint column '" column-name "' has unsupported type " (pr-str base-type) ". "
-                             "Only numeric and temporal columns are supported for incremental filtering.")
-                        {:column-name column-name
-                         :base-type   base-type})))
-      column)))
 
 (defn- build-filtered-subquery
   "Build a HoneySQL subquery for a table tag with incremental filtering applied.
@@ -463,13 +415,13 @@
 (defn- deserialize-checkpoint-value [last_checkpoint_type last_checkpoint_value]
   (case last_checkpoint_type
     "DateTime" (parse-datetime last_checkpoint_value)
-    "Integer"  (bigint last_checkpoint_value)
+    "Integer"  (biginteger last_checkpoint_value)
     "Float"    (bigdec last_checkpoint_value)
     "Decimal"  (bigdec last_checkpoint_value)))
 
 (defn- interpret-database-checkpoint-value [base-type qp-value]
   (case base-type
-    :type/Integer  {:type "Integer",  :value  (bigint qp-value)}
+    :type/Integer  {:type "Integer",  :value  (biginteger qp-value)}
     :type/Float    {:type "Float",    :value  (bigdec qp-value)}
     :type/Decimal  {:type "Decimal",  :value  (bigdec qp-value)}
     :type/DateTime {:type "DateTime", :value  (parse-datetime qp-value)}))
@@ -531,16 +483,21 @@
             db-id             (transforms.i/target-db-id transform)
             metadata-provider (lib-be/application-database-metadata-provider db-id)
             column            (lib.metadata/field metadata-provider checkpoint-filter-field-id)
+            _                   (when (or (nil? column) (not (:active column)))
+                                  (throw (ex-info "Checkpoint field does not exist or is not active"
+                                                  {:checkpoint-filter-field-id checkpoint-filter-field-id})))
             lo                (when last_checkpoint_type (deserialize-checkpoint-value last_checkpoint_type last_checkpoint_value))
 
-            ;; Compute MAX differently for native vs MBQL queries
+            _ (when-not (supported-incremental-filter-type? (:base-type column))
+                (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type " (pr-str (:base-type column)) ". "
+                                     "Only numeric and temporal columns are supported for incremental filtering.")
+                                {:column column})))
             [max-value base_type]
             (if (and source-query (lib/native? source-query))
-              ;; Native: wrap the user's query in SELECT MAX() to preserve query logic
+              ;; native
               [(get-max-from-native-query source-query column checkpoint-filter-field-id lo)
                (:base-type column)]
-
-              ;; MBQL: use the existing logic
+              ;; mbql/python
               (let [table-id          (:table-id column)
                     limit             (-> transform :source :limit)
                     table-metadata    (lib.metadata/table metadata-provider table-id)
@@ -556,7 +513,6 @@
                     {:keys [results_metadata rows]} (:data query-result)
                     [{:keys [base_type]}] (:columns results_metadata)]
                 [(ffirst rows) base_type]))
-
             hi max-value]
         {:column                     column
          :checkpoint-filter-field-id checkpoint-filter-field-id
