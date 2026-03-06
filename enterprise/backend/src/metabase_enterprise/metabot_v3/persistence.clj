@@ -8,7 +8,7 @@
 
 (defn store-message!
   "Persist messages to MetabotConversation and MetabotMessage tables."
-  [conversation-id profile-id messages & {:keys [slack-msg-id channel-id]}]
+  [conversation-id profile-id messages & {:keys [slack-msg-id channel-id user-id]}]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -34,4 +34,5 @@
                                                (map #(+ (:prompt %) (:completion %)))
                                                (apply +))}
                   channel-id   (assoc :channel_id channel-id)
-                  slack-msg-id (assoc :slack_msg_id slack-msg-id)))))
+                  slack-msg-id (assoc :slack_msg_id slack-msg-id)
+                  user-id      (assoc :user_id user-id)))))
