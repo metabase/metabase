@@ -104,9 +104,9 @@ export function MetricSearchDropdown({
     return (
       <Flex
         direction="column"
-        miw={300}
-        maw={400}
-        mah={400}
+        miw="19rem"
+        maw="25rem"
+        mah="25rem"
         onClick={(e) => e.stopPropagation()}
       >
         <Box p="sm" className={S.searchInputWrapper}>

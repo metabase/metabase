@@ -73,7 +73,7 @@ export function MetricsViewerTabs({
             className={S.tab}
           >
             {isLoading ? (
-              <Skeleton display="inline-block" w={70} h="1em" />
+              <Skeleton display="inline-block" w="4.5rem" h="1em" />
             ) : (
               tab.label
             )}
@@ -81,7 +81,7 @@ export function MetricsViewerTabs({
               className={S.closeButton}
               size="xs"
               variant="subtle"
-              ml={4}
+              ml="xs"
               aria-label={t`Remove ${tab.label} tab`}
               onClick={(e) => handleRemoveTab(e, tab.id)}
             >

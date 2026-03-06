@@ -204,7 +204,6 @@ function getMapSettings(
   };
 }
 
-// FIXME: visualizations definitions contain supportsMultipleSeries info - reuse from there
 export const DISPLAY_TYPE_REGISTRY: Record<
   MetricsViewerDisplayType,
   DisplayTypeDefinition

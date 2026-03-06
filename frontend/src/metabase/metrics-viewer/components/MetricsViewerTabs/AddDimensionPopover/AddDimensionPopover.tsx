@@ -127,7 +127,7 @@ export function AddDimensionPopover({
           globalSearch
           searchable
           maxHeight={300}
-          width={280}
+          width="17.5rem"
         />
       </Popover.Dropdown>
     </Popover>

@@ -23,8 +23,8 @@ import type { MetricSourceId, SourceColorMap } from "../../types/viewer-state";
 
 import S from "./FilterPopover.module.css";
 
-const LIST_WIDTH = 320;
-const FILTER_WIDTH = 380;
+const LIST_WIDTH = "20rem";
+const FILTER_WIDTH = "24rem";
 const DIMENSION_LIST_MAX_HEIGHT = Infinity;
 
 export type DefinitionSource = {

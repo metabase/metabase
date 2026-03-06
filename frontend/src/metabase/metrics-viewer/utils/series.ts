@@ -468,10 +468,6 @@ export function buildDimensionItemsFromDefinitions(
       dimensionFilter,
     );
 
-    if (availableOptions.length === 0) {
-      return [];
-    }
-
     return [
       {
         id: entry.id,

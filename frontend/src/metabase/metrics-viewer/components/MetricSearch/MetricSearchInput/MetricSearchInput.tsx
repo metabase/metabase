@@ -110,7 +110,7 @@ export function MetricSearchInput({
       py="xs"
       onClick={handleContainerClick}
     >
-      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih={36}>
+      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.25rem">
         {selectedMetrics.map((metric) => {
           const sid =
             metric.sourceType === "metric"
@@ -147,7 +147,7 @@ export function MetricSearchInput({
               ref={inputRef}
               classNames={{ input: S.inputField }}
               flex={1}
-              miw={120}
+              miw="7.5rem"
               ml="xs"
               variant="unstyled"
               placeholder={
@@ -163,7 +163,7 @@ export function MetricSearchInput({
               data-testid="metrics-viewer-search-input"
             />
           </Popover.Target>
-          <Popover.Dropdown p={0} miw={300} maw={400}>
+          <Popover.Dropdown p={0} miw="19rem" maw="25rem">
             {isOpen && (
               <MetricSearchDropdown
                 selectedMetricIds={selectedMetricIds}

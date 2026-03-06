@@ -10,7 +10,7 @@ import S from "./FilterPopover.module.css";
 import type { DefinitionSource } from "./FilterPopoverContent";
 import { FilterPopoverContent } from "./FilterPopoverContent";
 
-const POPOVER_MAX_HEIGHT = 600;
+const POPOVER_MAX_HEIGHT = "37.5rem";
 
 interface FilterPopoverProps {
   definitions: DefinitionSource[];

@@ -29,7 +29,7 @@ export function MetricSearchResults({
     return (
       <Stack gap="sm" p="sm">
         <Repeat times={3}>
-          <Skeleton h={24} natural radius={4} />
+          <Skeleton h="lg" natural radius="xs" />
         </Repeat>
       </Stack>
     );
@@ -47,7 +47,7 @@ export function MetricSearchResults({
 
   return (
     <Box
-      mah={400}
+      mah="25rem"
       p="sm"
       className={S.listbox}
       data-testid="metrics-search-results"

@@ -28,18 +28,18 @@
 }
 
 .accordionControl {
-  padding-block: 14px;
+  padding-block: 0.875rem;
   cursor: pointer;
 }
 
 .accordionControlExpanded {
-  padding-bottom: 6px;
+  padding-bottom: 0.375rem;
 }
 
 .accordionHeader {
-  padding-block: 14px;
+  padding-block: 0.875rem;
 }
 
 .accordionHeaderExpanded {
-  padding-bottom: 6px;
+  padding-bottom: 0.375rem;
 }

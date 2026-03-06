@@ -164,7 +164,7 @@ export function MetricPill({
           >
             <Flex align="center" gap="xs">
               {metric.isLoading ? (
-                <Skeleton mt="xs" w={70} h="1rem" />
+                <Skeleton mt="xs" w="4.5rem" h="1rem" />
               ) : (
                 <>
                   <SourceColorIndicator

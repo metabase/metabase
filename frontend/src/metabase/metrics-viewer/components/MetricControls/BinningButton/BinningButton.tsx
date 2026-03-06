@@ -11,7 +11,7 @@ import * as LibMetric from "metabase-lib/metric";
 
 import { UNBINNED } from "../../../constants";
 
-const MIN_WIDTH = 180;
+const MIN_WIDTH = "11.25rem";
 
 type BinningButtonProps = {
   definition: MetricDefinition;

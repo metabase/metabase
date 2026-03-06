@@ -124,7 +124,7 @@ export function BreakoutLegend({
   return (
     <Box
       className={S.root}
-      w={260}
+      w="16rem"
       pt="md"
       pr="lg"
       pb="md"
@@ -149,8 +149,8 @@ export function BreakoutLegend({
                 <Flex key={item.label} align="center" gap="sm">
                   <Box
                     className={S.dot}
-                    w={10}
-                    h={10}
+                    w="0.625rem"
+                    h="0.625rem"
                     bdrs="50%"
                     style={{ background: item.color }}
                   />

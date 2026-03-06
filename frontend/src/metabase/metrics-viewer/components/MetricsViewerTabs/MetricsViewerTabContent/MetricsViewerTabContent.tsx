@@ -214,7 +214,7 @@ export function MetricsViewerTabContent({
   }
 
   return (
-    <Stack flex="1 0 auto" gap="lg">
+    <Stack flex="1 0 auto" gap="md">
       <MetricsViewerVisualization
         rawSeries={rawSeries}
         dimensionItems={dimensionItems}

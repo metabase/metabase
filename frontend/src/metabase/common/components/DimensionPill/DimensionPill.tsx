@@ -118,7 +118,6 @@ export function DimensionPill({
       gap="xs"
       opacity={disabled || isEmpty ? 0.6 : undefined}
       onClick={isInteractive ? () => setIsOpen(true) : undefined}
-      data-placeholder={isPlaceholder || undefined}
     >
       <SourceColorIndicator colors={colors} fallbackIcon={icon ?? "add"} />
       <Text size="sm" lh={1} c={isEmpty ? "text-tertiary" : undefined}>
