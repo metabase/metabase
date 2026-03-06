@@ -144,6 +144,17 @@
         (is (=? {:dataset_query {:stages [{:native "SELECT * FROM orders"}]}}
                 (t2/select-one :model/Card card-id)))))))
 
+(deftest card-upgrade-field-refs!-native-query-preserves-result-metadata-test
+  (testing "should preserve `:result_metadata` for native queries"
+    (let [mp              (mt/metadata-provider)
+          query           (lib/native-query mp "SELECT * FROM orders")
+          result-metadata [{:name "ID" :base_type :type/Integer}]]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query   query
+                                                :result_metadata result-metadata}]
+        (replacement.field-refs/upgrade-field-refs! [:card card-id])
+        (is (=? [{:name "ID" :base_type :type/Integer}]
+                (:result_metadata (t2/select-one :model/Card card-id))))))))
+
 (deftest card-upgrade-field-refs!-broken-query-test
   (testing "should not crash on a card with a broken query"
     (let [mp (mt/metadata-provider)]

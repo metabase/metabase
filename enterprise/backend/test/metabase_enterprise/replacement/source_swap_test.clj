@@ -70,7 +70,7 @@
                            [:dataset_query :stages 0 :native])))))))))
 
 (deftest card-swap-source!-native-query-preserves-result-metadata-test
-  (testing "swap-source! should preserve result_metadata for native queries"
+  (testing "swap-source! should preserve `:result_metadata` for native queries"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
         (let [mp              (mt/metadata-provider)
