@@ -116,7 +116,10 @@
               (is (contains? response :display_information))
               (is (contains? response :features))
               (is (contains? response :oauth_config))
-              (is (contains? response :settings))))
+              (is (contains? response :settings))
+              (let [scopes (set (get-in response [:oauth_config :scopes :bot]))]
+                (is (contains? scopes "reactions:read"))
+                (is (contains? scopes "reactions:write")))))
           (testing "non-admins cannot access manifest"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 "slack/manifest"))))))
@@ -189,8 +192,9 @@
 
    Calls body-fn with a map containing tracking atoms:
    {:post-calls, :delete-calls, :update-calls, :image-calls, :generate-card-output-calls,
-    :generate-adhoc-output-calls, :ephemeral-calls, :ai-request-calls,
-    :fake-png-bytes, :stream-calls, :append-text-calls, :stop-stream-calls}"
+    :generate-adhoc-output-calls, :ephemeral-calls, :ai-request-calls, :fake-png-bytes,
+    :stream-calls, :append-text-calls, :stop-stream-calls,
+    :add-reaction-calls, :remove-reaction-calls}"
   [{:keys [ai-text data-parts user-id]
     :or   {data-parts []
            user-id    ::default}}
@@ -206,6 +210,8 @@
         stream-calls                (atom [])
         append-text-calls           (atom [])
         stop-stream-calls           (atom [])
+        add-reaction-calls          (atom [])
+        remove-reaction-calls       (atom [])
         fake-png-bytes              (byte-array [0x89 0x50 0x4E 0x47])
         file-counter                (atom 0)
         placeholder-counter         (atom 0)
@@ -244,6 +250,12 @@
        slackbot.client/update-message (fn [_ msg]
                                         (swap! update-calls conj msg)
                                         {:ok true})
+       slackbot.client/add-reaction (fn [_ msg]
+                                      (swap! add-reaction-calls conj msg)
+                                      {:ok true})
+       slackbot.client/remove-reaction (fn [_ msg]
+                                         (swap! remove-reaction-calls conj msg)
+                                         {:ok true})
        channel.slack/upload-file! (fn [image-bytes filename]
                                     (let [file-id (format "FIMG-%d" (swap! file-counter inc))]
                                       (swap! image-calls conj {:image-bytes image-bytes
@@ -289,6 +301,8 @@
                 :stream-calls                stream-calls
                 :append-text-calls           append-text-calls
                 :stop-stream-calls           stop-stream-calls
+                :add-reaction-calls          add-reaction-calls
+                :remove-reaction-calls       remove-reaction-calls
                 :fake-png-bytes              fake-png-bytes}))))
 
 (deftest edited-message-ignored-test
@@ -355,7 +369,8 @@
             event-body   base-dm-event]
         (with-slackbot-mocks
           {:ai-text mock-ai-text}
-          (fn [{:keys [stream-calls append-text-calls stop-stream-calls]}]
+          (fn [{:keys [stream-calls append-text-calls stop-stream-calls
+                       add-reaction-calls remove-reaction-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
@@ -370,7 +385,10 @@
               (testing "AI response was streamed"
                 (is (some #(= mock-ai-text %) @append-text-calls)))
               (testing "stream was stopped"
-                (is (= 1 (count @stop-stream-calls)))))))))))
+                (is (= 1 (count @stop-stream-calls))))
+              (testing "no reactions are added for DMs"
+                (is (empty? @add-reaction-calls))
+                (is (empty? @remove-reaction-calls))))))))))
 
 (deftest app-mention-triggers-response-test
   (testing "POST /events with app_mention uses visible channel reply (not streaming)"
@@ -379,18 +397,25 @@
             event-body   base-mention-event]
         (with-slackbot-mocks
           {:ai-text mock-ai-text}
-          (fn [{:keys [post-calls stream-calls stop-stream-calls update-calls]}]
+          (fn [{:keys [post-calls stream-calls stop-stream-calls update-calls
+                       add-reaction-calls remove-reaction-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk  #(>= (count @update-calls) 1)
-                       :done?  true?
+              (u/poll {:thunk      #(and (>= (count @update-calls) 1)
+                                         (>= (count @remove-reaction-calls) 1))
+                       :done?      true?
                        :timeout-ms 5000})
               (testing "a visible threaded reply is posted immediately with thinking placeholder"
                 (is (= 1 (count @post-calls)))
                 (is (= "_Thinking..._" (:text (first @post-calls))))
                 (is (= "1234567890.000001" (:thread_ts (first @post-calls)))))
+              (testing "the triggering message gets a temporary eyes reaction"
+                (is (= [{:channel "C123" :ts "1234567890.000001" :name "eyes"}]
+                       @add-reaction-calls))
+                (is (= [{:channel "C123" :ts "1234567890.000001" :name "eyes"}]
+                       @remove-reaction-calls)))
               (testing "the visible reply is updated with the answer"
                 (is (= 1 (count @update-calls)))
                 (is (some #(str/includes? (:text %) mock-ai-text) @update-calls)))
@@ -1435,6 +1460,19 @@
             result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
         (is (= [{:role :assistant :content "real"}] result))))))
 
+(deftest thread->history-excludes-soft-deleted-bot-messages-test
+  (testing "thread->history excludes bot messages that have been soft-deleted"
+    (with-redefs [slackbot.persistence/message-history  (constantly {})
+                  slackbot.persistence/deleted-message-ids
+                  (fn [_conv-id _ids] #{"1709567890.000002"})]
+      (let [thread {:messages [{:ts "1709567890.000001" :text "User question" :user "U123"}
+                               {:ts "1709567890.000002" :text "Deleted bot response" :bot_id "B123"}
+                               {:ts "1709567890.000003" :text "Live bot response" :bot_id "B123"}]}
+            result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
+        (is (= 2 (count result)))
+        (is (= :user (:role (first result))))
+        (is (= "Live bot response" (:content (second result))))))))
+
 ;; -------------------------------- Message Persistence Tests --------------------------------
 
 (deftest message-history-test
@@ -1471,7 +1509,187 @@
 
       (testing "non-matching slack_msg_ids return empty map"
         (let [result (slackbot.persistence/message-history conv-id #{"nonexistent-id"})]
-          (is (empty? result)))))))
+          (is (empty? result))))
+
+      (testing "soft-deleted messages are excluded from message-history but included in deleted-message-ids"
+        (let [deleted-ts "1709567890.000003"]
+          (t2/insert! :model/MetabotMessage
+                      {:conversation_id    conv-id
+                       :slack_msg_id       deleted-ts
+                       :role               "assistant"
+                       :profile_id         "test"
+                       :total_tokens       10
+                       :data               [{:_type "TOOL_CALL" :role "assistant" :tool_calls [{:id "y"}]}]
+                       :deleted_at         (java.time.OffsetDateTime/now)
+                       :deleted_by_user_id (mt/user->id :rasta)})
+          (is (empty? (slackbot.persistence/message-history conv-id #{deleted-ts})))
+          (is (= #{deleted-ts}
+                 (slackbot.persistence/deleted-message-ids conv-id #{deleted-ts}))))))))
+
+;; -------------------------------- Soft-Delete / Response Deletion Tests --------------------------------
+
+(deftest soft-delete-response-test
+  (testing "soft-delete-response! marks the assistant response as deleted"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [channel-id "C123"
+            slack-ts   "1709567890.111111"
+            user-id    (mt/user->id :rasta)
+            conv-id    (str (random-uuid))]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id user-id})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :slack_msg_id    slack-ts
+                     :channel_id      channel-id
+                     :role            "assistant"
+                     :profile_id      "test"
+                     :total_tokens    5
+                     :data            []})
+        (testing "returns true when a message is soft-deleted"
+          (is (true? (slackbot.persistence/soft-delete-response! channel-id slack-ts user-id))))
+        (let [msg (t2/select-one :model/MetabotMessage
+                                 :channel_id   channel-id
+                                 :slack_msg_id slack-ts
+                                 :role         "assistant")]
+          (testing "deleted_at is set"
+            (is (some? (:deleted_at msg))))
+          (testing "deleted_by_user_id is set"
+            (is (= user-id (:deleted_by_user_id msg))))))))
+
+  (testing "returns nil when required inputs are missing"
+    (is (nil? (slackbot.persistence/soft-delete-response! nil "ts" 1)))
+    (is (nil? (slackbot.persistence/soft-delete-response! "C123" nil 1)))
+    (is (nil? (slackbot.persistence/soft-delete-response! "C123" "ts" nil)))))
+
+(deftest response-owner-user-id-test
+  (testing "response-owner-user-id returns the user who triggered the bot response"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [channel-id "C-OWNER-TEST"
+            slack-ts   "1709567890.222222"
+            owner-id   (mt/user->id :rasta)
+            conv-id    (str (random-uuid))]
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id owner-id})
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :slack_msg_id    slack-ts
+                     :channel_id      channel-id
+                     :role            "assistant"
+                     :profile_id      "test"
+                     :total_tokens    5
+                     :data            []})
+        (testing "returns the conversation owner for a tracked message"
+          (is (= owner-id (slackbot.persistence/response-owner-user-id channel-id slack-ts))))
+        (testing "returns nil for an untracked message ts"
+          (is (nil? (slackbot.persistence/response-owner-user-id channel-id "nonexistent-ts"))))
+        (testing "returns nil when channel does not match"
+          (is (nil? (slackbot.persistence/response-owner-user-id "C-WRONG" slack-ts))))))))
+
+(deftest authorize-delete-request-test
+  (testing "authorize-delete-request"
+    (testing "returns :ignored when channel-id is nil"
+      (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" nil "ts123")))))
+
+    (testing "returns :ignored when message-ts is nil"
+      (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" nil)))))
+
+    (testing "returns :ignored for unknown Slack user"
+      (with-redefs [slackbot/slack-id->user-id (constantly nil)]
+        (is (= {:status        :ignored
+                :reason        :unlinked-user
+                :slack-user-id "U-UNKNOWN"
+                :channel-id    "C123"
+                :message-ts    "ts123"}
+               (#'slackbot/authorize-delete-request "U-UNKNOWN" "C123" "ts123")))))
+
+    (testing "returns :ignored when response is not tracked in the DB"
+      (with-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
+                    slackbot.persistence/response-owner-user-id (constantly nil)]
+        (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" "ts123"))))))
+
+    (testing "returns :ignored when the requester is not the response owner"
+      (with-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
+                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :crowberto))]
+        (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" "ts123"))))))
+
+    (testing "returns :authorized when the requester owns the response"
+      (let [user-id (mt/user->id :rasta)]
+        (with-redefs [slackbot/slack-id->user-id               (constantly user-id)
+                      slackbot.persistence/response-owner-user-id (constantly user-id)]
+          (is (= {:status          :authorized
+                  :channel-id      "C123"
+                  :message-ts      "ts123"
+                  :request-user-id user-id}
+                 (#'slackbot/authorize-delete-request "U123" "C123" "ts123"))))))))
+
+(deftest handle-delete-reaction-test
+  (testing "reaction_added with a delete emoji replaces the bot response with a removed notice"
+    (with-slackbot-setup
+      (let [owner-id   (mt/user->id :rasta)
+            channel-id "C123"
+            message-ts "1709567890.333333"
+            event-body {:type  "event_callback"
+                        :event {:type     "reaction_added"
+                                :user     "U123"
+                                :reaction "wastebasket"
+                                :item     {:type    "message"
+                                           :channel channel-id
+                                           :ts      message-ts}}}]
+        (with-slackbot-mocks
+          {:ai-text "not-called"
+           :user-id owner-id}
+          (fn [{:keys [update-calls]}]
+            (mt/with-dynamic-fn-redefs
+              [slackbot.persistence/response-owner-user-id (constantly owner-id)
+               slackbot.persistence/soft-delete-response!  (constantly true)]
+              (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                        (slack-request-options event-body)
+                                        event-body)]
+                (is (= "ok" response))
+                (u/poll {:thunk      #(>= (count @update-calls) 1)
+                         :done?      true?
+                         :timeout-ms 5000})
+                (testing "Slack message is updated with a removed notice"
+                  (is (= 1 (count @update-calls)))
+                  (is (= channel-id (:channel (first @update-calls))))
+                  (is (= message-ts (:ts (first @update-calls))))
+                  (is (str/includes? (:text (first @update-calls)) "removed"))))))))))
+
+  (testing "reaction_added with a non-delete emoji is ignored"
+    (with-slackbot-setup
+      (let [event-body {:type  "event_callback"
+                        :event {:type     "reaction_added"
+                                :user     "U123"
+                                :reaction "thumbsup"
+                                :item     {:type    "message"
+                                           :channel "C123"
+                                           :ts      "1709567890.000001"}}}]
+        (with-slackbot-mocks
+          {:ai-text "not-called"}
+          (fn [{:keys [update-calls]}]
+            (mt/client :post 200 "ee/metabot-v3/slack/events"
+                       (slack-request-options event-body)
+                       event-body)
+            (Thread/sleep 200)
+            (is (= 0 (count @update-calls)) "non-delete emoji should produce no update"))))))
+
+  (testing "reaction_added with delete emoji from non-owner is ignored"
+    (with-slackbot-setup
+      (let [event-body {:type  "event_callback"
+                        :event {:type     "reaction_added"
+                                :user     "U-NOT-OWNER"
+                                :reaction "x"
+                                :item     {:type    "message"
+                                           :channel "C123"
+                                           :ts      "1709567890.444444"}}}]
+        (with-slackbot-mocks
+          {:ai-text "not-called"}
+          (fn [{:keys [update-calls]}]
+            (mt/with-dynamic-fn-redefs
+              [slackbot.persistence/response-owner-user-id (constantly (mt/user->id :crowberto))]
+              (mt/client :post 200 "ee/metabot-v3/slack/events"
+                         (slack-request-options event-body)
+                         event-body)
+              (Thread/sleep 200)
+              (is (= 0 (count @update-calls)) "delete from non-owner should produce no update"))))))))
 
 ;; -------------------------------- PUT /slack/settings Tests --------------------------------
 
