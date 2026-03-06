@@ -944,6 +944,14 @@ describe("version-helpers", () => {
       ["HEAD", "v1.59.0", "downgrade"],
       ["v0.59.0", "HEAD", "upgrade"],
       ["v1.59.0", "HEAD", "upgrade"],
+      // Rolling tags (.x)
+      ["v1.58.x", "v1.59.x", "upgrade"],
+      ["v1.59.x", "v1.58.x", "downgrade"],
+      ["v1.59.x", "v1.59.x", "same"],
+      ["v0.58.x", "v0.59.x", "upgrade"],
+      // Mixed rolling and specific
+      ["v1.58.x", "v1.59.0", "upgrade"],
+      ["v1.59.0", "v1.58.x", "downgrade"],
     ] as const)("%s -> %s = %s", (source, target, expected) => {
       expect(compareVersions(source, target)).toBe(expected);
     });

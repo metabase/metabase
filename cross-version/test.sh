@@ -112,9 +112,50 @@ stop_metabase() {
 # https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#using-the-migrate-down-command
 run_migrate_down() {
   local image="$1"
+  local version="$2"
   log "Running 'migrate down' with image: $image"
 
-  METABASE_IMAGE="$image" docker compose run --rm metabase "migrate down"
+  # HACK: The HEAD Docker image has version "vUNKNOWN" in its version.properties,
+  # which causes `migrate down` to fail with a NullPointerException when trying
+  # to determine the current major version. To work around this, we extract the
+  # JAR, replace version.properties with a fake version (v1.XX.1000), and mount
+  # the modified JAR. This ensures HEAD is treated as "newer" than any released
+  # version, so migrate down will properly roll back all migrations.
+  #
+  # This is a temporary workaround. See: [TODO: add Linear issue link]
+  # To remove this hack, Metabase would need to handle vUNKNOWN in rollback-major-version!
+  if [[ "$version" == "HEAD" ]]; then
+    if [[ -z "$CURRENT_VERSION" ]]; then
+      error "CURRENT_VERSION must be set when testing HEAD downgrades"
+      return 1
+    fi
+    local fake_version="v1.${CURRENT_VERSION}.1000"
+    local work_dir="/tmp/metabase-head-hack"
+    local modified_jar="$work_dir/metabase.jar"
+
+    log "HACK: Patching HEAD JAR with fake version: $fake_version"
+    rm -rf "$work_dir"
+    mkdir -p "$work_dir"
+
+    # Extract JAR from container (copy to host with proper permissions)
+    docker create --name metabase-jar-extract "$image" >/dev/null
+    docker cp metabase-jar-extract:/app/metabase.jar "$modified_jar"
+    docker rm metabase-jar-extract >/dev/null
+
+    # Create fake version.properties and update the JAR
+    echo "tag=$fake_version" > "$work_dir/version.properties"
+    echo "hash=HEAD" >> "$work_dir/version.properties"
+    echo "date=$(date +%Y-%m-%d)" >> "$work_dir/version.properties"
+    (cd "$work_dir" && zip -u metabase.jar version.properties >/dev/null)
+
+    log "HACK: JAR patched successfully"
+
+    METABASE_IMAGE="$image" docker compose run --rm \
+      -v "$modified_jar:/app/metabase.jar:ro" \
+      metabase "migrate down"
+  else
+    METABASE_IMAGE="$image" docker compose run --rm metabase "migrate down"
+  fi
 }
 
 # Check if Metabase refuses to start (downgrade detection)
@@ -236,7 +277,7 @@ main() {
     # Run migrate down (must use SOURCE image - the newer version)
     log ""
     log "Step 4: Running migrate down with SOURCE version..."
-    if ! run_migrate_down "$source_image"; then
+    if ! run_migrate_down "$source_image" "$SOURCE_VERSION"; then
       error "❌ migrate down failed"
       exit 1
     fi

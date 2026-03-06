@@ -62,6 +62,8 @@ jobs:
         uses: ./.github/actions/prepare-release-scripts
 
       - name: Run cross-version test
+        env:
+          CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
         run: |
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
@@ -86,6 +88,8 @@ jobs:
         uses: ./.github/actions/prepare-release-scripts
 
       - name: Run cross-version test
+        env:
+          CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
         run: |
           cd cross-version
           ./test.sh --source "${{ inputs.source_version }}" --target "${{ inputs.target_version }}"

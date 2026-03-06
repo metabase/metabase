@@ -416,6 +416,21 @@ export const compareVersions = (
     return "upgrade";
   }
 
+  // Handle .x rolling tags (e.g., v1.59.x) - compare major versions
+  const sourceRolling = source.endsWith(".x");
+  const targetRolling = target.endsWith(".x");
+  if (sourceRolling || targetRolling) {
+    const sourceMajor = parseInt(source.match(/v\d+\.(\d+)/)?.[1] || "0", 10);
+    const targetMajor = parseInt(target.match(/v\d+\.(\d+)/)?.[1] || "0", 10);
+    if (sourceMajor < targetMajor) {
+      return "upgrade";
+    }
+    if (sourceMajor > targetMajor) {
+      return "downgrade";
+    }
+    return "same";
+  }
+
   if (!isValidVersionString(source)) {
     throw new Error(`Invalid version string: ${source}`);
   }
