@@ -2,7 +2,10 @@
   "API namespace for the `metabase.transforms` module."
   (:require
    [metabase.models.transforms.transform]
+   [metabase.models.transforms.transform-job]
    [metabase.models.transforms.transform-run]
+   [metabase.models.transforms.transform-run-cancelation]
+   [metabase.models.transforms.transform-tag]
    [metabase.transforms.settings]
    [metabase.transforms.util]
    [potemkin :as p]))
@@ -20,6 +23,15 @@
   transform-type
   is-temp-transform-table?]
  [metabase.models.transforms.transform-run
-  timeout-run!]
+  timeout-run!
+  paged-runs
+  running-run-for-transform-id]
+ [metabase.models.transforms.transform-run-cancelation
+  mark-cancel-started-run!]
  [metabase.models.transforms.transform
-  update-transform-tags!])
+  update-transform-tags!]
+ [metabase.models.transforms.transform-job
+  update-job-tags!]
+ [metabase.models.transforms.transform-tag
+  tag-name-exists?
+  tag-name-exists-excluding?])
