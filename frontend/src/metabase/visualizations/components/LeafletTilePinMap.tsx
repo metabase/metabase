@@ -55,6 +55,8 @@ interface LeafletTilePinMapProps extends LeafletMapProps {
 
 export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
   static contextType = EmbeddingEntityContext;
+  // @ts-expect-error - see: https://linear.app/metabase/issue/GDGT-1891/migrate-babel-config-to-allowdeclarefields
+  context!: ContextType<typeof EmbeddingEntityContext>;
 
   pinTileLayer: L.TileLayer | null = null;
 
@@ -122,9 +124,7 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
 
     const { dashboard, dashcard } = this.props;
     // EmbeddingEntityContext is only available under embedding environment
-    const { uuid, token } =
-      ((this.context ?? {}) as ContextType<typeof EmbeddingEntityContext>) ??
-      {};
+    const { uuid, token } = this.context ?? {};
 
     return getTileUrl({
       cardId,
