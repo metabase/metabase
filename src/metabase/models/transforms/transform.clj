@@ -33,18 +33,18 @@
 
 (defmethod mi/can-read? :model/Transform
   ([instance]
-   (or api/*is-superuser?*
-       (and (api/is-data-analyst?)
-            (transforms.u/source-tables-readable? instance)
-            (transforms.u/check-feature-enabled instance))))
+   (and (transforms.u/check-feature-enabled instance)
+        (or api/*is-superuser?*
+            (and (api/is-data-analyst?)
+                 (transforms.u/source-tables-readable? instance)))))
   ([_model pk]
-   (or api/*is-superuser?*
-       (when-let [transform (t2/select-one :model/Transform :id pk)]
-         (mi/can-read? transform)))))
+   (when-let [transform (t2/select-one :model/Transform :id pk)]
+     (mi/can-read? transform))))
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
    (and (remote-sync/transforms-editable?)
+        (transforms.u/check-feature-enabled instance)
         (or api/*is-superuser?*
             (and (mi/can-read? instance)
                  (perms/has-db-transforms-permission? api/*current-user-id* (:source_db_id instance))))))
@@ -67,6 +67,7 @@
   ;; can-write? requires: can-read?, has-db-transforms-permission?, and transforms-editable?
   ;; can-read? requires: is-superuser? OR (is-data-analyst? AND source-tables-readable?)
   (and (remote-sync/transforms-editable?)
+       (transforms.u/check-feature-enabled instance)
        (or api/*is-superuser?*
            (let [source-db-id (or (:source_db_id instance) (transforms-base.i/source-db-id instance))]
              (and api/*is-data-analyst?*
