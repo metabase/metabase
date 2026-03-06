@@ -114,7 +114,7 @@
       expression-name
       (lib.options/update-options assoc :lib/expression-name expression-name))))
 
-(mu/defn- upgrade-field-ref :- ::lib.schema.ref/ref
+(mu/defn upgrade-field-ref :- ::lib.schema.ref/ref
   "Generate a new ref for a column. Always takes a `:field` ref, may return a `:field` ref or an `:expression` ref."
   [query         :- ::lib.schema/query
    stage-number  :- :int

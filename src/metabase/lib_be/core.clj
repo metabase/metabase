@@ -43,5 +43,6 @@
   check-column-mappings
   swap-source-in-parameter-target
   swap-source-in-query
+  upgrade-field-ref
   upgrade-field-ref-in-parameter-target
   upgrade-field-refs-in-query])

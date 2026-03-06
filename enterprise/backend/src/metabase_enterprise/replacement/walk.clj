@@ -2,21 +2,47 @@
   (:require
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.models.visualization-settings :as vs]))
+   [metabase.models.visualization-settings :as vs]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn parameter-mapping-card-ids
+(mu/defn parameter-source-card-ids :- [:set ::lib.schema.id/card]
+  "Get all card IDs referenced by `:values_source_config` in the given parameters."
+  [parameters :- [:seq :map]]
+  (into #{} (keep #(-> % :values_source_config :card_id)) parameters))
+
+(mu/defn walk-parameter-source-card-refs :- [:seq :map]
+  "Walk the parameters and update the refs in `:value_field` and `:label_field` 
+  in the `:values_source_config` using the provided function.
+
+  `ref-fn` will be called with a ref and a card ID and should return a new ref."
+  [parameters :- [:seq :map]
+   ref-fn       :- fn?]
+  (letfn [(update-legacy-ref [legacy-ref card-id]
+            (if-some [ref (try (lib/->pMBQL legacy-ref) (catch Exception _ nil))]
+              (-> ref (ref-fn card-id) lib/->legacy-MBQL)
+              legacy-ref))]
+    (mapv (fn [parameter]
+            (if-some [card-id (-> parameter :values_source_config :card_id)]
+              (-> parameter
+                  (m/update-existing-in [:values_source_config :value_field] #(update-legacy-ref % card-id))
+                  (m/update-existing-in [:values_source_config :label_field] #(update-legacy-ref % card-id)))
+              parameter)))))
+
+(mu/defn parameter-mapping-card-ids :- [:set ::lib.schema.id/card]
   "Get all card IDs referenced by the parameter mappings."
-  [parameter-mappings]
+  [parameter-mappings :- [:seq :map]]
   (into #{} (keep :card_id) parameter-mappings))
 
-(defn walk-parameter-mapping-targets
+(mu/defn walk-parameter-mapping-targets :- [:seq :map]
   "Walk the parameter mappings and update the targets using the provided function.
 
   `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
-  [parameter-mappings target-fn]
+  [parameter-mappings :- [:seq :map]
+   target-fn          :- fn?]
   (mapv (fn [mapping]
           (or (when-some [card-id (:card_id mapping)]
                 (when-some [target' (target-fn (:target mapping) card-id)]
@@ -24,12 +50,12 @@
               mapping))
         parameter-mappings))
 
-(defn walk-viz-settings-refs
+(mu/defn walk-viz-settings-refs :- :map
   "Walk the viz settings and update the refs using the provided function.
 
   `ref-fn` will be called with a ref and should return either a string or a new ref."
-  [viz-settings
-   ref-fn]
+  [viz-settings :- :map
+   ref-fn       :- fn?]
   (letfn [(update-legacy-ref-or-name [ref-or-name]
             (or (when (vector? ref-or-name)
                   (when-some [ref (try (lib/->pMBQL ref-or-name) (catch Exception _ nil))]
@@ -68,14 +94,14 @@
         (m/update-existing-in [:pivot_table.column_split :values] update-legacy-refs-or-names)
         (m/update-existing-in [:pivot_table.collapsed_rows :rows] update-legacy-refs-or-names))))
 
-(defn- click-behavior-card-id
-  [click-behavior]
+(mu/defn click-behavior-card-id :- [:maybe ::lib.schema.id/card]
+  [click-behavior :- :map]
   (when (= ::vs/question (::vs/link-type click-behavior))
     (::vs/link-target-id click-behavior)))
 
-(defn viz-settings-click-behavior-card-ids
+(mu/defn viz-settings-click-behavior-card-ids :- [:set ::lib.schema.id/card]
   "Get all card IDs referenced by the click behaviors in the viz settings."
-  [viz-settings]
+  [viz-settings :- :map]
   (into #{}
         (concat
          ;; global click behavior (non-table cards)
@@ -86,11 +112,12 @@
                  (click-behavior-card-id (::vs/click-behavior col-viz)))
                (::vs/column-settings viz-settings)))))
 
-(defn walk-viz-settings-click-behaviors
+(mu/defn walk-viz-settings-click-behaviors :- :map
   "Walk the click behaviors in the viz settings and update the targets using the provided function.
 
   `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
-  [viz-settings target-fn]
+  [viz-settings :- :map
+   target-fn    :- fn?]
   (letfn [(update-mapping [card-id mapping]
             (or (when-some [target (some-> mapping ::vs/param-mapping-target ::vs/param-dimension)]
                   (when-some [target' (target-fn target card-id)]

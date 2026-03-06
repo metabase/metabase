@@ -51,12 +51,14 @@
                       (t2/select (case m
                                    :card      :model/Card
                                    :table     :model/Table
+                                   :dashboard :model/Dashboard
                                    :transform :model/Transform
                                    :segment   :model/Segment
                                    :measure   :model/Measure)
                                  {:where [:in :id ids]})))))]
     (let [cards      (id->instances :card)
           tables     (id->instances :table)
+          dashboards (id->instances :dashboard)
           transforms (id->instances :transform)
           segments   (id->instances :segment)
           measures   (id->instances :measure)
@@ -87,7 +89,7 @@
         (let [referenced-ids (lib/all-referenced-entity-ids queries)]
           ;; Bulk load all metadata at once
           (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
-      (merge {} cards tables transforms segments measures))))
+      (merge {} cards tables dashboards transforms segments measures))))
 
 (defn- run-swap* [{:keys [all-transitive-dependents]}
                   old-source new-source progress]
