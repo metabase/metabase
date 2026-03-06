@@ -14,6 +14,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor :as qp]
@@ -240,7 +241,7 @@
   Returns the query unchanged on first run (no checkpoint) or for native queries without the checkpoint tag."
   [query source-incremental-strategy checkpoint]
   (if-let [checkpoint-value (next-checkpoint-value checkpoint)]
-    (if (lib/native? query)
+    (if (lib.query/native? query)
       ;; native query with explicit checkpoint filter
       (if (get-in query [:stages 0 :template-tags "checkpoint"])
         (update query :parameters conj
@@ -258,7 +259,7 @@
   Generates SQL that wraps the original query as a subquery and filters by `checkpoint_filter > (checkpoint_query)`. "
   [outer-query driver {:keys [source-incremental-strategy] :as source} {checkpoint-query :query :as checkpoint}]
   (let [{:keys [checkpoint-filter]} source-incremental-strategy]
-    (if (and (lib/native? (:query source))
+    (if (and (lib.query/native? (:query source))
              (not (get-in (:query source) [:stages 0 :template-tags "checkpoint"]))
              (next-checkpoint-value checkpoint))
       (let [wrap-query (fn [query]
