@@ -159,7 +159,7 @@
 
   `:input` is a sequence of AISDK parts (and user messages).  They are converted
   to OpenAI Responses API input items via [[parts->openai-input]]."
-  [{:keys [model system input tools schema]
+  [{:keys [model system input tools schema tool_choice]
     :or   {model "gpt-4.1-mini"
            input [{:role :user :content "Just tell something to a user"}]}}
    :- [:map
@@ -169,14 +169,15 @@
        [:tools {:optional true} [:sequential [:fn var?]]]
        ;; malli schema expected here
        ;; TODO: check it's a `:map`
-       [:schema {:optional true} :any]]]
+       [:schema {:optional true} :any]
+       [:tool_choice {:optional true} :any]]]
   (assert (llm/ee-openai-api-key) "No OpenAI API key!")
   (let [req {:model        model
              :stream       true
              :store        false
              :instructions system
              :input        (parts->openai-input input)
-             :tool_choice  (when (seq tools) "auto")
+             :tool_choice  (when (seq tools) (or tool_choice "auto"))
              :tools        (when (seq tools) (mapv tool->openai tools))
              :text         (when schema
                              {:format {:type   "json_schema"
