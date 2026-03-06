@@ -224,7 +224,7 @@ This query:
 
 The `STRING_TO_ARRAY()` and `REGEXP_REPLACE()` functions are PostgreSQL-specific. To see which functions your database supports, see your database's documentation.
 
-3. Set up the row and column security using this SQL question. See [setting up column security](#setting-up-column-security).
+2. Set up the row and column security using this SQL question. See [setting up column security](#setting-up-column-security).
 
 ## Preventing row and column security permissions conflicts
 
