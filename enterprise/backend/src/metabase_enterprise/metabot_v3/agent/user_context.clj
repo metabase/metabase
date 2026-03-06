@@ -6,6 +6,8 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.tmpl :as te]
+   [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
+   [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.util :as u]
@@ -296,6 +298,21 @@
                 "If any item seems relevant, try to fetch its full details using the appropriate tool."
                 "Otherwise, use the search tool to find relevant entities."))))
 
+(defn format-current-user-info
+  "Format the current user and glossary for injection into the system message.
+
+  Returns XML for template variable {{current_user_info}}."
+  [_context]
+  (try
+    (when-let [{:keys [id name email-address glossary]} (:structured-output (entity-details/get-current-user nil))]
+      (llm-rep/user->xml {:id       id
+                          :name     name
+                          :email    email-address
+                          :glossary glossary}))
+    (catch Exception e
+      (log/error e "Error formatting current user info")
+      nil)))
+
 ;;; Context Enrichment
 
 (defn enrich-context-for-template
@@ -305,11 +322,13 @@
   - :current_time - Formatted user time string
   - :first_day_of_week - Calendar week start (default 'Sunday')
   - :sql_dialect - SQL dialect name (lowercase)
+  - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
   - :recent_views - Formatted recent views"
   [context]
   {:current_time (format-current-time context)
    :first_day_of_week (get context :first_day_of_week "Sunday")
    :sql_dialect (extract-sql-dialect context)
+   :current_user_info (format-current-user-info context)
    :viewing_context (format-viewing-context context)
    :recent_views (format-recent-views context)})
