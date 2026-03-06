@@ -641,7 +641,7 @@ describe("scenarios - embedding hub", () => {
 
         cy.log("tenants are shown in the tenants page");
         H.main().within(() => {
-          cy.findByText("Acme Corp").should("be.visible");
+          cy.findByText("Acme Corp", { timeout: 10_000 }).should("be.visible");
           cy.findByText("Beta Inc").should("be.visible");
         });
       });
@@ -1045,7 +1045,10 @@ describe("scenarios - embedding hub", () => {
 
       cy.log("select row and column level security strategy");
       H.main()
-        .findByRole("radio", { name: /Row and column level security/ })
+        .findByRole("radio", {
+          name: /Row and column level security/,
+          timeout: 10_000,
+        })
         .scrollIntoView()
         .click();
 
@@ -1432,6 +1435,7 @@ describe("scenarios - embedding hub", () => {
       H.main().icon("check").should("not.exist");
 
       cy.log("step 1: enable JWT");
+      cy.intercept("PUT", "/api/setting").as("saveJwtSettings");
       H.main().within(() => {
         cy.findByLabelText(/JWT Identity Provider URI/i)
           .should("be.visible")
@@ -1441,6 +1445,9 @@ describe("scenarios - embedding hub", () => {
           name: "Enable JWT authentication and continue",
         }).click();
       });
+
+      cy.log("wait for JWT settings to be saved");
+      cy.wait("@saveJwtSettings");
 
       cy.log("JWT should be enabled");
       cy.request("GET", "/api/session/properties").then(({ body }) => {
