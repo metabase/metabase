@@ -519,10 +519,11 @@
                     (is (some? user-msg))
                     (is (= event-ts (:slack_msg_id user-msg)))
                     (is (= "C123" (:channel_id user-msg))))
-                  (testing "bot message has stream ts and channel_id"
+                  (testing "bot message has stream ts, channel_id, and requester user_id"
                     (is (some? bot-msg))
                     (is (= "stream123" (:slack_msg_id bot-msg)))
-                    (is (= "C123" (:channel_id bot-msg)))))))))))))
+                    (is (= "C123" (:channel_id bot-msg)))
+                    (is (= (mt/user->id :rasta) (:user_id bot-msg)))))))))))))
 
 (deftest ^:parallel slack-thread-conversation-id-test
   (testing "Same thread produces same conversation ID"
@@ -1546,25 +1547,42 @@
 (deftest response-owner-user-id-test
   (testing "response-owner-user-id returns the user who triggered the bot response"
     (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-      (let [channel-id "C-OWNER-TEST"
-            slack-ts   "1709567890.222222"
-            owner-id   (mt/user->id :rasta)
-            conv-id    (str (random-uuid))]
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id owner-id})
+      (let [channel-id     "C-OWNER-TEST"
+            slack-ts       "1709567890.222222"
+            requester-id   (mt/user->id :rasta)
+            later-user-id  (mt/user->id :crowberto)
+            conv-id        (str (random-uuid))]
+        ;; Simulate a later user having overwritten MetabotConversation.user_id
+        (t2/insert! :model/MetabotConversation {:id conv-id :user_id later-user-id})
         (t2/insert! :model/MetabotMessage
                     {:conversation_id conv-id
                      :slack_msg_id    slack-ts
                      :channel_id      channel-id
                      :role            "assistant"
+                     :user_id         requester-id
                      :profile_id      "test"
                      :total_tokens    5
                      :data            []})
-        (testing "returns the conversation owner for a tracked message"
-          (is (= owner-id (slackbot.persistence/response-owner-user-id channel-id slack-ts))))
+        (testing "returns the requester, not the (potentially overwritten) conversation owner"
+          (is (= requester-id (slackbot.persistence/response-owner-user-id channel-id slack-ts))))
         (testing "returns nil for an untracked message ts"
           (is (nil? (slackbot.persistence/response-owner-user-id channel-id "nonexistent-ts"))))
         (testing "returns nil when channel does not match"
-          (is (nil? (slackbot.persistence/response-owner-user-id "C-WRONG" slack-ts))))))))
+          (is (nil? (slackbot.persistence/response-owner-user-id "C-WRONG" slack-ts))))
+
+        (testing "two users in the same thread each own only their own bot response"
+          (let [second-slack-ts "1709567890.333333"]
+            (t2/insert! :model/MetabotMessage
+                        {:conversation_id conv-id
+                         :slack_msg_id    second-slack-ts
+                         :channel_id      channel-id
+                         :role            "assistant"
+                         :user_id         later-user-id
+                         :profile_id      "test"
+                         :total_tokens    5
+                         :data            []})
+            (is (= requester-id  (slackbot.persistence/response-owner-user-id channel-id slack-ts)))
+            (is (= later-user-id (slackbot.persistence/response-owner-user-id channel-id second-slack-ts))))))))))
 
 (deftest authorize-delete-request-test
   (testing "authorize-delete-request"
