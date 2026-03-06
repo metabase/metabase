@@ -39,7 +39,7 @@ export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
         <Text>{t`For Node.js, we recommend jsonwebtoken:`}</Text>
 
         {/* eslint-disable-next-line i18next/no-literal-string -- code snippet */}
-        <Code p="md" block>
+        <Code className={S.codeSnippet} p="md" block>
           npm install jsonwebtoken --save
         </Code>
 
@@ -63,7 +63,7 @@ export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
         <Text>{t`This example code for Node.js sets up an endpoint using Express:`}</Text>
       </Stack>
 
-      <Box className={S.codeSnippetWrapper}>
+      <Box pos="relative">
         <CopyButton
           className={S.codeSnippetCopyButton}
           value={expressSnippet}
