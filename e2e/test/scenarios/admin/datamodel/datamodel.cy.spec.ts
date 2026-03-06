@@ -157,14 +157,14 @@ describe("scenarios > admin > datamodel", () => {
         it("should restore previously selected table when expanding the tree (SEM-435)", () => {
           H.DataModel.visit();
 
-          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres14").click();
           TablePicker.getSchema("Domestic").click();
           TablePicker.getTable("Animals").click();
           TablePicker.getSchema("Wild").click();
           TablePicker.getTable("Birds").click();
 
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres14").click();
+          TablePicker.getDatabase("Writable Postgres14").click();
 
           TableSection.getNameInput().should("have.value", "Birds");
           TablePicker.getTable("Birds").should(
@@ -301,8 +301,8 @@ describe("scenarios > admin > datamodel", () => {
 
           H.DataModel.visit();
 
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getDatabase("Writable Postgres12")
+          TablePicker.getDatabase("Writable Postgres14").click();
+          TablePicker.getDatabase("Writable Postgres14")
             .button("Hide all tables")
             .should("not.exist");
           TablePicker.getSchema("Domestic")
@@ -313,7 +313,7 @@ describe("scenarios > admin > datamodel", () => {
             .should("not.exist");
 
           TablePicker.getSchema("Wild").click();
-          TablePicker.getDatabase("Writable Postgres12")
+          TablePicker.getDatabase("Writable Postgres14")
             .button("Hide all tables")
             .should("not.exist");
           TablePicker.getSchema("Domestic")
@@ -345,7 +345,7 @@ describe("scenarios > admin > datamodel", () => {
           H.DataModel.visit();
 
           TablePicker.getDatabase("Sample Database").click();
-          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres14").click();
           TablePicker.getSchema("Wild").click();
           TablePicker.getTable("Animals").click();
 
@@ -1139,7 +1139,7 @@ describe("scenarios > admin > datamodel", () => {
       it("should show empty state when there is no data", () => {
         H.DataModel.visit();
 
-        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getDatabase("Writable Postgres14").click();
         TablePicker.getSchema("Domestic").click();
         TablePicker.getTable("Animals").click();
         TableSection.clickField("Name");

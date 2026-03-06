@@ -317,7 +317,7 @@ describe("admin > database > database routing", () => {
       cy.findByLabelText("Upload Settings Form")
         .findByPlaceholderText("Select a database")
         .click();
-      H.popover().findByText("Writable Postgres12").click();
+      H.popover().findByText("Writable Postgres14").click();
       cy.findByLabelText("Upload Settings Form")
         .findByPlaceholderText("Select a schema")
         .click();
@@ -411,13 +411,13 @@ describe("admin > database > database routing", () => {
         // so we have to grant this permission in addition to db management
         const CREATE_QUERIES_PERMISSION_INDEX = 1;
         H.modifyPermission(
-          "Writable Postgres12",
+          "Writable Postgres14",
           CREATE_QUERIES_PERMISSION_INDEX,
           "Query builder and native",
         );
         const MANAGE_DATABASE_PERMISSION_INDEX = 4;
         H.modifyPermission(
-          "Writable Postgres12",
+          "Writable Postgres14",
           MANAGE_DATABASE_PERMISSION_INDEX,
           "Yes",
         );
@@ -618,7 +618,7 @@ describe("admin > database > database routing", () => {
 
           cy.findByLabelText("Database to use for uploads").click();
           H.popover()
-            .findByText("Writable Postgres12 (DB Routing Enabled)")
+            .findByText("Writable Postgres14 (DB Routing Enabled)")
             .should("be.visible");
         });
 

@@ -18,7 +18,7 @@ import { createMockParameter } from "metabase-types/api/mocks";
 const { H } = cy;
 const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const DATABASE_NAME = "Writable Postgres12";
+const DATABASE_NAME = "Writable Postgres14";
 const TABLE_NAME = "many_data_types";
 const TABLE_DISPLAY_NAME = "Many Data Types";
 const TABLE_DESCRIPTION = "This is a table with many data types";

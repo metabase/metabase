@@ -19,7 +19,7 @@ describe("issue 13347", { tags: ["@external", "@skip"] }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
 
     cy.updatePermissionsGraph({
@@ -79,7 +79,7 @@ describe("issue 13347", { tags: ["@external", "@skip"] }, () => {
 
 describe("postgres > user > query", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
 

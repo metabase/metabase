@@ -102,10 +102,10 @@ describe("issue 13289", () => {
 
 describe("issue 13751", { tags: "@external" }, () => {
   const CC_NAME = "C-States";
-  const PG_DB_NAME = "QA Postgres12";
+  const PG_DB_NAME = "QA Postgres14";
 
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
 
     H.startNewQuestion();
@@ -143,14 +143,14 @@ describe(
   "postgres > question > custom columns",
   { tags: ["@external", "@skip"] },
   () => {
-    const PG_DB_NAME = "QA Postgres12";
+    const PG_DB_NAME = "QA Postgres14";
 
     // Ironically, both Prettier and Cypress remove escape characters from our code as well
     // We're testing for the literal sting `(?<=\/\/)[^\/]*`, but we need to escape the escape characters to make it work
     const ESCAPED_REGEX = "(?<=\\/\\/)[^\\/]*";
 
     beforeEach(() => {
-      H.restore("postgres-12");
+      H.restore("postgres-14");
       cy.signInAsAdmin();
 
       H.startNewQuestion();

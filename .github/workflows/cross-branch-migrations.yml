@@ -38,7 +38,7 @@ jobs:
           base-ref: ${{ env.BASE_REF }}
           head-ref: ${{ env.HEAD_REF }}
 
-  migrations-postgres-12-ee:
+  migrations-postgres-14-ee:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     env:
@@ -50,7 +50,7 @@ jobs:
       MB_DB_USER: circle_test
     services:
       postgres:
-        image: postgres:12-alpine
+        image: postgres:14-alpine
         ports:
           - "5432:5432"
         env:

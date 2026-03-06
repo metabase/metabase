@@ -255,7 +255,7 @@ describe("Native SQL generation", () => {
 
     describe("multi-db", () => {
       beforeEach(() => {
-        H.restore("postgres-12");
+        H.restore("postgres-14");
         cy.signInAsAdmin();
         H.activateToken("bleeding-edge");
         cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as(
@@ -306,7 +306,7 @@ describe("Native SQL generation", () => {
         rejectButton().click();
         toggleInlineSQLPrompt();
         inlinePrompt().should("be.visible");
-        H.NativeEditor.selectDataSource("QA Postgres12");
+        H.NativeEditor.selectDataSource("QA Postgres14");
         inlinePrompt().should("not.exist");
 
         // open again, send a prompt, req.body.history should be empty

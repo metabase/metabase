@@ -27,7 +27,7 @@ describe("issue 11727", { tags: "@external" }, () => {
   };
 
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/database").as("getDatabases");
   });
@@ -410,7 +410,7 @@ describe("issue 52806", () => {
 
 describe("issue 55951", () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
 
     cy.intercept<unknown, ListDatabasesResponse>(
@@ -445,7 +445,7 @@ describe("issue 55951", () => {
     H.popover()
       .should("be.visible")
       .within(() => {
-        cy.findByText("QA Postgres12").should("be.visible");
+        cy.findByText("QA Postgres14").should("be.visible");
         cy.findByText("Sample Database").should("be.visible");
 
         H.repeatAssertion(() => {
@@ -605,7 +605,7 @@ describe("issue 57644", () => {
 
   describe("with multiple databases", () => {
     beforeEach(() => {
-      H.restore("postgres-12");
+      H.restore("postgres-14");
       cy.signInAsAdmin();
 
       H.startNewNativeQuestion({
@@ -618,7 +618,7 @@ describe("issue 57644", () => {
       H.popover()
         .should("be.visible")
         .and("contain", "Sample Database")
-        .and("contain", "QA Postgres12");
+        .and("contain", "QA Postgres14");
     });
   });
 });

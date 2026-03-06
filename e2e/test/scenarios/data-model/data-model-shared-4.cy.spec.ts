@@ -361,7 +361,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       );
 
       cy.log("JSON unfolding");
-      TablePicker.getDatabase("Writable Postgres12").click();
+      TablePicker.getDatabase("Writable Postgres14").click();
       TablePicker.getTable("Many Data Types").click();
       TableSection.clickField("Json");
       FieldSection.getUnfoldJsonInput().click();

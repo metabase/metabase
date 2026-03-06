@@ -5,15 +5,15 @@ entity_id: BssO7GsawP2WszjcnIjMw
 name: Imported Simple SQL transform
 source:
   query:
-    database: Writable Postgres12
+    database: Writable Postgres14
     native:
       query: select 1;
     type: native
   type: query
-source_database_id: Writable Postgres12
+source_database_id: Writable Postgres14
 tags: []
 target:
-  database: Writable Postgres12
+  database: Writable Postgres14
   name: imported_transform
   schema: public
   type: table

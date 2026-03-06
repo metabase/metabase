@@ -40,7 +40,7 @@ describe(
     before(() => {
       cy.intercept("/api/card/*/query").as("cardQuery");
 
-      H.restore("postgres-12");
+      H.restore("postgres-14");
 
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");

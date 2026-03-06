@@ -147,14 +147,14 @@ describe("issue 20551", () => {
 
 describe("issue 20683", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
   });
 
   it("should filter postgres with the 'current quarter' filter (metabase#20683)", () => {
     H.startNewQuestion();
     H.miniPicker().within(() => {
-      cy.findByText("QA Postgres12").click();
+      cy.findByText("QA Postgres14").click();
       cy.findByText("Orders").click();
     });
 
@@ -996,7 +996,7 @@ describe("issue 45252", { tags: "@external" }, () => {
 
     cy.log("filter picker - new filter");
     H.miniPicker().within(() => {
-      cy.findByText("Writable Postgres12").click();
+      cy.findByText("Writable Postgres14").click();
       cy.findByText("Many Data Types").click();
     });
     H.getNotebookStep("filter")

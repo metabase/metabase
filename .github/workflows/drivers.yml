@@ -988,9 +988,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: Postgres 12.x
+          - name: Postgres 14.x
             junit-name: postgres-ee
-            docker-image: postgres:12-alpine
+            docker-image: postgres:14-alpine
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'

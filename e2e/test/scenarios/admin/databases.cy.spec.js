@@ -51,7 +51,7 @@ describe(
     });
 
     [
-      { dbName: "Writable Postgres12", snapshot: "postgres-writable" },
+      { dbName: "Writable Postgres14", snapshot: "postgres-writable" },
       { dbName: "Writable MySQL8", snapshot: "mysql-writable" },
     ].forEach(({ dbName, snapshot }) => {
       it(`should allow to enable and disable workspaces in ${snapshot} database`, () => {
@@ -248,7 +248,7 @@ describe("admin > database > add", () => {
             });
 
           // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
-          H.typeAndBlurUsingLabel(/Display name/, "QA Postgres12");
+          H.typeAndBlurUsingLabel(/Display name/, "QA Postgres14");
           H.typeAndBlurUsingLabel(/Host/, "localhost");
           H.typeAndBlurUsingLabel(/Port/, QA_POSTGRES_PORT);
           H.typeAndBlurUsingLabel(/Database name/, "sample");
@@ -330,7 +330,7 @@ describe("admin > database > add", () => {
 
         cy.findByTestId("database-header-section").should(
           "contain.text",
-          "QA Postgres12",
+          "QA Postgres14",
         );
 
         cy.findAllByTestId("database-connection-info-section").should(

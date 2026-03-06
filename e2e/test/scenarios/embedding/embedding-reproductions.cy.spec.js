@@ -539,7 +539,7 @@ describe("issue 27643", { tags: "@external" }, () => {
 
   beforeEach(() => {
     // This issue was only reproducible against the Postgres database.
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
     H.withDatabase(PG_DB_ID, ({ INVOICES }) => {
       cy.wrap(INVOICES.EXPECTED_INVOICE).as(
@@ -1360,11 +1360,11 @@ describe("issue 50373", () => {
 describe("issue 51934 (EMB-189)", () => {
   const COLLECTION_NAME = "Model Collection";
   const MODEL_IN_ROOT_NAME = "Products Model";
-  const MODEL_IN_COLLECTION_NAME = "QA Postgres12 Orders Model";
+  const MODEL_IN_COLLECTION_NAME = "QA Postgres14 Orders Model";
   const QUESTION_IN_COLLECTION_NAME = "Orders Question";
 
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.createModelFromTableName({
@@ -1404,7 +1404,7 @@ describe("issue 51934 (EMB-189)", () => {
 
   it("should set the starting join step based on the query source", () => {
     startNewEmbeddingQuestion();
-    const QA_DB_NAME = "QA Postgres12";
+    const QA_DB_NAME = "QA Postgres14";
     const DATA_SOURCE_NAME = "Orders";
 
     cy.log("select a table as a data source");

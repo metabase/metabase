@@ -438,7 +438,7 @@ jobs:
       MB_POSTGRESQL_TEST_USER: mb_test
     services:
       postgres:
-        image: postgres:12-alpine
+        image: postgres:14-alpine
         ports:
           - "5432:5432"
         env:
@@ -447,7 +447,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
     - uses: actions/checkout@v4
-    - name: Test Postgres driver (12)
+    - name: Test Postgres driver (14)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-ee'

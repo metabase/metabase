@@ -122,7 +122,7 @@ describe(
         H.popover().findByText("Query builder").click();
 
         H.miniPicker().within(() => {
-          cy.findByText("Writable Postgres12").click();
+          cy.findByText("Writable Postgres14").click();
           cy.findByText(TARGET_SCHEMA).click();
           cy.findByText(SOURCE_TABLE).click();
         });

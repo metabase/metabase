@@ -655,7 +655,7 @@ function setTableEditingEnabledForDB(dbId: number, enabled = true) {
   });
 }
 
-function openTableBrowser(databaseName: string = "Writable Postgres12") {
+function openTableBrowser(databaseName: string = "Writable Postgres14") {
   cy.visit("/browse/databases");
   cy.wait("@getDatabases");
   cy.findByTestId("database-browser").findByText(databaseName).click();

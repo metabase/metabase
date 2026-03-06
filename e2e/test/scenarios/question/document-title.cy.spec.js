@@ -7,7 +7,7 @@ describe(
   { tags: "@external" },
   () => {
     beforeEach(() => {
-      H.restore("postgres-12");
+      H.restore("postgres-14");
       cy.signInAsAdmin();
     });
 

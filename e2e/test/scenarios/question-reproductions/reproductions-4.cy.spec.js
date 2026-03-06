@@ -109,7 +109,7 @@ describe("issue 44974", { tags: "@external" }, () => {
 
   beforeEach(() => {
     cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
   });
 
@@ -1487,7 +1487,7 @@ describe("Issue 33835", { tags: "@external" }, () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "orders" });
 
     H.startNewQuestion();
-    H.miniPicker().findByText("Writable Postgres12").click();
+    H.miniPicker().findByText("Writable Postgres14").click();
     H.miniPicker().findByText("Orders").click();
 
     H.getNotebookStep("summarize")

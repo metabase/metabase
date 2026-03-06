@@ -255,7 +255,7 @@ describe(
   { tags: "@external" },
   () => {
     beforeEach(() => {
-      H.restore("postgres-12");
+      H.restore("postgres-14");
       H.createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
@@ -269,7 +269,7 @@ describe(
       H.popover().should("not.contain", "Impersonated");
 
       // Set impersonated access on Postgres database
-      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
+      H.modifyPermission("QA Postgres14", DATA_ACCESS_PERM_IDX, "Impersonated");
 
       H.selectImpersonatedAttribute("role");
       H.saveImpersonationSettings();
@@ -286,7 +286,7 @@ describe(
           "No",
         ],
         [
-          "QA Postgres12",
+          "QA Postgres14",
           "Impersonated",
           "No",
           "1 million rows",
@@ -297,7 +297,7 @@ describe(
       ]);
 
       // Checking it shows the right state on the tables level
-      cy.get("main").findByText("QA Postgres12").click();
+      cy.get("main").findByText("QA Postgres14").click();
 
       H.assertPermissionTable(
         [
@@ -324,7 +324,7 @@ describe(
 
       // Edit impersonated permission
       H.modifyPermission(
-        "QA Postgres12",
+        "QA Postgres14",
         DATA_ACCESS_PERM_IDX,
         "Edit Impersonated",
       );
@@ -344,7 +344,7 @@ describe(
           "No",
         ],
         [
-          "QA Postgres12",
+          "QA Postgres14",
           "Impersonated",
           "No",
           "1 million rows",
@@ -358,7 +358,7 @@ describe(
     it("should warn when All Users group has 'impersonated' access and the target group has unrestricted access", () => {
       cy.visit(`/admin/permissions/data/group/${COLLECTION_GROUP}`);
 
-      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
+      H.modifyPermission("QA Postgres14", DATA_ACCESS_PERM_IDX, "Impersonated");
 
       // Warns that All Users group has greater access
       cy.findByRole("dialog").within(() => {
@@ -374,7 +374,7 @@ describe(
       H.savePermissions();
 
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
-      H.getPermissionRowPermissions("QA Postgres12")
+      H.getPermissionRowPermissions("QA Postgres14")
         .eq(DATA_ACCESS_PERM_IDX)
         .findByLabelText("warning icon")
         .realHover();
@@ -387,13 +387,13 @@ describe(
     it("allows switching to the granular access and update table permissions", () => {
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
-      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
+      H.modifyPermission("QA Postgres14", DATA_ACCESS_PERM_IDX, "Impersonated");
 
       H.selectImpersonatedAttribute("role");
       H.saveImpersonationSettings();
       H.savePermissions();
 
-      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Granular");
+      H.modifyPermission("QA Postgres14", DATA_ACCESS_PERM_IDX, "Granular");
 
       // Resets table permissions from Impersonated to Can view
       H.assertPermissionTable(
@@ -429,7 +429,7 @@ describe(
           "No",
           "No",
         ],
-        ["QA Postgres12", "Can view", "No", "1 million rows", "No", "No", "No"],
+        ["QA Postgres14", "Can view", "No", "1 million rows", "No", "No", "No"],
       ]);
     });
 
@@ -437,13 +437,13 @@ describe(
       cy.log("Try leaving the page");
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
-      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
+      H.modifyPermission("QA Postgres14", DATA_ACCESS_PERM_IDX, "Impersonated");
 
       H.selectImpersonatedAttribute("role");
       H.saveImpersonationSettings();
 
       H.modifyPermission(
-        "QA Postgres12",
+        "QA Postgres14",
         DATA_ACCESS_PERM_IDX,
         "Edit Impersonated",
       );
@@ -474,7 +474,7 @@ describe(
     it("should set unrestricted for children if database is set to impersonated before going granular", () => {
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
-      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
+      H.modifyPermission("QA Postgres14", DATA_ACCESS_PERM_IDX, "Impersonated");
 
       H.selectImpersonatedAttribute("role");
       H.saveImpersonationSettings();
@@ -859,7 +859,7 @@ describe("scenarios > admin > permissions > view data > reproductions", () => {
     "should allow you to impersonate view permissions and also edit the create queries permissions and saving should persist both (metabase#46450)",
     { tags: "@external" },
     () => {
-      H.restore("postgres-12");
+      H.restore("postgres-14");
       H.createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
@@ -869,13 +869,13 @@ describe("scenarios > admin > permissions > view data > reproductions", () => {
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
       // Set impersonated access on Postgres database
-      H.modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
+      H.modifyPermission("QA Postgres14", DATA_ACCESS_PERM_IDX, "Impersonated");
 
       H.selectImpersonatedAttribute("role");
       H.saveImpersonationSettings();
 
       H.modifyPermission(
-        "QA Postgres12",
+        "QA Postgres14",
         CREATE_QUERIES_PERM_IDX,
         "Query builder only",
       );
@@ -887,12 +887,12 @@ describe("scenarios > admin > permissions > view data > reproductions", () => {
       });
 
       H.assertPermissionForItem(
-        "QA Postgres12",
+        "QA Postgres14",
         DATA_ACCESS_PERM_IDX,
         "Impersonated",
       );
       H.assertPermissionForItem(
-        "QA Postgres12",
+        "QA Postgres14",
         CREATE_QUERIES_PERM_IDX,
         "Query builder only",
       );

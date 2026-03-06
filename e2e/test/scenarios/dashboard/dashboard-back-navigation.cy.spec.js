@@ -241,7 +241,7 @@ describe(
   { tags: ["@external", "@actions"] },
   () => {
     beforeEach(() => {
-      H.restore("postgres-12");
+      H.restore("postgres-14");
       cy.signInAsAdmin();
       cy.intercept("GET", "/api/dashboard/*").as("dashboard");
       cy.intercept("GET", "/api/card/*").as("card");

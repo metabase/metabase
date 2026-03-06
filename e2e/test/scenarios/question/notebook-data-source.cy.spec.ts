@@ -78,7 +78,7 @@ describe("scenarios > notebook > data source", () => {
         const testTable1 = "multi_schema";
         const testTable2 = "many_data_types";
 
-        const dbName = "Writable Postgres12";
+        const dbName = "Writable Postgres14";
         const schemaName = "Wild";
         const tableName = "Animals";
 
@@ -349,7 +349,7 @@ describe("scenarios > notebook > data source", () => {
 
 describe("issue 34350", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
   });
 
@@ -358,7 +358,7 @@ describe("issue 34350", { tags: "@external" }, () => {
     openDataSelector();
     H.miniPicker().within(() => {
       H.miniPickerHeader().click();
-      cy.findByText("QA Postgres12").click();
+      cy.findByText("QA Postgres14").click();
       cy.findByText("Orders").click();
     });
 
@@ -395,7 +395,7 @@ describe("issue 28106", () => {
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         cy.findByText("Databases").click();
-        cy.findByText("Writable Postgres12").click();
+        cy.findByText("Writable Postgres14").click();
         cy.findByText("Schema A").click();
 
         H.entityPickerModalLevel(2)

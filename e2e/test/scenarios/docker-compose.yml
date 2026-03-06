@@ -7,7 +7,7 @@ services:
   postgres-sample:
     environment:
       - TZ=US/Pacific
-    image: metabase/qa-databases:postgres-sample-12
+    image: metabase/qa-databases:postgres-sample-14
     ports:
       - 5404:5432
 

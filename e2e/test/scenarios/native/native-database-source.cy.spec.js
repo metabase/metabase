@@ -3,7 +3,7 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 const PG_DB_ID = 2;
 const mongoName = "QA Mongo";
-const postgresName = "QA Postgres12";
+const postgresName = "QA Postgres14";
 const additionalPG = "New Database";
 const ADDITIONAL_PG_DB_ID = 3;
 
@@ -18,7 +18,7 @@ describe(
         "persistDatabase",
       );
 
-      H.restore("postgres-12");
+      H.restore("postgres-14");
       cy.signInAsAdmin();
       cy.updatePermissionsGraph({
         [ALL_USERS_GROUP]: {

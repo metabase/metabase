@@ -789,7 +789,7 @@ describe("issue 14148", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
 
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
   });
 

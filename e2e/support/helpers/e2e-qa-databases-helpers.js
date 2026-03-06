@@ -34,7 +34,7 @@ export function addMongoDatabase(displayName = "QA Mongo") {
 }
 
 export function addPostgresDatabase(
-  displayName = "QA Postgres12",
+  displayName = "QA Postgres14",
   writable = false,
   dbName,
   idAlias,

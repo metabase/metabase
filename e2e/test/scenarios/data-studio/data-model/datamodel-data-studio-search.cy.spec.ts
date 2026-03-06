@@ -121,7 +121,7 @@ describe("Search", () => {
     TablePicker.getSearchInput().type("a");
     // wait for the tables to be loaded
     TablePicker.getTables().should("have.length", 4);
-    const postgres = "Writable Postgres12";
+    const postgres = "Writable Postgres14";
     const sampleDatabaseName = "Sample Database";
     const domesticSchema = "Domestic";
 
@@ -146,7 +146,7 @@ describe("Search", () => {
   it("should allow to hide/show table and schemas", () => {
     H.DataModel.visitDataStudio();
     TablePicker.getSearchInput().type("a");
-    const postgres = "Writable Postgres12";
+    const postgres = "Writable Postgres14";
     const sampleDatabaseName = "Sample Database";
     const domesticSchema = "Domestic";
     const sampleDbTables = ["Accounts", "Analytic Events"];
@@ -176,7 +176,7 @@ describe("Search", () => {
     TablePicker.getSearchInput().type("a");
     TablePicker.getTables().should("have.length", 4);
 
-    ["Writable Postgres12", "Sample Database"].forEach((database) => {
+    ["Writable Postgres14", "Sample Database"].forEach((database) => {
       TablePicker.getDatabaseCheckbox(database).click();
     });
     cy.findByRole("heading", { name: /4 tables selected/i }).should(
@@ -196,7 +196,7 @@ describe("Search", () => {
       .find('input[type="checkbox"]:checked')
       .should("have.length", 0);
 
-    TablePicker.getDatabaseCheckbox("Writable Postgres12").click();
+    TablePicker.getDatabaseCheckbox("Writable Postgres14").click();
 
     cy.findByRole("heading", { name: /2 tables selected/i }).should(
       "be.visible",

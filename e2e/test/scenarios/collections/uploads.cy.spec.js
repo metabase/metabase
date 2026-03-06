@@ -44,7 +44,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
     cy.findByLabelText("Upload Settings Form")
       .findByPlaceholderText("Select a database")
       .click();
-    H.popover().findByText("Writable Postgres12").click();
+    H.popover().findByText("Writable Postgres14").click();
     cy.findByLabelText("Upload Settings Form")
       .findByPlaceholderText("Select a schema")
       .click();
@@ -78,7 +78,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
 
     cy.findByRole("link", { name: "Table Metadata" }).click();
 
-    H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
+    H.DataModel.TablePicker.getDatabase("Writable Postgres14").click();
     H.DataModel.TablePicker.getTables().should("have.length", 2);
     H.DataModel.TablePicker.getTable("Dog Breeds").should("be.visible");
   });
@@ -262,7 +262,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
 
 describe("permissions", { tags: "@external" }, () => {
   it("should not show you upload buttons if you are a sandboxed user", () => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
 
     H.activateToken("pro-self-hosted");
@@ -303,7 +303,7 @@ describe("permissions", { tags: "@external" }, () => {
   });
 
   it("should show you upload buttons if you have unrestricted access to the upload schema", () => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
 
     H.activateToken("pro-self-hosted");
@@ -341,7 +341,7 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
     cy.intercept("GET", "/api/ee/upload-management/tables").as(
       "getUploadTables",
     );
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
     H.enableUploads("postgres");
     H.activateToken("pro-self-hosted");
