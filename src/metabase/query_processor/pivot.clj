@@ -13,7 +13,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -172,7 +171,13 @@
     (lib/expression query -1 "pivot-grouping" (lib/abs bitmask) {:add-to-fields? false})
     ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts. Add a pivot
     ;; grouping expression ref to the breakouts
-    (lib/breakout query (lib/expression-ref query "pivot-grouping"))
+    (lib/breakout query (-> (lib/expression-ref query "pivot-grouping")
+                            ;; mark this expression ref as a special constant so it can get removed from window
+                            ;; function `OVER` `ORDER BY` or `GROUP BY` expressions since constants aren't allowed in
+                            ;; all DBs (e.g. Redshift) --
+                            ;; see [[metabase.query-processor.pivot-test/offset-pivot-test]]
+                            ;; and [[metabase.driver.sql.query-processor/pivot-query-group-constant-expression?]]
+                            (lib/update-options assoc :qp.pivot/pivot-grouping? true)))
     (do
       (log/tracef "Added pivot-grouping expression to query\n%s" (u/pprint-to-str 'yellow query))
       query)))
@@ -186,7 +191,7 @@
    (fn [query [_tag _opts expr :as order-by]]
      ;; keep any order bys on :aggregation references. Remove all other clauses.
      (cond-> query
-       (not (lib.util/clause-of-type? expr :aggregation))
+       (not (lib/clause-of-type? expr :aggregation))
        (lib/remove-clause order-by)))
    query
    (lib/order-bys query)))

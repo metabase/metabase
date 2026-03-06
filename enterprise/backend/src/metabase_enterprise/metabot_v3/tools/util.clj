@@ -9,7 +9,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -42,8 +41,9 @@
   (cond-> col
     (and (:fk-field-id col)
          (:table-id col))
-    (assoc :table-reference (-> (lib/display-name query (lib.metadata/field query (:fk-field-id col)))
-                                lib.util/strip-id))))
+    (assoc :table-reference (->> (lib.metadata/field query (:fk-field-id col))
+                                 (lib/display-name query)
+                                 lib/display-name-without-id))))
 
 (defn table-field-id-prefix
   "Return the field ID prefix for `table-id`."
@@ -157,7 +157,9 @@
 (defn get-table
   "Get the `fields` of the table with ID `id`."
   [id & fields]
-  (-> (t2/select-one (into [:model/Table :id] fields) id)
+  (-> (t2/select-one (into [:model/Table :id] fields)
+                     :id id
+                     :active true)
       api/read-check))
 
 (defn get-card
