@@ -11,7 +11,7 @@ concurrency:
 jobs:
   check-openapi-specs:
     runs-on: ubuntu-22.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     if: contains(github.event.pull_request.labels.*.name, 'openapi-self-healing')
     steps:
       - uses: actions/checkout@v4
