@@ -521,8 +521,10 @@
   roll back"
   ;; default rollback to previous version
   ([conn liquibase force]
-   ;; get current major version of Metabase we are running
-   (rollback-major-version! conn liquibase force (dec (config/current-major-version))))
+   ;; Get current major version. For HEAD builds (vUNKNOWN), current-major-version returns nil,
+   ;; so we use 999 to ensure all migrations are rolled back (HEAD is always "newer" than releases).
+   (let [current-version (or (config/current-major-version) 999)]
+     (rollback-major-version! conn liquibase force (dec current-version))))
 
   ;; with explicit target version
   ([conn ^Liquibase liquibase force target-version]

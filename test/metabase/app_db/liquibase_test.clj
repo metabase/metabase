@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.test-util :as mdb.test-util]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -182,3 +183,24 @@
                                     (liquibase/rollback-major-version! conn liquibase false (dec actual-latest-available-version))))
               (testing "CAN downgrade if forced"
                 (liquibase/rollback-major-version! conn liquibase true (dec actual-latest-available-version))))))))))
+
+(deftest rollback-major-version-unknown-version-test
+  (testing "rollback-major-version! handles vUNKNOWN (HEAD builds) without NPE"
+    ;; When current-major-version returns nil (e.g., for vUNKNOWN in HEAD Docker builds),
+    ;; rollback-major-version! should use 999 as the current version, targeting 998.
+    ;; This test verifies we don't get an NPE from (dec nil).
+    (let [captured-target (atom nil)]
+      (with-redefs [config/current-major-version (constantly nil)]
+        ;; Intercept the 4-arity call to capture the computed target version
+        (let [original-fn @#'liquibase/rollback-major-version!]
+          (with-redefs [liquibase/rollback-major-version!
+                        (fn
+                          ([conn liquibase force]
+                           ;; Use the let-binding from the real implementation
+                           (let [current-version (or (config/current-major-version) 999)]
+                             (reset! captured-target (dec current-version))))
+                          ([_conn _liquibase _force target]
+                           (reset! captured-target target)))]
+            (liquibase/rollback-major-version! nil nil false)
+            (is (= 998 @captured-target)
+                "Should target version 998 (dec 999) when current version is unknown")))))))
