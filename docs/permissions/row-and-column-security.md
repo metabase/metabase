@@ -207,24 +207,24 @@ If you want to give someone access to multiple user IDs (e.g., the person should
 
 1. Create a SQL question that parses the comma-separated string and filters the table:
 
-```sql
-{%raw%}
-SELECT *
-FROM users_with_values
-WHERE user_id = ANY(STRING_TO_ARRAY(REGEXP_REPLACE(TRIM({{user_id}}), '\\s*,\\s*', ','), ','))
-{% endraw %}
-```
+    ```sql
+    {%raw%}
+    SELECT *
+    FROM users_with_values
+    WHERE user_id = ANY(STRING_TO_ARRAY(REGEXP_REPLACE(TRIM({{user_id}}), '\\s*,\\s*', ','), ','))
+    {% endraw %}
+    ```
+    
+    This query:
+    
+    - Trims whitespace from the user attribute value
+    - Replaces any spaces around commas with just commas
+    - Converts the comma-separated string to an array
+    - Filters rows where the user_id matches any value in the array
+    
+    The `STRING_TO_ARRAY()` and `REGEXP_REPLACE()` functions are PostgreSQL-specific. To see which functions your database supports, see your database's documentation.
 
-This query:
-
-- Trims whitespace from the user attribute value
-- Replaces any spaces around commas with just commas
-- Converts the comma-separated string to an array
-- Filters rows where the user_id matches any value in the array
-
-The `STRING_TO_ARRAY()` and `REGEXP_REPLACE()` functions are PostgreSQL-specific. To see which functions your database supports, see your database's documentation.
-
-3. Set up the row and column security using this SQL question. See [setting up column security](#setting-up-column-security).
+2. Set up the row and column security using this SQL question. See [setting up column security](#setting-up-column-security).
 
 ## Preventing row and column security permissions conflicts
 
