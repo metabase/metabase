@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1382-update-in-app-jwt-onboarding-to-use-snippets-instead-of",
-    "hash": "13ba39604b16233f47011c6bfc619e4b21009c8a"
+    "hash": "1c38959913c33575105b5313cf71a4e17fe0193f"
   },
   "upstream": {
     "branch": "emb-1390-fix-rls-tenant-users-unable-to-query-database"
