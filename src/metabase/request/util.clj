@@ -82,14 +82,15 @@
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
   [:map {:closed true}
-   [:device_id          ms/NonBlankString]
-   [:device_description ms/NonBlankString]
-   [:embedded           ms/BooleanValue]
-   [:ip_address         ms/NonBlankString]])
+   [:device_id                           ms/NonBlankString]
+   [:device_description                  ms/NonBlankString]
+   [:embedded                            ms/BooleanValue]
+   [:ip_address                          ms/NonBlankString]
+   [:token_exchange                      ms/BooleanValue]])
 
 (mu/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
-  [{{:strs [user-agent]} :headers, :keys [browser-id], :as request}]
+  [{{:strs [user-agent]} :headers, :keys [browser-id token-exchange?], :as request}]
   (let [id          (or browser-id
                         (log/warn "Login request is missing device ID information"))
         description (or user-agent
@@ -101,7 +102,8 @@
     {:device_id          (or id (trs "unknown"))
      :device_description (or description (trs "unknown")),
      :embedded           (embed.util/is-modular-embedding-request? request)
-     :ip_address         (or ip-address (trs "unknown"))}))
+     :ip_address         (or ip-address (trs "unknown"))
+     :token_exchange     (boolean token-exchange?)}))
 
 (defn describe-user-agent
   "Format a user-agent string from a request in a human-friendly way."

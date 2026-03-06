@@ -42,6 +42,7 @@
                                                             :device-info {:device_id "test-device"
                                                                           :device_description "Test"
                                                                           :embedded true
+                                                                          :token_exchange false
                                                                           :ip_address "127.0.0.1"}})]
                     (is (:success? login-result) "Should be able to login with new password")))))))))))
 
@@ -63,6 +64,7 @@
                                                         :device-info {:device_id "test-device"
                                                                       :device_description "Test"
                                                                       :ip_address "127.0.0.1"
+                                                                      :token_exchange false
                                                                       :embedded true}})]
                 (is (:success? login-result) "Should be able to login with new password")))))))))
 
