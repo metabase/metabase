@@ -1,3 +1,4 @@
+
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
@@ -14,7 +15,6 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Box, Button } from "metabase/ui";
 import type { DatasetColumn, TemplateTags } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -86,13 +86,13 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         const [questionId, setQuestionId] = useState<string | number>("new");
 
         return (
-          <Box>
+          <div>
             <InteractiveQuestion questionId={questionId} />
 
-            <Button onClick={() => setQuestionId(nativeQuestionId)}>
+            <button onClick={() => setQuestionId(nativeQuestionId)}>
               use native question
-            </Button>
-          </Box>
+            </button>
+          </div>
         );
       };
 
