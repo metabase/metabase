@@ -287,6 +287,7 @@ config:
     surveys-enabled: true
     sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
+    thread-interrupt-escalation-timeout-ms: 0
     transforms-enabled: false
     unaggregated-query-row-limit: null
     uploads-settings: null
