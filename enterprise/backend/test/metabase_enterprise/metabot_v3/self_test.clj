@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase-enterprise.metabot-v3.self.core :as self.core]
+   [metabase-enterprise.metabot-v3.self.openai :as openai]
    [metabase-enterprise.metabot-v3.self.openrouter :as openrouter]
    [metabase-enterprise.metabot-v3.test-util :as test-util]
    [metabase.analytics.prometheus :as prometheus]
@@ -41,6 +42,25 @@
   (testing "throws for unknown provider"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))
+
+(deftest call-llm-tool-choice-test
+  (testing "passes required tool choice to LLM providers"
+    (let [captured (atom nil)]
+      (with-redefs [http/post (fn [_url opts]
+                                (reset! captured (json/decode+kw (:body opts)))
+                                (throw (ex-info "stop" {})))]
+        (are [model res getter] (do (try
+                                      (run! identity (self/call-llm model
+                                                                    nil
+                                                                    []
+                                                                    {"search" #'test-util/get-time}
+                                                                    {:tag "agent"}
+                                                                    {:tool-choice "required"}))
+                                      (catch Exception _))
+                                    (= res (getter @captured)))
+          "anthropic/test-model"  {:type "any"} :tool_choice
+          "openrouter/test-model" "required"    :tool_choice
+          "openai/test-model"     "required"    :tool_choice)))))
 
 ;;; utils tests
 

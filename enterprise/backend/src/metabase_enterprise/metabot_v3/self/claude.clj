@@ -199,7 +199,7 @@
 
   `:input` is a sequence of AISDK parts (and user messages).  They are converted
   to Claude wire format via [[parts->claude-messages]]."
-  [{:keys [model system input tools schema]
+  [{:keys [model system input tools schema tool_choice]
     :or   {model "claude-haiku-4-5"
            input [{:role :user :content "Hello"}]}}
    :- [:map
@@ -213,7 +213,8 @@
                                                                [:doc {:optional true} [:maybe :string]]
                                                                [:schema :any]
                                                                [:fn [:fn fn?]]]]]]]
-       [:schema {:optional true} :any]]]
+       [:schema {:optional true} :any]
+       [:tool_choice {:optional true} :any]]]
   (when-not (llm/ee-anthropic-api-key)
     (throw (ex-info "No Anthropic API key is set" {})))
   (let [messages (parts->claude-messages input)
@@ -221,13 +222,17 @@
                           :max_tokens 4096
                           :stream     true
                           :messages   messages}
-                   system      (assoc :system system)
-                   (seq tools) (assoc :tools (mapv tool->claude tools))
-                   schema      (assoc :tool_choice {:type "tool"
-                                                    :name "structured_output"}
-                                      :tools [{:name         "structured_output"
-                                               :description  "Output structured data"
-                                               :input_schema (mjs/transform (mut/closed-schema schema))}]))]
+                   system            (assoc :system system)
+                   (seq tools)       (assoc :tools (mapv tool->claude tools))
+                   (and (seq tools)
+                        tool_choice) (assoc :tool_choice (case (name tool_choice)
+                                                           "auto"     {:type "auto"}
+                                                           "required" {:type "any"}))
+                   schema            (assoc :tool_choice {:type "tool"
+                                                          :name "structured_output"}
+                                            :tools [{:name         "structured_output"
+                                                     :description  "Output structured data"
+                                                     :input_schema (mjs/transform (mut/closed-schema schema))}]))]
     (with-span :info {:name       :metabot-v3.claude/request
                       :model      model
                       :msg-count  (count input)
