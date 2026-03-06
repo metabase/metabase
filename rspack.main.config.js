@@ -139,7 +139,7 @@ const config = {
       {
         // Embedding onboarding flow requires sharing snippets from
         // docs, so we treat TypeScript files inside docs/ as raw text
-        test: /\.ts$/,
+        test: /\.tsx?$/,
         include: [SDK_DOCS_SNIPPETS_PATH],
         type: "asset/source",
       },
