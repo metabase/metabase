@@ -137,12 +137,16 @@ describe("AppBanner", () => {
   });
 
   describe("ReadOnlyBanner", () => {
-    it("should not render for non-admins", () => {
+    it("should render for non-admins", () => {
       setup({
         isAdmin: false,
         isReadOnly: true,
       });
-      expect(screen.queryByTestId("app-banner")).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Metabase is under maintenance and is operating in read-only mode. It should only take up to 30 minutes.",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("should render if Metabase is in read-only mode", () => {
