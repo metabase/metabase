@@ -124,6 +124,8 @@ run_migrate_down() {
   #
   # This is a temporary workaround. See: [TODO: add Linear issue link]
   # To remove this hack, Metabase would need to handle vUNKNOWN in rollback-major-version!
+  #
+  # TODO: Remove the hack if we get around to fixing DEV-1636
   if [[ "$version" == "HEAD" ]]; then
     if [[ -z "$CURRENT_VERSION" ]]; then
       error "CURRENT_VERSION must be set when testing HEAD downgrades"
