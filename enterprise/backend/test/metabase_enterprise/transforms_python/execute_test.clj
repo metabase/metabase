@@ -25,7 +25,7 @@
                                                                      :name   "swap_tbl"}]
               (let [initial-transform {:name   "Python Transform Initial"
                                        :source {:type            "python"
-                                                :source-tables   {}
+                                                :source-tables   []
                                                 :source-database (mt/id)
                                                 :body            (str "import pandas as pd\n"
                                                                       "\n"
@@ -41,7 +41,7 @@
 
                     (t2/update! :model/Transform (:id transform)
                                 {:source {:type            "python"
-                                          :source-tables   {}
+                                          :source-tables   []
                                           :source-database (mt/id)
                                           :body            (str "import pandas as pd\n"
                                                                 "\n"
@@ -77,7 +77,7 @@
                                                                      :name   "cleanup_"}]
               (let [transform-def {:name   "Python Transform Cleanup"
                                    :source {:type            "python"
-                                            :source-tables   {}
+                                            :source-tables   []
                                             :source-database (mt/id)
                                             :body            (str "import pandas as pd\n"
                                                                   "\n"
@@ -116,7 +116,7 @@
                                              "    return pd.DataFrame({'result': ['should_not_reach_here']})")
                       transform-def {:name   "Python Transform Timeout Test"
                                      :source {:type            "python"
-                                              :source-tables   {}
+                                              :source-tables   []
                                               :source-database (mt/id)
                                               :body            long-running-code}
                                      :target (assoc target :database (mt/id))}]
@@ -146,9 +146,10 @@
                                                          :source {:type            "python"
                                                                   :body            "def transform(input): return input"
                                                                   :source-database (mt/id)
-                                                                  :source-tables   {"input" {:database_id (mt/id)
-                                                                                             :schema      schema
-                                                                                             :table       "nonexistent_table"}}}
+                                                                  :source-tables   [{:alias       "input"
+                                                                                     :database_id (mt/id)
+                                                                                     :schema      schema
+                                                                                     :table       "nonexistent_table"}]}
                                                          :target (assoc target :database (mt/id))}]
                 (testing "Execution throws with informative error message"
                   (is (thrown-with-msg?
@@ -168,9 +169,10 @@
                                                        :source {:type            "python"
                                                                 :body            "def transform(input): return input"
                                                                 :source-database (mt/id)
-                                                                :source-tables   {"input" {:database_id (mt/id)
-                                                                                           :schema      nil
-                                                                                           :table       "missing_table"}}}
+                                                                :source-tables   [{:alias       "input"
+                                                                                   :database_id (mt/id)
+                                                                                   :schema      nil
+                                                                                   :table       "missing_table"}]}
                                                        :target (assoc target :database (mt/id))}]
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo

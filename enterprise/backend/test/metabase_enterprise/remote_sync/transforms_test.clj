@@ -326,6 +326,39 @@ is_sample: false
             (is (t2/exists? :model/Transform :entity_id transform-entity-id)
                 "Transform should be imported from transforms-namespace collection")))))))
 
+(deftest import-python-transform-with-legacy-map-source-tables-test
+  (testing "Import of a python transform with old map-format source-tables converts to vec format"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temporary-setting-values [remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/Transform :model/Collection]
+          (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                coll-entity-id      "xforms-coll-legacy-01"
+                transform-entity-id "python-legacy-fmt-01x"
+                ;; Use old map format: {alias: table_id} — this is how pre-unification exports look
+                source-tables-yaml  (format "{orders: %d}" (mt/id :orders))
+                test-files {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
+                                    (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms")
+                                    (str "collections/" coll-entity-id "_transforms/transforms/" transform-entity-id "_python_transform.yaml")
+                                    (test-helpers/generate-python-transform-yaml transform-entity-id "Python Transform"
+                                                                                 "test-data (h2)" source-tables-yaml
+                                                                                 :collection-id coll-entity-id)}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)
+                result      (impl/import! (source.p/snapshot mock-source) task-id)]
+            (is (= :success (:status result))
+                (str "Import should succeed. Result: " result))
+            (when-let [transform (t2/select-one :model/Transform :entity_id transform-entity-id)]
+              (let [source-tables (get-in transform [:source :source-tables])]
+                (testing "source-tables is stored as vec format after import"
+                  (is (sequential? source-tables)))
+                (testing "entry has correct alias and table_id"
+                  (let [entry (first source-tables)]
+                    (is (= "orders" (:alias entry)))
+                    (is (= (mt/id :orders) (:table_id entry)))))
+                (testing "entry is enriched with table metadata"
+                  (let [entry (first source-tables)]
+                    (is (= (mt/id) (:database_id entry)))
+                    (is (some? (:table entry)))))))))))))
+
 (deftest archived-transforms-namespace-collection-excluded-from-export-test
   (testing "When a transforms-namespace collection is archived, it and its children are excluded from export"
     (mt/with-premium-features #{:transforms}
