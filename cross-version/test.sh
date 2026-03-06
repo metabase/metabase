@@ -198,12 +198,12 @@ main() {
   start_metabase "$source_image"
 
   if ! wait_for_health "$HEALTH_TIMEOUT"; then
-    error "SOURCE version failed health check"
+    error "❌ SOURCE version failed health check"
     docker compose logs metabase
     exit 1
   fi
 
-  log "SOURCE version is healthy"
+  log "✅ SOURCE version is healthy"
 
   log ""
   log "Step 2: Stopping SOURCE version..."
@@ -216,16 +216,16 @@ main() {
   if [[ "$direction" == "upgrade" ]]; then
     # Upgrade: should migrate automatically and become healthy
     if ! wait_for_health "$HEALTH_TIMEOUT"; then
-      error "TARGET version failed health check after upgrade"
+      error "❌ TARGET version failed health check after upgrade"
       docker compose logs metabase
       exit 1
     fi
-    log "UPGRADE successful - TARGET version is healthy"
+    log "✅ UPGRADE successful - TARGET version is healthy"
 
   else
     # Downgrade: should refuse to start, then we run migrate down
     if ! check_downgrade_refused; then
-      error "TARGET version did not properly detect downgrade"
+      error "❌ TARGET version did not properly detect downgrade"
       docker compose logs metabase
       exit 1
     fi
@@ -237,7 +237,7 @@ main() {
     log ""
     log "Step 4: Running migrate down..."
     if ! run_migrate_down "$target_image"; then
-      error "migrate down failed"
+      error "❌ migrate down failed"
       exit 1
     fi
 
@@ -247,16 +247,16 @@ main() {
     start_metabase "$target_image"
 
     if ! wait_for_health "$HEALTH_TIMEOUT"; then
-      error "TARGET version failed health check after migrate down"
+      error "❌ TARGET version failed health check after migrate down"
       docker compose logs metabase
       exit 1
     fi
-    log "DOWNGRADE successful - TARGET version is healthy after migrate down"
+    log "✅ DOWNGRADE successful - TARGET version is healthy after migrate down"
   fi
 
   log ""
   log "============================================"
-  log "TEST PASSED"
+  log "✅ TEST PASSED"
   log "============================================"
 }
 
