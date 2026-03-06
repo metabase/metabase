@@ -156,11 +156,33 @@
                  :estimated-costs-usd 0.0
                  :duration-ms         (long (u/since-ms start-ms))
                  :user-id             api/*current-user-id*
-                 :request-id          (some-> request-id analytics/uuid->token-usage-request-id)
+                 :request-id          (some-> request-id analytics/uuid->ai-service-hex-uuid)
                  :session-id          session-id
                  :source              source
                  :tag                 tag})))
            part))))
+
+(defn- report-tool-usage-xf
+  "Transducer that fires an agent_used_tool :snowplow/ai_service_event per tool call.
+  Only fires when :source and :request-id are present in tracking-opts."
+  [{:keys [request-id session-id source profile-name iteration]}]
+  (map (fn [part]
+         (when (and (some? source)
+                    (some? request-id)
+                    (= (:type part) :tool-output))
+           (analytics/track-event! :snowplow/ai_service_event
+                                   {:hashed-metabase-license-token (analytics/hashed-metabase-token-or-uuid)
+                                    :request-id                    (analytics/uuid->ai-service-hex-uuid request-id)
+                                    :source                        source
+                                    :event                         "agent_used_tool"
+                                    :user-id                       api/*current-user-id*
+                                    :session-id                    session-id
+                                    :profile                       (some-> profile-name name)
+                                    :duration-ms                   (some-> (:duration-ms part) long)
+                                    :result                        (if (:error part) "error" "success")
+                                    :event-details                 (cond-> {"tool_name" (:function part)}
+                                                                     (some? iteration) (assoc "step" iteration))}))
+         part)))
 
 (defn- with-retries
   "Execute `(thunk)` with retry logic for transient LLM errors.
@@ -222,7 +244,8 @@
                            (eduction (comp (core/tool-executor-xf tools)
                                            (core/lite-aisdk-xf)
                                            (report-aisdk-errors-xf tracking-opts)
-                                           (report-token-usage-xf tracking-opts))
+                                           (report-token-usage-xf tracking-opts)
+                                           (report-tool-usage-xf tracking-opts))
                                      (stream-fn streaming-opts)))]
       (reify clojure.lang.IReduceInit
         (reduce [_ rf init]
