@@ -82,6 +82,9 @@ const DashboardActionMenuInner = ({
     return null;
   }
 
+  const canConfigureCaching =
+    dashboard.can_set_cache_policy && PLUGIN_CACHING.isGranularCachingEnabled();
+
   return (
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
@@ -117,9 +120,7 @@ const DashboardActionMenuInner = ({
           {t`Enter fullscreen`}
         </Menu.Item>
 
-        {(canEdit ||
-          (dashboard?.can_set_cache_policy &&
-            PLUGIN_CACHING.isGranularCachingEnabled())) && (
+        {(canEdit || canConfigureCaching) && (
           <Menu.Item
             leftSection={<Icon name="gear" />}
             onClick={openSettingsSidebar}
