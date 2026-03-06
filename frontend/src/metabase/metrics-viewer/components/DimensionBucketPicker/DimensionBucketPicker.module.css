@@ -6,13 +6,8 @@
 .triggerButton {
   border-radius: 0;
   visibility: hidden;
-  color: color-mix(
-    in srgb,
-    var(--mb-color-text-primary-inverse),
-    transparent 40%
-  );
-  border-left: 2px solid
-    color-mix(in srgb, var(--mb-color-border), transparent 80%);
+  color: var(--mb-color-text-secondary-inverse);
+  border-left: 2px solid var(--mb-color-text-tertiary-inverse);
 }
 
 .chevronIcon {

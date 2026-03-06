@@ -37,7 +37,7 @@ export const MetricsFilterPill = forwardRef(function MetricsFilterPill(
       align="center"
       gap="xs"
       px="sm"
-      h={24}
+      h="lg"
       data-testid="metrics-viewer-filter-pill"
     >
       <SourceColorIndicator
