@@ -41,6 +41,7 @@ const getDefaultPluginTenants = () => ({
     onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
     selectedFieldIds?: number[];
     strategy?: DataSegregationStrategy | null;
+    rlsColumnName?: string | null;
   }>,
   TenantsSummaryOnboardingStep: PluginPlaceholder as React.ComponentType<{
     tenants: CreatedTenantData[];
@@ -114,6 +115,7 @@ export const PLUGIN_TENANTS: {
     onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
     selectedFieldIds?: number[];
     strategy?: DataSegregationStrategy | null;
+    rlsColumnName?: string | null;
   }>;
   TenantsSummaryOnboardingStep: React.ComponentType<{
     tenants: CreatedTenantData[];
