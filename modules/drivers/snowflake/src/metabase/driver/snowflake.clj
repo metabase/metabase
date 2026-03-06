@@ -159,8 +159,9 @@
                   (keep (fn [param]
                           (let [key-val (str/split param #"=")]
                             (when (= 2 (count key-val))
-                              [(-> (first key-val) (URLDecoder/decode "UTF-8") u/upper-case-en)
-                               (-> (second key-val) (URLDecoder/decode "UTF-8"))])))
+                              (let [[k v] key-val]
+                                [(u/upper-case-en (URLDecoder/decode ^String k "UTF-8"))
+                                 (URLDecoder/decode ^String v "UTF-8")]))))
                         (str/split queryData #"&")))))))))
 
 (defn- maybe-add-role-to-spec-url
