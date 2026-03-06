@@ -1,4 +1,3 @@
-import type { ColumnPinningState } from "@tanstack/react-table";
 import { type MouseEvent, useMemo } from "react";
 
 import {
@@ -61,7 +60,7 @@ interface TestDataGridProps {
   wrapableColumns?: string[];
   enableSelection?: boolean;
   pinnedTopRowsCount?: number;
-  columnPinning?: ColumnPinningState;
+  pinnedLeftColumnsCount?: number;
 }
 
 const TestDataGrid = ({
@@ -77,7 +76,7 @@ const TestDataGrid = ({
   wrapableColumns = [],
   enableSelection = false,
   pinnedTopRowsCount,
-  columnPinning,
+  pinnedLeftColumnsCount,
 }: TestDataGridProps) => {
   const columns: ColumnOptions<SampleDataType>[] = useMemo(
     () => [
@@ -149,7 +148,7 @@ const TestDataGrid = ({
     rowId,
     enableSelection,
     pinnedTopRowsCount,
-    columnPinning,
+    pinnedLeftColumnsCount,
   });
 
   return (
@@ -358,9 +357,7 @@ describe("DataGrid", () => {
     });
 
     it("pinned column headers get sticky positioning", () => {
-      renderWithProviders(
-        <TestDataGrid columnPinning={{ left: ["id", "name"] }} />,
-      );
+      renderWithProviders(<TestDataGrid pinnedLeftColumnsCount={2} />);
       act(() => jest.runAllTimers());
 
       const header = screen.getByTestId("table-header");
@@ -372,7 +369,7 @@ describe("DataGrid", () => {
     });
 
     it("pinned column body cells get sticky positioning", () => {
-      renderWithProviders(<TestDataGrid columnPinning={{ left: ["id"] }} />);
+      renderWithProviders(<TestDataGrid pinnedLeftColumnsCount={1} />);
       act(() => jest.runAllTimers());
 
       const body = screen.getByTestId("table-body");
@@ -387,7 +384,7 @@ describe("DataGrid", () => {
       const columnWidth = 100;
       renderWithProviders(
         <TestDataGrid
-          columnPinning={{ left: ["id"] }}
+          pinnedLeftColumnsCount={1}
           initialColumnSizing={{ ...DEFAULT_COLUMN_SIZING, id: columnWidth }}
         />,
       );
@@ -401,7 +398,7 @@ describe("DataGrid", () => {
     });
 
     it("non-pinned columns are not sticky", () => {
-      renderWithProviders(<TestDataGrid columnPinning={{ left: ["id"] }} />);
+      renderWithProviders(<TestDataGrid pinnedLeftColumnsCount={1} />);
       act(() => jest.runAllTimers());
 
       const body = screen.getByTestId("table-body");

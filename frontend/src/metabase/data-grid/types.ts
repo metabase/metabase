@@ -2,7 +2,6 @@ import type {
   Cell,
   CellContext,
   ColumnDefTemplate,
-  ColumnPinningState,
   ColumnSizingState,
   HeaderContext,
   OnChangeFn,
@@ -177,8 +176,8 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Width of each column by ID */
   columnSizingMap?: ColumnSizingState;
 
-  /** Pinning state of columns */
-  columnPinning?: ColumnPinningState;
+  /** Number of left-pinned data columns (excluding rowId) */
+  pinnedLeftColumnsCount?: number;
 
   /** number of top pinned rows */
   pinnedTopRowsCount?: number;

@@ -345,7 +345,6 @@ export const SelectableRows: Story = () => {
   const tableProps = useDataGridInstance({
     data: sampleData,
     columnsOptions: columns,
-    columnPinning: { left: ["row_selection"] },
     enableRowSelection: true,
     rowSelection,
     onRowSelectionChange: setRowSelection,
