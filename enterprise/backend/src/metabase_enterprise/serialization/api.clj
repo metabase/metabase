@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.api
   (:require
+   [clojure.core.async :as async]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -14,9 +15,11 @@
    [metabase.appearance.core :as appearance]
    [metabase.logger.core :as logger]
    [metabase.models.serialization :as serdes]
+   [metabase.server.streaming-response :as sr]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -156,6 +159,32 @@
      :callback      #(when (.exists dst)
                        (run! io/delete-file (reverse (file-seq dst))))}))
 
+(defn- serialization-api-handler
+  [collection result-atom opts]
+  (let [done-chan (async/chan)]
+    [(u.jvm/in-virtual-thread*
+      (let [start (System/nanoTime)
+            {:keys [archive report error-message] :as pack-result} (serialize&pack opts)]
+        (analytics/track-event! :snowplow/serialization
+                                {:event           :serialization
+                                 :direction       "export"
+                                 :source          "api"
+                                 :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+                                 :count           (count (:seen report))
+                                 :error_count     (count (:errors report))
+                                 :collection      (str/join "," (map str collection))
+                                 :all_collections (and (empty? collection)
+                                                       (not (:no-collections opts)))
+                                 :data_model      (not (:no-data-model opts))
+                                 :settings        (not (:no-settings opts))
+                                 :field_values    (:include-field-values opts)
+                                 :secrets         (:include-database-secrets opts)
+                                 :success         (boolean archive)
+                                 :error_message   error-message})
+        (reset! result-atom pack-result)
+        (async/<!! done-chan nil)))
+     done-chan]))
+
 ;;; HTTP API
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -202,8 +231,7 @@
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
        [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]]
   (api/check-superuser)
-  (let [start              (System/nanoTime)
-        opts               {:targets                  (mapv #(vector "Collection" %)
+  (let [opts               {:targets                  (mapv #(vector "Collection" %)
                                                             collection)
                             :no-collections           (and (empty? collection)
                                                            (not all-collections?))
@@ -214,36 +242,27 @@
                             :dirname                  dirname
                             :continue-on-error        continue-on-error?
                             :full-stacktrace          full-stacktrace?}
-        {:keys [archive
-                log-file
-                report
-                status
-                error-message
-                callback]} (serialize&pack opts)]
-    (analytics/track-event! :snowplow/serialization
-                            {:event           :serialization
-                             :direction       "export"
-                             :source          "api"
-                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                             :count           (count (:seen report))
-                             :error_count     (count (:errors report))
-                             :collection      (str/join "," (map str collection))
-                             :all_collections (and (empty? collection)
-                                                   (not (:no-collections opts)))
-                             :data_model      (not (:no-data-model opts))
-                             :settings        (not (:no-settings opts))
-                             :field_values    (:include-field-values opts)
-                             :secrets         (:include-database-secrets opts)
-                             :success         (boolean archive)
-                             :error_message   error-message})
-    (if archive
-      {:status  200
-       :headers {"Content-Type"        "application/gzip"
-                 "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName ^File archive))}
-       :body    (on-response! archive callback)}
-      {:status  (or status 500)
-       :headers {"Content-Type" "text/plain"}
-       :body    (on-response! log-file callback)})))
+        result (atom nil)
+        [archive-thread finished-chan] (serialization-api-handler collection result opts)]
+    #_(if archive
+        {:status  200
+         :headers {"Content-Type"        "application/gzip"
+                   "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName ^File archive))}
+         :body    (on-response! archive callback)}
+        {:status  (or status 500)
+         :headers {"Content-Type" "text/plain"}
+         :body    (on-response! log-file callback)})
+    (sr/streaming-response {:content-type "application/gzip"} [os cancel-chan]
+      (async/<!!
+       (async/go (case (async/alt! cancel-chan :cancel finished-chan :done)
+                   :cancel (do
+                             (future-cancel archive-thread)
+                             (.close os))
+                   :done (let [{:keys [archive _status log-file callback]} @result]
+                           (if archive
+                             (.write os archive)
+                             (.write os log-file))
+                           (future (callback)))))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
