@@ -119,7 +119,7 @@
   Returns truthy if all missing entity IDs were created successfully, and falsey if there were any errors."
   []
   (log/info "Seeding Entity IDs")
-  (mdb/setup-db! :create-sample-content? false)
+  (mdb/setup-db!)
   (let [{:keys [error-count]} (transduce
                                (map seed-entity-ids-for-model!)
                                (completing (partial merge-with +))
@@ -149,7 +149,7 @@
   Returns truthy if all entity IDs were removed successfully, and falsey if there were any errors."
   []
   (log/info "Dropping Entity IDs")
-  (mdb/setup-db! :create-sample-content? false)
+  (mdb/setup-db!)
   (let [{:keys [error-count]} (transduce
                                (map drop-entity-ids-for-model!)
                                (completing (partial merge-with +))

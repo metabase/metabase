@@ -1967,6 +1967,14 @@
            task
            util}}
 
+  sample-content
+  {:team "UX West"
+   :api  #{metabase.sample-content.core}
+   :uses #{config
+           models
+           settings
+           util}}
+
   sample-data
   {:team "UX West"
    :api  #{metabase.sample-data.core
