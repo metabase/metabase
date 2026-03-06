@@ -11,15 +11,15 @@
 
 (mu/defn parameter-source-card-ids :- [:set ::lib.schema.id/card]
   "Get all card IDs referenced by `:values_source_config` in the given parameters."
-  [parameters :- [:seq :map]]
+  [parameters :- [:sequential :map]]
   (into #{} (keep #(-> % :values_source_config :card_id)) parameters))
 
-(mu/defn walk-parameter-source-card-refs :- [:seq :map]
+(mu/defn walk-parameter-source-card-refs :- [:sequential :map]
   "Walk the parameters and update the refs in `:value_field` and `:label_field` 
   in the `:values_source_config` using the provided function.
 
   `ref-fn` will be called with a ref and a card ID and should return a new ref."
-  [parameters :- [:seq :map]
+  [parameters :- [:sequential :map]
    ref-fn       :- fn?]
   (letfn [(update-legacy-ref [legacy-ref card-id]
             (if-some [ref (try (lib/->pMBQL legacy-ref) (catch Exception _ nil))]
@@ -30,18 +30,19 @@
               (-> parameter
                   (m/update-existing-in [:values_source_config :value_field] #(update-legacy-ref % card-id))
                   (m/update-existing-in [:values_source_config :label_field] #(update-legacy-ref % card-id)))
-              parameter)))))
+              parameter))
+          parameters)))
 
 (mu/defn parameter-mapping-card-ids :- [:set ::lib.schema.id/card]
   "Get all card IDs referenced by the parameter mappings."
-  [parameter-mappings :- [:seq :map]]
+  [parameter-mappings :- [:sequential :map]]
   (into #{} (keep :card_id) parameter-mappings))
 
-(mu/defn walk-parameter-mapping-targets :- [:seq :map]
+(mu/defn walk-parameter-mapping-targets :- [:sequential :map]
   "Walk the parameter mappings and update the targets using the provided function.
 
   `target-fn` will be called with a parameter target and a card ID and should return a new parameter target."
-  [parameter-mappings :- [:seq :map]
+  [parameter-mappings :- [:sequential :map]
    target-fn          :- fn?]
   (mapv (fn [mapping]
           (or (when-some [card-id (:card_id mapping)]

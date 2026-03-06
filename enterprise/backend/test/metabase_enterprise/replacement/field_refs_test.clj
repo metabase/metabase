@@ -98,3 +98,23 @@
                    :columns [[:field 9999 nil]]
                    :values  ["count" [:aggregation 1]]}}}
                 (t2/select-one :model/Card card-id)))))))
+
+(deftest card-upgrade-field-refs!-parameters-test
+  (testing "should upgrade refs in `:values_source_config` of parameters"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+                     :model/Card {card2-id :id} {:dataset_query (-> (lib/native-query mp "SELECT 1")
+                                                                    (lib/with-native-query "SELECT * FROM products WHERE category = {{category}}"))
+                                                 :parameters [{:id   "test-param"
+                                                               :name "category"
+                                                               :type :string/=
+                                                               :target [:dimension [:template-tag "category"]]
+                                                               :values_source_type "card"
+                                                               :values_source_config
+                                                               {:card_id card1-id
+                                                                :value_field [:field (mt/id :products :category) nil]}}]}]
+        (replacement.field-refs/upgrade-field-refs! [:card card2-id])
+        (is (=? {:parameters [{:name "category"
+                               :values_source_config {:card_id card1-id
+                                                      :value_field [:field "CATEGORY" {}]}}]}
+                (t2/select-one :model/Card card2-id)))))))
