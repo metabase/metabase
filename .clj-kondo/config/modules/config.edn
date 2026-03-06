@@ -860,6 +860,7 @@
            lib
            lib-be
            lib-metric
+           models
            parameters
            query-processor
            request

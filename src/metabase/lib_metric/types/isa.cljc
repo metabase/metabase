@@ -40,9 +40,9 @@
                             (assoc :effective-type (:base-type column)))]
       (clojure.core/boolean
        (perf/some (fn [[type-key types]]
-               (and (#{:effective-type :semantic-type} type-key)
-                    (perf/some #(clojure.core/isa? (type-key col) %) types)))
-             type-definition)))))
+                    (and (#{:effective-type :semantic-type} type-key)
+                         (perf/some #(clojure.core/isa? (type-key col) %) types)))
+                  type-definition)))))
 
 (defn temporal?
   "Is `column` of a temporal type?"
