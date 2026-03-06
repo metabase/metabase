@@ -106,6 +106,13 @@
   [client message]
   (:body (slack-post-json client "/chat.postMessage" message)))
 
+(defn post-thread-reply
+  "Send a threaded Slack reply using an existing reply context plus text and optional blocks."
+  [client message-ctx text & {:keys [blocks]}]
+  (post-message client
+                (cond-> (assoc message-ctx :text text)
+                  blocks (assoc :blocks blocks))))
+
 (defn post-ephemeral-message
   "Send a Slack ephemeral message (visible only to the specified user)"
   [client message]

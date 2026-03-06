@@ -466,13 +466,6 @@
                 :negative_button {:text  {:type "plain_text" :text "Bad"}
                                   :value (json/encode {:conversation_id conversation-id :positive false})}}]}])
 
-(defn- post-thread-reply
-  "Post a threaded Slack reply using the provided message context."
-  [client message-ctx text blocks]
-  (slackbot.client/post-message client
-                                (cond-> (assoc message-ctx :text text)
-                                  blocks (assoc :blocks blocks))))
-
 (defn- prepare-response-context
   "Fetch thread/auth context shared by DM and channel delivery paths."
   [client event]
@@ -555,15 +548,14 @@
                           channel thread-ts stream_ts (count final-blocks) (pr-str (mapv :type final-blocks)))
               (when-not (:ok stop-result)
                 (log/warnf "[slackbot] stop-stream fallback to post-message: %s" (:error stop-result))
-                (let [fallback-result (post-thread-reply client
-                                                         message-ctx
-                                                         "I generated a response, but Slack could not render it. Please try again."
-                                                         nil)]
+                (let [fallback-result (slackbot.client/post-thread-reply client
+                                                                         message-ctx
+                                                                         "I generated a response, but Slack could not render it. Please try again.")]
                   (when-not (:ok fallback-result)
                     (log/errorf "[slackbot] fallback post-message failed after stop-stream error: %s" (:error fallback-result))))))
             (doseq [e errors]
               (post-viz-error! client channel thread-ts e)))
-          (post-thread-reply client message-ctx "I wasn't able to generate a response. Please try again." nil)))
+          (slackbot.client/post-thread-reply client message-ctx "I wasn't able to generate a response. Please try again.")))
       (catch Exception e
         (cancel-prefetched-viz! prefetched-viz)
         (log/error e "[slackbot] Error in streaming response")
@@ -575,15 +567,14 @@
             (let [stop-result (slackbot.client/stop-stream client channel stream_ts)]
               (when-not (:ok stop-result)
                 (log/warnf "[slackbot] stop-stream during error cleanup failed: %s" (:error stop-result))
-                (let [fallback-result (post-thread-reply client
-                                                         message-ctx
-                                                         "Something went wrong. Please try again."
-                                                         nil)]
+                (let [fallback-result (slackbot.client/post-thread-reply client
+                                                                         message-ctx
+                                                                         "Something went wrong. Please try again.")]
                   (when-not (:ok fallback-result)
                     (log/errorf "[slackbot] cleanup fallback post-message failed: %s" (:error fallback-result))))))
             (catch Exception stop-e
               (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
-          (post-thread-reply client message-ctx "Something went wrong. Please try again." nil))))))
+          (slackbot.client/post-thread-reply client message-ctx "Something went wrong. Please try again."))))))
 
 (defn send-response
   "Send a metabot response using Slack delivery suited to the conversation type.
