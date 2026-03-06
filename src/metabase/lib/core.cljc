@@ -633,6 +633,134 @@
  [lib.breakout
   breakouts-metadata])
 
+;;; ## Filters
+;;; Filters are boolean expressions based on a row of a query. A stage of a query only returns (or aggregates) those
+;;; rows for which the filters are `true`. They correspond to a SQL `WHERE` clause, of course.
+;;;
+;;; MBQL has a list of filter expressions, and they are implicitly `AND`ed together. The order of filters does not
+;;; matter.
+;;;
+;;; Note that filters are *pre-aggregation* within their stage. If you want to filter based on the results of an
+;;; aggregation, such a showing only those months with 1000+ orders, you need to [[append-stage]] and add the filter
+;;; to the stage *after* the aggregations. (SQL has the `HAVING` clause for this, but there's no equivalent in MBQL.)
+
+(mu/defn filter :- ::lib.schema/query
+  "Adds the given `boolean-expression` to the target stage of `a-query`.
+
+  If `boolean-expression` is an exact duplicate of an existing filter, this silently does nothing.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query boolean-expression] (filter a-query -1 boolean-expression))
+  ([a-query            :- ::lib.schema/query
+    stage-number       :- :int
+    boolean-expression :- some?]
+   (lib.filter/filter a-query stage-number boolean-expression)))
+
+(mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
+  "Returns the list of filters on the target stage of `a-query`, or nil if there are none.
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (filters a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.filter/filters a-query stage-number)))
+
+(mu/defn filterable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Returns column metadata for all the columns that could be used for filtering on the target stage of `a-query`.
+
+  The columns which can be used for filters are, in this order:
+
+  1. Columns from the *source* - a table, a card or the previous stage.
+  2. *Expressions* on this stage of the query.
+  3. Columns from explicit joins on this stage.
+  4. Columns which can be *implicitly joined* via any FKs in the above columns.
+
+  Supports an optional third argument `options`, which can have these options:
+
+  - `:include-sensitive-fields? true` will return fields with `:visibility-type :sensitive`. (Default false.)"
+  ([a-query] (filterable-columns a-query -1))
+  ([a-query stage-number] (filterable-columns a-query stage-number nil))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int
+    options      :- [:maybe [:map [:include-sensitive-fields? :boolean]]]]
+   (lib.filter/filterable-columns a-query stage-number options)))
+
+;;; ### Building filters in code
+;;; These functions build filter clauses in code. They're mainly used in tests, but they are a legitimate public API
+;;; to use from production code too.
+;;;
+;;; **Code Health:** Healthy. However, UIs should generally be using [[filter-parts]] and [[string-filter-clause]]
+;;; instead of calling these.
+(shared.ns/import-fns
+ [lib.filter
+  and
+  or
+  not
+  = !=
+  < <=
+  > >=
+  in not-in
+  between
+  inside
+  is-null not-null
+  is-empty not-empty
+  starts-with ends-with
+  contains does-not-contain
+  relative-time-interval
+  time-interval
+  segment]) ; TODO: Move segment to sit with the `lib.segment` functions.
+
+;;; # Working with Expressions as an AST
+;;; Several parts of the FE want to work with clauses in a "white box" way, so it can render the details of the
+;;; expression in a structured way, or convert the AST of the expression parser into an expression, aggregation or
+;;; filter.
+;;;
+;;; That requirement is **directly opposed to one of Lib's primary objectives:** to encapsulate the details of MBQL
+;;; queries and clauses.
+;;;
+;;; The solution to the dilemma is for Lib to publish a separate, non-MBQL syntax for expression ASTs, and to convert
+;;; between that and MBQL clauses. That is the purpose of the [[expression-parts]] and [[filter-parts]] systems.
+;;;
+;;; [[expression-parts]] turns an MBQL expression (or aggregation) clause into an AST built out of nested maps. The
+;;; only MBQL inside the AST is that MBQL *refs* are treated as opaque leaf nodes. See [[lib.fe-util/ExpressionParts]]
+;;; for details on the schema.
+;;;
+;;; [[expression-clause]] is the reverse direction: turning an `ExpressionParts` AST into an MBQL clause suitable to
+;;; pass to [[expression]] or [[aggregate]].
+
+;;; ## Filter Parts
+;;; In a similar vein to [[expression-parts]], [[filter-parts]] breaks down a filter expression to make it consumable
+;;; without exposing MBQL internals. Filters are simpler than expressions, since they are never nested and have at most
+;;; one column. See [[lib.filter/FilterParts]] for the output format.
+
+(mu/defn filter-parts :- ::lib.filter/filter-parts
+  "Exports an opaque MBQL filter clause as a transparent `::lib.filter/filter-parts` map.
+
+  `a-query` and the target stage are required for context, since the output contains complete column metadata.
+
+  See [[describe-filter-operator]] to get a human-readable, translated description of the filter operator keywords.
+
+  **Code Health:** Healthy. This is deliberately public, including the output format."
+  ([a-query a-filter-clause] (filter-parts a-query -1 a-filter-clause))
+  ([a-query         :- ::lib.schema/query
+    stage-number    :- :int
+    a-filter-clause :- ::lib.schema.expression/boolean]
+   (lib.filter/filter-parts a-query stage-number a-filter-clause)))
+
+(mu/defn describe-filter-operator :- :string
+  "Returns a human-readable, translated display name for a filter operation based on the `operator` keyword.
+  (For example, the `:operator` field of a [[filter-parts]] map.)
+
+  `variant` is optional, and controls how a few operators are displayed. Valid variants:
+
+  - `:default` (the default, naturally) uses \"Is (not)\", \"Greater than\" and \"Less than\"
+  - `:number` uses \"Equal to\" and \"Not equal to\"
+  - `:temporal` uses \"After\" and \"Before\" for `:>` and `:<`"
+  ([operator] (describe-filter-operator operator :default))
+  ([operator :- :keyword ; TODO: (bshepherdson 2026-03-06) This could be more specific, if the list were in a schema.
+    variant  :- [:enum :default :number :temporal]]
+   (lib.filter/describe-filter-operator operator variant)))
+
 ;;; # IGNORE ME!
 ;;; <img src="https://i.redd.it/1b9z1mv805e61.jpg" />
 ;;; *These are the leftovers which are not properly wrapped in user documentation yet.*
@@ -713,29 +841,7 @@
   with-fields]
  [metabase.lib.field.util
   update-keys-for-col-from-previous-stage]
- [lib.filter
-  add-filter-to-stage
-  filter
-  filters
-  filterable-columns
-  filter-parts
-  describe-filter-operator
-  and
-  or
-  not
-  = !=
-  < <=
-  > >=
-  in not-in
-  between
-  inside
-  is-null not-null
-  is-empty not-empty
-  starts-with ends-with
-  contains does-not-contain
-  relative-time-interval
-  time-interval
-  segment]
+
  [metabase.lib.filter.desugar
   desugar-filter-clause]
  [metabase.lib.filter.negate
