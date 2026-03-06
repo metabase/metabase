@@ -188,7 +188,7 @@
                 Pass ::no-user to simulate an unlinked Slack user (returns nil).
 
    Calls body-fn with a map containing tracking atoms:
-   {:post-calls, :delete-calls, :image-calls, :generate-card-output-calls,
+   {:post-calls, :delete-calls, :update-calls, :image-calls, :generate-card-output-calls,
     :generate-adhoc-output-calls, :ephemeral-calls, :ai-request-calls,
     :fake-png-bytes, :stream-calls, :append-text-calls, :stop-stream-calls}"
   [{:keys [ai-text data-parts user-id]
@@ -197,6 +197,7 @@
    body-fn]
   (let [post-calls                  (atom [])
         delete-calls                (atom [])
+        update-calls                (atom [])
         image-calls                 (atom [])
         generate-card-output-calls  (atom [])
         generate-adhoc-output-calls (atom [])
@@ -240,6 +241,9 @@
        slackbot.client/delete-message (fn [_ msg]
                                         (swap! delete-calls conj msg)
                                         {:ok true})
+       slackbot.client/update-message (fn [_ msg]
+                                        (swap! update-calls conj msg)
+                                        {:ok true})
        channel.slack/upload-file! (fn [image-bytes filename]
                                     (let [file-id (format "FIMG-%d" (swap! file-counter inc))]
                                       (swap! image-calls conj {:image-bytes image-bytes
@@ -276,6 +280,7 @@
                                                 {:type :table :content [{:type "table" :rows [] :column_settings []}]}))]
       (body-fn {:post-calls                  post-calls
                 :delete-calls                delete-calls
+                :update-calls                update-calls
                 :image-calls                 image-calls
                 :generate-card-output-calls  generate-card-output-calls
                 :generate-adhoc-output-calls generate-adhoc-output-calls
@@ -351,28 +356,30 @@
                 (is (= 1 (count @stop-stream-calls)))))))))))
 
 (deftest app-mention-triggers-response-test
-  (testing "POST /events with app_mention triggers AI response via streaming"
+  (testing "POST /events with app_mention uses visible channel reply (not streaming)"
     (with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
             event-body   base-mention-event]
         (with-slackbot-mocks
           {:ai-text mock-ai-text}
-          (fn [{:keys [stream-calls append-text-calls stop-stream-calls]}]
+          (fn [{:keys [post-calls stream-calls stop-stream-calls update-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              ;; Wait for streaming to complete
-              (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
-                       :done? true?
+              (u/poll {:thunk  #(>= (count @update-calls) 1)
+                       :done?  true?
                        :timeout-ms 5000})
-              (testing "stream was started"
-                (is (= 1 (count @stream-calls)))
-                (is (= "C123" (:channel (first @stream-calls)))))
-              (testing "AI response was streamed"
-                (is (some #(= mock-ai-text %) @append-text-calls)))
-              (testing "stream was stopped"
-                (is (= 1 (count @stop-stream-calls)))))))))))
+              (testing "a visible threaded reply is posted immediately with thinking placeholder"
+                (is (= 1 (count @post-calls)))
+                (is (= "_Thinking..._" (:text (first @post-calls))))
+                (is (= "1234567890.000001" (:thread_ts (first @post-calls)))))
+              (testing "the visible reply is updated with the answer"
+                (is (= 1 (count @update-calls)))
+                (is (some #(str/includes? (:text %) mock-ai-text) @update-calls)))
+              (testing "streaming APIs are not used for app mentions"
+                (is (empty? @stream-calls))
+                (is (empty? @stop-stream-calls))))))))))
 
 (deftest stream-start-failure-test
   (testing "When start-stream fails, falls back to a regular message"
@@ -437,12 +444,14 @@
         (testing desc
           (with-slackbot-mocks
             {:ai-text "response"}
-            (fn [{:keys [ai-request-calls]}]
+            (fn [{:keys [ai-request-calls stop-stream-calls update-calls]}]
               (mt/client :post 200 "ee/metabot-v3/slack/events"
                          (slack-request-options event-body)
                          event-body)
-              (u/poll {:thunk #(= 1 (count @ai-request-calls))
-                       :done? true?
+              ;; Wait for response to fully complete (streaming: stop-stream; channel: update-message)
+              (u/poll {:thunk      #(or (>= (count @stop-stream-calls) 1)
+                                        (>= (count @update-calls) 1))
+                       :done?      true?
                        :timeout-ms 5000})
               (is (= 1 (count @ai-request-calls)))
               (let [opts (first @ai-request-calls)]
@@ -450,8 +459,14 @@
                 (is (map? (:context opts)))
                 (is (= (get-in event-body [:event :channel])
                        (get-in opts [:context :slack_channel_id])))
-                (is (= (get-in event-body [:event :text])
-                       (get-in opts [:message :content])))
+                ;; DMs send the raw prompt; channel mentions append a response-style suffix
+                (if (= "im" (get-in event-body [:event :channel_type]))
+                  (is (= (get-in event-body [:event :text])
+                         (get-in opts [:message :content])))
+                  (let [content (get-in opts [:message :content])]
+                    (is (str/includes? content "Hello!") "user message is included in prompt")
+                    (is (str/includes? content "Do not narrate the steps you took")
+                        "channel response-style suffix is appended")))
                 (is (vector? (:history opts)))
                 (is (fn? (:on-line opts)))))))))))
 
@@ -475,12 +490,14 @@
                 ;; Filter by expected slack_msg_ids to avoid picking up messages from other tests
                 (let [user-msg (t2/select-one :model/MetabotMessage :slack_msg_id event-ts)
                       bot-msg  (t2/select-one :model/MetabotMessage :slack_msg_id "stream123")]
-                  (testing "user message has event ts"
+                  (testing "user message has event ts and channel_id"
                     (is (some? user-msg))
-                    (is (= event-ts (:slack_msg_id user-msg))))
-                  (testing "bot message has stream ts"
+                    (is (= event-ts (:slack_msg_id user-msg)))
+                    (is (= "C123" (:channel_id user-msg))))
+                  (testing "bot message has stream ts and channel_id"
                     (is (some? bot-msg))
-                    (is (= "stream123" (:slack_msg_id bot-msg)))))))))))))
+                    (is (= "stream123" (:slack_msg_id bot-msg)))
+                    (is (= "C123" (:channel_id bot-msg)))))))))))))
 
 (deftest ^:parallel slack-thread-conversation-id-test
   (testing "Same thread produces same conversation ID"
