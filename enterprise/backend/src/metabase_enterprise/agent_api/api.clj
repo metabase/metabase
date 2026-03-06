@@ -505,6 +505,11 @@
     (let [auth-header  (get headers "authorization")
           bearer-token (extract-bearer-token auth-header)]
       (cond
+        ;; No authorization header and no session
+        (and (nil? auth-header) (nil? metabase-user-id))
+        (respond (error-response "missing_authorization"
+                                 "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."))
+
         ;; Bearer JWT takes priority — its scope claims must be respected even when
         ;; session middleware has already set metabase-user-id on the request.
         bearer-token
@@ -518,11 +523,6 @@
         ;; Already authenticated via X-Metabase-Session (standard middleware handled it)
         metabase-user-id
         (handler (assoc request :token-scopes #{::scope/unrestricted}) respond raise)
-
-        ;; No authorization header and no session
-        (nil? auth-header)
-        (respond (error-response "missing_authorization"
-                                 "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."))
 
         ;; Authorization header present but not Bearer format
         :else
