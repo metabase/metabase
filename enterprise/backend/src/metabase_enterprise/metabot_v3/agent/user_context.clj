@@ -176,6 +176,7 @@
             (te/field "Transform ID" (:id item))
             (te/field "Transform name" (:name item))
             (te/field "Source type" (:source_type item))
+            (te/field "Transform error" (te/code (:error item)))
             (te/field "Tables used" (some->> (:used_tables item)
                                              (map format-entity)
                                              te/lines))))

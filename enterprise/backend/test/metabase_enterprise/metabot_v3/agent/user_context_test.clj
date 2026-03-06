@@ -131,6 +131,17 @@
       (is (re-find #"Daily Revenue" result))
       (is (re-find #"sql" result))))
 
+  (testing "formats transform context with error"
+    (let [context {:user_is_viewing [{:type "transform"
+                                      :id 123
+                                      :name "Broken Revenue"
+                                      :source_type "native"
+                                      :error "ERROR: relation \"missing_table\" does not exist"}]}
+          result (user-context/format-viewing-context context)]
+      (is (some? result))
+      (is (re-find #"Transform error" result))
+      (is (re-find #"ERROR: relation \"missing_table\" does not exist" result))))
+
   (testing "formats code editor context"
     (let [context {:user_is_viewing [{:type "code_editor"
                                       :buffers [{:id "buffer1"
