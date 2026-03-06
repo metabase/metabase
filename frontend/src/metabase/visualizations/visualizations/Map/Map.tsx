@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import { Component } from "react";
+import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -18,6 +17,12 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type {
+  ComputedVisualizationSettings,
+  VisualizationDefinition,
+  VisualizationProps,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
@@ -28,6 +33,11 @@ import {
   isNumeric,
   isState,
 } from "metabase-lib/v1/types/utils/isa";
+import type {
+  DatasetData,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   ChoroplethMap,
@@ -38,29 +48,85 @@ import { PinMap } from "../../components/PinMap";
 
 import { CustomMapFooter } from "./CustomMapFooter";
 
-const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
+const PIN_MAP_VALUES = ["pin", "heat", "grid"] as const;
+type PIN_MAP_VALUES_TYPE = (typeof PIN_MAP_VALUES)[number];
+const PIN_MAP_TYPES = new Set<PIN_MAP_VALUES_TYPE | "region">([
+  ...PIN_MAP_VALUES,
+  "region",
+]);
 
-export class Map extends Component {
-  static getUiName = () => t`Map`;
-  static identifier = "map";
-  static iconName = "pinmap";
+function isSensible({ cols, rows }: DatasetData) {
+  return (
+    PinMap.isSensible({ cols, rows }) ||
+    // @ts-expect-error - convert ChoplethMap to ts
+    ChoroplethMap.isSensible({ cols, rows }) ||
+    // @ts-expect-error - convert LeafletGridHeatMap to ts
+    LeafletGridHeatMap.isSensible({ cols, rows })
+  );
+}
 
-  static aliases = ["state", "country", "pin_map"];
+function checkRenderable(
+  _series: Series,
+  settings: ComputedVisualizationSettings,
+) {
+  const type: PIN_MAP_VALUES_TYPE | "region" = settings["map.type"];
 
-  static minSize = getMinSize("map");
-  static defaultSize = getDefaultSize("map");
+  if (PIN_MAP_TYPES.has(type)) {
+    if (!settings["map.longitude_column"] || !settings["map.latitude_column"]) {
+      throw new ChartSettingsError(
+        t`Please select longitude and latitude columns in the chart settings.`,
+        { section: t`Data` },
+      );
+    }
+  } else if (type === "region") {
+    if (!settings["map.region"]) {
+      throw new ChartSettingsError(t`Please select a region map.`, {
+        section: t`Data`,
+      });
+    }
+    if (!settings["map.dimension"] || !settings["map.metric"]) {
+      throw new ChartSettingsError(
+        t`Please select region and metric columns in the chart settings.`,
+        { section: t`Data` },
+      );
+    }
+  }
+}
 
-  static isSensible({ cols, rows }) {
-    return (
-      PinMap.isSensible({ cols, rows }) ||
-      ChoroplethMap.isSensible({ cols, rows }) ||
-      LeafletGridHeatMap.isSensible({ cols, rows })
-    );
+function MapComponent(props: VisualizationProps) {
+  const { settings } = props;
+  const type: PIN_MAP_VALUES_TYPE | "region" = settings["map.type"];
+
+  if (PIN_MAP_TYPES.has(type)) {
+    return <PinMap {...props} />;
   }
 
-  static hasEmptyState = true;
+  if (type === "region") {
+    // @ts-expect-error - convert ChoroplethMap to ts
+    return <ChoroplethMap {...props} />;
+  }
 
-  static settings = {
+  return null;
+}
+
+function arePropsEqual(prev: VisualizationProps, next: VisualizationProps) {
+  const sameSize = prev.width === next.width && prev.height === next.height;
+  const sameSeries = isSameSeries(prev.series, next.series);
+  const sameIsEditing = prev.isEditing === next.isEditing;
+
+  return sameSize && sameSeries && sameIsEditing;
+}
+
+const MAP_VIZ_DEFINITION: VisualizationDefinition = {
+  getUiName: () => t`Map`,
+  identifier: "map",
+  iconName: "pinmap" as const,
+  aliases: ["state", "country", "pin_map"] as const,
+  minSize: getMinSize("map"),
+  defaultSize: getDefaultSize("map"),
+  isSensible,
+  hasEmptyState: true,
+  settings: {
     ...columnSettings({ hidden: true }),
     "map.type": {
       get title() {
@@ -84,8 +150,12 @@ export class Map extends Component {
           { name: "Grid map", value: "grid" },
         ],
       },
-      getDefault: ([{ card, data }], settings) => {
-        switch (card.display) {
+      getDefault: (
+        [{ card, data }]: Series,
+        settings: VisualizationSettings,
+      ) => {
+        const display = card.display as string;
+        switch (display) {
           case "state":
           case "country":
             return "region";
@@ -99,6 +169,7 @@ export class Map extends Component {
               const longitudeColumn = _.findWhere(data.cols, {
                 name: settings["map.longitude_column"],
               });
+
               if (
                 latitudeColumn &&
                 longitudeColumn &&
@@ -142,7 +213,7 @@ export class Map extends Component {
           { name: "Grid", value: "grid" },
         ],
       },
-      getDefault: ([{ data }], vizSettings) =>
+      getDefault: ([{ data }]: Series, vizSettings: VisualizationSettings) =>
         vizSettings["map.type"] === "heat"
           ? "heat"
           : vizSettings["map.type"] === "grid"
@@ -150,8 +221,11 @@ export class Map extends Component {
             : data.rows.length >= 1000
               ? "tiles"
               : "markers",
-      getHidden: (series, vizSettings) =>
-        !PIN_MAP_TYPES.has(vizSettings["map.type"]),
+      getHidden: (_series: Series, vizSettings: VisualizationSettings) => {
+        const type: PIN_MAP_VALUES_TYPE = vizSettings["map.type"];
+
+        return !PIN_MAP_TYPES.has(type);
+      },
     },
     ...fieldSetting("map.latitude_column", {
       get title() {
@@ -159,8 +233,10 @@ export class Map extends Component {
       },
       fieldFilter: isNumeric,
       getDefault: ([{ data }]) => (_.find(data.cols, isLatitude) || {}).name,
-      getHidden: (series, vizSettings) =>
-        !PIN_MAP_TYPES.has(vizSettings["map.type"]),
+      getHidden: (_series, vizSettings) => {
+        const type: PIN_MAP_VALUES_TYPE = vizSettings["map.type"];
+        return !PIN_MAP_TYPES.has(type);
+      },
     }),
     ...fieldSetting("map.longitude_column", {
       get title() {
@@ -168,43 +244,55 @@ export class Map extends Component {
       },
       fieldFilter: isNumeric,
       getDefault: ([{ data }]) => (_.find(data.cols, isLongitude) || {}).name,
-      getHidden: (series, vizSettings) =>
-        !PIN_MAP_TYPES.has(vizSettings["map.type"]),
+      getHidden: (_series, vizSettings) => {
+        const type: PIN_MAP_VALUES_TYPE = vizSettings["map.type"];
+        return !PIN_MAP_TYPES.has(type);
+      },
     }),
     ...fieldSetting("map.metric_column", {
       get title() {
         return t`Metric field`;
       },
       fieldFilter: isMetric,
-      getHidden: (series, vizSettings) =>
-        !PIN_MAP_TYPES.has(vizSettings["map.type"]) ||
-        (vizSettings["map.pin_type"] !== "heat" &&
-          vizSettings["map.pin_type"] !== "grid"),
+      getHidden: (_series, vizSettings) => {
+        const type: PIN_MAP_VALUES_TYPE = vizSettings["map.type"];
+
+        return (
+          !PIN_MAP_TYPES.has(type) ||
+          (vizSettings["map.pin_type"] !== "heat" &&
+            vizSettings["map.pin_type"] !== "grid")
+        );
+      },
     }),
     "map.region": {
       get title() {
         return t`Region map`;
       },
       widget: "select",
-      getDefault: ([{ card, data }]) => {
-        if (card.display === "state" || _.any(data.cols, isState)) {
+      getDefault: ([{ card, data }]: Series) => {
+        const display = card.display as string;
+        if (display === "state" || _.any(data.cols, isState)) {
           return "us_states";
-        } else if (card.display === "country" || _.any(data.cols, isCountry)) {
+        } else if (display === "country" || _.any(data.cols, isCountry)) {
           return "world_countries";
         }
         return null;
       },
       getProps: () => ({
-        options: _.chain(MetabaseSettings.get("custom-geojson", {}))
+        options: _.chain(MetabaseSettings.get("custom-geojson") ?? {})
           .pairs()
-          .map(([key, value]) => ({ name: value.name || "", value: key }))
+          .map(([key, value]) => ({
+            name: (value as { name?: string }).name || "",
+            value: key,
+          }))
           .sortBy((x) => x.name.toLowerCase())
           .value(),
         placeholder: t`Select a region`,
         footer: <CustomMapFooter />,
         hiddenIcons: true,
       }),
-      getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
+      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
+        vizSettings["map.type"] !== "region",
     },
     ...metricSetting("map.metric", {
       get title() {
@@ -215,7 +303,7 @@ export class Map extends Component {
           data: { cols },
         },
       ]) => cols.find(isMetric)?.name,
-      getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
+      getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     ...dimensionSetting("map.dimension", {
       get title() {
@@ -232,7 +320,7 @@ export class Map extends Component {
         }
         return cols.find(isDimension)?.name;
       },
-      getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
+      getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     "map.colors": {
       get title() {
@@ -250,7 +338,8 @@ export class Map extends Component {
         isQuantile: true,
       },
       default: getColorplethColorScale(getAccentColors()[0]),
-      getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
+      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
+        vizSettings["map.type"] !== "region",
     },
     "map.zoom": {},
     "map.center_latitude": {},
@@ -261,7 +350,8 @@ export class Map extends Component {
       },
       widget: "number",
       default: 30,
-      getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
+      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
+        vizSettings["map.type"] !== "heat",
     },
     "map.heat.blur": {
       get title() {
@@ -269,7 +359,8 @@ export class Map extends Component {
       },
       widget: "number",
       default: 60,
-      getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
+      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
+        vizSettings["map.type"] !== "heat",
     },
     "map.heat.min-opacity": {
       get title() {
@@ -277,7 +368,8 @@ export class Map extends Component {
       },
       widget: "number",
       default: 0,
-      getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
+      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
+        vizSettings["map.type"] !== "heat",
     },
     "map.heat.max-zoom": {
       get title() {
@@ -285,52 +377,14 @@ export class Map extends Component {
       },
       widget: "number",
       default: 1,
-      getHidden: (series, vizSettings) => vizSettings["map.type"] !== "heat",
+      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
+        vizSettings["map.type"] !== "heat",
     },
-  };
+  } as VisualizationSettingsDefinitions,
+  checkRenderable,
+};
 
-  static checkRenderable([{ data }], settings) {
-    if (PIN_MAP_TYPES.has(settings["map.type"])) {
-      if (
-        !settings["map.longitude_column"] ||
-        !settings["map.latitude_column"]
-      ) {
-        throw new ChartSettingsError(
-          t`Please select longitude and latitude columns in the chart settings.`,
-          { section: t`Data` },
-        );
-      }
-    } else if (settings["map.type"] === "region") {
-      if (!settings["map.region"]) {
-        throw new ChartSettingsError(t`Please select a region map.`, {
-          section: t`Data`,
-        });
-      }
-      if (!settings["map.dimension"] || !settings["map.metric"]) {
-        throw new ChartSettingsError(
-          t`Please select region and metric columns in the chart settings.`,
-          { section: t`Data` },
-        );
-      }
-    }
-  }
-
-  shouldComponentUpdate(nextProps, nextState) {
-    const sameSize =
-      this.props.width === nextProps.width &&
-      this.props.height === nextProps.height;
-    const sameSeries = isSameSeries(this.props.series, nextProps.series);
-    const sameIsEditing = this.props.isEditing === nextProps.isEditing;
-    return !(sameSize && sameSeries && sameIsEditing);
-  }
-
-  render() {
-    const { settings } = this.props;
-    const type = settings["map.type"];
-    if (PIN_MAP_TYPES.has(type)) {
-      return <PinMap {...this.props} />;
-    } else if (type === "region") {
-      return <ChoroplethMap {...this.props} />;
-    }
-  }
-}
+export const Map = Object.assign(
+  React.memo(MapComponent, arePropsEqual),
+  MAP_VIZ_DEFINITION,
+);
