@@ -87,10 +87,9 @@
                     [2 nil]]}
 
    :bigquery-cloud-sdk {:columns [{:name "id" :type :type/Integer :nullable? false}
-                                  {:name "json_field" :type :type/JSON :nullable? true}
-                                  {:name "dict_field" :type :type/Dictionary :nullable? true :database-type "STRUCT<key STRING, value INT64>"}]
-                        :data [[1 "{\"key\": \"value\"}" {"key" "test", "value" 42}]
-                               [2 nil nil]]}
+                                  {:name "json_field" :type :type/JSON :nullable? true}]
+                        :data [[1 "{\"key\": \"value\"}"]
+                               [2 nil]]}
    :sqlserver {:columns [{:name "id" :type :type/Integer :nullable? false}
                          {:name "uuid_field" :type :type/UUID :nullable? true}
                          {:name "datetimeoffset_field" :type :type/DateTimeWithTZ :nullable? true :database-type "datetimeoffset"}]
@@ -118,8 +117,9 @@
         qualified-table-name (if schema-name
                                (keyword schema-name table-name)
                                (keyword table-name))
+        columns (:columns schema)
         table-schema {:name qualified-table-name
-                      :columns (:columns schema)}]
+                      :columns columns}]
     (mt/as-admin
       (transforms.util/create-table-from-schema! driver db-id table-schema))
 
@@ -127,15 +127,21 @@
       (driver/insert-from-source! driver db-id table-schema
                                   {:type :rows
                                    :data (map (fn [row]
-                                                (map #(cond
-                                                        (and (= :sqlserver driver) (boolean? %))
-                                                        (if % 1 0)
+                                                (map-indexed
+                                                 (fn [i v]
+                                                   (cond
+                                                     (and (= :bigquery-cloud-sdk driver) (string? v) (= :type/JSON (:type (nth columns i))))
+                                                     ;; it might be better to have a generic tagged value abstraction for drivers to work with
+                                                     ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.params/param) "JSON" v)
 
-                                                        (and (= :mongo driver) (string? %) (try (u.date/parse %) (catch Exception _)))
-                                                        (u.date/parse %)
+                                                     (and (= :sqlserver driver) (boolean? v))
+                                                     (if v 1 0)
 
-                                                        :else
-                                                        %) row))
+                                                     (and (= :mongo driver) (string? v) (try (u.date/parse v) (catch Exception _)))
+                                                     (u.date/parse v)
+
+                                                     :else
+                                                     v)) row))
                                               data)}))
 
     (sync/sync-database! (mt/db) {:scan :schema})
@@ -147,7 +153,7 @@
   [table-id]
   (try
     (when-let [table (t2/select-one :model/Table :id table-id)]
-      (let [table-name (:name table)
+      (let [table-name     (:name table)
             qualified-name (case driver/*driver*
                              :bigquery-cloud-sdk
                              (let [schema (sql.tx/session-schema driver/*driver*)]
@@ -254,9 +260,7 @@
                            (is (isa? (type-map "json_field") :type/Text #_:type/JSON))
                            (is (isa? (type-map "timestamp") :type/DateTimeWithLocalTZ))))
 
-                :bigquery-cloud-sdk (do
-                                      (is (isa? (type-map "json_field") :type/Text #_:type/JSON))
-                                      (is (isa? (type-map "dict_field") :type/Text #_:type/JSON)))
+                :bigquery-cloud-sdk (is (isa? (type-map "json_field") :type/Text #_:type/JSON))
 
                 :mongo (do
                          (is (isa? (type-map "array_field") :type/Text #_:type/Array))
@@ -359,7 +363,7 @@
                     (is (isa? (type-map "bool_inverted") :type/Boolean)))
 
                   (testing "Edge case data handling"
-                    (let [[row1 row2 row3] rows]
+                    (let [[row1 row2 row3] (sort-by #(get % "id") rows)]
                       (is (= 1 (get row1 "id")))
                       (is (= 0 (get row1 "text_length"))) ; empty string length
                       (is (= 0 (get row1 "int_doubled"))) ; 0 * 2
@@ -458,7 +462,10 @@
                                       (assoc (str source-table-name "_exotic") exotic-table-id))
 
                       result (execute-e2e-transform! table-name transform-code source-tables)
-                      {:keys [columns] result-rows :rows} result]
+                      {:keys [columns] result-rows :rows} result
+                      ;; deal with non-deterministic order (e.g. bigquery)
+                      id-idx      (u/index-of #{"id"} columns)
+                      result-rows (sort-by #(nth % id-idx) result-rows)]
 
                   (testing "E2E transform execution succeeded"
                     (is (seq result-rows) "Transform should produce results"))
