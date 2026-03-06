@@ -86,24 +86,24 @@
    For DMs, always threads the reply. For channel @mentions, only threads
    if the original message was in a thread."
   [client event]
-  (slackbot.client/post-ephemeral-message
-   client
-   (merge (slackbot.events/event->reply-context event)
-          {:user (:user event)
-           ;; DMs: always thread. Channels: only thread if already in a thread.
-           :thread_ts (if (slackbot.events/dm? event)
-                        (or (:thread_ts event) (:ts event))
-                        (:thread_ts event))
-           :text "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf."
-           :blocks [{:type "section"
-                     :text {:type "mrkdwn"
-                            :text "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf."}}
-                    {:type "actions"
-                     :elements [{:type "button"
-                                 :text {:type "plain_text"
-                                        :text ":link: Connect to Metabase"
-                                        :emoji true}
-                                 :url (slack-user-authorize-link)}]}]})))
+  (let [user-mention (slackbot.events/user-mention (:user event))
+        msg-prefix (if (slackbot.events/dm? event) "" (str user-mention " "))
+        msg (str msg-prefix "Connect your Slack account to Metabase. Once linked, I can use your permissions to query data on your behalf.")]
+    (slackbot.client/post-message
+     client
+     (merge (slackbot.events/event->reply-context event)
+            { ;; DMs: always thread. Channels: only thread if already in a thread.
+             :thread_ts (or (:thread_ts event) (:ts event))
+             :text msg
+             :blocks [{:type "section"
+                       :text {:type "mrkdwn"
+                              :text msg}}
+                      {:type "actions"
+                       :elements [{:type "button"
+                                   :text {:type "plain_text"
+                                          :text ":link: Connect to Metabase"
+                                          :emoji true}
+                                   :url (slack-user-authorize-link)}]}]}))))
 
 (defn- require-authenticated-slack-user!
   "Returns Metabase user-id if authenticated, nil otherwise.
@@ -206,6 +206,7 @@
         ((some-fn
           slackbot.events/bot-message? ;; ignore the bot's own messages
           slackbot.events/edited-message? ;; ignore message edits
+          slackbot.events/message-deleted? ;; ignore message deletion notifications
           slackbot.events/app-mention-with-files?) ;; processed via the separate file_share event
          event)
         (ignore-event event)
