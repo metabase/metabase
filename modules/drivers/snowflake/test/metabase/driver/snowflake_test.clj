@@ -518,7 +518,7 @@
                                                              (original-query db sql-params (or opts {})))))]
             (is (can-connect? (:details (mt/db))))))
         (is (thrown?
-             net.snowflake.client.jdbc.SnowflakeSQLException
+             net.snowflake.client.api.exception.SnowflakeSQLException
              (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
             "can-connect? should throw for Snowflake databases that don't exist (#9511)")
         (is (can-connect? (-> (:details (mt/db))

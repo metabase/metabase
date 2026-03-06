@@ -42,7 +42,8 @@
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util Properties)
-   (net.snowflake.client.jdbc SnowflakeConnectString SnowflakeSQLException)))
+   (net.snowflake.client.api.exception SnowflakeSQLException)
+   (net.snowflake.client.internal.jdbc SnowflakeConnectString)))
 
 (set! *warn-on-reflection* true)
 
@@ -213,7 +214,7 @@
   (let [upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
-    (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
+    (-> (merge {:classname                                  "net.snowflake.client.api.driver.SnowflakeDriver"
                 :subprotocol                                "snowflake"
                 :client_metadata_request_use_connection_ctx true
                 :ssl                                        true
