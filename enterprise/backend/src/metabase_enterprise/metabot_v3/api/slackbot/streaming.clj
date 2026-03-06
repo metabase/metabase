@@ -72,10 +72,14 @@
    This preserves tool history that Slack doesn't store while respecting edits."
   [thread bot-user-id conversation-id]
   (let [bot-msg-ids (thread->bot-msg-ids thread)
-        msg-history (slackbot.persistence/message-history conversation-id bot-msg-ids)]
+        msg-history (slackbot.persistence/message-history conversation-id bot-msg-ids)
+        deleted-ids (slackbot.persistence/deleted-message-ids conversation-id bot-msg-ids)]
     (->> (:messages thread)
          (filter :text)
          (remove ignore-msg?)
+         (remove (fn [{:keys [ts] :as msg}]
+                   (and (slackbot.events/bot-message? msg)
+                        (contains? deleted-ids ts))))
          (mapcat (fn [{:keys [ts text] :as msg}]
                    (if (slackbot.events/bot-message? msg)
                      ;; bot messages: merge on tool call info from db
@@ -194,6 +198,7 @@
                               (log/debugf "Ignoring AI SDK line of type %s" type))))
 
         _               (metabot-v3.persistence/store-message! conversation-id profile-id [message]
+                                                               :channel-id   channel-id
                                                                :slack-msg-id req-slack-msg-id)
         lines           (metabot-v3.client/streaming-request-with-callback
 
@@ -213,6 +218,7 @@
                                              (metabot-v3.persistence/store-message!
                                               conversation-id profile-id
                                               (metabot-v3.u/aisdk->messages :assistant lines)
+                                              :channel-id   channel-id
                                               :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id)))
                                              :store-in-db)})]
     (->> (metabot-v3.u/aisdk->messages :assistant lines)
