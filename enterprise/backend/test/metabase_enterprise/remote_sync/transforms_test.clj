@@ -927,3 +927,39 @@ serdes/meta:
                 "Custom tag (built_in_type nil) should be in export roots")
             (is (not (contains? exported-ids builtin-tag-id))
                 "Built-in tag should NOT be in export roots")))))))
+
+(deftest export-includes-builtin-python-library-test
+  (testing "Export includes built-in PythonLibrary (common.py) since it has no export-conditions"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-temp [:model/PythonLibrary builtin-lib {:path "common.py"
+                                                         :source "# builtin"
+                                                         :entity_id transforms-python/builtin-entity-id}
+                       :model/PythonLibrary custom-lib {:path "custom.py"
+                                                        :source "# custom"}]
+          (let [python-lib-spec (spec/spec-for-model-key :model/PythonLibrary)
+                export-roots (spec/query-export-roots python-lib-spec)
+                exported-ids (set (map second export-roots))]
+            (is (contains? exported-ids (:id builtin-lib))
+                "Built-in PythonLibrary should be in export roots")
+            (is (contains? exported-ids (:id custom-lib))
+                "Custom PythonLibrary should be in export roots")))))))
+
+(deftest build-all-removal-paths-excludes-builtin-python-library-test
+  (testing "build-all-removal-paths excludes built-in PythonLibrary via :removal-conditions"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-temp [:model/PythonLibrary _ {:path "common.py"
+                                               :source "# builtin"
+                                               :entity_id transforms-python/builtin-entity-id}
+                       :model/PythonLibrary custom-lib {:path "custom.py"
+                                                        :source "# custom"}]
+          (settings/sync-transform-tracking! true)
+          (settings/sync-transform-tracking! false)
+          (let [paths (spec/build-all-removal-paths)]
+            (is (some #(str/includes? % (:entity_id custom-lib)) paths)
+                "Custom PythonLibrary should be in removal paths")
+            (is (not (some #(str/includes? % transforms-python/builtin-entity-id) paths))
+                "Built-in PythonLibrary should NOT be in removal paths")))))))
