@@ -14,6 +14,14 @@
   [parameters :- [:sequential :map]]
   (into #{} (keep #(-> % :values_source_config :card_id)) parameters))
 
+(mu/defn walk-parameter-source-card-ids :- [:sequential :map]
+  "Walk the parameters and update the card IDs in `:values_source_config` using the provided function.
+
+  `card-id-fn` will be called with a card ID and should return a new card ID."
+  [parameters :- [:sequential :map]
+   card-id-fn :- fn?]
+  (mapv #(m/update-existing % :values_source_config :card_id card-id-fn) parameters))
+
 (mu/defn walk-parameter-source-card-refs :- [:sequential :map]
   "Walk the parameters and update the refs in `:value_field` and `:label_field` 
   in the `:values_source_config` using the provided function.
@@ -106,11 +114,11 @@
   (into #{}
         (concat
          ;; global click behavior (non-table cards)
-         (when-some [id (click-behavior-card-id (::vs/click-behavior viz-settings))]
+         (when-some [id (some-> viz-settings ::vs/click-behavior click-behavior-card-id)]
            [id])
          ;; per-column click behaviors
          (keep (fn [[_col-key col-viz]]
-                 (click-behavior-card-id (::vs/click-behavior col-viz)))
+                 (some-> col-viz ::vs/click-behavior click-behavior-card-id))
                (::vs/column-settings viz-settings)))))
 
 (mu/defn walk-viz-settings-click-behaviors :- :map
@@ -125,7 +133,7 @@
                     (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] target')))
                 mapping))
           (update-click-behavior [click-behavior]
-            (or (when-some [card-id (click-behavior-card-id click-behavior)]
+            (or (when-some [card-id (some-> click-behavior click-behavior-card-id)]
                   (m/update-existing click-behavior ::vs/parameter-mapping
                                      (fn [mappings]
                                        (m/map-vals #(update-mapping card-id %) mappings))))

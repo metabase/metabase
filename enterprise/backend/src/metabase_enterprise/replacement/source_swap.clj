@@ -119,6 +119,16 @@
              query target old-source new-source))))
       target))
 
+(defn- swap-parameter-source-card-id
+  [parameters [old-source-type old-source-id] [new-source-type new-source-id]]
+  (letfn [(swap-card-id [card-id]
+            (if (and (= :card old-source-type)
+                     (= :card new-source-type)
+                     (= old-source-id card-id))
+              new-source-id
+              card-id))]
+    (replacement.walk/walk-parameter-source-card-ids parameters swap-card-id)))
+
 (defn- dashcard-swap-source!
   [dashcard card-id->card old-source new-source]
   (let [update-fn           #(swap-parameter-target %1 %2 card-id->card old-source new-source)
@@ -148,7 +158,14 @@
                              dashcards)
         card-id->card (if (seq all-card-ids)
                         (t2/select-pk->fn identity :model/Card :id [:in all-card-ids])
-                        {})]
+                        {})
+        parameters     (or (:parameters dashboard) [])
+        parameters'    (swap-parameter-source-card-id parameters old-source new-source)
+        changes        (cond-> {}
+                         (not= parameters parameters')
+                         (assoc :parameters parameters'))]
+    (when (seq changes)
+      (t2/update! :model/Dashboard (:id dashboard) changes))
     (doseq [dashcard dashcards]
       (dashcard-swap-source! dashcard card-id->card old-source new-source))
     (events/publish-event! :event/dashboard-update {:object  (t2/select-one :model/Dashboard

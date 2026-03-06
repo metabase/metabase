@@ -10,8 +10,9 @@
 
 ;; card-upgrade-field-refs!
 ;; - [ ] card with native query
-;; - [ ] card with broken query
-;; - [ ] card with broken source card in a parameter / non-existent card
+;; - [ ] card with broken query (just `{}` as dataset query) (might need to disable malli enforcement for this test)
+;; - [ ] card with broken source card in a parameter (the card has `{}` as dataset query)
+;; - [ ] card with non-existent source card id in a parameter
 ;; - [ ] card without changes
 ;;
 ;; transform-upgrade-field-refs!
@@ -29,11 +30,6 @@
 ;; - [ ] measure with mbql query
 ;; - [ ] measure with broken query
 ;; - [ ] measure without changes
-;;
-;; dashboard-upgrade-field-refs!
-;; - [ ] parameters with source card
-;; - [ ] parameter mappings
-;; - [ ] click behaviors
 
 (deftest card-upgrade-field-refs!-query-test
   (testing "should upgrade refs in a query"
