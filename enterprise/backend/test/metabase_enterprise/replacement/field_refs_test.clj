@@ -8,6 +8,12 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+;; TODO card-upgrade-field-refs!
+;; - [ ] card with native query
+;; - [ ] card with broken query
+;; - [ ] card with broken source card in a parameter / non-existent card
+;; - [ ] card without changes
+
 (deftest card-upgrade-field-refs!-query-test
   (testing "should upgrade refs in a query"
     (let [mp    (mt/metadata-provider)
