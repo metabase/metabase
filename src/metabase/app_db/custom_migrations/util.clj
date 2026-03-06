@@ -5,6 +5,8 @@
    [metabase.classloader.core :as classloader]
    [metabase.task.bootstrap]))
 
+(set! *warn-on-reflection* true)
+
 (defn- set-jdbc-backend-properties! []
   (metabase.task.bootstrap/set-jdbc-backend-properties! (mdb.connection/db-type)))
 
