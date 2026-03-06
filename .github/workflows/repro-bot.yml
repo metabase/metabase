@@ -76,8 +76,6 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
-          plugins: |
-            @anthropic/plugin-productivity-linear
           prompt: |
             Read and follow the instructions in .claude/commands/repro.md to investigate this GitHub issue:
             https://github.com/${{ github.repository }}/issues/${{ steps.issue.outputs.number }}
