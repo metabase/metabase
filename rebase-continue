@@ -1,3 +1,13 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "delete",
+        "--force",
+        "emb-1351-show-segregation-strategy-specific-data-permissions-in"
+      ],
+      "branch": "integration-embedding-onboarding-improvements"
+    }
+  ]
 }
