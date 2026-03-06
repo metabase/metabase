@@ -44,14 +44,15 @@
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
-   (or api/*is-superuser?*
-       (and (mi/can-read? instance)
-            (perms/has-db-transforms-permission? api/*current-user-id* (:source_db_id instance))
-            (remote-sync/transforms-editable?))))
+   (and (remote-sync/transforms-editable?)
+        (or api/*is-superuser?*
+            (and (mi/can-read? instance)
+                 (perms/has-db-transforms-permission? api/*current-user-id* (:source_db_id instance))))))
   ([_model pk]
-   (or api/*is-superuser?*
-       (when-let [transform (t2/select-one :model/Transform :id pk)]
-         (mi/can-write? transform)))))
+   (and (remote-sync/transforms-editable?)
+        (or api/*is-superuser?*
+            (when-let [transform (t2/select-one :model/Transform :id pk)]
+              (mi/can-write? transform))))))
 
 ;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
 (defmethod mi/can-query? :model/Transform
