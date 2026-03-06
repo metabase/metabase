@@ -316,14 +316,45 @@ export const getCartesianChartOption = (
     yAxis = axes.yAxis;
   }
 
+  const dataPointCount = chartModel.transformedDataset.length;
+  const shouldEnableScroll = !isSplitPanels && dataPointCount > 50;
+  const dataZoom = shouldEnableScroll
+    ? [
+        {
+          type: "slider" as const,
+          show: true,
+          xAxisIndex: 0,
+          start: 0,
+          end: Math.min(100, (50 / dataPointCount) * 100),
+          bottom: 0,
+          height: 20,
+        },
+        {
+          type: "inside" as const,
+          xAxisIndex: 0,
+          start: 0,
+          end: Math.min(100, (50 / dataPointCount) * 100),
+        },
+      ]
+    : undefined;
+
+  const finalGrid =
+    shouldEnableScroll && !Array.isArray(grid)
+      ? {
+          ...grid,
+          bottom: Number(grid.bottom ?? chartLayout.padding.bottom ?? 0) + 30,
+        }
+      : grid;
+
   return {
     ...getSharedEChartsOptions(isAnimated, renderingContext),
     ...splitPanelOverrides,
-    grid,
+    grid: finalGrid,
     xAxis,
     yAxis,
     dataset: buildEChartsDataset(chartModel),
     series: seriesOption,
+    ...(dataZoom ? { dataZoom } : {}),
   };
 };
 
