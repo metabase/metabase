@@ -21,7 +21,7 @@ import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { Box, Button, Text } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
-import Alert from "./Alert";
+import { Alert } from "./Alert";
 import { GroupMembersTable } from "./GroupMembersTable";
 
 interface GroupDetailProps {

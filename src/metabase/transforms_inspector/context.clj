@@ -215,9 +215,7 @@
    [:alias [:maybe :string]]
    [:source-table {:optional true} [:maybe pos-int?]]
    [:join-table :any]
-   [:join-condition :any]
-   [:lhs-column :any]
-   [:rhs-column :any]])
+   [:join-condition :any]])
 
 (mr/def ::mbql-context
   "MBQL-specific context."

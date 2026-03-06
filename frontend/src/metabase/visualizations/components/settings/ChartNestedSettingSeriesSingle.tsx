@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type * as React from "react";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";

@@ -18,7 +18,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
    [metabase.transforms.crud :as transforms.crud]
    [metabase.util :as u]
@@ -258,7 +257,7 @@
               rating-col (lib.metadata/field mp (mt/id :products :rating))
               created-at-col (lib.metadata/field mp (mt/id :products :created_at))
               expected-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                 (lib/aggregate (lib.options/ensure-uuid [:metric {} metric-id]))
+                                 (lib/aggregate (lib/ensure-uuid [:metric {} metric-id]))
                                  (lib/breakout (lib/with-temporal-bucket created-at-col :week))
                                  (lib/breakout (lib/with-temporal-bucket created-at-col :day))
                                  (lib/filter (lib/> id-col 50))
