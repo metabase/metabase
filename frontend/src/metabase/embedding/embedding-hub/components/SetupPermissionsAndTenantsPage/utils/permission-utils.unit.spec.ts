@@ -10,8 +10,8 @@ describe("buildPermissionsGraph", () => {
 
     expect(result).toEqual({
       [groupId]: {
-        1: { "view-data": "impersonated" },
-        2: { "view-data": "impersonated" },
+        1: { "view-data": "impersonated", "create-queries": "query-builder" },
+        2: { "view-data": "impersonated", "create-queries": "query-builder" },
       },
     });
   });
@@ -37,6 +37,7 @@ describe("buildPermissionsGraph", () => {
             public: { 100: "sandboxed", 101: "sandboxed" },
             private: { 200: "sandboxed" },
           },
+          "create-queries": "query-builder",
         },
       },
     });

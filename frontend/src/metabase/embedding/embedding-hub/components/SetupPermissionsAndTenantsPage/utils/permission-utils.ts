@@ -51,7 +51,10 @@ export function buildPermissionsGraph(
 
   // Add database-level impersonation permissions
   for (const databaseId of impersonatedDatabaseIds) {
-    groupGraph[databaseId] = { "view-data": "impersonated" };
+    groupGraph[databaseId] = {
+      "view-data": "impersonated",
+      "create-queries": "query-builder",
+    };
   }
 
   // Add table-level sandbox permissions
@@ -60,7 +63,7 @@ export function buildPermissionsGraph(
     const schema = schemaName ?? "";
 
     if (!groupGraph[databaseId]) {
-      groupGraph[databaseId] = {};
+      groupGraph[databaseId] = { "create-queries": "query-builder" };
     }
 
     const dbPerms = groupGraph[databaseId];

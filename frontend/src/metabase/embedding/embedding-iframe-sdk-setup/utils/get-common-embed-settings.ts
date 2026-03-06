@@ -72,7 +72,11 @@ const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
             !isSsoEnabledAndConfigured || useExistingUserSession,
         }),
     ...(isQuestionOrDashboardEmbed && {
-      // Reset hidden parameters when switching from guest to non-guest embed mode
+      // Reset hiddenParameters when switching from guest to SSO.
+      // This is needed because when recentlyCreatedDashboards populates the
+      // dashboardId or questionId, the embed wizard starts in guest mode and
+      // sets all parameters as disabled in hiddenParameters. Without this reset,
+      // the guest restrictions would carry over into SSO mode.
       hiddenParameters: [],
     }),
   };
