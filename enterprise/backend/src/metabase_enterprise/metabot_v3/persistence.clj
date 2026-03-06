@@ -8,7 +8,7 @@
 
 (defn store-message!
   "Persist messages to MetabotConversation and MetabotMessage tables."
-  [conversation-id profile-id messages & {:keys [slack-msg-id]}]
+  [conversation-id profile-id messages & {:keys [slack-msg-id channel-id]}]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -28,9 +28,10 @@
                          :role            (:role (first messages))
                          :profile_id      profile-id
                          :total_tokens    (->> (vals (:usage finish))
-                                               ;; NOTE: this filter is supporting backward-compatible usage format, can be
-                                               ;; removed when ai-service does not give us `completionTokens` in `usage`
+                                                ;; NOTE: this filter is supporting backward-compatible usage format, can be
+                                                ;; removed when ai-service does not give us `completionTokens` in `usage`
                                                (filter map?)
                                                (map #(+ (:prompt %) (:completion %)))
                                                (apply +))}
+                  channel-id   (assoc :channel_id channel-id)
                   slack-msg-id (assoc :slack_msg_id slack-msg-id)))))

@@ -144,10 +144,24 @@
   [client message]
   (:body (slack-post-json client "/chat.delete" (select-keys message [:channel :ts]))))
 
+(defn add-reaction
+  "Add a reaction to a Slack message."
+  [client {:keys [channel ts name]}]
+  (:body (slack-post-json client "/reactions.add" {:channel   channel
+                                                   :timestamp ts
+                                                   :name      name})))
+
+(defn remove-reaction
+  "Remove a reaction from a Slack message."
+  [client {:keys [channel ts name]}]
+  (:body (slack-post-json client "/reactions.remove" {:channel   channel
+                                                      :timestamp ts
+                                                      :name      name})))
+
 (defn update-message
   "Update a Slack message"
   [client message]
-  (slack-post-json client "/chat.update" message))
+  (:body (slack-post-json client "/chat.update" message)))
 
 (defn open-view
   "Open a Slack modal view, triggered from an interaction."

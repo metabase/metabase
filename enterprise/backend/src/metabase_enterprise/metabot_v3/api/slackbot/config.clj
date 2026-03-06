@@ -45,6 +45,7 @@
                                  "files:write"
                                  "mpim:read"
                                  "reactions:read"
+                                 "reactions:write"
                                  "users:read"]}}
    :settings {:event_subscriptions {:request_url (str base-url "/api/ee/metabot-v3/slack/events")
                                     :bot_events ["app_home_opened"

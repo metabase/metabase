@@ -3621,17 +3621,64 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v59.2026-03-06T15:20:00
+      id: v59.2026-03-06T18:05:00
       author: noahmoss
-      comment: Index on metabot_message.slack_msg_id
+      comment: Add channel_id to metabot_message for Slack response correlation
       changes:
-        - createIndex:
-            indexName: idx_metabot_message_slack_msg_id
+        - addColumn:
             tableName: metabot_message
             columns:
               - column:
+                  name: channel_id
+                  type: varchar(255)
+                  remarks: Slack channel ID for correlating Slack responses
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-06T18:06:00
+      author: noahmoss
+      comment: Index on metabot_message.channel_id and slack_msg_id
+      changes:
+        - createIndex:
+            indexName: idx_metabot_message_channel_id_slack_msg_id
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: channel_id
+              - column:
                   name: slack_msg_id
       rollback: # will be dropped with table
+
+  - changeSet:
+      id: v59.2026-03-06T22:30:00
+      author: noahmoss
+      comment: Add deleted_at to metabot_message for Slack response removal
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: deleted_at
+                  type: timestamp with time zone
+                  remarks: Soft delete timestamp for removed Slack metabot responses
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-06T22:31:00
+      author: noahmoss
+      comment: Add deleted_by_user_id to metabot_message for Slack response removal
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: deleted_by_user_id
+                  type: integer
+                  remarks: Metabase user ID who removed the Slack metabot response
+                  constraints:
+                    nullable: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
