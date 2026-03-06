@@ -1,1 +1,5 @@
-export { RlsDataSelector, type TableColumnSelection } from "./RlsDataSelector";
+export {
+  RlsDataSelector,
+  type TableColumnSelection,
+  type RlsSelectionResult,
+} from "./RlsDataSelector";

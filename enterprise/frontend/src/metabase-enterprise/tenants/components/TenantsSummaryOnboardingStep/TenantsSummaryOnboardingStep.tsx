@@ -1,15 +1,17 @@
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { push } from "react-router-redux";
-import { match } from "ts-pattern";
-import { t } from "ttag";
+import { jt, msgid, ngettext, t } from "ttag";
 
 import { RelatedSettingCard } from "metabase/admin/components/RelatedSettingsSection";
 import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
+import { conjunct } from "metabase/lib/formatting/strings";
 import { useDispatch } from "metabase/lib/redux";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import { Button, Flex, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 
 import { useListTenantsQuery } from "../../../api/tenants";
+import { getIsolationFieldConfig } from "../CreateTenantsOnboardingStep/isolation-field-config";
 
 import { TenantSummaryCard } from "./TenantSummaryCard";
 
@@ -28,9 +30,13 @@ const ISOLATION_ATTRIBUTE_KEYS = [
 export const TenantsSummaryOnboardingStep = ({
   tenants,
   strategy,
+  rlsTableNames = [],
+  rlsColumnName = null,
 }: {
   tenants: CreatedTenantData[];
   strategy?: DataSegregationStrategy | null;
+  rlsTableNames?: string[];
+  rlsColumnName?: string | null;
 }) => {
   const dispatch = useDispatch();
 
@@ -66,7 +72,7 @@ export const TenantsSummaryOnboardingStep = ({
     });
   }, [tenants, tenantsData]);
 
-  const isolationFieldLabel = getIsolationFieldLabel(strategy);
+  const fieldConfig = getIsolationFieldConfig(strategy);
 
   return (
     <Stack gap="lg">
@@ -80,10 +86,19 @@ export const TenantsSummaryOnboardingStep = ({
             key={tenant.slug}
             name={tenant.name}
             isolationFieldLabel={
-              tenant.dataIsolationFieldValue ? isolationFieldLabel : null
+              tenant.dataIsolationFieldValue
+                ? (fieldConfig?.label ?? null)
+                : null
             }
             isolationFieldValue={tenant.dataIsolationFieldValue || null}
             slug={tenant.slug}
+            dataPermissionsDescription={getDataPermissionsDescription({
+              strategy,
+              tenantName: tenant.name,
+              tenantValue: tenant.dataIsolationFieldValue,
+              tableNames: rlsTableNames,
+              columnName: rlsColumnName,
+            })}
           />
         ))}
       </Stack>
@@ -131,11 +146,44 @@ const RelatedSettingsSection = () => (
   </SimpleGrid>
 );
 
-export const getIsolationFieldLabel = (
-  strategy: DataSegregationStrategy | null | undefined,
-): string | null =>
-  match(strategy)
-    .with("row-column-level-security", () => "tenant_identifier")
-    .with("connection-impersonation", () => "database_role")
-    .with("database-routing", () => "database_slug")
-    .otherwise(() => null);
+export function getDataPermissionsDescription({
+  strategy,
+  tenantName,
+  tenantValue,
+  tableNames,
+  columnName,
+}: {
+  strategy: DataSegregationStrategy | null | undefined;
+  tenantName: string;
+  tenantValue: string;
+  tableNames: string[];
+  columnName: string | null;
+}): ReactNode {
+  if (!tenantValue) {
+    return null;
+  }
+
+  const boldName = <strong key="tenant">{tenantName}</strong>;
+  const boldValue = <strong key="value">{tenantValue}</strong>;
+
+  if (strategy === "row-column-level-security") {
+    if (tableNames.length === 0 || !columnName) {
+      return null;
+    }
+
+    const tableList = conjunct(tableNames, t`and`);
+    const tableWord = ngettext(msgid`table`, `tables`, tableNames.length);
+
+    return jt`All users in ${boldName} can view rows in the ${(<strong key="tables">{tableList}</strong>)} ${tableWord} where ${(<strong key="column">{columnName}</strong>)} field equals ${boldValue}.`;
+  }
+
+  if (strategy === "connection-impersonation") {
+    return jt`All users in ${boldName} will connect using the ${boldValue} database role.`;
+  }
+
+  if (strategy === "database-routing") {
+    return jt`All users in ${boldName} will be routed to the ${boldValue} database.`;
+  }
+
+  return null;
+}

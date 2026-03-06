@@ -54,7 +54,12 @@ export const TableColumnCard = ({
   const handleTableSelect = useCallback(
     (item: MiniPickerPickableItem) => {
       if (item.model === "table") {
-        onChange({ tableId: item.id, columnId: null });
+        onChange({
+          tableId: item.id,
+          columnId: null,
+          tableName: null,
+          columnName: null,
+        });
         closePicker();
       }
     },
@@ -63,7 +68,7 @@ export const TableColumnCard = ({
 
   const handleModalSelect = useCallback(
     (tableId: TableId) => {
-      onChange({ tableId, columnId: null });
+      onChange({ tableId, columnId: null, tableName: null, columnName: null });
       closeBrowse();
     },
     [onChange, closeBrowse],
@@ -76,12 +81,17 @@ export const TableColumnCard = ({
 
   const handleColumnSelect = useCallback(
     (columnId: string | null) => {
+      const field = tableMetadata?.fields?.find(
+        (f) => String(f.id) === columnId,
+      );
       onChange({
         ...selection,
         columnId: columnId ? Number(columnId) : null,
+        tableName: tableMetadata?.display_name ?? null,
+        columnName: field?.display_name ?? null,
       });
     },
-    [selection, onChange],
+    [selection, onChange, tableMetadata],
   );
 
   const columnOptions =

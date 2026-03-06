@@ -55,7 +55,6 @@ const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
   > = ({ experience, isSsoEnabledAndConfigured, useExistingUserSession }) => {
   const isQuestionOrDashboardEmbed =
     isQuestionOrDashboardExperience(experience);
-  const isQuestionEmbed = experience === "chart";
 
   return {
     ...(isQuestionOrDashboardEmbed
@@ -72,8 +71,8 @@ const GET_DISABLE_GUEST_EMBED_SETTINGS: (data: {
           useExistingUserSession:
             !isSsoEnabledAndConfigured || useExistingUserSession,
         }),
-    ...(isQuestionEmbed && {
-      // Currently, a chart should not have hidden parameters in non-guest embed mode
+    ...(isQuestionOrDashboardEmbed && {
+      // Reset hidden parameters when switching from guest to non-guest embed mode
       hiddenParameters: [],
     }),
   };

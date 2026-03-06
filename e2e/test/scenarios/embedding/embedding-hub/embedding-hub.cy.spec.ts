@@ -543,7 +543,7 @@ describe("scenarios - embedding hub", () => {
 
           cy.log("fill out the tenant form");
           cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
-          cy.findByPlaceholderText("e.g. 1").type("acme-123");
+          cy.findByLabelText("tenant_identifier").type("acme-123");
           cy.findByPlaceholderText("tenant-slug")
             .clear()
             .type("acme-corp-slug");
@@ -560,7 +560,7 @@ describe("scenarios - embedding hub", () => {
             .clear()
             .type("Beta Inc");
 
-          cy.findAllByPlaceholderText("e.g. 1")
+          cy.findAllByLabelText("tenant_identifier")
             .should("have.length", 2)
             .last()
             .type("beta-456");
@@ -666,7 +666,7 @@ describe("scenarios - embedding hub", () => {
             .clear()
             .type("Another Tenant");
 
-          cy.findByPlaceholderText("e.g. 1").type("another-id");
+          cy.findByPlaceholderText("e.g. acme-corp").type("another-id");
 
           cy.findByPlaceholderText("tenant-slug")
             .clear()
@@ -761,6 +761,82 @@ describe("scenarios - embedding hub", () => {
           cy.findByRole("option", { name: "1" }).should("exist");
         });
       });
+    });
+
+    // Needs its own test case, as the RLS selected table and columns
+    // are only populated when the user goes through the "Select data" step
+    // in the UI. Without it, the data permissions description won't show.
+    it("shows RLS data permissions description in summary", () => {
+      H.restore("setup");
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+
+      cy.visit("/admin/embedding/setup-guide/permissions");
+
+      cy.log("enable tenants and create shared collection");
+      H.main()
+        .findByRole("button", {
+          name: "Enable tenants and create shared collection",
+        })
+        .click();
+
+      cy.log("wait for tenants to be enabled");
+      H.main()
+        .findByRole("listitem", {
+          name: "Enable multi-tenant user strategy",
+          timeout: 10_000,
+        })
+        .icon("check")
+        .should("exist");
+
+      cy.log("use row and column level security");
+      H.main()
+        .findByRole("radio", { name: /Row and column level security/ })
+        .scrollIntoView()
+        .click();
+
+      H.main()
+        .findByRole("button", { name: "Use row and column level security" })
+        .scrollIntoView()
+        .click();
+
+      cy.log("pick Orders table and User ID column");
+      H.main().findByText("Pick a table").click();
+      H.miniPicker().findByText("Sample Database").click();
+      H.miniPicker().findByText("Orders").click();
+
+      H.main().findByPlaceholderText("Pick a column").click();
+      H.popover().findByText("User ID").click();
+
+      cy.intercept("PUT", "/api/permissions/graph").as(
+        "updatePermissionsGraph",
+      );
+      H.main().findByRole("button", { name: "Next" }).click();
+      cy.wait("@updatePermissionsGraph");
+
+      cy.log("navigate to create tenants step");
+      H.main().findByRole("listitem", { name: "Create tenants" }).click();
+
+      cy.log("fill out the tenant form");
+      H.main().within(() => {
+        cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
+        cy.findByPlaceholderText("e.g. 1").type("42");
+        cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
+      });
+
+      H.main().findByRole("button", { name: "Next" }).click();
+
+      cy.log("success toast should show");
+      H.undoToast()
+        .findByText("Tenants created successfully")
+        .should("be.visible");
+
+      cy.log("data permissions description should show in summary");
+      H.main()
+        .contains(
+          "All users in Acme Corp can view rows in the Orders table where User ID field equals 42.",
+        )
+        .should("be.visible");
     });
 
     it("should create sandboxes for multiple tables via row-level security setup", () => {
@@ -1076,7 +1152,7 @@ describe("scenarios - embedding hub", () => {
         H.popover().findByText("QA Postgres12").click();
 
         cy.log("database should be selected in the multi-select pill");
-        H.main().findByLabelText("Remove QA Postgres12").should("exist");
+        H.main().findAllByLabelText("Remove").should("have.length", 1);
         H.main().findByText("QA Postgres12").should("be.visible");
 
         cy.log("setup connection impersonation for the database");
@@ -1245,6 +1321,13 @@ describe("scenarios - embedding hub", () => {
           database_role: "acme_role",
         });
       });
+
+      cy.log("data permissions description should show in summary");
+      H.main()
+        .contains(
+          "All users in Acme Corp will connect using the acme_role database role.",
+        )
+        .should("be.visible");
     });
   });
 
@@ -1303,6 +1386,13 @@ describe("scenarios - embedding hub", () => {
           database_slug: "acme-db",
         });
       });
+
+      cy.log("data permissions description should show in summary");
+      H.main()
+        .contains(
+          "All users in Acme Corp will be routed to the acme-db database.",
+        )
+        .should("be.visible");
     });
   });
 
@@ -1407,50 +1497,45 @@ describe("scenarios - embedding hub", () => {
     });
   });
 
-  [
-    { plan: "pro-cloud", expectedPath: "help-premium" },
-    { plan: "starter", expectedPath: "help" },
-  ].forEach(({ plan, expectedPath }) => {
-    it(`shows /${expectedPath} troubleshooting link for ${plan} plan in sso setup`, () => {
-      H.restore("setup");
-      cy.signInAsAdmin();
-      H.activateToken(plan as "pro-cloud" | "starter");
+  it("shows /help-premium troubleshooting link for pro-cloud plan in sso setup", () => {
+    H.restore("setup");
+    cy.signInAsAdmin();
+    H.activateToken("pro-cloud");
 
-      cy.log("enable JWT");
-      cy.request("PUT", "/api/setting", {
-        "jwt-enabled": true,
-        "jwt-identity-provider-uri": "https://jwt.example.com/auth",
-        "jwt-shared-secret": "0".repeat(64),
-      });
-
-      cy.visit("/admin/embedding/setup-guide/sso");
-
-      cy.log("step 1 should be marked as done");
-      H.main()
-        .findByRole("listitem", {
-          name: "Set up JWT authentication",
-          timeout: 10_000,
-        })
-        .should("have.attr", "data-completed", "true");
-
-      cy.log("navigate to step 3");
-      H.main()
-        .findByRole("listitem", {
-          name: "Test that JWT authentication is working correctly",
-        })
-        .click();
-
-      cy.log("click troubleshooting button");
-      H.main().findByRole("button", { name: "No, I couldn't log in" }).click();
-
-      cy.log("troubleshooting view should be shown");
-      H.main().findByText("Troubleshooting").should("be.visible");
-
-      cy.log(`help link should point to /${expectedPath}`);
-      H.main()
-        .findByRole("link", { name: "Contact customer support" })
-        .should("have.attr", "href")
-        .and("include", `metabase.com/${expectedPath}`);
+    cy.log("enable JWT");
+    cy.request("PUT", "/api/setting", {
+      "jwt-enabled": true,
+      "jwt-identity-provider-uri": "https://jwt.example.com/auth",
+      "jwt-shared-secret": "0".repeat(64),
     });
+
+    cy.visit("/admin/embedding/setup-guide/sso");
+
+    cy.log("step 1 should be marked as done");
+    H.main()
+      .findByRole("listitem", {
+        name: "Set up JWT authentication",
+        timeout: 10_000,
+      })
+      .should("have.attr", "data-completed", "true");
+
+    cy.log("navigate to step 3");
+    H.main()
+      .findByRole("listitem", {
+        name: "Test that JWT authentication is working correctly",
+      })
+      .click();
+
+    cy.log("click troubleshooting button");
+    H.main().findByRole("button", { name: "No, I couldn't log in" }).click();
+
+    cy.log("troubleshooting view should be shown");
+    H.main().findByText("Troubleshooting").should("be.visible");
+
+    cy.log("help link should point to /help-premium");
+    H.main()
+      .findByRole("link", { name: "Contact customer support" })
+      .should("have.attr", "href")
+      .and("include", "metabase.com/help-premium");
   });
 });

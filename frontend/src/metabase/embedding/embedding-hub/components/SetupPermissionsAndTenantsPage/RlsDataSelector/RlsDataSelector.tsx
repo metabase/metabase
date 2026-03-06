@@ -14,10 +14,19 @@ import { TableColumnCard } from "./TableColumnCard";
 export interface TableColumnSelection {
   tableId: TableId | null;
   columnId: FieldId | null;
+  /** Resolved by TableColumnCard once table metadata is loaded */
+  tableName?: string | null;
+  columnName?: string | null;
+}
+
+export interface RlsSelectionResult {
+  fieldIds: FieldId[];
+  tableNames: string[];
+  columnName: string | null;
 }
 
 interface RlsDataSelectorProps {
-  onSuccess: (selectedFieldIds: FieldId[]) => void;
+  onSuccess: (result: RlsSelectionResult) => void;
 }
 
 export const RlsDataSelector = ({ onSuccess }: RlsDataSelectorProps) => {
@@ -28,14 +37,25 @@ export const RlsDataSelector = ({ onSuccess }: RlsDataSelectorProps) => {
   ]);
 
   const { handleUpsertPolicies, isCreatingPolicy, isLoadingPolicies } =
-    useUpsertGroupTableAccessPolicies({
-      tableColumnSelections: selections,
-      onSuccess,
-    });
+    useUpsertGroupTableAccessPolicies({ tableColumnSelections: selections });
 
   const handleSubmit = useCallback(async () => {
     try {
       await handleUpsertPolicies();
+      onSuccess({
+        fieldIds: selections
+          .map((s) => s.columnId)
+          .filter((id): id is FieldId => id != null),
+
+        tableNames: selections
+          .map((s) => s.tableName)
+          .filter((name): name is string => name != null),
+
+        // We use the first selection's column name for the summary description.
+        // In practice, all tables in an RLS setup share the same tenant
+        // identifier column (e.g. tenant_id).
+        columnName: selections[0]?.columnName ?? null,
+      });
     } catch (error) {
       sendToast({
         icon: "warning",
@@ -46,7 +66,7 @@ export const RlsDataSelector = ({ onSuccess }: RlsDataSelectorProps) => {
         ),
       });
     }
-  }, [handleUpsertPolicies, sendToast]);
+  }, [handleUpsertPolicies, selections, onSuccess, sendToast]);
 
   const addTable = useCallback(() => {
     setSelections((prev) => [...prev, { tableId: null, columnId: null }]);

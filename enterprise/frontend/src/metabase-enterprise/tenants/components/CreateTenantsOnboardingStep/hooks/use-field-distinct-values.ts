@@ -45,11 +45,12 @@ export function useFieldDistinctValues(fieldId: FieldId | undefined) {
         breakout,
         limit: DISTINCT_VALUES_LIMIT,
       },
+      ignore_error: true,
     };
   }, [fieldId, tableId, databaseId]);
 
   const { data: adhocQueryDataset, isLoading: isAdHocQueryLoading } =
-    useGetAdhocQueryQuery(query ?? skipToken, { ignore_error: true });
+    useGetAdhocQueryQuery(query ?? skipToken);
 
   // Extract row values from query results
   const values = useMemo(() => {
