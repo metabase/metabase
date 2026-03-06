@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "d0f49e7c0d318ae722b44b5931686d69cb87b690"
+    "hash": "85044f0f8dd09091d3ba86831de245d9d2e42741"
   },
   "upstream": {
     "branch": "emb-1351-show-segregation-strategy-specific-data-permissions-in"
