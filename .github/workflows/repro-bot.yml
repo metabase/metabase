@@ -60,26 +60,25 @@ jobs:
           npm install -g @playwright/cli@latest
           playwright-cli install --skills
 
-      - name: Create MCP config with resolved secrets
+      - name: Create MCP config
         run: |
-          cat > .mcp.json <<'ENDOFJSON'
+          UV_PATH="$(which uv)"
+          cat > /tmp/mcp-config.json <<EOF
           {
             "mcpServers": {
               "metabase-repro": {
-                "command": "PLACEHOLDER_UV_PATH",
+                "command": "${UV_PATH}",
                 "args": ["run", "--directory", "mcp", "--with", "fastmcp", "python", "-m", "metabase_repro"]
               },
               "linear-server": {
                 "url": "https://mcp.linear.app/mcp",
                 "headers": {
-                  "Authorization": "Bearer PLACEHOLDER_LINEAR_KEY"
+                  "Authorization": "Bearer ${{ secrets.LINEAR_API_KEY }}"
                 }
               }
             }
           }
-          ENDOFJSON
-          sed -i "s|PLACEHOLDER_UV_PATH|$(which uv)|" .mcp.json
-          sed -i "s|PLACEHOLDER_LINEAR_KEY|${{ secrets.LINEAR_API_KEY }}|" .mcp.json
+          EOF
 
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
@@ -110,6 +109,7 @@ jobs:
             - Docker is available for appdb (Postgres/MySQL/MariaDB) if needed.
             - Java 21 and Python/uv are pre-installed.
           claude_args: |
+            --mcp-config /tmp/mcp-config.json
             --disallowedTools "Bash(git push*),Bash(rm -rf /*)"
 
       - name: Verify repro-bot completed successfully
