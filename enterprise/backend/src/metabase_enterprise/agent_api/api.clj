@@ -502,32 +502,34 @@
      using the same auth-identity system as the /auth/sso endpoint."
   [handler]
   (fn [{:keys [headers metabase-user-id] :as request} respond raise]
-    (let [auth-header  (get headers "authorization")
-          bearer-token (extract-bearer-token auth-header)]
-      (cond
-        ;; No authorization header and no session
-        (and (nil? auth-header) (nil? metabase-user-id))
-        (respond (error-response "missing_authorization"
-                                 "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."))
+    (cond
+      ;; Already authenticated via X-Metabase-Session (standard middleware handled it)
+      metabase-user-id
+      (handler (assoc request :token-scopes #{::scope/unrestricted}) respond raise)
 
-        ;; Bearer JWT takes priority — its scope claims must be respected even when
-        ;; session middleware has already set metabase-user-id on the request.
-        bearer-token
-        (let [result (authenticate-with-jwt bearer-token)]
-          (if-let [user (:user result)]
-            (request/with-current-user (:id user)
-              (handler (assoc request :token-scopes (or (:scopes result) #{::scope/unrestricted}))
-                       respond raise))
-            (respond (error-response (:error result) (:message result)))))
+      ;; Not authenticated via session - check for Bearer JWT
+      :else
+      (let [auth-header  (get headers "authorization")
+            bearer-token (extract-bearer-token auth-header)]
+        (cond
+          ;; No authorization header and no session
+          (nil? auth-header)
+          (respond (error-response "missing_authorization"
+                                   "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."))
 
-        ;; Already authenticated via X-Metabase-Session (standard middleware handled it)
-        metabase-user-id
-        (handler (assoc request :token-scopes #{::scope/unrestricted}) respond raise)
+          ;; Authorization header present but not Bearer format
+          (nil? bearer-token)
+          (respond (error-response "invalid_authorization_format"
+                                   "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"))
 
-        ;; Authorization header present but not Bearer format
-        :else
-        (respond (error-response "invalid_authorization_format"
-                                 "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"))))))
+          ;; Validate JWT
+          :else
+          (let [result (authenticate-with-jwt bearer-token)]
+            (if-let [user (:user result)]
+              (request/with-current-user (:id user)
+                (handler (assoc request :token-scopes (or (:scopes result) #{::scope/unrestricted}))
+                         respond raise))
+              (respond (error-response (:error result) (:message result))))))))))
 (def ^:private +auth
   (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
 
