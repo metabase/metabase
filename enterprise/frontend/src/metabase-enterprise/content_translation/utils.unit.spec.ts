@@ -13,6 +13,7 @@ import { leaveUntranslated } from "./use-translate-content";
 import {
   translateColumnDisplayName,
   translateFieldValuesInSeries,
+  translateSeriesNames,
 } from "./utils";
 
 registerVisualizations();
@@ -696,5 +697,157 @@ describe("translateColumnDisplayName", () => {
         expect(result).toBe(expected);
       },
     );
+  });
+});
+
+describe("translateSeriesNames", () => {
+  it("should return original series unchanged when tc has no translations", () => {
+    const series: Series = [
+      {
+        card: {
+          visualization_settings: {
+            series_settings: { metric1: { title: "Revenue" } },
+            "graph.metrics": ["metric1"],
+          },
+        },
+      } as SingleSeries,
+    ];
+
+    const result = translateSeriesNames(
+      series,
+      mockTranslateWithoutTranslations,
+    );
+
+    expect(result).toBe(series);
+  });
+
+  it("should return series item unchanged when visualization_settings has no series_settings", () => {
+    const series: Series = [
+      {
+        card: {
+          visualization_settings: {
+            "graph.metrics": ["metric1"],
+          },
+        },
+      } as SingleSeries,
+    ];
+
+    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+
+    expect(result[0]).toBe(series[0]);
+  });
+
+  it("should return series item unchanged when visualization_settings has no graph.metrics", () => {
+    const series: Series = [
+      {
+        card: {
+          visualization_settings: {
+            series_settings: { metric1: { title: "Revenue" } },
+          },
+        },
+      } as SingleSeries,
+    ];
+
+    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+
+    expect(result[0]).toBe(series[0]);
+  });
+
+  it("should translate titles of metric series settings", () => {
+    const series: Series = [
+      {
+        card: {
+          visualization_settings: {
+            series_settings: {
+              metric1: { title: "Revenue" },
+              metric2: { title: "Profit" },
+            },
+            "graph.metrics": ["metric1", "metric2"],
+          },
+        },
+      } as SingleSeries,
+    ];
+
+    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric1?.title,
+    ).toBe("translated_Revenue");
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric2?.title,
+    ).toBe("translated_Profit");
+  });
+
+  it("should skip metrics without corresponding series_settings entry", () => {
+    const series: Series = [
+      {
+        card: {
+          visualization_settings: {
+            series_settings: {
+              metric1: { title: "Revenue" },
+            },
+            "graph.metrics": ["metric1", "metric_missing"],
+          },
+        },
+      } as SingleSeries,
+    ];
+
+    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric1?.title,
+    ).toBe("translated_Revenue");
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric_missing,
+    ).toBeUndefined();
+  });
+
+  it("should preserve other settings properties like color", () => {
+    const series: Series = [
+      {
+        card: {
+          visualization_settings: {
+            series_settings: {
+              metric1: { title: "Revenue", color: "#ff0000" },
+            },
+            "graph.metrics": ["metric1"],
+          },
+        },
+      } as SingleSeries,
+    ];
+
+    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+
+    const settings =
+      result[0].card.visualization_settings.series_settings?.metric1;
+    expect(settings?.title).toBe("translated_Revenue");
+    expect(settings?.color).toBe("#ff0000");
+  });
+
+  it("should preserve settings for non-metric keys", () => {
+    const series: Series = [
+      {
+        card: {
+          visualization_settings: {
+            series_settings: {
+              metric1: { title: "Revenue" },
+              non_metric: { title: "Other", color: "#00ff00" },
+            },
+            "graph.metrics": ["metric1"],
+          },
+        },
+      } as SingleSeries,
+    ];
+
+    const result = translateSeriesNames(series, mockTranslateWithTranslations);
+
+    expect(
+      result[0].card.visualization_settings.series_settings?.metric1?.title,
+    ).toBe("translated_Revenue");
+    // non_metric should be preserved untouched
+    const nonMetric =
+      result[0].card.visualization_settings.series_settings?.non_metric;
+    expect(nonMetric?.title).toBe("Other");
+    expect(nonMetric?.color).toBe("#00ff00");
   });
 });

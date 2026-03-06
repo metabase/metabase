@@ -13,6 +13,7 @@ import type {
   MaybeTranslatedSeries,
   RowValue,
   Series,
+  SeriesSettings,
 } from "metabase-types/api";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
@@ -291,6 +292,52 @@ export const translateCardNames = (
   );
 };
 
+/** Translate the `title` in each metric's `series_settings` entry.
+ *
+ * Only keys listed in `graph.metrics` are translated; other
+ * `series_settings` entries (e.g. dimension keys) are left untouched.
+ *
+ * @example
+ * // Given series_settings: { revenue: { title: "Revenue" } }
+ * // and graph.metrics: ["revenue"]
+ * // ➜ series_settings: { revenue: { title: tc("Revenue") } }
+ */
+export const translateSeriesNames = (
+  series: Series,
+  tc: ContentTranslationFunction,
+) => {
+  if (!hasTranslations(tc)) {
+    return series;
+  }
+
+  return series.map((s) => {
+    const seriesSettings = s.card?.visualization_settings?.series_settings;
+    const metrics = s.card?.visualization_settings["graph.metrics"];
+
+    if (!seriesSettings || !metrics) {
+      return s;
+    }
+
+    const translated = Object.fromEntries(
+      metrics
+        .filter((m) => seriesSettings[m])
+        .map((m) => [
+          m,
+          { ...seriesSettings[m], title: tc(seriesSettings[m]!.title) },
+        ]),
+    );
+
+    return I.updateIn(
+      s,
+      ["card", "visualization_settings", "series_settings"],
+      (settings: Record<string, SeriesSettings>) => ({
+        ...settings,
+        ...translated,
+      }),
+    );
+  });
+};
+
 export const useTranslateSeries = (series: Series) => {
   const tc = useTranslateContent();
   const { locale } = useLocale();
@@ -310,13 +357,18 @@ export const useTranslateSeries = (series: Series) => {
       tc,
     );
 
+    const withTranslatedSeriesName = translateSeriesNames(
+      withTranslatedCardNames,
+      tc,
+    );
+
     // Do not translate field values here if display is a map, since this can
     // break the map
     if (series?.[0]?.card?.display === "map") {
-      return withTranslatedCardNames;
+      return withTranslatedSeriesName;
     }
 
-    return translateFieldValuesInSeries(withTranslatedCardNames, tc);
+    return translateFieldValuesInSeries(withTranslatedSeriesName, tc);
   }, [series, tc, locale]);
 };
 
