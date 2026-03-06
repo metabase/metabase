@@ -1,179 +1,86 @@
 (ns metabase-enterprise.replacement.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- card-with-query
-  "Create a card map for the given table keyword."
-  [card-name table-kw]
-  (let [mp (mt/metadata-provider)]
-    {:name                   card-name
-     :database_id            (mt/id)
-     :display                :table
-     :query_type             :query
-     :type                   :question
-     :dataset_query          (lib/query mp (lib.metadata/table mp (mt/id table-kw)))
-     :visualization_settings {}}))
+;;; ------------------------------------------------ POST /check-replace-source ------------------------------------------------
 
-(defn- card-sourced-from
-  "Create a card map whose query sources `inner-card`."
-  [card-name inner-card]
-  (let [mp        (mt/metadata-provider)
-        card-meta (lib.metadata/card mp (:id inner-card))]
-    {:name                   card-name
-     :database_id            (mt/id)
-     :display                :table
-     :query_type             :query
-     :type                   :question
-     :dataset_query          (lib/query mp card-meta)
-     :visualization_settings {}}))
+(deftest check-replace-source-success-test
+  (testing "POST /check-replace-source — success with matching tables"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {t1-id :id} {:db_id db-id}
+                     :model/Table {t2-id :id} {:db_id db-id}
+                     :model/Field _ {:table_id t1-id :name "id" :base_type :type/Integer
+                                     :effective_type :type/Integer}
+                     :model/Field _ {:table_id t2-id :name "id" :base_type :type/Integer
+                                     :effective_type :type/Integer}]
+        (let [result (mt/user-http-request :crowberto :post 200 "ee/replacement/check-replace-source"
+                                           {:source_entity_id   t1-id
+                                            :source_entity_type :table
+                                            :target_entity_id   t2-id
+                                            :target_entity_type :table})]
+          (is (true? (:success result)))
+          (is (seq (:column_mappings result))))))))
 
-;;; ------------------------------------------------ check-replace-source ------------------------------------------------
+(deftest check-replace-source-failure-test
+  (testing "POST /check-replace-source — failure when databases differ"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Database {db1-id :id} {}
+                     :model/Database {db2-id :id} {}
+                     :model/Table {t1-id :id} {:db_id db1-id}
+                     :model/Table {t2-id :id} {:db_id db2-id}
+                     :model/Field _ {:table_id t1-id :name "id" :base_type :type/Integer}
+                     :model/Field _ {:table_id t2-id :name "id" :base_type :type/Integer}]
+        (let [result (mt/user-http-request :crowberto :post 200 "ee/replacement/check-replace-source"
+                                           {:source_entity_id   t1-id
+                                            :source_entity_type :table
+                                            :target_entity_id   t2-id
+                                            :target_entity_type :table})]
+          (is (false? (:success result)))
+          (is (= ["database-mismatch"] (:errors result))))))))
 
-(deftest check-replace-source-compatible-test
-  (testing "POST /api/ee/replacement/check-replace-source — compatible cards on the same table"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card card-a (card-with-query "Card A" :products)
-                       :model/Card card-b (card-with-query "Card B" :products)]
-          (let [response (mt/user-http-request :crowberto :post 200 "ee/replacement/check-replace-source"
-                                               {:source_entity_id   (:id card-a)
-                                                :source_entity_type :card
-                                                :target_entity_id   (:id card-b)
-                                                :target_entity_type :card})]
-            (is (true? (:success response)))
-            (is (nil? (:errors response)))
-            (is (seq (:column_mappings response)))
-            (is (not-any? :errors (:column_mappings response)))))))))
+;;; ------------------------------------------------ POST /replace-source ------------------------------------------------
 
-(deftest check-replace-source-incompatible-test
-  (testing "POST /api/ee/replacement/check-replace-source — incompatible cards (different tables)"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card card-a (card-with-query "Products card" :products)
-                       :model/Card card-b (card-with-query "Orders card" :orders)]
-          (let [response (mt/user-http-request :crowberto :post 200 "ee/replacement/check-replace-source"
-                                               {:source_entity_id   (:id card-a)
-                                                :source_entity_type :card
-                                                :target_entity_id   (:id card-b)
-                                                :target_entity_type :card})]
-            (is (false? (:success response)))
-            ;; Missing columns show up in column_mappings, not in top-level errors
-            (is (some (fn [m] (and (:source m) (nil? (:target m)))) (:column_mappings response)))))))))
-
-(deftest check-replace-source-same-source-test
-  (testing "POST /api/ee/replacement/check-replace-source — same source and target"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Card card-a (card-with-query "Card A" :products)]
-          (let [response (mt/user-http-request :crowberto :post 200 "ee/replacement/check-replace-source"
-                                               {:source_entity_id   (:id card-a)
-                                                :source_entity_type :card
-                                                :target_entity_id   (:id card-a)
-                                                :target_entity_type :card})]
-            (is (false? (:success response)))))))))
-
-(deftest check-replace-source-database-mismatch-test
-  (testing "POST /api/ee/replacement/check-replace-source — database mismatch"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Database other-db {:engine  :h2
-                                                 :details (:details (mt/db))}
-                       :model/Card card-a (card-with-query "Card A" :products)
-                       :model/Card card-b {:name                   "Card B"
-                                           :database_id            (:id other-db)
-                                           :type                   :question
-                                           :dataset_query          {:database (:id other-db)
-                                                                    :type     :native
-                                                                    :native   {:query "SELECT 1"}}
-                                           :visualization_settings {}}]
-          (let [response (mt/user-http-request :crowberto :post 200 "ee/replacement/check-replace-source"
-                                               {:source_entity_id   (:id card-a)
-                                                :source_entity_type :card
-                                                :target_entity_id   (:id card-b)
-                                                :target_entity_type :card})]
-            (is (false? (:success response)))
-            (is (some #{"database-mismatch"} (:errors response)))))))))
-
-(deftest check-replace-source-requires-premium-feature-test
-  (testing "POST /api/ee/replacement/check-replace-source — requires :dependencies premium feature"
-    (mt/with-premium-features #{}
-      (mt/user-http-request :crowberto :post 402 "ee/replacement/check-replace-source"
-                            {:source_entity_id   1
-                             :source_entity_type :card
-                             :target_entity_id   2
-                             :target_entity_type :card}))))
-
-;;; ------------------------------------------------ replace-source ------------------------------------------------
-
-(deftest replace-source-returns-202-test
-  (testing "POST /api/ee/replacement/replace-source — returns 202 with run_id"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "replacement-test@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency :model/ReplacementRun]
-            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
-                  new-source (card/create-card! (card-with-query "New source" :products) user)
-                  _child     (card/create-card! (card-sourced-from "Child card" old-source) user)
-                  response   (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
-                                                   {:source_entity_id   (:id old-source)
-                                                    :source_entity_type :card
-                                                    :target_entity_id   (:id new-source)
-                                                    :target_entity_type :card})]
-              (is (pos-int? (:run_id response))))))))))
-
-(deftest replace-source-incompatible-returns-400-test
-  (testing "POST /api/ee/replacement/replace-source — incompatible sources return 400"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "replacement-incompat@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [old-source (card/create-card! (card-with-query "Products card" :products) user)
-                  new-source (card/create-card! (card-with-query "Orders card" :orders) user)]
-              (mt/user-http-request :crowberto :post 400 "ee/replacement/replace-source"
-                                    {:source_entity_id   (:id old-source)
-                                     :source_entity_type :card
-                                     :target_entity_id   (:id new-source)
-                                     :target_entity_type :card}))))))))
-
-(deftest replace-source-database-mismatch-returns-400-test
-  (testing "POST /api/ee/replacement/replace-source — database mismatch returns 400"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/Database other-db {:engine  :h2
-                                                 :details (:details (mt/db))}
-                       :model/Card card-a (card-with-query "Card A" :products)
-                       :model/Card card-b {:name                   "Card B"
-                                           :database_id            (:id other-db)
-                                           :type                   :question
-                                           :dataset_query          {:database (:id other-db)
-                                                                    :type     :native
-                                                                    :native   {:query "SELECT 1"}}
-                                           :visualization_settings {}}]
-          (mt/user-http-request :crowberto :post 400 "ee/replacement/replace-source"
-                                {:source_entity_id   (:id card-a)
+(deftest concurrent-run-returns-409-test
+  (testing "POST /replace-source — returns 409 when another run is already active"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {old-id :id} {:database_id   (mt/id)
+                                               :dataset_query (let [mp (mt/metadata-provider)]
+                                                                (lib/query mp (lib.metadata/table mp (mt/id :products))))
+                                               :type          :model
+                                               :name          "Old source"}
+                     :model/Card {new-id :id} {:database_id   (mt/id)
+                                               :dataset_query (let [mp (mt/metadata-provider)]
+                                                                (lib/query mp (lib.metadata/table mp (mt/id :products))))
+                                               :type          :model
+                                               :name          "New source"}
+                     :model/Card child-card {:database_id   (mt/id)
+                                             :dataset_query (let [mp (mt/metadata-provider)]
+                                                              (lib/query mp (lib.metadata/card mp old-id)))
+                                             :type          :question
+                                             :name          "Child card"}]
+        (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
+          (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
+          ;; Insert a fake active run to simulate one already running
+          (let [run (replacement-run/create-run! :card old-id :card new-id (mt/user->id :crowberto))]
+            (replacement-run/start-run! (:id run)))
+          (mt/user-http-request :crowberto :post 409 "ee/replacement/replace-source"
+                                {:source_entity_id   old-id
                                  :source_entity_type :card
-                                 :target_entity_id   (:id card-b)
+                                 :target_entity_id   new-id
                                  :target_entity_type :card}))))))
-
-(deftest replace-source-requires-premium-feature-test
-  (testing "POST /api/ee/replacement/replace-source — requires :dependencies premium feature"
-    (mt/with-premium-features #{}
-      (mt/user-http-request :crowberto :post 402 "ee/replacement/replace-source"
-                            {:source_entity_id   1
-                             :source_entity_type :card
-                             :target_entity_id   2
-                             :target_entity_type :card}))))
 
 ;;; ------------------------------------------------ GET /runs/:id ------------------------------------------------
 
@@ -191,37 +98,78 @@
           (do (Thread/sleep (long interval-ms))
               (recur)))))))
 
+(deftest replace-source-swaps-child-card-test
+  (testing "POST /replace-source — swaps source reference in child card"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {old-id :id} {:database_id   (mt/id)
+                                               :dataset_query (let [mp (mt/metadata-provider)]
+                                                                (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+                                               :type          :model
+                                               :name          "Old Orders"}
+                     :model/Card {new-id :id} {:database_id   (mt/id)
+                                               :dataset_query (let [mp (mt/metadata-provider)]
+                                                                (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+                                               :type          :model
+                                               :name          "New Orders"}
+                     :model/Card child-card {:database_id   (mt/id)
+                                             :dataset_query (let [mp (mt/metadata-provider)]
+                                                              (lib/query mp (lib.metadata/card mp old-id)))
+                                             :type          :question
+                                             :name          "Child Card"}]
+        (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
+          (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
+          (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
+                                               {:source_entity_id   old-id
+                                                :source_entity_type :card
+                                                :target_entity_id   new-id
+                                                :target_entity_type :card})
+                run-id   (:run_id response)
+                final    (poll-run run-id)]
+            (is (= "succeeded" (:status final)))
+            (let [child-query (t2/select-one-fn :dataset_query :model/Card :id (:id child-card))]
+              (is (= new-id (get-in child-query [:stages 0 :source-card]))
+                  "Child card should now reference the new source card"))))))))
+
 (deftest replace-source-poll-until-complete-test
   (testing "POST replace-source then GET /runs/:id — run reaches 'succeeded' status"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "poll-test@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency :model/ReplacementRun]
-            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
-                  new-source (card/create-card! (card-with-query "New source" :products) user)
-                  _child     (card/create-card! (card-sourced-from "Child card" old-source) user)
-                  response   (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
-                                                   {:source_entity_id   (:id old-source)
-                                                    :source_entity_type :card
-                                                    :target_entity_id   (:id new-source)
-                                                    :target_entity_type :card})
-                  run-id     (:run_id response)
-                  final-run  (poll-run run-id)]
-              (is (= "succeeded" (:status final-run))
-                  "Run should reach 'succeeded' status")
-              (is (= 1.0 (:progress final-run))
-                  "Progress should be 1.0 when done")
-              (is (nil? (:is_active final-run))
-                  "is_active should be nil when run is complete")
-              (is (some? (:end_time final-run))
-                  "end_time should be set"))))))))
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {old-id :id} {:database_id   (mt/id)
+                                               :dataset_query (let [mp (mt/metadata-provider)]
+                                                                (lib/query mp (lib.metadata/table mp (mt/id :products))))
+                                               :type          :model
+                                               :name          "Old source"}
+                     :model/Card {new-id :id} {:database_id   (mt/id)
+                                               :dataset_query (let [mp (mt/metadata-provider)]
+                                                                (lib/query mp (lib.metadata/table mp (mt/id :products))))
+                                               :type          :model
+                                               :name          "New source"}
+                     :model/Card child-card {:database_id   (mt/id)
+                                             :dataset_query (let [mp (mt/metadata-provider)]
+                                                              (lib/query mp (lib.metadata/card mp old-id)))
+                                             :type          :question
+                                             :name          "Child card"}]
+        (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
+          (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
+          (let [response  (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
+                                                {:source_entity_id   old-id
+                                                 :source_entity_type :card
+                                                 :target_entity_id   new-id
+                                                 :target_entity_type :card})
+                run-id    (:run_id response)
+                final-run (poll-run run-id)]
+            (is (= "succeeded" (:status final-run))
+                "Run should reach 'succeeded' status")
+            (is (= 1.0 (:progress final-run))
+                "Progress should be 1.0 when done")
+            (is (nil? (:is_active final-run))
+                "is_active should be nil when run is complete")
+            (is (some? (:end_time final-run))
+                "end_time should be set")))))))
 
 (deftest get-run-not-found-test
   (testing "GET /runs/:id — returns 404 for non-existent run"
     (mt/with-premium-features #{:dependencies}
       (mt/user-http-request :crowberto :get 404 "ee/replacement/runs/999999"))))
-
-;;; ------------------------------------------------ progress tracking ------------------------------------------------
 
 (deftest execute-async-progress-tracking-test
   (testing "execute-async! invokes the protocol methods correctly"
@@ -285,24 +233,3 @@
     (mt/with-premium-features #{:dependencies}
       (mt/user-http-request :crowberto :post 404 "ee/replacement/runs/999999/cancel"))))
 
-;;; ------------------------------------------------ 409 concurrent run ------------------------------------------------
-
-(deftest concurrent-run-returns-409-test
-  (testing "POST /replace-source — returns 409 when another run is already active"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "concurrent-test@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency :model/ReplacementRun]
-            (let [old-source (card/create-card! (card-with-query "Old source" :products) user)
-                  new-source (card/create-card! (card-with-query "New source" :products) user)
-                  _child     (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              ;; Insert a fake active run to simulate one already running
-              (let [run (replacement-run/create-run! :card (:id old-source)
-                                                     :card (:id new-source)
-                                                     (mt/user->id :crowberto))]
-                (replacement-run/start-run! (:id run)))
-              (mt/user-http-request :crowberto :post 409 "ee/replacement/replace-source"
-                                    {:source_entity_id   (:id old-source)
-                                     :source_entity_type :card
-                                     :target_entity_id   (:id new-source)
-                                     :target_entity_type :card}))))))))

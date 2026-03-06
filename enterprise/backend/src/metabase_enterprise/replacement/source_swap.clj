@@ -58,7 +58,6 @@
                       (and (seq changes)
                            (lib/native-only-query? query'))
                       (assoc :result_metadata (:result_metadata card)))]
-      ;; no changes, so don't update
       (models.dependency/swap-dependency! :card (:id card) old-source new-source)
       (when (seq changes)
         (t2/update! :model/Card (:id card) changes)
@@ -83,7 +82,6 @@
                       (assoc :definition query')
                       (not= table-id table-id')
                       (assoc :table_id table-id'))]
-      ;; no changes, so don't update
       (models.dependency/swap-dependency! :segment (:id segment) old-source new-source)
       (when (seq changes)
         (t2/update! :model/Segment (:id segment) changes)
@@ -103,7 +101,6 @@
                       (not= table-id table-id')
                       (assoc :table_id table-id'))]
       (models.dependency/swap-dependency! :measure (:id measure) old-source new-source)
-      ;; no changes, so don't update
       (when (seq changes)
         (t2/update! :model/Measure (:id measure) changes)
         (events/publish-event! :event/measure-update

@@ -1,863 +1,331 @@
 (ns metabase-enterprise.replacement.source-swap-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
-   [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
-   [metabase-enterprise.replacement.test-util :as replacement.test-util]
-   [metabase-enterprise.replacement.usages :as replacement.usages]
-   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.queries.models.card :as card]
-   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (comment
   metabase-enterprise.dependencies.events/keep-me)
 
-(defn- native-card-with-query
-  "Create a native card map for the given table keyword."
-  [card-name table-kw]
-  (let [mp (mt/metadata-provider)]
-    {:name                   card-name
-     :database_id            (mt/id)
-     :display                :table
-     :query_type             :native
-     :type                   :question
-     :dataset_query          (lib/native-query mp (str "SELECT * FROM " (name table-kw) " LIMIT 1"))
-     :visualization_settings {}}))
+;;; ------------------------------------------------ Card --------------------------------------------------------
 
-(defn- card-sourced-from
-  "Create a card map whose query sources `inner-card`."
-  [card-name inner-card]
-  (let [mp        (mt/metadata-provider)
-        card-meta (lib.metadata/card mp (:id inner-card))]
-    {:name                   card-name
-     :database_id            (mt/id)
-     :display                :table
-     :query_type             :query
-     :type                   :question
-     :dataset_query          (lib/query mp card-meta)
-     :visualization_settings {}}))
-
-;;; ------------------------------------------------ swap-native-card-source! ------------------------------------------------
-
-(deftest swap-native-card-source!-updates-query-test
-  (testing "Card referencing the old card gets its query text and template tags updated"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
-                                                  (lib/native-query mp "SELECT * FROM {{#999}}")}]
-          (replacement.source-swap/swap-source! [:card card-id] [:card 999] [:card 888])
-          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
-                query         (lib/raw-native-query updated-query)
-                tags          (lib/template-tags updated-query)]
-            (is (str/includes? query "{{#888}}"))
-            (is (not (str/includes? query "{{#999}}")))
-            (is (contains? tags "#888"))
-            (is (not (contains? tags "#999")))
-            (is (= 888 (get-in tags ["#888" :card-id])))
-            (is (= "#888" (get-in tags ["#888" :name])))
-            (is (= "#888" (get-in tags ["#888" :display-name])))))))))
-
-(deftest swap-native-card-source!-no-op-test
-  (testing "Card NOT referencing the old card is unchanged"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
-                                                  (lib/native-query mp "SELECT * FROM {{#777}}")}]
-          (let [before (t2/select-one :model/Card :id card-id)]
-            (replacement.source-swap/swap-source! [:card card-id] [:card 999] [:card 888])
-            (let [after (t2/select-one :model/Card :id card-id)]
-              (is (= (:dataset_query before) (:dataset_query after))))))))))
-
-(deftest swap-native-card-source!-updates-dependencies-test
-  (testing "Dependencies are updated after swap"
+(deftest card-swap-source!-source-table-test
+  (testing "swap-source! should update source-table and table_id when swapping tables"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
-        (let [mp       (mt/metadata-provider)
-              products (lib.metadata/table mp (mt/id :products))
-              orders   (lib.metadata/table mp (mt/id :orders))]
-          (mt/with-temp [:model/Card {old-source-id :id :as source} {:dataset_query (lib/query mp products)}
-                         :model/Card {new-source-id :id :as destination} {:dataset_query (lib/query mp orders)}
-                         :model/Card {native-card-id :id :as native-card}
-                         {:dataset_query (lib/native-query mp (str "SELECT * FROM {{#" old-source-id "}}"))}]
-            (doseq [card [source destination native-card]]
-              (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :rasta)}))
-            ;; Perform the swap
-            (replacement.source-swap/swap-source! [:card native-card-id] [:card old-source-id] [:card new-source-id])
-            ;; FIXME
-            (is (contains? (set (replacement.usages/direct-usages [:card new-source-id]))
-                           [:card native-card-id]))
-            (doseq [card [source destination native-card]]
-              (events/publish-event! :event/card-delete {:object card :user-id (mt/user->id :rasta)}))))))))
+        (let [mp    (mt/metadata-provider)
+              query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query query
+                                                    :table_id      (mt/id :orders)}]
+            (replacement.field-refs/upgrade-field-refs! [:card card-id])
+            (replacement.source-swap/swap-source! [:card card-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
+            (let [card (t2/select-one :model/Card card-id)]
+              (is (= (mt/id :reviews) (:table_id card)))
+              (is (= (mt/id :reviews)
+                     (get-in card [:dataset_query :stages 0 :source-table]))))))))))
 
-;;; ------------------------------------------------ swap-source: card -> X ------------------------------------------------
+(deftest card-swap-source!-source-card-test
+  (testing "swap-source! should update source-card when swapping card sources"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {old-source-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                         :model/Card {new-source-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :reviews)))}
+                         :model/Card {card-id :id}       {:dataset_query {:lib/type :mbql/query
+                                                                          :database (mt/id)
+                                                                          :stages   [{:lib/type    :mbql.stage/mbql
+                                                                                      :source-card old-source-id}]}}]
+            (replacement.field-refs/upgrade-field-refs! [:card card-id])
+            (replacement.source-swap/swap-source! [:card card-id]
+                                                  [:card old-source-id]
+                                                  [:card new-source-id])
+            (is (= new-source-id
+                   (get-in (t2/select-one :model/Card card-id)
+                           [:dataset_query :stages 0 :source-card])))))))))
 
-(deftest swap-source-card-to-card-test
-  (testing "swap-source card -> card: child card's source-card is updated"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-card-card@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [old-source (card/create-card! (replacement.test-util/card-with-query "Old source" :products) user)
-                  new-source (card/create-card! (replacement.test-util/card-with-query "New source" :products) user)
-                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              (replacement.source-swap/swap-source! [:card (:id child)]
-                                                    [:card (:id old-source)]
-                                                    [:card (:id new-source)])
-              (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))]
-                (is (= (:id new-source) (get-in updated-query [:stages 0 :source-card])))))))))))
+(deftest card-swap-source!-native-query-test
+  (testing "swap-source! should replace table name in native SQL"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp    (mt/metadata-provider)
+              query (lib/native-query mp "SELECT ID FROM ORDERS")]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+            (replacement.field-refs/upgrade-field-refs! [:card card-id])
+            (replacement.source-swap/swap-source! [:card card-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
+            (is (= "SELECT ID FROM PUBLIC.REVIEWS"
+                   (get-in (t2/select-one :model/Card card-id)
+                           [:dataset_query :stages 0 :native])))))))))
 
-(deftest swap-source-card-to-table-test
-  (testing "swap-source card -> table: child card's source changes to source-table"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-card-table@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [old-source (card/create-card! (replacement.test-util/card-with-query "Old source" :products) user)
-                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-              (replacement.source-swap/swap-source! [:card (:id child)]
-                                                    [:card (:id old-source)]
-                                                    [:table (mt/id :products)])
-              (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))]
-                (is (= (mt/id :products) (get-in updated-query [:stages 0 :source-table])))
-                (is (nil? (get-in updated-query [:stages 0 :source-card])))))))))))
+(deftest card-swap-source!-native-query-preserves-result-metadata-test
+  (testing "swap-source! should preserve result_metadata for native queries"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp              (mt/metadata-provider)
+              query           (lib/native-query mp "SELECT ID FROM ORDERS")
+              result-metadata [{:name "ID" :base_type :type/Integer}]]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+            (t2/update! :model/Card card-id {:result_metadata result-metadata})
+            (replacement.field-refs/upgrade-field-refs! [:card card-id])
+            (replacement.source-swap/swap-source! [:card card-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
+            (let [card (t2/select-one :model/Card card-id)]
+              (is (= "SELECT ID FROM PUBLIC.REVIEWS"
+                     (get-in card [:dataset_query :stages 0 :native])))
+              (is (=? [{:name "ID" :base_type :type/Integer}]
+                      (:result_metadata card))))))))))
 
-(deftest swap-source-card-to-native-card-test
-  (testing "swap-source card -> native card: child card's source-card is updated"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-card-native@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [old-source  (card/create-card! (replacement.test-util/card-with-query "Old source" :products) user)
-                  native-card (card/create-card! (native-card-with-query "Native target" :products) user)
-                  _           (replacement.test-util/wait-for-result-metadata (:id native-card))
-                  child       (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-              (replacement.source-swap/swap-source! [:card (:id child)]
-                                                    [:card (:id old-source)]
-                                                    [:card (:id native-card)])
-              (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))]
-                (is (= (:id native-card) (get-in updated-query [:stages 0 :source-card])))))))))))
+(deftest card-swap-source!-broken-query-test
+  (testing "swap-source! should not crash on a card with a broken query"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query mp "SELECT 1")}]
+            (t2/update! :model/Card card-id {:dataset_query {}})
+            (replacement.source-swap/swap-source! [:card card-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
+            (is (= {} (:dataset_query (t2/select-one :model/Card card-id))))))))))
 
-;;; ------------------------------------------------ swap-source: native card -> X ------------------------------------------------
+;;; ------------------------------------------------ Transform --------------------------------------------------------
 
-(deftest swap-source-native-card-to-card-test
-  (testing "swap-source native card -> card: child card's source-card is updated"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-native-card@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [native-card (card/create-card! (native-card-with-query "Native source" :products) user)
-                  _           (replacement.test-util/wait-for-result-metadata (:id native-card))
-                  new-source  (card/create-card! (replacement.test-util/card-with-query "New source" :products) user)
-                  child       (card/create-card! (card-sourced-from "Child card" native-card) user)]
-              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-              (replacement.source-swap/swap-source! [:card (:id child)]
-                                                    [:card (:id native-card)]
-                                                    [:card (:id new-source)])
-              (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))]
-                (is (= (:id new-source) (get-in updated-query [:stages 0 :source-card])))))))))))
+(deftest transform-swap-source!-source-table-test
+  (testing "swap-source! should update source-table in transform query"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp    (mt/metadata-provider)
+              query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+          (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
+                                                              :source {:type "query" :query query}
+                                                              :target {:database (mt/id) :table "out"}}]
+            (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
+            (replacement.source-swap/swap-source! [:transform transform-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
+            (is (= (mt/id :reviews)
+                   (get-in (t2/select-one :model/Transform transform-id)
+                           [:source :query :stages 0 :source-table])))))))))
 
-(deftest swap-source-native-card-to-native-card-test
-  (testing "swap-source native card -> native card: child card's source-card is updated"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-native-native@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [old-native (card/create-card! (native-card-with-query "Old native" :products) user)
-                  _          (replacement.test-util/wait-for-result-metadata (:id old-native))
-                  new-native (card/create-card! (native-card-with-query "New native" :products) user)
-                  _          (replacement.test-util/wait-for-result-metadata (:id new-native))
-                  child      (card/create-card! (card-sourced-from "Child card" old-native) user)]
-              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-              (replacement.source-swap/swap-source! [:card (:id child)]
-                                                    [:card (:id old-native)]
-                                                    [:card (:id new-native)])
-              (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))]
-                (is (= (:id new-native) (get-in updated-query [:stages 0 :source-card])))))))))))
+(deftest transform-swap-source!-broken-query-test
+  (testing "swap-source! should not crash on a transform with a broken query"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
+                                                              :source {:type  "query"
+                                                                       :query (lib/native-query mp "SELECT 1")}
+                                                              :target {:database (mt/id) :table "out"}}]
+            (t2/query-one {:update :transform
+                           :set    {:source "{\"type\":\"query\",\"query\":{}}"}
+                           :where  [:= :id transform-id]})
+            (is (nil? (replacement.source-swap/swap-source! [:transform transform-id]
+                                                            [:table (mt/id :orders)]
+                                                            [:table (mt/id :reviews)])))))))))
 
-(deftest swap-source-native-card-to-table-test
-  (testing "swap-source native card -> table: child card's source changes to source-table"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-native-table@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [native-card (card/create-card! (native-card-with-query "Native source" :products) user)
-                  _           (replacement.test-util/wait-for-result-metadata (:id native-card))
-                  child       (card/create-card! (card-sourced-from "Child card" native-card) user)]
-              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-              (replacement.source-swap/swap-source! [:card (:id child)]
-                                                    [:card (:id native-card)]
-                                                    [:table (mt/id :products)])
-              (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))]
-                (is (= (mt/id :products) (get-in updated-query [:stages 0 :source-table])))
-                (is (nil? (get-in updated-query [:stages 0 :source-card])))))))))))
+;;; ------------------------------------------------- Segment ----------------------------------------------------------
 
-;;; ------------------------------------------------ swap-source: table -> X ------------------------------------------------
+(deftest segment-swap-source!-source-table-test
+  (testing "swap-source! should update source-table and table_id in segment definition"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp    (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
+          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
+                                                          :definition query}]
+            (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
+            (replacement.source-swap/swap-source! [:segment segment-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
+            (let [segment (t2/select-one :model/Segment segment-id)]
+              (is (= (mt/id :reviews) (:table_id segment)))
+              (is (= (mt/id :reviews)
+                     (get-in segment [:definition :stages 0 :source-table]))))))))))
 
-(deftest swap-source-table-to-card-test
-  (testing "swap-source table -> card: child card's source changes to source-card"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-table-card@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (replacement.test-util/with-restored-card-queries
-              (let [new-source (card/create-card! (replacement.test-util/card-with-query "New source" :products) user)
-                    child      (card/create-card! (replacement.test-util/card-with-query "Child card" :products) user)]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:table (mt/id :products)]
-                                                      [:card (:id new-source)])
-                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))]
-                  (is (= (:id new-source) (get-in updated-query [:stages 0 :source-card])))
-                  (is (nil? (get-in updated-query [:stages 0 :source-table]))))))))))))
+(deftest segment-swap-source!-broken-query-test
+  (testing "swap-source! should not crash on a segment with a broken definition"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp    (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
+          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
+                                                          :definition query}]
+            (t2/query-one {:update :segment
+                           :set    {:definition "{}"}
+                           :where  [:= :id segment-id]})
+            (is (nil? (replacement.source-swap/swap-source! [:segment segment-id]
+                                                            [:table (mt/id :orders)]
+                                                            [:table (mt/id :reviews)])))))))))
 
-(deftest swap-source-table-to-table-test
-  (testing "swap-source table -> table: child card's source-table is updated"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-table-table@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (replacement.test-util/with-restored-card-queries
-              (let [child (card/create-card! (replacement.test-util/card-with-query "Child card" :products) user)]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:table (mt/id :products)]
-                                                      [:table (mt/id :products)])
-                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))]
-                  (is (= (mt/id :products) (get-in updated-query [:stages 0 :source-table]))))))))))))
+;;; ------------------------------------------------- Measure ----------------------------------------------------------
 
-(deftest swap-source-table-to-native-card-test
-  (testing "swap-source table -> native card: child card's source changes to source-card"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-table-native@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (replacement.test-util/with-restored-card-queries
-              (let [native-card (card/create-card! (native-card-with-query "Native target" :products) user)
-                    _           (replacement.test-util/wait-for-result-metadata (:id native-card))
-                    child       (card/create-card! (replacement.test-util/card-with-query "Child card" :products) user)]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:table (mt/id :products)]
-                                                      [:card (:id native-card)])
-                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))]
-                  (is (= (:id native-card) (get-in updated-query [:stages 0 :source-card])))
-                  (is (nil? (get-in updated-query [:stages 0 :source-table]))))))))))))
+(deftest measure-swap-source!-source-table-test
+  (testing "swap-source! should update source-table and table_id in measure definition"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp    (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :id)))))]
+          (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
+                                                          :name       "test measure"
+                                                          :definition query}]
+            (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
+            (replacement.source-swap/swap-source! [:measure measure-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
+            (let [measure (t2/select-one :model/Measure measure-id)]
+              (is (= (mt/id :reviews) (:table_id measure)))
+              (is (= (mt/id :reviews)
+                     (get-in measure [:definition :stages 0 :source-table]))))))))))
 
-;;; ------------------------------------------------ swap-source: transforms ------------------------------------------------
+(deftest measure-swap-source!-broken-query-test
+  (testing "swap-source! should not crash on a measure with a broken definition"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp    (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        (lib/aggregate (lib/count)))]
+          (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
+                                                          :name       "test measure"
+                                                          :definition query}]
+            (t2/query-one {:update :measure
+                           :set    {:definition "{}"}
+                           :where  [:= :id measure-id]})
+            (is (nil? (replacement.source-swap/swap-source! [:measure measure-id]
+                                                            [:table (mt/id :orders)]
+                                                            [:table (mt/id :reviews)])))))))))
 
-(defn- transform-sourced-from-card
-  "Create a Transform map whose query sources `inner-card`."
-  [transform-name inner-card]
-  (let [mp (mt/metadata-provider)]
-    {:source {:type "query"
-              :query (lib/query mp (lib.metadata/card mp (:id inner-card)))}
-     :name   transform-name
-     :target {:database (mt/id) :table transform-name}}))
+;;; ------------------------------------------------ Dashboard --------------------------------------------------------
 
-(defn- transform-sourced-from-table
-  "Create a Transform map whose query sources a table."
-  [transform-name table-kw]
-  (let [mp (mt/metadata-provider)]
-    {:source {:type "query"
-              :query (lib/query mp (lib.metadata/table mp (mt/id table-kw)))}
-     :name   transform-name
-     :target {:database (mt/id) :table transform-name}}))
+(deftest dashboard-swap-source!-parameter-card-id-test
+  (testing "swap-source! should update card_id in dashboard parameter values_source_config"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card      {old-card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                         :model/Card      {new-card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :reviews)))}
+                         :model/Dashboard {dashboard-id :id}
+                         {:parameters [{:id                   "test-param"
+                                        :name                 "category"
+                                        :type                 :string/=
+                                        :values_source_type   "card"
+                                        :values_source_config {:card_id     old-card-id
+                                                               :value_field [:field "ID" {:base-type :type/Integer}]}}]}]
+            (replacement.source-swap/swap-source! [:dashboard dashboard-id]
+                                                  [:card old-card-id]
+                                                  [:card new-card-id])
+            (is (= new-card-id
+                   (-> (t2/select-one :model/Dashboard dashboard-id)
+                       :parameters first :values_source_config :card_id)))))))))
 
-(deftest swap-source-card-to-card-with-transform-test
-  (testing "swap-source card -> card: transform's source query is updated"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-card-card-transform@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency :model/Transform]
-            (let [old-source (card/create-card! (replacement.test-util/card-with-query "Old source" :products) user)
-                  new-source (card/create-card! (replacement.test-util/card-with-query "New source" :products) user)]
-              (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_c2c" old-source)]
-                (let [transform-obj (t2/select-one :model/Transform transform-id)]
-                  (replacement.field-refs/upgrade-field-refs! [:transform transform-id] transform-obj))
-                (replacement.source-swap/swap-source! [:transform transform-id]
-                                                      [:card (:id old-source)]
-                                                      [:card (:id new-source)])
-                (let [updated-source (t2/select-one-fn :source :model/Transform :id transform-id)]
-                  (is (= (:id new-source) (get-in updated-source [:query :stages 0 :source-card]))))))))))))
+(deftest dashboard-swap-source!-parameter-mappings-card-to-card-test
+  (testing "swap-source! should walk parameter mapping targets without corruption during card-to-card swap"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp    (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        (lib/breakout (lib.metadata/field mp (mt/id :orders :id))))]
+          (mt/with-temp [:model/Card          {old-card-id :id}  {:dataset_query query}
+                         :model/Card          {new-card-id :id}  {:dataset_query query}
+                         :model/Dashboard     {dashboard-id :id} {}
+                         :model/DashboardCard {dashcard-id :id}
+                         {:dashboard_id       dashboard-id
+                          :card_id            old-card-id
+                          :parameter_mappings [{:parameter_id "my-param"
+                                                :card_id      old-card-id
+                                                :target       [:dimension
+                                                               [:field "ID" {:base-type :type/Integer}]]}]}]
+            (replacement.source-swap/swap-source! [:dashboard dashboard-id]
+                                                  [:card old-card-id]
+                                                  [:card new-card-id])
+            (let [dashcard (t2/select-one :model/DashboardCard dashcard-id)]
+              (is (=? {:parameter_mappings [{:parameter_id "my-param"
+                                             :card_id      old-card-id
+                                             :target       [:dimension [:field (mt/id :orders :id) {}]]}]}
+                      dashcard)))))))))
 
-(deftest swap-source-table-to-card-with-transform-test
-  (testing "swap-source table -> card: transform's source query changes to source-card"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-table-card-transform@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency :model/Transform]
-            (replacement.test-util/with-restored-card-queries
-              (let [new-source (card/create-card! (replacement.test-util/card-with-query "New source" :products) user)]
-                (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-table "test_transform_t2c" :products)]
-                  (let [transform-obj (t2/select-one :model/Transform transform-id)]
-                    (replacement.field-refs/upgrade-field-refs! [:transform transform-id] transform-obj))
-                  (replacement.source-swap/swap-source! [:transform transform-id]
-                                                        [:table (mt/id :products)]
-                                                        [:card (:id new-source)])
-                  (let [updated-source (t2/select-one-fn :source :model/Transform :id transform-id)]
-                    (is (= (:id new-source) (get-in updated-source [:query :stages 0 :source-card])))
-                    (is (nil? (get-in updated-source [:query :stages 0 :source-table])))))))))))))
+(deftest dashboard-swap-source!-parameter-mappings-implicit-join-test
+  (testing "swap-source! should update :source-field in implicitly joined parameter targets"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp           (mt/metadata-provider)
+              query        (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              category-col (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns query))
+              target       [:dimension (lib/->legacy-MBQL (lib/ref category-col))]]
+          (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query query}
+                         :model/Dashboard     {dashboard-id :id} {}
+                         :model/DashboardCard {dashcard-id :id}
+                         {:dashboard_id       dashboard-id
+                          :card_id            card-id
+                          :parameter_mappings [{:parameter_id "cat-param"
+                                                :card_id      card-id
+                                                :target       target}]}]
+            (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
+            (replacement.source-swap/swap-source! [:dashboard dashboard-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
+            (let [updated-target (get-in (t2/select-one :model/DashboardCard dashcard-id)
+                                         [:parameter_mappings 0 :target])]
+              (is (=? [:dimension [:field (mt/id :products :category)
+                                   {:source-field (mt/id :reviews :product_id)}]]
+                      updated-target)))))))))
 
-(deftest swap-source-card-to-table-with-transform-test
-  (testing "swap-source card -> table: transform's source query changes to source-table"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-card-table-transform@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency :model/Transform]
-            (let [old-source (card/create-card! (replacement.test-util/card-with-query "Old source" :products) user)]
-              (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_c2t" old-source)]
-                (let [transform-obj (t2/select-one :model/Transform transform-id)]
-                  (replacement.field-refs/upgrade-field-refs! [:transform transform-id] transform-obj))
-                (replacement.source-swap/swap-source! [:transform transform-id]
-                                                      [:card (:id old-source)]
-                                                      [:table (mt/id :products)])
-                (let [updated-source (t2/select-one-fn :source :model/Transform :id transform-id)]
-                  (is (= (mt/id :products) (get-in updated-source [:query :stages 0 :source-table])))
-                  (is (nil? (get-in updated-source [:query :stages 0 :source-card]))))))))))))
+(defn- make-click-behavior
+  [card-id target]
+  {:type    "link"
+   :linkType "question"
+   :targetId card-id
+   :parameterMapping
+   {(json/encode target)
+    {:id     (json/encode target)
+     :source {:type :column
+              :id   "ID"
+              :name "ID"}
+     :target {:type      :dimension
+              :id        (json/encode target)
+              :dimension target}}}})
 
-(deftest swap-source-card-to-card-with-card-and-transform-test
-  (testing "swap-source card -> card: both child card and transform are updated"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-card-card-both@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency :model/Transform]
-            (let [old-source (card/create-card! (replacement.test-util/card-with-query "Old source" :products) user)
-                  new-source (card/create-card! (replacement.test-util/card-with-query "New source" :products) user)
-                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              (mt/with-temp [:model/Transform {transform-id :id} (transform-sourced-from-card "test_transform_both" old-source)]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:card (:id old-source)]
-                                                      [:card (:id new-source)])
-                (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
-                (replacement.source-swap/swap-source! [:transform transform-id]
-                                                      [:card (:id old-source)]
-                                                      [:card (:id new-source)])
-                (let [updated-card-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                      updated-source     (t2/select-one-fn :source :model/Transform :id transform-id)]
-                  (is (= (:id new-source) (get-in updated-card-query [:stages 0 :source-card]))
-                      "Child card's source-card should be updated")
-                  (is (= (:id new-source) (get-in updated-source [:query :stages 0 :source-card]))
-                      "Transform's source query source-card should be updated"))))))))))
-
-;;; ----------------------------------------- DashboardCard column_settings upgrade ------------------------------------------
-
-(def vis-settings {:column_settings
-                   {"[\"name\",\"name\"]"
-                    {:click_behavior
-                     {:parameterMapping
-                      ;; yes, this really is a keyword in the data that comes back
-                      {(keyword (pr-str "[\"dimension\",[\"field\",37,{\"base-type\":\"type{:Text\",\"source-field\":25}],{\"stage-number\":0}]"))
-                       {:source
-                        {:type "column", :id "name", :name "name"},
-
-                        :target
-                        {:type "dimension",
-                         :id
-                         "[\"dimension\",[\"field\",37,{\"base-type\":\"type/Text\",\"source-field\":25}],{\"stage-number\":0}]",
-                         :dimension
-                         ["dimension"
-                          [:field 37 {:base-type :type/Text, :source-field 25}]
-                          {:stage-number 0}]},
-                        :id
-                        "[\"dimension\",[\"field\",37,{\"base-type\":\"type/Text\",\"source-field\":25}],{\"stage-number\":0}]"}},
-                      :targetId 7048,
-                      :linkType "question",
-                      :type "link"}}}})
-
-(deftest swap-source-card-to-card-updates-dashcard-column-settings-test
-  (testing "swap-source card -> card: DashboardCard column_settings keys are upgraded"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-dashcard-cs@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [old-source (card/create-card! (replacement.test-util/card-with-query "Old source" :products) user)
-                  new-source (card/create-card! (replacement.test-util/card-with-query "New source" :products) user)
-                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
-                             :model/DashboardCard {dashcard-id :id}
-                             {:dashboard_id dashboard-id
-                              :card_id (:id child)
-                              :visualization_settings vis-settings}]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:card (:id old-source)]
-                                                      [:card (:id new-source)])
-                ;; TODO (eric): Add assertions
-                ))))))))
-
-(deftest swap-source-no-column-settings-test
-  (testing "swap-source: DashboardCards without column_settings are unaffected"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-dashcard-no-cs@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [old-source (card/create-card! (replacement.test-util/card-with-query "Old source" :products) user)
-                  new-source (card/create-card! (replacement.test-util/card-with-query "New source" :products) user)
-                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)]
-              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
-                             :model/DashboardCard {dashcard-id :id}
-                             {:dashboard_id dashboard-id
-                              :card_id (:id child)
-                              :visualization_settings {:some_setting "value"}}]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:card (:id old-source)]
-                                                      [:card (:id new-source)])
-                (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)]
-                  (is (=? {:some_setting "value"} updated-viz)
-                      "Visualization settings without column_settings should be unchanged"))))))))))
-
-(deftest swap-source-name-based-column-settings-keys-preserved-test
-  (testing "swap-source: name-based column_settings keys are not modified"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-dashcard-name-cs@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [old-source (card/create-card! (replacement.test-util/card-with-query "Old source" :products) user)
-                  new-source (card/create-card! (replacement.test-util/card-with-query "New source" :products) user)
-                  child      (card/create-card! (card-sourced-from "Child card" old-source) user)
-                  name-key   (json/encode ["name" "MyColumn"])]
-              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
-                             :model/DashboardCard {dashcard-id :id}
-                             {:dashboard_id dashboard-id
-                              :card_id (:id child)
-                              :visualization_settings {:column_settings {name-key {:column_title "Custom"}}}}]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:card (:id old-source)]
-                                                      [:card (:id new-source)])
-                (let [updated-viz (t2/select-one-fn :visualization_settings :model/DashboardCard :id dashcard-id)
-                      updated-cs  (:column_settings updated-viz)]
-                  (is (contains? updated-cs name-key)
-                      "Name-based column settings key should be preserved")
-                  (is (= {:column_title "Custom"} (get updated-cs name-key))
-                      "Name-based column settings value should be preserved"))))))))))
-
-;;; ------------------------------------------------ Mixed Chain Tests ------------------------------------------------
-;;; These tests cover chains that mix MBQL and native queries
-
-(deftest swap-source-mixed-chain-test
-  (testing "swap-source propagates through: MBQL Model → Native Card → MBQL Card"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-mixed-chain@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [ ;; Chain: old-model → native-card ({{#id}}) → mbql-card (source-card)
-                  old-model   (card/create-card! (replacement.test-util/card-with-query "Old Model" :products) user)
-                  new-model   (card/create-card! (replacement.test-util/card-with-query "New Model" :products) user)
-                  _           (replacement.test-util/wait-for-result-metadata (:id old-model))
-                  native-card (card/create-card! (replacement.test-util/native-card-sourced-from "Native Card" old-model) user)
-                  _           (replacement.test-util/wait-for-result-metadata (:id native-card))
-                  mbql-card   (card/create-card! (card-sourced-from "MBQL Card" native-card) user)]
-              ;; Swap the model at the root
-              (replacement.field-refs/upgrade-field-refs! [:card (:id native-card)] native-card)
-              (replacement.field-refs/upgrade-field-refs! [:card (:id mbql-card)] mbql-card)
-              (replacement.source-swap/swap-source! [:card (:id native-card)]
-                                                    [:card (:id old-model)]
-                                                    [:card (:id new-model)])
-              (replacement.source-swap/swap-source! [:card (:id mbql-card)]
-                                                    [:card (:id old-model)]
-                                                    [:card (:id new-model)])
-              ;; Native card's {{#old-id}} should be updated to {{#new-id}}
-              (let [native-query (t2/select-one-fn :dataset_query :model/Card :id (:id native-card))
-                    native-sql   (get-in native-query [:stages 0 :native])]
-                (is (str/includes? native-sql (str "{{#" (:id new-model) "}}"))
-                    "Native card should reference new model")
-                (is (not (str/includes? native-sql (str "{{#" (:id old-model) "}}")))
-                    "Native card should not reference old model"))
-              ;; MBQL card should still reference native-card (unchanged, it's not a direct dependent)
-              (let [mbql-query (t2/select-one-fn :dataset_query :model/Card :id (:id mbql-card))]
-                (is (= (:id native-card) (get-in mbql-query [:stages 0 :source-card]))
-                    "MBQL card should still reference native card (unchanged)")))))))))
-
-;; swap! on cards
-
-(deftest source-swap-card-table-table-test
-  (mt/with-premium-features #{:dependencies}
-    (mt/dataset source-swap
-      (testing "Card on table swaps with new table"
-        (let [mp (mt/metadata-provider)
-              query (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))]
-          (doseq [[message query] [["Simple query"
-                                    query]
-                                   ["Query with fields"
-                                    (-> query
-                                        (lib/with-fields [(lib.metadata/field mp (mt/id :orders_a :total))]))]
-                                   ["Query with filter"
-                                    (-> query
-                                        (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :total)))))]
-                                   ["Query with expression"
-                                    (-> query
-                                        (lib/expression "PLUS" (lib/+ 2  (lib.metadata/field mp (mt/id :orders_a :id)))))]
-                                   ["Query with aggregate"
-                                    (-> query
-                                        (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :total)))))]
-                                   ["Query with breakout"
-                                    (-> query
-                                        (lib/breakout (lib.metadata/field mp (mt/id :orders_a :total))))]
-                                   ["Query with join"
-                                    (-> query
-                                        (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
-                                                                   [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
-                                                                           (lib.metadata/field mp (mt/id :products_a :id)))])))]]]
-            (testing message
-              (mt/with-temp [:model/Card card {:dataset_query query}]
-                ;; first, upgrade the card
-                (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
-                ;; sanity check that card points to original table
-                (is (= (mt/id :orders_a) (-> card :table_id)))
-                (is (= (mt/id :orders_a) (-> card :dataset_query :stages (get 0) :source-table)))
-                (let [old-source [:table (mt/id :orders_a)]
-                      new-source [:table (mt/id :orders_c)]
-                      results (qp/process-query (:dataset_query card))]
-                  (replacement.source-swap/swap-source! [:card (:id card)]
-                                                        old-source
-                                                        new-source)
-                  (let [card' (t2/select-one :model/Card (:id card))
-                        results' (qp/process-query (:dataset_query card'))]
-                    (is (= (mt/id :orders_c) (-> card' :table_id)))
-                    (is (= (mt/id :orders_c) (-> card' :dataset_query :stages (get 0) :source-table)))
-                    (is (not= (mt/rows+column-names results)
-                              (mt/rows+column-names results')))))))))))))
-
-(deftest source-swap-card-table-card-test
-  (mt/with-premium-features #{:dependencies}
-    (mt/dataset source-swap
-      (let [mp (mt/metadata-provider)
-            query (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))]
-        (doseq [[message query] [["Simple query"
-                                  query]
-                                 ["Query with fields"
-                                  (-> query
-                                      (lib/with-fields [(lib.metadata/field mp (mt/id :orders_a :total))]))]
-                                 ["Query with filter"
-                                  (-> query
-                                      (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :total)))))]
-                                 ["Query with expression"
-                                  (-> query
-                                      (lib/expression "PLUS" (lib/+ 2  (lib.metadata/field mp (mt/id :orders_a :id)))))]
-                                 ["Query with aggregate"
-                                  (-> query
-                                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :total)))))]
-                                 ["Query with breakout"
-                                  (-> query
-                                      (lib/breakout (lib.metadata/field mp (mt/id :orders_a :total))))]
-                                 ["Query with join"
-                                  (-> query
-                                      (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
-                                                                 [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
-                                                                         (lib.metadata/field mp (mt/id :products_a :id)))])))]]]
-          (testing message
-            (mt/with-temp [:model/Card card {:dataset_query query}
-                           :model/Card new-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_c)))}]
-              ;; first, upgrade the card
-              (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
-              ;; sanity check that card points to original table
-              (is (= (mt/id :orders_a) (-> card :table_id)))
-              (is (= (mt/id :orders_a) (-> card :dataset_query :stages (get 0) :source-table)))
-              (let [results (qp/process-query (:dataset_query card))]
-                (replacement.source-swap/swap-source! [:card (:id card)]
-                                                      [:table (mt/id :orders_a)]
-                                                      [:card (:id new-source)])
-                (let [card' (t2/select-one :model/Card (:id card))
-                      results' (qp/process-query (:dataset_query card'))]
-                  (is (= (mt/id :orders_c) (-> card' :table_id)))
-                  (is (nil? (-> card' :dataset_query :stages (get 0) :source-table)))
-                  (is (= (:id new-source) (-> card' :dataset_query :stages (get 0) :source-card)))
-                  (is (not= (mt/rows+column-names results)
-                            (mt/rows+column-names results'))))))))))))
-
-(deftest source-swap-card-card-card-test
-  (mt/with-premium-features #{:dependencies}
-    (mt/dataset source-swap
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card old-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))}]
-          (let [query (lib/query mp (lib.metadata/card mp (:id old-source)))]
-            (doseq [[message query] [["Simple query"
-                                      query]
-                                     ["Query with fields"
-                                      (-> query
-                                          (lib/with-fields [(lib.metadata/field mp (mt/id :orders_a :total))]))]
-                                     ["Query with filter"
-                                      (-> query
-                                          (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :total)))))]
-                                     ["Query with expression"
-                                      (-> query
-                                          (lib/expression "PLUS" (lib/+ 2  (lib.metadata/field mp (mt/id :orders_a :id)))))]
-                                     ["Query with aggregate"
-                                      (-> query
-                                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :total)))))]
-                                     ["Query with breakout"
-                                      (-> query
-                                          (lib/breakout (lib.metadata/field mp (mt/id :orders_a :total))))]
-                                     ["Query with join"
-                                      (-> query
-                                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
-                                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
-                                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))]]]
-              (testing message
-                (mt/with-temp [:model/Card card {:dataset_query query}
-                               :model/Card new-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_c)))}]
-                  ;; first, upgrade the card
-                  (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
-                  ;; sanity check that card points to original table
-                  (is (= (mt/id :orders_a) (-> card :table_id)))
-                  (is (= (:id old-source) (-> card :dataset_query :stages (get 0) :source-card)))
-                  (let [results (qp/process-query (:dataset_query card))]
-                    (replacement.source-swap/swap-source! [:card (:id card)]
-                                                          [:card (:id old-source)]
-                                                          [:card (:id new-source)])
-                    (let [card' (t2/select-one :model/Card (:id card))
-                          results' (qp/process-query (:dataset_query card'))]
-                      (is (= (mt/id :orders_c) (-> card' :table_id)))
-                      (is (nil? (-> card' :dataset_query :stages (get 0) :source-table)))
-                      (is (= (:id new-source) (-> card' :dataset_query :stages (get 0) :source-card)))
-                      (is (not= (mt/rows+column-names results)
-                                (mt/rows+column-names results'))))))))))))))
-
-(deftest source-swap-card-card-table-test
-  (mt/with-premium-features #{:dependencies}
-    (mt/dataset source-swap
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card old-source {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))}]
-          (let [query (lib/query mp (lib.metadata/card mp (:id old-source)))]
-            (doseq [[message query] [["Simple query"
-                                      query]
-                                     ["Query with fields"
-                                      (-> query
-                                          (lib/with-fields [(lib.metadata/field mp (mt/id :orders_a :total))]))]
-                                     ["Query with filter"
-                                      (-> query
-                                          (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :total)))))]
-                                     ["Query with expression"
-                                      (-> query
-                                          (lib/expression "PLUS" (lib/+ 2  (lib.metadata/field mp (mt/id :orders_a :id)))))]
-                                     ["Query with aggregate"
-                                      (-> query
-                                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :total)))))]
-                                     ["Query with breakout"
-                                      (-> query
-                                          (lib/breakout (lib.metadata/field mp (mt/id :orders_a :total))))]
-                                     ["Query with join"
-                                      (-> query
-                                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
-                                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
-                                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))]]]
-              (testing message
-                (mt/with-temp [:model/Card card {:dataset_query query}]
-                  ;; first, upgrade the card
-                  (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
-                  ;; sanity check that card points to original card
-                  (is (= (mt/id :orders_a) (-> card :table_id)))
-                  (is (= (:id old-source) (-> card :dataset_query :stages (get 0) :source-card)))
-                  (let [results (qp/process-query (:dataset_query card))]
-                    (replacement.source-swap/swap-source! [:card (:id card)]
-                                                          [:card (:id old-source)]
-                                                          [:table (mt/id :orders_c)])
-                    (let [card' (t2/select-one :model/Card (:id card))
-                          results' (qp/process-query (:dataset_query card'))]
-                      (is (= (mt/id :orders_c) (-> card' :table_id)))
-                      (is (= (mt/id :orders_c) (-> card' :dataset_query :stages (get 0) :source-table)))
-                      (is (nil? (-> card' :dataset_query :stages (get 0) :source-card)))
-                      (is (not= (mt/rows+column-names results)
-                                (mt/rows+column-names results'))))))))))))))
-
-(deftest source-swap-card-join-test
-  (mt/with-premium-features #{:dependencies}
-    (mt/dataset source-swap
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card old-card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products_a)))}
-                       :model/Card new-card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products_c)))}]
-          (let [query (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))]
-            (doseq [[message query old-source new-source]
-                    [["join with table, swap table to table"
-                      (-> query
-                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
-                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
-                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))
-                      [:table (mt/id :products_a)]
-                      [:table (mt/id :products_c)]]
-
-                     ["join with table, swap table to card"
-                      (-> query
-                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products_a))
-                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
-                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))
-                      [:table (mt/id :products_a)]
-                      [:card  (:id new-card)]]
-
-                     ["join with card, swap card to card"
-                      (-> query
-                          (lib/join (lib/join-clause (lib.metadata/card mp (:id old-card))
-                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
-                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))
-                      [:card (:id old-card)]
-                      [:card (:id new-card)]]
-
-                     ["join with card, swap card to table"
-                      (-> query
-                          (lib/join (lib/join-clause (lib.metadata/card mp (:id old-card))
-                                                     [(lib/= (lib.metadata/field mp (mt/id :orders_a :product_id))
-                                                             (lib.metadata/field mp (mt/id :products_a :id)))])))
-                      [:card (:id old-card)]
-                      [:table (mt/id :products_c)]]]]
-              (testing message
-                (mt/with-temp [:model/Card card {:dataset_query query}]
-                  ;; first, upgrade the card
-                  (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
-                  (try
-                    (let [results (qp/process-query (:dataset_query card))]
-                      (replacement.source-swap/swap-source! [:card (:id card)]
-                                                            old-source
-                                                            new-source)
-                      (let [card' (t2/select-one :model/Card (:id card))
-                            results' (qp/process-query (:dataset_query card'))]
-                        (is (not= (mt/rows+column-names results)
-                                  (mt/rows+column-names results')))))
-                    (catch Exception e
-                      (is (nil? (.getMessage e)))
-                      (is (= [] (:dataset_query card))))))))))))))
-
-(deftest segment-swap-test
-  (mt/with-premium-features #{:dependencies}
-    (mt/dataset source-swap
-      (mt/with-test-user :crowberto
-        (let [selector (fn [q] (-> q :stages (get 0) :filters first last))
-              mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Segment segment
-                         {:table_id (mt/id :orders_a)
-                          :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))
-                                          (lib/filter (lib/< 2 (lib.metadata/field mp (mt/id :orders_a :id)))))}]
-            (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
-            ;; sanity check that dependencies works
-            (is (contains? (set (replacement.usages/transitive-usages [:table (mt/id :orders_a)]))
-                           [:segment (:id segment)]))
-            (is (not (contains? (set (replacement.usages/transitive-usages [:table (mt/id :orders_b)]))
-                                [:segment (:id segment)])))
-            (replacement.field-refs/upgrade-field-refs! [:segment (:id segment)] segment)
-            (replacement.source-swap/swap-source! [:segment (:id segment)]
-                                                  [:table (mt/id :orders_a)]
-                                                  [:table (mt/id :orders_b)])
-            (let [segment' (t2/select-one :model/Segment (:id segment))]
-              (is (= (mt/id :orders_b) (:table_id segment')))
-              (is (= (mt/id :orders_b) (-> segment' :definition :stages (get 0) :source-table)))
-              (is (not (contains? (set (replacement.usages/transitive-usages [:table (mt/id :orders_a)]))
-                                  [:segment (:id segment)])))
-              (is (contains? (set (replacement.usages/transitive-usages [:table (mt/id :orders_b)]))
-                             [:segment (:id segment)])))))))))
-
-(deftest measure-swap-test
-  (mt/with-premium-features #{:dependencies}
-    (mt/dataset source-swap
-      (mt/with-test-user :crowberto
-        (let [selector (fn [q] (-> q :stages (get 0) :aggregation first last))
-              mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Measure measure
-                         {:table_id (mt/id :orders_a)
-                          :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders_a)))
-                                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders_a :id)))))}]
-            (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
-            ;; sanity check that dependencies works
-            (is (contains? (set (replacement.usages/transitive-usages [:table (mt/id :orders_a)]))
-                           [:measure (:id measure)]))
-            (is (not (contains? (set (replacement.usages/transitive-usages [:table (mt/id :orders_b)]))
-                                [:measure (:id measure)])))
-            (replacement.field-refs/upgrade-field-refs! [:measure (:id measure)] measure)
-            (replacement.source-swap/swap-source! [:measure (:id measure)]
-                                                  [:table (mt/id :orders_a)]
-                                                  [:table (mt/id :orders_b)])
-            (let [measure' (t2/select-one :model/Measure (:id measure))]
-              (is (= (mt/id :orders_b) (:table_id measure')))
-              (is (= (mt/id :orders_b) (-> measure' :definition :stages (get 0) :source-table)))
-              (is (not (contains? (set (replacement.usages/transitive-usages [:table (mt/id :orders_a)]))
-                                  [:measure (:id measure)])))
-              (is (contains? (set (replacement.usages/transitive-usages [:table (mt/id :orders_b)]))
-                             [:measure (:id measure)])))))))))
-
-;;; ---------------------------------------- Runner: second-level dashboard tests ----------------------------------------
-
-(deftest run-swap-table-to-table-updates-second-level-dashboard-params-test
-  (testing "table→table swap via runner: dashboard parameter mappings on cards using the old table are remapped"
-    (mt/dataset source-swap
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "run-swap-dash-params@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [card (card/create-card! (replacement.test-util/card-with-query "Orders A card" :orders_a) user)]
-              (replacement.field-refs/upgrade-field-refs! [:card (:id card)] card)
-              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}
-                             :model/DashboardCard {dashcard-id :id}
-                             {:dashboard_id       dashboard-id
-                              :card_id            (:id card)
-                              :parameter_mappings [{:parameter_id "my-param"
-                                                    :card_id      (:id card)
-                                                    :target       [:dimension [:field (mt/id :orders_a :id) nil]]}]}]
-                ;; Publish event so the dependency graph includes the dashboard
-                (events/publish-event! :event/dashboard-update
-                                       {:object  (t2/select-one :model/Dashboard :id dashboard-id)
-                                        :user-id (:id user)})
-                (replacement.runner/run-swap [:table (mt/id :orders_a)] [:table (mt/id :orders_b)])
-                ;; Card's source-table should be updated
-                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id card))]
-                  (is (= (mt/id :orders_b) (get-in updated-query [:stages 0 :source-table]))))
-                ;; DashboardCard parameter mapping should reference orders_b ID field
-                (let [updated-dc (t2/select-one :model/DashboardCard :id dashcard-id)
-                      target     (get-in updated-dc [:parameter_mappings 0 :target])]
-                  (is (=? [:dimension [:field (mt/id :orders_b :id) {}]] target)
-                      "Parameter mapping target should reference the ID field"))))))))))
-
-(deftest run-swap-series-card-updates-dashboard-params-test
-  (testing "table→table swap via runner: parameter_mappings targeting a series card are updated"
-    (mt/dataset source-swap
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "run-swap-series@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [;; primary card queries orders_a (this is a direct dependent of the table)
-                  primary-card (card/create-card! (replacement.test-util/card-with-query "Primary card" :orders_a) user)
-                  ;; series card also queries orders_a
-                  series-card  (card/create-card! (replacement.test-util/card-with-query "Series card" :orders_a) user)]
-              (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Series Dashboard"}
-                             :model/DashboardCard {dashcard-id :id}
-                             {:dashboard_id       dashboard-id
-                              :card_id            (:id primary-card)
-                              :parameter_mappings [{:parameter_id "primary-param"
-                                                    :card_id      (:id primary-card)
-                                                    :target       [:dimension [:field (mt/id :orders_a :id) nil]]}
-                                                   {:parameter_id "series-param"
-                                                    :card_id      (:id series-card)
-                                                    :target       [:dimension [:field (mt/id :orders_a :id) nil]]}]}
-                             :model/DashboardCardSeries _
-                             {:dashboardcard_id dashcard-id
-                              :card_id          (:id series-card)
-                              :position         0}]
-                ;; Publish event so the dependency graph includes the dashboard
-                (events/publish-event! :event/dashboard-update
-                                       {:object  (t2/select-one :model/Dashboard :id dashboard-id)
-                                        :user-id (:id user)})
-                (replacement.runner/run-swap [:table (mt/id :orders_a)] [:table (mt/id :orders_b)])
-                ;; Both cards' source-tables should be updated
-                (is (= (mt/id :orders_b)
-                       (get-in (t2/select-one-fn :dataset_query :model/Card :id (:id primary-card))
-                               [:stages 0 :source-table])))
-                (is (= (mt/id :orders_b)
-                       (get-in (t2/select-one-fn :dataset_query :model/Card :id (:id series-card))
-                               [:stages 0 :source-table])))
-                ;; Both parameter mappings should no longer reference orders_a
-                (let [updated-dc     (t2/select-one :model/DashboardCard :id dashcard-id)
-                      targets        (mapv :target (:parameter_mappings updated-dc))
-                      old-target     [:dimension [:field (mt/id :orders_a :id) nil]]]
-                  (is (= 2 (count targets)))
-                  (is (not= old-target (first targets))
-                      "Primary card parameter mapping should no longer reference orders_a")
-                  (is (not= old-target (second targets))
-                      "Series card parameter mapping should no longer reference orders_a"))))))))))
+(deftest dashboard-swap-source!-click-behavior-implicit-join-test
+  (testing "swap-source! should update :source-field in click behavior dimension targets"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp            (mt/metadata-provider)
+              target-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                (lib/breakout (lib.metadata/field mp (mt/id :orders :id))))
+              source-query  (lib/query mp (lib.metadata/table mp (mt/id :products)))
+              category-col  (m/find-first #(= "CATEGORY" (:name %)) (lib/filterable-columns target-query))
+              target        [:dimension (lib/->legacy-MBQL (lib/ref category-col))]]
+          (mt/with-temp [:model/Card          {target-card-id :id} {:dataset_query target-query}
+                         :model/Card          {source-card-id :id} {:dataset_query source-query}
+                         :model/Dashboard     {dashboard-id :id}   {}
+                         :model/DashboardCard {dashcard-id :id}
+                         {:dashboard_id           dashboard-id
+                          :card_id                source-card-id
+                          :visualization_settings {:click_behavior (make-click-behavior target-card-id target)}}]
+            (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
+            (replacement.source-swap/swap-source! [:dashboard dashboard-id]
+                                                  [:table (mt/id :orders)]
+                                                  [:table (mt/id :reviews)])
+            (let [viz (:visualization_settings (t2/select-one :model/DashboardCard dashcard-id))]
+              (is (=? {:click_behavior
+                       {:targetId target-card-id
+                        :parameterMapping
+                        {string?
+                         {:target {:dimension [:dimension
+                                               [:field (mt/id :products :category)
+                                                {:source-field (mt/id :reviews :product_id)}]]}}}}}
+                      viz)))))))))

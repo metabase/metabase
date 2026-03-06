@@ -9,6 +9,8 @@
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (comment
   metabase-enterprise.dependencies.events/keep-me)
 

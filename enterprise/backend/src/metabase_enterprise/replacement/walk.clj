@@ -21,7 +21,7 @@
   `card-id-fn` will be called with a card ID and should return a new card ID."
   [parameters :- [:sequential :map]
    card-id-fn :- fn?]
-  (mapv #(m/update-existing % :values_source_config :card_id card-id-fn) parameters))
+  (mapv #(m/update-existing-in % [:values_source_config :card_id] card-id-fn) parameters))
 
 (mu/defn walk-parameter-source-card-refs :- [:sequential :map]
   "Walk the parameters and update the refs in `:value_field` and `:label_field` 

@@ -10,6 +10,8 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (comment
   metabase-enterprise.dependencies.events/keep-me)
 
@@ -113,25 +115,30 @@
                                                     :definition (let [mp (mt/metadata-provider)
                                                                       table-metadata (lib.metadata/table mp (mt/id :venues))]
                                                                   (-> (lib/query mp table-metadata)
-                                                                      (lib/aggregate (lib/count))))}]
+                                                                      (lib/aggregate (lib/count))))}
+                   :model/Dashboard {dashboard-id :id} {:name        "Test Dashboard"
+                                                        :parameters [{:id "param1" :type :string/= :name "Test Param"}]}]
       (let [entities          [[:card card-id]
                                [:segment segment-id]
-                               [:measure measure-id]]
+                               [:measure measure-id]
+                               [:dashboard dashboard-id]]
             metadata-provider (lib-be/application-database-metadata-provider (mt/id))
             loaded            (#'replacement.runner/bulk-load-metadata-for-entities!
                                metadata-provider
                                entities)]
 
-        (testing "handles cards, segments, and measures in one batch"
-          (is (= 3 (count loaded)))
+        (testing "handles cards, segments, measures, and dashboards in one batch"
+          (is (= 4 (count loaded)))
           (is (contains? loaded [:card card-id]))
           (is (contains? loaded [:segment segment-id]))
-          (is (contains? loaded [:measure measure-id])))
+          (is (contains? loaded [:measure measure-id]))
+          (is (contains? loaded [:dashboard dashboard-id])))
 
         (testing "all entities have required fields"
           (is (some? (:dataset_query (get loaded [:card card-id]))))
           (is (some? (:definition (get loaded [:segment segment-id]))))
-          (is (some? (:definition (get loaded [:measure measure-id])))))))))
+          (is (some? (:definition (get loaded [:measure measure-id]))))
+          (is (= [{:id "param1" :type :string/= :name "Test Param"}] (:parameters (get loaded [:dashboard dashboard-id])))))))))
 
 (deftest bulk-load-handles-empty-batch-test
   (testing "bulk-load-metadata-for-entities! handles empty batch gracefully"
@@ -145,8 +152,9 @@
         (is (= {} loaded))))))
 
 (deftest bulk-load-handles-dashboards-and-documents-test
-  (testing "bulk-load-metadata-for-entities! ignores dashboards and documents (no-op entities)"
-    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
+  (testing "bulk-load-metadata-for-entities! pre-loads dashboards but ignores documents"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name        "Test Dashboard"
+                                                        :parameters [{:id "param1" :type :string/= :name "Test Param"}]}]
       (let [entities          [[:dashboard dashboard-id]
                                [:document 123]]
             metadata-provider (lib-be/application-database-metadata-provider (mt/id))
@@ -154,5 +162,8 @@
                                metadata-provider
                                entities)]
 
-        (testing "dashboards and documents are not fetched (they don't need field ref upgrades)"
-          (is (= {} loaded)))))))
+        (testing "dashboards are pre-loaded"
+          (is (= [{:id "param1" :type :string/= :name "Test Param"}] (:parameters (get loaded [:dashboard dashboard-id])))))
+
+        (testing "documents are not fetched (no-op entities)"
+          (is (not (contains? loaded [:document 123]))))))))

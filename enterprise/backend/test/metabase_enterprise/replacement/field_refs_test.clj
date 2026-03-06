@@ -8,6 +8,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- field-id-ref
   [mp field-id]
   (-> (lib.metadata/field mp field-id) lib/ref lib/->legacy-MBQL))
