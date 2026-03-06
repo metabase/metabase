@@ -11,25 +11,27 @@
    [metabase.transforms-base.core :as transforms-base]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- remap-python-source
-  "Remap source-tables in a Python transform source to point to isolated tables.
-   Handles both legacy integer format and new map format (from PR #66934)."
-  [table-mapping source]
-  (letfn [(remap [{:keys [database_id schema table table_id] :as table-ref}]
-            (if-let [{:keys [id db-id schema table]} (or (table-mapping table-ref)
-                                                         (some-> table_id table-mapping)
-                                                         (when table
-                                                           (table-mapping [database_id schema table])))]
-              ;; Prefer table ID when available; map format won't work until PR #66934 is merged:
-              ;; https://github.com/metabase/metabase/pull/66934
-              (or id {:database_id db-id, :schema schema, :table table})
-              ;; Leave it un-mapped if we don't have an override.
-              table-ref))]
-    (update source :source-tables update-vals remap)))
+(mu/defn- remap-python-source
+  "Remap source-tables in a Python transform source to point to isolated tables."
+  [table-mapping source :- [:map [:source-tables [:sequential ::transforms-base.u/source-table-entry]]]]
+  (letfn [(remap [{:keys [database_id schema table table_id] :as entry}]
+            (if-let [{:keys [id db-id] target-schema :schema target-table :table}
+                     (or (table-mapping entry)
+                         (some-> table_id table-mapping)
+                         (when table
+                           (table-mapping [database_id schema table])))]
+              (cond-> entry
+                id            (assoc :table_id id)
+                db-id         (assoc :database_id db-id)
+                target-schema (assoc :schema target-schema)
+                target-table  (assoc :table target-table))
+              entry))]
+    (update source :source-tables (fn [entries] (mapv remap entries)))))
 
 (defn- remap-sql-source [table-mapping source]
   (let [remapping (reduce

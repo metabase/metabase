@@ -98,7 +98,7 @@
             db-id        (:database_id workspace)
             body         {:name   "Python Dry-Run Transform"
                           :source {:type          "python"
-                                   :source-tables {}
+                                   :source-tables []
                                    :body          (str "import pandas as pd\n"
                                                        "\n"
                                                        "def transform():\n"
@@ -129,86 +129,53 @@
 
 (deftest remap-python-source-test
   (let [remap-python-source #'ws.execute/remap-python-source]
-    (testing "remaps to table ID when mapping has :id"
+    (testing "remaps entry via triple lookup when mapping has :id"
       (let [table-mapping {[1 "public" "orders"] {:db-id  1
                                                   :schema "ws_isolated_123"
                                                   :table  "orders_isolated"
                                                   :id     456}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" {:database_id 1
-                                                     :schema      "public"
-                                                     :table       "orders"
-                                                     :table_id    123}}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" 456}}
-               (remap-python-source table-mapping source)))))
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
 
-    (testing "remaps to map format when mapping has nil :id"
-      (let [table-mapping {[1 "public" "orders"] {:db-id  1
-                                                  :schema "ws_isolated_123"
-                                                  :table  "orders_isolated"
-                                                  :id     nil}}
-            source        {:type          "python"
-                           :body          "import pandas as pd"
-                           :source-tables {"orders" {:database_id 1
-                                                     :schema      "public"
-                                                     :table       "orders"
-                                                     :table_id    123}}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" {:database_id 1
-                                          :schema      "ws_isolated_123"
-                                          :table       "orders_isolated"}}}
-               (remap-python-source table-mapping source)))))
-
-    (testing "leaves source-tables unchanged when no mapping exists"
-      (let [table-mapping {}
-            source        {:type          "python"
-                           :body          "import pandas as pd"
-                           :source-tables {"orders" {:database_id 1
-                                                     :schema      "public"
-                                                     :table       "orders"
-                                                     :table_id    123}}}]
-        (is (= source (remap-python-source table-mapping source)))))
-
-    (testing "remaps legacy integer to table ID when mapping has :id"
+    (testing "remaps entry via table_id lookup"
       (let [table-mapping {123 {:db-id  1
                                 :schema "ws_isolated_123"
                                 :table  "orders_isolated"
                                 :id     456}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" 123}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" 456}}
-               (remap-python-source table-mapping source)))))
+                           :source-tables [{:alias "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
 
-    (testing "remaps legacy integer to map format when mapping has nil :id"
-      (let [table-mapping {123 {:db-id  1
-                                :schema "ws_isolated_123"
-                                :table  "orders_isolated"
-                                :id     nil}}
+    (testing "remaps without table_id when mapping has nil :id"
+      (let [table-mapping {[1 "public" "orders"] {:db-id  1
+                                                  :schema "ws_isolated_123"
+                                                  :table  "orders_isolated"
+                                                  :id     nil}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" 123}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" {:database_id 1
-                                          :schema      "ws_isolated_123"
-                                          :table       "orders_isolated"}}}
-               (remap-python-source table-mapping source)))))
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 123}]
+               (:source-tables (remap-python-source table-mapping source))))))
 
-    (testing "leaves legacy integer table-id unchanged when no mapping exists"
+    (testing "leaves source-tables unchanged when no mapping exists"
       (let [table-mapping {}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" 123}}]
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
         (is (= source (remap-python-source table-mapping source)))))
 
-    (testing "handles mixed formats with mappings for both"
+    (testing "handles multiple entries with mappings"
       (let [table-mapping {[1 "public" "orders"] {:db-id  1
                                                   :schema "ws_isolated_123"
                                                   :table  "orders_isolated"
@@ -219,18 +186,16 @@
                                                    :id     999}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders"    {:database_id 1
-                                                        :schema      "public"
-                                                        :table       "orders"
-                                                        :table_id    123}
-                                           "customers" 789}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders"    456
-                                "customers" 999}}
-               (remap-python-source table-mapping source)))))
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}
+                                           {:alias "customers" :table_id 789}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}
+                {:alias "customers" :database_id 1
+                 :schema "ws_isolated_123" :table "customers_isolated" :table_id 999}]
+               (:source-tables (remap-python-source table-mapping source))))))
 
-    (testing "prefers table_id lookup over triple lookup for map format"
+    (testing "prefers table_id lookup over triple lookup"
       (let [table-mapping {123                    {:db-id  1
                                                    :schema "ws_isolated_123"
                                                    :table  "orders_by_id"
@@ -241,14 +206,11 @@
                                                   :id     789}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" {:database_id 1
-                                                     :schema      "public"
-                                                     :table       "orders"
-                                                     :table_id    123}}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" 456}}
-               (remap-python-source table-mapping source)))))
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_by_id" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
 
     (testing "falls back to triple lookup when table_id not in mapping"
       (let [table-mapping {[1 "public" "orders"] {:db-id  1
@@ -257,14 +219,34 @@
                                                   :id     456}}
             source        {:type          "python"
                            :body          "import pandas as pd"
-                           :source-tables {"orders" {:database_id 1
-                                                     :schema      "public"
-                                                     :table       "orders"
-                                                     :table_id    999}}}]
-        (is (= {:type          "python"
-                :body          "import pandas as pd"
-                :source-tables {"orders" 456}}
-               (remap-python-source table-mapping source)))))))
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 999}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 456}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "keeps original values when mapping has nil :id"
+      (let [table-mapping {123 {:db-id  1
+                                :schema "ws_isolated_123"
+                                :table  "orders_isolated"
+                                :id     nil}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "ws_isolated_123" :table "orders_isolated" :table_id 123}]
+               (:source-tables (remap-python-source table-mapping source))))))
+
+    (testing "entry with no matching mapping is left unchanged"
+      (let [table-mapping {999 {:db-id 1 :schema "ws" :table "t" :id 456}}
+            source        {:type          "python"
+                           :body          "import pandas as pd"
+                           :source-tables [{:alias "orders" :database_id 1
+                                            :schema "public" :table "orders" :table_id 123}]}]
+        (is (= [{:alias "orders" :database_id 1
+                 :schema "public" :table "orders" :table_id 123}]
+               (:source-tables (remap-python-source table-mapping source))))))))
 
 (deftest remap-sql-source-test
   (let [remap-sql-source #'ws.execute/remap-sql-source
