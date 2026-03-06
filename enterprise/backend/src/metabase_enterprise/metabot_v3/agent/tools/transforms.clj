@@ -145,7 +145,11 @@
   - replace: Replace entire code atomically
 
   For edit mode, provide edits as an array of {old_string, new_string, replace_all} objects.
-  For replace mode, provide new_content with the complete Python code."
+  For replace mode, provide new_content with the complete Python code.
+
+  Use `get_transform_python_library_details` before writing any Python code to inspect the shared library.
+  Use the shared library in your code by adding `import common` at the top of the file.
+  Keep `import common` at the top of the file even if it is currently unused."
   [{:keys [transform_id edit_action thinking transform_name transform_description
            source_database source_tables]}
    :- [:map {:closed true}

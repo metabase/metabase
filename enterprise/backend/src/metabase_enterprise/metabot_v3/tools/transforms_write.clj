@@ -55,7 +55,8 @@
 SELECT 1 AS placeholder")
 
 (def ^:private fresh-python-template
-  "import pandas as pd
+  "import common
+import pandas as pd
 
 def transform():
     # Your transformation logic here
