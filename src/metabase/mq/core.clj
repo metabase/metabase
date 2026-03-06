@@ -84,4 +84,3 @@
   ;; Backend-specific infrastructure cleanup
   (q.backend/shutdown! q.backend/*backend*)
   (topic.backend/shutdown! topic.backend/*backend*))
-

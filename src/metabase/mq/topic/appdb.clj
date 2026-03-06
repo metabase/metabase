@@ -150,4 +150,3 @@
   [_ topic-name]
   (swap! offsets dissoc topic-name)
   (log/infof "Unsubscribed from topic %s" (name topic-name)))
-
