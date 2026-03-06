@@ -111,10 +111,25 @@
                                :status-code 400}))))
           (some-> value name))})
 
+(def ^:private transform-data-layer
+  "Tolerant data_layer transform that maps unknown values (e.g. from a v59 migration)
+   back to v58 medallion values. This prevents errors when v58 code is still running
+   during a rolling upgrade to v59."
+  {:in  (:in mi/transform-keyword)
+   :out (comp (some-fn data-layers
+                       ;; v59 renames the data_layer enum. During a rolling deploy, the v59 migration
+                       ;; may have already run while v58 pods are still serving requests.
+                       ;; Map v59 values back to their v58 equivalents.
+                       {:hidden   :copper
+                        :internal :copper
+                        :final    :gold}
+                       identity)
+              (:out mi/transform-keyword))})
+
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :data_layer      (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-layers))
+   :data_layer      (mi/transform-validator transform-data-layer (partial mi/assert-optional-enum data-layers))
    :field_order     mi/transform-keyword
    :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
