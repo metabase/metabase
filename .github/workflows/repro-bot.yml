@@ -1,0 +1,100 @@
+name: "Repro Bot"
+
+on:
+  issues:
+    types:
+      - labeled
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to reproduce"
+        required: true
+        type: string
+
+jobs:
+  repro-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      issues: read
+      id-token: write
+    if: |
+      (github.event_name == 'push') ||
+      (github.event_name == 'issues' && github.event.label.name == 'repro-bot' && github.event.issue.state == 'open') ||
+      (github.event_name == 'workflow_dispatch')
+
+    steps:
+      - name: Get issue number
+        id: issue
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "number=${{ github.event.inputs.issue_number }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "number=70292" >> $GITHUB_OUTPUT
+          else
+            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout repro-bot
+        uses: actions/checkout@v4
+        with:
+          repository: metabase/repro-bot
+          ref: ci-support
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Pre-clone metabase bare git repo
+        run: git clone --bare https://github.com/metabase/metabase.git git/metabase
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Python (uv)
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install playwright-cli
+        run: |
+          npm install -g @playwright/cli@latest
+          playwright-cli install --skills
+
+      - name: Generate GitHub App Token
+        uses: actions/create-github-app-token@v1
+        id: claude-app-token
+        with:
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+
+      - name: Run repro-bot with Claude Code
+        uses: anthropics/claude-code-action@v1
+        env:
+          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          GITHUB_ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.claude-app-token.outputs.token }}
+          plugins: |
+            @anthropic/plugin-productivity-linear
+          prompt: |
+            Read and follow the instructions in .claude/commands/repro.md to investigate this GitHub issue:
+            https://github.com/${{ github.repository }}/issues/${{ steps.issue.outputs.number }}
+
+            ## CI Environment Notes
+            - The bare git repo has been pre-cloned at git/metabase. The master worktree still needs setup via setup_master_worktree().
+            - The GITHUB_ACTIONS_RUN_URL environment variable is set. If any phase fails catastrophically, follow the CI error handling in repro.md to post the error to Linear with the action run URL.
+            - Docker is available for appdb (Postgres/MySQL/MariaDB) if needed.
+            - Java 21 and Python/uv are pre-installed.
+          claude_args: |
+            --allowedTools "Bash(playwright-cli*),Bash(gh *),Bash(jq*),Bash(find*),Bash(ls*),Bash(grep*),Bash(cat*),Bash(base64*),Bash(git*),Bash(npx*),Bash(docker*),Bash(kill*),Bash(curl*),Write,Read,Glob,Grep,Edit,MultiEdit,WebFetch,mcp__metabase_repro__*,mcp__plugin_productivity_linear__*"
+            --disallowedTools "Bash(git push*),Bash(rm -rf /*)"
+
+      - name: Upload SUGGESTIONS.md artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: repro-suggestions
+          path: repro/*/SUGGESTIONS.md
+          if-no-files-found: ignore
