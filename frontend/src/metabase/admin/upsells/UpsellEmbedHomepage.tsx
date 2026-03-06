@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { UpsellCard } from "metabase/common/components/UpsellCard";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { Text } from "metabase/ui";
 
 import { UPGRADE_URL } from "./constants";
@@ -8,12 +9,18 @@ import { UPGRADE_URL } from "./constants";
 const campaign = "advanced-embeds";
 
 export const UpsellEmbedHomepage = ({ location }: { location: string }) => {
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign,
+    location,
+  });
+
   return (
     <UpsellCard
       title={t`More advanced embeds`}
       campaign={campaign}
       buttonText={t`Try Metabase Pro`}
       buttonLink={UPGRADE_URL}
+      onClick={triggerUpsellFlow}
       location={location}
       style={{
         minWidth: "13.5rem",
