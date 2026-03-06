@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "integration-embedding-onboarding-improvements",
-    "hash": "85f717f0d526a14f1a8cc264a9bbbad3569e02ce"
+    "name": "emb-1351-show-segregation-strategy-specific-data-permissions-in",
+    "hash": "5677ca9063d22e06409a8797e7e53796d2819b00"
   },
   "upstream": {
     "branch": "emb-1382-update-in-app-jwt-onboarding-to-use-snippets-instead-of"
