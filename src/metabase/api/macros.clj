@@ -593,17 +593,16 @@
    Endpoints without `:scope` get [[metabase.api.macros.scope/ensure-scopes-checked]] to prevent scoped
    tokens from reaching endpoints that haven't opted in."
   [{:keys [metadata], :as _args} :- ::parsed-args]
-  (let [scope (:scope metadata)]
-    (cond-> []
+  (let [scope            (:scope metadata)
+        scope-middleware (cond
+                           (string? scope) [(list 'metabase.api.macros.scope/enforce-scope scope)]
+                           (= scope :unchecked) []
+                           :else (do (when (some? scope)
+                                       (log/warnf "Unrecognized :scope value %s — expected a string or :unchecked" (pr-str scope)))
+                                     ['metabase.api.macros.scope/ensure-scopes-checked]))]
+    (cond-> (vec scope-middleware)
       (:multipart metadata)
-      (conj 'ring.middleware.multipart-params/wrap-multipart-params)
-      (string? scope)
-      (conj (list 'metabase.api.macros.scope/enforce-scope scope))
-      (and (some? scope) (not (string? scope)) (not= scope :unchecked))
-      (as-> forms (do (log/warnf "Unrecognized :scope value %s — expected a string or :unchecked" (pr-str scope))
-                      forms))
-      (nil? scope)
-      (conj 'metabase.api.macros.scope/ensure-scopes-checked))))
+      (conj 'ring.middleware.multipart-params/wrap-multipart-params))))
 
 (mu/defn- apply-middleware :- ::handler
   [handler    :- ::handler
