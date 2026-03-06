@@ -7,3 +7,4 @@ export * from "./release-status";
 export * from "./slack";
 export * from "./version-helpers";
 export * from "./version-info";
+export * from "./security-report";
