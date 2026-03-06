@@ -28,10 +28,12 @@ export const CreateTenantsOnboardingStep = ({
   onTenantsCreated,
   selectedFieldIds,
   strategy,
+  rlsColumnName,
 }: {
   onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
   selectedFieldIds?: FieldId[];
   strategy?: DataSegregationStrategy | null;
+  rlsColumnName?: string | null;
 }) => {
   const [sendToast] = useToast();
 
@@ -143,6 +145,14 @@ export const CreateTenantsOnboardingStep = ({
                 )}
               </Group>
 
+              <TenantFormField
+                label={t`Tenant slug`}
+                description={t`Can't be changed later. Used to reference tenants via API and SSO.`}
+                value={tenant.slug}
+                onChange={(value) => updateTenantCard(index, "slug", value)}
+                placeholder="tenant-slug"
+              />
+
               {strategy === "row-column-level-security" && (
                 <TenantIdentifierInput
                   value={tenant.dataIsolationFieldValue}
@@ -150,6 +160,7 @@ export const CreateTenantsOnboardingStep = ({
                     updateTenantCard(index, "dataIsolationFieldValue", value)
                   }
                   selectedFieldIds={selectedFieldIds}
+                  columnName={rlsColumnName}
                 />
               )}
 
@@ -166,14 +177,6 @@ export const CreateTenantsOnboardingStep = ({
                     placeholder={fieldConfig.placeholder}
                   />
                 )}
-
-              <TenantFormField
-                label={t`Tenant slug`}
-                description={t`Can't be changed later. Used to reference tenants via API and SSO.`}
-                value={tenant.slug}
-                onChange={(value) => updateTenantCard(index, "slug", value)}
-                placeholder="tenant-slug"
-              />
             </Stack>
           </Paper>
         ))}
@@ -196,7 +199,7 @@ export const CreateTenantsOnboardingStep = ({
           loading={isLoading}
           disabled={!isValid}
         >
-          {t`Next`}
+          {t`Create tenants`}
         </Button>
       </Flex>
     </Stack>

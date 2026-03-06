@@ -99,7 +99,7 @@ export const RlsDataSelector = ({ onSuccess }: RlsDataSelectorProps) => {
   return (
     <Stack gap="md">
       <Text size="md" c="text-secondary" lh="lg">
-        {t`Select one or more tables to be made visible to tenant users, and the column to filter by. Only rows where the value in the selected column matches the tenant_identifier attribute will be visible to tenant users. You will create tenants and configure this attribute in the next step.`}
+        {t`Select one or more tables to be made visible to tenant users, and the column to filter by. Only rows where the value in the selected column matches the organization_id attribute will be visible to tenant users. You will create tenants and configure this attribute in the next step.`}
       </Text>
 
       <Text size="md" c="text-secondary" lh="lg">
@@ -130,7 +130,7 @@ export const RlsDataSelector = ({ onSuccess }: RlsDataSelectorProps) => {
         <UnstyledButton onClick={addTable} className={S.AddTableButton}>
           <Flex align="center" gap="xs">
             <Icon name="add" size={16} />
-            <Text fw="bold" size="md">{t`Add table`}</Text>
+            <Text fw="bold" size="md" c="inherit">{t`Add table`}</Text>
           </Flex>
         </UnstyledButton>
 

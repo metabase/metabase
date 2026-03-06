@@ -48,13 +48,13 @@ export const SetupJwtStep = ({ onSuccess }: { onSuccess: () => void }) => {
   return (
     <Stack gap="lg">
       <Text size="md" c="text-secondary" lh="lg">
-        {t`You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people. Enabling JWT authentication will also create a signing key and enable group sync.`}
+        {t`To implement SSO you will need to add a new endpoint to your app. You can connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people. Enabling JWT authentication will also create a signing key and enable group sync.`}
       </Text>
 
       <TextInput
         label={t`JWT Identity Provider URI`}
         description={t`This is where Metabase will redirect login requests`}
-        placeholder="https://jwt.yourdomain.org"
+        placeholder="http://localhost:9090/metabase/sso"
         value={jwtIdentityProviderUri}
         onChange={(e) => setJwtIdentityProviderUri(e.target.value)}
         required
