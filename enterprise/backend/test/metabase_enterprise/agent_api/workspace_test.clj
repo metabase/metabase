@@ -29,11 +29,8 @@
   "Sets up JWT auth and premium features needed for agent API + workspaces."
   [& body]
   `(sso.test-setup/with-jwt-default-setup!
-     ;; Workspace creation produces a service-user API key. Clean it up before the User cleanup
-     ;; in with-jwt-default-setup!, otherwise the FK constraint on api_key.user_id blocks deletion.
-     (mt/with-model-cleanup [:model/ApiKey]
-       (mt/with-additional-premium-features #{:agent-api :metabot-v3 :workspaces :transforms}
-         ~@body))))
+     (mt/with-additional-premium-features #{:agent-api :metabot-v3 :workspaces :transforms}
+       ~@body)))
 
 (defn- auth-headers
   ([] (auth-headers "crowberto@metabase.com"))
