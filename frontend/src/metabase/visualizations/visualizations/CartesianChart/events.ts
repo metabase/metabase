@@ -540,8 +540,8 @@ const getSeriesComparisonTooltipModel = (
   const seriesRows: EChartsTooltipRow[] = chartModel.seriesModels
     .filter((seriesModel) => seriesModel.visible)
     .map((seriesModel) => {
-      const isHoveredSeries = seriesModel.dataKey === hoveredSeries.dataKey;
-      const isFocused = isHoveredSeries && chartModel.seriesModels.length > 1;
+      // Disable highlighting to show all series equally
+      const isFocused = false;
 
       const value =
         seriesModel.dataKey === OTHER_DATA_KEY
