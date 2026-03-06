@@ -24,6 +24,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   can_write: true,
   can_restore: false,
   can_delete: false,
+  can_set_cache_policy: true,
   description: "",
   cache_ttl: null,
   "last-edit-info": {

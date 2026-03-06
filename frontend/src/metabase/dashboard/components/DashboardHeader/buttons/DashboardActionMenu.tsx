@@ -11,7 +11,7 @@ import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 
 type DashboardActionMenuProps = {
@@ -117,18 +117,18 @@ const DashboardActionMenuInner = ({
           {t`Enter fullscreen`}
         </Menu.Item>
 
-        {canEdit && (
-          <>
-            <Menu.Item
-              leftSection={<Icon name="gear" />}
-              onClick={openSettingsSidebar}
-            >
-              {t`Edit settings`}
-            </Menu.Item>
-
-            {moderationItems}
-          </>
+        {(canEdit ||
+          (dashboard?.can_set_cache_policy &&
+            PLUGIN_CACHING.isGranularCachingEnabled())) && (
+          <Menu.Item
+            leftSection={<Icon name="gear" />}
+            onClick={openSettingsSidebar}
+          >
+            {t`Edit settings`}
+          </Menu.Item>
         )}
+
+        {canEdit && moderationItems}
 
         {canEdit && (
           <>

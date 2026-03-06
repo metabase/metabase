@@ -68,6 +68,25 @@
   ([_model pk]
    (mi/can-read? (t2/select-one :model/CacheConfig pk))))
 
+(defn- can-set-cache-policy?
+  "Check if the current user can set a cache policy for an entity.
+   Uses collection permissions directly, bypassing remote-sync content lock."
+  [{model-id :id :as instance}]
+  (mi/can-write? (t2/instance :model/CacheConfig {:model (-> (t2/model instance)
+                                                             name
+                                                             u/lower-case-en)
+                                                  :model_id model-id})))
+
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_set_cache_policy]
+  [_model k models]
+  (mi/instances-with-hydrated-data
+   models k
+   #(into {}
+          (map (juxt :id can-set-cache-policy?))
+          (t2/hydrate (remove nil? models) :collection))
+   :id
+   {:default false}))
+
 (defn- audit-caching-change! [user-id id prev new]
   (events/publish-event!
    :event/cache-config-update

@@ -113,6 +113,7 @@
                  :tabs
                  :collection_authority_level
                  :can_write
+                 :can_set_cache_policy
                  :param_fields
                  :is_remote_synced
                  [:moderation_reviews :moderator_details]
