@@ -1611,6 +1611,7 @@
             message-ts "1709567890.333333"
             event-body {:type  "event_callback"
                         :event {:type     "reaction_added"
+                                :event_ts "1709567890.333334"
                                 :user     "U123"
                                 :reaction "wastebasket"
                                 :item     {:type    "message"
@@ -1640,6 +1641,7 @@
     (with-slackbot-setup
       (let [event-body {:type  "event_callback"
                         :event {:type     "reaction_added"
+                                :event_ts "1709567890.000002"
                                 :user     "U123"
                                 :reaction "thumbsup"
                                 :item     {:type    "message"
@@ -1658,6 +1660,7 @@
     (with-slackbot-setup
       (let [event-body {:type  "event_callback"
                         :event {:type     "reaction_added"
+                                :event_ts "1709567890.444445"
                                 :user     "U-NOT-OWNER"
                                 :reaction "x"
                                 :item     {:type    "message"
