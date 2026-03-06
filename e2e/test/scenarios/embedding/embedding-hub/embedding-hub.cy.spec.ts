@@ -1587,7 +1587,15 @@ describe("scenarios - embedding hub", () => {
           .should("have.attr", "value")
           .and("have.length.at.least", 32);
 
-        cy.findByRole("button", { name: "Next" }).click();
+        cy.findByText(
+          /This example code for Node.js sets up an endpoint using Express/,
+        ).should("be.visible");
+
+        cy.log("express.js code snippet should be shown inline");
+        cy.contains("METABASE_JWT_SHARED_SECRET").should("exist");
+        cy.contains("METABASE_INSTANCE_URL").should("exist");
+
+        cy.findByRole("button", { name: "Next" }).scrollIntoView().click();
       });
 
       cy.log("step 2 should be complete");
