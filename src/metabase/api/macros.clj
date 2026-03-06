@@ -588,17 +588,22 @@
 
     {:multipart true}  — wraps with multipart-params middleware
     {:scope \"agent:workspaces\"} — wraps with scope enforcement middleware
+    {:scope :unchecked} — skips both enforce-scope and ensure-scopes-checked
 
    Endpoints without `:scope` get [[metabase.api.macros.scope/ensure-scopes-checked]] to prevent scoped
    tokens from reaching endpoints that haven't opted in."
   [{:keys [metadata], :as _args} :- ::parsed-args]
-  (cond-> []
-    (:multipart metadata)
-    (conj 'ring.middleware.multipart-params/wrap-multipart-params)
-    (:scope metadata)
-    (conj (list 'metabase.api.macros.scope/enforce-scope (:scope metadata)))
-    (not (:scope metadata))
-    (conj 'metabase.api.macros.scope/ensure-scopes-checked)))
+  (let [scope (:scope metadata)]
+    (cond-> []
+      (:multipart metadata)
+      (conj 'ring.middleware.multipart-params/wrap-multipart-params)
+      (string? scope)
+      (conj (list 'metabase.api.macros.scope/enforce-scope scope))
+      (and (some? scope) (not (string? scope)) (not= scope :unchecked))
+      (as-> forms (do (log/warnf "Unrecognized :scope value %s — expected a string or :unchecked" (pr-str scope))
+                      forms))
+      (nil? scope)
+      (conj 'metabase.api.macros.scope/ensure-scopes-checked))))
 
 (mu/defn- apply-middleware :- ::handler
   [handler    :- ::handler

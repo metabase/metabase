@@ -69,7 +69,7 @@
     (testing "insufficient scope returns 403"
       (let [response (invoke-handler (middleware ok-handler) {:token-scopes #{"agent:queries"}})]
         (is (= 403 (:status response)))
-        (is (= "insufficient_scope" (get-in response [:body :error])))))
+        (is (= "unsupported_scope" (get-in response [:body :error])))))
     (testing "empty scopes set returns 403"
       (is (= 403 (:status (invoke-handler (middleware ok-handler) {:token-scopes #{}}))))))
   (testing "sets :token-scopes-checked on the request"
@@ -89,7 +89,7 @@
              (invoke-handler (scope/ensure-scopes-checked ok-handler) {}))))
     (testing "unrestricted token passes through"
       (is (= {:status 200 :body "ok"}
-             (invoke-handler (scope/ensure-scopes-checked ok-handler) {:token-scopes #{scope/unrestricted}}))))
+             (invoke-handler (scope/ensure-scopes-checked ok-handler) {:token-scopes #{::scope/unrestricted}}))))
     (testing "wildcard string scope does NOT pass through (must use sentinel)"
       (is (= 403
              (:status (invoke-handler (scope/ensure-scopes-checked ok-handler) {:token-scopes #{"*"}})))))
