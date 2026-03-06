@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "2451f7161081d0e7a38bdb6b2f9b88172b1d0e96"
+    "hash": "20b65b2c334f83406e86cc52c6ad35cbcefee92b"
   },
   "upstream": {
     "branch": "emb-1391-polish-tenant-creation-sso-copy-and-ui-before-merge"
