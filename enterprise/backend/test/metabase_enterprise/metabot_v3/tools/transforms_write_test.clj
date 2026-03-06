@@ -115,6 +115,13 @@
       (is (= "Python Transform" (get-in result [:structured-output :transform :name])))
       (is (= "python" (get-in result [:structured-output :transform :source :type]))))))
 
+(deftest create-fresh-python-template-test
+  (testing "fresh Python transforms include common import"
+    (let [result (#'transforms-write/create-fresh-transform
+                  :python "Python Transform" nil nil nil)]
+      (is (= "import common\nimport pandas as pd\n\ndef transform():\n    # Your transformation logic here\n    return pd.DataFrame([{\"message\": \"Hello from Python transform!\"}])\n"
+             (get-in result [:source :query]))))))
+
 ;;; Data Parts Tests
 
 (deftest data-parts-test
