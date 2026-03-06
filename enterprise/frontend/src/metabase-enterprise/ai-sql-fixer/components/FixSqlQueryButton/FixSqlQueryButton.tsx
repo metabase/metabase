@@ -1,12 +1,15 @@
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { Button } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { trackQueryFixClicked } from "../../analytics";
 
 export function FixSqlQueryButton() {
+  const dispatch = useDispatch();
   const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
   const { submitInput, isDoingScience } = useMetabotAgent("sql");
 
@@ -14,10 +17,11 @@ export function FixSqlQueryButton() {
     return null;
   }
 
-  const handleClick = () => {
+  const handleClick = async () => {
     trackQueryFixClicked();
+    await dispatch(setIsNativeEditorOpen(true));
     // SQL and error message are included in the context.
-    submitInput("Fix this SQL query");
+    await submitInput("Fix this SQL query");
   };
 
   return (

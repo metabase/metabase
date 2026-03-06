@@ -6,6 +6,7 @@ import _ from "underscore";
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import {
   createMockDatabase,
   createMockUser,
@@ -29,9 +30,21 @@ jest.mock("metabase/metabot/hooks", () => ({
   useMetabotEnabledEmbeddingAware: () => true,
 }));
 
+jest.mock("metabase/query_builder/actions", () => ({
+  ...jest.requireActual("metabase/query_builder/actions"),
+  setIsNativeEditorOpen: jest.fn(),
+}));
+
 describe("metabot > context", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(setIsNativeEditorOpen).mockImplementation(
+      (isNativeEditorOpen: boolean) =>
+        ({
+          type: "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN",
+          isNativeEditorOpen,
+        }) as any,
+    );
   });
 
   it("should send along default context", async () => {
@@ -118,6 +131,15 @@ describe("metabot > context", () => {
   it("should send SQL profile and SQL error context for SQL fixes", async () => {
     const rawSql = "SELECT * FROM bad_table";
     const queryError = "bad_table";
+    const editorOpen = { resolve: undefined as (() => void) | undefined };
+
+    jest.mocked(setIsNativeEditorOpen).mockImplementationOnce(
+      () =>
+        (() =>
+          new Promise<void>((resolve) => {
+            editorOpen.resolve = resolve;
+          })) as any,
+    );
 
     const agentSpy = mockAgentEndpoint({
       textChunks: whoIsYourFavoriteResponse,
@@ -159,6 +181,12 @@ describe("metabot > context", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: /Have Metabot fix it/ }),
     );
+
+    expect(setIsNativeEditorOpen).toHaveBeenCalledWith(true);
+    expect(agentSpy).not.toHaveBeenCalled();
+
+    expect(editorOpen.resolve).toBeDefined();
+    editorOpen.resolve?.();
 
     const requestBody = await lastReqBody(agentSpy);
     expect(requestBody.profile_id).toBe(METABOT_PROFILE_OVERRIDES.SQL);
