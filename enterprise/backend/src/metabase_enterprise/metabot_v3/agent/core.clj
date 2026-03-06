@@ -321,10 +321,10 @@
      :tools         tools
      :context       context
      :memory-atom   memory-atom
-     :tracking-opts (merge {:profile-name (:name profile)
-                            :request-id   (str (random-uuid))
-                            :source       "metabot_agent"
-                            :tag          "agent"}
+     :tracking-opts (merge {:profile-id profile-id
+                            :request-id (str (random-uuid))
+                            :source     "metabot_agent"
+                            :tag        "agent"}
                            tracking-opts)}))
 
 (defn- initial-loop-state

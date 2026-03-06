@@ -115,7 +115,7 @@
     :event                         "user_intent"
     :user-id                       api/*current-user-id*
     :session-id                    (:session-id tracking-opts)
-    :profile                       (some-> (:profile-name tracking-opts) name)
+    :profile                       (some-> (:profile-id tracking-opts) name)
     :event-details                 {"intent" intent}}))
 
 (defn classify-and-track-user-intent-async!
