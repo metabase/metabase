@@ -170,16 +170,77 @@
                                       (map format-entity)
                                       te/lines)))))
 
+(defn- transform-query-source-text
+  [source]
+  (let [query (:query source)]
+    (cond
+      (string? query) query
+      (string? (:query-content query)) (:query-content query)
+      (string? (get-in query [:native :query])) (get-in query [:native :query])
+      (and (map? query) (:database query))
+      (try
+        (let [normalized (lib-be/normalize-query query)]
+          (if (lib/native-only-query? normalized)
+            (or (lib/raw-native-query normalized)
+                (some :native (:stages normalized))
+                (get-in normalized [:native :query]))
+            (u/pprint-to-str normalized)))
+        (catch Exception _
+          (u/pprint-to-str query)))
+      (map? query) (u/pprint-to-str query)
+      :else (some-> query str))))
+
+(defn- transform-source-type
+  [source]
+  (normalize-context-type (:type source)))
+
+(defmulti format-transform-source
+  "Format a transform source for LLM representation."
+  {:arglists '([source])}
+  transform-source-type)
+
+(defmethod format-transform-source :default
+  [source]
+  (log/warn "Unknown transform source type:" (:type source))
+  (te/lines "Transform source"
+            (te/field "Type" (transform-source-type source))
+            (te/field "Value" (u/pprint-to-str source))))
+
+(defmethod format-transform-source "query"
+  [source]
+  (let [source-text (transform-query-source-text source)]
+    (te/lines "Transform source"
+              (te/field "Type" (:type source))
+              (te/field "Query type" (:transform-source-type source))
+              (te/field "Source database ID" (or (:source-database source)
+                                                 (get-in source [:query :database])))
+              (te/field "Query" (te/code source-text (when (= "native" (normalize-context-type (:transform-source-type source)))
+                                                       "sql"))))))
+
+(defmethod format-transform-source "python"
+  [source]
+  (te/lines "Transform source"
+            (te/field "Type" (:type source))
+            (te/field "Source database ID" (:source-database source))
+            (te/field "Source tables" (some-> (:source-tables source) u/pprint-to-str))
+            (te/field "Source code" (te/code (:body source) "python"))))
+
 (defmethod format-entity "transform"
   [item]
   (te/lines "The user is currently viewing a Transform."
             (te/field "Transform ID" (:id item))
             (te/field "Transform name" (:name item))
+            (te/field "Transform description" (:description item))
             (te/field "Source type" (:source_type item))
+            (te/field "Source" (some-> (:source item)
+                                       (assoc :transform-source-type (:source_type item))
+                                       format-transform-source))
             (te/field "Transform error" (te/code (:error item)))
             (te/field "Tables used" (some->> (:used_tables item)
                                              (map format-entity)
-                                             te/lines))))
+                                             te/lines))
+            (te/field "Created at" (:created_at item))
+            (te/field "Updated at" (:updated_at item))))
 
 (defmethod format-entity "code_editor"
   [{:keys [buffers]}]

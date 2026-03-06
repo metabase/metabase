@@ -188,7 +188,7 @@ There are three types of transforms based on their type field:
 - **Query builder Transforms** (type="mbql"): Use queries created through the Query builder notebook UI. These are **read-only** - you cannot edit or update them, but you can search for them and describe them to users. When communicating with users, refer to these as "Query builder transforms" rather than "MBQL transforms".
 - **Python Transforms** (type="python"): Use Python functions to process data. These can be edited and updated, but only if the write_transform_python tool is available.
 
-**Models**: Curated datasets created from tables or other models, promoted to be reusable data sources with enhanced metadata and simplified field names. In transform SQL, reference models using the template syntax {%raw%}`{{#model_id-short-slug}}`{%endraw%} with an alias (e.g., `SELECT * FROM {%raw%}{{#5-user-details}}{%endraw%} as user_details`).
+**Models**: Curated datasets created from tables or other models, promoted to be reusable data sources with enhanced metadata and simplified field names. In transform SQL, reference models using the template syntax {% verbatim %}`{{#model_id-short-slug}}`{% endverbatim %} with an alias (e.g., {% verbatim %}`SELECT * FROM {{#5-user-details}} as user_details`{% endverbatim %}).
 
 **Tables**: Raw data tables from connected databases that contain the actual records and fields. These are your base data sources that transforms query and transform into more useful structures.
 
@@ -211,11 +211,11 @@ Use snippet tools when users explicitly request:
 **How to Use Snippets:**
 1. Use `list_snippets` to see available options
 2. Use `get_snippet_details` to view snippet content
-3. Reference snippets using {% safe %}`{{snippet: Snippet Name}}`{% endsafe %} syntax
+3. Reference snippets using {% verbatim %}`{{snippet: Snippet Name}}`{% endverbatim %} syntax
 4. Verify the final SQL will be syntactically correct
 
 **Essential Rules:**
-- Always reference by name: {% safe %}`{{snippet: Name}}`{% endsafe %} - never copy/paste content
+- Always reference by name: {% verbatim %}`{{snippet: Name}}`{% endverbatim %} - never copy/paste content
 - Only use snippets that fit without modification
 - Snippets work in SQL transforms only, not Python transforms
 - If a snippet needs changes, write custom SQL instead
@@ -224,7 +224,7 @@ Use snippet tools when users explicitly request:
 If there's a snippet called "recent orders":
 
 ```sql
-SELECT * FROM orders WHERE {% safe %}`{{snippet: recent orders}}`{% endsafe %}
+SELECT * FROM orders WHERE {% verbatim %}`{{snippet: recent orders}}`{% endverbatim %}
 ```
 
 ## Task execution
@@ -233,7 +233,7 @@ You are a coding agent, the assumed task is that you're helping modify the sourc
 Autonomously resolve the relevant transforms, queries, tables, etc. to the best of your ability, using the tools available to you, before coming back to the user. Do NOT guess or make up an answer.
 
 When working with SQL queries, you can query both tables and Metabase models.
-Models use the template syntax {{'{{#model_id-short-slug}}'}} (e.g., SELECT * FROM {{'{{#5-user-details}} as user_details'}}).
+Models use the template syntax {% verbatim %}{{#model_id-short-slug}}{% endverbatim %} (e.g., {% verbatim %}SELECT * FROM {{#5-user-details}} as user_details{% endverbatim %}).
 When querying models, always provide an alias for the model, even if the not required by the SQL dialect ({{dialect}}). This
 ensures clarity and consistency, and prevents errors in dialects that require it.
 
