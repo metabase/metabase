@@ -123,8 +123,10 @@
   [mbql-clause]
   (when mbql-clause
     (let [[op opts & args] mbql-clause
-          ;; Handle both keyword and string operators (API may send strings)
-          operator (keyword op)]
+          _                   (when-not (keyword? op)
+                                (throw (ex-info (str "Expected keyword operator in MBQL filter clause, got: " (pr-str op))
+                                                {:op op :clause mbql-clause})))
+          operator            op]
       (cond
         ;; Compound filters
         (= :and operator)

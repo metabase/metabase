@@ -12,7 +12,7 @@
 (comment lib.schema.ref/keep-me)
 
 ;;; ------------------------------------------------- Binning -------------------------------------------------
-;;; Duplicated from metabase.lib.schema.binning to avoid depending on a non-public lib namespace.
+;;; Duplicated from metabase.lib.schema.binning because lib-metric is an independent implementation.
 
 (mr/def ::binning-strategy
   [:enum

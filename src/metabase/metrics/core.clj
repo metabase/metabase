@@ -7,15 +7,22 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.metrics.dimension :as metrics.dimension]
+   [metabase.metrics.transforms :as metrics.transforms]
    [metabase.util.namespaces :as shared.ns]))
 
-;;; ------------------------------------------------- Re-exports from metrics.dimension --------------------------------
+;;; ------------------------------------------------- Re-exports --------------------------------
 
 (shared.ns/import-fns
  [metrics.dimension
   dimension-values
   dimension-search-values
-  dimension-remapped-value])
+  dimension-remapped-value]
+ [metrics.transforms
+  normalize-dimension
+  normalize-target-ref
+  normalize-dimension-mapping
+  transform-dimensions
+  transform-dimension-mappings])
 
 ;;; ------------------------------------------------- Query Utilities -------------------------------------------------
 

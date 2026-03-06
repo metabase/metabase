@@ -42,50 +42,10 @@
   {:in mi/json-in
    :out mi/json-out-with-keywordization})
 
-(defn- normalize-dimension
-  "Normalize a dimension after JSON parsing, converting string values to keywords."
-  [dim]
-  (cond-> dim
-    (:status dim)         (update :status keyword)
-    (:effective-type dim) (update :effective-type keyword)
-    (:semantic-type dim)  (update :semantic-type keyword)))
-
-(defn- normalize-target-ref
-  "Normalize a target ref after JSON parsing. Converts [\"field\" {...} id] to [:field {...} id]."
-  [[clause-type opts & rest]]
-  (into [(keyword clause-type)
-         (cond-> opts
-           (:base-type opts)      (update :base-type keyword)
-           (:effective-type opts) (update :effective-type keyword))]
-        rest))
-
-(defn- normalize-dimension-mapping
-  "Normalize a dimension mapping after JSON parsing."
-  [mapping]
-  (-> mapping
-      (update :type keyword)
-      (update :target normalize-target-ref)))
-
-(def ^:private transform-dimensions
-  "Transform for dimensions column. Handles JSON serialization/deserialization."
-  {:in mi/json-in
-   :out (fn [dims]
-          (some->> dims
-                   mi/json-out-with-keywordization
-                   (mapv normalize-dimension)))})
-
-(def ^:private transform-dimension-mappings
-  "Transform for dimension_mappings column. Handles JSON serialization/deserialization."
-  {:in mi/json-in
-   :out (fn [mappings]
-          (some->> mappings
-                   mi/json-out-with-keywordization
-                   (mapv normalize-dimension-mapping)))})
-
 (t2/deftransforms :model/Measure
   {:definition         transform-measure-definition
-   :dimensions         transform-dimensions
-   :dimension_mappings transform-dimension-mappings})
+   :dimensions         metrics/transform-dimensions
+   :dimension_mappings metrics/transform-dimension-mappings})
 
 (doto :model/Measure
   (derive :metabase/model)

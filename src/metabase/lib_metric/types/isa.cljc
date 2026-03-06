@@ -16,7 +16,7 @@
   (:require
    [metabase.lib-metric.types.constants :as constants]
    [metabase.types.core]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :as perf]))
 
 ;; Ensure type hierarchy is loaded
 (comment metabase.types.core/keep-me)
@@ -39,9 +39,9 @@
                                  (not (:effective-type column)))
                             (assoc :effective-type (:base-type column)))]
       (clojure.core/boolean
-       (some (fn [[type-key types]]
+       (perf/some (fn [[type-key types]]
                (and (#{:effective-type :semantic-type} type-key)
-                    (some #(clojure.core/isa? (type-key col) %) types)))
+                    (perf/some #(clojure.core/isa? (type-key col) %) types)))
              type-definition)))))
 
 (defn temporal?

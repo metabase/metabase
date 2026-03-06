@@ -11,8 +11,6 @@
    [metabase.lib.js.metadata :as js-metadata]
    [metabase.util :as u]))
 
-(comment provider/keep-me)
-
 (defn- object-get [obj k]
   (when (and obj (js-in k obj))
     (gobject/get obj k)))

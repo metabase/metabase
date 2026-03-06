@@ -240,10 +240,6 @@
    (let [dims (lib-metric.projection/projectable-dimensions-for-source definition source-metadata)]
      (to-array (filterv :projection-positions dims)))))
 
-;; =============================================================================
-;; NotImplemented stubs with mock data
-;; =============================================================================
-
 (defn ^:export fromJsMetricDefinition
   "Convert a JS metric definition (from JSON) to a MetricDefinition.
 

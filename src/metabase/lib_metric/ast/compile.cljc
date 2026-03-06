@@ -3,10 +3,9 @@
   (:require
    [medley.core :as m]
    [metabase.lib-metric.ast.schema :as ast.schema]
+   [metabase.lib-metric.ast.type :as ast.type]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
-
-(comment ast.schema/keep-me)
 
 ;;; -------------------- Helper Functions --------------------
 
@@ -122,7 +121,7 @@
   "Compile aggregation node to MBQL aggregation clause."
   {:arglists '([node])}
   :node/type
-  :hierarchy #'ast.schema/ast-hierarchy)
+  :hierarchy #'ast.type/ast-hierarchy)
 
 (defmethod compile-aggregation-node :aggregation/count
   [{:keys [column]}]

@@ -1,7 +1,7 @@
 (ns metabase.lib-metric.ast.walk
   "Functions for walking and transforming AST nodes."
   (:require
-   [metabase.lib-metric.ast.schema :as ast.schema]
+   [metabase.lib-metric.ast.type :as ast.type]
    [metabase.util.performance :as perf]))
 
 (defn node?
@@ -33,7 +33,7 @@
    Returns the walked node (before outer is applied)."
   {:arglists '([inner node])}
   (fn [_inner node] (:node/type node))
-  :hierarchy #'ast.schema/ast-hierarchy)
+  :hierarchy #'ast.type/ast-hierarchy)
 
 (defmethod walk-node :filter/compound
   [inner ast]
@@ -152,7 +152,7 @@
   "Remove matching filter children from a node. Returns the transformed node."
   {:arglists '([pred node])}
   (fn [_pred node] (:node/type node))
-  :hierarchy #'ast.schema/ast-hierarchy)
+  :hierarchy #'ast.type/ast-hierarchy)
 
 (defmethod remove-filters-node :filter/compound
   [pred node]
