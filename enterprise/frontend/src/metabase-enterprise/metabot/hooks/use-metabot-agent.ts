@@ -89,6 +89,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
           context: await getChatContext(),
           agentId,
           metabot_id: metabotRequestId,
+          profile: options?.profile,
         }),
       );
 
