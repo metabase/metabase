@@ -20,6 +20,8 @@ export const PERIOD_HIDE_HEIGHT_THRESHOLD = 70; // determined empirically
 
 export const DASHCARD_HEADER_HEIGHT = 40;
 
+export const COMPACT_HEIGHT_THRESHOLD = 100;
+
 export const MAX_COMPARISONS = 3;
 
 export const COMPARISON_TYPES = {
