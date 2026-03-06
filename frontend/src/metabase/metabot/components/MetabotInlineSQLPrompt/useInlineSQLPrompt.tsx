@@ -1,5 +1,5 @@
 import type { EditorView } from "@codemirror/view";
-import { EditorView as EV, ViewPlugin, keymap } from "@codemirror/view";
+import { EditorView as EV, keymap } from "@codemirror/view";
 import type { Extension } from "@uiw/react-codemirror";
 import {
   useCallback,
@@ -17,7 +17,6 @@ import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import { useLlmSqlGenerationEnabled } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { useRegisterSqlFixerInlineContextProvider } from "metabase/query_builder/components/view/View/ViewMainContainer/SqlFixerInlinePromptContext";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -73,7 +72,6 @@ export function useInlineSQLPrompt(
 
   const [hasEverBeenOpened, setHasEverBeenOpened] = useState(false);
 
-  const [editorView, setEditorView] = useState<EditorView | null>(null);
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
   const [promptValue, setPromptValue] = useState("");
   const [selectedTables, setSelectedTables] = useState<SelectedTable[]>([]);
@@ -93,7 +91,7 @@ export function useInlineSQLPrompt(
   );
 
   useRegisterCodeEditorMetabotContext(
-    editorView ?? undefined,
+    portalTarget?.view ?? undefined,
     question.databaseId(),
     bufferId,
   );
@@ -139,8 +137,8 @@ export function useInlineSQLPrompt(
   });
 
   const getSourceSql = useCallback(() => {
-    return editorView?.state.doc.toString() ?? "";
-  }, [editorView]);
+    return portalTarget?.view?.state.doc.toString() ?? "";
+  }, [portalTarget?.view]);
 
   const prevDatabaseIdRef = useRef(databaseId);
   useEffect(() => {
@@ -205,59 +203,6 @@ export function useInlineSQLPrompt(
     resetInputRef.current = resetInput;
   }, [resetInput]);
 
-  const [pendingFix, setPendingFix] = useState<{
-    prompt: string;
-    resolve: () => void;
-    reject: (e: unknown) => void;
-  } | null>(null);
-
-  useRegisterSqlFixerInlineContextProvider(
-    (prompt: string) => {
-      return new Promise<void>((resolve, reject) => {
-        setPendingFix({ prompt, resolve, reject });
-      });
-    },
-    [setPendingFix],
-  );
-
-  // This is kinda annoying but we have to make sure the `editorView` is mounted
-  // before we start the fix. Otherwise if we click the fix with the editor closed
-  // it will not mount the `editorView` in time
-  useEffect(() => {
-    if (!pendingFix || !editorView) {
-      return;
-    }
-
-    const { prompt, resolve, reject } = pendingFix;
-    setPendingFix(null);
-
-    (async () => {
-      try {
-        const referencedEntities = selectedTables.map((table) => ({
-          model: "table" as const,
-          id: table.id,
-        }));
-
-        await generate({
-          prompt,
-          sourceSql: getSourceSql(),
-          referencedEntities,
-        });
-
-        resolve();
-      } catch (e) {
-        reject(e);
-      }
-    })();
-  }, [
-    pendingFix,
-    editorView,
-    portalTarget,
-    selectedTables,
-    generate,
-    getSourceSql,
-  ]);
-
   const proposedQuestion = useMemo(
     () =>
       generatedSource
@@ -282,16 +227,6 @@ export function useInlineSQLPrompt(
       isEnabled
         ? [
             createPromptInputExtension(setPortalTarget),
-            ViewPlugin.define((view) => {
-              setEditorView(view);
-              return {
-                destroy() {
-                  setEditorView((current) =>
-                    current === view ? null : current,
-                  );
-                },
-              };
-            }),
             keymap.of([
               {
                 key: `Mod-Shift-i`,

@@ -7,10 +7,6 @@ import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import {
-  SqlFixerInlinePromptProvider,
-  useRegisterSqlFixerInlineContextProvider,
-} from "metabase/query_builder/components/view/View/ViewMainContainer/SqlFixerInlinePromptContext";
-import {
   createMockDatabase,
   createMockUser,
   createMockUserPermissions,
@@ -19,20 +15,6 @@ import {
 import { FixSqlQueryButton } from "../../ai-sql-fixer/components/FixSqlQueryButton/FixSqlQueryButton";
 import { Metabot } from "../components/Metabot";
 import { METABOT_PROFILE_OVERRIDES } from "../constants";
-import { useMetabotAgent } from "../hooks/use-metabot-agent";
-
-const mockSetIsNativeEditorOpen = jest.fn<any, [boolean]>(
-  (isNativeEditorOpen: boolean) => ({
-    type: "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN",
-    isNativeEditorOpen,
-  }),
-);
-
-jest.mock("metabase/query_builder/actions", () => ({
-  ...jest.requireActual("metabase/query_builder/actions"),
-  setIsNativeEditorOpen: (isNativeEditorOpen: boolean) =>
-    mockSetIsNativeEditorOpen(isNativeEditorOpen),
-}));
 
 import {
   enterChatMessage,
@@ -41,6 +23,11 @@ import {
   setup,
   whoIsYourFavoriteResponse,
 } from "./utils";
+
+jest.mock("metabase/metabot/hooks", () => ({
+  ...jest.requireActual("metabase/metabot/hooks"),
+  useMetabotEnabledEmbeddingAware: () => true,
+}));
 
 describe("metabot > context", () => {
   beforeEach(() => {
@@ -131,22 +118,12 @@ describe("metabot > context", () => {
   it("should send SQL profile and SQL error context for SQL fixes", async () => {
     const rawSql = "SELECT * FROM bad_table";
     const queryError = "bad_table";
-    const editorOpen = { resolve: undefined as (() => void) | undefined };
-
-    mockSetIsNativeEditorOpen.mockImplementationOnce(
-      () => () =>
-        new Promise<void>((resolve) => {
-          editorOpen.resolve = resolve;
-        }),
-    );
 
     const agentSpy = mockAgentEndpoint({
       textChunks: whoIsYourFavoriteResponse,
     });
 
     const SqlFixContextRegistration = () => {
-      const { submitInput } = useMetabotAgent("sql");
-
       useRegisterMetabotContextProvider(
         () =>
           Promise.resolve({
@@ -167,37 +144,21 @@ describe("metabot > context", () => {
         [rawSql, queryError],
       );
 
-      useRegisterSqlFixerInlineContextProvider(
-        async (prompt: string) => {
-          await submitInput(prompt, {
-            profile: METABOT_PROFILE_OVERRIDES.SQL,
-            preventOpenSidebar: true,
-          });
-        },
-        [submitInput],
-      );
-
       return null;
     };
 
     setup({
       ui: (
-        <SqlFixerInlinePromptProvider>
+        <>
           <SqlFixContextRegistration />
           <FixSqlQueryButton />
-        </SqlFixerInlinePromptProvider>
+        </>
       ),
     });
 
     await userEvent.click(
       await screen.findByRole("button", { name: /Have Metabot fix it/ }),
     );
-
-    expect(mockSetIsNativeEditorOpen).toHaveBeenCalledWith(true);
-    expect(agentSpy).not.toHaveBeenCalled();
-
-    expect(editorOpen.resolve).toBeDefined();
-    editorOpen.resolve?.();
 
     const requestBody = await lastReqBody(agentSpy);
     expect(requestBody.profile_id).toBe(METABOT_PROFILE_OVERRIDES.SQL);
