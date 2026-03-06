@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.tools.filters
   (:require
    [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.agent.streaming :as streaming]
    [metabase-enterprise.metabot-v3.tools.instructions :as instructions]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
@@ -197,16 +198,19 @@
 
   See also [[decode-temporal-filter]] for the raw (pre-normalization) variant
   used in Malli schema decode transforms."
-  [{:keys [value values bucket] :as llm-filter}]
+  [{:keys [value values lower-value upper-value bucket] :as llm-filter}]
   (if-let [spec (extraction-bucket-specs bucket)]
     ;; Extraction bucket — coerce and validate values
     (let [coerce-val #(coerce-extraction-value % spec bucket)]
       (cond-> llm-filter
-        value  (update :value coerce-val)
-        values (update :values (partial mapv coerce-val))))
+        (contains? llm-filter :value)       (update :value coerce-val)
+        (contains? llm-filter :values)      (update :values (partial mapv coerce-val))
+        (contains? llm-filter :lower-value) (update :lower-value coerce-val)
+        (contains? llm-filter :upper-value) (update :upper-value coerce-val)))
     ;; Truncation bucket — validate values aren't numeric nonsense
     (if (truncation-buckets bucket)
-      (do (doseq [v (or values (some-> value vector))]
+      (do (doseq [v (concat (or values [])
+                            (remove nil? [value lower-value upper-value]))]
             (validate-truncation-value v bucket))
           llm-filter)
       ;; No bucket or unknown — pass through
@@ -228,15 +232,31 @@
         bucket-kw  (when bucket-str (keyword bucket-str))]
     (if-not bucket-kw
       m
-      (let [v-key    (if (contains? m "value") "value" :value)
-            vs-key   (if (contains? m "values") "values" :values)
+      (let [v-key     (cond
+                        (contains? m "value") "value"
+                        (contains? m :value) :value)
+            vs-key    (cond
+                        (contains? m "values") "values"
+                        (contains? m :values) :values)
+            lower-key (cond
+                        (contains? m "lower_value") "lower_value"
+                        (contains? m :lower_value) :lower_value
+                        (contains? m :lower-value) :lower-value)
+            upper-key (cond
+                        (contains? m "upper_value") "upper_value"
+                        (contains? m :upper_value) :upper_value
+                        (contains? m :upper-value) :upper-value)
             as-norm  {:bucket bucket-kw
-                      :value  (get m v-key)
-                      :values (get m vs-key)}
+                      :value  (when v-key (get m v-key))
+                      :values (when vs-key (get m vs-key))
+                      :lower-value (when lower-key (get m lower-key))
+                      :upper-value (when upper-key (get m upper-key))}
             coerced  (coerce-and-validate-temporal-filter as-norm)]
         (cond-> m
-          (get m v-key)  (assoc v-key  (:value coerced))
-          (get m vs-key) (assoc vs-key (:values coerced)))))))
+          v-key     (assoc v-key (:value coerced))
+          vs-key    (assoc vs-key (:values coerced))
+          lower-key (assoc lower-key (:lower-value coerced))
+          upper-key (assoc upper-key (:upper-value coerced)))))))
 
 (def ^:private temporal-extraction-operations
   "Operations that extract an integer component from a date/datetime field (e.g. month 1-12).
@@ -260,12 +280,13 @@
 
   Skips validation for temporal extraction operations (e.g. `month-equals`, `year-equals`)
   because those operations explicitly expect small integer values."
-  [{:keys [value values bucket operation column] :as llm-filter}]
+  [{:keys [value values lower-value upper-value bucket operation column] :as llm-filter}]
   (when (and (nil? bucket)
              column
              (lib.types.isa/temporal? column)
              (not (temporal-extraction-operations operation)))
-    (doseq [v (or values (some-> value vector))]
+    (doseq [v (concat (or values [])
+                      (remove nil? [value lower-value upper-value]))]
       (when (and (number? v) (or (neg? v) (< v 100)))
         (agent-error!
          (str "Filter value " v " is not valid for a date/datetime field. "
@@ -275,17 +296,53 @@
               "operation 'greater-than-or-equal' with value '2025-01-15' (the actual date).")))))
   llm-filter)
 
+(declare build-filter-clause)
+(declare resolve-filter-columns)
+
 (defn- add-filter
   [query llm-filter]
-  (if-let [segment-id (:segment-id llm-filter)]
+  (lib/filter query (build-filter-clause query llm-filter)))
+
+(defn- build-filter-clause
+  "Build a filter clause from an LLM filter definition.
+   Handles segment, compound, between, and standard field-based filters.
+   Returns a filter expression (not a query with filter applied)."
+  [query llm-filter]
+  (cond
     ;; Segment-based filter
-    (if-let [segment (lib.metadata/segment query segment-id)]
-      (lib/filter query segment)
-      (throw (ex-info (tru "Segment with id {0} not found" segment-id)
-                      {:agent-error? true
-                       :status-code 404
-                       :segment-id segment-id})))
+    (:segment-id llm-filter)
+    (let [segment-id (:segment-id llm-filter)]
+      (if-let [segment (lib.metadata/segment query segment-id)]
+        segment
+        (throw (ex-info (tru "Segment with id {0} not found" segment-id)
+                        {:agent-error? true
+                         :status-code 404
+                         :segment-id segment-id}))))
+
+    ;; Compound filter (AND/OR)
+    (= :compound (:filter-kind llm-filter))
+    (let [{:keys [operator filters]} llm-filter
+          clauses (mapv #(build-filter-clause query %) filters)]
+      (when (empty? clauses)
+        (throw (ex-info "Compound filter requires at least one nested filter"
+                        {:agent-error? true :status-code 400})))
+      (case operator
+        :and (apply lib/and clauses)
+        :or  (apply lib/or clauses)
+        (throw (ex-info (str "Unknown compound filter operator: " operator)
+                        {:agent-error? true :status-code 400}))))
+
+    ;; Between filter
+    (= :between (:filter-kind llm-filter))
+    (let [llm-filter (-> llm-filter
+                         coerce-and-validate-temporal-filter
+                         validate-temporal-column-values)
+          expr (filter-bucketed-column llm-filter)
+          {:keys [lower-value upper-value]} llm-filter]
+      (lib/between expr lower-value upper-value))
+
     ;; Standard field-based filter logic
+    :else
     (let [llm-filter (-> llm-filter
                          coerce-and-validate-temporal-filter
                          validate-temporal-column-values)
@@ -300,56 +357,54 @@
                                     (f expr value))))
           string-match (fn [match-fn]
                          (-> (with-values-or-value match-fn)
-                             (lib.options/update-options assoc :case-sensitive false)))
-          filter
-          (case operation
-            :is-null                      (lib/is-null expr)
-            :is-not-null                  (lib/not-null expr)
-            :string-is-empty              (lib/is-empty expr)
-            :string-is-not-empty          (lib/not-empty expr)
-            :is-true                      (lib/= expr true)
-            :is-false                     (lib/= expr false)
-            :equals                       (with-values-or-value lib/=)
-            :not-equals                   (with-values-or-value lib/!=)
-            :greater-than                 (lib/> expr value)
-            :greater-than-or-equal        (lib/>= expr value)
-            :less-than                    (lib/< expr value)
-            :less-than-or-equal           (lib/<= expr value)
-            :year-equals                  (with-values-or-value lib/=  (lib/get-year expr))
-            :year-not-equals              (with-values-or-value lib/!= (lib/get-year expr))
-            :quarter-equals               (with-values-or-value lib/=  (lib/get-quarter expr))
-            :quarter-not-equals           (with-values-or-value lib/!= (lib/get-quarter expr))
-            :month-equals                 (with-values-or-value lib/=  (lib/get-month expr))
-            :month-not-equals             (with-values-or-value lib/!= (lib/get-month expr))
-            :day-of-week-equals           (with-values-or-value lib/=  (lib/get-day-of-week expr :iso))
-            :day-of-week-not-equals       (with-values-or-value lib/!= (lib/get-day-of-week expr :iso))
-            :hour-equals                  (with-values-or-value lib/=  (lib/get-hour expr))
-            :hour-not-equals              (with-values-or-value lib/!= (lib/get-hour expr))
-            :minute-equals                (with-values-or-value lib/=  (lib/get-minute expr))
-            :minute-not-equals            (with-values-or-value lib/!= (lib/get-minute expr))
-            :second-equals                (with-values-or-value lib/=  (lib/get-second expr))
-            :second-not-equals            (with-values-or-value lib/!= (lib/get-second expr))
-            :date-equals                  (with-values-or-value lib/=)
-            :date-not-equals              (with-values-or-value lib/!=)
-            :date-before                  (lib/< expr value)
-            :date-on-or-before            (lib/<= expr value)
-            :date-after                   (lib/> expr value)
-            :date-on-or-after             (lib/>= expr value)
-            :string-equals                (with-values-or-value lib/=)
-            :string-not-equals            (with-values-or-value lib/!=)
-            :string-contains              (string-match lib/contains)
-            :string-not-contains          (string-match lib/does-not-contain)
-            :string-starts-with           (string-match lib/starts-with)
-            :string-ends-with             (string-match lib/ends-with)
-            :number-equals                (with-values-or-value lib/=)
-            :number-not-equals            (with-values-or-value lib/!=)
-            :number-greater-than          (lib/> expr value)
-            :number-greater-than-or-equal (lib/>= expr value)
-            :number-less-than             (lib/< expr value)
-            :number-less-than-or-equal    (lib/<= expr value)
-            (throw (ex-info (str "unknown filter operation " operation)
-                            {:agent-error? true :status-code 400})))]
-      (lib/filter query filter))))
+                             (lib.options/update-options assoc :case-sensitive false)))]
+      (case operation
+        :is-null                      (lib/is-null expr)
+        :is-not-null                  (lib/not-null expr)
+        :string-is-empty              (lib/is-empty expr)
+        :string-is-not-empty          (lib/not-empty expr)
+        :is-true                      (lib/= expr true)
+        :is-false                     (lib/= expr false)
+        :equals                       (with-values-or-value lib/=)
+        :not-equals                   (with-values-or-value lib/!=)
+        :greater-than                 (lib/> expr value)
+        :greater-than-or-equal        (lib/>= expr value)
+        :less-than                    (lib/< expr value)
+        :less-than-or-equal           (lib/<= expr value)
+        :year-equals                  (with-values-or-value lib/=  (lib/get-year expr))
+        :year-not-equals              (with-values-or-value lib/!= (lib/get-year expr))
+        :quarter-equals               (with-values-or-value lib/=  (lib/get-quarter expr))
+        :quarter-not-equals           (with-values-or-value lib/!= (lib/get-quarter expr))
+        :month-equals                 (with-values-or-value lib/=  (lib/get-month expr))
+        :month-not-equals             (with-values-or-value lib/!= (lib/get-month expr))
+        :day-of-week-equals           (with-values-or-value lib/=  (lib/get-day-of-week expr :iso))
+        :day-of-week-not-equals       (with-values-or-value lib/!= (lib/get-day-of-week expr :iso))
+        :hour-equals                  (with-values-or-value lib/=  (lib/get-hour expr))
+        :hour-not-equals              (with-values-or-value lib/!= (lib/get-hour expr))
+        :minute-equals                (with-values-or-value lib/=  (lib/get-minute expr))
+        :minute-not-equals            (with-values-or-value lib/!= (lib/get-minute expr))
+        :second-equals                (with-values-or-value lib/=  (lib/get-second expr))
+        :second-not-equals            (with-values-or-value lib/!= (lib/get-second expr))
+        :date-equals                  (with-values-or-value lib/=)
+        :date-not-equals              (with-values-or-value lib/!=)
+        :date-before                  (lib/< expr value)
+        :date-on-or-before            (lib/<= expr value)
+        :date-after                   (lib/> expr value)
+        :date-on-or-after             (lib/>= expr value)
+        :string-equals                (with-values-or-value lib/=)
+        :string-not-equals            (with-values-or-value lib/!=)
+        :string-contains              (string-match lib/contains)
+        :string-not-contains          (string-match lib/does-not-contain)
+        :string-starts-with           (string-match lib/starts-with)
+        :string-ends-with             (string-match lib/ends-with)
+        :number-equals                (with-values-or-value lib/=)
+        :number-not-equals            (with-values-or-value lib/!=)
+        :number-greater-than          (lib/> expr value)
+        :number-greater-than-or-equal (lib/>= expr value)
+        :number-less-than             (lib/< expr value)
+        :number-less-than-or-equal    (lib/<= expr value)
+        (throw (ex-info (str "unknown filter operation " operation)
+                        {:agent-error? true :status-code 400}))))))
 
 (defn- add-breakout
   [query {:keys [column field-granularity]}]
@@ -368,8 +423,7 @@
         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
         visible-cols (lib/visible-columns base-query)
         resolve-visible-column #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
-        ;; Separate segment filters from field filters before column resolution
-        resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
+        resolved-filters (map #(resolve-filter-columns % resolve-visible-column) filters)
         query (as-> base-query $q
                 (reduce add-filter $q resolved-filters)
                 (reduce add-breakout
@@ -412,47 +466,179 @@
       (lib/order-by query (lib/aggregation-ref query last-aggregation-idx) sort-order))
     query))
 
+(defn- validate-percentile-value
+  [percentile-value]
+  (when-not (and (number? percentile-value)
+                 (<= 0 percentile-value 1))
+    (throw (ex-info (str "percentile_value must be a number between 0 and 1, got: " percentile-value)
+                    {:agent-error? true :status-code 400})))
+  percentile-value)
+
+(defn- build-conditional-aggregation
+  "Build a conditional aggregation (count-where, sum-where, distinct-where).
+   The condition must already be resolved to a filter clause."
+  [query aggregation]
+  (let [condition-filter (:condition aggregation)
+        condition-clause (build-filter-clause query condition-filter)
+        func (:function aggregation)]
+    (case func
+      :count-where
+      (lib/count-where condition-clause)
+
+      :sum-where
+      (let [expr (bucketed-column aggregation)]
+        (lib/sum-where expr condition-clause))
+
+      :distinct-where
+      (let [expr (bucketed-column aggregation)]
+        (lib/distinct-where expr condition-clause))
+
+      (throw (ex-info (str "Unknown conditional aggregation function: " func)
+                      {:agent-error? true :status-code 400})))))
+
 (defn- add-aggregation
   [query aggregation]
   (let [sort-order (:sort-order aggregation)
+        func (:function aggregation)
         query-with-aggregation
-        (if-let [measure-id (:measure-id aggregation)]
+        (cond
           ;; Measure-based aggregation
-          (if-let [measure (lib.metadata/measure query measure-id)]
-            (lib/aggregate query measure)
-            (throw (ex-info (tru "Measure with id {0} not found" measure-id)
-                            {:agent-error? true
-                             :status-code 404
-                             :measure-id measure-id})))
+          (:measure-id aggregation)
+          (let [measure-id (:measure-id aggregation)]
+            (if-let [measure (lib.metadata/measure query measure-id)]
+              (lib/aggregate query measure)
+              (throw (ex-info (tru "Measure with id {0} not found" measure-id)
+                              {:agent-error? true
+                               :status-code 404
+                               :measure-id measure-id}))))
+
+          ;; Conditional aggregation (count-where, sum-where, distinct-where)
+          (:condition aggregation)
+          (lib/aggregate query (build-conditional-aggregation query aggregation))
+
+          ;; Expression-based aggregation (aggregate on a calculated column)
+          (:expression-ref aggregation)
+          (let [expr-ref (lib/expression-ref query (:expression-ref aggregation))
+                agg-expr (case func
+                           (:count-distinct :distinct) (lib/distinct expr-ref)
+                           :sum            (lib/sum expr-ref)
+                           :min            (lib/min expr-ref)
+                           :max            (lib/max expr-ref)
+                           :avg            (lib/avg expr-ref)
+                           :median         (lib/median expr-ref)
+                           :stddev         (lib/stddev expr-ref)
+                           :var            (lib/var expr-ref)
+                           :percentile     (lib/percentile expr-ref (validate-percentile-value (:percentile-value aggregation)))
+                           :cum-sum        (lib/cum-sum expr-ref)
+                           :share          (lib/share expr-ref)
+                           (throw (ex-info (str "Unsupported aggregation function for expression: " func)
+                                           {:agent-error? true :status-code 400})))]
+            (lib/aggregate query agg-expr))
+
           ;; Field-based aggregation
-          (let [agg-expr (if (= :count (:function aggregation))
+          :else
+          (let [agg-expr (if (= :count func)
                            (lib/count)
                            (let [expr (bucketed-column aggregation)]
-                             (case (:function aggregation)
+                             (case func
                                (:count-distinct :distinct) (lib/distinct expr)
                                :sum            (lib/sum expr)
                                :min            (lib/min expr)
                                :max            (lib/max expr)
                                :avg            (lib/avg expr)
-                               (throw (ex-info (str "Unsupported aggregation function: " (:function aggregation)
-                                                    ". Supported: count, count-distinct, sum, min, max, avg")
+                               ;; Advanced aggregations
+                               :median         (lib/median expr)
+                               :stddev         (lib/stddev expr)
+                               :var            (lib/var expr)
+                               :percentile     (lib/percentile expr (validate-percentile-value (:percentile-value aggregation)))
+                               :cum-sum        (lib/cum-sum expr)
+                               :cum-count      (lib/cum-count)
+                               :share          (lib/share expr)
+                               (throw (ex-info (str "Unsupported aggregation function: " func
+                                                    ". Supported: count, count-distinct, sum, min, max, avg, "
+                                                    "median, stddev, var, percentile, cum-sum, cum-count, share")
                                                {:agent-error? true
                                                 :status-code 400})))))]
             (lib/aggregate query agg-expr)))]
     (apply-aggregation-sort-order query-with-aggregation sort-order)))
 
 (defn- resolve-aggregation-column
-  "Resolve the column for an aggregation, skipping measures and field-less counts."
+  "Resolve the column for an aggregation, skipping measures, expression-refs, and field-less counts.
+   Also resolves columns within conditional aggregation conditions."
   [resolve-visible-column aggregation]
-  (if (or (:measure-id aggregation)
-          (and (= :count (:function aggregation))
-               (not (:field-id aggregation))))
-    aggregation
-    (resolve-visible-column aggregation)))
+  (let [field-id (:field-id aggregation)
+        missing-field-id? (or (nil? field-id)
+                              (and (string? field-id) (str/blank? field-id)))
+        ;; First, resolve the main column if needed
+        resolved (if (or (:measure-id aggregation)
+                         (:expression-ref aggregation)  ;; expression-ref doesn't need column resolution
+                         ;; count and cum-count do not require a field.
+                         (and (#{:count :cum-count} (:function aggregation))
+                              missing-field-id?)
+                         ;; count-where doesn't require a main field
+                         (= :count-where (:function aggregation)))
+                   aggregation
+                   (resolve-visible-column aggregation))]
+    ;; Then, resolve condition columns for conditional aggregations
+    (if (:condition resolved)
+      (update resolved :condition #(resolve-filter-columns % resolve-visible-column))
+      resolved)))
 
 (defn- expression?
   [expr-or-column]
   (vector? expr-or-column))
+
+(def ^:private datetime-units
+  #{:year :quarter :month :week :day :hour :minute :second})
+
+(defn- expression-error!
+  [op msg]
+  (throw (ex-info (str "Invalid expression '" (name op) "': " msg)
+                  {:agent-error? true :status-code 400})))
+
+(defn- ensure-arg-count!
+  [op args n]
+  (when-not (= n (count args))
+    (expression-error! op (str "expected " n " argument(s), got " (count args)))))
+
+(defn- ensure-min-arg-count!
+  [op args n]
+  (when (< (count args) n)
+    (expression-error! op (str "expected at least " n " argument(s), got " (count args)))))
+
+(defn- validate-expression-definition!
+  [op args {:keys [unit start exponent]}]
+  (case op
+    (:add :subtract :multiply :divide :concat :coalesce)
+    (ensure-min-arg-count! op args 2)
+
+    (:abs :round :ceil :floor :sqrt :log :exp :upper :lower :trim :length
+          :get-year :get-month :get-day :get-hour :get-minute :get-second :get-quarter :get-day-of-week)
+    (ensure-arg-count! op args 1)
+
+    :substring
+    (do
+      (ensure-arg-count! op args 1)
+      (when-not (some? start)
+        (expression-error! op "requires 'start'")))
+
+    :power
+    (do
+      (when-not (<= 1 (count args) 2)
+        (expression-error! op (str "expected 1-2 arguments, got " (count args))))
+      (when-not (or (some? exponent) (some? (second args)))
+        (expression-error! op "requires either 'exponent' or a second argument")))
+
+    (:datetime-add :datetime-subtract)
+    (do
+      (ensure-arg-count! op args 2)
+      (let [unit-kw (some-> unit keyword)]
+        (when-not (contains? datetime-units unit-kw)
+          (expression-error! op (str "requires valid 'unit' (one of "
+                                     (str/join ", " (sort (map name datetime-units)))
+                                     ")")))))
+
+    nil))
 
 (defn- add-fields
   [query projection]
@@ -492,7 +678,7 @@
                               resolve-visible-column)
                         fields)
         resolved-aggregations (map (partial resolve-aggregation-column resolve-visible-column) aggregations)
-        resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
+        resolved-filters (map #(resolve-filter-columns % resolve-visible-column) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query
                   (reduce-query (fn [query [expr-or-column expr-name]]
@@ -532,6 +718,154 @@
         {:output (ex-message e) :status-code 404}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
+;;; Expression Building
+
+(declare build-expression)
+
+(defn- resolve-expression-argument
+  "Resolve an expression argument to a lib-compatible value.
+   Arguments can be: field_id reference, literal value, expression_ref, or inline sub-expression."
+  [query arg visible-cols field-id-prefix]
+  (cond
+    (:field-id arg)
+    (let [resolved (metabot-v3.tools.u/resolve-column arg field-id-prefix visible-cols)]
+      (:column resolved))
+
+    (contains? arg :value)
+    (:value arg)
+
+    (:expression-ref arg)
+    (lib/expression-ref query (:expression-ref arg))
+
+    ;; Inline nested expression (has :operation but no :name)
+    (:operation arg)
+    (build-expression query arg visible-cols field-id-prefix)
+
+    :else
+    (throw (ex-info (str "Invalid expression argument: " arg)
+                    {:agent-error? true :status-code 400}))))
+
+(defn- build-expression
+  "Build a lib expression from an LLM expression definition.
+   Supports nested sub-expressions in arguments."
+  [query expr-def visible-cols field-id-prefix]
+  (let [resolve-arg #(resolve-expression-argument query % visible-cols field-id-prefix)
+        args (mapv resolve-arg (:arguments expr-def))
+        ;; Operation may be keyword (after normalize-ai-args) or string (direct call)
+        op (keyword (:operation expr-def))]
+    (validate-expression-definition! op args expr-def)
+    (case op
+      ;; Binary math operations
+      :add      (apply lib/+ args)
+      :subtract (apply lib/- args)
+      :multiply (apply lib/* args)
+      :divide   (apply lib// args)
+      ;; Unary math operations
+      :abs      (lib/abs (first args))
+      :round    (lib/round (first args))
+      :ceil     (lib/ceil (first args))
+      :floor    (lib/floor (first args))
+      :sqrt     (lib/sqrt (first args))
+      :log      (lib/log (first args))
+      :exp      (lib/exp (first args))
+      :power    (lib/power (first args) (or (:exponent expr-def) (second args)))
+      ;; String operations
+      :concat   (apply lib/concat args)
+      :upper    (lib/upper (first args))
+      :lower    (lib/lower (first args))
+      :trim     (lib/trim (first args))
+      :length   (lib/length (first args))
+      :substring (lib/substring (first args) (:start expr-def) (:end expr-def))
+      ;; Date extraction
+      :get-year        (lib/get-year (first args))
+      :get-month       (lib/get-month (first args))
+      :get-day         (lib/get-day (first args))
+      :get-hour        (lib/get-hour (first args))
+      :get-minute      (lib/get-minute (first args))
+      :get-second      (lib/get-second (first args))
+      :get-quarter     (lib/get-quarter (first args))
+      :get-day-of-week (lib/get-day-of-week (first args) :iso)
+      ;; Date arithmetic
+      :datetime-add      (lib/datetime-add (first args) (second args) (keyword (:unit expr-def)))
+      :datetime-subtract (lib/datetime-subtract (first args) (second args) (keyword (:unit expr-def)))
+      ;; Coalesce
+      :coalesce (apply lib/coalesce args)
+      ;; Unknown operation
+      (throw (ex-info (str "Unknown expression operation: " op)
+                      {:agent-error? true :status-code 400})))))
+
+(defn- add-expressions
+  "Add expressions (calculated columns) to a query."
+  [query expressions visible-cols field-id-prefix]
+  (if (seq expressions)
+    (reduce
+     (fn [q expr-def]
+       (let [expr-clause (build-expression q expr-def visible-cols field-id-prefix)]
+         (lib/expression q (:name expr-def) expr-clause)))
+     query
+     expressions)
+    query))
+
+;;; Post-Aggregation Filtering (HAVING equivalent)
+
+(defn- build-leaf-post-filter-clause
+  "Build a filter clause for a single post-filter (aggregation comparison).
+   `aggregation-cols` should be just the aggregation columns (not breakouts)."
+  [aggregation-cols {:keys [aggregation-index operation value]}]
+  (let [col (nth aggregation-cols aggregation-index nil)]
+    (when-not col
+      (throw (ex-info (str "Invalid aggregation_index: " aggregation-index
+                           ". Query has " (count aggregation-cols) " aggregations.")
+                      {:agent-error? true :status-code 400})))
+    (case operation
+      :greater-than           (lib/> col value)
+      :less-than              (lib/< col value)
+      :equals                 (lib/= col value)
+      :not-equals             (lib/!= col value)
+      :greater-than-or-equal  (lib/>= col value)
+      :less-than-or-equal     (lib/<= col value)
+      (throw (ex-info (str "Unknown post-filter operation: " operation)
+                      {:agent-error? true :status-code 400})))))
+
+(defn- build-post-filter-clause
+  "Build a filter clause for a post-filter, handling both leaf and compound filters.
+   `aggregation-cols` should be just the aggregation columns (not breakouts)."
+  [aggregation-cols post-filter]
+  (if (= :compound (:filter-kind post-filter))
+    ;; Compound post-filter with AND/OR
+    (let [clauses (mapv #(build-post-filter-clause aggregation-cols %) (:filters post-filter))]
+      (when (empty? clauses)
+        (throw (ex-info "Compound post-filter requires at least one nested filter"
+                        {:agent-error? true :status-code 400})))
+      (case (:operator post-filter)
+        :and (apply lib/and clauses)
+        :or  (apply lib/or clauses)
+        (throw (ex-info (str "Unknown compound operator: " (:operator post-filter))
+                        {:agent-error? true :status-code 400}))))
+    ;; Leaf post-filter
+    (build-leaf-post-filter-clause aggregation-cols post-filter)))
+
+(defn- add-post-filters
+  "Add post-aggregation filters by appending a new stage.
+   Post-filters reference aggregations by their 0-based index into the aggregations array
+   (not the overall column list which includes breakouts first).
+   Supports both simple filters and compound (AND/OR) filters."
+  [query post-filters num-breakouts]
+  (if (seq post-filters)
+    (let [;; First, append a new stage to filter on aggregated results
+          query-with-stage (lib/append-stage query)
+          ;; Get the columns from the previous stage (breakouts + aggregations)
+          returned-cols (vec (lib/returned-columns query-with-stage))
+          ;; Extract just the aggregation columns (skip the breakout columns)
+          ;; returned-cols order is: breakouts first, then aggregations
+          aggregation-cols (vec (drop num-breakouts returned-cols))]
+      (reduce
+       (fn [q post-filter]
+         (lib/filter q (build-post-filter-clause aggregation-cols post-filter)))
+       query-with-stage
+       post-filters))
+    query))
+
 (defn- resolve-datasource
   "Resolve datasource parameters to [field-id-prefix base-query] tuple.
    Accepts either {:table-id id} or {:model-id id}."
@@ -558,8 +892,30 @@
     :else
     (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true :status-code 400}))))
 
+(defn- resolve-filter-columns
+  "Recursively resolve columns in filters, including nested compound filters."
+  [llm-filter resolve-visible-column]
+  (cond
+    ;; Segment filter - no column resolution needed
+    (:segment-id llm-filter)
+    llm-filter
+
+    ;; Compound filter - recursively resolve nested filters
+    (= :compound (:filter-kind llm-filter))
+    (update llm-filter :filters
+            (fn [filters]
+              (mapv #(resolve-filter-columns % resolve-visible-column) filters)))
+
+    ;; Between filter - resolve the column (has field-id like standard filters)
+    (= :between (:filter-kind llm-filter))
+    (resolve-visible-column llm-filter)
+
+    ;; Standard filter with field-id - resolve the column
+    :else
+    (resolve-visible-column llm-filter)))
+
 (defn- query-datasource*
-  [{:keys [fields filters aggregations group-by order-by limit] :as arguments}]
+  [{:keys [expressions fields filters aggregations group-by order-by limit post-filters] :as arguments}]
   (let [[filter-field-id-prefix base-query] (resolve-datasource arguments)
         visible-cols (lib/visible-columns base-query)
         resolve-visible-column #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
@@ -571,9 +927,11 @@
                               resolve-visible-column)
                         fields)
         all-aggregations (map (partial resolve-aggregation-column resolve-visible-column) aggregations)
-        all-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
+        all-filters (map #(resolve-filter-columns % resolve-visible-column) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query
+                  ;; Add expressions first so they're available for other clauses
+                  (add-expressions expressions visible-cols filter-field-id-prefix)
                   (reduce-query (fn [query [expr-or-column expr-name]]
                                   (lib/expression query expr-name expr-or-column))
                                 (filter (comp expression? first) projection))
@@ -582,6 +940,10 @@
                   (reduce-query add-aggregation all-aggregations)
                   (reduce-query add-breakout (map resolve-visible-column group-by))
                   (reduce-query add-order-by (map resolve-order-by-column order-by))
+                  ;; Add post-aggregation filters (creates new stage if needed)
+                  ;; Pass number of breakouts so we can offset aggregation_index correctly
+                  (add-post-filters post-filters (count group-by))
+                  ;; Limit must apply after post-filters to preserve HAVING semantics.
                   (add-limit limit))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
@@ -662,7 +1024,8 @@
   (try
     (let [[filter-field-id-prefix base] (base-query data-source)
           returned-cols (lib/returned-columns base)
-          query (reduce add-filter base (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix returned-cols) filters))
+          resolve-column #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix returned-cols)
+          query (reduce add-filter base (map #(resolve-filter-columns % resolve-column) filters))
           query-id (u/generate-nano-id)
           query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)]
       {:structured-output

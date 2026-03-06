@@ -284,3 +284,311 @@
           [_:=> [_:cat params] _out] schema]
       (is (not-any? #(= :queries_state (first %)) (rest params)))
       (is (not-any? #(= :charts_state (first %)) (rest params))))))
+
+;;; ======================= Regression Tests =======================
+;;; Tests for specific bugs found during LLM integration
+
+(deftest construct-notebook-query-compound-filter-regression-test
+  (testing "construct_notebook_query correctly parses compound filters with snake_case filter_type"
+    ;; Regression test: filter_type values like "single_value" and "compound" were not being
+    ;; converted to keywords, causing the case statement in normalize-construct-filter to fail.
+    (let [captured (atom nil)]
+      (with-redefs [filter-tools/query-datasource (fn [args]
+                                                    (reset! captured args)
+                                                    {:structured-output {:query-id "q-1"
+                                                                         :query {:database 1}}})
+                    create-chart-tools/create-chart (fn [args]
+                                                      {:chart-id "c-1"
+                                                       :chart-type :table
+                                                       :chart-link "metabase://chart/c-1"
+                                                       :chart-content "<chart/>"
+                                                       :query-id (:query-id args)
+                                                       :reactions [{:type :metabot.reaction/redirect
+                                                                    :url "/question#hash"}]})]
+        (let [result (agent-tools/construct-notebook-query-tool
+                      {:reasoning "check compound filter"
+                       :query {:query_type "aggregate"
+                               :source {:table_id 2}
+                               :aggregations [{:function "sum" :field_id "t2-3" :sort_order "descending"}
+                                              {:function "avg" :field_id "t2-27"}]
+                               :filters [{:filter_type "compound"
+                                          :operator "or"
+                                          :filters [{:filter_type "single_value"
+                                                     :field_id "t2-3"
+                                                     :operation "greater-than"
+                                                     :value 5000}
+                                                    {:filter_type "single_value"
+                                                     :field_id "t2-8"
+                                                     :operation "greater-than"
+                                                     :value 50}]}]
+                               :group_by [{:field_id "t2-25"}]
+                               :limit 1000}
+                       :visualization {:chart_type "table"}})]
+          ;; Should not throw "Invalid field_id format" error
+          (is (map? result))
+          (is (= 2 (:table-id @captured)))
+          ;; Check that compound filter was correctly normalized
+          (let [filter (first (:filters @captured))]
+            (is (= :compound (:filter-kind filter)))
+            (is (= :or (:operator filter)))
+            (is (= 2 (count (:filters filter))))
+            ;; Check nested filters are correctly processed
+            (let [nested-filters (:filters filter)]
+              (is (= :greater-than (:operation (first nested-filters))))
+              (is (= 5000 (:value (first nested-filters))))
+              (is (= :greater-than (:operation (second nested-filters))))
+              (is (= 50 (:value (second nested-filters)))))))))))
+
+(deftest construct-notebook-query-nested-expression-regression-test
+  (testing "construct_notebook_query correctly parses nested inline expressions"
+    ;; Regression test: expressions with nested sub-expressions as arguments
+    ;; e.g., (total - subtotal) / total for profit margin
+    (let [captured (atom nil)]
+      (with-redefs [filter-tools/query-datasource (fn [args]
+                                                    (reset! captured args)
+                                                    {:structured-output {:query-id "q-1"
+                                                                         :query {:database 1}}})
+                    create-chart-tools/create-chart (fn [args]
+                                                      {:chart-id "c-1"
+                                                       :chart-type :table
+                                                       :chart-link "metabase://chart/c-1"
+                                                       :chart-content "<chart/>"
+                                                       :query-id (:query-id args)
+                                                       :reactions [{:type :metabot.reaction/redirect
+                                                                    :url "/question#hash"}]})]
+        (let [result (agent-tools/construct-notebook-query-tool
+                      {:reasoning "calculate profit margin"
+                       :query {:query_type "aggregate"
+                               :source {:table_id 2}
+                               :aggregations [{:function "count"}]
+                               :filters []
+                               :group_by [{:field_id "t2-0"}]
+                               :expressions [{:name "Profit Margin"
+                                              :operation "divide"
+                                              :arguments [{:operation "subtract"
+                                                           :arguments [{:field_id "t2-5"}
+                                                                       {:field_id "t2-3"}]}
+                                                          {:field_id "t2-5"}]}]
+                               :limit 1000}
+                       :visualization {:chart_type "table"}})]
+          ;; Should not throw any errors
+          (is (map? result))
+          (is (= 2 (:table-id @captured)))
+          ;; Check that expressions were passed through correctly
+          (let [expr (first (:expressions @captured))]
+            (is (= "Profit Margin" (:name expr)))
+            (is (= :divide (:operation expr)))  ;; normalized to keyword
+            ;; First argument should be a nested expression
+            (let [nested-expr (first (:arguments expr))]
+              (is (= :subtract (:operation nested-expr))))  ;; normalized to keyword
+            ;; Second argument should be a field ref
+            (is (= "t2-5" (:field-id (second (:arguments expr)))))))))))
+
+(deftest construct-notebook-query-expression-ref-aggregation-test
+  (testing "construct_notebook_query correctly parses aggregation with expression_ref"
+    ;; Regression test: aggregations can reference expressions by name via expression_ref
+    (let [captured (atom nil)]
+      (with-redefs [filter-tools/query-datasource (fn [args]
+                                                    (reset! captured args)
+                                                    {:structured-output {:query-id "q-1"
+                                                                         :query {:database 1}}})
+                    create-chart-tools/create-chart (fn [args]
+                                                      {:chart-id "c-1"
+                                                       :chart-type :bar
+                                                       :chart-link "metabase://chart/c-1"
+                                                       :chart-content "<chart/>"
+                                                       :query-id (:query-id args)
+                                                       :reactions [{:type :metabot.reaction/redirect
+                                                                    :url "/question#hash"}]})]
+        (let [result (agent-tools/construct-notebook-query-tool
+                      {:reasoning "sum profit by category"
+                       :query {:query_type "aggregate"
+                               :source {:table_id 2}
+                               :expressions [{:name "profit_margin"
+                                              :operation "divide"
+                                              :arguments [{:operation "subtract"
+                                                           :arguments [{:field_id "t2-5"}
+                                                                       {:field_id "t2-3"}]}
+                                                          {:field_id "t2-5"}]}]
+                               :aggregations [{:function "sum"
+                                               :expression_ref "profit_margin"}]
+                               :filters []
+                               :group_by [{:field_id "t2-25"}]
+                               :limit 2000}
+                       :visualization {:chart_type "bar"}})]
+          ;; Should not throw any errors
+          (is (map? result))
+          (is (= 2 (:table-id @captured)))
+          ;; Check that expression_ref in aggregation was passed through
+          (let [agg (first (:aggregations @captured))]
+            (is (= :sum (:function agg)))
+            (is (= "profit_margin" (:expression-ref agg)))))))))
+
+(deftest construct-notebook-query-nested-compound-filter-test
+  (testing "construct_notebook_query accepts nested compound filters and normalizes recursively"
+    (let [captured (atom nil)]
+      (with-redefs [filter-tools/query-datasource (fn [args]
+                                                    (reset! captured args)
+                                                    {:structured-output {:query-id "q-1"
+                                                                         :query {:database 1}}})
+                    create-chart-tools/create-chart (fn [_args]
+                                                      {:chart-id "c-1"
+                                                       :chart-type :table
+                                                       :chart-link "metabase://chart/c-1"
+                                                       :chart-content "<chart/>"
+                                                       :reactions [{:type :metabot.reaction/redirect
+                                                                    :url "/question#hash"}]})]
+        (let [result (agent-tools/construct-notebook-query-tool
+                      {:reasoning "nested compound filter test"
+                       :query {:query_type "aggregate"
+                               :source {:table_id 2}
+                               :aggregations [{:function "count"}]
+                               :filters [{:filter_type "compound"
+                                          :operator "or"
+                                          :filters [{:filter_type "compound"
+                                                     :operator "and"
+                                                     :filters [{:filter_type "single_value"
+                                                                :field_id "t2-3"
+                                                                :operation "greater-than"
+                                                                :value 500}
+                                                               {:filter_type "single_value"
+                                                                :field_id "t2-8"
+                                                                :operation "less-than"
+                                                                :value 50}]}
+                                                    {:filter_type "single_value"
+                                                     :field_id "t2-5"
+                                                     :operation "greater-than"
+                                                     :value 1000}]}]
+                               :group_by []
+                               :limit 1000}
+                       :visualization {:chart_type "table"}})]
+          (is (map? result))
+          (let [outer-filter (first (:filters @captured))
+                nested-filter (-> outer-filter :filters first)]
+            (is (= :compound (:filter-kind outer-filter)))
+            (is (= :or (:operator outer-filter)))
+            (is (= :compound (:filter-kind nested-filter)))
+            (is (= :and (:operator nested-filter)))))))))
+
+(deftest construct-notebook-query-snake-case-filter-type-normalization-test
+  (testing "snake_case filter_type values normalize to kebab-case and run filter-type-specific normalization"
+    (let [captured (atom nil)]
+      (with-redefs [filter-tools/query-datasource (fn [args]
+                                                    (reset! captured args)
+                                                    {:structured-output {:query-id "q-1"
+                                                                         :query {:database 1}}})
+                    create-chart-tools/create-chart (fn [_args]
+                                                      {:chart-id "c-1"
+                                                       :chart-type :table
+                                                       :chart-link "metabase://chart/c-1"
+                                                       :chart-content "<chart/>"
+                                                       :reactions [{:type :metabot.reaction/redirect
+                                                                    :url "/question#hash"}]})]
+        (let [result (agent-tools/construct-notebook-query-tool
+                      {:reasoning "multi value normalization"
+                       :query {:query_type "aggregate"
+                               :source {:table_id 2}
+                               :aggregations [{:function "count"}]
+                               :filters [{:filter_type "multi_value"
+                                          :field_id "t2-8"
+                                          :operation "equals"
+                                          :value "TX"}]
+                               :group_by []
+                               :limit 1000}
+                       :visualization {:chart_type "table"}})
+              filter (first (:filters @captured))]
+          (is (map? result))
+          (is (= ["TX"] (:values filter)))
+          (is (not (contains? filter :value))))))))
+
+(deftest construct-notebook-query-does-not-contain-alias-test
+  (testing "does-not-contain operation alias normalizes to string-not-contains"
+    (let [captured (atom nil)]
+      (with-redefs [filter-tools/query-datasource (fn [args]
+                                                    (reset! captured args)
+                                                    {:structured-output {:query-id "q-1"
+                                                                         :query {:database 1}}})
+                    create-chart-tools/create-chart (fn [_args]
+                                                      {:chart-id "c-1"
+                                                       :chart-type :table
+                                                       :chart-link "metabase://chart/c-1"
+                                                       :chart-content "<chart/>"
+                                                       :reactions [{:type :metabot.reaction/redirect
+                                                                    :url "/question#hash"}]})]
+        (let [result (agent-tools/construct-notebook-query-tool
+                      {:reasoning "alias normalization"
+                       :query {:query_type "aggregate"
+                               :source {:table_id 2}
+                               :aggregations [{:function "count"}]
+                               :filters [{:filter_type "multi_value"
+                                          :field_id "t2-8"
+                                          :operation "does-not-contain"
+                                          :values ["x"]}]
+                               :group_by []
+                               :limit 1000}
+                       :visualization {:chart_type "table"}})
+              filter (first (:filters @captured))]
+          (is (map? result))
+          (is (= :string-not-contains (:operation filter))))))))
+
+(deftest construct-notebook-query-metric-compound-filter-test
+  (testing "compound filters are normalized and passed through for metric queries"
+    (let [captured (atom nil)]
+      (with-redefs [filter-tools/query-metric (fn [args]
+                                                (reset! captured args)
+                                                {:structured-output {:query-id "q-1"
+                                                                     :query {:database 1}}})
+                    create-chart-tools/create-chart (fn [_args]
+                                                      {:chart-id "c-1"
+                                                       :chart-type :table
+                                                       :chart-link "metabase://chart/c-1"
+                                                       :chart-content "<chart/>"
+                                                       :reactions [{:type :metabot.reaction/redirect
+                                                                    :url "/question#hash"}]})]
+        (let [result (agent-tools/construct-notebook-query-tool
+                      {:reasoning "metric compound filter"
+                       :query {:query_type "metric"
+                               :source {:metric_id 42}
+                               :filters [{:filter_type "compound"
+                                          :operator "or"
+                                          :filters [{:filter_type "single_value"
+                                                     :field_id "c42-0"
+                                                     :operation "greater-than"
+                                                     :value 10}
+                                                    {:filter_type "single_value"
+                                                     :field_id "c42-1"
+                                                     :operation "greater-than"
+                                                     :value 100}]}]
+                               :group_by []}
+                       :visualization {:chart_type "table"}})
+              filter (first (:filters @captured))]
+          (is (map? result))
+          (is (= 42 (:metric-id @captured)))
+          (is (= :compound (:filter-kind filter)))
+          (is (= :or (:operator filter))))))))
+
+(deftest construct-notebook-query-aggregate-optional-filters-limit-test
+  (testing "aggregate queries accept omitted filters and limit"
+    (let [captured (atom nil)]
+      (with-redefs [filter-tools/query-datasource (fn [args]
+                                                    (reset! captured args)
+                                                    {:structured-output {:query-id "q-1"
+                                                                         :query {:database 1}}})
+                    create-chart-tools/create-chart (fn [_args]
+                                                      {:chart-id "c-1"
+                                                       :chart-type :table
+                                                       :chart-link "metabase://chart/c-1"
+                                                       :chart-content "<chart/>"
+                                                       :reactions [{:type :metabot.reaction/redirect
+                                                                    :url "/question#hash"}]})]
+        (let [result (agent-tools/construct-notebook-query-tool
+                      {:reasoning "aggregate without filters/limit"
+                       :query {:query_type "aggregate"
+                               :source {:table_id 34}
+                               :aggregations [{:function "count"}]
+                               :group_by [{:field_id "t34-14"}]}
+                       :visualization {:chart_type "bar"}})]
+          (is (map? result))
+          (is (= 34 (:table-id @captured)))
+          (is (= [] (:filters @captured)))
+          (is (nil? (:limit @captured))))))))
