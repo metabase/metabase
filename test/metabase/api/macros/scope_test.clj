@@ -4,12 +4,13 @@
    [metabase.api.macros.scope :as scope]))
 
 (defn- invoke-handler
-  "Invoke an async Ring handler and return the response, with a generous timeout in case things go wrong."
+  "Invoke an async Ring handler and return the response, with a generous timeout in case things go wrong.
+   Note: Clojure promises implement IFn via `deliver`, so they work directly as Ring `respond` callbacks."
   [handler request]
   (let [result (promise)]
     (handler request result identity)
     (let [response (deref result 10000 ::timeout)]
-      (is (not= ::timeout response) "Handler did not respond within 1000ms")
+      (is (not= ::timeout response) "Handler did not respond within 10s")
       response)))
 
 (deftest ^:parallel parse-scopes-test

@@ -490,9 +490,9 @@
 (defn- enforce-authentication
   "Middleware that ensures requests are authenticated.
 
-   Always sets `:token-scopes` on authenticated requests — `#{\"*\"}` for unrestricted access (session auth
-   or unscoped JWTs), or the parsed scope set for scoped JWTs. This ensures downstream scope enforcement
-   never has to special-case nil within the agent API.
+   Always sets `:token-scopes` on authenticated requests — `#{::scope/unrestricted}` for unrestricted access
+   (session auth or unscoped JWTs), or the parsed scope set for scoped JWTs. This ensures downstream scope
+   enforcement never has to special-case nil within the agent API.
 
    Supports two authentication modes:
    - **Session-based**: Uses `X-Metabase-Session` header, validated by standard Metabase

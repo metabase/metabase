@@ -18,10 +18,11 @@
 
 (defn parse-scopes
   "Parse a space-delimited OAuth scope string into a set of scope strings.
-   Returns nil if `scope-string` is nil or blank."
+   Returns nil if `scope-string` is nil, blank, or not a string."
   [scope-string]
-  (when-not (str/blank? scope-string)
-    (into #{} (str/split (str/trim scope-string) #"\s+"))))
+  (when (string? scope-string)
+    (when-not (str/blank? scope-string)
+      (into #{} (str/split (str/trim scope-string) #"\s+")))))
 
 (defn scope-satisfied?
   "Check if `token-scopes` (a set) satisfies `required-scope` (a string).
