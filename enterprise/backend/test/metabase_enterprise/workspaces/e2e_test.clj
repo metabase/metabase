@@ -5,6 +5,7 @@
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
+   [metabase.lib.core :as lib]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.transforms.test-util :as transforms.tu]
@@ -19,7 +20,7 @@
       (mt/with-model-cleanup [:model/Transform :model/Workspace]
         (mt/with-temp [:model/Transform {transform-id :id} {:name   "Transform 1"
                                                             :source {:type  "query"
-                                                                     :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:limit 3})))}
+                                                                     :query (ws.tu/->native (-> (ws.tu/q :orders) (lib/limit 3)))}
                                                             :target {:type     "table"
                                                                      :name     output-table-name
                                                                      :database (mt/id)
@@ -57,7 +58,7 @@
                 (t2/update! :model/WorkspaceTransform
                             {:workspace_id (:id workspace) :ref_id (:ref_id isolated-transform)}
                             {:source {:type  "query"
-                                      :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query venues {:limit 1})))}})
+                                      :query (ws.tu/->native (-> (ws.tu/q :venues) (lib/limit 1)))}})
                 (let [ref-id    (:ref_id isolated-transform)
                       transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace) :ref_id ref-id)]
                   (is (=? {:status :failed}

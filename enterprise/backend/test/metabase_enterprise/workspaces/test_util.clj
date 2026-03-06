@@ -14,6 +14,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]
@@ -68,12 +70,25 @@
 
 ;;;; Query helpers
 
+(defn q
+  "Create a lib query against a test database table, e.g. `(q :orders)`.
+   Can be threaded with lib functions: `(-> (q :orders) (lib/limit 10))`."
+  [table-kw]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-kw)))))
+
 (defn mbql->native
-  "Convert an MBQL query to a native query map suitable for use in transform tests.
+  "Compile a query to a native SQL map. Works with both legacy MBQL and lib (pMBQL) queries.
    This generates driver-specific SQL with properly qualified table names."
   [query]
   (qp.store/with-metadata-provider (mt/id)
     (sql.qp/mbql->native driver/*driver* (qp.preprocess/preprocess query))))
+
+(defn ->native
+  "Compile a query to native SQL form wrapped as a native query map.
+   Useful when building test transforms, which need to be SQL flavored."
+  [query]
+  (mt/native-query (mbql->native query)))
 
 ;;;; Building blocks for test resource creation
 
