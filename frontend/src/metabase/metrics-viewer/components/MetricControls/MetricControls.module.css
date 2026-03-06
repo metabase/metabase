@@ -1,18 +1,7 @@
 .container {
-  display: inline-flex;
-  background-color: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
-  border-radius: var(--mantine-radius-lg);
-  padding: 0 var(--mantine-spacing-sm);
   box-shadow: var(--mantine-shadow-sm);
 }
 
 .divider {
   align-self: stretch;
-  margin: 0 var(--mantine-spacing-xs);
-}
-
-.controlButton {
-  font-weight: bold;
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
 }

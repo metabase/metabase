@@ -122,7 +122,15 @@ export function BreakoutLegend({
   }
 
   return (
-    <Box className={S.root} data-testid="metrics-viewer-breakout-legend">
+    <Box
+      className={S.root}
+      w={260}
+      pt="md"
+      pr="lg"
+      pb="md"
+      pl={0}
+      data-testid="metrics-viewer-breakout-legend"
+    >
       <Paper withBorder radius="md" p="lg">
         <Stack gap="lg">
           {groups.map((group) => (
@@ -139,7 +147,13 @@ export function BreakoutLegend({
               </div>
               {group.items.map((item) => (
                 <Flex key={item.label} align="center" gap="sm">
-                  <Box className={S.dot} style={{ background: item.color }} />
+                  <Box
+                    className={S.dot}
+                    w={10}
+                    h={10}
+                    bdrs="50%"
+                    style={{ background: item.color }}
+                  />
                   <Text size="md" lh={1}>
                     {item.label}
                   </Text>

@@ -6,8 +6,6 @@ import type { DimensionMetadata } from "metabase-lib/metric";
 
 import type { MetricSourceId } from "../../types/viewer-state";
 
-import S from "./DimensionPillBar.module.css";
-
 export interface DimensionItem {
   id: MetricSourceId;
   label?: string;
@@ -38,7 +36,10 @@ export function DimensionPillBar({
 
   return (
     <Flex
-      className={S.bar}
+      bg="background-secondary"
+      p="sm"
+      bdrs="xl"
+      w="100%"
       align="center"
       justify="center"
       gap="sm"

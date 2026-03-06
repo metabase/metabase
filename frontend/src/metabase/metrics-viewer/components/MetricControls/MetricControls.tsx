@@ -76,6 +76,11 @@ export function MetricControls({
     <Flex
       h="3rem"
       className={S.container}
+      display="inline-flex"
+      bg="background-primary"
+      bd="1px solid var(--mb-color-border)"
+      bdrs="lg"
+      px="sm"
       align="center"
       gap="xs"
       data-testid="metrics-viewer-controls"
@@ -87,7 +92,7 @@ export function MetricControls({
       />
       {hasFilterControls && projectionInfo.filterDimension && (
         <>
-          <Divider orientation="vertical" className={S.divider} />
+          <Divider orientation="vertical" className={S.divider} mx="xs" />
           <DimensionFilterButton
             definition={definition}
             filterDimension={projectionInfo.filterDimension}
@@ -100,7 +105,7 @@ export function MetricControls({
       )}
       {hasBucketControls && projectionInfo.projectionDimension && (
         <>
-          <Divider orientation="vertical" className={S.divider} />
+          <Divider orientation="vertical" className={S.divider} mx="xs" />
           <BucketButton
             definition={definition}
             dimension={projectionInfo.projectionDimension}
@@ -111,7 +116,7 @@ export function MetricControls({
       )}
       {hasBinningControls && projectionInfo.projectionDimension && (
         <>
-          <Divider orientation="vertical" className={S.divider} />
+          <Divider orientation="vertical" className={S.divider} mx="xs" />
           <BinningButton
             definition={definition}
             dimension={projectionInfo.projectionDimension}

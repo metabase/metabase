@@ -13,8 +13,6 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
-import S from "../MetricControls.module.css";
-
 type BucketButtonProps = {
   definition: MetricDefinition;
   dimension: DimensionMetadata;
@@ -56,7 +54,9 @@ export function BucketButton({
     <Popover opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Button
-          className={S.controlButton}
+          fw="bold"
+          py="xs"
+          px="sm"
           variant="subtle"
           color="text-primary"
           rightSection={<Icon name="chevrondown" size={12} />}

@@ -168,7 +168,7 @@ export function FilterPopoverContent({
         />
       </Box>
 
-      <Box w={LIST_WIDTH} className={S.listSection}>
+      <Box w={LIST_WIDTH} className={S.listSection} flex={1} mih={0}>
         {hasNoResults ? (
           <Box p="xl">
             <Text c="text-secondary" ta="center">

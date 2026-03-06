@@ -10,7 +10,7 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 
 import { UNBINNED } from "../../../constants";
-import S from "../MetricControls.module.css";
+
 const MIN_WIDTH = 180;
 
 type BinningButtonProps = {
@@ -72,7 +72,9 @@ export function BinningButton({
     <Popover opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Button
-          className={S.controlButton}
+          fw="bold"
+          py="xs"
+          px="sm"
           variant="subtle"
           color="text-primary"
           rightSection={<Icon name="chevrondown" size={12} />}

@@ -110,6 +110,7 @@ export function AddDimensionPopover({
       <Popover.Target>
         <ActionIcon
           className={S.addButton}
+          ml="xs"
           aria-label={t`Add dimension tab`}
           onClick={() => setIsOpen(true)}
         >

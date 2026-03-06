@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -81,6 +82,7 @@ export function DimensionPill({
     options.length > 1 || (isPlaceholder && options.length > 0);
   const canRemove = !isPlaceholder && onRemove != null;
   const canOpenPopover = hasMultipleOptions || canRemove;
+  const isInteractive = canOpenPopover && !disabled;
 
   const handleSelect = useCallback(
     (item: DimensionOption) => {
@@ -111,12 +113,11 @@ export function DimensionPill({
 
   const pillContent = (
     <Flex
-      className={S.pill}
+      className={cx(S.pill, isInteractive && S.interactive)}
       align="center"
       gap="xs"
-      onClick={canOpenPopover && !disabled ? () => setIsOpen(true) : undefined}
-      data-disabled={disabled || isEmpty}
-      data-static={!canOpenPopover}
+      opacity={disabled || isEmpty ? 0.6 : undefined}
+      onClick={isInteractive ? () => setIsOpen(true) : undefined}
       data-placeholder={isPlaceholder || undefined}
     >
       <SourceColorIndicator colors={colors} fallbackIcon={icon ?? "add"} />

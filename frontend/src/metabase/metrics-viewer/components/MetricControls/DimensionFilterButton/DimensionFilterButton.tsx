@@ -18,7 +18,6 @@ import {
   buildDimensionFilterClause,
   parseFilter,
 } from "../../../utils/metrics";
-import S from "../MetricControls.module.css";
 
 function getFilterDisplayName(
   definition: MetricDefinition,
@@ -132,7 +131,9 @@ export function DimensionFilterButton({
     <Popover opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Button
-          className={S.controlButton}
+          fw="bold"
+          py="xs"
+          px="sm"
           variant="subtle"
           color="text-primary"
           rightSection={<Icon name="chevrondown" size={12} />}

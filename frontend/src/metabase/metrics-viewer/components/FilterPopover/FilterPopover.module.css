@@ -8,14 +8,12 @@
   overflow: hidden;
 }
 
-.listSection {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
 .searchSection {
   border-bottom: 1px solid var(--mb-color-border);
+}
+
+.listSection {
+  overflow-y: auto;
 }
 
 .dimensionList {
