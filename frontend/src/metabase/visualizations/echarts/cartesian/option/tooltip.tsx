@@ -58,31 +58,35 @@ export const getTooltipOption = (
     ...getTooltipBaseOption(containerRef),
     trigger: "axis",
     axisPointer: {
-      type: "line",
-      lineStyle: {
+      type: "cross",
+      crossStyle: {
         type: "solid",
         width: 1,
         color: alpha("black", 0.25),
       },
+      axis: "auto",
     },
     formatter: (params) => {
       if (!Array.isArray(params) || params.length === 0) {
         return "";
       }
 
-      // When using axis trigger, params is an array of all series at that axis point
-      // We use the first param to get the dataIndex, and find the first non-special series
-      const validParam = params.find(
+      // When using axis trigger with cross pointer, params is an array of all series at that axis point
+      // Filter out special series (timeline events and goal lines)
+      const validParams = params.filter(
         (param) =>
           param.seriesId !== TIMELINE_EVENT_SERIES_ID &&
           param.seriesId !== GOAL_LINE_SERIES_ID,
       );
 
-      if (!validParam) {
+      if (validParams.length === 0) {
         return "";
       }
 
-      const { dataIndex, seriesId } = validParam;
+      // With cross pointer, the first valid param is the one closest to the cursor
+      // ECharts automatically orders them by proximity when using cross axis pointer
+      const closestParam = validParams[0];
+      const { dataIndex, seriesId } = closestParam;
 
       return reactNodeToHtmlString(
         <ChartItemTooltip
