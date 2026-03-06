@@ -14,12 +14,14 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.util :as u]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
    (java.io File)
@@ -58,7 +60,7 @@
   [transform]
   (into #{}
         (map source-table-value->dependency)
-        (vals (get-in transform [:source :source-tables]))))
+        (get-in transform [:source :source-tables])))
 
 ;;; ------------------------------------------------- Message Log (in-memory only) -------------------------------------------------
 
@@ -276,7 +278,7 @@
 
 ;;; ------------------------------------------------- Base Execution Entry Point -------------------------------------------------
 
-(defn run-python-transform!
+(mu/defn run-python-transform! :- ::transforms-base.schema/execute-base-result
   "Execute Python transform. Returns result map.
 
    Does:
@@ -298,11 +300,12 @@
    - `:cancel-chan` - optional, pre-created promise-chan for cancellation (avoids bridging latency)
 
    Returns:
-   {:status :succeeded | :failed | :cancelled
+   {:status :succeeded | :failed | :cancelled | :timeout
     :result <http response>
     :logs <string>
     :error <exception if failed>}"
-  [transform {:keys [cancelled? run-id with-stage-timing-fn message-log cancel-chan]}]
+  [transform :- ::transforms-base.schema/transform
+   {:keys [cancelled? run-id with-stage-timing-fn message-log cancel-chan]} :- [:maybe ::transforms-base.schema/execute-base-options]]
   (assert (transforms-base.u/python-transform? transform) "Transform must be a python transform")
   (let [message-log (or message-log (empty-message-log))]
     (try

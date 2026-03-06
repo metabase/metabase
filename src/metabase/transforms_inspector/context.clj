@@ -64,7 +64,7 @@
   (try
     (let [source-tables (get-in transform [:source :source-tables])
           normalized (transforms-base.u/normalize-source-tables source-tables)
-          table-ids (keep (fn [[_ v]] (:table_id v)) normalized)]
+          table-ids (keep :table_id normalized)]
       (table-ids->source-info table-ids))
     (catch Exception e
       (log/warn e "Failed to extract sources from Python transform")
@@ -215,9 +215,7 @@
    [:alias [:maybe :string]]
    [:source-table {:optional true} [:maybe pos-int?]]
    [:join-table :any]
-   [:join-condition :any]
-   [:lhs-column :any]
-   [:rhs-column :any]])
+   [:join-condition :any]])
 
 (mr/def ::mbql-context
   "MBQL-specific context."

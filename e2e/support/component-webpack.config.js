@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
+const chalk = require("chalk");
 const webpack = require("webpack");
 
 const {
@@ -14,7 +15,7 @@ const { isEmbeddingSdkPackageInstalled, embeddingSdkPath } =
   resolveEmbeddingSdkPackage();
 
 console.log(
-  `Embedding SDK is ${isEmbeddingSdkPackageInstalled ? "installed" : 'NOT installed, using locally built version from "resources/embedding-sdk"'}`,
+  `Embedding SDK is ${isEmbeddingSdkPackageInstalled ? chalk.green("installed") : `${chalk.red("NOT installed")}, ${chalk.bold("using locally built version")} from "resources/embedding-sdk"'}`}`,
 );
 
 console.log(`Embedding SDK path alias is resolved to ${embeddingSdkPath}`);
@@ -122,7 +123,7 @@ function resolveEmbeddingSdkPackage() {
       };
     }
   } catch (err) {
-    console.log(`Cannot resolve ${SDK_PACKAGE_NAME} via require.resolve:`, err);
+    console.log(`Cannot resolve ${SDK_PACKAGE_NAME} via require.resolve`);
   }
 
   const sdkLocalPackagePath = path.resolve(
