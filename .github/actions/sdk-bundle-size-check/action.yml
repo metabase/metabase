@@ -1,0 +1,77 @@
+name: Embedding SDK Bundle Size Check
+description: |
+  Downloads the current branch's uberjar and builds the base ref's
+  embedding-sdk.js from source, compares their sizes,
+  and sets output if the size change exceeds the threshold.
+
+inputs:
+  edition:
+    description: 'Metabase edition (ee or oss)'
+    required: true
+  base-ref-commit:
+    description: 'Commit SHA of the base ref (e.g. merge base).'
+    required: true
+  threshold-percent:
+    description: 'Percent threshold for bundle size change'
+    required: true
+
+outputs:
+  status:
+    description: "Bundle size status: increased, decreased, or stable"
+    value: ${{ steps.compare.outputs.status }}
+  size_change_percent:
+    description: "size change percent (positive = increase, negative = decrease)"
+    value: ${{ steps.compare.outputs.size_change_percent }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare backend
+      uses: ./.github/actions/prepare-backend
+    - name: Prepare frontend
+      uses: ./.github/actions/prepare-frontend
+    - name: Download current uberjar
+      uses: actions/download-artifact@v4
+      with:
+        name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+        path: temp/current-uberjar
+    - name: Extract embedding-sdk.js from current uberjar
+      shell: bash
+      run: unzip -j temp/current-uberjar/target/uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d temp/current-bundle
+    - name: Checkout base ref
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.base-ref-commit }}
+        path: temp/base-ref-src
+    - name: Build base-ref embedding-sdk.js
+      shell: bash
+      run: |
+        cd temp/base-ref-src
+        bun install
+        MB_EDITION=${{ inputs.edition }} bun run build-release
+    - name: Compare sizes and set output
+      id: compare
+      shell: bash
+      run: |
+        current_size=$(wc -c < temp/current-bundle/embedding-sdk.js) || { echo "::error::Failed to read current bundle"; exit 1; }
+        base_ref_size=$(wc -c < temp/base-ref-src/resources/frontend_client/app/embedding-sdk.js) || { echo "::error::Failed to read base-ref bundle"; exit 1; }
+        [ "$current_size" -gt 0 ] && [ "$base_ref_size" -gt 0 ] || { echo "::error::Bundle file is empty"; exit 1; }
+
+        diff=$((current_size - base_ref_size))
+        percent=$(( diff * 100 / base_ref_size ))
+
+        echo "Current size: $current_size bytes"
+        echo "Base ref size: $base_ref_size bytes"
+        echo "Difference: $diff bytes ($percent%)"
+
+        threshold="${{ inputs.threshold-percent }}"
+        if [ "$percent" -gt "$threshold" ]; then
+          status="increased"
+        elif [ "$percent" -lt "$(( -threshold ))" ]; then
+          status="decreased"
+        else
+          status="stable"
+        fi
+
+        echo "status=$status" >> $GITHUB_OUTPUT
+        echo "size_change_percent=$percent" >> $GITHUB_OUTPUT

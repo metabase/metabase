@@ -30,12 +30,15 @@ jobs:
     outputs:
       run_mode: ${{ fromJson(steps.config.outputs.result).runMode }}
       dev_server: ${{ fromJson(steps.config.outputs.result).metastoreDevServer }}
+      package_manager: ${{ fromJson(steps.config.outputs.result).packageManager }}
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       # note: this block can be removed after we stop needing to be able to test versions before v55
       - name: Get test mode config
         id: config
@@ -48,13 +51,17 @@ jobs:
             // with v55 and later we use enterprise tokens that mirror actual Metabase plans
             const MULTIPLE_TEST_TOKEN_THRESHOLD = 55;
 
+            // Versions before v59 used yarn, v59 and later use bun
+            const BUN_PACKAGE_MANAGER_THRESHOLD = 59;
+
             const version = '${{ inputs.version }}';
             const majorVersion = Number(getMajorVersion(version));
             const oldTestToken = majorVersion < MULTIPLE_TEST_TOKEN_THRESHOLD;
 
             return ({
               runMode: oldTestToken ? 'prod' : 'e2e',
-              metastoreDevServer: oldTestToken ? '' : '${{ vars.METASTORE_DEV_SERVER_URL }}'
+              metastoreDevServer: oldTestToken ? '' : '${{ vars.METASTORE_DEV_SERVER_URL }}',
+              packageManager: majorVersion < BUN_PACKAGE_MANAGER_THRESHOLD ? 'yarn' : 'bun',
             });
 
   release-artifact:
@@ -71,10 +78,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: .github
-      - name: Retrieve test build uberjar artifact for ${{ matrix.edition }}
+      - name: Retrieve release uberjar artifact for ${{ matrix.edition }}
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
+          commit: ${{ inputs.commit }}
+          edition: ${{ matrix.edition }}
+          release: "true"
 
       - name: Extract version number from  version.properties
         id: version-properties
@@ -168,6 +177,8 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      - name: Compile CLJS
+        run: ${{ needs.test-mode-config.outputs.package_manager }} run build-pure:cljs
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
@@ -228,32 +239,42 @@ jobs:
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-release-oss-${{ inputs.commit }}-uberjar
+      edition: oss
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.oss_version }}-${{ inputs.commit }}
+      release: "true"
 
   containerize-ee:
     needs: release-artifact
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-release-ee-${{ inputs.commit }}-uberjar
+      edition: ee
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_STAGING_REPO }}
       tag: ${{ needs.release-artifact.outputs.ee_version }}-${{ inputs.commit }}
+      release: "true"
 
   tests-complete-message:
     if: always()
     runs-on: ubuntu-22.04
-    needs: [run-sanity-check, check-uberjar-health, containerize-ee, containerize-oss]
+    needs:
+      [
+        run-sanity-check,
+        check-uberjar-health,
+        containerize-ee,
+        containerize-oss,
+      ]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Send tests complete message
         uses: actions/github-script@v7
         env:

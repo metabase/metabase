@@ -3,7 +3,10 @@ import type * as Lib from "metabase-lib";
 
 export type OperatorType = "exact" | "partial" | "empty";
 
-export interface OperatorOption
-  extends FilterOperatorOption<Lib.StringFilterOperator> {
+export type StringFilterOperatorOption =
+  FilterOperatorOption<Lib.StringFilterOperator>;
+
+export type StringFilterOperatorInfo = {
+  operator: Lib.StringFilterOperator;
   type: OperatorType;
-}
+};

@@ -8,14 +8,13 @@ import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
-import { ProfileLink } from "../ProfileLink";
+import { AppSwitcher } from "../AppSwitcher";
 import { SearchButton } from "../search/SearchButton/SearchButton";
 
 import { AppBarLogo } from "./AppBarLogo";
 import {
   AppBarHeader,
   AppBarLogoContainer,
-  AppBarProfileLinkContainer,
   AppBarSearchContainer,
   AppBarSubheader,
   AppBarToggleContainer,
@@ -29,7 +28,7 @@ export interface AppBarSmallProps {
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
-  isProfileLinkVisible?: boolean;
+  isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
@@ -43,7 +42,7 @@ const AppBarSmall = ({
   isLogoVisible,
   isSearchVisible,
   isEmbeddingIframe,
-  isProfileLinkVisible,
+  isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
@@ -54,7 +53,7 @@ const AppBarSmall = ({
   const [isSearchActive, setSearchActive] = useState(false);
   const isInfoVisible = isQuestionLineageVisible || isCollectionPathVisible;
   const isHeaderVisible =
-    isLogoVisible || isNavBarEnabled || isSearchVisible || isProfileLinkVisible;
+    isLogoVisible || isNavBarEnabled || isSearchVisible || isAppSwitcherVisible;
   const isSubheaderVisible = !isNavBarVisible && isInfoVisible;
 
   const handleSearchActive = useCallback(() => {
@@ -93,11 +92,7 @@ const AppBarSmall = ({
                 ))}
             </AppBarSearchContainer>
             {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
-            {isProfileLinkVisible && (
-              <AppBarProfileLinkContainer>
-                <ProfileLink />
-              </AppBarProfileLinkContainer>
-            )}
+            {isAppSwitcherVisible && <AppSwitcher />}
           </Flex>
           <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
             <AppBarLogo

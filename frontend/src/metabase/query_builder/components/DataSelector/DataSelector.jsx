@@ -1038,6 +1038,7 @@ export class UnconnectedDataSelector extends Component {
           onDismiss={this.handleDismiss}
           position="bottom-start"
           opened={this.isPopoverOpen()}
+          disabled={this.props.readOnly}
         >
           <Popover.Target>
             <Box

@@ -69,7 +69,7 @@ const ChartTooltip = ({
 
   const target = hasTargetElement
     ? hovered?.element
-    : hasTargetEvent
+    : hovered?.event != null
       ? getEventTarget(hovered.event)
       : null;
 

@@ -38,6 +38,6 @@ export const MoreButton = styled(Button)<ButtonProps>`
   transition: none !important;
 
   &:hover {
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-background-hover) !important;
   }
 `;

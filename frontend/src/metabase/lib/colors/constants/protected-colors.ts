@@ -13,9 +13,6 @@ export const PROTECTED_COLORS = [
   "admin-navbar-secondary",
   "admin-navbar-inverse",
 
-  // Colors based on specific base colors
-  "bg-ocean-alpha-light",
-
   // Accent colors must be set thru the `chartColors` API, not set directly
   "accent0",
   "accent1",

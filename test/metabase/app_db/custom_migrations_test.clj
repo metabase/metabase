@@ -2699,7 +2699,8 @@
           ;; rollback
           (migrate! :down 56)
           ;; assert pre conditions
-          (assert-pre-conditions))))))
+          (testing "everything back to normal after downgrade"
+            (assert-pre-conditions)))))))
 
 (deftest escape-existing-at-symbol-user-attributes-test
   (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
@@ -2725,3 +2726,124 @@
                (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
         (is (= {"_@foo" "bang"}
                (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))
+
+(deftest backfill-transform-target-db-id-test
+  (testing "v59.2026-01-31T12:01:23 : backfill target_db_id from target and source JSON"
+    (impl/test-migrations ["v59.2026-01-31T12:01:23"] [migrate!]
+      (let [db-id         (:id (new-instance-with-default :metabase_database))
+            deleted-db-id (+ db-id 9999)
+            query-source  (fn [id] (json/encode {:type "query" :query {:database id}}))
+            ;; Python transforms were meant to support 0-N source databases, but the table now has a single source id.
+            python-db-id  db-id
+            python-source (json/encode {:type "python" :script "x = 1", :source-database python-db-id})
+            target        (fn [& {:keys [database]}]
+                            (json/encode (cond-> {:schema "public" :table "out" :type "append"}
+                                           database (assoc :database database))))
+            insert!       (fn [source-type source target]
+                            (t2/insert-returning-pk!
+                             :transform
+                             {:name               "t"
+                              :source             source
+                              :target             target
+                              :source_type        source-type
+                              :source_database_id db-id
+                              :created_at         :%now
+                              :updated_at         :%now}))
+            ;; source.query.database takes precedence over target.database
+            both-id       (insert! "mbql" (query-source db-id) (target :database db-id))
+            ;; source.query.database used when target has no database
+            source-id     (insert! "mbql" (query-source db-id) (target))
+            ;; target.database used as fallback for python transforms
+            target-id     (insert! "python" python-source (target :database db-id))
+            ;; no database anywhere — stays nil
+            none-id       (insert! "python" python-source (target))
+            ;; deleted database reference — stays nil
+            deleted-id    (insert! "mbql" (query-source deleted-db-id) (target :database deleted-db-id))
+            id->target    #(t2/select-one-fn :target_db_id :transform :id %)]
+        (testing "Before backfill, the field is uniformly empty"
+          ;; Haven't turned this into a loop, as it would obscure which case failed.
+          (is (nil? (id->target both-id)))
+          (is (nil? (id->target source-id)))
+          (is (nil? (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))
+        (migrate!)
+        (testing "Valid database ids are backfilled"
+          ;; Ditto, since the IDs are opaque in CI, give each case its own line for transparent failures.
+          (is (= db-id (id->target both-id)))
+          (is (= db-id (id->target source-id)))
+          (is (= db-id (id->target target-id)))
+          (is (nil? (id->target none-id)))
+          (is (nil? (id->target deleted-id))))))))
+
+(deftest fix-clickhouse-upload-db-schema-names-test
+  (testing "FixClickHouseUploadDBSchemaNames, v59.2026-03-04T00:00:00: fix clickhouse upload db schema names"
+    (encryption-test/with-secret-key "fake-secret-key"
+      ;; Test when the upload db doesn't have an upload_schema_name set (both upload db and upload
+      ;; tables are in a bad state) and when it does have an upload_schema_name set (upload db and
+      ;; new upload tables are in a good state, but existing upload tables are in a bad state)
+      (doseq [uploads-schema-name [nil "db_foo"]]
+        (impl/test-migrations
+         ["v59.2026-03-04T00:00:00"] [migrate!]
+          (let [db-id (t2/insert-returning-pk! :metabase_database
+                                               {:name "clickhouse cloud upload db"
+                                                :engine "clickhouse"
+                                                :created_at :%now
+                                                :updated_at :%now
+                                                :uploads_enabled true
+                                                :uploads_schema_name uploads-schema-name
+                                                :uploads_table_prefix "uploads_"
+                                                :details (mi/encrypted-json-in {:dbname "db_foo"})})
+                insert-table! (fn [db-id name schema active is-upload display-name]
+                                (t2/insert-returning-pk! :metabase_table
+                                                         {:db_id db-id
+                                                          :name name
+                                                          :schema schema
+                                                          :active active
+                                                          :is_upload is-upload
+                                                          :display_name display-name
+                                                          :created_at :%now
+                                                          :updated_at :%now}))
+                ;; An uploads table in a good state, created before uploads_schema_name was set to null
+                uploaded-0 (insert-table! db-id "uploads_test_table_0" "db_foo" true true "Test Table 0")
+                ;; Two upload tables in a bad state, created after uploads_schema_name was set to null
+                uploaded-1 (insert-table! db-id "uploads_test_table_1" nil false true "Test Table 1")
+                uploaded-2 (insert-table! db-id "uploads_test_table_2" nil false true "Test Table 2")
+                ;; The two non-upload versions of the above tables, created by the sync process
+                synced-1 (insert-table! db-id "uploads_test_table_1" "db_foo" true false "Uploads Test Table 1")
+                synced-2 (insert-table! db-id "uploads_test_table_2" "db_foo" true false "Uploads Test Table 2")
+                ;; An unrelated non-upload table in the same schema that should be left alone
+                unrelated (insert-table! db-id "unrelated_table" "db_foo" true false "Unrelated Table")]
+            (migrate!)
+            ;; The uploads db has the correct uploads_schema_name from the details
+            (is (= "db_foo" (:uploads_schema_name (t2/select-one :metabase_database :id db-id))))
+            (are [exp table-id] (= exp
+                                   (t2/select-one [:metabase_table :name :schema :active :is_upload] :id table-id))
+              ;; The upload table that was already in a good state remains unchanged
+              {:name "uploads_test_table_0"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-0
+              ;; The two upload tables in a bad state are updated to be active and have the correct schema
+              {:name "uploads_test_table_1"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-1
+              {:name "uploads_test_table_2"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-2
+              ;; The two non-upload tables created by the sync have been renamed and set as inactive
+              {:name "uploads_test_table_1_retired_69667"
+               :schema "db_foo"
+               :active false
+               :is_upload false} synced-1
+              {:name "uploads_test_table_2_retired_69667"
+               :schema "db_foo"
+               :active false
+               :is_upload false} synced-2
+              ;; The unrelated table remains unchanged
+              {:name "unrelated_table"
+               :schema "db_foo"
+               :active true
+               :is_upload false} unrelated)))))))

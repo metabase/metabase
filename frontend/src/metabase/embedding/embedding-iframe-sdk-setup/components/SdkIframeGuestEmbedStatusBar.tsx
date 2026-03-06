@@ -13,6 +13,7 @@ export const SdkIframeGuestEmbedStatusBar = () => {
     embeddingParameters,
     isFetching,
     initialEmbeddingParameters,
+    isGuestEmbedsEnabled,
   } = useSdkIframeEmbedSetupContext();
 
   const toggleEmbedding = useToggleResourceEmbedding();
@@ -23,7 +24,12 @@ export const SdkIframeGuestEmbedStatusBar = () => {
     toggleEmbedding?.resourceType === "dashboard" ||
     toggleEmbedding?.resourceType === "question";
 
-  if (!isGuestEmbed || !shouldShowForStep || !shouldShowForResource) {
+  if (
+    !isGuestEmbed ||
+    !isGuestEmbedsEnabled ||
+    !shouldShowForStep ||
+    !shouldShowForResource
+  ) {
     return null;
   }
 

@@ -1,8 +1,8 @@
 {{> metabase/channel/email/_header.hbs }}
 {{#with payload.event_info.details.invitor as |invitor|}}
   <div style="padding-top: 40px; padding-left: 16px; padding-bottom: 96px; padding-right: 16px; box-sizing: border-box; width: 100%; max-width: 600px; background-color: #FFFFFF; border-radius: 24px; border: 1px solid #dcdfe0; margin-top: 32px; margin-left: auto; margin-right: auto;">
-    <div style="margin-bottom: 32px; text-align: center; width: 56px; height: 56px; padding-top: 5px; box-sizing: border-box; padding-bottom: 5px; margin-left: auto; margin-right: auto;">
-      <img height="46" src="{{context.application_logo_url}}" alt="{{context.application_name}} logo" />
+    <div style="margin-bottom: 32px; text-align: center; padding-top: 5px; box-sizing: border-box; padding-bottom: 5px;">
+      <img style="max-height: 46px; max-width: 100%;" src="{{context.application_logo_url}}" alt="{{context.application_name}} logo" />
     </div>
     <div>
       {{#if payload.event_info.object.is_from_setup}}

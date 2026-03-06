@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import type * as Urls from "metabase/lib/urls";
@@ -13,7 +14,6 @@ import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,
 } from "metabase-enterprise/api/python-transform-library";
-import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 
 import { PythonEditor } from "../../components/PythonEditor";
@@ -76,14 +76,14 @@ export function PythonLibraryEditorPage({
 
   // When the library loads, set the source to the current library source
   useLayoutEffect(() => {
-    if (library != null) {
+    if (library?.source) {
       setSource(library.source);
     } else {
       setSource(EMPTY_LIBRARY_SOURCE);
     }
   }, [library]);
 
-  const isDirty = source !== (library?.source ?? EMPTY_LIBRARY_SOURCE);
+  const isDirty = source !== (library?.source || EMPTY_LIBRARY_SOURCE);
 
   if (isLoading || (error && !isResourceNotFoundError(error))) {
     return (

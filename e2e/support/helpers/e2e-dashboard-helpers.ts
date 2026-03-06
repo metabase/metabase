@@ -370,6 +370,10 @@ export const dashboardGrid = () => {
   return cy.findByTestId("dashboard-grid");
 };
 
+export function dashboardCancelButton() {
+  return cy.findByTestId("edit-bar").findByRole("button", { name: "Cancel" });
+}
+
 export function dashboardSaveButton() {
   return cy.findByTestId("edit-bar").findByRole("button", { name: "Save" });
 }

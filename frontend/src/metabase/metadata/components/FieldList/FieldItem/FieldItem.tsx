@@ -77,7 +77,7 @@ export function FieldItem({
   return (
     <Card
       aria-label={field.display_name}
-      bg={active ? "brand-light" : "background-primary"}
+      bg={active ? "background-brand" : "background-primary"}
       c="text-secondary"
       className={cx(S.card, {
         [S.active]: active,

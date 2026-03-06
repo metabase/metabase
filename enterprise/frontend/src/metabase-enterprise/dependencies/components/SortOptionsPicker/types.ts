@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
 
-import type {
-  DependencySortColumn,
-  DependencySortDirection,
-} from "metabase-types/api";
+import type { DependencySortColumn, SortDirection } from "metabase-types/api";
 
 export type SortColumnItem = {
   value: DependencySortColumn;
@@ -11,6 +8,6 @@ export type SortColumnItem = {
 };
 
 export type SortDirectionItem = {
-  value: DependencySortDirection;
+  value: SortDirection;
   label: ReactNode;
 };

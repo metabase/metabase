@@ -602,6 +602,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(
         screen.getByRole("button", { name: "Visualization" }),
       );
+      await userEvent.click(screen.getByTestId("more-charts-toggle"));
       await userEvent.click(screen.getByTestId("Detail-button"));
       await waitForSaveToBeEnabled();
 

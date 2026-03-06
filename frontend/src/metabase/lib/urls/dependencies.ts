@@ -2,7 +2,7 @@ import type {
   DependencyEntry,
   DependencyGroupType,
   DependencySortColumn,
-  DependencySortDirection,
+  SortDirection,
 } from "metabase-types/api";
 
 const BASE_URL = `/data-studio`;
@@ -31,23 +31,23 @@ export function dependencyDiagnostics() {
   return DIAGNOSTICS_URL;
 }
 
-export type DependencyListParams = {
+export type DependencyDiagnosticsParams = {
   page?: number;
   query?: string;
   groupTypes?: DependencyGroupType[];
   includePersonalCollections?: boolean;
   sortColumn?: DependencySortColumn;
-  sortDirection?: DependencySortDirection;
+  sortDirection?: SortDirection;
 };
 
-function dependencyListQueryString({
+function dependencyDiagnosticsQueryString({
   page,
   query,
   groupTypes,
   includePersonalCollections,
   sortColumn,
   sortDirection,
-}: DependencyListParams = {}) {
+}: DependencyDiagnosticsParams = {}) {
   const searchParams = new URLSearchParams();
 
   if (page != null) {
@@ -58,30 +58,30 @@ function dependencyListQueryString({
   }
   if (groupTypes != null) {
     groupTypes.forEach((groupType) => {
-      searchParams.append("group_types", groupType);
+      searchParams.append("group-types", groupType);
     });
   }
   if (includePersonalCollections != null) {
     searchParams.set(
-      "include_personal_collections",
+      "include-personal-collections",
       String(includePersonalCollections),
     );
   }
   if (sortColumn != null) {
-    searchParams.set("sort_column", sortColumn);
+    searchParams.set("sort-column", sortColumn);
   }
   if (sortDirection != null) {
-    searchParams.set("sort_direction", sortDirection);
+    searchParams.set("sort-direction", sortDirection);
   }
 
   const queryString = searchParams.toString();
   return queryString.length > 0 ? `?${queryString}` : "";
 }
 
-export function brokenDependencies(params?: DependencyListParams) {
-  return `${dependencyDiagnostics()}/broken${dependencyListQueryString(params)}`;
+export function brokenDependencies(params?: DependencyDiagnosticsParams) {
+  return `${dependencyDiagnostics()}/broken${dependencyDiagnosticsQueryString(params)}`;
 }
 
-export function unreferencedDependencies(params?: DependencyListParams) {
-  return `${dependencyDiagnostics()}/unreferenced${dependencyListQueryString(params)}`;
+export function unreferencedDependencies(params?: DependencyDiagnosticsParams) {
+  return `${dependencyDiagnostics()}/unreferenced${dependencyDiagnosticsQueryString(params)}`;
 }

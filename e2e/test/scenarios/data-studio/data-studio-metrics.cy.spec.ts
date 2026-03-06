@@ -23,14 +23,17 @@ describe("scenarios > data studio > library > metrics", () => {
     H.DataStudio.Library.newButton().click();
     H.popover().findByText("Metric").click();
 
+    cy.log("Verify metric_create_started event was tracked");
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_create_started",
+      triggered_from: "data_studio_library",
+    });
+
     H.DataStudio.Metrics.queryEditor().should("be.visible");
     H.DataStudio.Metrics.saveButton().should("be.disabled");
 
     H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      cy.findByText("Databases").click();
-      cy.findByText("Orders").click();
-    });
+    H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
 
     H.getNotebookStep("summarize")
       .findByText("Pick a column to group by")
@@ -51,6 +54,13 @@ describe("scenarios > data studio > library > metrics", () => {
     });
 
     cy.wait("@createCard");
+
+    cy.log("Verify metric_created event was tracked");
+    H.expectUnstructuredSnowplowEvent({
+      event: "metric_created",
+      triggered_from: "data_studio",
+      result: "success",
+    });
 
     cy.log("Verify metric overview page");
     cy.url().should("match", /\/data-studio\/library\/metrics\/\d+$/);
@@ -286,7 +296,6 @@ describe("scenarios > data studio > library > metrics", () => {
       .should("have.value", "Trusted Orders Metric - Duplicate");
     H.modal().findByTestId("dashboard-and-collection-picker-button").click();
 
-    H.entityPickerModalTab("Collections").click();
     H.entityPickerModal().within(() => {
       cy.findByText("Our analytics").click();
       cy.findByText("Library").click();
@@ -331,8 +340,7 @@ describe("scenarios > data studio > library > metrics", () => {
     H.popover().findByText("Move").click();
 
     cy.log("Select First collection as destination");
-    H.entityPickerModal().findByText("First collection").click();
-    H.entityPickerModal().button("Move").click();
+    H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
 
     cy.wait("@updateCard");
 
@@ -344,6 +352,58 @@ describe("scenarios > data studio > library > metrics", () => {
     H.DataStudio.Library.libraryPage()
       .findByText("Trusted Orders Metric")
       .should("not.exist");
+  });
+
+  describe("analytics events", () => {
+    it("should track metric_create_started and metric_created from browse metrics", () => {
+      cy.visit("/browse/metrics");
+
+      cy.log("Click the plus button to create a new metric");
+      cy.findByRole("link", { name: "Create a new metric" }).click();
+
+      cy.log("Verify metric_create_started event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_create_started",
+        triggered_from: "browse_metrics",
+      });
+
+      cy.log("Verify we're on the new metric page");
+      cy.url().should("match", /\/metric\/query/);
+
+      cy.findByPlaceholderText(/Search for tables/).type("Orders");
+      H.popover()
+        .findAllByRole("menuitem", { name: /Orders/ })
+        .should("have.length.gte", 1);
+      H.popover()
+        .findAllByRole("menuitem", { name: /Orders/ })
+        .first()
+        .click();
+      cy.findByRole("button", { name: "Save" }).click();
+      cy.findByRole("dialog").findByRole("button", { name: "Save" }).click();
+
+      cy.log("Verify metric_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_created",
+      });
+    });
+
+    it("should track metric_create_started from command palette", () => {
+      cy.visit("/");
+
+      cy.log("Open command palette and create metric");
+      H.openCommandPalette();
+      H.commandPaletteSearch("metric", false);
+      cy.findByRole("option", { name: /New metric/ }).click();
+
+      cy.log("Verify metric_create_started event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_create_started",
+        triggered_from: "command_palette",
+      });
+
+      cy.log("Verify we're on the new metric page");
+      cy.url().should("match", /\/metric\/query/);
+    });
   });
 
   describe("caching", () => {
@@ -362,6 +422,10 @@ describe("scenarios > data studio > library > metrics", () => {
       cy.findByRole("radio", { name: /Duration/ }).click();
       cy.findByRole("button", { name: "Save" }).click();
       cy.findByRole("button", { name: /Saved/ }).should("exist");
+
+      // wait for the save button to disappear - that means the form is no longer dirty
+      // and navigating away won't show the confirmation modal that was causing flakes
+      cy.findByRole("button", { name: /Saved/ }).should("not.exist");
 
       cy.log("Navigate away and come back to verify the change is persisted");
       H.DataStudio.Metrics.overviewTab().click();

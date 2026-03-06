@@ -24,6 +24,7 @@ export type StaticDashboardProps = Omit<
   | "drillThroughQuestionProps"
   | "drillThroughQuestionHeight"
   | "renderDrillThroughQuestion"
+  | "enableEntityNavigation"
 > &
   SdkDashboardEntityPublicProps;
 
@@ -47,6 +48,7 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
       dashboardActions={[
         DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
         DASHBOARD_ACTION.DOWNLOAD_PDF,
+        DASHBOARD_ACTION.REFRESH_INDICATOR,
       ]}
       navigateToNewCardFromDashboard={null}
       dashcardMenu={({ dashcard, result }) =>

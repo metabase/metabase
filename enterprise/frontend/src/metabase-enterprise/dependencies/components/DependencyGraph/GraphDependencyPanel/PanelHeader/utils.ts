@@ -23,6 +23,8 @@ export function getHeaderLabel(
         : t`Tables that use ${nodeLabel}`;
     case "transform":
       return t`Transforms that use ${nodeLabel}`;
+    case "workspace-transform":
+      return t`Workspace transforms that use ${nodeLabel}`;
     case "snippet":
       return t`Snippets that use ${nodeLabel}`;
     case "dashboard":

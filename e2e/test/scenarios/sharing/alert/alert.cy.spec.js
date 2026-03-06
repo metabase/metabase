@@ -197,7 +197,7 @@ describe("scenarios > alert", () => {
 
       it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openSharingMenu("Subscriptions");
+        H.openDashboardMenu("Subscriptions");
 
         H.sidebar().within(() => {
           cy.findByText("Email it").click();
@@ -231,7 +231,7 @@ describe("scenarios > alert", () => {
         });
 
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openSharingMenu("Subscriptions");
+        H.openDashboardMenu("Subscriptions");
 
         H.sidebar().within(() => {
           addEmailRecipient(deniedEmail);

@@ -22,7 +22,8 @@
               :pk?               true
               :database-required false
               :database-is-auto-increment true
-              :json-unfolding    false}
+              :json-unfolding    false
+              :preview-display   true}
              {:name              "buyer"
               :database-type     "OBJECT"
               :base-type         :type/Dictionary
@@ -31,6 +32,7 @@
               :database-required false
               :database-is-auto-increment false
               :json-unfolding    false
+              :preview-display   true
               :nested-fields     #{{:name              "name"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
@@ -38,7 +40,8 @@
                                     :pk?               false
                                     :database-required false
                                     :json-unfolding    false
-                                    :database-is-auto-increment false}
+                                    :database-is-auto-increment false
+                                    :preview-display   true}
                                    {:name              "cc"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
@@ -46,7 +49,8 @@
                                     :pk?               false
                                     :database-required false
                                     :json-unfolding    false
-                                    :database-is-auto-increment false}}}
+                                    :database-is-auto-increment false
+                                    :preview-display   true}}}
              {:name              "ts"
               :database-type     "BIGINT"
               :base-type         :type/BigInteger
@@ -55,7 +59,8 @@
               :pk?               false
               :database-is-auto-increment false
               :json-unfolding    false
-              :database-required false}
+              :database-required false
+              :preview-display   true}
              {:name              "toucan"
               :database-type     "OBJECT"
               :base-type         :type/Dictionary
@@ -64,6 +69,7 @@
               :database-required false
               :database-is-auto-increment false
               :json-unfolding    false
+              :preview-display   true
               :nested-fields     #{{:name              "name"
                                     :database-type     "VARCHAR"
                                     :base-type         :type/Text
@@ -71,7 +77,8 @@
                                     :pk?               false
                                     :database-required false
                                     :json-unfolding    false
-                                    :database-is-auto-increment false}
+                                    :database-is-auto-increment false
+                                    :preview-display   true}
                                    {:name              "details"
                                     :database-type     "OBJECT"
                                     :base-type         :type/Dictionary
@@ -80,6 +87,7 @@
                                     :database-required false
                                     :json-unfolding    false
                                     :database-is-auto-increment false
+                                    :preview-display   true
                                     :nested-fields     #{{:name              "weight"
                                                           :database-type     "DECIMAL"
                                                           :base-type         :type/Decimal
@@ -88,7 +96,8 @@
                                                           :pk?               false
                                                           :database-required false
                                                           :json-unfolding    false
-                                                          :database-is-auto-increment false}
+                                                          :database-is-auto-increment false
+                                                          :preview-display   true}
                                                          {:name              "age"
                                                           :database-type     "INT"
                                                           :base-type         :type/Integer
@@ -96,7 +105,8 @@
                                                           :pk?               false
                                                           :database-required false
                                                           :json-unfolding    false
-                                                          :database-is-auto-increment false}}}}}}
+                                                          :database-is-auto-increment false
+                                                          :preview-display   true}}}}}}
 
            (let [transactions-table-id   (u/the-id (t2/select-one-pk :model/Table :db_id (u/the-id db), :name "transactions"))
                  remove-ids-and-nil-vals (partial walk/postwalk #(if-not (map? %)

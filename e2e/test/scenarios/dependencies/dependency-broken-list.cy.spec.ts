@@ -8,27 +8,29 @@ const TABLE_NAME = "test_transform_table";
 const TABLE_DISPLAY_NAME = "Test Transform Table";
 const TABLE_TRANSFORM = "Test Transform";
 const TABLE_BASED_QUESTION_BROKEN_FIELD =
-  "Table-based question with broken field";
+  "Test Table-based question with broken field";
 const TABLE_BASED_QUESTION_BROKEN_EXPRESSION =
-  "Table-based question with broken expression";
+  "Test Table-based question with broken expression";
 const TABLE_BASED_QUESTION_BROKEN_FILTER =
-  "Table-based question with broken filter";
+  "Test Table-based question with broken filter";
 const TABLE_BASED_QUESTION_BROKEN_BREAKOUT =
-  "Table-based question with broken breakout";
+  "Test Table-based question with broken breakout";
 const TABLE_BASED_QUESTION_BROKEN_AGGREGATION =
-  "Table-based question with broken aggregation";
+  "Test Table-based question with broken aggregation";
 const TABLE_BASED_QUESTION_BROKEN_EXPLICIT_JOIN =
-  "Table-based question with broken explicit join";
-const TABLE_BASED_QUESTION = "Table-based question";
+  "Test Table-based question with broken explicit join";
+const TABLE_BASED_QUESTION = "Test Table-based question";
 const QUESTION_BASED_QUESTION_BROKEN_FILTER =
-  "Question-based question with broken filter";
-const TABLE_BASED_MODEL = "Table-based model";
+  "Test Question-based question with broken filter";
+const TABLE_BASED_MODEL = "Test Table-based model";
 const MODEL_BASED_MODEL_BROKEN_AGGREGATION =
-  "Model-based model with broken aggregation";
+  "Test Model-based model with broken aggregation";
 
 const BROKEN_TABLE_DEPENDENCIES = [TABLE_DISPLAY_NAME];
 const BROKEN_TABLE_DEPENDENTS = [
-  TABLE_BASED_QUESTION_BROKEN_FIELD,
+  // NOTE: TABLE_BASED_QUESTION_BROKEN_FIELD is *not* listed here because it's only broken in the `:fields` ref.
+  // These are considered "soft" refs that don't break the query, since the QP will quietly drop a bad ref from a
+  // `:fields` clause and the query will run successfully.
   TABLE_BASED_QUESTION_BROKEN_EXPRESSION,
   TABLE_BASED_QUESTION_BROKEN_FILTER,
   TABLE_BASED_QUESTION_BROKEN_BREAKOUT,
@@ -61,7 +63,7 @@ const BROKEN_DEPENDENCIES_SORTED_BY_LOCATION = [
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_ERRORS = [
   TABLE_BASED_QUESTION, // 1 error: PRICE
   TABLE_BASED_MODEL, // 1 error: AMOUNT
-  TABLE_DISPLAY_NAME, // 2 errors: SCORE, STATUS
+  TABLE_DISPLAY_NAME, // 1 error: SCORE; plus 1 "soft" error on STATUS, which is only in a `:fields` list.
 ];
 
 const BROKEN_DEPENDENTS_SORTED_BY_DEPENDENTS_WITH_ERRORS = [
@@ -82,10 +84,12 @@ describe("scenarios > dependencies > broken list", () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     createContent();
+    H.resetSnowplow();
   });
 
   afterEach(() => {
     dropTransformTable();
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("analysis", () => {
@@ -98,23 +102,28 @@ describe("scenarios > dependencies > broken list", () => {
     });
   });
 
-  describe("sidebar", () => {
-    it("should show broken dependents", () => {
+  describe("selecting entities", () => {
+    it("should show sidebar for broken dependents and trigger snowplow event", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
 
       cy.log("table dependents");
       H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
       checkSidebar({
-        entityName: TABLE_DISPLAY_NAME,
-        transformName: TABLE_TRANSFORM,
-        missingColumns: ["score", "status"],
+        title: TABLE_DISPLAY_NAME,
+        transform: TABLE_TRANSFORM,
+        missingColumns: ["score"],
         brokenDependents: BROKEN_TABLE_DEPENDENTS,
+      });
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_diagnostics_entity_selected",
+        triggered_from: "broken",
+        event_detail: "table",
       });
 
       cy.log("question dependents");
       H.DependencyDiagnostics.list().findByText(TABLE_BASED_QUESTION).click();
       checkSidebar({
-        entityName: TABLE_BASED_QUESTION,
+        title: TABLE_BASED_QUESTION,
         missingColumns: ["PRICE"],
         brokenDependents: BROKEN_QUESTION_DEPENDENTS,
       });
@@ -122,9 +131,17 @@ describe("scenarios > dependencies > broken list", () => {
       cy.log("model dependents");
       H.DependencyDiagnostics.list().findByText(TABLE_BASED_MODEL).click();
       checkSidebar({
-        entityName: TABLE_BASED_MODEL,
+        title: TABLE_BASED_MODEL,
         missingColumns: ["AMOUNT"],
         brokenDependents: BROKEN_MODEL_DEPENDENTS,
+      });
+
+      cy.log("snowplow event when dependency graph link is clicked");
+      cy.findByRole("link", { name: "View in dependency graph" }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "diagnostics-broken-list",
+        event_detail: "card",
       });
     });
   });
@@ -206,6 +223,7 @@ describe("scenarios > dependencies > broken list", () => {
   describe("sorting", () => {
     it("should sort by name", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by name by default");
       checkListSorting({
@@ -227,6 +245,7 @@ describe("scenarios > dependencies > broken list", () => {
 
     it("should sort by location", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by location ascending");
       H.DependencyDiagnostics.list().findByText("Location").click();
@@ -243,6 +262,7 @@ describe("scenarios > dependencies > broken list", () => {
 
     it("should sort by dependents errors", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by dependents errors ascending");
       H.DependencyDiagnostics.list().findByText("Problems").click();
@@ -261,6 +281,7 @@ describe("scenarios > dependencies > broken list", () => {
 
     it("should sort by dependents with errors", () => {
       H.DependencyDiagnostics.visitBrokenDependencies();
+      H.DependencyDiagnostics.searchInput().type("test");
 
       cy.log("sorted by dependents with errors ascending");
       H.DependencyDiagnostics.list().findByText("Broken dependents").click();
@@ -285,11 +306,12 @@ function createContent() {
   createQuestionContent();
   createModelContent();
   breakTransform();
+  waitForBreakingDependencies();
 }
 
 function dropTransformTable() {
   cy.get<TransformId>("@transformId").then((transformId) => {
-    cy.request("DELETE", `/api/ee/transform/${transformId}/table`);
+    cy.request("DELETE", `/api/transform/${transformId}/table`);
   });
 }
 
@@ -328,7 +350,7 @@ function createTransform() {
 
 function breakTransform() {
   cy.get<TransformId>("@transformId").then((transformId) => {
-    cy.request("PUT", `/api/ee/transform/${transformId}`, {
+    cy.request("PUT", `/api/transform/${transformId}`, {
       source: {
         type: "query",
         query: {
@@ -350,6 +372,8 @@ function breakTransform() {
 
 function createTableContent() {
   H.getTableId({ name: TABLE_NAME }).then((tableId) => {
+    cy.wrap(tableId).as("tableId");
+
     H.getFieldId({ tableId, name: "score" }).then((scoreFieldId) => {
       H.getFieldId({ tableId, name: "status" }).then((statusFieldId) => {
         H.createQuestion({
@@ -442,6 +466,7 @@ function createQuestionContent() {
       },
       collection_id: ADMIN_PERSONAL_COLLECTION_ID,
     }).then(({ body: card }) => {
+      cy.wrap(card.id).as("questionId");
       H.createQuestion({
         name: QUESTION_BASED_QUESTION_BROKEN_FILTER,
         query: {
@@ -463,6 +488,7 @@ function createModelContent() {
         "source-table": tableId,
       },
     }).then(({ body: card }) => {
+      cy.wrap(card.id).as("modelId");
       H.createQuestion({
         name: MODEL_BASED_MODEL_BROKEN_AGGREGATION,
         type: "model",
@@ -475,6 +501,12 @@ function createModelContent() {
       });
     });
   });
+}
+
+function waitForBreakingDependencies() {
+  H.waitForBreakingDependencies(
+    (nodes) => nodes.length >= BROKEN_DEPENDENCIES.length,
+  );
 }
 
 function checkList({
@@ -495,23 +527,23 @@ function checkList({
 }
 
 function checkSidebar({
-  entityName,
-  transformName,
+  title,
+  transform,
   missingColumns,
   brokenDependents,
 }: {
-  entityName: string;
-  transformName?: string;
+  title: string;
+  transform?: string;
   missingColumns?: string[];
   brokenDependents?: string[];
 }) {
   H.DependencyDiagnostics.sidebar().within(() => {
     H.DependencyDiagnostics.Sidebar.header()
-      .findByText(entityName)
+      .findByText(title)
       .should("be.visible");
-    if (transformName) {
-      H.DependencyDiagnostics.Sidebar.transformSection()
-        .findByText(transformName)
+    if (transform) {
+      H.DependencyDiagnostics.Sidebar.infoSection()
+        .findByText(transform)
         .should("exist");
     }
     if (missingColumns) {

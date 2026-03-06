@@ -19,7 +19,7 @@
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
-                              :data-studio
+                              :library
                               :development-mode
                               :email-allow-list
                               :email-restrict-recipients
@@ -34,8 +34,6 @@
                               :ai-sql-fixer
                               :ai-sql-generation
                               :no-upsell
-                              :offer-metabase-ai
-                              :offer-metabase-ai-tiered
                               :official-collections
                               :query-reference-validation
                               :remote-sync
@@ -48,6 +46,7 @@
                               :sso-google
                               :sso-jwt
                               :sso-ldap
+                              :sso-oidc
                               :sso-saml
                               :sso-slack
                               :support-users
@@ -58,7 +57,9 @@
                               :collection-cleanup
                               :database-routing
                               :tenants
-                              :cloud-custom-smtp}
+                              :cloud-custom-smtp
+                              :workspaces
+                              :writable-connection}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
@@ -70,7 +71,7 @@
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
-            :data_studio                    true
+            :library                        true
             :development_mode               true
             :email_allow_list               true
             :email_restrict_recipients      true
@@ -83,8 +84,6 @@
             :ai_entity_analysis             true
             :ai_sql_fixer                   true
             :ai_sql_generation              true
-            :offer_metabase_ai              true
-            :offer_metabase_ai_tiered       true
             :official_collections           true
             :query_reference_validation     true
             :remote_sync                    true
@@ -97,6 +96,7 @@
             :sso_google                     true
             :sso_jwt                        true
             :sso_ldap                       true
+            :sso_oidc                       true
             :sso_saml                       true
             :sso_slack                      true
             :support-users                  true
@@ -111,5 +111,7 @@
             :cloud_custom_smtp              true
             :etl_connections                false
             :etl_connections_pg             false
-            :dependencies                   false}
+            :dependencies                   false
+            :workspaces                     true
+            :writable_connection            true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

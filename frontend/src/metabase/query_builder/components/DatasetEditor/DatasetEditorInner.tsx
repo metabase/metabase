@@ -291,7 +291,7 @@ function getComputedVisualizationSettings(
   ) as ComputedVisualizationSettings;
 }
 
-const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
+const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   const {
     question,
     visualizationSettings,
@@ -610,7 +610,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
               [DatasetEditorS.isSelected]: isSelected,
             })}
             size={14}
-            name={getSemanticTypeIcon(column.semantic_type, "ellipsis")}
+            name={getSemanticTypeIcon(column.semantic_type) ?? "ellipsis"}
           />
           <span>{column.display_name}</span>
         </Flex>
@@ -732,7 +732,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
                 {...props}
                 isActive={isEditingQuery}
                 height={editorHeight}
-                viewHeight={height}
+                availableHeight={height}
                 onResizeStop={handleResize}
               />
             )}
@@ -789,4 +789,4 @@ export const DatasetEditorInner = connect(
   mapDispatchToProps,
   null,
   { forwardRef: true },
-)(_DatasetEditorInner);
+)(DatasetEditorInnerView);

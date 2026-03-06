@@ -18,6 +18,7 @@ export interface Segment {
   created_at: string;
   creator_id: number;
   creator?: UserInfo;
+  updated_at: string;
 }
 
 export interface CreateSegmentRequest {

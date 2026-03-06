@@ -44,6 +44,10 @@
          metabase.lib.schema.expression.window/keep-me
          metabase.lib.schema.filter/keep-me)
 
+(mr/def ::column-unique-key
+  [:re
+   #"^column-unique-key-v\d+\$.+$"])
+
 (defn- normalize-stage-common [m]
   (when-let [m (common/normalize-map m)]
     (reduce
@@ -404,7 +408,7 @@
       (let [visible-join-alias? (some-fn visible-join-alias? (visible-join-alias?-fn stage))]
         (or
          (when (map? stage)
-           (lib.util.match/match-lite-recursive (dissoc stage :joins :lib/stage-metadata)
+           (lib.util.match/match-lite (dissoc stage :joins :lib/stage-metadata)
              [:field {:join-alias (join-alias :guard (and (some? join-alias)
                                                           (not (visible-join-alias? join-alias))))} _id-or-name]
              (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))

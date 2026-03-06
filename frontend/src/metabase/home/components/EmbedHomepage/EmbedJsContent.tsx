@@ -11,7 +11,7 @@ type EmbedJsContentProps = {
   embedJsDocsUrl: string;
   showImage?: boolean;
   hasEmbeddingFeature?: boolean;
-  variant: "oss/starter" | "ee";
+  variant: "oss" | "ee";
 };
 
 export const EmbedJsContent = ({

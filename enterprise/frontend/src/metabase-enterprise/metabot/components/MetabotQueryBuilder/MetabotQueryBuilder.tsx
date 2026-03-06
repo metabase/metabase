@@ -8,6 +8,7 @@ import _ from "underscore";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useDispatch } from "metabase/lib/redux";
+import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
 import { useRouter } from "metabase/router";
 import {
   Box,
@@ -22,7 +23,6 @@ import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { Urls } from "metabase-enterprise/urls";
 
 import { useMetabotAgent } from "../../hooks";
-import { MetabotPromptInput } from "../MetabotPromptInput";
 
 import S from "./MetabotQueryBuilder.module.css";
 
@@ -186,7 +186,7 @@ export const MetabotQueryBuilder = () => {
                 value={prompt}
                 autoFocus
                 disabled={isDoingScience}
-                placeholder={t`Ask about your data`}
+                placeholder={t`Ask about your data, and type @ to mention an item`}
                 onChange={setPrompt}
                 onSubmit={handleEditorSubmit}
                 onStop={cancelRequest}

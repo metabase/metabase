@@ -21,18 +21,18 @@ import { getDatabase } from "../../utils/metadata";
 
 import { getIsLoadingDatabaseTables } from "./permission-editor";
 
-type DataTreeNodeItem = {
+export type DataTreeNodeItem = {
   entityId: EntityId;
   children?: DataTreeNodeItem[];
 } & ITreeNodeItem;
 
-type DataSidebarProps = {
+export type DataSidebarProps = {
   title?: string;
   description?: string;
   entityGroups: DataTreeNodeItem[][];
   entityViewFocus?: "database";
-  selectedId?: string | null;
-  filterPlaceholder?: string;
+  selectedId?: string;
+  filterPlaceholder: string;
 };
 
 const getRouteParams = (
@@ -73,7 +73,7 @@ const getTablesSidebar = (
   schemaName?: string,
   tableId?: string,
 ): DataSidebarProps => {
-  let selectedId = null;
+  let selectedId: string | undefined = undefined;
 
   if (tableId != null) {
     selectedId = getTableId(tableId);

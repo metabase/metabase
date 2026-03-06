@@ -209,13 +209,7 @@ export const StaticEmbedSetupPane = ({
 
   return (
     <Stack gap={0}>
-      <Paper
-        withBorder
-        shadow="sm"
-        m="1.5rem 2rem"
-        p="0.75rem 1rem"
-        data-testid="embed-modal-content-status-bar"
-      >
+      <Paper withBorder shadow="sm" m="1.5rem 2rem" p="0.75rem 1rem">
         <EmbedModalContentStatusBar
           resourceType={resourceType}
           isPublished={resource.enable_embedding}

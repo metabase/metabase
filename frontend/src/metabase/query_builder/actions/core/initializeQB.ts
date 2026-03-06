@@ -1,5 +1,6 @@
-import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
+
+import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
 import { Questions } from "metabase/entities/questions";
@@ -306,7 +307,7 @@ async function handleQBInit(
 
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
-    : null;
+    : undefined;
 
   let { card, originalCard } = await resolveCards({
     cardId,

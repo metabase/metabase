@@ -2,7 +2,7 @@ import type {
   CollectionPermissions,
   DatabaseId,
   GroupsPermissions,
-  SettingDefinition,
+  Revision,
 } from "metabase-types/api";
 
 export type AdminPathKey =
@@ -26,15 +26,26 @@ export type AdminPath = {
   path: string;
 };
 
+export type TemporaryPasswordsState = Record<number, string | null>;
+
 export interface AdminState {
   app: AdminAppState;
+  people: {
+    temporaryPasswords: Record<number, string>;
+  };
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;
+    dataPermissionsRevision: number | null;
     collectionPermissions: CollectionPermissions;
     originalCollectionPermissions: CollectionPermissions;
+    collectionPermissionsRevision: number | null;
     tenantCollectionPermissions: CollectionPermissions;
     originalTenantCollectionPermissions: CollectionPermissions;
+    tenantCollectionPermissionsRevision: number | null;
+    tenantSpecificCollectionPermissions: CollectionPermissions;
+    originalTenantSpecificCollectionPermissions: CollectionPermissions;
+    tenantSpecificCollectionPermissionsRevision: number | null;
     saveError?: string;
     isHelpReferenceOpen: boolean;
     hasRevisionChanged: {
@@ -42,12 +53,15 @@ export interface AdminState {
       hasChanged: boolean;
     };
   };
-  settings: {
-    settings: SettingDefinition[];
-  };
   databases: {
     deletionError: null | unknown;
     deletes: DatabaseId[];
+  };
+  datamodel: {
+    revisions: Revision[] | null;
+  };
+  people: {
+    temporaryPasswords: TemporaryPasswordsState;
   };
 }
 

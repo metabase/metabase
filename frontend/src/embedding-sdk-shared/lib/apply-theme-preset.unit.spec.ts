@@ -2,7 +2,6 @@ import { applyThemePreset } from "./apply-theme-preset";
 
 const PRESET_COLOR_KEYS = [
   "background",
-  "background-hover",
   "background-disabled",
   "background-secondary",
   "text-primary",

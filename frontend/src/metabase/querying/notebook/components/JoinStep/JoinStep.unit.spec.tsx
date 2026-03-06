@@ -21,8 +21,13 @@ import {
 } from "__support__/ui";
 import { METAKEY } from "metabase/lib/browser";
 import * as Lib from "metabase-lib";
-import { createQuery, getJoinQueryHelpers } from "metabase-lib/test-helpers";
-import type { CollectionItem, RecentItem } from "metabase-types/api";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
+import type {
+  CollectionItem,
+  RecentItem,
+  TestColumnWithBinningSpec,
+  TestExpressionSpec,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -30,6 +35,7 @@ import {
   createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   PRODUCTS_ID,
   createSampleDatabase,
   createSavedStructuredCard,
@@ -74,90 +80,99 @@ const metadata = createMockMetadata({
   questions: [MODEL, QUESTION],
 });
 
+const provider = createMetadataProvider({ metadata });
+
 function getJoinedQuery() {
-  const query = createQuery({ metadata });
-
-  const {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
-
-  const ordersProductId = findLHSColumn("ORDERS", "PRODUCT_ID");
-  const productsId = findRHSColumn("PRODUCTS", "ID");
-
-  const stageIndex = -1;
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    ordersProductId,
-    productsId,
-  );
-
-  const join = Lib.withJoinFields(
-    Lib.joinClause(table, [condition], defaultStrategy),
-    "all",
-  );
-
-  return Lib.join(query, stageIndex, join);
+  return Lib.createTestQuery(provider, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  sourceName: "ORDERS",
+                  name: "PRODUCT_ID",
+                },
+                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 }
 
-type FindColumn = (tableName: string, columnName: string) => Lib.ColumnMetadata;
-type CreateExpression = (findColumn: FindColumn) => Lib.ExpressionClause;
-
 function getJoinedQueryWithCustomExpressions(
-  createLhsExpression: CreateExpression,
-  createRhsExpression: CreateExpression,
+  left: TestColumnWithBinningSpec | TestExpressionSpec,
+  right: TestColumnWithBinningSpec | TestExpressionSpec,
 ) {
-  const query = createQuery({ metadata });
-  const {
-    table,
-    defaultStrategy,
-    defaultOperator,
-    findLHSColumn,
-    findRHSColumn,
-  } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
-  const stageIndex = -1;
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    createLhsExpression(findLHSColumn),
-    createRhsExpression(findRHSColumn),
-  );
-  const join = Lib.withJoinFields(
-    Lib.joinClause(table, [condition], defaultStrategy),
-    "all",
-  );
-
-  return Lib.join(query, stageIndex, join);
+  return Lib.createTestQuery(provider, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left,
+                right,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 }
 
 function getJoinedQueryWithMultipleConditions() {
-  const query = getJoinedQuery();
-  const { defaultOperator, findLHSColumn, findRHSColumn } = getJoinQueryHelpers(
-    query,
-    0,
-    PRODUCTS_ID,
-  );
-
-  const [currentJoin] = Lib.joins(query, 0);
-  const currentConditions = Lib.joinConditions(currentJoin);
-
-  const ordersCreatedAt = findLHSColumn("ORDERS", "CREATED_AT");
-  const productsCreatedAt = findRHSColumn("PRODUCTS", "CREATED_AT");
-
-  const condition = Lib.joinConditionClause(
-    defaultOperator,
-    ordersCreatedAt,
-    productsCreatedAt,
-  );
-
-  const nextJoin = Lib.withJoinConditions(currentJoin, [
-    ...currentConditions,
-    condition,
-  ]);
-
-  return Lib.replaceClause(query, 0, currentJoin, nextJoin);
+  return Lib.createTestQuery(provider, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  sourceName: "ORDERS",
+                  name: "PRODUCT_ID",
+                },
+                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+              },
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  sourceName: "ORDERS",
+                  name: "CREATED_AT",
+                },
+                right: {
+                  type: "column",
+                  sourceName: "PRODUCTS",
+                  name: "CREATED_AT",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
 }
 
 function setup({
@@ -299,7 +314,6 @@ describe("Notebook Editor > Join Step", () => {
     );
 
     const modal = await screen.findByTestId("entity-picker-modal");
-    await userEvent.click(await within(modal).findByText("Databases"));
 
     expect(await within(modal).findByText("Products")).toBeInTheDocument();
     expect(await within(modal).findByText("People")).toBeInTheDocument();
@@ -362,10 +376,7 @@ describe("Notebook Editor > Join Step", () => {
 
     const modal = await screen.findByTestId("entity-picker-modal");
 
-    expect(await within(modal).findByText("Recents")).toBeInTheDocument();
-    expect(
-      await within(modal).findByRole("tab", { name: /Recents/i }),
-    ).toHaveAttribute("aria-selected", "true");
+    await userEvent.click(await within(modal).findByText(/Recent items/));
 
     expect(within(modal).queryByText(QUESTION.name)).not.toBeInTheDocument();
     expect(await within(modal).findByText(MODEL.name)).toBeInTheDocument();
@@ -383,6 +394,7 @@ describe("Notebook Editor > Join Step", () => {
     );
     const modal = await screen.findByTestId("entity-picker-modal");
     await userEvent.click(await within(modal).findByText("Databases"));
+    await userEvent.click(await within(modal).findByText(/sample database/i));
     await userEvent.click(await within(modal).findByText("Reviews"));
 
     const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
@@ -498,6 +510,7 @@ describe("Notebook Editor > Join Step", () => {
     );
     const modal = await screen.findByTestId("entity-picker-modal");
     await userEvent.click(await within(modal).findByText("Databases"));
+    await userEvent.click(await screen.findByText(/Sample Database/));
     expect(await within(modal).findByText("Products")).toBeInTheDocument();
     expect(within(modal).getByText("People")).toBeInTheDocument();
     expect(within(modal).getByText("Reviews")).toBeInTheDocument();
@@ -514,6 +527,7 @@ describe("Notebook Editor > Join Step", () => {
     );
     const modal = await screen.findByTestId("entity-picker-modal");
     await userEvent.click(await within(modal).findByText("Databases"));
+    await userEvent.click(await screen.findByText(/Sample Database/));
     await userEvent.click(await within(modal).findByText("Products"));
 
     expect(await screen.findByLabelText("Left column")).toHaveTextContent(
@@ -573,6 +587,7 @@ describe("Notebook Editor > Join Step", () => {
     );
     const modal = await screen.findByTestId("entity-picker-modal");
     await userEvent.click(await within(modal).findByText("Databases"));
+    await userEvent.click(await screen.findByText(/Sample Database/));
     await userEvent.click(await within(modal).findByText("Reviews"));
 
     expect(screen.queryByLabelText("Remove condition")).not.toBeInTheDocument();
@@ -637,6 +652,7 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(
       await within(entityPickerModal).findByText("Databases"),
     );
+    await userEvent.click(await screen.findByText(/Sample Database/));
     await userEvent.click(
       await within(entityPickerModal).findByText("Reviews"),
     );
@@ -681,6 +697,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(
         await within(lhsTableModal).findByText("Databases"),
       );
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
 
       await userEvent.click(screen.getByLabelText("Change join type"));
@@ -757,6 +774,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(
         await within(lhsTableModal).findByText("Databases"),
       );
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(lhsTableModal).findByText("Reviews"));
 
       const lhsColumnPopover = await screen.findByTestId("lhs-column-picker");
@@ -777,6 +795,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(await screen.findByText("Browse all"));
       const modal = await screen.findByTestId("entity-picker-modal");
       await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Products"));
 
       await waitFor(() => {
@@ -791,6 +810,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(await screen.findByText("Browse all"));
       const modal = await screen.findByTestId("entity-picker-modal");
       await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Reviews"));
 
       await userEvent.click(await screen.findByLabelText("Pick columns"));
@@ -841,6 +861,7 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(await screen.findByText("Browse all"));
       const modal = await screen.findByTestId("entity-picker-modal");
       await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Reviews"));
       await userEvent.click(await screen.findByLabelText("Pick columns"));
       const joinColumnsPicker = await screen.findByTestId(
@@ -865,6 +886,7 @@ describe("Notebook Editor > Join Step", () => {
 
       const modal = await screen.findByTestId("entity-picker-modal");
       await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Reviews"));
 
       await userEvent.click(await screen.findByLabelText("Pick columns"));
@@ -987,7 +1009,7 @@ describe("Notebook Editor > Join Step", () => {
 
       const modal = await screen.findByTestId("entity-picker-modal");
       await userEvent.click(await within(modal).findByText("Databases"));
-
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Reviews"));
 
       expect(screen.queryByLabelText("Add condition")).not.toBeInTheDocument();
@@ -1160,11 +1182,12 @@ describe("Notebook Editor > Join Step", () => {
 
         await userEvent.click(await screen.findByText("Browse all"));
 
-        const picketModal = await screen.findByTestId("entity-picker-modal");
+        const pickerModal = await screen.findByTestId("entity-picker-modal");
         await userEvent.click(
-          await within(picketModal).findByText("Databases"),
+          await within(pickerModal).findByText("Databases"),
         );
-        await userEvent.click(await within(picketModal).findByText("Reviews"));
+        await userEvent.click(await screen.findByText(/Sample Database/));
+        await userEvent.click(await within(pickerModal).findByText("Reviews"));
         await selectColumnWithBucket(lhsBucketName);
         await selectColumnWithBucket(rhsBucketName);
 
@@ -1242,11 +1265,12 @@ describe("Notebook Editor > Join Step", () => {
 
         await userEvent.click(await screen.findByText("Browse all"));
 
-        const picketModal = await screen.findByTestId("entity-picker-modal");
+        const pickerModal = await screen.findByTestId("entity-picker-modal");
         await userEvent.click(
-          await within(picketModal).findByText("Databases"),
+          await within(pickerModal).findByText("Databases"),
         );
-        await userEvent.click(await within(picketModal).findByText("Reviews"));
+        await userEvent.click(await screen.findByText(/Sample Database/));
+        await userEvent.click(await within(pickerModal).findByText("Reviews"));
         await selectColumnWithBucket(oldBucketName);
         await selectColumnWithBucket(oldBucketName);
 
@@ -1279,6 +1303,7 @@ describe("Notebook Editor > Join Step", () => {
       await waitForLoaderToBeRemoved();
       const modal = await screen.findByTestId("entity-picker-modal");
       await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
       await userEvent.click(await within(modal).findByText("Reviews"));
 
       const lhsPicker = await screen.findByTestId("lhs-column-picker");
@@ -1332,13 +1357,15 @@ describe("Notebook Editor > Join Step", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
-            () =>
-              Lib.expressionClause("value", [10], {
-                "base-type": "type/Integer",
-                "effective-type": "type/Integer",
-              }),
-            (findRHSColumn) =>
-              Lib.expressionClause(findRHSColumn("PRODUCTS", "ID")),
+            {
+              type: "literal",
+              value: 10,
+            },
+            {
+              type: "column",
+              sourceName: "PRODUCTS",
+              name: "ID",
+            },
           ),
         }),
       });
@@ -1352,13 +1379,8 @@ describe("Notebook Editor > Join Step", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
-            (findLHSColumn) =>
-              Lib.expressionClause(findLHSColumn("ORDERS", "PRODUCT_ID")),
-            () =>
-              Lib.expressionClause("value", ["abc"], {
-                "base-type": "type/Text",
-                "effective-type": "type/Text",
-              }),
+            { type: "column", sourceName: "ORDERS", name: "PRODUCT_ID" },
+            { type: "literal", value: "abc" },
           ),
         }),
       });
@@ -1372,13 +1394,15 @@ describe("Notebook Editor > Join Step", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
-            (findLHSColumn) =>
-              Lib.expressionClause("+", [
-                findLHSColumn("ORDERS", "PRODUCT_ID"),
-                1,
-              ]),
-            (findRHSColumn) =>
-              Lib.expressionClause(findRHSColumn("PRODUCTS", "ID")),
+            {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "column", sourceName: "ORDERS", name: "PRODUCT_ID" },
+                { type: "literal", value: 1 },
+              ],
+            },
+            { type: "column", sourceName: "PRODUCTS", name: "ID" },
           ),
         }),
       });
@@ -1392,10 +1416,19 @@ describe("Notebook Editor > Join Step", () => {
       setup({
         step: createMockNotebookStep({
           query: getJoinedQueryWithCustomExpressions(
-            (findLHSColumn) =>
-              Lib.expressionClause(findLHSColumn("ORDERS", "PRODUCT_ID")),
-            (findRHSColumn) =>
-              Lib.expressionClause("+", [findRHSColumn("PRODUCTS", "ID"), 1]),
+            {
+              type: "column",
+              sourceName: "ORDERS",
+              name: "PRODUCT_ID",
+            },
+            {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "column", sourceName: "PRODUCTS", name: "ID" },
+                { type: "literal", value: 1 },
+              ],
+            },
           ),
         }),
       });
@@ -1470,7 +1503,7 @@ describe("Notebook Editor > Join Step", () => {
     it("should show the tooltip on hover only for the actual data source (right table)", async () => {
       setup({ step: createMockNotebookStep({ query: getJoinedQuery() }) });
 
-      userEvent.hover(
+      await userEvent.hover(
         within(screen.getByLabelText("Left table")).getByText("Orders"),
       );
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();

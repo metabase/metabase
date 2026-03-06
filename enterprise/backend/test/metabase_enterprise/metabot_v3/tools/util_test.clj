@@ -172,6 +172,16 @@
                   (is (every? verified-ids (take 2 ordered-ids)))
                   (is (every? unverified-ids (drop 2 ordered-ids))))))))))))
 
+(deftest get-table-filters-inactive-test
+  (testing "get-table only returns active tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {active-table-id :id} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
+                   :model/Table {inactive-table-id :id} {:db_id db-id, :name "inactive_table", :active false, :visibility_type nil}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (= active-table-id (:id (metabot-v3.tools.util/get-table active-table-id))))
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (metabot-v3.tools.util/get-table inactive-table-id)))))))
+
 (deftest parse-field-id-test
   (testing "parse-field-id parses valid field IDs correctly"
     (testing "table field IDs with numeric table ID"
@@ -237,11 +247,11 @@
       (testing "throws for invalid field ID format"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"invalid field_id format"
+             #"Invalid field_id format"
              (metabot-v3.tools.util/resolve-column {:field-id "invalid"} "t1-" columns)))
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"invalid field_id format"
+             #"Invalid field_id format"
              (metabot-v3.tools.util/resolve-column {:field-id "t154/1"} "t154-" columns))))
 
       (testing "throws when field index is out of bounds"

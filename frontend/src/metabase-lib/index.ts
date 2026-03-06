@@ -7,6 +7,7 @@ export * from "./buckets";
 export * from "./column_types";
 export * from "./comparison";
 export * from "./database";
+export * from "./display_name";
 export * from "./drills";
 export * from "./expression";
 export * from "./extractions";

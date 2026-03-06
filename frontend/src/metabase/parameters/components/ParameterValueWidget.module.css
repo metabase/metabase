@@ -24,14 +24,14 @@
 
   &:hover {
     border-color: var(--mb-color-brand);
-    color: var(--mb-color-brand-dark);
+    color: var(--mb-color-text-hover);
 
     .Prefix,
     .parameterIcon,
     .widgetStatus,
     .widgetStatus button {
       transition: all 0.2s ease-in-out;
-      color: var(--mb-color-brand-dark);
+      color: var(--mb-color-text-hover);
     }
   }
 }

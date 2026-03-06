@@ -100,7 +100,7 @@ export const SmallGenericError = forwardRef<
     message?: string;
     bordered?: boolean;
   }
->(function _SmallGenericError(
+>(function SmallGenericErrorInner(
   { message = t`Something’s gone wrong.`, bordered = true, ...props },
   ref,
 ) {

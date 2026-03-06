@@ -18,7 +18,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -198,7 +197,7 @@
                                            :query-id output
                                            :query {}
                                            :result-columns []}})]
-        (let [filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}
+        (let [filters [{:field_id "c2-7", :operation "greater-than", :value 50}
                        {:field_id "c2-3", :operation "equals", :values ["3" "4"]}
                        {:field_id "c2-5", :operation "not-equals", :values [3 4]}
                        {:field_id "c2-6", :operation "month-equals", :values [4 5 9]}
@@ -235,7 +234,7 @@
                        :type :metric}]
       (mt/with-temp [:model/Card {metric-id :id} metric-data]
         (let [fid #(format "c%d-%d" metric-id %)
-              filters [{:field_id (fid 0), :operation "number-greater-than", :value 50} ; ID
+              filters [{:field_id (fid 0), :operation "greater-than", :value 50} ; ID
                        {:field_id (fid 2), :operation "equals", :values ["3" "4"]}      ; Title
                        {:field_id (fid 6), :operation "not-equals", :values [3 4]}      ; Rating
                        {:field_id (fid 7), :operation "month-equals", :values [4 5 9]}  ; Created At
@@ -257,7 +256,7 @@
               rating-col (lib.metadata/field mp (mt/id :products :rating))
               created-at-col (lib.metadata/field mp (mt/id :products :created_at))
               expected-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                 (lib/aggregate (lib.options/ensure-uuid [:metric {} metric-id]))
+                                 (lib/aggregate (lib/ensure-uuid [:metric {} metric-id]))
                                  (lib/breakout (lib/with-temporal-bucket created-at-col :week))
                                  (lib/breakout (lib/with-temporal-bucket created-at-col :day))
                                  (lib/filter (lib/> id-col 50))
@@ -308,7 +307,7 @@
                                            :result-columns []}})]
         (let [fields [{:field_id "c2-8", :bucket "year-of-era"}
                       {:field_id "c2-9"}]
-              filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}
+              filters [{:field_id "c2-7", :operation "greater-than", :value 50}
                        {:field_id "c2-3", :operation "equals", :values ["3" "4"]}
                        {:field_id "c2-5", :operation "not-equals", :values [3 4]}
                        {:field_id "c2-6", :operation "month-equals", :values [4 5 9]}
@@ -350,7 +349,7 @@
                       (swap! tool-requests conj arguments)
                       {:structured-output output})]
         (let [fields []
-              filters [{:field_id "c2-7", :operation "number-greater-than", :value 50}]
+              filters [{:field_id "c2-7", :operation "greater-than", :value 50}]
               response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/query-model"
                                              {:request-options {:headers {"x-metabase-session" ai-token}}}
                                              {:arguments       {:model_id     1
@@ -1271,7 +1270,7 @@
           (is (= "PRODUCT_ID" (:related_by products-table))))))))
 
 (deftest get-transforms-test
-  (mt/with-premium-features #{:metabot-v3 :transforms}
+  (mt/with-premium-features #{:metabot-v3 :transforms :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
@@ -1290,6 +1289,7 @@
                      :model/Transform t3 {:name "Python Transform"
                                           :description "Simple python transform"
                                           :source {:type "python"
+                                                   :source-database (mt/id)
                                                    :body "print('hello world')"
                                                    :source-tables {}}
                                           :target {:type "table"
@@ -1313,7 +1313,7 @@
                                                         (sort-by :id))))))))))))
 
 (deftest get-transform-test
-  (mt/with-premium-features #{:metabot-v3 :transforms}
+  (mt/with-premium-features #{:metabot-v3 :transforms :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
@@ -1327,6 +1327,7 @@
                                           :description "Simple Python transform"
                                           :source {:type "python"
                                                    :body "print('hello world')"
+                                                   :source-database (mt/id)
                                                    :source-tables {}}
                                           :target {:type "table"
                                                    :name "t2_table"
@@ -1354,7 +1355,7 @@
                                              :conversation_id conversation-id}))))))))))
 
 (deftest get-transform-python-library-details-test
-  (mt/with-premium-features #{:metabot-v3 :python-transforms}
+  (mt/with-premium-features #{:metabot-v3 :python-transforms :transforms}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))
@@ -1469,7 +1470,7 @@
 (deftest check-transform-dependencies-test
   ;; This is just a quick sanity check for the API endpoint. The function powering this endpoint is tested more
   ;; thoroughly in metabase-enterprise.metabot-v3.tools.dependencies-test.
-  (mt/with-premium-features #{:metabot-v3 :transforms :dependencies}
+  (mt/with-premium-features #{:metabot-v3 :transforms :dependencies :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))

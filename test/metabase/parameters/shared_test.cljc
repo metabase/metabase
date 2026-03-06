@@ -1,11 +1,13 @@
 (ns metabase.parameters.shared-test
   (:require
+   #?@(:cljs [;; Locale imports for locale-specific formatting tests
+              ["dayjs/locale/es"]])
    [clojure.test :refer [deftest is are testing]]
    [metabase.parameters.shared :as params]))
 
 (defn- tag-names
   [text]
-  (let [result (params/tag_names text)]
+  (let [result (params/tag-names text)]
     #?(:clj result
        :cljs (set (js->clj result)))))
 

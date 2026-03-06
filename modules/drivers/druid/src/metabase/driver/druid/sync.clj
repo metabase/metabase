@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.druid.client :as druid.client]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.util.performance :refer [select-keys]]))
@@ -28,7 +29,7 @@
   "Impl of `driver/describe-table` for Druid."
   [database table]
   {:pre [(map? database) (map? table)]}
-  (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
+  (ssh/with-ssh-tunnel [details-with-tunnel (driver.conn/effective-details database)]
     (let [{:keys [columns aggregators]} (first (do-segment-metadata-query details-with-tunnel (:name table)))
           metric-column-names           (set (keys aggregators))]
       {:schema nil
@@ -53,21 +54,23 @@
   "Impl of `driver/describe-database` for Druid."
   [database]
   {:pre [(map? (:details database))]}
-  (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
-    (let [druid-datasources (druid.client/GET (druid.client/details->url details-with-tunnel "/druid/v2/datasources")
-                                              :auth-enabled     (-> database :details :auth-enabled)
-                                              :auth-username    (-> database :details :auth-username)
-                                              :auth-token-value (driver-api/secret-value-as-string :druid (:details database) "auth-token"))]
-      {:tables (set (for [table-name druid-datasources]
-                      {:schema nil, :name table-name}))})))
+  (let [details (driver.conn/effective-details database)]
+    (ssh/with-ssh-tunnel [details-with-tunnel details]
+      (let [druid-datasources (druid.client/GET (druid.client/details->url details-with-tunnel "/druid/v2/datasources")
+                                                :auth-enabled (:auth-enabled details)
+                                                :auth-username (:auth-username details)
+                                                :auth-token-value (driver-api/secret-value-as-string :druid details "auth-token"))]
+        {:tables (set (for [table-name druid-datasources]
+                        {:schema nil, :name table-name}))}))))
 
 (defn dbms-version
   "Impl of `driver/dbms-version` for Druid."
   [database]
   {:pre [(map? (:details database))]}
-  (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
-    (-> (druid.client/GET (druid.client/details->url details-with-tunnel "/status")
-                          :auth-enabled     (-> database :details :auth-enabled)
-                          :auth-username    (-> database :details :auth-username)
-                          :auth-token-value (driver-api/secret-value-as-string :druid (:details database) "auth-token"))
-        (select-keys [:version]))))
+  (let [details (driver.conn/effective-details database)]
+    (ssh/with-ssh-tunnel [details-with-tunnel details]
+      (-> (druid.client/GET (druid.client/details->url details-with-tunnel "/status")
+                            :auth-enabled (:auth-enabled details)
+                            :auth-username (:auth-username details)
+                            :auth-token-value (driver-api/secret-value-as-string :druid details "auth-token"))
+          (select-keys [:version])))))

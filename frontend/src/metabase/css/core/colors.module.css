@@ -87,9 +87,8 @@
   color: var(--mb-color-text-tertiary);
 }
 
-.bgBrandLighter,
-.bgBrandLighterHover:hover {
-  background-color: var(--mb-color-brand-lighter);
+.bgBrandHover:hover {
+  background-color: var(--mb-color-background-hover);
 }
 
 .bgLight,

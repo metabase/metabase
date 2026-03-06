@@ -17,7 +17,7 @@ describe("scenarios > dependencies > dependency checks", () => {
 
     cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("PUT", "/api/native-query-snippet/*").as("updateSnippet");
-    cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
+    cy.intercept("PUT", "/api/transform/*").as("updateTransform");
   });
 
   afterEach(() => {
@@ -149,7 +149,7 @@ describe("scenarios > dependencies > dependency checks", () => {
 
   describe("transforms", () => {
     const goToEditorAndType = (queryString: string) => {
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
       cy.url().should("include", "/edit");
       H.NativeEditor.clear().type(queryString);
     };
@@ -161,9 +161,12 @@ describe("scenarios > dependencies > dependency checks", () => {
       cy.get<number>("@transformId").then(H.visitTransform);
       goToEditorAndType('SELECT name FROM "Schema A"."Animals"');
 
-      cy.log("no confirmation is shown");
+      cy.log("confirmation is shown");
       H.DataStudio.Transforms.saveChangesButton().click();
-      cy.wait("@updateTransform");
+      cy.contains(
+        "h2",
+        "These changes will break some other things. Save anyway?",
+      );
     });
 
     it("should not show a confirmation if there are no breaking changes when updating a SQL transform after it was run", () => {
@@ -179,7 +182,7 @@ describe("scenarios > dependencies > dependency checks", () => {
 
       cy.log("make breaking changes");
       cy.get<number>("@transformId").then(H.visitTransform);
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
       H.getNotebookStep("data").findByLabelText("Pick columns").click();
       H.popover().findByLabelText("Score").click();
 
@@ -206,7 +209,7 @@ describe("scenarios > dependencies > dependency checks", () => {
     it("should not show a confirmation if there are no breaking changes when updating a MBQL transform before it was run", () => {
       createMbqlTransformWithDependentMbqlTransforms();
       cy.get<number>("@transformId").then(H.visitTransform);
-      H.DataStudio.Transforms.editDefinition().click();
+      H.DataStudio.Transforms.clickEditDefinition();
       H.getNotebookStep("data").button("Sort").click();
       H.popover().findByText("Score").click();
       H.DataStudio.Transforms.saveChangesButton().click();
@@ -361,8 +364,7 @@ function createSqlTransformWithDependentMbqlQuestions() {
     },
   }).then(({ body: transform }) => {
     cy.wrap(transform.id).as("transformId");
-    cy.request("POST", `/api/ee/transform/${transform.id}/run`);
-    H.waitForSucceededTransformRuns();
+    H.runTransformAndWaitForSuccess(transform.id);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: transformTableName });
 
     H.getTableId({ databaseId: WRITABLE_DB_ID, name: transformTableName }).then(
@@ -417,9 +419,8 @@ function createMbqlTransformWithDependentMbqlTransforms() {
         { wrapId: true },
       );
       cy.get<number>("@transformId").then((transformId) =>
-        H.runTransform(transformId),
+        H.runTransformAndWaitForSuccess(transformId),
       );
-      H.waitForSucceededTransformRuns();
 
       H.getTableId({ databaseId: WRITABLE_DB_ID, name: "base_transform" }).then(
         (tableId) => {
@@ -456,7 +457,7 @@ function createMbqlTransformWithDependentMbqlTransforms() {
                   type: "query",
                   query: {
                     "source-table": tableId,
-                    fields: [["field", fieldId, null]],
+                    filter: [">", ["field", fieldId, null], 1],
                   },
                 },
               },

@@ -658,7 +658,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     }
 
     return {
-      variant: shouldShowRowIndex ? "indexExpand" : "expandButton",
+      variant: shouldShowRowIndex
+        ? hasObjectDetail
+          ? "indexExpand"
+          : "index"
+        : "expandButton",
       getBackgroundColor,
       expandedIndex: zoomedRowIndex,
     };
@@ -807,7 +811,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
 export const TableInteractive = _.compose(
   withMantineTheme,
-  ExplicitSize({
+  ExplicitSize<TableProps>({
     refreshMode: "throttle",
   }),
 )(TableInteractiveInner);

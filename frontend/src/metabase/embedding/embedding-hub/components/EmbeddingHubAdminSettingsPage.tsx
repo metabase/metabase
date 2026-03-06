@@ -4,13 +4,14 @@ import {
   RelatedSettingsSection,
   getModularEmbeddingRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
-import { useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { Stack, Text, Title } from "metabase/ui";
 
 import { EmbeddingHub } from "./EmbeddingHub";
 
 export const EmbeddingHubAdminSettingsPage = () => {
   const isUsingTenants = useSetting("use-tenants");
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   return (
     <Stack mx="auto" py="xl" gap="xl" maw={800}>
@@ -24,7 +25,10 @@ export const EmbeddingHubAdminSettingsPage = () => {
 
       <Stack ml="2.7rem">
         <RelatedSettingsSection
-          items={getModularEmbeddingRelatedSettingItems({ isUsingTenants })}
+          items={getModularEmbeddingRelatedSettingItems({
+            isUsingTenants,
+            hasSimpleEmbedding,
+          })}
         />
       </Stack>
     </Stack>

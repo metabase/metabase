@@ -8,7 +8,6 @@
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
@@ -16,6 +15,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.util :as tu]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -395,11 +395,11 @@
 (deftest transform-function-without-libraries-test
   (testing "transform function works when no libraries exist"
     (mt/test-drivers #{:postgres}
-      (with-redefs [t2/select-fn->fn (fn [k v model]
-                                       (when (and (= k :path)
-                                                  (= v :source)
-                                                  (= model :model/PythonLibrary))
-                                         {}))]
+      (mt/with-dynamic-fn-redefs [t2/select-fn->fn (fn [k v model]
+                                                     (when (and (= k :path)
+                                                                (= v :source)
+                                                                (= model :model/PythonLibrary))
+                                                       {}))]
         (let [transform-code (str "import pandas as pd\n"
                                   "\n"
                                   "def transform():\n"
@@ -412,11 +412,11 @@
 (deftest transform-function-library-import-error-test
   (testing "transform function handles missing library gracefully"
     (mt/test-drivers #{:postgres}
-      (with-redefs [t2/select-fn->fn (fn [k v model]
-                                       (when (and (= k :path)
-                                                  (= v :source)
-                                                  (= model :model/PythonLibrary))
-                                         {"utils" "def helper():\n    return 42"}))]
+      (mt/with-dynamic-fn-redefs [t2/select-fn->fn (fn [k v model]
+                                                     (when (and (= k :path)
+                                                                (= v :source)
+                                                                (= model :model/PythonLibrary))
+                                                       {"utils" "def helper():\n    return 42"}))]
         (let [transform-code (str "import pandas as pd\n"
                                   "from common import some_function  # This library doesn't exist\n"
                                   "\n"
@@ -452,7 +452,7 @@
                                     {:name "created_date"  :type :type/Date     :nullable? true}
                                     {:name "description"   :type :type/Text     :nullable? true}]}
             _ (mt/as-admin
-                (transforms.util/create-table-from-schema! driver db-id table-schema))
+                (transforms-base.u/create-table-from-schema! driver db-id table-schema))
 
             row-values   [[1
                            19.99
@@ -480,7 +480,7 @@
                  (set (map :name (:fields metadata))))))
 
         (testing "types are preserved correctly"
-          (is (= {"id"           (if (= :snowflake driver) :type/Number :type/Integer)
+          (is (= {"id"           (if (= :snowflake driver) :type/BigInteger :type/Integer)
                   "price"        :type/Float
                   "active"       :type/Boolean
                   "created_tz"   (case driver
@@ -498,7 +498,7 @@
 
 (deftest python-runner-timeout-test
   (testing "Python script execution respects timeout setting"
-    (mt/with-premium-features #{:transforms-python}
+    (mt/with-premium-features #{:transforms-python :transforms}
       (tu/with-temporary-setting-values [python-runner-timeout-seconds 5]
         (let [long-running-code (str "import time\n"
                                      "import pandas as pd\n"

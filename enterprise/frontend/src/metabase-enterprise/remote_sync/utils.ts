@@ -2,17 +2,16 @@ import { t } from "ttag";
 
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import type {
-  Collection,
-  CollectionId,
-  RemoteSyncEntityModel,
-  RemoteSyncEntityStatus,
-} from "metabase-types/api";
+import type { Collection, RemoteSyncEntityStatus } from "metabase-types/api";
 
-export type CollectionPathSegment = {
-  id: CollectionId;
-  name: string;
-};
+import type { CollectionPathSegment } from "./displayGroups";
+
+// Re-export from displayGroups for backwards compatibility
+export {
+  TRANSFORMS_ROOT_ID,
+  isTableChildModel,
+  type CollectionPathSegment,
+} from "./displayGroups";
 
 type ErrorData = {
   message?: string;
@@ -176,20 +175,4 @@ export const getCollectionPathSegments = (
 
   segments.push({ id: collection.id, name: collection.name });
   return segments;
-};
-
-/**
- * Models that are children of tables (get their collection from a parent table)
- */
-const TABLE_CHILD_MODELS: Set<RemoteSyncEntityModel> = new Set([
-  "field",
-  "segment",
-  "measure",
-]);
-
-/**
- * Check if a model type is a child of a table (field, segment, or measure)
- */
-export const isTableChildModel = (model: RemoteSyncEntityModel): boolean => {
-  return TABLE_CHILD_MODELS.has(model);
 };

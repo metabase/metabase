@@ -89,7 +89,7 @@
     User would otherwise have. See the `Determining query permissions` section below for more details. As with
     segmented permissions, block anti-permissions are only available in Metabase® Enterprise Edition™.
 
-  * _Application permisisons_ -- are per-Group permissions that give non-admin users access to features like:
+  * _Application permissions_ -- are per-Group permissions that give non-admin users access to features like:
     change instance's Settings; access Audit, Tools, Troubleshooting ...
 
   ### Determining CRUD permissions in the REST API
@@ -456,7 +456,7 @@
 (defn- is-trash-or-descendant? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-trash-or-descendant?) collection))
 
-(defn- tenant-collection?
+(defn- shared-tenant-collection?
   [collection]
   ((requiring-resolve 'metabase.collections.models.collection/shared-tenant-collection?) collection))
 
@@ -504,9 +504,9 @@
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (let [collection (collection-or-id->collection collection-or-id)]
-    (when (and (not (tenant-collection? collection))
-               (perms-group/is-tenant-group? group-or-id))
-      (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {}))))
+    (when (perms-group/is-tenant-group? group-or-id)
+      (when-not (shared-tenant-collection? collection)
+        (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {})))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 
 (defenterprise current-user-has-application-permissions?

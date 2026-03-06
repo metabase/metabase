@@ -2,7 +2,6 @@ import type { CyHttpMessages } from "cypress/types/net-stubbing";
 
 import {
   entityPickerModal,
-  entityPickerModalTab,
   miniPicker,
   miniPickerBrowseAll,
   popover,
@@ -206,7 +205,10 @@ export function selectSavedQuestionsToJoin(
 ) {
   cy.intercept("GET", "/api/table/*/query_metadata").as("joinedTableMetadata");
   miniPickerBrowseAll().click();
-  entityPickerModal().findByText(firstQuestionName).click();
+  entityPickerModal().within(() => {
+    cy.findByText("Our analytics").click();
+    cy.findByText(firstQuestionName).click();
+  });
 
   cy.wait("@joinedTableMetadata");
 
@@ -214,8 +216,10 @@ export function selectSavedQuestionsToJoin(
   cy.icon("join_left_outer").click();
 
   miniPickerBrowseAll().click();
-  entityPickerModalTab("Data").click();
-  entityPickerModal().findByText(secondQuestionName).click();
+  entityPickerModal().within(() => {
+    cy.findByText("Our analytics").click();
+    cy.findByText(secondQuestionName).click();
+  });
 }
 
 export function selectFilterOperator(operatorName: string) {
@@ -502,4 +506,20 @@ function getSortItems(stageIndex: number) {
 
 export function clauseStepPopover() {
   return popover({ testId: "clause-popover" });
+}
+
+export function openPopoverFromDefaultBucketSize(
+  column: string,
+  bucket: string,
+) {
+  cy.findAllByTestId("dimension-list-item")
+    .filter(`:contains("${column}")`)
+    .as("targetListItem")
+    .realHover()
+    .within(() => {
+      cy.findByTestId("dimension-list-item-binning")
+        .as("listItemSelectedBinning")
+        .should("contain", bucket)
+        .click();
+    });
 }

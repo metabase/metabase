@@ -12,6 +12,7 @@ export function renderRoot(
   const reactVersion = getMajorReactVersion();
 
   if (reactVersion <= 17) {
+    // eslint-disable-next-line react/no-deprecated -- legacy usage
     ReactDOM.render(content, element);
     return;
   }
@@ -26,6 +27,7 @@ export function unmountRoot(root?: Root, element?: Element) {
   const reactVersion = getMajorReactVersion();
 
   if (reactVersion <= 17 && element) {
+    // eslint-disable-next-line react/no-deprecated -- legacy usage
     ReactDOM.unmountComponentAtNode(element);
     return;
   }

@@ -14,7 +14,12 @@
 
 (def default-modules-which-trigger-drivers
   "Modules that, when affected by changes, should trigger driver tests."
-  ['driver 'enterprise/transforms])
+  '#{driver transforms})
+
+(def modules-triggering-cloud-drivers
+  "Modules not only trigger driver tests, but run cloud drivers as well. Can be duplicative to driver triggers."
+  '#{query-processor transforms
+     enterprise/transforms enterprise/transforms-python enterprise/workspaces})
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
@@ -194,26 +199,14 @@
             filename))
         (u/updated-files (or git-ref "master"))))
 
-(defn- remove-non-driver-test-namespaces [files]
-  (into []
-        (remove (fn [filename]
-                  (when (and (some #(str/includes? filename %)
-                                   ["test/" "enterprise/backend/test/"])
-                             (not (some #(str/includes? filename %)
-                                        ["query_processor"
-                                         "driver"])))
-                    (when-not *github-output-only?*
-                      (println (str "Ignorning changes in test namespace " (pr-str filename))))
-                    filename)))
-        files))
-
 (defn driver-deps-affected?
   "Returns true if any of `trigger-modules` are affected by the changed modules.
    1-arity and 2-arity use [[default-modules-which-trigger-drivers]] for backwards compatibility."
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
-   (driver-deps-affected? deps modules default-modules-which-trigger-drivers))
+   (driver-deps-affected? deps modules (set/union default-modules-which-trigger-drivers
+                                                  modules-triggering-cloud-drivers)))
   ([deps modules trigger-modules]
    (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
      (boolean
@@ -228,7 +221,7 @@
   [[git-ref, :as _arguments]]
   (let [deps (dependencies)
         git-ref (or git-ref "master")
-        updated-files (remove-non-driver-test-namespaces (u/updated-files git-ref))
+        updated-files (u/updated-files git-ref)
         updated (updated-files->updated-modules updated-files)
         drivers-affected? (driver-deps-affected? deps updated)]
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
@@ -312,7 +305,8 @@
 (defn- quarantined-drivers []
   (-> (read-ci-test-config)
       (get-in [:ignored :drivers] [])
-      (->> (map keyword))
+      (->> (mapcat #(or (get driver-directory->drivers %)
+                        [(keyword %)])))
       (set)))
 
 (defn- parse-bool
@@ -346,7 +340,8 @@
   [driver
    {:keys [is-master-or-release pr-labels skip particular-driver-changed? verbose?]}
    driver-deps-affected?
-   quarantined-drivers]
+   quarantined-drivers
+   updated]
   (cond
     ;; Priority 1: Global skip (no backend changes)
     skip
@@ -365,7 +360,7 @@
         (println "Driver" (name driver) "is quarantined; checking for '" (break-quarantine-label driver) "' label...."))
       (if (contains? pr-labels (break-quarantine-label driver))
         {:should-run true
-         :reason "driver is quarantined, but anti-quarantine label present; running anyway"}
+         :reason (str "driver is quarantined, but " (break-quarantine-label driver) " label found; running anyway")}
         {:should-run false
          :reason "driver is quarantined"}))
 
@@ -386,17 +381,23 @@
     {:should-run true
      :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
 
-    ;; Priority 7: Cloud driver, no relevant changes
+    ;; Priority 7: Cloud driver + module triggering cloud dbs updated → run it
+    (and (contains? cloud-drivers driver)
+         (seq (set/intersection updated modules-triggering-cloud-drivers)))
+    {:should-run true
+     :reason "Module updated which explicitly triggers cloud drivers"}
+
+    ;; Priority 8: Cloud driver, no relevant changes → skip
     (contains? cloud-drivers driver)
     {:should-run false
      :reason "no relevant changes for cloud driver"}
 
-    ;; Priority 8: Driver deps affected by shared code changes
+    ;; Priority 9: Driver deps affected by shared code changes
     driver-deps-affected?
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 9: Self-hosted driver, not affected
+    ;; Priority 10: Self-hosted driver, not affected
     :else
     {:should-run false
      :reason "driver module not affected"}))
@@ -425,15 +426,14 @@
              :particular-driver-changed? particular-driver-changed?
              :verbose? (not github-output-only?)}
         quarantined (quarantined-drivers)
-        updated-files (remove-non-driver-test-namespaces
-                       (u/updated-files git-ref))
+        updated-files (u/updated-files git-ref)
         updated (updated-files->updated-modules updated-files)
         driver-affected? (driver-deps-affected? updated)
         important-file-changed? (changes-important-file-for-drivers? git-ref)
         ;; For module dependency check, combine both conditions
         effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined)
+                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined updated)
                                  :driver driver))
                         all-drivers)
         ;; Check for quarantined drivers with file changes but no break-quarantine label

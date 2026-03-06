@@ -1,5 +1,6 @@
-import type { Location } from "history";
 import querystring from "querystring";
+
+import type { Location } from "history";
 import _ from "underscore";
 
 import { serializeCardForUrl } from "metabase/lib/card";
@@ -49,7 +50,14 @@ export function getURLForCardState(
     objectId?: string;
   }
   const options: Options = {
-    hash: card && dirty ? serializeCardForUrl(card) : "",
+    hash:
+      card && dirty
+        ? serializeCardForUrl(card, {
+            includeOriginalCardId: true,
+            includeDatasetQuery: true,
+            includeDisplayIsLocked: true,
+          })
+        : "",
     query,
   };
   const isAdHocQuestion = !card.id;

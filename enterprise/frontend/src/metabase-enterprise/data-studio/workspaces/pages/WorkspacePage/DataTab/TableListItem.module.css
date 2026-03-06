@@ -1,0 +1,39 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  flex-wrap: nowrap;
+
+  &:hover .menu {
+    visibility: visible;
+  }
+
+  &:hover {
+    background-color: var(--mb-color-background-secondary);
+  }
+
+  &.noResults .name {
+    opacity: 0.6;
+  }
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+.selected {
+  background-color: var(--mb-color-background-tertiary);
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+}
+
+.actionIcon {
+  &:hover {
+    background-color: var(--mb-color-background-tertiary) !important;
+  }
+}

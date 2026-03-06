@@ -308,7 +308,7 @@ describe("documents card embed node custom logic", () => {
         });
 
       // Add another card to try to exceed the limit
-      addNewStandaloneCard("Orders Model", "model");
+      addNewStandaloneCard("Orders Model");
 
       // Wait for the new card to be added
       H.documentContent()
@@ -454,7 +454,7 @@ describe("documents card embed node custom logic", () => {
     it("should handle moving cards between different flexContainers", () => {
       // First create another flexContainer by dragging the standalone card onto a new location
       // Add another standalone card first
-      addNewStandaloneCard("Orders Model", "model");
+      addNewStandaloneCard("Orders Model");
 
       // Wait for the new card
       H.documentContent()
@@ -544,8 +544,6 @@ describe("documents card embed node custom logic", () => {
 
   describe("navigating from cardEmbed", () => {
     it("should open a question in a new tab when clicking title with ctrl/meta key", () => {
-      const macOSX = Cypress.platform === "darwin";
-
       H.createDocument({
         name: "Test Document",
         document: DOCUMENT_WITH_TWO_CARDS,
@@ -577,15 +575,12 @@ describe("documents card embed node custom logic", () => {
       });
 
       // Click on the card title with ctrl/meta key
-      H.getDocumentCard("Orders").findByTestId("card-embed-title").click({
-        metaKey: macOSX,
-        ctrlKey: !macOSX,
-      });
+      H.getDocumentCard("Orders")
+        .findByTestId("card-embed-title")
+        .click(H.holdMetaKey);
     });
 
     it("should open drill-through action in a new tab when clicking with ctrl/meta key", () => {
-      const macOSX = Cypress.platform === "darwin";
-
       H.createDocument({
         name: "Test Document",
         document: DOCUMENT_WITH_TWO_CARDS,
@@ -624,12 +619,10 @@ describe("documents card embed node custom logic", () => {
       });
 
       // Wait for the popover to appear and click the first action with ctrl/meta key
-      H.popover().within(() => {
-        cy.findByText("See these Orders").should("be.visible").click({
-          metaKey: macOSX,
-          ctrlKey: !macOSX,
-        });
-      });
+      H.popover()
+        .findByText("See these Orders")
+        .should("be.visible")
+        .click(H.holdMetaKey);
     });
   });
 
@@ -780,18 +773,12 @@ function assertFlexContainerCardsOrder(expectedCardTitles: string[]) {
   }
 }
 
-function addNewStandaloneCard(
-  cardName: string,
-  cardType: "question" | "model",
-) {
+function addNewStandaloneCard(cardName: string) {
   cy.get(".node-paragraph.is-empty").click();
   H.addToDocument("/", false);
   H.commandSuggestionItem("Chart").click();
   H.commandSuggestionItem(/Browse all/).click();
-  H.entityPickerModalTab(
-    cardType === "question" ? "Questions" : "Models",
-  ).click();
-  H.entityPickerModalItem(1, cardName).click();
+  H.pickEntity({ path: ["Our analytics", cardName], select: true });
 }
 
 function getCardWidths(

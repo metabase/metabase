@@ -16,10 +16,7 @@ describe("scenarios > visualizations > table", () => {
   function joinTable(table) {
     cy.findByText("Join data").click();
     H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(0, "Databases").click();
-      H.entityPickerModalItem(1, table).click();
-    });
+    H.pickEntity({ path: ["Databases", "Sample Database", table] });
   }
 
   function selectFromDropdown(option, clickOpts) {
@@ -117,7 +114,7 @@ describe("scenarios > visualizations > table", () => {
 
     // Cmd+click to add cells to selection
     getNonPKCells().eq(5).as("cmdClickCell");
-    cy.get("@cmdClickCell").click({ metaKey: true });
+    cy.get("@cmdClickCell").click(H.holdMetaKey);
     assertSelectedCells(5);
 
     // Shift+click for range selection

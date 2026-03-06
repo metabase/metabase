@@ -468,6 +468,23 @@
                   (mapv :visibility_type)
                   frequencies))))))
 
+(deftest auto-cruft-sets-preview-display-false-test
+  (testing "When a field becomes crufty via auto-cruft settings, preview_display should be set to false (#10851)"
+    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
+      (sync-metadata/sync-db-metadata! db)
+      (let [details-field (t2/select-one :model/Field :name "details"
+                                         :table_id [:in (map :id (t2/select :model/Table :db_id (u/the-id db)))])]
+        (is (=? {:visibility_type :normal
+                 :preview_display true}
+                details-field)
+            "before auto-cruft: field has default visibility and preview_display")
+        (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-columns ["details"]}})
+        (sync-metadata/sync-db-metadata! (t2/select-one :model/Database (u/the-id db)))
+        (is (=? {:visibility_type :details-only
+                 :preview_display false}
+                (t2/select-one :model/Field :id (:id details-field)))
+            "after auto-cruft: field should have visibility_type=details-only AND preview_display=false")))))
+
 (deftest sync-fields-resilient-to-non-existence-test
   (testing "[[sync-fields/sync-fields-for-table!]] doesn't crash on a non-existent table (SEM-39)"
     (mt/test-drivers (mt/normal-drivers)

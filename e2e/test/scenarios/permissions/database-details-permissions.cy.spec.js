@@ -29,9 +29,7 @@ describe("scenarios > admin > permissions > database details permissions", () =>
     cy.signInAsNormalUser();
 
     cy.visit("/");
-    cy.icon("gear").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Admin settings").should("be.visible").click();
+    H.goToAdmin();
 
     cy.location("pathname").should("eq", "/admin/databases");
 

@@ -88,6 +88,31 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :lucky :get 403 "user" :query "rasta")))))))
 
+(deftest user-list-for-data-analysts-test
+  (testing "GET /api/user"
+    (testing "A data analyst can get a list of all active users"
+      (mt/with-temp [:model/User {analyst-id :id :as analyst} {:first_name "Analyst"
+                                                               :last_name  "Testuser"
+                                                               :email      "analyst-list@metabase.com"
+                                                               :is_data_analyst true}]
+        (let [result (->> (:data (mt/user-http-request analyst :get 200 "user"))
+                          (filter #(or (mt/test-user? %) (= (:id %) analyst-id))))]
+          (is (= #{"crowberto@metabase.com"
+                   "lucky@metabase.com"
+                   "rasta@metabase.com"
+                   "analyst-list@metabase.com"}
+                 (set (map :email result)))))))
+
+    (testing "A sandboxed data analyst only sees themselves"
+      (mt/with-temp [:model/User {_ :id :as analyst} {:first_name "Sandboxed"
+                                                      :last_name  "Analyst"
+                                                      :email      "sandboxed-analyst@metabase.com"
+                                                      :is_data_analyst true}]
+        (with-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+          (let [result (:data (mt/user-http-request analyst :get 200 "user"))]
+            (is (= ["sandboxed-analyst@metabase.com"]
+                   (map :email result)))))))))
+
 (deftest user-list-for-group-managers-test
   (testing "Group Managers"
     (mt/with-premium-features #{:advanced-permissions}
@@ -1561,6 +1586,14 @@
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :sso_source nil}
                    (mt/derecordize (t2/select-one [:model/User :is_active :sso_source] :id (u/the-id user)))))))))))
+
+(deftest reactivate-second-to-last-admin-test
+  (mt/with-single-admin-user! [{id :id}]
+    (testing "With two admins, one deactivated"
+      (mt/with-temp [:model/User {other-user :id} {:is_superuser true}]
+        (mt/user-http-request id :delete 200 (format "user/%d" other-user))
+        (testing "We can reactivate the other admin"
+          (mt/user-http-request id :put 200 (format "user/%d/reactivate" other-user)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |

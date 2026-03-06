@@ -1,6 +1,7 @@
+import { parse as parseUrl } from "url";
+
 import type { LocationDescriptor } from "history";
 import { push, replace } from "react-router-redux";
-import { parse as parseUrl } from "url";
 
 import { isEqualCard } from "metabase/lib/card";
 import { createThunkAction } from "metabase/lib/redux";

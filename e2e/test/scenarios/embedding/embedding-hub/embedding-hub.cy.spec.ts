@@ -36,8 +36,7 @@ describe("scenarios - embedding hub", () => {
         cy.findByText("Choose a table to generate a dashboard").should(
           "be.visible",
         );
-        // Click on the first available table
-        H.entityPickerModalItem(3, "Accounts").click();
+        H.pickEntity({ path: ["Databases", "Sample Database", "Accounts"] });
       });
 
       cy.log("Should navigate to auto dashboard creation");

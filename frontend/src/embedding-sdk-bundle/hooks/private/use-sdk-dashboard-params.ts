@@ -54,6 +54,12 @@ export type SdkDashboardDisplayProps = SdkDashboardEntityInternalProps & {
    * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
    **/
   hiddenParameters?: string[];
+
+  /**
+   * When true, internal click behaviors (links to dashboards/questions) are preserved.
+   * When false (default for SDK), these click behaviors are filtered out.
+   */
+  enableEntityNavigation?: boolean;
 } & CommonStylingProps;
 
 export const useSdkDashboardParams = ({

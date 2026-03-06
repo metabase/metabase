@@ -5,10 +5,17 @@ import { isSerializable } from "metabase/lib/objects";
 import type { ModalState } from "metabase-types/store/modal";
 
 type SetOpenModalPayload = ModalState["id"];
-type SetOpenModalWithPropsPayload<T = ModalState["props"]> = {
-  id: ModalState["id"];
-  props?: T;
-};
+/**
+ * This makes all `props` property optional while maintaining discriminated union types.
+ *
+ * This is necessary because `props` can never be undefined in the store, but can be
+ * omitted in the actions.
+ */
+type SetOpenModalWithPropsPayload = ModalState extends infer U
+  ? U extends { id: infer ID; props: infer P }
+    ? { id: ID; props?: P }
+    : never
+  : never;
 
 /**
  * Validates that modal props are serializable.
@@ -29,10 +36,10 @@ function validateSerializableProps(props: unknown): void {
   );
 }
 
-const DEFAULT_MODAL_STATE: ModalState = {
+const DEFAULT_MODAL_STATE = {
   id: null,
   props: null,
-};
+} as ModalState;
 
 const modalSlice = createSlice({
   name: "modal",
@@ -60,11 +67,5 @@ const modalSlice = createSlice({
 
 export const modal = modalSlice.reducer;
 
-export const { setOpenModal, closeModal } = modalSlice.actions;
-
-export const setOpenModalWithProps = <T = ModalState["props"]>(
-  payload: SetOpenModalWithPropsPayload<T>,
-): ReturnType<typeof modalSlice.actions.setOpenModalWithProps> =>
-  modalSlice.actions.setOpenModalWithProps(
-    payload as SetOpenModalWithPropsPayload,
-  );
+export const { setOpenModal, closeModal, setOpenModalWithProps } =
+  modalSlice.actions;

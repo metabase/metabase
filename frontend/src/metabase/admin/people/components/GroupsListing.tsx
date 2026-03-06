@@ -269,7 +269,7 @@ function GroupRow({
           gap="md"
         >
           <UserAvatar
-            user={{ first_name: getGroupNameLocalized(group) }}
+            user={{ name: getGroupNameLocalized(group) }}
             bg={backgroundColor}
           />
           <Box component="span" fw={700} c="brand">

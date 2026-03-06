@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
@@ -59,36 +58,45 @@
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All tenant users'' group.")
                       {:status-code 400})))))
 
-(defn- admin-count
-  "The current number of non-archived admins (superusers)."
-  []
-  (:count
-   (first
-    (app-db/query {:select [[:%count.* :count]]
-                   :from   [[:permissions_group_membership :pgm]]
-                   :join   [[:core_user :user] [:= :user.id :pgm.user_id]]
-                   :where  [:and
-                            [:= :pgm.group_id (u/the-id (perms-group/admin))]
-                            [:= :user.is_active true]]}))))
-
 (defn throw-if-last-admin!
-  "Throw an Exception if there is only one admin (superuser) left. The assumption is that the one admin is about to be
+  "Throw an Exception if there are no admins left besides this one. The assumption is that the one admin is about to be
   archived or have their admin status removed."
-  []
-  (when (<= (admin-count) 1)
+  [user-id]
+  (when (zero?
+         (t2/count :model/PermissionsGroupMembership
+                   {:join   [[:core_user :user] [:= :user.id :user_id]]
+                    :where  [:and
+                             [:= :group_id (u/the-id (perms-group/admin))]
+                             [:= :user.is_active true]
+                             [:not= :user.id user-id]]}))
     (throw (ex-info (str fail-to-remove-last-admin-msg)
                     {:status-code 400}))))
 
 (def ^:dynamic ^:private *update-user-when-added-to-admin-group?* true)
 
+(def ^:dynamic *allow-direct-deletion*
+  "Should we allow direct `t2/delete!` calls on PermissionsGroupMembership? By default this is `false`; only the
+  blessed helper functions like `remove-user-from-group!` bind this to `true`."
+  false)
+
+(defmacro with-allow-direct-deletion
+  "Execute `form` with `*allow-direct-deletion*` bound to `true`, allowing direct `t2/delete!` calls on
+  PermissionsGroupMembership."
+  [& form]
+  `(binding [*allow-direct-deletion* true]
+     (do ~@form)))
+
 (t2/define-before-delete :model/PermissionsGroupMembership
   [{:keys [group_id user_id]}]
+  (when-not *allow-direct-deletion*
+    (throw (ex-info "Do not use `t2/delete!` with PermissionsGroupMembership directly. Use `remove-user-from-group!` or related instead"
+                    {})))
   (check-not-all-users-group group_id)
   (check-not-all-external-users-group group_id)
   ;; If this is the Admin group...
   (when (= group_id (:id (perms-group/admin)))
     ;; ...and this is the last membership, throw an exception
-    (throw-if-last-admin!)
+    (throw-if-last-admin! user_id)
     ;; ...otherwise we're ok. Unset the `:is_superuser` flag for the user whose membership was revoked
     (when *update-user-when-added-to-admin-group?*
       (t2/update! 'User user_id {:is_superuser false})))
@@ -248,12 +256,11 @@
   (when (seq group-ids-or-groups)
     (let [user-id (u/the-id user-id-or-user)
           group-ids (map u/the-id group-ids-or-groups)
-          ;; Get the memberships that will be deleted for event publishing
           memberships (t2/select :model/PermissionsGroupMembership
                                  :user_id user-id
                                  :group_id [:in group-ids])]
-      ;; Delete the memberships (this will trigger the before-delete hooks)
-      (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids])
+      (binding [*allow-direct-deletion* true]
+        (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids]))
       (doseq [membership memberships]
         (events/publish-event! :event/group-membership-delete {:object membership
                                                                :user-id api/*current-user-id*})))))
@@ -262,3 +269,23 @@
   "Removes a user from a group."
   [user-id-or-user group-ids-or-groups]
   (remove-user-from-groups! user-id-or-user [group-ids-or-groups]))
+
+(defn remove-all-users-from-group!
+  "Removes all users from a group."
+  [group-id]
+  (let [memberships (t2/select :model/PermissionsGroupMembership :group_id group-id)]
+    (binding [*allow-direct-deletion* true]
+      (t2/delete! :model/PermissionsGroupMembership :group_id group-id))
+    (doseq [membership memberships]
+      (events/publish-event! :event/group-membership-delete {:object membership
+                                                             :user-id api/*current-user-id*}))))
+
+(defn remove-user-from-all-groups!
+  "Removes a user from all groups."
+  [user-id]
+  (let [memberships (t2/select :model/PermissionsGroupMembership :user_id user-id)]
+    (binding [*allow-direct-deletion* true]
+      (t2/delete! :model/PermissionsGroupMembership :user_id user-id))
+    (doseq [membership memberships]
+      (events/publish-event! :event/group-membership-delete {:object membership
+                                                             :user-id api/*current-user-id*}))))

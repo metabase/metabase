@@ -3,12 +3,12 @@ import { createDraft } from "immer";
 
 import {
   type MetabotState,
-  type MetabotSuggestedTransform,
   activateSuggestedTransform,
   addSuggestedTransform,
   deactivateSuggestedTransform,
   metabotReducer,
 } from "metabase-enterprise/metabot/state";
+import type { MetabotSuggestedTransform } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks/transform";
 
 import {

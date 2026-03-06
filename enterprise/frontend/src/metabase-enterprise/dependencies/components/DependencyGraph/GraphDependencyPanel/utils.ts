@@ -11,7 +11,7 @@ import type {
   DependencySortOptions,
 } from "../../../types";
 import {
-  canHaveViewCount,
+  canNodeHaveViewCount,
   getCardType,
   getDependencyType,
 } from "../../../utils";
@@ -29,12 +29,12 @@ export function getListRequest(
   return {
     id: node.id,
     type: node.type,
-    dependent_types: [type],
-    dependent_card_types: cardType != null ? [cardType] : undefined,
+    "dependent-types": [type],
+    "dependent-card-types": cardType != null ? [cardType] : undefined,
     query: query,
-    include_personal_collections: filterOptions.includePersonalCollections,
-    sort_column: sortOptions.column,
-    sort_direction: sortOptions.direction,
+    "include-personal-collections": filterOptions.includePersonalCollections,
+    "sort-column": sortOptions.column,
+    "sort-direction": sortOptions.direction,
   };
 }
 
@@ -63,7 +63,7 @@ export function getAvailableSortColumns(
   return [
     "name",
     "location",
-    ...(canHaveViewCount(getDependencyType(groupType))
+    ...(canNodeHaveViewCount(getDependencyType(groupType))
       ? ["view-count" as const]
       : []),
   ];
@@ -72,7 +72,7 @@ export function getAvailableSortColumns(
 export function getDefaultSortOptions(
   groupType: DependencyGroupType,
 ): DependencySortOptions {
-  return canHaveViewCount(getDependencyType(groupType))
+  return canNodeHaveViewCount(getDependencyType(groupType))
     ? { column: "view-count", direction: "desc" }
     : { column: "name", direction: "asc" };
 }

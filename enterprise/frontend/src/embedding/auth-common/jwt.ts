@@ -90,7 +90,8 @@ const runFetchRequestToken = async (
 const refreshUserJwt = async (url: string) => {
   let clientBackendResponse;
   try {
-    const urlWithSource = new URL(url);
+    // Use window.location.origin as base to support relative URLs like "/api/sso"
+    const urlWithSource = new URL(url, window.location.origin);
     urlWithSource.searchParams.set("response", "json");
     clientBackendResponse = await fetch(urlWithSource.toString(), {
       method: "GET",

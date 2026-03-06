@@ -1821,5 +1821,109 @@
                                                {:transform-id id :source-type source-type})))]
           (t2/update! :transform id {:source_type transform-type})))))
 
+(define-migration BackfillTransformTargetDbId
+  ;; Backfills the target_db_id column for existing transform records.
+  ;;
+  ;; For query transforms, uses source.query.database as the source of truth.
+  ;; For python transforms, uses target.database. Records with no database
+  ;; information are left with nil target_db_id.
+  ;;
+  ;; Skips transforms whose referenced database no longer exists (leaves target_db_id NULL),
+  ;; since the subsequent FK constraint migration would fail if stale DB references were set.
+  (let [existing-db-ids (into #{} (map :id) (t2/query {:select [:id] :from [:metabase_database]}))]
+    (doseq [{:keys [id source target]} (t2/query {:select [:id :source :target]
+                                                  :from   [:transform]
+                                                  :where  [:= :target_db_id nil]})]
+      (let [source-map (json-out source false)
+            target-map (json-out target false)
+            ;; Mirror the app-code logic: for query transforms, source.query.database is the source of truth;
+            ;; for python transforms, target.database is the only option.
+            db-id      (or (get-in source-map ["query" "database"])
+                           (get target-map "database"))]
+        (when (and db-id (existing-db-ids db-id))
+          (t2/update! :transform id {:target_db_id db-id}))))))
+
+(define-migration SetTransformSourceDatabaseId
+  (doseq [transform (t2/select [:transform :id :source])]
+    (let [parsed-source (-> transform :source json/decode+kw)
+          db-id       (case (keyword (:type parsed-source))
+                        :query (get-in parsed-source [:query :database])
+                        :python (parsed-source :source-database)
+                        nil)]
+      (t2/update! :transform (:id transform) {:source_database_id db-id}))))
+
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))
+
+(define-migration FixClickHouseUploadDBSchemaNames
+  "This data migration is meant to fix the issues seen in #69667, #68298 and #65945.
+   We made the driver feature `schemas` conditional on the `enable-multiple-db` DB connection setting.
+   So for DBs with `enable-multiple-db` set to false (such as our cloud hosted upload DBs), the `schemas` feature was
+   false. This meant that when a user disabled uploads, or changed their upload DBs, and then re-enabled uploads or
+   changed their upload DB back, the `uploads_schema_name` field of the DB was set to null. So any uploads made after
+   the `uploads_schema_name` field was set to null were created as tables with a null `schema`. For example:
+   ;; metabase_database
+   | id | engine     | name      | uploads_enabled | uploads_schema_name |
+   | 2  | clickhouse | upload_db | true            | null                | ;; `uploads_schema_name` set to null after disabling and re-enabling uploads
+   ;; metabase_table
+   | id | db_id | name | schema | active | is_upload |
+   | 1  | 2     | t1   | db_foo | true   | true      | ;; created before uploads_schema_name was set to null
+   | 2  | 2     | t2   | null   | true   | true      | ;; created after uploads_schema_name was set to null
+   On the clickhouse DB these tables are still created in a schema, particularly the one specified in the `dbname`
+   field of the DB `details`. This meant that the next time the DB sync ran, it would find this table under that
+   schema, and would not find that table with a null schema. So then it would create a new table with the same name
+   and a schema, and mark the old table with the null schema as inactive. For example:
+   ;; metabase_table
+   | id | db_id | name | schema | active | is_upload |
+   | 1  | 2     | t1   | db_foo | true   | true      | ;; this table has a schema so it's synced correctly
+   | 2  | 2     | t2   | null   | false  | true      | ;; this table is now inactive since it has a null schema and isn't found by sync
+   | 3  | 2     | t2   | db_foo | true   | false     | ;; this is the new table created by sync with the same name and a schema
+   We create models based on upload tables, and since the upload tables got marked as inactive, attempting to access
+   these models would give an inactive table error."
+  ;; Look for a clickhouse DB with uploads_enabled
+  (let [clickhouse-upload-db (t2/query {:select [:id :details :uploads_schema_name]
+                                        :from [:metabase_database]
+                                        :where [:and
+                                                [:= :engine "clickhouse"]
+                                                [:= :uploads_enabled true]]})
+        ;; If this DB has a null `uploads_schema_name`, then set the `uploads_schema_name` to the value of the `dbname`
+        set-uploads-schema-name! (fn [{:keys [id details uploads_schema_name]}]
+                                   (let [decrypted-details (encrypted-json-out details)
+                                         db-name (:dbname decrypted-details)]
+                                     (when (and db-name (not uploads_schema_name))
+                                       (t2/query {:update :metabase_database
+                                                  :set    {:uploads_schema_name db-name}
+                                                  :where  [:= :id id]}))))]
+    (if (< 1 (count clickhouse-upload-db))
+      (log/warn "FixClickHouseUploadDBSchemaNames: expected at most 1 ClickHouse upload database, found" (count clickhouse-upload-db))
+      (do
+        (run! set-uploads-schema-name! clickhouse-upload-db)
+        ;; Look for any inactive upload tables with a null schema
+        (let [inactive-upload-tables (t2/query {:select [:mt.id :mt.name :mt.db_id :md.uploads_schema_name]
+                                                :from [[:metabase_table :mt]]
+                                                :join [[:metabase_database :md] [:= :mt.db_id :md.id]]
+                                                :where [:and
+                                                        [:= :md.engine "clickhouse"]
+                                                        [:= :md.uploads_enabled true]
+                                                        [:not= :md.uploads_schema_name nil]
+                                                        [:= :mt.schema nil]
+                                                        [:= :mt.active false]
+                                                        [:= :mt.is_upload true]]})
+              retire-and-revive-upload-table! (fn [{:keys [id name db_id uploads_schema_name]}]
+                                                ;; Look for an active non-upload table with the same name and the correct `uploads_schema_name`
+                                                ;; Set it to be inactive and rename it to satisfy the (db_id, name, schema) unique key
+                                                (t2/query {:update :metabase_table
+                                                           :set {:active false
+                                                                 :name (str name "_retired_69667")}
+                                                           :where [:and
+                                                                   [:= :name name]
+                                                                   [:= :schema uploads_schema_name]
+                                                                   [:= :active true]
+                                                                   [:= :is_upload false]
+                                                                   [:= :db_id db_id]]})
+                                                ;; Set the inactive upload table to be active and set the schema to the correct `uploads_schema_name`
+                                                (t2/query {:update :metabase_table
+                                                           :set {:active true
+                                                                 :schema uploads_schema_name}
+                                                           :where [:= :id id]}))]
+          (run! retire-and-revive-upload-table! inactive-upload-tables))))))

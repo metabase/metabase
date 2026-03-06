@@ -61,7 +61,7 @@ export const StatusCardIcon = styled.div`
   height: 2rem;
   border-radius: 1rem;
   color: var(--mb-color-brand);
-  background-color: var(--mb-color-brand-light);
+  background-color: var(--mb-color-background-brand);
 `;
 
 export const StatusCardTitle = styled.div`

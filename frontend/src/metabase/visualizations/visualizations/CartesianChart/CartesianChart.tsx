@@ -5,6 +5,7 @@ import { useSet } from "react-use";
 
 import { isWebkit } from "metabase/lib/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
+import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
@@ -21,12 +22,9 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
-import { getGridSizeAdjustedSettings } from "./utils";
+import { getDashboardAdjustedSettings } from "./utils";
 
-const HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD = 360;
-const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 200;
-
-function _CartesianChart(props: VisualizationProps) {
+function CartesianChartInner(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
@@ -40,7 +38,6 @@ function _CartesianChart(props: VisualizationProps) {
     settings: originalSettings,
     card,
     getHref,
-    gridSize,
     width: outerWidth,
     height: outerHeight,
     showTitle,
@@ -48,8 +45,9 @@ function _CartesianChart(props: VisualizationProps) {
     actionButtons,
     isDashboard,
     isEditing,
+    isVisualizer,
     isQueryBuilder,
-    isVisualizerViz,
+    isVisualizerCard,
     isFullscreen,
     hovered,
     onChangeCardAndRun,
@@ -58,18 +56,16 @@ function _CartesianChart(props: VisualizationProps) {
     titleMenuItems,
   } = props;
 
-  const settings = useMemo(() => {
-    const settings = getGridSizeAdjustedSettings(originalSettings, gridSize);
-    if (isDashboard) {
-      if (outerWidth <= HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD) {
-        settings["graph.y_axis.labels_enabled"] = false;
-      }
-      if (outerHeight <= HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD) {
-        settings["graph.x_axis.labels_enabled"] = false;
-      }
-    }
-    return settings;
-  }, [originalSettings, gridSize, isDashboard, outerWidth, outerHeight]);
+  const settings = useMemo(
+    () =>
+      getDashboardAdjustedSettings(
+        originalSettings,
+        isDashboard ?? false,
+        outerWidth,
+        outerHeight,
+      ),
+    [originalSettings, isDashboard, outerWidth, outerHeight],
+  );
 
   const { chartModel, timelineEventsModel, option } = useModelsAndOption(
     {
@@ -138,7 +134,7 @@ function _CartesianChart(props: VisualizationProps) {
   // so title selection is disabled in this case
   const canSelectTitle =
     !!onChangeCardAndRun &&
-    (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
+    (!isVisualizerCard || React.Children.count(titleMenuItems) === 1);
 
   const seriesColorsCss = useCartesianChartSeriesColorsClasses(
     chartModel,
@@ -186,7 +182,14 @@ function _CartesianChart(props: VisualizationProps) {
           eventHandlers={eventHandlers}
           onResize={handleResize}
           onInit={handleInit}
-        />
+        >
+          <DataPointsVisiblePopover
+            isDashboard={isDashboard}
+            isVisualizer={isVisualizer}
+            chartModel={chartModel}
+            settings={settings}
+          />
+        </ResponsiveEChartsRenderer>
       </CartesianChartLegendLayout>
       {seriesColorsCss}
     </CartesianChartRoot>
@@ -196,7 +199,7 @@ function _CartesianChart(props: VisualizationProps) {
 export function CartesianChart(props: VisualizationProps) {
   return (
     <ChartRenderingErrorBoundary onRenderError={props.onRenderError}>
-      <_CartesianChart {...props} />
+      <CartesianChartInner {...props} />
     </ChartRenderingErrorBoundary>
   );
 }

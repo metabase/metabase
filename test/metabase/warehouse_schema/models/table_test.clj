@@ -563,6 +563,17 @@
         (is (= coll2-id (-> hydrated second :collection :id)))
         (is (nil? (-> hydrated (nth 2) :collection)))))))
 
+(deftest owner-hydration-test
+  (testing "hydrating :owner on a table with :owner_user_id"
+    (mt/with-temp [:model/Table table {:owner_user_id (mt/user->id :crowberto)}]
+      (is (=? {:owner {:id    (mt/user->id :crowberto)
+                       :email "crowberto@metabase.com"}}
+              (t2/hydrate table :owner)))))
+  (testing "hydrating :owner on a table with :owner_email"
+    (mt/with-temp [:model/Table table {:owner_email "external@example.com"}]
+      (is (=? {:owner {:email "external@example.com"}}
+              (t2/hydrate table :owner))))))
+
 ;;; ---------------------------------------- can-read? permission tests ----------------------------------------
 
 (deftest table-can-read?-with-view-data-and-create-queries-permission-test

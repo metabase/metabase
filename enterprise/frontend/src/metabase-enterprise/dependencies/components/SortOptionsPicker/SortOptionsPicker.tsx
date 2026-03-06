@@ -9,10 +9,7 @@ import {
   SegmentedControl,
   Stack,
 } from "metabase/ui";
-import {
-  DEPENDENCY_SORT_DIRECTIONS,
-  type DependencySortColumn,
-} from "metabase-types/api";
+import { type DependencySortColumn, SORT_DIRECTIONS } from "metabase-types/api";
 
 import type { DependencySortOptions } from "../../types";
 
@@ -72,7 +69,7 @@ function SortOptionsPopover({
   };
 
   const handleDirectionChange = (newValue: string) => {
-    const newDirection = DEPENDENCY_SORT_DIRECTIONS.find(
+    const newDirection = SORT_DIRECTIONS.find(
       (direction) => direction === newValue,
     );
     if (newDirection != null) {

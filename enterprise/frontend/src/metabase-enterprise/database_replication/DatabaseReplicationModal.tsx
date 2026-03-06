@@ -47,9 +47,9 @@ export const DatabaseReplicationModal = ({
   const [error, setError] = useState<string>();
   const handleError = (error: unknown) => {
     setSetupStep("error");
-    isRTKQueryError(error) &&
-      typeof error.data === "string" &&
+    if (isRTKQueryError(error) && typeof error.data === "string") {
       setError(error.data);
+    }
   };
   const onModalClose = () => {
     setSetupStep("form");

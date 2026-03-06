@@ -1,4 +1,5 @@
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
 import {
   BackButton,
   Breakout,
@@ -28,6 +29,8 @@ import {
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 
+import { QuestionAlertsButton } from "../notifications/QuestionAlertsButton";
+
 import { interactiveQuestionSchema } from "./InteractiveQuestion.schema";
 
 /**
@@ -44,7 +47,10 @@ export type InteractiveQuestionProps = Omit<
  * @interface
  */
 export type InteractiveQuestionComponents = {
+  /** @deprecated Use `InteractiveQuestion.NavigationBackButton` instead */
   BackButton: typeof BackButton;
+  /** Back button to navigate back after drills and internal navigation. It will render null if there's nothing to go back to */
+  NavigationBackButton: typeof SdkInternalNavigationBackButton;
   Filter: typeof Filter;
   FilterDropdown: typeof FilterDropdown;
   ResetButton: typeof QuestionResetButton;
@@ -69,6 +75,7 @@ export type InteractiveQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  AlertsButton: typeof QuestionAlertsButton;
   SqlParametersList: typeof SqlParametersList;
 };
 
@@ -78,6 +85,7 @@ export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
 
 const subComponents: InteractiveQuestionComponents = {
   BackButton: BackButton,
+  NavigationBackButton: SdkInternalNavigationBackButton,
   Filter: Filter,
   FilterDropdown: FilterDropdown,
   ResetButton: QuestionResetButton,
@@ -99,6 +107,7 @@ const subComponents: InteractiveQuestionComponents = {
   ChartTypeDropdown: ChartTypeDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
+  AlertsButton: QuestionAlertsButton,
   VisualizationButton: VisualizationButton,
   SqlParametersList: SqlParametersList,
 };

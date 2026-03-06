@@ -133,8 +133,7 @@ describe("issue 15542", () => {
 
   function openOrdersProductIdSettings() {
     // Navigate without reloading the page
-    H.appBar().icon("gear").click();
-    H.popover().findByText("Admin settings").click();
+    H.goToAdmin();
 
     H.appBar().findByText("Table Metadata").click();
     H.DataModel.TablePicker.getTable("Orders").click();
@@ -161,7 +160,7 @@ describe("issue 15542", () => {
 
     cy.wait("@fieldDimensionUpdate");
 
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.goToMainApp();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");
@@ -177,7 +176,7 @@ describe("issue 15542", () => {
     H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover().findByText("Use original value").click();
 
-    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.goToMainApp();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");

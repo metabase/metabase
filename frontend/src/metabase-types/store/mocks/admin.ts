@@ -4,11 +4,19 @@ export const createMockAdminState = (
   opts?: Partial<AdminState>,
 ): AdminState => ({
   app: createMockAdminAppState(),
+  people: {
+    temporaryPasswords: {},
+  },
   permissions: createMockPermissionsState(),
-  settings: { settings: [] },
   databases: {
     deletionError: null,
     deletes: [],
+  },
+  datamodel: {
+    revisions: null,
+  },
+  people: {
+    temporaryPasswords: {},
   },
   ...opts,
 });
@@ -26,10 +34,16 @@ export const createMockPermissionsState = (
   return {
     dataPermissions: {},
     originalDataPermissions: {},
+    dataPermissionsRevision: null,
     collectionPermissions: {},
     originalCollectionPermissions: {},
+    collectionPermissionsRevision: null,
     tenantCollectionPermissions: {},
     originalTenantCollectionPermissions: {},
+    tenantCollectionPermissionsRevision: null,
+    tenantSpecificCollectionPermissions: {},
+    originalTenantSpecificCollectionPermissions: {},
+    tenantSpecificCollectionPermissionsRevision: null,
     isHelpReferenceOpen: false,
     hasRevisionChanged: {
       revision: null,

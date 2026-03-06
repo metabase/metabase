@@ -28,9 +28,11 @@ import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/compo
 import type { Collection } from "metabase-types/api";
 
 export const MainNavSharedCollections = ({
+  canAccessTenantSpecificCollections,
   canCreateSharedCollection,
   sharedTenantCollections,
 }: {
+  canAccessTenantSpecificCollections: boolean;
   canCreateSharedCollection: boolean;
   sharedTenantCollections: Collection[] | undefined;
 }) => {
@@ -109,7 +111,9 @@ export const MainNavSharedCollections = ({
     sharedTenantCollectionTree.length > 0;
 
   const shouldShowSharedCollectionsSection =
-    hasVisibleSharedTenantCollections || canCreateSharedCollection;
+    hasVisibleSharedTenantCollections ||
+    canCreateSharedCollection ||
+    canAccessTenantSpecificCollections;
 
   return (
     <>
@@ -142,7 +146,7 @@ export const MainNavSharedCollections = ({
               showChangesBadge(item?.id) && <CollectionSyncStatusBadge />
             }
           />
-          {isAdmin && (
+          {canAccessTenantSpecificCollections && (
             <PaddedSidebarLink icon="group" url={tenantSpecificCollections()}>
               {t`Tenant collections`}
             </PaddedSidebarLink>

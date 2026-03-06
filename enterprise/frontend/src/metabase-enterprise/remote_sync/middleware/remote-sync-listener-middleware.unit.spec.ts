@@ -1,4 +1,5 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import {
@@ -246,6 +247,35 @@ describe("remote-sync-listener-middleware", () => {
       expect(state.remoteSyncPlugin?.showModal).toBe(false);
       expect(state.remoteSyncPlugin?.currentTask).toBeNull();
     });
+
+    it("should set conflict variant to 'setup' when import fails with conflict", async () => {
+      fetchMock.get("path:/api/ee/remote-sync/current-task", {
+        status: 200,
+        body: {
+          status: "conflict",
+        },
+      });
+
+      const store = createTestStore();
+
+      // Dispatch the mutation
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+      );
+
+      // Wait for the request to fail
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("path:/api/ee/remote-sync/current-task"),
+      );
+
+      expect(store.getState().remoteSyncPlugin?.showModal).toBe(false);
+
+      await waitFor(() => {
+        expect(store.getState().remoteSyncPlugin?.syncConflictVariant).toBe(
+          "setup",
+        );
+      });
+    });
   });
 
   describe("collection listeners for transforms namespace", () => {
@@ -352,6 +382,50 @@ describe("remote-sync-listener-middleware", () => {
         const callsAfter =
           fetchMock.callHistory.calls("remote-sync-dirty").length;
         expect(callsAfter).toBe(callsBefore);
+      });
+
+      it("should invalidate tags when creating a snippets namespace collection", async () => {
+        const snippetsCollection = createMockCollection({
+          id: 100,
+          name: "My Snippets Collection",
+          namespace: "snippets",
+          is_remote_synced: false,
+        });
+
+        setupCreateCollectionEndpoint(snippetsCollection);
+        setupRemoteSyncDirtyEndpoint();
+
+        const store = createTestStore();
+
+        // Subscribe to the dirty query first so RTK Query will refetch when tags are invalidated
+        store.dispatch(
+          remoteSyncApi.endpoints.getRemoteSyncChanges.initiate(undefined),
+        );
+
+        // Wait for initial dirty query to complete
+        await waitForCondition(() =>
+          fetchMock.callHistory.done("remote-sync-dirty"),
+        );
+
+        // Dispatch the create collection mutation
+        store.dispatch(
+          collectionApi.endpoints.createCollection.initiate({
+            name: "My Snippets Collection",
+            namespace: "snippets",
+          }),
+        );
+
+        // Wait for the request to complete
+        await waitForCondition(() =>
+          fetchMock.callHistory.done("create-collection"),
+        );
+
+        // Give middleware time to process and trigger invalidation
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Verify the dirty endpoint was called more than once (initial + refetch after invalidation)
+        const dirtyCalls = fetchMock.callHistory.calls("remote-sync-dirty");
+        expect(dirtyCalls.length).toBeGreaterThan(1);
       });
 
       it("should invalidate tags when creating a remote-synced collection", async () => {

@@ -12,12 +12,12 @@ import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { RouterProps } from "metabase/selectors/app";
 import {
   getDetailViewState,
+  getIsAppSwitcherVisible,
   getIsCollectionPathVisible,
   getIsLogoVisible,
   getIsNavBarEnabled,
   getIsNavbarOpen,
   getIsNewButtonVisible,
-  getIsProfileLinkVisible,
   getIsQuestionLineageVisible,
   getIsSearchVisible,
 } from "metabase/selectors/app";
@@ -39,7 +39,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isSearchVisible: getIsSearchVisible(state),
   isEmbeddingIframe: getIsEmbeddingIframe(state),
   isNewButtonVisible: getIsNewButtonVisible(state),
-  isProfileLinkVisible: getIsProfileLinkVisible(state),
+  isAppSwitcherVisible: getIsAppSwitcherVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
   detailView: getDetailViewState(state),

@@ -1,5 +1,5 @@
 const { H } = cy;
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 import { USERS } from "e2e/support/cypress_data";
 import { SUBSCRIBE_URL } from "metabase/setup/constants";
 
@@ -573,7 +573,10 @@ describe("scenarios > setup (EE)", () => {
 
       cy.findByText("Activate your commercial license").should("exist");
 
-      typeToken(Cypress.env("MB_STARTER_CLOUD_TOKEN"));
+      // Use cy.env() for sensitive token values (async API)
+      cy.env(["MB_STARTER_CLOUD_TOKEN"]).then(({ MB_STARTER_CLOUD_TOKEN }) => {
+        typeToken(MB_STARTER_CLOUD_TOKEN);
+      });
 
       cy.button("Activate").click();
 

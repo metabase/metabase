@@ -4,7 +4,7 @@ title: Amazon Athena
 
 # Amazon Athena
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 ## Connection and sync
 
@@ -208,6 +208,10 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
   ]
 }
 ```
+
+## Writeable connection
+
+Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Model features
 

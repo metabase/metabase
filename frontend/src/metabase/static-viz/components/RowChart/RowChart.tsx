@@ -75,7 +75,7 @@ export const StaticRowChart = ({
     columnValueFormatter,
   );
   const groupedData = getGroupedDataset(
-    data.rows,
+    data,
     chartColumns,
     settings,
     columnValueFormatter,

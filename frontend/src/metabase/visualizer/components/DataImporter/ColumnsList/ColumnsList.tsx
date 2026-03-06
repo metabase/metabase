@@ -284,7 +284,7 @@ function DraggableColumnListItem({
       {...props}
       {...attributes}
       {...listeners}
-      bg={isSelected ? "brand-lighter" : undefined}
+      bg={isSelected ? "background-brand" : undefined}
       column={column}
       style={{ visibility: isDragging ? "hidden" : "visible" }}
       aria-selected={isSelected}
