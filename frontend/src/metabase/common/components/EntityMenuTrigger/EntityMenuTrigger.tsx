@@ -1,5 +1,3 @@
-import type * as React from "react";
-
 import { Tooltip } from "metabase/ui";
 
 import type { EntityMenuIconButtonProps } from "./EntityMenuTrigger.styled";
