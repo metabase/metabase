@@ -53,9 +53,7 @@
                                                    (str "ee/workspace/" ws-id "/transform")
                                                    {:name   "Test Transform"
                                                     :source {:type  "query"
-                                                             :query {:database (mt/id)
-                                                                     :type     :native
-                                                                     :native   {:query "SELECT 1 as col"}}}
+                                                             :query (mt/native-query {:query "SELECT 1 as col"})}
                                                     :target {:type   "table"
                                                              :schema "public"
                                                              :name   "test_output_table"}})
@@ -97,9 +95,7 @@
                                                          (str "ee/workspace/" ws-id "/transform")
                                                          {:name   "Workspace Transform"
                                                           :source {:type  "query"
-                                                                   :query {:database (mt/id)
-                                                                           :type     :native
-                                                                           :native   {:query "SELECT 1 as col"}}}
+                                                                   :query (mt/native-query {:query "SELECT 1 as col"})}
                                                           :target {:type   "table"
                                                                    :schema "public"
                                                                    :name   "global_output_table"}})]
