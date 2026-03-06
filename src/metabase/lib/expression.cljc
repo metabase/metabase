@@ -94,8 +94,8 @@
     (fn []
       (let [base-type (lib.metadata.calculation/type-of query stage-number expression-ref-clause)]
         (merge {:lib/type                :metadata/column
-              ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
-              ;; of the expression definition??
+                ;; TODO (Cam 8/7/25) -- is the source UUID of an expression ref supposed to be the ID of the ref, or the ID
+                ;; of the expression definition??
                 :lib/source-uuid         (:lib/uuid opts)
                 :name                    expression-name
                 :lib/expression-name     expression-name
@@ -108,7 +108,9 @@
                  {:lib/temporal-unit unit})
                (when lib.metadata.calculation/*propagate-binning-and-bucketing*
                  (when-let [unit (lib.temporal-bucket/raw-temporal-bucket expression-ref-clause)]
-                   {:inherited-temporal-unit unit})))))))
+                   {:inherited-temporal-unit unit}))
+               (when-some [pivot-grouping? (:qp.pivot/pivot-grouping? opts)]
+                 {:qp.pivot/pivot-grouping? pivot-grouping?}))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :expression
   [query stage-number [_expression opts _expr-name, :as expr-clause]]
