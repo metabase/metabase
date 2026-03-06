@@ -90,6 +90,12 @@
    to leave headroom for any structural overhead Slack may count."
   9500)
 
+(def ^:private no-data-table-blocks
+  [{:type            "table"
+    :rows            [[{:type "raw_text"
+                        :text "No data"}]]
+    :column_settings [{:align "left"}]}])
+
 (defn- normalize-column
   "Normalize column metadata from the wire format for use with formatters and type checks."
   [col]
@@ -181,11 +187,17 @@
                              :rows            all-rows
                              :column_settings column-settings}
         rows-truncated?     (> total-rows displayed-rows)]
-    (if rows-truncated?
+    (cond
+      (zero? total-rows)
+      no-data-table-blocks
+
+      rows-truncated?
       [table-block
        {:type     "context"
         :elements [{:type "mrkdwn"
                     :text (format "Showing %d of %d rows" displayed-rows total-rows)}]}]
+
+      :else
       [table-block])))
 
 (def ^:private supported-png-display-types
@@ -206,7 +218,8 @@
   (let [display (keyword display)
         results (execute-adhoc-query query)]
     (throw-on-failed-query! results)
-    (if (contains? supported-png-display-types display)
+    (if (and (contains? supported-png-display-types display)
+             (seq (get-in results [:data :rows])))
       {:type    :image
        :content (generate-adhoc-png results display)}
       {:type    :table
@@ -230,14 +243,12 @@
        :card-id     card-id}))))
 
 (defn- render-saved-card-png
-  "Render a saved card (already fetched from DB) to PNG bytes."
-  [card]
+  "Render a saved card (already fetched from DB) and pre-fetched results to PNG bytes."
+  [card results]
   (let [{:keys [width]} (render-dimensions (:display card))
-        options {:channel.render/include-title? false
-                 :channel.render/padding-x render-padding-x-px
-                 :channel.render/padding-y 0}
-        results (pulse-card-query-results card)]
-    (throw-on-failed-query! results)
+        options          {:channel.render/include-title? false
+                          :channel.render/padding-x      render-padding-x-px
+                          :channel.render/padding-y      0}]
     ;; TODO: should we use the user's timezone for this?
     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
                                              card
@@ -255,13 +266,14 @@
   (let [card      (t2/select-one :model/Card :id card-id)
         _         (when-not card
                     (throw (ex-info "Card not found" {:card-id card-id :type :card-not-found})))
-        card-name (:name card)]
-    (if (-> card :display keyword supported-png-display-types)
+        card-name (:name card)
+        results   (pulse-card-query-results card)]
+    (throw-on-failed-query! results)
+    (if (and (-> card :display keyword supported-png-display-types)
+             (seq (get-in results [:data :rows])))
       {:type      :image
-       :content   (render-saved-card-png card)
+       :content   (render-saved-card-png card results)
        :card-name card-name}
-      (let [results (pulse-card-query-results card)]
-        (throw-on-failed-query! results)
-        {:type      :table
-         :content   (format-results-as-table-blocks results)
-         :card-name card-name}))))
+      {:type      :table
+       :content   (format-results-as-table-blocks results)
+       :card-name card-name})))
