@@ -172,62 +172,62 @@
    - get-response-ts: Function that returns the Slack message ts for the bot's response"
   [conversation-id prompt thread bot-user-id channel-id extra-history
    {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id request-prompt]}]
-  (let [data-idx       (volatile! -1)
-        message        (metabot-v3.envelope/user-message prompt)
+  (let [data-idx        (volatile! -1)
+        message         (metabot-v3.envelope/user-message prompt)
         request-message (metabot-v3.envelope/user-message (or request-prompt prompt))
-        metabot-id     (metabot-v3.config/resolve-dynamic-metabot-id nil)
-        profile-id     (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
-        session-id     (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
-        capabilities   (compute-capabilities)
-        thread-history (thread->history thread bot-user-id conversation-id)
-        history        (into (vec thread-history) extra-history)
-        handle-line    (fn [line]
-                         (when-let [[type content] (metabot-v3.u/parse-aisdk-line line)]
-                           (case type
-                             :TEXT
-                             (when (and on-text (seq content))
-                               (on-text content))
+        metabot-id      (metabot-v3.config/resolve-dynamic-metabot-id nil)
+        profile-id      (metabot-v3.config/resolve-dynamic-profile-id "slackbot" metabot-id)
+        session-id      (metabot-v3.client/get-ai-service-token api/*current-user-id* metabot-id)
+        capabilities    (compute-capabilities)
+        thread-history  (thread->history thread bot-user-id conversation-id)
+        history         (into (vec thread-history) extra-history)
+        handle-line     (fn [line]
+                          (when-let [[type content] (metabot-v3.u/parse-aisdk-line line)]
+                            (case type
+                              :TEXT
+                              (when (and on-text (seq content))
+                                (on-text content))
 
-                             :TOOL_CALL
-                             (when on-tool-start
-                               (on-tool-start {:id        (:toolCallId content)
-                                               :tool-name (:toolName content)}))
+                              :TOOL_CALL
+                              (when on-tool-start
+                                (on-tool-start {:id        (:toolCallId content)
+                                                :tool-name (:toolName content)}))
 
-                             :TOOL_RESULT
-                             (when on-tool-end
-                               (on-tool-end {:id     (:toolCallId content)
-                                             :result (:result content)}))
+                              :TOOL_RESULT
+                              (when on-tool-end
+                                (on-tool-end {:id     (:toolCallId content)
+                                              :result (:result content)}))
 
-                             :DATA
-                             (when on-data
-                               (on-data (vswap! data-idx inc) content))
+                              :DATA
+                              (when on-data
+                                (on-data (vswap! data-idx inc) content))
 
-                             (log/debugf "Ignoring AI SDK line of type %s" type))))
+                              (log/debugf "Ignoring AI SDK line of type %s" type))))
 
-        _              (metabot-v3.persistence/store-message! conversation-id profile-id [message]
-                                                              :channel-id channel-id
-                                                              :slack-msg-id req-slack-msg-id)
-        lines          (metabot-v3.client/streaming-request-with-callback
+        _               (metabot-v3.persistence/store-message! conversation-id profile-id [message]
+                                                               :channel-id channel-id
+                                                               :slack-msg-id req-slack-msg-id)
+        lines           (metabot-v3.client/streaming-request-with-callback
 
-                        {:context         (metabot-v3.context/create-context
-                                           {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
-                                            :capabilities               capabilities
-                                            :slack_channel_id           channel-id})
-                         :metabot-id      metabot-id
-                         :profile-id      profile-id
-                         :session-id      session-id
-                         :conversation-id conversation-id
-                         :message         request-message
-                         :history         history
-                         :state           {}
-                         :on-line         handle-line
-                         :on-complete     (fn [lines]
-                                            (metabot-v3.persistence/store-message!
-                                             conversation-id profile-id
-                                             (metabot-v3.u/aisdk->messages :assistant lines)
-                                             :channel-id channel-id
-                                             :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id)))
-                                            :store-in-db)})]
+                         {:context         (metabot-v3.context/create-context
+                                            {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
+                                             :capabilities               capabilities
+                                             :slack_channel_id           channel-id})
+                          :metabot-id      metabot-id
+                          :profile-id      profile-id
+                          :session-id      session-id
+                          :conversation-id conversation-id
+                          :message         request-message
+                          :history         history
+                          :state           {}
+                          :on-line         handle-line
+                          :on-complete     (fn [lines]
+                                             (metabot-v3.persistence/store-message!
+                                              conversation-id profile-id
+                                              (metabot-v3.u/aisdk->messages :assistant lines)
+                                              :channel-id channel-id
+                                              :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id)))
+                                             :store-in-db)})]
     (->> (metabot-v3.u/aisdk->messages :assistant lines)
          (filter #(= (:_type %) :DATA)))))
 
