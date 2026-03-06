@@ -99,6 +99,6 @@ export const buildSandboxPolicies = (
     group_id: groupId,
     card_id: null,
     attribute_remappings: {
-      tenant_identifier: ["dimension", ["field", table.filterFieldId, null]],
+      organization_id: ["dimension", ["field", table.filterFieldId, null]],
     },
   }));

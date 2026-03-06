@@ -182,6 +182,7 @@ export const SetupPermissionsAndTenantsPage = () => {
             onTenantsCreated={setCreatedTenants}
             selectedFieldIds={rlsSelection.fieldIds}
             strategy={activeStrategy}
+            rlsColumnName={rlsSelection.columnName}
           />
         </OnboardingStepper.Step>
 
