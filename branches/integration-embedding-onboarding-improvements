@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "master",
-    "hash": "8f1606adc5041c488fa6c3f1deb8592b80e566ce"
+    "hash": "58d2cd37b679f70b99e0e0b606b46435d97b0948"
   },
   "upstream": {
     "branch": "integration-embedding-onboarding-improvements"
