@@ -5,7 +5,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -96,8 +95,7 @@
                                     (apply f expr values)
                                     (f expr value))))
           string-match (fn [match-fn]
-                         (-> (with-values-or-value match-fn)
-                             (lib.options/update-options assoc :case-sensitive false)))
+                         (-> match-fn with-values-or-value lib/ignore-case))
           filter
           (case operation
             :is-null                      (lib/is-null expr)

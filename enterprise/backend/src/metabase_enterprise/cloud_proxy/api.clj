@@ -10,15 +10,13 @@
 
 (set! *warn-on-reflection* true)
 
-;; Allowlist of superuser operation-ids
-(def ^:private allowed-superuser-operations
+(def ^:private superuser-operation-allowlist
   #{"mb-plan-trial-up"
     "mb-plan-trial-up-available"
     "mb-plan-change-plan"
     "mb-plan-change-plan-preview"})
 
-;; Allowlist of non-superuser operation-ids
-(def ^:private allowed-public-operations
+(def ^:private non-superuser-operation-allowlist
   #{"list-plans"
     "get-plan"
     "list-addons"})
@@ -34,9 +32,9 @@
    body :- [:maybe :map]]
   (when-not (premium-features/is-hosted?)
     (throw (ex-info "This endpoint is only available for hosted instances" {:status-code 400})))
-  (when-not (contains? (into allowed-public-operations allowed-superuser-operations) operation-id)
+  (when-not (contains? (into non-superuser-operation-allowlist superuser-operation-allowlist) operation-id)
     (throw (ex-info "Invalid operation-id" {:status-code 400})))
-  (when-not (contains? allowed-public-operations operation-id)
+  (when-not (contains? non-superuser-operation-allowlist operation-id)
     (api/check-superuser))
   (->> body
        m.util/deep-kebab-keys

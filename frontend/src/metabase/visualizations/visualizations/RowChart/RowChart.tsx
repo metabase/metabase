@@ -1,4 +1,3 @@
-import type * as React from "react";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
