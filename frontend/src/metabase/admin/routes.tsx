@@ -195,11 +195,7 @@ export const getRoutes = (
                 component={SetupPermissionsAndTenantsPage}
               />
 
-              <Route
-                path="sso"
-                title={t`Configure SSO`}
-                component={SetupSsoPage}
-              />
+              <Route path="sso" component={SetupSsoPage} />
             </Route>
 
             {/* EE with non-starter plan has embedding settings on different pages */}

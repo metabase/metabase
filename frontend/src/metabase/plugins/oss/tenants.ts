@@ -45,6 +45,8 @@ const getDefaultPluginTenants = () => ({
   TenantsSummaryOnboardingStep: PluginPlaceholder as React.ComponentType<{
     tenants: CreatedTenantData[];
     strategy?: DataSegregationStrategy | null;
+    rlsTableNames?: string[];
+    rlsColumnName?: string | null;
   }>,
   EditUserStrategySettingsButton: PluginPlaceholder,
   FormTenantWidget: (_props: any) => null as React.ReactElement | null,
@@ -116,6 +118,8 @@ export const PLUGIN_TENANTS: {
   TenantsSummaryOnboardingStep: React.ComponentType<{
     tenants: CreatedTenantData[];
     strategy?: DataSegregationStrategy | null;
+    rlsTableNames?: string[];
+    rlsColumnName?: string | null;
   }>;
   EditUserStrategySettingsButton: (props: {
     page: "people" | "tenants";
