@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.api.slackbot :as slackbot]
+   [metabase-enterprise.metabot-v3.api.slackbot.channel :as slackbot.channel]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
    [metabase-enterprise.metabot-v3.api.slackbot.config :as slackbot.config]
    [metabase-enterprise.metabot-v3.api.slackbot.persistence :as slackbot.persistence]
@@ -497,8 +498,8 @@
                               (:text %))
                           @post-calls))))))))))
 
-(deftest stop-stream-failure-invalid-blocks-retries-degraded-blocks-test
-  (testing "When fallback post-message gets invalid_blocks, retries with degraded blocks"
+(deftest stop-stream-failure-falls-back-to-plain-error-message-test
+  (testing "When stop-stream fails, fallback posts a plain error message"
     (with-slackbot-setup
       (let [event-body      (update base-dm-event :event merge
                                     {:text      "Please show chart"
@@ -507,7 +508,7 @@
             mock-data-parts [{:type "static_viz" :value {:entity_id 101}}]
             stop-calls      (atom [])
             fallback-calls  (atom [])
-            fallback-text   "I generated a response, but Slack failed to finalize streaming. Sharing results below."]
+            fallback-text   "I generated a response, but Slack could not render it. Please try again."]
         (with-slackbot-mocks!
           {:ai-text "Here is your chart"
            :data-parts mock-data-parts}
@@ -519,23 +520,19 @@
                slackbot.client/post-message (fn [_ msg]
                                               (when (= fallback-text (:text msg))
                                                 (swap! fallback-calls conj msg))
-                                              (if (some #(= "context_actions" (:type %)) (:blocks msg))
-                                                {:ok false
-                                                 :error "invalid_blocks"
-                                                 :response_metadata {:messages ["context_actions not allowed"]}}
-                                                {:ok true :channel (:channel msg) :ts "123.456"}))]
+                                              {:ok true :channel (:channel msg) :ts "123.456"})]
               (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                         (slack-request-options event-body)
                                         event-body)]
                 (is (= "ok" response))
-                (u/poll {:thunk      #(>= (count @fallback-calls) 2)
+                (u/poll {:thunk      #(>= (count @fallback-calls) 1)
                          :done?      true?
                          :timeout-ms 5000})
                 (is (= 1 (count @stop-calls)))
-                (is (= ["section" "image" "context_actions"]
-                       (mapv :type (:blocks (first @fallback-calls)))))
-                (is (= ["section" "image"]
-                       (mapv :type (:blocks (second @fallback-calls)))))))))))))
+                (is (= [{:channel "C456"
+                         :thread_ts "1234567890.000000"
+                         :text fallback-text}]
+                       @fallback-calls))))))))))
 
 (deftest ai-request-error-stops-stream-test
   (testing "When the AI request throws after the stream has started, the stream is stopped"
@@ -1748,9 +1745,11 @@
                                                      (swap! update-calls conj msg)
                                                      {:ok true})]
         (let [{:keys [on-tool-start on-tool-end on-text request-flush! slack-writer current-text]}
-              (#'slackbot.streaming/make-channel-callbacks {:token "xoxb-test"}
-                                                           {:channel "C123"
-                                                            :message-ts "123.456"})]
+              (#'slackbot.channel/make-channel-callbacks {:token "xoxb-test"}
+                                                         {:channel              "C123"
+                                                          :message-ts           "123.456"
+                                                          :thinking-placeholder "_Thinking..._"
+                                                          :tool-name->friendly  #'slackbot.streaming/tool-name->friendly})]
           (on-tool-start {:id "tool-1" :tool-name "search"})
           (await slack-writer)
           (is (= "_Searching..._" (:text (first @update-calls))))
@@ -1765,39 +1764,6 @@
           (await slack-writer)
           (is (= 1 (count @update-calls)) "channel text should not be streamed incrementally")
           (is (= "Here is the answer" @current-text)))))))
-
-(deftest send-with-retries-nil-blocks-test
-  (testing "plain-text fallback is attempted when blocks are nil"
-    (let [calls (atom [])]
-      (is (= {:ok true :attempt :plain}
-             (#'slackbot.streaming/send-with-retries
-              (fn [text blocks]
-                (swap! calls conj {:text text :blocks blocks})
-                {:ok true :attempt :plain})
-              "test-send"
-              "hello"
-              nil)))
-      (is (= [{:text "hello" :blocks nil}] @calls)))))
-
-(deftest send-with-retries-degrades-to-plain-text-test
-  (testing "retries continue past stripped blocks to a final plain-text attempt"
-    (let [calls  (atom [])
-          blocks [{:type "section"}
-                  {:type "context_actions"}]]
-      (is (= {:ok true :attempt :plain}
-             (#'slackbot.streaming/send-with-retries
-              (fn [_text candidate]
-                (swap! calls conj candidate)
-                (if (nil? candidate)
-                  {:ok true :attempt :plain}
-                  {:ok false :error "invalid_blocks"}))
-              "test-send"
-              "hello"
-              blocks)))
-      (is (= [blocks
-              [{:type "section"}]
-              nil]
-             @calls)))))
 
 ;; -------------------------------- PUT /slack/settings Tests --------------------------------
 

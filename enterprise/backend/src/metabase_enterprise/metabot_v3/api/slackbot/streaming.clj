@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase-enterprise.metabot-v3.api.slackbot.channel :as slackbot.channel]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
    [metabase-enterprise.metabot-v3.api.slackbot.events :as slackbot.events]
    [metabase-enterprise.metabot-v3.api.slackbot.persistence :as slackbot.persistence]
@@ -157,13 +158,6 @@
    At Slack's rate limit of ~100 calls/minute, 600ms spacing leaves
    headroom for tool-update and other non-text API calls."
   600)
-
-(def ^:private channel-response-style-suffix
-  (str "\n\n"
-       "For this Slack channel response: the user already saw tool progress updates. "
-       "Do not narrate the steps you took, do not recap tool calls, and do not include preambles like "
-       "\"I'll...\", \"Let me...\", or \"I found...\". Give a brief final answer focused on the result in "
-       "1-2 sentences before any table or chart."))
 
 (defn- make-streaming-ai-request
   "Make a streaming AI request with callbacks for each message type.
@@ -472,36 +466,12 @@
                 :negative_button {:text  {:type "plain_text" :text "Bad"}
                                   :value (json/encode {:conversation_id conversation-id :positive false})}}]}])
 
-(defn- remove-block-type
-  "Return blocks with the given block type removed, or nil if empty."
-  [blocks block-type]
-  (when blocks
-    (not-empty (vec (remove #(= block-type (:type %)) blocks)))))
-
-(defn- final-text-blocks
-  "Build the leading text block(s) for a finalized non-streaming Slack message."
-  [text]
-  (if (str/blank? text)
-    []
-    [{:type "section"
-      :text {:type "mrkdwn"
-             :text text}}]))
-
-(defn- progress-text
-  "Build the in-progress text shown in a visible channel reply."
-  [status text]
-  (let [parts (cond-> []
-                (seq status) (conj (str "_" status "_"))
-                (seq text)   (conj text))]
-    (or (not-empty (str/join "\n\n" parts))
-        thinking-placeholder)))
-
-(defn- progress-blocks
-  "Build blocks for an in-progress visible channel reply."
-  [status text]
-  [{:type "section"
-    :text {:type "mrkdwn"
-           :text (progress-text status text)}}])
+(defn- post-thread-reply
+  "Post a threaded Slack reply using the provided message context."
+  [client message-ctx text blocks]
+  (slackbot.client/post-message client
+                                (cond-> (assoc message-ctx :text text)
+                                  blocks (assoc :blocks blocks))))
 
 (defn- prepare-response-context
   "Fetch thread/auth context shared by DM and channel delivery paths."
@@ -528,73 +498,6 @@
      :prompt          prompt
      :conversation-id conversation-id}))
 
-(defn- channel-request-prompt
-  "Append channel-specific response style guidance without changing the stored user prompt."
-  [prompt]
-  (str prompt channel-response-style-suffix))
-
-(defn- send-with-retries
-  "Try sending a Slack message/update with progressively degraded block payloads."
-  [send-fn op-label text blocks]
-  (let [candidate-blocks [blocks
-                          (remove-block-type blocks "context_actions")
-                          nil]]
-    (loop [remaining candidate-blocks
-           seen      #{}
-           attempt   1
-           last-res  nil]
-      (if-not (seq remaining)
-        last-res
-        (let [candidate (first remaining)]
-          (if (contains? seen candidate)
-            (recur (rest remaining) seen attempt last-res)
-            (let [res (send-fn text candidate)]
-              (if (:ok res)
-                (do
-                  (log/debugf "[slackbot] %s attempt=%d succeeded (block_count=%d block_types=%s)"
-                              op-label
-                              attempt
-                              (count (or candidate []))
-                              (pr-str (when candidate (mapv :type candidate))))
-                  res)
-                (do
-                  (log/warnf "[slackbot] %s attempt=%d failed: %s (block_count=%d block_types=%s response_messages=%s)"
-                             op-label
-                             attempt
-                             (:error res)
-                             (count (or candidate []))
-                             (pr-str (when candidate (mapv :type candidate)))
-                             (pr-str (get-in res [:response_metadata :messages])))
-                  (recur (rest remaining) (conj seen candidate) (inc attempt) res))))))))))
-
-(defn- post-thread-reply
-  "Post a threaded Slack reply using the provided message context."
-  [client message-ctx text blocks]
-  (slackbot.client/post-message client
-                                (cond-> (assoc message-ctx :text text)
-                                  blocks (assoc :blocks blocks))))
-
-(defn- post-thread-reply-with-retries
-  "Post a threaded Slack reply, retrying with progressively simpler block payloads."
-  [client message-ctx op-label text blocks]
-  (send-with-retries #(post-thread-reply client message-ctx %1 %2)
-                     op-label
-                     text
-                     blocks))
-
-(defn- update-message-with-retries
-  "Update an existing Slack message, retrying with progressively simpler block payloads."
-  [client channel message-ts op-label text blocks]
-  (send-with-retries (fn [message-text message-blocks]
-                       (slackbot.client/update-message client
-                                                       (cond-> {:channel channel
-                                                                :ts      message-ts
-                                                                :text    message-text}
-                                                         message-blocks (assoc :blocks message-blocks))))
-                     op-label
-                     text
-                     blocks))
-
 (defn- make-viz-prefetch-callback
   "Create an `:on-data` callback that submits visualization rendering work eagerly."
   [prefetched-viz]
@@ -612,61 +515,6 @@
   "Cancel any in-flight visualization futures."
   [prefetched-viz]
   (run! #(.cancel ^Future (:future %) true) (vals @prefetched-viz)))
-
-(defn- make-channel-callbacks
-  "Create callback functions that update a single visible threaded reply in channels.
-   Channel replies only surface tool-status updates progressively; text is accumulated
-   and sent once in the final message update."
-  [client {:keys [channel message-ts]}]
-  (let [rendered-text     (atom thinking-placeholder)
-        current-text      (atom "")
-        current-status    (atom nil)
-        update-failed?    (atom false)
-        slack-writer      (agent nil
-                                 :error-mode    :continue
-                                 :error-handler (fn [_ e] (log/warn e "[slackbot] Async Slack update failed")))
-        last-flush-timer  (volatile! nil)
-        flush-progress!   (fn []
-                            (when (and message-ts (not @update-failed?))
-                              (let [rendered (progress-text @current-status nil)]
-                                (when (not= rendered @rendered-text)
-                                  (let [res (slackbot.client/update-message client {:channel channel
-                                                                                    :ts      message-ts
-                                                                                    :text    rendered
-                                                                                    :blocks  (progress-blocks @current-status nil)})]
-                                    (if (:ok res)
-                                      (reset! rendered-text rendered)
-                                      (do
-                                        (reset! update-failed? true)
-                                        (log/warnf "[slackbot] channel update failed: %s (channel=%s ts=%s)"
-                                                   (:error res) channel message-ts))))))))]
-    (letfn [(request-flush! ([] (request-flush! false))
-              ([force?]
-               (when (and message-ts (not @update-failed?))
-                 (when (or force?
-                           (nil? @last-flush-timer)
-                           (>= (u/since-ms @last-flush-timer) min-flush-interval-ms))
-                   (vreset! last-flush-timer (u/start-timer))
-                   (send-off slack-writer (bound-fn* (fn [_] (flush-progress!) nil)))))))
-            (set-status! [status]
-              (reset! current-status status)
-              (request-flush! true))
-            (clear-status! []
-              (reset! current-status nil)
-              (request-flush! true))]
-      {:on-text       (bound-fn* (fn [text]
-                                   (when (seq text)
-                                     (swap! current-text str text))))
-       :on-tool-start (fn [{:keys [tool-name]}]
-                        (set-status! (str (tool-name->friendly tool-name) "...")))
-       :on-tool-end   (constantly nil)
-       :on-data       (constantly nil)
-       :request-flush! request-flush!
-       :set-status!   set-status!
-       :clear-status! clear-status!
-       :slack-writer  slack-writer
-       :current-text  current-text
-       :update-failed? update-failed?})))
 
 (defn- send-dm-response
   [client event extra-history {:keys [channel-id message-ctx channel thread-ts auth-info thread bot-user-id prompt conversation-id]}]
@@ -707,11 +555,10 @@
                           channel thread-ts stream_ts (count final-blocks) (pr-str (mapv :type final-blocks)))
               (when-not (:ok stop-result)
                 (log/warnf "[slackbot] stop-stream fallback to post-message: %s" (:error stop-result))
-                (let [fallback-result (post-thread-reply-with-retries client
-                                                                      message-ctx
-                                                                      "fallback post-message"
-                                                                      "I generated a response, but Slack failed to finalize streaming. Sharing results below."
-                                                                      final-blocks)]
+                (let [fallback-result (post-thread-reply client
+                                                         message-ctx
+                                                         "I generated a response, but Slack could not render it. Please try again."
+                                                         nil)]
                   (when-not (:ok fallback-result)
                     (log/errorf "[slackbot] fallback post-message failed after stop-stream error: %s" (:error fallback-result))))))
             (doseq [e errors]
@@ -728,107 +575,15 @@
             (let [stop-result (slackbot.client/stop-stream client channel stream_ts)]
               (when-not (:ok stop-result)
                 (log/warnf "[slackbot] stop-stream during error cleanup failed: %s" (:error stop-result))
-                (let [fallback-result (post-thread-reply-with-retries client
-                                                                      message-ctx
-                                                                      "fallback post-message"
-                                                                      "Something went wrong. Please try again."
-                                                                      nil)]
+                (let [fallback-result (post-thread-reply client
+                                                         message-ctx
+                                                         "Something went wrong. Please try again."
+                                                         nil)]
                   (when-not (:ok fallback-result)
                     (log/errorf "[slackbot] cleanup fallback post-message failed: %s" (:error fallback-result))))))
             (catch Exception stop-e
               (log/debug stop-e "[slackbot] Failed to stop stream during error cleanup")))
           (post-thread-reply client message-ctx "Something went wrong. Please try again." nil))))))
-
-(defn- send-channel-response
-  [client event extra-history {:keys [channel-id message-ctx channel thread-ts thread bot-user-id prompt conversation-id]}]
-  (let [initial-response (slackbot.client/post-message client {:channel   channel
-                                                               :thread_ts thread-ts
-                                                               :text      thinking-placeholder})
-        message-ts       (:ts initial-response)
-        {:keys [on-text on-tool-start on-tool-end
-                request-flush! set-status! clear-status! slack-writer current-text update-failed?]}
-        (make-channel-callbacks client {:channel channel
-                                        :message-ts message-ts})
-        prefetched-viz   (atom {})
-        on-data          (make-viz-prefetch-callback prefetched-viz)]
-    (when-not (:ok initial-response)
-      (log/warnf "[slackbot] initial channel reply failed: %s (channel=%s thread_ts=%s)"
-                 (:error initial-response) channel thread-ts))
-    (try
-      (let [_data-parts (make-streaming-ai-request
-                         conversation-id
-                         prompt
-                         thread
-                         bot-user-id
-                         channel-id
-                         extra-history
-                         {:on-text              on-text
-                          :on-tool-start        on-tool-start
-                          :on-tool-end          on-tool-end
-                          :on-data              on-data
-                          :req-slack-msg-id     (:ts event)
-                          :get-res-slack-msg-id (when message-ts (fn [] message-ts))
-                          :request-prompt       (channel-request-prompt prompt)})]
-        (request-flush! true)
-        (when (seq @prefetched-viz)
-          (set-status! "Rendering results..."))
-        (await slack-writer)
-        (let [{:keys [blocks errors]} (collect-viz-blocks client @prefetched-viz)
-              answer-text             (str/trim @current-text)
-              final-text              (if (or (seq answer-text) (seq blocks))
-                                        answer-text
-                                        "I wasn't able to generate a response. Please try again.")
-              final-blocks            (into (into (final-text-blocks final-text) blocks)
-                                            (feedback-blocks conversation-id))]
-          (if (and message-ts (not @update-failed?))
-            (let [update-result (update-message-with-retries client
-                                                             channel
-                                                             message-ts
-                                                             "channel update-message"
-                                                             final-text
-                                                             final-blocks)]
-              (when-not (:ok update-result)
-                (let [fallback-result (post-thread-reply-with-retries client
-                                                                      message-ctx
-                                                                      "channel fallback post-message"
-                                                                      final-text
-                                                                      final-blocks)]
-                  (when-not (:ok fallback-result)
-                    (log/errorf "[slackbot] channel fallback post-message failed after update error: %s" (:error fallback-result))))))
-            (let [fallback-result (post-thread-reply-with-retries client
-                                                                  message-ctx
-                                                                  "channel fallback post-message"
-                                                                  final-text
-                                                                  final-blocks)]
-              (when-not (:ok fallback-result)
-                (log/errorf "[slackbot] channel fallback post-message failed: %s" (:error fallback-result)))))
-          (doseq [e errors]
-            (post-viz-error! client channel thread-ts e))))
-      (catch Exception e
-        (cancel-prefetched-viz! prefetched-viz)
-        (log/error e "[slackbot] Error in channel response")
-        (clear-status!)
-        (await slack-writer)
-        (let [error-text "Something went wrong. Please try again."]
-          (if (and message-ts (not @update-failed?))
-            (let [update-result (slackbot.client/update-message client {:channel channel
-                                                                        :ts      message-ts
-                                                                        :text    error-text})]
-              (when-not (:ok update-result)
-                (let [fallback-result (post-thread-reply-with-retries client
-                                                                      message-ctx
-                                                                      "channel fallback post-message"
-                                                                      error-text
-                                                                      nil)]
-                  (when-not (:ok fallback-result)
-                    (log/errorf "[slackbot] channel cleanup fallback post-message failed: %s" (:error fallback-result))))))
-            (let [fallback-result (post-thread-reply-with-retries client
-                                                                  message-ctx
-                                                                  "channel fallback post-message"
-                                                                  error-text
-                                                                  nil)]
-              (when-not (:ok fallback-result)
-                (log/errorf "[slackbot] channel cleanup fallback post-message failed: %s" (:error fallback-result))))))))))
 
 (defn send-response
   "Send a metabot response using Slack delivery suited to the conversation type.
@@ -839,4 +594,15 @@
    (let [ctx (prepare-response-context client event)]
      (if (slackbot.events/dm? event)
        (send-dm-response client event extra-history ctx)
-       (send-channel-response client event extra-history ctx)))))
+       (slackbot.channel/send-channel-response client
+                                               event
+                                               extra-history
+                                               ctx
+                                               {:thinking-placeholder     thinking-placeholder
+                                                :tool-name->friendly      tool-name->friendly
+                                                :make-streaming-ai-request make-streaming-ai-request
+                                                :collect-viz-blocks       collect-viz-blocks
+                                                :feedback-blocks          feedback-blocks
+                                                :post-viz-error!          post-viz-error!
+                                                :make-viz-prefetch-callback make-viz-prefetch-callback
+                                                :cancel-prefetched-viz!   cancel-prefetched-viz!})))))
