@@ -163,14 +163,42 @@ export const getCartesianChartOption = (
     });
   }
 
+  // Enable horizontal scrolling for charts with more than 50 data points
+  const dataPointCount = chartModel.transformedDataset.length;
+  const shouldEnableScroll = dataPointCount > 50;
+  const dataZoom = shouldEnableScroll
+    ? [
+        {
+          type: "slider" as const,
+          show: true,
+          xAxisIndex: 0,
+          start: 0,
+          end: Math.min(100, (50 / dataPointCount) * 100), // Show first 50 data points initially
+          bottom: 0,
+          height: 20,
+        },
+        {
+          type: "inside" as const,
+          xAxisIndex: 0,
+          start: 0,
+          end: Math.min(100, (50 / dataPointCount) * 100),
+        },
+      ]
+    : undefined;
+
   return {
     ...getSharedEChartsOptions(isAnimated),
     grid: {
       ...chartMeasurements.padding,
+      // Add extra bottom padding when scroll slider is shown
+      bottom: shouldEnableScroll
+        ? (chartMeasurements.padding.bottom ?? 0) + 30
+        : chartMeasurements.padding.bottom,
       outerBoundsMode: "none",
     },
     dataset: echartsDataset,
     series: seriesOption,
+    dataZoom,
     ...ensureRoomForLabels(
       buildAxes(
         chartModel,
