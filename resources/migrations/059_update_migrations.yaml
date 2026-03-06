@@ -3574,6 +3574,19 @@ databaseChangeLog:
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-03-06T00:00:00
+      author: qnkhuat
+      comment: Fix computed transform tables incorrectly marked as writable
+      changes:
+        - sql:
+            sql: >
+              UPDATE metabase_table
+              SET is_writable = FALSE
+              WHERE data_authority = 'computed'
+                AND data_source = 'metabase-transform'
+                AND is_writable = TRUE;
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
