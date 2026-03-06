@@ -356,6 +356,7 @@
     (let [{:keys [profile tools context memory-atom request-id conversation-id tracking-opts]} agent
           max-iter      (:max-iterations profile 10)
           tracking-opts (merge {:profile-name (:name profile)
+                                :iteration    iteration
                                 :request-id   request-id
                                 :session-id   conversation-id
                                 :source       "metabot_agent"
