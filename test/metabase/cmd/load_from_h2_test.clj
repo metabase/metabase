@@ -68,7 +68,7 @@
   [db-type db-def data-source]
   (tx/destroy-db! db-type db-def)
   (tx/create-db! db-type db-def)
-  (mdb.setup/setup-db! db-type data-source true false)
+  (mdb.setup/setup-db! db-type data-source true)
   (search/reset-tracking!))
 
 (defn- dump-filename

@@ -13,6 +13,8 @@
    [metabase.lib.core :as lib]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.query-processor.util :as qp.util]
+   [metabase.sample-content.core :as sample-content]
+   [metabase.sample-data.core :as sample-data]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -397,8 +399,10 @@
 (deftest internal-content-metrics-test
   (testing "Internal content doesn't contribute to stats"
     (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? true)
+      (mdb/setup-db!)
       (mbc/ensure-audit-db-installed!)
+      (sample-data/extract-and-sync-sample-database!)
+      (sample-content/import!)
       (testing "sense check: internal content exists"
         (is (true? (t2/exists? :model/User)))
         (is (true? (t2/exists? :model/Database)))
@@ -431,7 +435,7 @@
 
 (deftest activation-signals-test
   (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? true)
+    (mdb/setup-db!)
 
     (testing "sufficient-users? correctly counts the number of users within three days of instance creation"
       (is (false? (@#'stats/sufficient-users? 1)))
@@ -450,7 +454,7 @@
 
 (deftest csv-upload-available-test
   (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? true)
+    (mdb/setup-db!)
 
     (testing "csv-upload-available? currently detects upload availability based on the current MB version"
       (mt/with-temp [:model/Database _ {:engine :postgres}]

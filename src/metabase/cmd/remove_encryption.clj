@@ -9,6 +9,6 @@
   []
   (when-not (mdb/db-is-set-up?)
     (log/info "Checking database configuration prior to decryption")
-    (mdb/setup-db! :create-sample-content? true))
+    (mdb/setup-db!))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
   (mdb/decrypt-db (mdb/db-type) (mdb/data-source)))

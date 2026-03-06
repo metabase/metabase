@@ -335,7 +335,7 @@
 (mu/defmethod metabase-instance DatabaseDefinition :- [:maybe :map]
   [{:keys [database-name]} :- [:map [:database-name :string]]
    driver                  :- :keyword]
-  (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
+  (mdb/setup-db!)
   (t2/select-one :model/Database
                  :name   (database-display-name-for-driver driver database-name)
                  :engine driver
