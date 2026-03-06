@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1351-show-segregation-strategy-specific-data-permissions-in",
-    "hash": "5677ca9063d22e06409a8797e7e53796d2819b00"
+    "hash": "9e70f9fe530709baacaea363d735cc73c30a48a9"
   },
   "upstream": {
     "branch": "emb-1382-update-in-app-jwt-onboarding-to-use-snippets-instead-of"
