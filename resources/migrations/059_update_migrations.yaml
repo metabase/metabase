@@ -3594,6 +3594,7 @@ databaseChangeLog:
               WHERE data_authority = 'computed'
                 AND data_source = 'metabase-transform'
                 AND is_writable = TRUE;
+      rollback: # rolling back still leaves the fix in place
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
