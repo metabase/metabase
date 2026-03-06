@@ -373,7 +373,7 @@
                                   (assoc :lib/source      :source/aggregations
                                          :lib/source-uuid (lib.options/uuid aggregation))))))))))
 
-(def ^:private OperatorWithColumns
+(mr/def ::operator-with-columns
   [:merge
    ::lib.schema.aggregation/operator
    [:map
@@ -392,10 +392,10 @@
 
 (mu/defn aggregation-operator-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns the columns for which `aggregation-operator` is applicable."
-  [aggregation-operator :- OperatorWithColumns]
+  [aggregation-operator :- ::operator-with-columns]
   (:columns aggregation-operator))
 
-(mu/defn available-aggregation-operators :- [:maybe [:sequential OperatorWithColumns]]
+(mu/defn available-aggregation-operators :- [:maybe [:sequential ::operator-with-columns]]
   "Returns the available aggregation operators for the stage with `stage-number` of `query`.
   If `stage-number` is omitted, uses the last stage."
   ([query]
@@ -442,16 +442,16 @@
     column]
    (lib.options/ensure-uuid [(:short aggregation-operator) {} (lib.common/->op-arg column)])))
 
-(def ^:private SelectedOperatorWithColumns
+(mr/def ::selected-operator-with-columns
   [:merge
    ::lib.schema.aggregation/operator
    [:map
     [:columns {:optional true} [:sequential ::lib.schema.metadata/column]]
     [:selected? {:optional true} :boolean]]])
 
-(mu/defn selected-aggregation-operators :- [:maybe [:sequential SelectedOperatorWithColumns]]
+(mu/defn selected-aggregation-operators :- [:maybe [:sequential ::selected-operator-with-columns]]
   "Mark the operator and the column (if any) in `agg-operators` selected by `agg-clause`."
-  [agg-operators :- [:maybe [:sequential OperatorWithColumns]]
+  [agg-operators :- [:maybe [:sequential ::operator-with-columns]]
    agg-clause]
   (when (seq agg-operators)
     (let [[op _ agg-col] agg-clause
