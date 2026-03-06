@@ -15,9 +15,6 @@ export const createMockAdminState = (
   datamodel: {
     revisions: null,
   },
-  people: {
-    temporaryPasswords: {},
-  },
   ...opts,
 });
 
