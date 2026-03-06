@@ -190,7 +190,7 @@ export function useMetricsViewer({
       return null;
     }
     return (
-      state.tabs.find((t) => t.id === state.selectedTabId) ?? state.tabs[0]
+      state.tabs.find((tab) => tab.id === state.selectedTabId) ?? state.tabs[0]
     );
   }, [state.tabs, state.selectedTabId]);
 
@@ -221,7 +221,7 @@ export function useMetricsViewer({
   );
 
   const sourceOrder = useMemo(
-    () => state.definitions.map((d) => d.id),
+    () => state.definitions.map((entry) => entry.id),
     [state.definitions],
   );
 
@@ -249,7 +249,7 @@ export function useMetricsViewer({
   }, [state.definitions]);
 
   const existingTabIds = useMemo(
-    () => new Set(state.tabs.map((t) => t.id)),
+    () => new Set(state.tabs.map((tab) => tab.id)),
     [state.tabs],
   );
 
@@ -296,7 +296,7 @@ export function useMetricsViewer({
     (metric: SelectedMetric) => {
       const sourceId = createSourceId(metric.id, metric.sourceType);
 
-      if (state.definitions.some((d) => d.id === sourceId)) {
+      if (state.definitions.some((entry) => entry.id === sourceId)) {
         return;
       }
 

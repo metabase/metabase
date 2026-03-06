@@ -190,7 +190,7 @@ export function useViewerState(): UseViewerStateResult {
   const addDefinition = useCallback(
     (entry: MetricsViewerDefinitionEntry) =>
       setState((prev) => {
-        if (prev.definitions.some((d) => d.id === entry.id)) {
+        if (prev.definitions.some((existing) => existing.id === entry.id)) {
           return prev;
         }
 
@@ -217,7 +217,9 @@ export function useViewerState(): UseViewerStateResult {
   const removeDefinition = useCallback(
     (id: MetricSourceId) =>
       setState((prev) => {
-        const newDefinitions = prev.definitions.filter((d) => d.id !== id);
+        const newDefinitions = prev.definitions.filter(
+          (entry) => entry.id !== id,
+        );
         const newTabs = prev.tabs
           .map((tab) => {
             const { [id]: _, ...rest } = tab.dimensionMapping;
@@ -238,8 +240,8 @@ export function useViewerState(): UseViewerStateResult {
   const updateDefinition = useCallback(
     (id: MetricSourceId, definition: MetricDefinition) =>
       setState((prev) => {
-        const newDefinitions = prev.definitions.map((d) =>
-          d.id === id ? { ...d, definition } : d,
+        const newDefinitions = prev.definitions.map((entry) =>
+          entry.id === id ? { ...entry, definition } : entry,
         );
 
         if (prev.tabs.length === 0) {
@@ -270,7 +272,7 @@ export function useViewerState(): UseViewerStateResult {
   const replaceDefinition = useCallback(
     (oldId: MetricSourceId, newEntry: MetricsViewerDefinitionEntry) =>
       setState((prev) => {
-        const index = prev.definitions.findIndex((d) => d.id === oldId);
+        const index = prev.definitions.findIndex((entry) => entry.id === oldId);
         if (index === -1) {
           return prev;
         }
@@ -299,7 +301,7 @@ export function useViewerState(): UseViewerStateResult {
   const addTab = useCallback(
     (tab: MetricsViewerTabState) =>
       setState((prev) => {
-        if (prev.tabs.some((t) => t.id === tab.id)) {
+        if (prev.tabs.some((existing) => existing.id === tab.id)) {
           return prev;
         }
         return {
@@ -315,7 +317,7 @@ export function useViewerState(): UseViewerStateResult {
   const removeTab = useCallback(
     (tabId: string) =>
       setState((prev) => {
-        const newTabs = prev.tabs.filter((t) => t.id !== tabId);
+        const newTabs = prev.tabs.filter((tab) => tab.id !== tabId);
         const needsTabSwitch = prev.selectedTabId === tabId;
 
         return {
@@ -347,7 +349,9 @@ export function useViewerState(): UseViewerStateResult {
       dimension: DimensionMetadata,
     ) =>
       setState((prev) => {
-        const entry = prev.definitions.find((d) => d.id === definitionId);
+        const entry = prev.definitions.find(
+          (defEntry) => defEntry.id === definitionId,
+        );
         const def = entry?.definition;
         const dimId = def
           ? LibMetric.dimensionValuesInfo(def, dimension).id

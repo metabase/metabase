@@ -129,7 +129,7 @@ export function useViewerUrl(
   useEffect(() => {
     if (
       state.definitions.length === 0 ||
-      state.definitions.some((d) => d.definition === null)
+      state.definitions.some((entry) => entry.definition === null)
     ) {
       return;
     }
