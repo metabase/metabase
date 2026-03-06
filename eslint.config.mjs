@@ -118,7 +118,7 @@ const configs = [
     },
     settings: {
       "import-x/internal-regex":
-        "^metabase($|/)|^metabase-lib($|/)|^metabase-types($|/)|^metabase-enterprise($|/)|^embedding-sdk-bundle($|/)|^embedding-sdk-shared($|/)|^embedding-sdk-package($|/)|^e2e($|/)|^__support__($|/)|^assets/|^cljs/|^ee-plugins($|/)|^sdk-ee-plugins($|/)|^build-configs/",
+        "^metabase($|/)|^metabase-lib($|/)|^metabase-types($|/)|^metabase-enterprise($|/)|^embedding-sdk-bundle($|/)|^embedding-sdk-shared($|/)|^embedding-sdk-package($|/)|^e2e($|/)|^__support__($|/)|^assets/|^cljs/|^ee-plugins($|/)|^sdk-ee-plugins($|/)|^build-configs/|^sdk-docs-snippets($|/)",
       "import-x/resolver": {
         node: true,
         webpack: {
