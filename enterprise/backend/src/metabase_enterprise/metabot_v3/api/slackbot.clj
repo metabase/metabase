@@ -259,15 +259,12 @@
 
     :else
     (let [request-user-id (slack-id->user-id slack-user-id)]
-      (cond
-        (nil? request-user-id)
+      (if (nil? request-user-id)
         {:status        :ignored
          :reason        :unlinked-user
          :slack-user-id slack-user-id
          :channel-id    channel-id
          :message-ts    message-ts}
-
-        :else
         (if-let [owner-user-id (slackbot.persistence/response-owner-user-id channel-id message-ts)]
           (if (= request-user-id owner-user-id)
             {:status          :authorized
@@ -552,15 +549,15 @@
   "Handle replacing a metabot response message with a removed notice.
    Only the user who triggered the response can do this."
   [{:keys [slack-user-id channel-id message-ts]}]
-  (let [authorization (authorize-delete-request slack-user-id channel-id message-ts)
-        client        {:token (channel.settings/unobfuscated-slack-app-token)}]
+  (let [authorization (authorize-delete-request slack-user-id channel-id message-ts)]
     (case (:status authorization)
       :authorized
-      (future
-        (try
-          (replace-response-with-removed-notice! client channel-id message-ts (:request-user-id authorization))
-          (catch Exception e
-            (log/errorf e "[slackbot] Error replacing metabot response with removed notice: %s" (ex-data e)))))
+      (let [client {:token (channel.settings/unobfuscated-slack-app-token)}]
+        (future
+          (try
+            (replace-response-with-removed-notice! client channel-id message-ts (:request-user-id authorization))
+            (catch Exception e
+              (log/errorf e "[slackbot] Error replacing metabot response with removed notice: %s" (ex-data e))))))
 
       (log-ignored-delete-request (assoc authorization :source "action")))))
 
