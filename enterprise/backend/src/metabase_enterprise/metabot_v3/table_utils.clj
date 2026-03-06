@@ -244,7 +244,8 @@
         queried-tables (->> analysis-result
                             :tables
                             (map #(set/rename-keys % {:table :name, :table-id :id})))
-        {recognized-tables true, unrecognized-tables false} (group-by t2/instance? queried-tables)]
+        {recognized-tables true, unrecognized-tables false} (group-by t2/instance? queried-tables)
+        recognized-tables (used-tables-from-ids database (keep :id recognized-tables))]
     (concat recognized-tables
             (find-matching-tables database unrecognized-tables (map :id recognized-tables)))))
 

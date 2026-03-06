@@ -30,6 +30,9 @@ export type TemporaryPasswordsState = Record<number, string | null>;
 
 export interface AdminState {
   app: AdminAppState;
+  people: {
+    temporaryPasswords: Record<number, string>;
+  };
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;

@@ -56,7 +56,7 @@
   [:and
    [:merge
     {:encode/serialize (fn [opts]
-                         (let [;; These keys were previously in metabase.lib.* namespaces and stripped
+                         (let [ ;; These keys were previously in metabase.lib.* namespaces and stripped
                                ;; by the (= namespace "lib") check. After renaming to :lib/* they'd
                                ;; survive serialization, so exclude them explicitly.
                                exclude (set (vals common/deprecated-lib-key-renames))]
@@ -144,7 +144,10 @@
      ;; Produced by older queries and the `reconcile-breakout-and-order-by-bucketing` QP middleware. Used as a
      ;; fallback in `nest-breakouts` to determine column granularity when `:temporal-unit` is nil or `:default`.
      ;; Not produced by MLv2 code; new queries will not contain this key.
-     [:original-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]]
+     [:original-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]
+     ;;
+     ;; Propagated from `:metabase.lib.schema.metadata/column` metadata; see description there.
+     [:qp.pivot/pivot-grouping? {:optional true} [:maybe :boolean]]]]
    (common/disallowed-keys
     (into {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."}
           (map (fn [[old-key new-key]]

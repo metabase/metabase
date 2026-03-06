@@ -157,7 +157,9 @@
 (defn get-table
   "Get the `fields` of the table with ID `id`."
   [id & fields]
-  (-> (t2/select-one (into [:model/Table :id] fields) id)
+  (-> (t2/select-one (into [:model/Table :id] fields)
+                     :id id
+                     :active true)
       api/read-check))
 
 (defn get-card
