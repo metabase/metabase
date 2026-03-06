@@ -138,7 +138,7 @@ jobs:
           base-ref: ${{ env.BASE_REF }}
           head-ref: ${{ env.HEAD_REF }}
 
-  migrations-mariadb-10-4-ee:
+  migrations-mariadb-10-6-ee:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     env:
@@ -150,7 +150,7 @@ jobs:
       MB_DB_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:10.4
+        image: circleci/mariadb:10.6
         ports:
           - "3306:3306"
     steps:

@@ -109,7 +109,7 @@ jobs:
         junit-name: 'be-tests-druid-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
-  be-tests-mariadb-10-4-ee:
+  be-tests-mariadb-10-6-ee:
     if: inputs.driver == 'Maria DB'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
@@ -124,7 +124,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:10.4
+        image: circleci/mariadb:10.6
         ports:
           - "3306:3306"
     steps:
@@ -132,7 +132,7 @@ jobs:
     - name: Test MariaDB driver (10.4)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mariadb-10-4-ee'
+        junit-name: 'be-tests-mariadb-10-6-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mariadb-latest-ee:
