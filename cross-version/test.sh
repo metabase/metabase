@@ -233,10 +233,10 @@ main() {
     # Stop the failed container
     stop_metabase
 
-    # Run migrate down
+    # Run migrate down (must use SOURCE image - the newer version)
     log ""
-    log "Step 4: Running migrate down..."
-    if ! run_migrate_down "$target_image"; then
+    log "Step 4: Running migrate down with SOURCE version..."
+    if ! run_migrate_down "$source_image"; then
       error "❌ migrate down failed"
       exit 1
     fi
