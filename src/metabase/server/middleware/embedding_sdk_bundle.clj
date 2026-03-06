@@ -61,7 +61,10 @@
 
 (defn serve-chunk-handler
   "Serve /app/embedding-sdk/chunks/:filename — split chunks loaded by the bootstrap.
-   Chunk filenames contain content hashes, so we always use far-future caching."
+   Chunk filenames contain content hashes, so we always use far-future caching.
+   Path traversal is prevented by the route regex `#\"[^/]+\\.js\"` which only allows
+   leaf filenames ending in .js (no slashes). Additionally, Java's class loader
+   resource-response returns nil for paths containing '..'"
   [filename]
   (let [resource (str "frontend_client/app/embedding-sdk/chunks/" filename)]
     (fn [_request]
