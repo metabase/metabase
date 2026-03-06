@@ -7,7 +7,7 @@ import type { ClickObject } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isMetric, isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
 import { computeNumericDataInterval } from "../lib/numeric";
 
@@ -18,13 +18,6 @@ import {
 } from "./LeafletMap";
 
 type GridHeatPoint = LeafletMapPoint<[number]>;
-
-type GridHeatMapSeries = LeafletMapProps["series"][number] & {
-  data: {
-    rows: RowValue[][];
-    cols: DatasetColumn[];
-  };
-};
 
 type LeafletGridHeatMapProps = LeafletMapProps<GridHeatPoint> & {
   min?: number;
@@ -181,9 +174,8 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
     const metricColumn = this._getMetricColumn();
     const { latitudeColumn, longitudeColumn } = this._getLatLonColumns();
     const seriesEntry = series[0];
-    const origin = hasRowsInSeries(seriesEntry)
-      ? { row: seriesEntry.data.rows[index], cols: seriesEntry.data.cols }
-      : undefined;
+    const rows = seriesEntry.data.rows;
+    const origin = { row: rows[index], cols: seriesEntry.data.cols };
 
     return {
       value: point?.[2],
@@ -225,10 +217,4 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
 
 function isRectangleLayer(layer: L.Layer): layer is L.Rectangle {
   return layer instanceof L.Rectangle;
-}
-
-function hasRowsInSeries(
-  series: LeafletMapProps["series"][number] | undefined,
-): series is GridHeatMapSeries {
-  return !!series && "rows" in series.data && Array.isArray(series.data.rows);
 }
