@@ -8,6 +8,16 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(defn- field-id-ref
+  [mp field-id]
+  (-> (lib.metadata/field mp field-id) lib/ref lib/->legacy-MBQL))
+
+(defn- dimension-field-id-ref
+  ([mp field-id]
+   [:dimension (field-id-ref mp field-id)])
+  ([mp field-id stage-number]
+   [:dimension (field-id-ref mp field-id) {:stage-number stage-number}]))
+
 ;;; ------------------------------------------------ Card --------------------------------------------------------
 
 (deftest card-upgrade-field-refs!-query-test
@@ -35,26 +45,28 @@
                            (lib/aggregate (lib/count))
                            (lib/breakout (lib.metadata/field mp (mt/id :orders :id)))
                            (lib/breakout (lib.metadata/field mp (mt/id :orders :created_at))))
+          id-ref       (field-id-ref mp (mt/id :orders :id))
+          created-ref  (field-id-ref mp (mt/id :orders :created_at))
           viz-settings {:column_settings
-                        {(json/encode ["ref" [:field (mt/id :orders :id) nil]])
+                        {(json/encode ["ref" id-ref])
                          {:column_title "Order ID"}
 
-                         (json/encode ["ref" [:field (mt/id :orders :created_at) nil]])
+                         (json/encode ["ref" created-ref])
                          {:column_title "Created"}}
 
                         :table.column_formatting
-                        [{:columns [[:field (mt/id :orders :id) nil]]
+                        [{:columns [id-ref]
                           :value   10}
-                         {:columns [[:field (mt/id :orders :created_at) nil]]
+                         {:columns [created-ref]
                           :value   "1970-01-01"}]
 
                         :pivot_table.column_split
-                        {:rows    [[:field (mt/id :orders :id) nil]]
-                         :columns [[:field (mt/id :orders :created_at) nil]]
+                        {:rows    [id-ref]
+                         :columns [created-ref]
                          :values  [[:aggregation 0] [:aggregation 1]]}
 
                         :pivot_table.collapsed_rows
-                        {:rows  [[:field (mt/id :orders :id) nil]]
+                        {:rows  [id-ref]
                          :value [10]}}]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query query
                                                 :visualization_settings viz-settings}]
@@ -88,7 +100,7 @@
                            (lib/breakout (lib.metadata/field mp (mt/id :orders :id)))
                            (lib/breakout (lib.metadata/field mp (mt/id :orders :created_at))))
           viz-settings {:pivot_table.column_split
-                        {:rows    [[:field (mt/id :orders :id) nil]]
+                        {:rows    [(field-id-ref mp (mt/id :orders :id))]
                          :columns [[:field 9999 nil]]
                          :values  [[:aggregation 0] [:aggregation 1]]}}]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query query
@@ -114,7 +126,7 @@
                                                                :values_source_type "card"
                                                                :values_source_config
                                                                {:card_id card1-id
-                                                                :value_field [:field (mt/id :products :category) nil]}}]}]
+                                                                :value_field (field-id-ref mp (mt/id :products :category))}}]}]
         (replacement.field-refs/upgrade-field-refs! [:card card2-id])
         (is (=? {:parameters [{:name "category"
                                :values_source_config {:card_id card1-id
@@ -319,7 +331,7 @@
                                                                         :values_source_type "card"
                                                                         :values_source_config
                                                                         {:card_id     card-id
-                                                                         :value_field [:field (mt/id :products :category) nil]}}]}]
+                                                                         :value_field (field-id-ref mp (mt/id :products :category))}}]}]
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
         (is (=? {:parameters [{:name "category"
                                :values_source_config {:card_id     card-id
@@ -338,7 +350,7 @@
                                                               :card_id            card-id
                                                               :parameter_mappings [{:parameter_id "my-param"
                                                                                     :card_id      card-id
-                                                                                    :target       [:dimension [:field (mt/id :orders :id) nil] {:stage-number 1}]}]}]
+                                                                                    :target       (dimension-field-id-ref mp (mt/id :orders :id) 1)}]}]
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
         (is (=? {:parameter_mappings [{:parameter_id "my-param"
                                        :card_id      card-id
@@ -354,12 +366,64 @@
                                                               :card_id            card-id
                                                               :parameter_mappings [{:parameter_id "my-param"
                                                                                     :card_id      card-id
-                                                                                    :target       [:dimension [:field 1 nil]]}]}]
+                                                                                    :target       (dimension-field-id-ref mp (mt/id :orders :id))}]}]
         ;; simulate a broken card
         (t2/update! :model/Card card-id {:dataset_query {}})
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
-        (is (=? {:parameter_mappings [{:target [:dimension [:field 1 nil]]}]}
+        (is (=? {:parameter_mappings [{:target (dimension-field-id-ref mp (mt/id :orders :id))}]}
                 (t2/select-one :model/DashboardCard dashcard-id)))))))
+
+(defn- make-click-behavior
+  [card-id target]
+  {:type    "link"
+   :linkType "question"
+   :targetId card-id
+   :parameterMapping
+   {(json/encode target)
+    {:id     (json/encode target)
+     :source {:type :column
+              :id   "ID"
+              :name "ID"}
+     :target {:type      :dimension
+              :id        (json/encode target)
+              :dimension target}}}})
+
+(deftest dashboard-upgrade-field-refs!-click-behaviors-test
+  (testing "should upgrade refs in click behavior parameter mappings (both global and per-column)"
+    (let [mp            (mt/metadata-provider)
+          source-query  (lib/query mp (lib.metadata/table mp (mt/id :products)))
+          target-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                            (lib/breakout (lib.metadata/field mp (mt/id :orders :id)))
+                            lib/append-stage)
+          target        (dimension-field-id-ref mp (mt/id :orders :id) 1)]
+      (mt/with-temp [:model/Card          {source-card-id :id} {:dataset_query source-query}
+                     :model/Card          {target-card-id :id} {:dataset_query target-query}
+                     :model/Dashboard     {dashboard-id :id} {}
+                     :model/DashboardCard {dashcard-id :id}
+                     {:dashboard_id  dashboard-id
+                      :card_id       source-card-id
+                      :visualization_settings
+                      {:click_behavior  (make-click-behavior target-card-id target)
+                       :column_settings
+                       {(json/encode [:name "ID"])
+                        {:click_behavior (make-click-behavior target-card-id target)}}}}]
+        (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
+        (let [viz     (:visualization_settings (t2/select-one :model/DashboardCard dashcard-id))
+              viz-key (keyword (json/encode target))]
+          (testing "global click behavior dimension should be upgraded"
+            (is (=? {:click_behavior
+                     {:targetId target-card-id
+                      :parameterMapping
+                      {viz-key {:target {:dimension ["dimension" [:field "ID" {}] {:stage-number 1}]}}}}}
+                    viz)))
+          (testing "per-column click behavior dimension should be upgraded"
+            (is (=? {:column_settings
+                     {(json/encode [:name "ID"])
+                      {:click_behavior
+                       {:targetId target-card-id
+                        :parameterMapping
+                        {viz-key {:target {:dimension ["dimension" [:field "ID" {}] {:stage-number 1}]}}}}}}}
+                    viz))))))))
 
 (deftest dashboard-upgrade-field-refs!-no-changes-test
   (testing "should not update a dashboard or dashcards when there are no changes"
@@ -372,7 +436,7 @@
                       :card_id            card-id
                       :parameter_mappings [{:parameter_id "my-param"
                                             :card_id      card-id
-                                            :target       [:dimension [:field (mt/id :orders :id) nil]]}]}]
+                                            :target       (dimension-field-id-ref mp (mt/id :orders :id))}]}]
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
         (is (= dash-updated (:updated_at (t2/select-one :model/Dashboard dashboard-id))))
         (is (= dc-updated (:updated_at (t2/select-one :model/DashboardCard dashcard-id))))))))

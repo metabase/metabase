@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as vs]
    [metabase.util.malli :as mu]))
@@ -105,7 +106,7 @@
 
 (mu/defn click-behavior-card-id :- [:maybe ::lib.schema.id/card]
   [click-behavior :- :map]
-  (when (= ::vs/question (::vs/link-type click-behavior))
+  (when (= ::vs/card (::vs/link-type click-behavior))
     (::vs/link-target-id click-behavior)))
 
 (mu/defn viz-settings-click-behavior-card-ids :- [:set ::lib.schema.id/card]
@@ -128,7 +129,8 @@
   [viz-settings :- :map
    target-fn    :- fn?]
   (letfn [(update-mapping [card-id mapping]
-            (or (when-some [target (some-> mapping ::vs/param-mapping-target ::vs/param-dimension)]
+            (or (when-some [target (some->> mapping ::vs/param-mapping-target ::vs/param-dimension
+                                            (lib/normalize ::lib.schema.parameter/target))]
                   (when-some [target' (target-fn target card-id)]
                     (assoc-in mapping [::vs/param-mapping-target ::vs/param-dimension] target')))
                 mapping))
