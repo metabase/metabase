@@ -1,0 +1,32 @@
+{
+  "get": {
+    "description": "Returns all KV pairs in a given namespace for the current user",
+    "operationId": "get-api-user-key-value-namespace-namespace",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "namespace",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/user-key-value/namespace/{namespace}",
+    "tags": [
+      "/api/user-key-value"
+    ]
+  }
+}

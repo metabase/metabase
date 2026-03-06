@@ -1,0 +1,14 @@
+{
+  "properties": {
+    "stages": {
+      "items": {
+        "$ref": "./metabase.lib.schema.test-spec.test-stage-spec.json"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "stages"
+  ],
+  "type": "object"
+}

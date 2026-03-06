@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "id": {
+      "$ref": "./metabase.lib.schema.id.table.json"
+    },
+    "type": {
+      "const": "table"
+    }
+  },
+  "required": [
+    "type",
+    "id"
+  ],
+  "type": "object"
+}

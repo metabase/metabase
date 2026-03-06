@@ -1,0 +1,12 @@
+{
+  "description": "Additional options for any aggregation clause when wrapping it in `:aggregation-options`.",
+  "properties": {
+    "display-name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    }
+  },
+  "type": "object"
+}

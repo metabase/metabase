@@ -1,0 +1,153 @@
+{
+  "get": {
+    "description": "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - `card-types`: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
+    "operationId": "get-api-ee-dependencies-graph-unreferenced",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "types",
+        "required": false,
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "../components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+            },
+            {
+              "items": {
+                "$ref": "../components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+              },
+              "type": "array"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "card-types",
+        "required": false,
+        "schema": {
+          "anyOf": [
+            {
+              "enum": [
+                "question",
+                "metric",
+                "model"
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "question",
+                  "metric",
+                  "model"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "archived",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "include-personal-collections",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort-column",
+        "required": false,
+        "schema": {
+          "enum": [
+            "dependents-with-errors",
+            "dependents-errors",
+            "name",
+            "location"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort-direction",
+        "required": false,
+        "schema": {
+          "enum": [
+            "desc",
+            "asc"
+          ],
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "data": {
+                  "items": {
+                    "$ref": "../components/schemas/metabase-enterprise.dependencies.api.entity.json"
+                  },
+                  "type": "array"
+                },
+                "limit": {
+                  "description": "value must be an integer greater than zero.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "offset": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "total": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "data",
+                "total",
+                "offset",
+                "limit"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/dependencies/graph/unreferenced",
+    "tags": [
+      "/api/ee/dependencies"
+    ]
+  }
+}

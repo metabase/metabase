@@ -1,0 +1,11 @@
+{
+  "oneOf": [
+    {
+      "format": "uuid",
+      "type": "string"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    }
+  ]
+}

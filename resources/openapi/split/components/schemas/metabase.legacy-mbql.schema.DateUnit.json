@@ -1,0 +1,19 @@
+{
+  "description": "Valid unit for date bucketing.",
+  "enum": [
+    "quarter",
+    "day",
+    "week",
+    "default",
+    "day-of-week",
+    "month",
+    "month-of-year",
+    "day-of-month",
+    "year",
+    "day-of-year",
+    "year-of-era",
+    "week-of-year",
+    "quarter-of-year"
+  ],
+  "type": "string"
+}

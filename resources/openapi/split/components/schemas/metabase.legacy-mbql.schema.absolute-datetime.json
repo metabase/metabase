@@ -1,0 +1,14 @@
+{
+  "description": "Schema for a valid MBQL 4 :absolute-datetime clause.",
+  "oneOf": [
+    {},
+    {
+      "allOf": [],
+      "description": "schema for a valid MBQL 4 :absolute-datetime clause"
+    },
+    {
+      "allOf": [],
+      "description": "schema for a valid MBQL 4 :absolute-datetime clause"
+    }
+  ]
+}

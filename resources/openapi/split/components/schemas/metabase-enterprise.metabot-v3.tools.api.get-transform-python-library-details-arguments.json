@@ -1,0 +1,19 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

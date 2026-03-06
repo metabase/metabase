@@ -1,0 +1,49 @@
+{
+  "get": {
+    "description": "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth\n   credentials. Public sharing must be enabled.",
+    "operationId": "get-api-public-pivot-card-uuid-query",
+    "parameters": [
+      {
+        "description": "value must be a valid UUID.",
+        "in": "path",
+        "name": "uuid",
+        "required": true,
+        "schema": {
+          "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "parameters",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be a valid JSON string.",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/public/pivot/card/{uuid}/query",
+    "tags": [
+      "/api/public"
+    ]
+  }
+}

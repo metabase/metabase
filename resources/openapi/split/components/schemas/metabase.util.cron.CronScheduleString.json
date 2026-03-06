@@ -1,0 +1,5 @@
+{
+  "description": "value must be a valid Quartz cron schedule string.",
+  "minLength": 1,
+  "type": "string"
+}

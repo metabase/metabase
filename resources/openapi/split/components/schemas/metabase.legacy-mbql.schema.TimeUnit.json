@@ -1,0 +1,13 @@
+{
+  "description": "Valid unit for time bucketing.",
+  "enum": [
+    "hour",
+    "second",
+    "default",
+    "hour-of-day",
+    "millisecond",
+    "minute-of-hour",
+    "minute"
+  ],
+  "type": "string"
+}

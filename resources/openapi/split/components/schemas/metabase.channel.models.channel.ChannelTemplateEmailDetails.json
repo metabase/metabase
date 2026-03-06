@@ -1,0 +1,68 @@
+{
+  "oneOf": [
+    {
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "recipient-type": {
+          "enum": [
+            "cc",
+            "bcc",
+            "cc",
+            "bcc"
+          ]
+        },
+        "subject": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "email/handlebars-resource",
+            "email/handlebars-text",
+            "email/handlebars-resource",
+            "email/handlebars-text"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "subject",
+        "path"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "recipient-type": {
+          "enum": [
+            "cc",
+            "bcc",
+            "cc",
+            "bcc"
+          ]
+        },
+        "subject": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "email/handlebars-resource",
+            "email/handlebars-text",
+            "email/handlebars-resource",
+            "email/handlebars-text"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "subject",
+        "body"
+      ],
+      "type": "object"
+    }
+  ]
+}

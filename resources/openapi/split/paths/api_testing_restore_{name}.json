@@ -1,0 +1,32 @@
+{
+  "post": {
+    "description": "Restore a database snapshot for testing purposes.",
+    "operationId": "post-api-testing-restore-name",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "name",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/testing/restore/{name}",
+    "tags": [
+      "/api/testing"
+    ]
+  }
+}

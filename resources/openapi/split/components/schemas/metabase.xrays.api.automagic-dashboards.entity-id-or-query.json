@@ -1,0 +1,5 @@
+{
+  "description": "One of these:\n\n  * A non-empty string with an Entity ID (including `card__<id>`-encoded Card IDs)\n\n  * a form-encoded base-64-encoded JSON-encoded MBQL query\n\n  * The name of a transform\n\n  (Effectively since the names of transforms are unconstrained this parameter is allowed to be any form-encoded\n  string.)",
+  "minLength": 1,
+  "type": "string"
+}

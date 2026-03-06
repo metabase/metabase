@@ -1,0 +1,9 @@
+{
+  "oneOf": [
+    {
+      "properties": {},
+      "type": "object"
+    },
+    {}
+  ]
+}

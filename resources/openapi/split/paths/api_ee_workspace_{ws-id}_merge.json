@@ -1,0 +1,158 @@
+{
+  "post": {
+    "description": "This will:\n   1. Update original transforms with workspace versions\n   2. Archive the workspace and clean up isolated resources\n   Returns a report of merged entities, or error in errors key.\n\n   Request body may include:\n   - commit-message: A description of what changes are being merged (optional, will be required in future)",
+    "operationId": "post-api-ee-workspace-ws-id-merge",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "commit-message": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "errors": {
+                      "items": {
+                        "properties": {
+                          "global_id": {
+                            "oneOf": [
+                              {
+                                "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "op": {
+                            "enum": [
+                              "create",
+                              "delete",
+                              "update",
+                              "noop"
+                            ],
+                            "type": "string"
+                          },
+                          "ref_id": {
+                            "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+                          }
+                        },
+                        "required": [
+                          "op",
+                          "ref_id"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "merged": {
+                      "properties": {
+                        "transforms": {
+                          "items": {
+                            "properties": {
+                              "global_id": {
+                                "oneOf": [
+                                  {
+                                    "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "op": {
+                                "enum": [
+                                  "create",
+                                  "delete",
+                                  "update",
+                                  "noop"
+                                ],
+                                "type": "string"
+                              },
+                              "ref_id": {
+                                "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+                              }
+                            },
+                            "required": [
+                              "op",
+                              "ref_id"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "required": [
+                        "transforms"
+                      ],
+                      "type": "object"
+                    },
+                    "workspace": {
+                      "properties": {
+                        "id": {
+                          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "merged",
+                    "errors",
+                    "workspace"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/workspace/{ws-id}/merge",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

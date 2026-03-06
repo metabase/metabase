@@ -1,0 +1,398 @@
+{
+  "delete": {
+    "description": "Hard delete a Dashboard. To soft delete, use `PUT /api/dashboard/:id`\n\n  This will remove also any questions/models/segments/metrics that use this database.",
+    "operationId": "delete-api-dashboard-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/dashboard/{id}",
+    "tags": [
+      "/api/dashboard"
+    ]
+  },
+  "get": {
+    "description": "Get Dashboard with ID.",
+    "operationId": "get-api-dashboard-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "anyOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "description": "String must be a valid 21-character NanoID string.",
+              "pattern": "^[A-Za-z0-9_\\-]{21}$",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/dashboard/{id}",
+    "tags": [
+      "/api/dashboard"
+    ]
+  },
+  "put": {
+    "description": "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same\n  structure as the response from `GET /api/dashboard/:id`.",
+    "operationId": "put-api-dashboard-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "archived": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cache_ttl": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "caveats": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_position": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dashcards": {
+                "oneOf": [
+                  {
+                    "description": "value must be seq of maps in which ids are unique",
+                    "items": {
+                      "properties": {
+                        "col": {
+                          "description": "value must be an integer greater or equal to than zero.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "id": {
+                          "type": "integer"
+                        },
+                        "inline_parameters": {
+                          "oneOf": [
+                            {
+                              "items": {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "parameter_mappings": {
+                          "oneOf": [
+                            {
+                              "$ref": "../components/schemas/metabase.parameters.schema.parameter-mappings.json"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "row": {
+                          "description": "value must be an integer greater or equal to than zero.",
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "series": {
+                          "oneOf": [
+                            {
+                              "items": {
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "size_x": {
+                          "description": "value must be an integer greater than zero.",
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "size_y": {
+                          "description": "value must be an integer greater than zero.",
+                          "minimum": 1,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "size_x",
+                        "size_y",
+                        "row",
+                        "col"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "description": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "embedding_params": {
+                "oneOf": [
+                  {
+                    "description": "value must be a valid embedding params map.",
+                    "oneOf": [
+                      {
+                        "additionalProperties": {
+                          "enum": [
+                            "disabled",
+                            "enabled",
+                            "locked"
+                          ],
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "embedding_type": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "enable_embedding": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parameters": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.parameters.schema.parameters.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "points_of_interest": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "position": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "show_in_getting_started": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tabs": {
+                "oneOf": [
+                  {
+                    "description": "value must be seq of maps in which ids are unique",
+                    "items": {
+                      "properties": {
+                        "id": {
+                          "description": "value must be an integer.",
+                          "type": "integer"
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "width": {
+                "enum": [
+                  "fixed",
+                  "full"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/dashboard/{id}",
+    "tags": [
+      "/api/dashboard"
+    ]
+  }
+}

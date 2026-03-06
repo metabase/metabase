@@ -1,0 +1,55 @@
+{
+  "description": "Additional options that can be used to toggle middleware on or off.",
+  "properties": {
+    "add-default-userland-constraints?": {
+      "description": "Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,\n  although the functions that ultimately power most API endpoints tend to set this to `true`. See\n  `add-constraints` middleware for more details.",
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "disable-max-results?": {
+      "description": "Disable applying a default limit on the query results. Handled in the `add-default-limit` middleware. If true,\n  this will override the `:max-results` and `:max-results-bare-rows` values in `Constraints`.",
+      "type": "boolean"
+    },
+    "disable-mbql->native?": {
+      "description": "Disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where\n  you should set this yourself. This is only used by the `metabase.query-processor.preprocess/preprocess` function to\n  get the fully pre-processed query without attempting to convert it to native.",
+      "type": "boolean"
+    },
+    "format-rows?": {
+      "description": "Should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing\n     results? Used by `metabase.query-processor.middleware.format-rows`default `false`.",
+      "type": "boolean"
+    },
+    "process-viz-settings?": {
+      "description": "Whether to process a question's visualization settings and include them in the result metadata so that they can\n  incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default\n  `false`.",
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "skip-results-metadata?": {
+      "description": "Should we skip adding `results_metadata` to query results after running the query? Used by\n     `metabase.query-processor.middleware.results-metadata`; default `false`. (Note: we may change the name of this\n     column in the near future, to `result_metadata`, to fix inconsistencies in how we name things.)",
+      "type": "boolean"
+    },
+    "userland-query?": {
+      "description": "Userland queries are ones ran as a result of an API call, Pulse, or the like. Special handling is done in\n  certain userland-only middleware for such queries -- results are returned in a slightly different format, and\n  QueryExecution entries are normally saved, unless you pass `:no-save` as the option.",
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

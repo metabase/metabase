@@ -1,0 +1,33 @@
+{
+  "put": {
+    "description": "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group.",
+    "operationId": "put-api-permissions-membership-group-id-clear",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "group-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/permissions/membership/{group-id}/clear",
+    "tags": [
+      "/api/permissions"
+    ]
+  }
+}

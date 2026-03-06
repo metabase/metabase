@@ -1,0 +1,22 @@
+{
+  "post": {
+    "description": "Temporary endpoint for describing an actions parameters\n  such that they can be presented correctly in a modal ahead of execution.",
+    "operationId": "post-api-ee-action-v2-execute-form",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/action-v2/execute-form",
+    "tags": [
+      "/api/ee/action-v2"
+    ]
+  }
+}

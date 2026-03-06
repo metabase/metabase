@@ -1,0 +1,6 @@
+{
+  "items": {
+    "$ref": "./metabase.lib.schema.metadata.lib-or-legacy-column.json"
+  },
+  "type": "array"
+}

@@ -1,0 +1,22 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "bucket": {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.bucket.json"
+        },
+        "field_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "field_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

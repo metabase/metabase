@@ -1,0 +1,30 @@
+{
+  "description": "Schema for things that make sense in a filter like `>` or `<`, i.e. things that can be sorted.",
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.value.json"
+    },
+    {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "./metabase.legacy-mbql.schema.TemporalLiteral.json"
+        },
+        {
+          "$ref": "./metabase.legacy-mbql.schema.ExpressionArg.json"
+        },
+        {
+          "$ref": "./metabase.legacy-mbql.schema.aggregation.json"
+        },
+        {
+          "$ref": "./metabase.legacy-mbql.schema.FieldOrExpressionRefOrRelativeDatetime.json"
+        }
+      ]
+    }
+  ]
+}

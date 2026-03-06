@@ -1,0 +1,19 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "snippet_id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "snippet_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

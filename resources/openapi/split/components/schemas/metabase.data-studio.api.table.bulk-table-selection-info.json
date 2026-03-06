@@ -1,0 +1,33 @@
+{
+  "description": "Schema for /selection endpoint response. Matches frontend BulkTableSelectionInfo type.",
+  "properties": {
+    "published_downstream_tables": {
+      "items": {
+        "$ref": "./metabase.data-studio.api.table.bulk-table-info.json"
+      },
+      "type": "array"
+    },
+    "selected_table": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.data-studio.api.table.bulk-table-info.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "unpublished_upstream_tables": {
+      "items": {
+        "$ref": "./metabase.data-studio.api.table.bulk-table-info.json"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "selected_table",
+    "published_downstream_tables",
+    "unpublished_upstream_tables"
+  ],
+  "type": "object"
+}

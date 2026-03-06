@@ -1,0 +1,36 @@
+{
+  "description": "A reference to a source table by name, for cases where table_id may not exist yet.\n  Also saves querying metadata in situations where we'll need the name.",
+  "properties": {
+    "database_id": {
+      "type": "integer"
+    },
+    "schema": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "table": {
+      "type": "string"
+    },
+    "table_id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "database_id",
+    "table"
+  ],
+  "type": "object"
+}

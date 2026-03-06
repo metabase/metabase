@@ -1,0 +1,12 @@
+{
+  "description": "A named condition that triggers an alert or drill lens.\n   Evaluated by multimethod in lib against card results.\n   Only :name is required; other keys are condition-specific.",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "type": "object"
+}

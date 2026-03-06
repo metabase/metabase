@@ -1,0 +1,76 @@
+{
+  "description": "A metric with its queryable dimensions and segments. The default_time_dimension_field_id is the field_id of the recommended time dimension for temporal breakouts.",
+  "properties": {
+    "default_time_dimension_field_id": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "type": "integer"
+    },
+    "name": {
+      "type": "string"
+    },
+    "queryable_dimensions": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase-enterprise.agent-api.api.field.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "segments": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase-enterprise.agent-api.api.segment.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "const": "metric"
+    },
+    "verified": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "name"
+  ],
+  "type": "object"
+}

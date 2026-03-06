@@ -1,0 +1,59 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "structured_output": {
+          "properties": {
+            "description": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "type": "integer"
+            },
+            "name": {
+              "type": "string"
+            },
+            "result_columns": {
+              "$ref": "./metabase-enterprise.metabot-v3.tools.api.columns.json"
+            },
+            "type": {
+              "const": "question"
+            },
+            "verified": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id",
+            "type",
+            "name",
+            "result_columns"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "structured_output"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "output"
+      ],
+      "type": "object"
+    }
+  ]
+}

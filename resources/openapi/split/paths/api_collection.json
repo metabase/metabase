@@ -1,0 +1,172 @@
+{
+  "get": {
+    "description": "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an\n  additional property of each Collection so you can tell which of these you have write permissions for.)\n\n  By default, this returns non-archived Collections, but instead you can show archived ones by passing\n  `?archived=true`.\n\n  By default, admin users will see all collections. To hide other user's collections pass in\n  `?exclude-other-user-collections=true`.\n\n  If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`.",
+    "operationId": "get-api-collection",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "archived",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "exclude-other-user-collections",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "namespace",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "personal-only",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/collection",
+    "tags": [
+      "/api/collection"
+    ]
+  },
+  "post": {
+    "description": "Create a new Collection.",
+    "operationId": "post-api-collection",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "authority_level": {
+                "oneOf": [
+                  {
+                    "enum": [
+                      "official"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "description": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "namespace": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parent_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/collection",
+    "tags": [
+      "/api/collection"
+    ]
+  }
+}

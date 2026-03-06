@@ -1,0 +1,56 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "structured_output": {
+          "properties": {
+            "bad_question_count": {
+              "type": "integer"
+            },
+            "bad_questions": {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.broken-question.json"
+              },
+              "type": "array"
+            },
+            "bad_transform_count": {
+              "type": "integer"
+            },
+            "bad_transforms": {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.broken-transform.json"
+              },
+              "type": "array"
+            },
+            "success": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "success",
+            "bad_transform_count",
+            "bad_transforms",
+            "bad_question_count",
+            "bad_questions"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "structured_output"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "output"
+      ],
+      "type": "object"
+    }
+  ]
+}

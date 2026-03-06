@@ -1,0 +1,5 @@
+{
+  "description": "Schema representing an integer than must also be greater than or equal to zero.",
+  "minimum": 0,
+  "type": "integer"
+}

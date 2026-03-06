@@ -1,0 +1,133 @@
+{
+  "post": {
+    "description": "Evaluate an ad-hoc python transform on a sample of input data.\n  Intended for short runs for early feedback. Input/output/timeout limits apply.",
+    "operationId": "post-api-ee-transforms-python-test-run",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "output_row_limit": {
+                "allOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "exclusiveMinimum": 1,
+                    "type": "number"
+                  },
+                  {
+                    "maximum": 100,
+                    "type": "number"
+                  }
+                ]
+              },
+              "per_input_row_limit": {
+                "allOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "exclusiveMinimum": 1,
+                    "type": "number"
+                  },
+                  {
+                    "maximum": 100,
+                    "type": "number"
+                  }
+                ]
+              },
+              "source_tables": {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "minProperties": 1,
+                "type": "object"
+              }
+            },
+            "required": [
+              "code",
+              "source_tables"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "error": {
+                  "properties": {
+                    "message": {
+                      "anyOf": [
+                        {},
+                        {}
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "type": "object"
+                },
+                "logs": {
+                  "type": "string"
+                },
+                "output": {
+                  "properties": {
+                    "cols": {
+                      "items": {
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "rows": {
+                      "items": {},
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "cols",
+                    "rows"
+                  ],
+                  "type": "object"
+                }
+              },
+              "required": [
+                "logs"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/transforms-python/test-run",
+    "tags": [
+      "/api/ee/transforms-python"
+    ]
+  }
+}

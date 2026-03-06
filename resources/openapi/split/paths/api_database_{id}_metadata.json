@@ -1,0 +1,97 @@
+{
+  "get": {
+    "description": "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.\n  By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.\n\n  Passing include_editable_data_model will only return tables for which the current user has data model editing\n  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.\n  In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID\n  and tables, with no additional metadata.",
+    "operationId": "get-api-database-id-metadata",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_hidden",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_editable_data_model",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "remove_inactive",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "skip_fields",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/database/{id}/metadata",
+    "tags": [
+      "/api/database"
+    ]
+  }
+}

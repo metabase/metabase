@@ -1,0 +1,29 @@
+{
+  "get": {
+    "description": "Find cards in the root collection that can be moved into dashboards in the root collection. (Same as the above\n  endpoint, but for the root collection)",
+    "operationId": "get-api-collection-root-dashboard-question-candidates",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase.collections-rest.api.DashboardQuestionCandidatesResponse.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/collection/root/dashboard-question-candidates",
+    "tags": [
+      "/api/collection"
+    ]
+  }
+}

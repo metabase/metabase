@@ -1,0 +1,56 @@
+{
+  "get": {
+    "description": "Fetch alerts which the current user has created or will receive, or all alerts if the user is an admin.\n  The optional `user_id` will return alerts created by the corresponding user, but is ignored for non-admin users.",
+    "operationId": "get-api-alert",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "archived",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "user_id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/alert",
+    "tags": [
+      "/api/alert"
+    ]
+  }
+}

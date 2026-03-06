@@ -1,0 +1,60 @@
+{
+  "properties": {
+    "data": {
+      "properties": {},
+      "type": "object"
+    },
+    "decision": {
+      "enum": [
+        "allow",
+        "denied",
+        "limited"
+      ],
+      "type": "string"
+    },
+    "message": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "model-id": {
+      "type": "string"
+    },
+    "model-type": {
+      "enum": [
+        "card",
+        "invalid"
+      ],
+      "type": "string"
+    },
+    "segment": {
+      "items": {
+        "enum": [
+          "sandboxed",
+          "impersonated",
+          "routed"
+        ],
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "suggestions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "model-type",
+    "model-id",
+    "decision",
+    "segment",
+    "message",
+    "data",
+    "suggestions"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,71 @@
+{
+  "get": {
+    "description": "oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL.",
+    "operationId": "get-api-public-oembed",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "url",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      {
+        "description": "The format param is not used by the API, but is required as part of the oEmbed spec: http://oembed.com/#section2 just return an error if `format` is specified and it's anything other than `json`.",
+        "in": "query",
+        "name": "format",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "enum": [
+                "json"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "maxheight",
+        "required": true,
+        "schema": {
+          "default": 800,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "maxwidth",
+        "required": true,
+        "schema": {
+          "default": 1024,
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/public/oembed",
+    "tags": [
+      "/api/public"
+    ]
+  }
+}

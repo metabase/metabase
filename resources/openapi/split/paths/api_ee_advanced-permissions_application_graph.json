@@ -1,0 +1,85 @@
+{
+  "get": {
+    "description": "Fetch a graph of Application Permissions.",
+    "operationId": "get-api-ee-advanced-permissions-application-graph",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/advanced-permissions/application/graph",
+    "tags": [
+      "/api/ee/advanced-permissions/application"
+    ]
+  },
+  "put": {
+    "description": "Do a batch update of Application Permissions by passing a modified graph.",
+    "operationId": "put-api-ee-advanced-permissions-application-graph",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "skip-graph",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "force",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {},
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/ee/advanced-permissions/application/graph",
+    "tags": [
+      "/api/ee/advanced-permissions/application"
+    ]
+  }
+}

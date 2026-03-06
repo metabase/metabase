@@ -1,0 +1,5 @@
+{
+  "description": "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside.",
+  "properties": {},
+  "type": "object"
+}

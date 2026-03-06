@@ -1,0 +1,75 @@
+{
+  "description": "Result of a query preview (dry-run or ad-hoc query).\n   Data is nested under :data to match /api/dataset response format.",
+  "properties": {
+    "ancestors": {
+      "$ref": "./metabase-enterprise.workspaces.types.ancestors-result.json"
+    },
+    "data": {
+      "properties": {
+        "cols": {
+          "items": {
+            "properties": {},
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "results_metadata": {
+          "properties": {
+            "columns": {
+              "items": {
+                "properties": {},
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "rows": {
+          "items": {},
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "message": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "running_time": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "started_at": {
+      "oneOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "status": {
+      "enum": [
+        "succeeded",
+        "failed"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "type": "object"
+}

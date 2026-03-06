@@ -1,0 +1,170 @@
+{
+  "post": {
+    "description": "Parse SQL and return referenced tables with their columns.\n\n   Uses Macaw to parse the SQL, resolves table names to IDs,\n   and returns permission-filtered tables with column metadata.\n\n   This is a lightweight endpoint that does not trigger fingerprinting\n   or field value fetching.",
+    "operationId": "post-api-llm-extract-tables",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "database_id": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "sql": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "database_id",
+              "sql"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "tables": {
+                  "items": {
+                    "properties": {
+                      "columns": {
+                        "items": {
+                          "properties": {
+                            "database_type": {
+                              "oneOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "description": {
+                              "oneOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "fk_target": {
+                              "properties": {
+                                "field_name": {
+                                  "type": "string"
+                                },
+                                "table_name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "table_name",
+                                "field_name"
+                              ],
+                              "type": "object"
+                            },
+                            "id": {
+                              "minimum": 1,
+                              "type": "integer"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "semantic_type": {
+                              "oneOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "description": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "display_name": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "id": {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "schema": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "columns"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "tables"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/llm/extract-tables",
+    "tags": [
+      "/api/llm"
+    ]
+  }
+}

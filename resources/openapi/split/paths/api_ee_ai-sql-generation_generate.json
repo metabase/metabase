@@ -1,0 +1,46 @@
+{
+  "post": {
+    "description": "Generate a SQL query.",
+    "operationId": "post-api-ee-ai-sql-generation-generate",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "database_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "prompt": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "prompt",
+              "database_id"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/ai-sql-generation/generate",
+    "tags": [
+      "/api/ee/ai-sql-generation"
+    ]
+  }
+}

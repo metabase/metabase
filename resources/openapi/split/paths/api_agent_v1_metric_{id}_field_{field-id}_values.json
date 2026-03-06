@@ -1,0 +1,49 @@
+{
+  "get": {
+    "description": "Get statistics and sample values for a metric field.",
+    "operationId": "get-api-agent-v1-metric-id-field-field-id-values",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "path",
+        "name": "field-id",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.agent-api.api.field-values.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/agent/v1/metric/{id}/field/{field-id}/values",
+    "tags": [
+      "/api/agent"
+    ]
+  }
+}

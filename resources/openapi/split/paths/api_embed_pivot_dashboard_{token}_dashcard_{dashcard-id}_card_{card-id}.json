@@ -1,0 +1,51 @@
+{
+  "get": {
+    "description": "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the\n  `embedding-secret-key`",
+    "operationId": "get-api-embed-pivot-dashboard-token-dashcard-dashcard-id-card-card-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "token",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "dashcard-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "card-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/embed/pivot/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}",
+    "tags": [
+      "/api/embed"
+    ]
+  }
+}

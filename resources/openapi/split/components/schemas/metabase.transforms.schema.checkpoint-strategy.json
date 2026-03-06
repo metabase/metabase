@@ -1,0 +1,17 @@
+{
+  "properties": {
+    "checkpoint-filter": {
+      "type": "string"
+    },
+    "checkpoint-filter-unique-key": {
+      "$ref": "./metabase.lib.schema.column-unique-key.json"
+    },
+    "type": {
+      "const": "checkpoint"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "type": "object"
+}

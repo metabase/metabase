@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "unit": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.temporal-bucketing.unit.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

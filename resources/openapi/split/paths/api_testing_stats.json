@@ -1,0 +1,22 @@
+{
+  "post": {
+    "description": "Triggers a send of instance usage stats",
+    "operationId": "post-api-testing-stats",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/testing/stats",
+    "tags": [
+      "/api/testing"
+    ]
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "get": {
+    "description": "Fetch the SCIM API key if one exists. Does *not* return an unmasked key, since we don't have access\n  to that after it is created.",
+    "operationId": "get-api-ee-scim-api_key",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/scim/api_key",
+    "tags": [
+      "/api/ee/scim"
+    ]
+  },
+  "post": {
+    "description": "Create a new SCIM API key, or refresh one that already exists. When called for the first time,\n  this is equivalent to enabling SCIM.",
+    "operationId": "post-api-ee-scim-api_key",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/scim/api_key",
+    "tags": [
+      "/api/ee/scim"
+    ]
+  }
+}

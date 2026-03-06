@@ -1,0 +1,61 @@
+{
+  "post": {
+    "description": "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful.",
+    "operationId": "post-api-upload-csv",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "multipart/form-data": {
+          "schema": {
+            "properties": {
+              "collection_id": {
+                "oneOf": [
+                  {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "file": {
+                "properties": {
+                  "filename": {
+                    "type": "string"
+                  },
+                  "tempfile": {}
+                },
+                "required": [
+                  "filename",
+                  "tempfile"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "collection_id",
+              "file"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/upload/csv",
+    "tags": [
+      "/api/upload"
+    ]
+  }
+}

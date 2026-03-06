@@ -1,0 +1,63 @@
+{
+  "get": {
+    "description": "Get all known presets.",
+    "operationId": "get-api-logger-presets",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "properties": {
+                  "display_name": {
+                    "type": "string"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "loggers": {
+                    "items": {
+                      "properties": {
+                        "level": {
+                          "$ref": "../components/schemas/metabase.logger.api.log-level.json"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "level"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "id",
+                  "display_name",
+                  "loggers"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/logger/presets",
+    "tags": [
+      "/api/logger"
+    ]
+  }
+}

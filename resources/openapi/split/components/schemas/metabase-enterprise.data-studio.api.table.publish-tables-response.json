@@ -1,0 +1,19 @@
+{
+  "description": "Schema for /publish-tables endpoint response. Matches frontend PublishTablesResponse type.",
+  "properties": {
+    "target_collection": {
+      "oneOf": [
+        {
+          "description": "value must be an instance of :model/Collection"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "target_collection"
+  ],
+  "type": "object"
+}

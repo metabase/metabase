@@ -1,0 +1,11 @@
+{
+  "default": "left-join",
+  "description": "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database\n  supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left\n  joins will support the `:left-join` feature.\n\n  When `:strategy` is not specified, [[default-strategy]] is used.",
+  "enum": [
+    "left-join",
+    "right-join",
+    "inner-join",
+    "full-join"
+  ],
+  "type": "string"
+}

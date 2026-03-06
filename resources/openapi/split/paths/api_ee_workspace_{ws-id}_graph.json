@@ -1,0 +1,58 @@
+{
+  "get": {
+    "description": "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on.",
+    "operationId": "get-api-ee-workspace-ws-id-graph",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "edges": {
+                  "items": {
+                    "$ref": "../components/schemas/metabase-enterprise.workspaces.api.graph-edge.json"
+                  },
+                  "type": "array"
+                },
+                "nodes": {
+                  "items": {
+                    "$ref": "../components/schemas/metabase-enterprise.workspaces.api.graph-node.json"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "nodes",
+                "edges"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace/{ws-id}/graph",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

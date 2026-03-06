@@ -1,0 +1,25 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "collection": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "template-tags": {
+          "$ref": "./metabase.legacy-mbql.schema.TemplateTagMap.json"
+        }
+      },
+      "type": "object"
+    },
+    {
+      "allOf": []
+    }
+  ]
+}

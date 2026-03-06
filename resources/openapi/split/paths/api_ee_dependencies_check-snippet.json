@@ -1,0 +1,52 @@
+{
+  "post": {
+    "description": "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken.",
+    "operationId": "post-api-ee-dependencies-check-snippet",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "id": {
+                "$ref": "../components/schemas/metabase.lib.schema.id.snippet.json"
+              },
+              "name": {
+                "description": "snippet names cannot include '}' or start with spaces"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.dependencies.api.broken-cards-response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/dependencies/check-snippet",
+    "tags": [
+      "/api/ee/dependencies"
+    ]
+  }
+}

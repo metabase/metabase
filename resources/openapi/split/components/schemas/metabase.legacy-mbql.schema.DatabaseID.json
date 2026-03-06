@@ -1,0 +1,11 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase.lib.schema.id.saved-questions-virtual-database.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.id.database.json"
+    }
+  ],
+  "description": "Schema for a valid `:database` ID, in the top-level 'outer' query. Either a positive integer (referring to an\n  actual Database), or the saved questions virtual ID, which is a placeholder used for queries using the\n  `:source-table \"card__id\"` shorthand for a source query resolved by middleware (since clients might not know the\n  actual DB for that source query.)"
+}

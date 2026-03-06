@@ -1,0 +1,37 @@
+{
+  "description": "Statistics and sample values for a specific field.",
+  "properties": {
+    "field_id": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "statistics": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.agent-api.api.statistics.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "values": {
+      "oneOf": [
+        {
+          "items": {},
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

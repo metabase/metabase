@@ -1,0 +1,171 @@
+{
+  "get": {
+    "description": "Get a list of all workspaces",
+    "operationId": "get-api-ee-workspace",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "items": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "database_id": {
+                        "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                      },
+                      "id": {
+                        "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "$ref": "../components/schemas/metabase-enterprise.workspaces.api.status.json"
+                      },
+                      "updated_at": {
+                        "format": "date-time",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "database_id",
+                      "name",
+                      "status",
+                      "updated_at"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "limit": {
+                  "oneOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "offset": {
+                  "oneOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "items",
+                "limit",
+                "offset"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  },
+  "post": {
+    "description": "Create a new workspace\n\n  Potential payload:\n  {:name \"a\" :database_id 2}}",
+    "operationId": "post-api-ee-workspace",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "database_id": {
+                "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "api_key": {
+                  "type": "string"
+                },
+                "collection_id": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                },
+                "created_at": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "database_id": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                },
+                "id": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.api.status.json"
+                },
+                "updated_at": {
+                  "format": "date-time",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "collection_id",
+                "database_id",
+                "status",
+                "created_at",
+                "updated_at"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/workspace",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

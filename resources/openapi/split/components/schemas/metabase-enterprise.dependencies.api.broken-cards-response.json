@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "bad_cards": {
+      "items": {
+        "$ref": "./metabase.queries.schema.card.json"
+      },
+      "type": "array"
+    },
+    "bad_transforms": {
+      "items": {
+        "$ref": "./metabase.transforms.schema.transform.json"
+      },
+      "type": "array"
+    },
+    "success": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "success"
+  ],
+  "type": "object"
+}

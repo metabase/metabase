@@ -1,0 +1,145 @@
+{
+  "post": {
+    "description": "Summarize a question.",
+    "operationId": "post-api-ee-autodescribe-card-summarize",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "cache_ttl": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_position": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dataset": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dataset_query": {
+                "description": "Value must be a map.",
+                "properties": {},
+                "type": "object"
+              },
+              "description": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "display": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "parameter_mappings": {
+                "oneOf": [
+                  {
+                    "items": {
+                      "$ref": "../components/schemas/metabase.parameters.schema.parameter-mapping.json"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parameters": {
+                "oneOf": [
+                  {
+                    "items": {
+                      "$ref": "../components/schemas/metabase.parameters.schema.parameter.json"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "result_metadata": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.analyze.query-results.ResultsMetadata.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "visualization_settings": {
+                "description": "Value must be a map.",
+                "properties": {},
+                "type": "object"
+              }
+            },
+            "required": [
+              "dataset_query",
+              "display",
+              "visualization_settings"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/autodescribe/card/summarize",
+    "tags": [
+      "/api/ee/autodescribe"
+    ]
+  }
+}

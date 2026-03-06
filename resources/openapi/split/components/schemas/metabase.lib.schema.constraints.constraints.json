@@ -1,0 +1,14 @@
+{
+  "description": "Additional constraints added to a query limiting the maximum number of rows that can be returned. Mostly useful\n  because native queries don't support the MBQL `:limit` clause. For MBQL queries, if `:limit` is set, it will\n  override these values.",
+  "properties": {
+    "max-results": {
+      "$ref": "./metabase.lib.schema.common.int-greater-than-or-equal-to-zero.json",
+      "description": "Maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this\n  applies to all queries"
+    },
+    "max-results-bare-rows": {
+      "$ref": "./metabase.lib.schema.common.int-greater-than-or-equal-to-zero.json",
+      "description": "Maximum number of results to allow for a query with no aggregations. If set, this should be LOWER than\n  `:max-results`."
+    }
+  },
+  "type": "object"
+}

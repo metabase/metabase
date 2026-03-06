@@ -1,0 +1,70 @@
+{
+  "description": "Schema for :model/NotificationSubscription.",
+  "oneOf": [
+    {
+      "properties": {
+        "cron_schedule": {
+          "type": "null"
+        },
+        "event_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "type": {
+          "enum": [
+            "notification-subscription/cron",
+            "notification-subscription/system-event"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "event_name"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "cron_schedule": {
+          "type": "string"
+        },
+        "event_name": {
+          "type": "null"
+        },
+        "type": {
+          "enum": [
+            "notification-subscription/cron",
+            "notification-subscription/system-event"
+          ],
+          "type": "string"
+        },
+        "ui_display_type": {
+          "oneOf": [
+            {
+              "enum": [
+                "cron/raw",
+                "cron/builder"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "cron_schedule"
+      ],
+      "type": "object"
+    }
+  ]
+}

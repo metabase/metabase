@@ -1,0 +1,70 @@
+{
+  "description": "Schema for Card.dataset_query. Cards are for some wacko reason allowed to be saved with empty queries (`{}`), but not\n  `NULL` ones, because the column is non-null. This sorta seems like an oversight but fixing all the tests that save\n  Cards with empty queries is too much to attempt at this point. So a Card either has an empty query or a valid MBQL 5\n  query.",
+  "oneOf": [
+    {
+      "$ref": "./metabase.queries.schema.empty-map.json"
+    },
+    {
+      "allOf": [
+        {
+          "description": "Valid MBQL 5 query.",
+          "properties": {
+            "constraints": {
+              "$ref": "./metabase.lib.schema.constraints.constraints.json"
+            },
+            "create-row": {
+              "$ref": "./metabase.lib.schema.actions.row.json"
+            },
+            "database": {
+              "oneOf": [
+                {
+                  "$ref": "./metabase.lib.schema.id.saved-questions-virtual-database.json"
+                },
+                {
+                  "$ref": "./metabase.lib.schema.id.database.json"
+                }
+              ]
+            },
+            "info": {
+              "$ref": "./metabase.lib.schema.info.info.json"
+            },
+            "lib/metadata": {
+              "description": "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
+            },
+            "lib/type": {
+              "const": "mbql/query",
+              "default": "mbql/query"
+            },
+            "middleware": {
+              "$ref": "./metabase.lib.schema.middleware-options.middleware-options.json"
+            },
+            "parameters": {
+              "$ref": "./metabase.lib.schema.parameter.parameters.json"
+            },
+            "settings": {
+              "$ref": "./metabase.lib.schema.settings.settings.json"
+            },
+            "stages": {
+              "$ref": "./metabase.lib.schema.stages.json"
+            },
+            "update-row": {
+              "$ref": "./metabase.lib.schema.actions.row.json"
+            }
+          },
+          "required": [
+            "lib/type",
+            "lib/metadata",
+            "stages"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "./metabase.lib.schema.util.unique-uuids.json"
+        },
+        {
+          "allOf": []
+        }
+      ]
+    }
+  ]
+}

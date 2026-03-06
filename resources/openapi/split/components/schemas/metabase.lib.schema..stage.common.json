@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "lib/stage-metadata": {
+      "$ref": "./metabase.lib.schema.metadata.stage.json"
+    },
+    "parameters": {
+      "$ref": "./metabase.lib.schema.parameter.parameters.json"
+    }
+  },
+  "type": "object"
+}

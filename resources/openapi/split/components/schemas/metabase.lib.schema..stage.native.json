@@ -1,0 +1,63 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "collection": {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        "lib/stage-metadata": {
+          "$ref": "./metabase.lib.schema.metadata.stage.json"
+        },
+        "lib/type": {
+          "const": "mbql.stage/native"
+        },
+        "native": {},
+        "parameters": {
+          "$ref": "./metabase.lib.schema.parameter.parameters.json"
+        },
+        "params": {
+          "oneOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "$ref": "./metabase.lib.schema.literal.literal.json"
+                  },
+                  {}
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "query-permissions/referenced-card-ids": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase.lib.schema.id.card.json"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "template-tags": {
+          "$ref": "./metabase.lib.schema.template-tag.template-tag-map.json"
+        }
+      },
+      "required": [
+        "lib/type"
+      ],
+      "type": "object"
+    },
+    {
+      "allOf": []
+    }
+  ]
+}

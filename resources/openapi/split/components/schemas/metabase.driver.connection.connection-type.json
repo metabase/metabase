@@ -1,0 +1,7 @@
+{
+  "enum": [
+    "default",
+    "write-data"
+  ],
+  "type": "string"
+}

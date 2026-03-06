@@ -1,0 +1,9 @@
+{
+  "description": "String filter operator options. Only set for `:contains`, `:does-not-contain`, `:starts-with`, `:ends-with`\n  operators.",
+  "properties": {
+    "case-sensitive": {
+      "type": "boolean"
+    }
+  },
+  "type": "object"
+}

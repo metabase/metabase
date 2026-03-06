@@ -1,0 +1,51 @@
+{
+  "properties": {
+    "default_time_dimension_field_id": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "type": "integer"
+    },
+    "name": {
+      "type": "string"
+    },
+    "queryable_dimensions": {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.columns.json"
+    },
+    "segments": {
+      "items": {
+        "$ref": "./metabase-enterprise.metabot-v3.tools.api.segment.json"
+      },
+      "type": "array"
+    },
+    "type": {
+      "const": "metric"
+    },
+    "verified": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "name"
+  ],
+  "type": "object"
+}

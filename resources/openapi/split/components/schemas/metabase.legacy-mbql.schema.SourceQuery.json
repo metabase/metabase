@@ -1,0 +1,11 @@
+{
+  "description": "Schema for a valid value for a `:source-query`.",
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.NativeSourceQuery.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.MBQLQuery.json"
+    }
+  ]
+}

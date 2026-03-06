@@ -1,0 +1,63 @@
+{
+  "default": {},
+  "properties": {
+    "base-type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.base-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "database-type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "display-name": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "effective-type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.base-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/source-name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "lib/uuid": {
+      "$ref": "./metabase.lib.schema.common.uuid.json"
+    },
+    "name": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "semantic-type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.semantic-or-relation-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "lib/uuid"
+  ],
+  "type": "object"
+}

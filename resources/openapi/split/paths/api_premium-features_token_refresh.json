@@ -1,0 +1,22 @@
+{
+  "post": {
+    "description": "Clear all token caches and re-check the premium features token against the MetaStore.\n  Returns the fresh token status. Useful for the frontend after a purchase so that new features\n  are recognized without waiting for the cache TTL.",
+    "operationId": "post-api-premium-features-token-refresh",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/premium-features/token/refresh",
+    "tags": [
+      "/api/premium-features"
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "properties": {
+    "db_id": {
+      "$ref": "./metabase-enterprise.workspaces.types.appdb-id.json"
+    },
+    "schema": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "table": {
+      "type": "string"
+    },
+    "table_id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.workspaces.types.appdb-id.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "db_id",
+    "schema",
+    "table",
+    "table_id"
+  ],
+  "type": "object"
+}

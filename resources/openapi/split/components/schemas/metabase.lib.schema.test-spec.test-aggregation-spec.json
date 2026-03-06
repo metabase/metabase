@@ -1,0 +1,10 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-expression-spec.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-named-expression-spec.json"
+    }
+  ]
+}

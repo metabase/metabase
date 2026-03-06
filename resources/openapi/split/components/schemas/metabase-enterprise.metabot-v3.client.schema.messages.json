@@ -1,0 +1,6 @@
+{
+  "items": {
+    "$ref": "./metabase-enterprise.metabot-v3.client.schema.message.json"
+  },
+  "type": "array"
+}

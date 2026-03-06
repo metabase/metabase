@@ -1,0 +1,33 @@
+{
+  "description": "Schema for things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality.",
+  "oneOf": [
+    {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "./metabase.legacy-mbql.schema.TemporalLiteral.json"
+        },
+        {
+          "$ref": "./metabase.legacy-mbql.schema.FieldOrExpressionRefOrRelativeDatetime.json"
+        },
+        {
+          "$ref": "./metabase.legacy-mbql.schema.ExpressionArg.json"
+        },
+        {
+          "$ref": "./metabase.legacy-mbql.schema.value.json"
+        }
+      ]
+    },
+    {
+      "type": "null"
+    }
+  ]
+}

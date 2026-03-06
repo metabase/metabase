@@ -1,0 +1,73 @@
+{
+  "get": {
+    "description": "Get a notification by id.",
+    "operationId": "get-api-notification-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/notification/{id}",
+    "tags": [
+      "/api/notification"
+    ]
+  },
+  "put": {
+    "description": "Update a notification, can also update its subscriptions, handlers.\n  Return the updated notification.",
+    "operationId": "put-api-notification-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase.notification.models.FullyHydratedNotification.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/notification/{id}",
+    "tags": [
+      "/api/notification"
+    ]
+  }
+}

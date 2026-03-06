@@ -1,0 +1,135 @@
+{
+  "post": {
+    "description": "Serialize and retrieve Metabase instance.\n\n  Outputs `.tar.gz` file with serialization results and an `export.log` file.\n  On error outputs serialization logs directly.",
+    "operationId": "post-api-ee-serialization-export",
+    "parameters": [
+      {
+        "description": "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)",
+        "in": "query",
+        "name": "dirname",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "description": "collections' db ids/entity-ids to serialize",
+        "in": "query",
+        "name": "collection",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "pattern": "^.{21}$",
+                    "type": "string"
+                  },
+                  {
+                    "pattern": "^eid:.{21}$",
+                    "type": "string"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "all_collections",
+        "required": true,
+        "schema": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "settings",
+        "required": true,
+        "schema": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "data_model",
+        "required": true,
+        "schema": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "field_values",
+        "required": true,
+        "schema": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "database_secrets",
+        "required": true,
+        "schema": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "continue_on_error",
+        "required": true,
+        "schema": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "full_stacktrace",
+        "required": true,
+        "schema": {
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/serialization/export",
+    "tags": [
+      "/api/ee/serialization"
+    ]
+  }
+}

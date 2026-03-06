@@ -1,0 +1,427 @@
+{
+  "get": {
+    "description": "Get the dependencies of a specific transform.",
+    "operationId": "get-api-transform-id-dependencies",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "collection_id": {
+                    "oneOf": [
+                      {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "created_at": {},
+                  "creator": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "common_name": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "date_joined": {},
+                      "email": {
+                        "type": "string"
+                      },
+                      "first_name": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "id": {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "is_data_analyst": {
+                        "type": "boolean"
+                      },
+                      "is_qbnewb": {
+                        "type": "boolean"
+                      },
+                      "is_superuser": {
+                        "type": "boolean"
+                      },
+                      "last_login": {
+                        "oneOf": [
+                          {},
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "last_name": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "tenant_id": {
+                        "oneOf": [
+                          {},
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "email",
+                      "first_name",
+                      "last_name"
+                    ],
+                    "type": "object"
+                  },
+                  "creator_id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "dependency_analysis_version": {
+                    "type": "integer"
+                  },
+                  "description": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "entity_id": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "last_run": {
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "end_time": {
+                            "oneOf": [
+                              {},
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "id": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "is_active": {
+                            "oneOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "message": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "run_method": {
+                            "type": "string"
+                          },
+                          "start_time": {},
+                          "status": {
+                            "enum": [
+                              "started",
+                              "succeeded",
+                              "failed",
+                              "timeout",
+                              "canceled",
+                              "canceling"
+                            ],
+                            "type": "string"
+                          },
+                          "transform_entity_id": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "transform_id": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "transform_name": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "user_id": {
+                            "oneOf": [
+                              {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "transform_id",
+                          "run_method",
+                          "status",
+                          "is_active",
+                          "start_time",
+                          "message",
+                          "user_id"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "owner": {
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "common_name": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "email": {
+                            "type": "string"
+                          },
+                          "first_name": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "id": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "last_name": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "email"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner_email": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "owner_user_id": {
+                    "oneOf": [
+                      {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "run_trigger": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source": {},
+                  "source_database_id": {
+                    "oneOf": [
+                      {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source_readable": {
+                    "oneOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source_type": {
+                    "type": "string"
+                  },
+                  "table": {
+                    "oneOf": [
+                      {
+                        "properties": {},
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "tag_ids": {
+                    "items": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "type": "array"
+                  },
+                  "target": {},
+                  "target_db_id": {
+                    "oneOf": [
+                      {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "updated_at": {}
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "description",
+                  "source",
+                  "target",
+                  "source_type",
+                  "entity_id",
+                  "created_at",
+                  "updated_at",
+                  "creator_id",
+                  "collection_id",
+                  "dependency_analysis_version",
+                  "creator"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/transform/{id}/dependencies",
+    "tags": [
+      "/api/transform"
+    ]
+  }
+}

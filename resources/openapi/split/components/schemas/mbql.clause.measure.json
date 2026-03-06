@@ -1,0 +1,14 @@
+{
+  "prefixItems": [
+    {
+      "const": "measure"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.id.measure.json"
+    }
+  ],
+  "type": "array"
+}

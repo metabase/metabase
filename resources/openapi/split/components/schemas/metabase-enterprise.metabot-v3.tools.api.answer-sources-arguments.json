@@ -1,0 +1,29 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "with_metric_default_temporal_breakout": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_metric_queryable_dimensions": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_model_fields": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_model_metrics": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

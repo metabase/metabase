@@ -1,0 +1,38 @@
+{
+  "description": "Schema for the definition of a date function expression.",
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema._PLUS_.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.datetime-add.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.datetime-subtract.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.convert-timezone.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.now.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.date.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.datetime.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.today.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.coalesce.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.case.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.if.json"
+    }
+  ]
+}

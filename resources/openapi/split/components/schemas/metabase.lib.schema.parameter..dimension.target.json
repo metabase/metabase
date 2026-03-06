@@ -1,0 +1,13 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.lib.schema.parameter..target.legacy-expression-ref.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.parameter.template-tag.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.parameter..target.legacy-field-ref.json"
+    }
+  ]
+}

@@ -1,0 +1,217 @@
+{
+  "delete": {
+    "description": "Delete a workspace and all its contents, including mirrored entities.",
+    "operationId": "delete-api-ee-workspace-ws-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "ok": {
+                  "const": true
+                }
+              },
+              "required": [
+                "ok"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/ee/workspace/{ws-id}",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  },
+  "get": {
+    "description": "Get a single workspace by ID",
+    "operationId": "get-api-ee-workspace-ws-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "api_key": {
+                  "type": "string"
+                },
+                "collection_id": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                },
+                "created_at": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "database_id": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                },
+                "id": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.api.status.json"
+                },
+                "updated_at": {
+                  "format": "date-time",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "collection_id",
+                "database_id",
+                "status",
+                "created_at",
+                "updated_at"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace/{ws-id}",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  },
+  "put": {
+    "description": "Update simple workspace properties.\n\n  Can set database_id only on uninitialized workspaces.",
+    "operationId": "put-api-ee-workspace-ws-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "additionalProperties": false,
+            "properties": {
+              "database_id": {
+                "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "api_key": {
+                  "type": "string"
+                },
+                "collection_id": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                },
+                "created_at": {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                "database_id": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                },
+                "id": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.api.status.json"
+                },
+                "updated_at": {
+                  "format": "date-time",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "collection_id",
+                "database_id",
+                "status",
+                "created_at",
+                "updated_at"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/ee/workspace/{ws-id}",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

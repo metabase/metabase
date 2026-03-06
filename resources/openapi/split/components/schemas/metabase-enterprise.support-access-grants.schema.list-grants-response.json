@@ -1,0 +1,31 @@
+{
+  "description": "Schema for GET /api/ee/support-access-grants response (paginated list).",
+  "properties": {
+    "data": {
+      "items": {
+        "$ref": "./metabase-enterprise.support-access-grants.schema.grant-response.json"
+      },
+      "type": "array"
+    },
+    "limit": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "offset": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "total": {
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "data",
+    "total",
+    "limit",
+    "offset"
+  ],
+  "type": "object"
+}

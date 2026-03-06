@@ -1,0 +1,53 @@
+{
+  "post": {
+    "description": "Suggest fixes for a SQL query.",
+    "operationId": "post-api-ee-ai-sql-fixer-fix",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "error_message": {
+                "type": "string"
+              },
+              "query": {
+                "properties": {
+                  "database": {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "database"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "query",
+              "error_message"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/ai-sql-fixer/fix",
+    "tags": [
+      "/api/ee/ai-sql-fixer"
+    ]
+  }
+}

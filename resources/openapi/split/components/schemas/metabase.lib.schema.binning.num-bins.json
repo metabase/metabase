@@ -1,0 +1,5 @@
+{
+  "description": "Number of bins to use.",
+  "minimum": 1,
+  "type": "integer"
+}

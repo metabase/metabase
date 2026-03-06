@@ -1,0 +1,4 @@
+{
+  "$ref": "./metabase.parameters.schema.parameters.json",
+  "description": "Form-encoded JSON-encoded array of parameter maps."
+}

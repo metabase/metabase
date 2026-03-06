@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "type": {
+      "const": "nocache"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "type": "object"
+}

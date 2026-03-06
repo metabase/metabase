@@ -1,0 +1,61 @@
+{
+  "post": {
+    "description": "Creates a native query from a test query spec.",
+    "operationId": "post-api-testing-native-query",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "database": {
+                "$ref": "../components/schemas/metabase.lib.schema.id.database.json"
+              },
+              "query": {
+                "type": "string"
+              },
+              "template-tags": {
+                "default": {},
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.lib.schema.test-spec.test-template-tags-spec.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "database",
+              "query"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase.lib.schema.query.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/testing/native-query",
+    "tags": [
+      "/api/testing"
+    ]
+  }
+}

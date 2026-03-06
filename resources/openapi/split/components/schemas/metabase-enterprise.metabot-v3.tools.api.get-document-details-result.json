@@ -1,0 +1,42 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "structured_output": {
+          "properties": {
+            "document": {
+              "type": "string"
+            },
+            "id": {
+              "type": "integer"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "document"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "structured_output"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "output"
+      ],
+      "type": "object"
+    }
+  ]
+}

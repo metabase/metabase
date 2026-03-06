@@ -1,0 +1,10 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.transforms.schema.table-target.json"
+    },
+    {
+      "$ref": "./metabase.transforms.schema.table-incremental-target.json"
+    }
+  ]
+}

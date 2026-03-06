@@ -1,0 +1,19 @@
+{
+  "description": "Fingerprint values that Fields of all types should have.",
+  "properties": {
+    "distinct-count": {
+      "type": "integer"
+    },
+    "nil%": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.metadata.fingerprint.percent.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

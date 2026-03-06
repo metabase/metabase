@@ -1,0 +1,8 @@
+{
+  "properties": {
+    "stage-number": {
+      "type": "integer"
+    }
+  },
+  "type": "object"
+}

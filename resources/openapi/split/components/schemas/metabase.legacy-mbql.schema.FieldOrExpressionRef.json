@@ -1,0 +1,10 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.expression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.field.json"
+    }
+  ]
+}

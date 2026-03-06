@@ -1,0 +1,84 @@
+{
+  "get": {
+    "description": "Get transforms that are external to the workspace, i.e. no matching workspace_transform row exists.",
+    "operationId": "get-api-ee-workspace-ws-id-external-transform",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      },
+      {
+        "in": "query",
+        "name": "database-id",
+        "required": false,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "transforms": {
+                  "items": {
+                    "properties": {
+                      "checkout_disabled": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "id": {
+                        "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "source_type": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "source_type",
+                      "checkout_disabled"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "transforms"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace/{ws-id}/external/transform",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

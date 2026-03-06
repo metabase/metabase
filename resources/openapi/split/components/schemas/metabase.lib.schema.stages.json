@@ -1,0 +1,15 @@
+{
+  "allOf": [
+    {
+      "default": [],
+      "items": {
+        "$ref": "./metabase.lib.schema.stage.json"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    {
+      "$ref": "./metabase.lib.schema..stages.valid-refs.json"
+    }
+  ]
+}

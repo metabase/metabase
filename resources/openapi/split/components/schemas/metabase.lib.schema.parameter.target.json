@@ -1,0 +1,16 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.lib.schema.parameter.dimension.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.parameter.variable.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.parameter.text-tag.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.parameter..target.legacy-field-ref.json"
+    }
+  ]
+}

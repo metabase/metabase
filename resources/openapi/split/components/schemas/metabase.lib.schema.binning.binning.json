@@ -1,0 +1,61 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "strategy": {
+          "$ref": "./metabase.lib.schema.binning.strategy.json"
+        }
+      },
+      "required": [
+        "strategy"
+      ],
+      "type": "object"
+    },
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "strategy": {
+              "const": "default"
+            }
+          },
+          "required": [
+            "strategy"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "bin-width": {
+              "$ref": "./metabase.lib.schema.binning.bin-width.json"
+            },
+            "strategy": {
+              "const": "bin-width"
+            }
+          },
+          "required": [
+            "strategy",
+            "bin-width"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "num-bins": {
+              "$ref": "./metabase.lib.schema.binning.num-bins.json"
+            },
+            "strategy": {
+              "const": "num-bins"
+            }
+          },
+          "required": [
+            "strategy",
+            "num-bins"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  ],
+  "description": "Schema for `:binning` options passed to a `:field` clause."
+}

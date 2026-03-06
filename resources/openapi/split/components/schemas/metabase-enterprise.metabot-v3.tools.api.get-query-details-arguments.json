@@ -1,0 +1,12 @@
+{
+  "properties": {
+    "query": {
+      "properties": {},
+      "type": "object"
+    }
+  },
+  "required": [
+    "query"
+  ],
+  "type": "object"
+}

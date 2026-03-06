@@ -1,0 +1,17 @@
+{
+  "prefixItems": [
+    {
+      "const": "regex-match-first"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.string.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.string.json"
+    }
+  ],
+  "type": "array"
+}

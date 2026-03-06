@@ -1,0 +1,84 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "description": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_id": {
+          "$ref": "./metabase.lib.schema.id.card.json"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parameter_mappings": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.parameters.schema.parameter-mappings.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parameters": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.parameters.schema.parameters.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "$ref": "./metabase.actions.schema.type.json"
+        },
+        "visualization_settings": {
+          "oneOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "model_id"
+      ],
+      "type": "object"
+    },
+    {
+      "oneOf": [
+        {
+          "$ref": "./metabase.actions.schema.http-action.json"
+        },
+        {
+          "$ref": "./metabase.actions.schema.implicit-action.json"
+        },
+        {
+          "$ref": "./metabase.actions.schema.query-action.json"
+        },
+        {
+          "properties": {},
+          "type": "object"
+        }
+      ]
+    }
+  ],
+  "description": "Schema for inserting a new Action (REST API or internally)."
+}

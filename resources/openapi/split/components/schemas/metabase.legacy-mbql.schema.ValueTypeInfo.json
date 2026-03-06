@@ -1,0 +1,56 @@
+{
+  "description": "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals` middleware to values in filter clauses based on the Field in the clause.",
+  "properties": {
+    "base_type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.base-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "database_type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "name": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "semantic_type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.semantic-or-relation-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "unit": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.legacy-mbql.schema.DateTimeUnit.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

@@ -1,0 +1,198 @@
+{
+  "get": {
+    "description": "Fetch a specific Collection's items with the following options:\n\n  *  `models` - only include objects of a specific set of `models`. If unspecified, returns objects of all models\n  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.\n  *  `pinned_state` - when `is_pinned`, return pinned objects only.\n                   when `is_not_pinned`, return non pinned objects only.\n                   when `all`, return everything. By default returns everything.\n  *  `include_can_run_adhoc_query` - when this is true hydrates the `can_run_adhoc_query` flag on card models\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
+    "operationId": "get-api-collection-id-items",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "anyOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "description": "String must be a valid 21-character NanoID string.",
+              "pattern": "^[A-Za-z0-9_\\-]{21}$",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "models",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "enum": [
+                  "dashboard",
+                  "table",
+                  "dataset",
+                  "no_models",
+                  "timeline",
+                  "snippet",
+                  "collection",
+                  "transform",
+                  "document",
+                  "pulse",
+                  "metric",
+                  "card"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "archived",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_can_run_adhoc_query",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "pinned_state",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "enum": [
+                "is_not_pinned",
+                "is_pinned",
+                "all"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort_column",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "enum": [
+                "model",
+                "name",
+                "last_edited_by",
+                "last_edited_at",
+                "description"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort_direction",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "enum": [
+                "desc",
+                "asc"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "official_collections_first",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "show_dashboard_questions",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/collection/{id}/items",
+    "tags": [
+      "/api/collection"
+    ]
+  }
+}

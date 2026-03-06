@@ -1,0 +1,36 @@
+{
+  "properties": {
+    "alias": {
+      "type": "string"
+    },
+    "dimension": {
+      "anyOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.field.json"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "display-name": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "id": {
+      "$ref": "./metabase.lib.schema.template-tag.id.json"
+    },
+    "name": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "type": {
+      "const": "temporal-unit"
+    }
+  },
+  "required": [
+    "type",
+    "dimension"
+  ],
+  "type": "object"
+}

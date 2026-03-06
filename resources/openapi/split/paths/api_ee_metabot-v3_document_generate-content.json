@@ -1,0 +1,45 @@
+{
+  "post": {
+    "description": "Create a new piece of content to insert into the document.",
+    "operationId": "post-api-ee-metabot-v3-document-generate-content",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "instructions": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "references": {
+                "description": "Value must be a map.",
+                "properties": {},
+                "type": "object"
+              }
+            },
+            "required": [
+              "instructions"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/metabot-v3/document/generate-content",
+    "tags": [
+      "/api/ee/metabot-v3/document"
+    ]
+  }
+}

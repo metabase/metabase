@@ -1,0 +1,28 @@
+{
+  "properties": {
+    "alias": {
+      "type": "string"
+    },
+    "dimension": {
+      "$ref": "./mbql.clause.field.json"
+    },
+    "display-name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "id": {
+      "$ref": "./metabase.lib.schema.template-tag.id.json"
+    },
+    "name": {
+      "$ref": "./metabase.lib.schema.template-tag.name.json"
+    },
+    "type": {
+      "const": "temporal-unit"
+    }
+  },
+  "required": [
+    "name",
+    "display-name",
+    "type"
+  ],
+  "type": "object"
+}

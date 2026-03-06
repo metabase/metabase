@@ -1,0 +1,76 @@
+{
+  "get": {
+    "description": "Get a list supported databases, and whether they're enabled and have required permissions.",
+    "operationId": "get-api-ee-workspace-database",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "databases": {
+                  "items": {
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "id": {
+                        "description": "value must be an integer greater than zero.",
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "permissions_status": {
+                        "properties": {
+                          "checked_at": {
+                            "type": "string"
+                          },
+                          "error": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "checked_at"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "enabled"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "databases"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace/database",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

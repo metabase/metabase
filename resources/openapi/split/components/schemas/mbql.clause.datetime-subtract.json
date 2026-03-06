@@ -1,0 +1,20 @@
+{
+  "prefixItems": [
+    {
+      "const": "datetime-subtract"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.temporal.json"
+    },
+    {
+      "type": "integer"
+    },
+    {
+      "$ref": "./metabase.lib.schema.temporal-bucketing..unit.date-time.interval.json"
+    }
+  ],
+  "type": "array"
+}

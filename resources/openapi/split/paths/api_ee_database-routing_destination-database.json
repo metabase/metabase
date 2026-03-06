@@ -1,0 +1,72 @@
+{
+  "post": {
+    "description": "Create new Destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.\n\n  This is OK, it's not an invariant that all database details are always valid, but it's something to note.",
+    "operationId": "post-api-ee-database-routing-destination-database",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "check_connection_details",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "destinations": {
+                "items": {
+                  "properties": {
+                    "details": {
+                      "description": "Value must be a map.",
+                      "properties": {},
+                      "type": "object"
+                    },
+                    "name": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "details"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "router_database_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "router_database_id",
+              "destinations"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/database-routing/destination-database",
+    "tags": [
+      "/api/ee/database-routing"
+    ]
+  }
+}

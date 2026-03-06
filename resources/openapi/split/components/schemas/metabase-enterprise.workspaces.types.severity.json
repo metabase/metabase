@@ -1,0 +1,8 @@
+{
+  "enum": [
+    "error",
+    "warning",
+    "info"
+  ],
+  "type": "string"
+}

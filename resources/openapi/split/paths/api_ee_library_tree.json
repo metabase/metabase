@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "This matches /api/collection/tree but only returns the library collection.",
+    "operationId": "get-api-ee-library-tree",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/library/tree",
+    "tags": [
+      "/api/ee/library"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "enum": [
+    "archived",
+    "ready",
+    "broken",
+    "pending",
+    "uninitialized"
+  ],
+  "type": "string"
+}

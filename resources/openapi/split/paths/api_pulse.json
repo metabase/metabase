@@ -1,0 +1,176 @@
+{
+  "get": {
+    "description": "Fetch all dashboard subscriptions. By default, returns only subscriptions for which the current user has write\n  permissions. For admins, this is all subscriptions; for non-admins, it is only subscriptions that they created.\n\n  If `dashboard_id` is specified, restricts results to subscriptions for that dashboard.\n\n  If `created_or_receive` is `true`, it specifically returns all subscriptions for which the current user\n  created *or* is a known recipient of. Note that this is a superset of the default items returned for non-admins,\n  and a subset of the default items returned for admins. This is used to power the /account/notifications page.\n  This may include subscriptions which the current user does not have collection permissions for, in which case\n  some sensitive metadata (the list of cards and recipients) is stripped out.",
+    "operationId": "get-api-pulse",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "archived",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "dashboard_id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "creator_or_recipient",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/pulse",
+    "tags": [
+      "/api/pulse"
+    ]
+  },
+  "post": {
+    "description": "Create a new `Pulse`.",
+    "operationId": "post-api-pulse",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "cards": {},
+              "channels": {},
+              "collection_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_position": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dashboard_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "parameters": {
+                "oneOf": [
+                  {
+                    "items": {
+                      "properties": {},
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "skip_if_empty": {
+                "default": false,
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "cards",
+              "channels",
+              "skip_if_empty"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/pulse",
+    "tags": [
+      "/api/pulse"
+    ]
+  }
+}

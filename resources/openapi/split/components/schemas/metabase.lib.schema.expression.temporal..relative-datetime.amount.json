@@ -1,0 +1,10 @@
+{
+  "oneOf": [
+    {
+      "const": "current"
+    },
+    {
+      "type": "integer"
+    }
+  ]
+}

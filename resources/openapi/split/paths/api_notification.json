@@ -1,0 +1,121 @@
+{
+  "get": {
+    "description": "List notifications.\n  - `creator_id`: if provided returns only notifications created by this user\n  - `recipient_id`: if provided returns only notification that has recipient_id as a recipient\n  - `creator_or_recipient_id`: if provided returns only notification that has user_id as creator or recipient\n  - `card_id`: if provided returns only notification that has card_id as payload",
+    "operationId": "get-api-notification",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "creator_id",
+        "required": false,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "recipient_id",
+        "required": false,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "creator_or_recipient_id",
+        "required": false,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "card_id",
+        "required": false,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_inactive",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "payload_type",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "enum": [
+                "notification/dashboard",
+                "notification/system-event",
+                "notification/testing",
+                "notification/card"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/notification",
+    "tags": [
+      "/api/notification"
+    ]
+  },
+  "post": {
+    "description": "Create a new notification, return the created notification.",
+    "operationId": "post-api-notification",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase.notification.models.FullyHydratedNotification.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/notification",
+    "tags": [
+      "/api/notification"
+    ]
+  }
+}

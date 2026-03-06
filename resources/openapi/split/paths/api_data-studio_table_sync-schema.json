@@ -1,0 +1,38 @@
+{
+  "post": {
+    "description": "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.\n  - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)\n  - The sync itself is however, asynchronous. This call may return before all tables synced.",
+    "operationId": "post-api-data-studio-table-sync-schema",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase.data-studio.api.table.table-selectors.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "null"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/data-studio/table/sync-schema",
+    "tags": [
+      "/api/data-studio/table"
+    ]
+  }
+}

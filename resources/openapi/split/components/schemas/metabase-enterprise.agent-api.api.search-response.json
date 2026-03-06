@@ -1,0 +1,19 @@
+{
+  "description": "Search results containing tables and metrics matching the query.",
+  "properties": {
+    "data": {
+      "items": {
+        "$ref": "./metabase-enterprise.agent-api.api.search-result-item.json"
+      },
+      "type": "array"
+    },
+    "total_count": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "data",
+    "total_count"
+  ],
+  "type": "object"
+}

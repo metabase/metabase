@@ -1,0 +1,33 @@
+{
+  "get": {
+    "description": "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled.\n\n  Returns a Document with sensitive fields removed (excludes collection_id, permissions, creator details, etc.).\n  Includes all embedded Cards with their metadata hydrated so the frontend doesn't need to make separate\n  requests for each card — just like public Dashboards do.",
+    "operationId": "get-api-public-document-uuid",
+    "parameters": [
+      {
+        "description": "value must be a valid UUID.",
+        "in": "path",
+        "name": "uuid",
+        "required": true,
+        "schema": {
+          "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/public/document/{uuid}",
+    "tags": [
+      "/api/public"
+    ]
+  }
+}

@@ -1,0 +1,441 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "base-type": {
+          "$ref": "./metabase.lib.schema.common.base-type.json",
+          "default": "type/*"
+        },
+        "database-type": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "display-name": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effective-type": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.base-type.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fingerprint": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.metadata.fingerprint.fingerprint.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fk-field-id": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.id.field.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fk-field-name": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fk-join-alias": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.join.alias.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fk-target-field-id": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.id.field.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "has-field-values": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.metadata..column.has-field-values.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.id.field.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inherited-temporal-unit": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.temporal-bucketing.unit.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/binning": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.binning.binning.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/breakout?": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/card-id": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.id.card.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/deduplicated-name": {
+          "$ref": "./metabase.lib.schema.metadata.deduplicated-name.json"
+        },
+        "lib/desired-column-alias": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.metadata.desired-column-alias.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/expression-name": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/external-remap": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.metadata..column.remapping.external.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/internal-remap": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.metadata..column.remapping.internal.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/join-alias": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.join.alias.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/original-binning": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.binning.binning.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/original-display-name": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/original-effective-type": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.base-type.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/original-expression-name": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/original-join-alias": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.join.alias.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/original-name": {
+          "$ref": "./metabase.lib.schema.metadata.original-name.json"
+        },
+        "lib/ref-display-name": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/ref-name": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/simple-display-name": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/source": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.metadata..column.source.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/source-column-alias": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.metadata.source-column-alias.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/source-uuid": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.uuid.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/temporal-unit": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.temporal-bucketing.unit.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/transformation-added-base-type": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lib/type": {
+          "const": "metadata/column",
+          "default": "metadata/column"
+        },
+        "metabase.lib.metadata.result-metadata/field-ref": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.legacy-mbql.schema.Reference.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metabase.lib.metadata.result-metadata/source": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.metadata..column.legacy-source.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "nfc-path": {
+          "oneOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "qp/implicit-field?": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "selected?": {
+          "type": "boolean"
+        },
+        "semantic-type": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.semantic-or-relation-type.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "settings": {
+          "oneOf": [
+            {
+              "additionalProperties": {},
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "visibility-type": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.metadata..column.visibility-type.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "lib/type",
+        "name",
+        "base-type"
+      ],
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.kebab-cased-map.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.metadata..column.validate-for-source.json"
+    },
+    {
+      "allOf": []
+    }
+  ],
+  "description": "Malli schema for a valid map of column metadata, which can mean one of two things:\n\n  1. Metadata about a particular Field in the application database. This will always have an `:id`\n\n  2. Results metadata from a column in `data.cols` and/or `data.results_metadata.columns` in a Query Processor\n     response, or saved in something like `Card.result_metadata`. These *may* have an `:id`, or may not -- columns\n     coming back from native queries or things like `SELECT count(*)` aren't associated with any particular `Field`\n     and thus will not have an `:id`.\n\n  Now maybe these should be two different schemas, but `:id` being there or not is the only real difference; besides\n  that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want\n  to differentiate between the two versions."
+}

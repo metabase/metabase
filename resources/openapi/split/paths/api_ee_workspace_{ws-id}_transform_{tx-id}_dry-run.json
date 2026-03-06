@@ -1,0 +1,60 @@
+{
+  "post": {
+    "description": "Dry-run a transform in a workspace without persisting to the target table.\n\n  Returns the first 2000 rows of transform output for preview purposes.\n  Does not update last_run_at or create any database tables.\n\n  When run_stale_ancestors is true, any stale ancestor transforms will be executed first\n  in dependency order (these ARE persisted). If any ancestor fails, execution stops and\n  the dry-run will not proceed.",
+    "operationId": "post-api-ee-workspace-ws-id-transform-tx-id-dry-run",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      },
+      {
+        "in": "path",
+        "name": "tx-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "run_stale_ancestors": {
+                "$ref": "../components/schemas/metabase-enterprise.workspaces.types.flag.json"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.workspaces.types.query-result.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/workspace/{ws-id}/transform/{tx-id}/dry-run",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "Complexity estimate for a lens.",
+  "properties": {
+    "level": {
+      "$ref": "./metabase.transforms-inspector.schema.complexity-level.json"
+    },
+    "score": {
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "level"
+  ],
+  "type": "object"
+}

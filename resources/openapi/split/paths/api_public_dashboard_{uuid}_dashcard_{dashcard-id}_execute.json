@@ -1,0 +1,115 @@
+{
+  "get": {
+    "description": "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.",
+    "operationId": "get-api-public-dashboard-uuid-dashcard-dashcard-id-execute",
+    "parameters": [
+      {
+        "description": "value must be a valid UUID.",
+        "in": "path",
+        "name": "uuid",
+        "required": true,
+        "schema": {
+          "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+          "type": "string"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "dashcard-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be a valid JSON string.",
+        "in": "query",
+        "name": "parameters",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/public/dashboard/{uuid}/dashcard/{dashcard-id}/execute",
+    "tags": [
+      "/api/public"
+    ]
+  },
+  "post": {
+    "description": "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.\n\n   `parameters` should be the mapped dashboard parameters with values.",
+    "operationId": "post-api-public-dashboard-uuid-dashcard-dashcard-id-execute",
+    "parameters": [
+      {
+        "description": "value must be a valid UUID.",
+        "in": "path",
+        "name": "uuid",
+        "required": true,
+        "schema": {
+          "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+          "type": "string"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "dashcard-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "parameters": {
+                "oneOf": [
+                  {
+                    "additionalProperties": {},
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/public/dashboard/{uuid}/dashcard/{dashcard-id}/execute",
+    "tags": [
+      "/api/public"
+    ]
+  }
+}

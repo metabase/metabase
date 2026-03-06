@@ -1,0 +1,42 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "entity_id": {
+          "type": "integer"
+        },
+        "entity_type": {
+          "enum": [
+            "table",
+            "model",
+            "metric"
+          ],
+          "type": "string"
+        },
+        "field_id": {
+          "type": "string"
+        },
+        "limit": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "entity_type",
+        "entity_id",
+        "field_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

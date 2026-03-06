@@ -1,0 +1,34 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "measure_id": {
+          "type": "integer"
+        },
+        "sort_order": {
+          "oneOf": [
+            {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "measure_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ],
+  "description": "Aggregation using a pre-defined measure."
+}

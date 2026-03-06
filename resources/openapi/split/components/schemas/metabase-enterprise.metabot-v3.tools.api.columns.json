@@ -1,0 +1,6 @@
+{
+  "items": {
+    "$ref": "./metabase-enterprise.metabot-v3.tools.api.column.json"
+  },
+  "type": "array"
+}

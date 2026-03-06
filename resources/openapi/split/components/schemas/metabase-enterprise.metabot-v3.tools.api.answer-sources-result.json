@@ -1,0 +1,44 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "structured_output": {
+          "properties": {
+            "metrics": {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.full-metric.json"
+              },
+              "type": "array"
+            },
+            "models": {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.table-result.json"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "metrics",
+            "models"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "structured_output"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "output"
+      ],
+      "type": "object"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "description": "value must be an integer greater than zero.",
+  "minimum": 1,
+  "type": "integer"
+}

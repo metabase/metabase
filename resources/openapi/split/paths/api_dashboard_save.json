@@ -1,0 +1,22 @@
+{
+  "post": {
+    "description": "Save a denormalized description of dashboard.",
+    "operationId": "post-api-dashboard-save",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/dashboard/save",
+    "tags": [
+      "/api/dashboard"
+    ]
+  }
+}

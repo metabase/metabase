@@ -1,0 +1,16 @@
+{
+  "description": "Schema for a map that is in the general shape of either a legacy MBQL or MBQL 5 query. Query may not be normalized\n  yet!\n\n  This schema is not very strict because we need to handle different types of queries (legacy MBQL, pMBQL,\n  super-legacy MBQL, internal audit app queries, etc.) and it might not be normalized yet.",
+  "properties": {
+    "database": {
+      "anyOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.database.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.id.saved-questions-virtual-database.json"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

@@ -1,0 +1,36 @@
+{
+  "description": "Schema for :model/NotificationCard.",
+  "properties": {
+    "card": {
+      "oneOf": [
+        {
+          "properties": {},
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "card_id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "send_condition": {
+      "enum": [
+        "goal_below",
+        "has_result",
+        "goal_above"
+      ],
+      "type": "string"
+    },
+    "send_once": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "card_id"
+  ],
+  "type": "object"
+}

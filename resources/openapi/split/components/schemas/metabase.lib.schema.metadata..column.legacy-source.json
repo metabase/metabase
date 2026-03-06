@@ -1,0 +1,10 @@
+{
+  "description": "Possible values for `column.source` -- this is added by [[metabase.lib.metadata.result-metadata]] for historical\n  reasons (it is used in a few places in the FE). DO NOT use this in the backend for any purpose, use `:lib/source`\n  instead.",
+  "enum": [
+    "aggregation",
+    "fields",
+    "breakout",
+    "native"
+  ],
+  "type": "string"
+}

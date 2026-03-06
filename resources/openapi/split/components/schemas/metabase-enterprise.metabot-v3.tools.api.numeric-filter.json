@@ -1,0 +1,42 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "field_id": {
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "equals",
+            "not-equals",
+            "greater-than",
+            "greater-than-or-equal",
+            "less-than",
+            "less-than-or-equal"
+          ],
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "required": [
+        "field_id",
+        "operation",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

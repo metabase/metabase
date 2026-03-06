@@ -1,0 +1,8 @@
+{
+  "properties": {
+    "default": {
+      "$ref": "./metabase.legacy-mbql.schema.ExpressionArg.json"
+    }
+  },
+  "type": "object"
+}

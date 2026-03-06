@@ -1,0 +1,75 @@
+{
+  "get": {
+    "description": "Fetch a single `Setting`.",
+    "operationId": "get-api-setting-key",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "key",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/setting/{key}",
+    "tags": [
+      "/api/setting"
+    ]
+  },
+  "put": {
+    "description": "Create/update a `Setting`. If called by a non-admin, only user-local settings can be updated.\n   This endpoint can also be used to delete Settings by passing `nil` for `:value`.",
+    "operationId": "put-api-setting-key",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "key",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "value": {}
+            },
+            "required": [
+              "value"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/setting/{key}",
+    "tags": [
+      "/api/setting"
+    ]
+  }
+}

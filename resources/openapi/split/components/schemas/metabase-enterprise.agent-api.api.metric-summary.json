@@ -1,0 +1,40 @@
+{
+  "description": "Summary of a metric associated with a table. Includes the field_id of the default time dimension for temporal breakouts.",
+  "properties": {
+    "default_time_dimension_field_id": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "type": "integer"
+    },
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "const": "metric"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "name"
+  ],
+  "type": "object"
+}

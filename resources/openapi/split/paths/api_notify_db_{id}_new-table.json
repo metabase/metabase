@@ -1,0 +1,56 @@
+{
+  "post": {
+    "description": "Sync a new table without running a full database sync. Requires `schema_name` and `table_name`. Will throw an error\n  if the table already exists in Metabase or cannot be found.",
+    "operationId": "post-api-notify-db-id-new-table",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "schema_name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "table_name": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_name",
+              "table_name"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/notify/db/{id}/new-table",
+    "tags": [
+      "/api/notify"
+    ]
+  }
+}

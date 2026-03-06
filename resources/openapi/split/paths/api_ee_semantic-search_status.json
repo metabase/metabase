@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Fetch the indexing status of the currently active semantic search index table.\n\n  Returns a map with keys:\n   :indexed_count <number of indexed items>\n   :total_est     <estimated total number of items to index>\n\n  If no index is active, returns an empty map.",
+    "operationId": "get-api-ee-semantic-search-status",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/semantic-search/status",
+    "tags": [
+      "/api/ee/semantic-search"
+    ]
+  }
+}

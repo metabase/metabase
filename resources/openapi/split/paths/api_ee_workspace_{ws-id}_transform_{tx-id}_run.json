@@ -1,0 +1,60 @@
+{
+  "post": {
+    "description": "Run a transform in a workspace.\n\n  App DB changes are rolled back. Warehouse DB changes persist.\n\n  When run_stale_ancestors is true, any stale ancestor transforms will be executed first\n  in dependency order. If any ancestor fails, execution stops and remaining ancestors\n  are marked as not_run. The target transform will not run if any ancestor failed.",
+    "operationId": "post-api-ee-workspace-ws-id-transform-tx-id-run",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      },
+      {
+        "in": "path",
+        "name": "tx-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "run_stale_ancestors": {
+                "$ref": "../components/schemas/metabase-enterprise.workspaces.types.flag.json"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.workspaces.types.execution-result.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/workspace/{ws-id}/transform/{tx-id}/run",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

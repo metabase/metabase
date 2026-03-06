@@ -1,0 +1,96 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "dashboard-id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "dashboard-id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "dashcard-id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "dashcard-id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "card-id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "card-id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "model-id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "model-id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "table-id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "table-id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "webhook-id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "webhook-id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "unknown": {
+          "enum": [
+            "model-action"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "unknown"
+      ],
+      "type": "object"
+    }
+  ]
+}

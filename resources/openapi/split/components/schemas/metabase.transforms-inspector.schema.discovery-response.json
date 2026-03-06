@@ -1,0 +1,60 @@
+{
+  "description": "Response from lens discovery.",
+  "properties": {
+    "available_lenses": {
+      "items": {
+        "$ref": "./metabase.transforms-inspector.schema.lens-metadata.json"
+      },
+      "type": "array"
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "./metabase.transforms-inspector.schema.table.json"
+      },
+      "type": "array"
+    },
+    "status": {
+      "$ref": "./metabase.transforms-inspector.schema.inspector-status.json"
+    },
+    "target": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.transforms-inspector.schema.table.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "visited_fields": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.transforms-inspector.schema.visited-fields.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "name",
+    "status",
+    "sources",
+    "available_lenses"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,72 @@
+{
+  "post": {
+    "description": "Send a chat message to the LLM via the AI Proxy.",
+    "operationId": "post-api-ee-metabot-v3-agent-streaming",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "context": {
+                "$ref": "../components/schemas/metabase-enterprise.metabot-v3.context.context.json"
+              },
+              "conversation_id": {
+                "description": "value must be a valid UUID.",
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                "type": "string"
+              },
+              "history": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase-enterprise.metabot-v3.client.schema.messages.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "message": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "metabot_id": {
+                "type": "string"
+              },
+              "profile_id": {
+                "type": "string"
+              },
+              "state": {
+                "properties": {},
+                "type": "object"
+              }
+            },
+            "required": [
+              "message",
+              "context",
+              "conversation_id",
+              "history",
+              "state"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/metabot-v3/agent-streaming",
+    "tags": [
+      "/api/ee/metabot-v3"
+    ]
+  }
+}

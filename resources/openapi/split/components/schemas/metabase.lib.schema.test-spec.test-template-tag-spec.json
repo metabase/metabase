@@ -1,0 +1,20 @@
+{
+  "description": "[:map [:type :metabase.lib.schema.template-tag/type]]",
+  "oneOf": [
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-temporal-unit-spec.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-field-filter-spec.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-snippet-spec.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-source-query-spec.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-raw-value-spec.json"
+    }
+  ]
+}

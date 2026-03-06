@@ -1,0 +1,31 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "lib/type": {
+          "$ref": "./metabase.lib.schema..stage.type.json"
+        }
+      },
+      "required": [
+        "lib/type"
+      ],
+      "type": "object"
+    },
+    {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema..stage.native.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema..stage.mbql.json"
+        }
+      ]
+    },
+    {
+      "allOf": []
+    }
+  ],
+  "default": {
+    "lib/type": "mbql.stage/mbql"
+  }
+}

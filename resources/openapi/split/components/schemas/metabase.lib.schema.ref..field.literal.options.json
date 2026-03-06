@@ -1,0 +1,103 @@
+{
+  "allOf": [
+    {
+      "default": {},
+      "properties": {
+        "base-type": {
+          "type": "string"
+        },
+        "binning": {
+          "$ref": "./metabase.lib.schema.binning.binning.json"
+        },
+        "database-type": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "display-name": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effective-type": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.base-type.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inherited-temporal-unit": {
+          "$ref": "./metabase.lib.schema.temporal-bucketing.unit.json"
+        },
+        "join-alias": {
+          "$ref": "./metabase.lib.schema.join.alias.json"
+        },
+        "lib/original-binning": {
+          "$ref": "./metabase.lib.schema.binning.binning.json"
+        },
+        "lib/original-effective-type": {
+          "$ref": "./metabase.lib.schema.common.base-type.json"
+        },
+        "lib/uuid": {
+          "$ref": "./metabase.lib.schema.common.uuid.json"
+        },
+        "name": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "original-temporal-unit": {
+          "$ref": "./metabase.lib.schema.temporal-bucketing.unit.json"
+        },
+        "semantic-type": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.semantic-or-relation-type.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source-field": {
+          "$ref": "./metabase.lib.schema.id.field.json"
+        },
+        "source-field-join-alias": {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        "source-field-name": {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        "temporal-unit": {
+          "$ref": "./metabase.lib.schema.temporal-bucketing.unit.json"
+        }
+      },
+      "required": [
+        "lib/uuid",
+        "base-type"
+      ],
+      "type": "object"
+    },
+    {
+      "allOf": []
+    }
+  ]
+}

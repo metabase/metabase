@@ -1,0 +1,20 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "segment_id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "segment_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ],
+  "description": "Filter using a pre-defined segment."
+}

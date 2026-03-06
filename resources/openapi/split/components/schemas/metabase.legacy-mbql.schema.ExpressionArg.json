@@ -1,0 +1,37 @@
+{
+  "oneOf": [
+    {
+      "type": "number"
+    },
+    {
+      "type": "boolean"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.BooleanExpression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.NumericExpression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.DatetimeExpression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.Aggregation.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.aggregation.json"
+    },
+    {
+      "type": "string"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.StringExpression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.value.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.FieldOrExpressionRef.json"
+    }
+  ]
+}

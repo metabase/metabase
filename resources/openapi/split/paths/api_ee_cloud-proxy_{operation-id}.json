@@ -1,0 +1,49 @@
+{
+  "post": {
+    "description": "Proxy a call to the Metabase Store API via harbormaster client.\n   This endpoint is used only for hosted instances, and calls Harbormaster Store using a OpenAPI client.\n   :operation-id is the operation-id of the Harbormaster Store endpoint.\n   All parameters for the operation are taken in the POST body.",
+    "operationId": "post-api-ee-cloud-proxy-operation-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "operation-id",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "oneOf": [
+              {
+                "properties": {},
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/cloud-proxy/{operation-id}",
+    "tags": [
+      "/api/ee/cloud-proxy"
+    ]
+  }
+}

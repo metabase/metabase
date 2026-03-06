@@ -1,0 +1,21 @@
+{
+  "prefixItems": [
+    {
+      "const": "segment"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.id.segment.json"
+        }
+      ]
+    }
+  ],
+  "type": "array"
+}

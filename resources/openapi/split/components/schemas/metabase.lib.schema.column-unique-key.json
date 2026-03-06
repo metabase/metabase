@@ -1,0 +1,4 @@
+{
+  "pattern": "^column-unique-key-v\\d+\\$.+$",
+  "type": "string"
+}

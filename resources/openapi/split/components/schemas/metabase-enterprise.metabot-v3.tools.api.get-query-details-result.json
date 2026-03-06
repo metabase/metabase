@@ -1,0 +1,47 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "structured_output": {
+          "properties": {
+            "query": {
+              "properties": {},
+              "type": "object"
+            },
+            "query_id": {
+              "type": "string"
+            },
+            "result_columns": {
+              "$ref": "./metabase-enterprise.metabot-v3.tools.api.columns.json"
+            },
+            "type": {
+              "const": "query"
+            }
+          },
+          "required": [
+            "type",
+            "query_id",
+            "query",
+            "result_columns"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "structured_output"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "output"
+      ],
+      "type": "object"
+    }
+  ]
+}

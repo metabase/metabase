@@ -1,0 +1,104 @@
+{
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "properties": {
+            "frequency": {
+              "const": "hourly"
+            }
+          },
+          "required": [
+            "frequency"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "frequency": {
+              "const": "daily"
+            },
+            "hour": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "frequency",
+            "hour"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "day_of_week": {
+              "enum": [
+                "sunday",
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday"
+              ],
+              "type": "string"
+            },
+            "frequency": {
+              "const": "weekly"
+            },
+            "hour": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "frequency",
+            "hour",
+            "day_of_week"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "day_of_month": {
+              "enum": [
+                "first-calendar-day",
+                "middle-of-month",
+                "last-calendar-day",
+                "first-sunday",
+                "first-monday",
+                "first-tuesday",
+                "first-wednesday",
+                "first-thursday",
+                "first-friday",
+                "first-saturday",
+                "last-sunday",
+                "last-monday",
+                "last-tuesday",
+                "last-wednesday",
+                "last-thursday",
+                "last-friday",
+                "last-saturday"
+              ],
+              "type": "string"
+            },
+            "frequency": {
+              "const": "monthly"
+            },
+            "hour": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "frequency",
+            "hour",
+            "day_of_month"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

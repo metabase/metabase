@@ -1,0 +1,129 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "error": {
+          "type": "boolean"
+        },
+        "message": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "error",
+        "message"
+      ],
+      "type": "object"
+    },
+    {
+      "oneOf": [
+        {
+          "properties": {},
+          "type": "object"
+        },
+        {
+          "properties": {
+            "created_at": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "created_by_id": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "db_id": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "sync_started_at": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "url": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "url",
+            "created_at",
+            "sync_started_at",
+            "created_by_id",
+            "db_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "created_at": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "created_by_id": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "db_id": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "last_sync_at": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "next_sync_at": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "url": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "url",
+            "created_at",
+            "last_sync_at",
+            "next_sync_at",
+            "created_by_id",
+            "db_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "created_at": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "created_by_id": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "db_id": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "error_message": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "url": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "url",
+            "created_at",
+            "error_message",
+            "created_by_id",
+            "db_id"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "properties": {
+    "entity-id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "entity-type": {
+      "enum": [
+        "dashboard",
+        "card",
+        "database"
+      ],
+      "type": "string"
+    },
+    "run-type": {
+      "enum": [
+        "alert",
+        "sync",
+        "fingerprint",
+        "subscription"
+      ],
+      "type": "string"
+    },
+    "started-at": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "started",
+        "success",
+        "failed",
+        "abandoned"
+      ],
+      "type": "string"
+    }
+  },
+  "type": "object"
+}

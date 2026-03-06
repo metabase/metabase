@@ -1,0 +1,32 @@
+{
+  "get": {
+    "description": "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled.",
+    "operationId": "get-api-action-public",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "$ref": "../components/schemas/metabase.actions.schema.action.json"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/action/public",
+    "tags": [
+      "/api/action"
+    ]
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "description": "Schema for the definition of a numeric expression. All numeric expressions evaluate to numeric values.",
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema._PLUS_.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.-.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema._SLASH_.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema._STAR_.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.coalesce.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.length.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.floor.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.ceil.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.round.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.abs.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.power.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.sqrt.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.exp.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.log.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.case.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.if.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.datetime-diff.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.integer.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.float.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.temporal-extract.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.get-year.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.get-quarter.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.get-month.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.get-week.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.get-day.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.get-day-of-week.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.get-hour.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.get-minute.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.get-second.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.aggregation.json"
+    }
+  ]
+}

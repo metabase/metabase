@@ -1,0 +1,22 @@
+{
+  "properties": {
+    "query": {
+      "type": "string"
+    },
+    "template-tags": {
+      "default": {},
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.test-spec.test-template-tags-spec.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "query"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,282 @@
+{
+  "delete": {
+    "description": "Delete a `Database`.",
+    "operationId": "delete-api-database-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/database/{id}",
+    "tags": [
+      "/api/database"
+    ]
+  },
+  "get": {
+    "description": "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables\n  belonging to this database, or the Tables and Fields, respectively. If the requestor has write permissions for the\n  DB\n   (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the\n   returned details (see [[metabase.secrets.models.secret/expand-db-details-inferred-secret-values]] for full details).\n\n   Passing include_editable_data_model will only return tables for which the current user has data model editing\n   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.\n   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID\n   and tables, with no additional metadata.\n\n   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n   [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`\n   in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the\n   database details.",
+    "operationId": "get-api-database-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "include",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "enum": [
+                "tables",
+                "tables.fields"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_editable_data_model",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "exclude_uneditable_details",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/database/{id}",
+    "tags": [
+      "/api/database"
+    ]
+  },
+  "put": {
+    "description": "Update a `Database`.",
+    "operationId": "put-api-database-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "auto_run_queries": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cache_ttl": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "caveats": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "description": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "details": {
+                "oneOf": [
+                  {
+                    "description": "Value must be a map.",
+                    "properties": {},
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "engine": {
+                "oneOf": [
+                  {
+                    "description": "value must be a valid database engine.",
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "points_of_interest": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "provider_name": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "refingerprint": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "schedules": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.sync.schedules.ExpandedSchedulesMap.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "settings": {
+                "oneOf": [
+                  {
+                    "description": "Value must be a map.",
+                    "properties": {},
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "write_data_details": {
+                "oneOf": [
+                  {
+                    "description": "Value must be a map.",
+                    "properties": {},
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/database/{id}",
+    "tags": [
+      "/api/database"
+    ]
+  }
+}

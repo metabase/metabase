@@ -1,0 +1,46 @@
+{
+  "properties": {
+    "alias": {
+      "type": "string"
+    },
+    "default": {},
+    "dimension": {
+      "$ref": "./mbql.clause.field.json"
+    },
+    "display-name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "id": {
+      "$ref": "./metabase.lib.schema.template-tag.id.json"
+    },
+    "name": {
+      "$ref": "./metabase.lib.schema.template-tag.name.json"
+    },
+    "options": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.template-tag..field-filter.options.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "required": {
+      "type": "boolean"
+    },
+    "type": {
+      "const": "dimension"
+    },
+    "widget-type": {
+      "$ref": "./metabase.lib.schema.template-tag.widget-type.json"
+    }
+  },
+  "required": [
+    "name",
+    "display-name",
+    "type",
+    "widget-type"
+  ],
+  "type": "object"
+}

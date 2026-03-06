@@ -1,0 +1,33 @@
+{
+  "post": {
+    "description": "Unsubscribe current user from a notification.",
+    "operationId": "post-api-notification-id-unsubscribe",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/notification/{id}/unsubscribe",
+    "tags": [
+      "/api/notification"
+    ]
+  }
+}

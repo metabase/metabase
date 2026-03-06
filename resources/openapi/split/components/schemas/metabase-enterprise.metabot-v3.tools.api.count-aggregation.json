@@ -1,0 +1,37 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "bucket": {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.bucket.json"
+        },
+        "function": {
+          "const": "count"
+        },
+        "sort_order": {
+          "oneOf": [
+            {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "function"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ],
+  "description": "Count aggregation — counts rows, no field_id needed.\n   Use sort_order to order results by this aggregation ('asc' or 'desc')."
+}

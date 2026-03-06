@@ -1,0 +1,33 @@
+{
+  "properties": {
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "$ref": "./metabase.transforms.schema.id.json"
+    },
+    "name": {
+      "type": "string"
+    },
+    "source": {
+      "$ref": "./metabase.transforms.schema.transform-source.json"
+    },
+    "target": {
+      "$ref": "./metabase.transforms.schema.transform-target.json"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "source",
+    "target"
+  ],
+  "type": "object"
+}

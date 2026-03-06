@@ -1,0 +1,19 @@
+{
+  "oneOf": [
+    {
+      "type": "number"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.NumericExpression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.Aggregation.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.value.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.Reference.json"
+    }
+  ]
+}

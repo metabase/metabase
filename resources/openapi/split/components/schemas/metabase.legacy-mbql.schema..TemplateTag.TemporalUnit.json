@@ -1,0 +1,34 @@
+{
+  "description": "Things required by all template tag types.",
+  "properties": {
+    "alias": {
+      "type": "string"
+    },
+    "default": {},
+    "dimension": {
+      "$ref": "./metabase.legacy-mbql.schema.field.json"
+    },
+    "display-name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "id": {
+      "$ref": "./metabase.lib.schema.template-tag.id.json"
+    },
+    "name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "required": {
+      "type": "boolean"
+    },
+    "type": {
+      "const": "temporal-unit"
+    }
+  },
+  "required": [
+    "type",
+    "name",
+    "display-name",
+    "dimension"
+  ],
+  "type": "object"
+}

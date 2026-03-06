@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "type": {
+      "enum": [
+        "nocache",
+        "ttl"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "type": "object"
+}

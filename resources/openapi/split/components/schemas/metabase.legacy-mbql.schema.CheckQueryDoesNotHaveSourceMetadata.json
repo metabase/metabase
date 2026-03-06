@@ -1,0 +1,3 @@
+{
+  "description": "`:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the\n  columns in the source query.\n\n  Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved, the\n  middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has been\n  changed so it is always added at the same level the resolved `:source-query` is added.\n\n  This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not functioning\n  properly."
+}

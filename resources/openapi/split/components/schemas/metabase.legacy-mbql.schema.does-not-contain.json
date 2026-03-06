@@ -1,0 +1,13 @@
+{
+  "anyOf": [
+    {
+      "allOf": [],
+      "description": "schema for a valid MBQL 4 :does-not-contain clause"
+    },
+    {
+      "allOf": [],
+      "description": "schema for a valid MBQL 4 :does-not-contain clause"
+    }
+  ],
+  "description": "Schema for a valid MBQL 4 :metabase.legacy-mbql.schema/does-not-contain clause."
+}

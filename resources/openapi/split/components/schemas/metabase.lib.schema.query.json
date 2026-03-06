@@ -1,0 +1,61 @@
+{
+  "allOf": [
+    {
+      "description": "Valid MBQL 5 query.",
+      "properties": {
+        "constraints": {
+          "$ref": "./metabase.lib.schema.constraints.constraints.json"
+        },
+        "create-row": {
+          "$ref": "./metabase.lib.schema.actions.row.json"
+        },
+        "database": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.id.saved-questions-virtual-database.json"
+            },
+            {
+              "$ref": "./metabase.lib.schema.id.database.json"
+            }
+          ]
+        },
+        "info": {
+          "$ref": "./metabase.lib.schema.info.info.json"
+        },
+        "lib/metadata": {
+          "$ref": "./metabase.lib.schema.metadata.metadata-provider.json"
+        },
+        "lib/type": {
+          "const": "mbql/query",
+          "default": "mbql/query"
+        },
+        "middleware": {
+          "$ref": "./metabase.lib.schema.middleware-options.middleware-options.json"
+        },
+        "parameters": {
+          "$ref": "./metabase.lib.schema.parameter.parameters.json"
+        },
+        "settings": {
+          "$ref": "./metabase.lib.schema.settings.settings.json"
+        },
+        "stages": {
+          "$ref": "./metabase.lib.schema.stages.json"
+        },
+        "update-row": {
+          "$ref": "./metabase.lib.schema.actions.row.json"
+        }
+      },
+      "required": [
+        "lib/type",
+        "stages"
+      ],
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.lib.schema.util.unique-uuids.json"
+    },
+    {
+      "allOf": []
+    }
+  ]
+}

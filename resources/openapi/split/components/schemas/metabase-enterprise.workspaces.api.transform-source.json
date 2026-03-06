@@ -1,0 +1,45 @@
+{
+  "oneOf": [
+    {
+      "properties": {
+        "query": {
+          "$ref": "./metabase.queries.schema.query.json"
+        },
+        "type": {
+          "const": "query"
+        }
+      },
+      "required": [
+        "type",
+        "query"
+      ],
+      "type": "object"
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "source-database": {
+          "type": "integer"
+        },
+        "source-tables": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "type": "object"
+        },
+        "type": {
+          "const": "python"
+        }
+      },
+      "required": [
+        "source-tables",
+        "type",
+        "body"
+      ],
+      "type": "object"
+    }
+  ]
+}

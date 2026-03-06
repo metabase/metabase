@@ -1,0 +1,11 @@
+{
+  "oneOf": [
+    {
+      "minimum": 1,
+      "type": "integer"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.NumericExpression.json"
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "get": {
+    "description": "Similar to `GET /`, but returns Collections in a tree structure, e.g.\n\n  ```\n  [{:name     \"A\"\n  :below    #{:card :dataset}\n  :children [{:name \"B\"}\n             {:name     \"C\"\n              :here     #{:dataset :card}\n              :below    #{:dataset :card}\n              :children [{:name     \"D\"\n                          :here     #{:dataset}\n                          :children [{:name \"E\"}]}\n                         {:name     \"F\"\n                          :here     #{:card}\n                          :children [{:name \"G\"}]}]}]}\n  {:name \"H\"}]\n  ```\n\n  The here and below keys indicate the types of items at this particular level of the tree (here) and in its\n  subtree (below).\n\n  TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at\n  some point in the future.\n\n  By default, looks at the `analytics` (if enabled) and regular (`nil`) namespaces. You can optionally pass a\n  `namespace` argument, or one or many `namespaces`, to specify the particular collection namespaces you wish to look\n  at. For example, `namespaces=analytics&namespaces=` would match the default behavior.\n\n  When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or\n  the root, if `collection-id` is `nil`).",
+    "operationId": "get-api-collection-tree",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "exclude-archived",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "exclude-other-user-collections",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "include-library",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "namespace",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "namespaces",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "shallow",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "collection-id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/collection/tree",
+    "tags": [
+      "/api/collection"
+    ]
+  }
+}

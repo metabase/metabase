@@ -1,0 +1,48 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "structured_output": {
+          "properties": {
+            "created_at": {
+              "description": "value must be a valid date string",
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            },
+            "updated_at": {
+              "description": "value must be a valid date string",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "path",
+            "created_at",
+            "updated_at"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "structured_output"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "output"
+      ],
+      "type": "object"
+    }
+  ]
+}

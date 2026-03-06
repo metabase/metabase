@@ -1,0 +1,64 @@
+{
+  "get": {
+    "description": "Get a list of API keys with the default scope. Non-paginated.",
+    "operationId": "get-api-api-key",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/api-key",
+    "tags": [
+      "/api/api-key"
+    ]
+  },
+  "post": {
+    "description": "Create a new API key (and an associated `User`) with the provided name and group ID.",
+    "operationId": "post-api-api-key",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "group_id": {
+                "$ref": "../components/schemas/metabase.api-keys.schema.id.json"
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "group_id",
+              "name"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/api-key",
+    "tags": [
+      "/api/api-key"
+    ]
+  }
+}

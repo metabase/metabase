@@ -1,0 +1,29 @@
+{
+  "description": "Summary section of a lens.",
+  "properties": {
+    "alerts": {
+      "items": {
+        "properties": {},
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "highlights": {
+      "items": {
+        "$ref": "./metabase.transforms-inspector.schema.summary-highlight.json"
+      },
+      "type": "array"
+    },
+    "text": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

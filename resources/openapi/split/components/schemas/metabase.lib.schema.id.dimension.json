@@ -1,0 +1,5 @@
+{
+  "description": "Valid Dimension ID",
+  "minimum": 1,
+  "type": "integer"
+}

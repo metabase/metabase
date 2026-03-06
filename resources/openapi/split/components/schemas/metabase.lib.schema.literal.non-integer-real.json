@@ -1,0 +1,13 @@
+{
+  "anyOf": [
+    {
+      "type": "number"
+    },
+    {
+      "$ref": "./metabase.lib.schema.literal.jvm.float.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.literal.jvm.big-decimal.json"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "properties": {
+    "active": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "channel_id": {
+      "oneOf": [
+        {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "channel_type": {},
+    "notification_id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "template_id": {
+      "oneOf": [
+        {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "channel_type"
+  ],
+  "type": "object"
+}

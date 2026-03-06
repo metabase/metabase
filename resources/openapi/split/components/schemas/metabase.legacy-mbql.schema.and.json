@@ -1,0 +1,12 @@
+{
+  "description": "Schema for a valid MBQL 4 :and clause.",
+  "oneOf": [
+    {
+      "allOf": [],
+      "description": "schema for a valid MBQL 4 :and clause"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.Filter.json"
+    }
+  ]
+}

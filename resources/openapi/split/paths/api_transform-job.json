@@ -1,0 +1,549 @@
+{
+  "get": {
+    "description": "Get all transform jobs.",
+    "operationId": "get-api-transform-job",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "last-run-start-time",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "next-run-start-time",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "last-run-statuses",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "enum": [
+                  "started",
+                  "succeeded",
+                  "failed",
+                  "timeout"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "tag-ids",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "description": "value must be an integer greater or equal to than zero.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "built_in_type": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "created_at": {},
+                  "description": {
+                    "oneOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "anyOf": [
+                              {},
+                              {}
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "entity_id": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "last_run": {
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "created_at": {},
+                          "end_time": {
+                            "oneOf": [
+                              {},
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "id": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "is_active": {
+                            "oneOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "job_id": {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "message": {
+                            "oneOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "run_method": {
+                            "type": "string"
+                          },
+                          "start_time": {},
+                          "status": {
+                            "enum": [
+                              "started",
+                              "succeeded",
+                              "failed",
+                              "timeout"
+                            ],
+                            "type": "string"
+                          },
+                          "updated_at": {}
+                        },
+                        "required": [
+                          "id",
+                          "job_id",
+                          "run_method",
+                          "status",
+                          "is_active",
+                          "start_time",
+                          "message",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "anyOf": [
+                          {},
+                          {}
+                        ]
+                      }
+                    ]
+                  },
+                  "next_run": {
+                    "oneOf": [
+                      {
+                        "additionalProperties": false,
+                        "properties": {
+                          "start_time": {}
+                        },
+                        "required": [
+                          "start_time"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "schedule": {
+                    "type": "string"
+                  },
+                  "tag_ids": {
+                    "items": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "type": "array"
+                  },
+                  "ui_display_type": {
+                    "enum": [
+                      "cron/raw",
+                      "cron/builder"
+                    ],
+                    "type": "string"
+                  },
+                  "updated_at": {}
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "description",
+                  "schedule",
+                  "ui_display_type",
+                  "entity_id",
+                  "created_at",
+                  "updated_at"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/transform-job",
+    "tags": [
+      "/api/transform-job"
+    ]
+  },
+  "post": {
+    "description": "Create a new transform job.",
+    "operationId": "post-api-transform-job",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "description": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "schedule": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "tag_ids": {
+                "items": {
+                  "description": "value must be an integer greater than zero.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "ui_display_type": {
+                "default": "cron/raw",
+                "enum": [
+                  "cron/raw",
+                  "cron/builder"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "schedule",
+              "ui_display_type"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "built_in_type": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "created_at": {},
+                "description": {
+                  "oneOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "anyOf": [
+                            {},
+                            {}
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "entity_id": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "id": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "last_run": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "created_at": {},
+                        "end_time": {
+                          "oneOf": [
+                            {},
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "id": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "is_active": {
+                          "oneOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "job_id": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "message": {
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "run_method": {
+                          "type": "string"
+                        },
+                        "start_time": {},
+                        "status": {
+                          "enum": [
+                            "started",
+                            "succeeded",
+                            "failed",
+                            "timeout"
+                          ],
+                          "type": "string"
+                        },
+                        "updated_at": {}
+                      },
+                      "required": [
+                        "id",
+                        "job_id",
+                        "run_method",
+                        "status",
+                        "is_active",
+                        "start_time",
+                        "message",
+                        "created_at",
+                        "updated_at"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "anyOf": [
+                        {},
+                        {}
+                      ]
+                    }
+                  ]
+                },
+                "next_run": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "start_time": {}
+                      },
+                      "required": [
+                        "start_time"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "schedule": {
+                  "type": "string"
+                },
+                "tag_ids": {
+                  "items": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "ui_display_type": {
+                  "enum": [
+                    "cron/raw",
+                    "cron/builder"
+                  ],
+                  "type": "string"
+                },
+                "updated_at": {}
+              },
+              "required": [
+                "id",
+                "name",
+                "description",
+                "schedule",
+                "ui_display_type",
+                "entity_id",
+                "created_at",
+                "updated_at"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/transform-job",
+    "tags": [
+      "/api/transform-job"
+    ]
+  }
+}

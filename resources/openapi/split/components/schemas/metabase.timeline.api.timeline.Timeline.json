@@ -1,0 +1,12 @@
+{
+  "properties": {
+    "id": {
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "type": "object"
+}

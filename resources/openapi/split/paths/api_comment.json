@@ -1,0 +1,120 @@
+{
+  "get": {
+    "description": "Get comments for an entity",
+    "operationId": "get-api-comment",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "target_type",
+        "required": true,
+        "schema": {
+          "enum": [
+            "document"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "target_id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/comment",
+    "tags": [
+      "/api/comment"
+    ]
+  },
+  "post": {
+    "description": "Create a new comment",
+    "operationId": "post-api-comment",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "child_target_id": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "content": {
+                "type": "object"
+              },
+              "html": {
+                "type": "string"
+              },
+              "parent_comment_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "target_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "target_type": {
+                "enum": [
+                  "document"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "target_type",
+              "target_id",
+              "content",
+              "html"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/comment",
+    "tags": [
+      "/api/comment"
+    ]
+  }
+}

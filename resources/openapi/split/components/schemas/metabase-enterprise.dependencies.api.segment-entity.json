@@ -1,0 +1,58 @@
+{
+  "properties": {
+    "data": {
+      "properties": {
+        "collection": {},
+        "collection_id": {},
+        "created_at": {},
+        "creator": {},
+        "creator_id": {},
+        "dashboard": {},
+        "dashboard_id": {},
+        "database_id": {},
+        "description": {},
+        "display": {},
+        "document": {},
+        "document_id": {},
+        "last-edit-info": {},
+        "name": {},
+        "query_type": {},
+        "result_metadata": {},
+        "type": {},
+        "view_count": {}
+      },
+      "type": "object"
+    },
+    "dependents_count": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.dependencies.api.usages.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dependents_errors": {
+      "items": {
+        "$ref": "./metabase-enterprise.dependencies.models.analysis-finding-error.analysis-finding-error.json"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "id": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "type": {
+      "const": "segment"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "data",
+    "dependents_count"
+  ],
+  "type": "object"
+}

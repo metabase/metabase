@@ -1,0 +1,30 @@
+{
+  "description": "parameter_mapping must be a map with :parameter_id and :target keys",
+  "properties": {
+    "card_id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.card.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dashcard": {
+      "properties": {},
+      "type": "object"
+    },
+    "parameter_id": {
+      "$ref": "./metabase.lib.schema.parameter.id.json"
+    },
+    "target": {
+      "$ref": "./metabase.lib.schema.parameter.target.json"
+    }
+  },
+  "required": [
+    "parameter_id",
+    "target"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,20 @@
+{
+  "description": "Order by item specifying a field and sort direction.",
+  "properties": {
+    "direction": {
+      "enum": [
+        "asc",
+        "desc"
+      ],
+      "type": "string"
+    },
+    "field": {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.field.json"
+    }
+  },
+  "required": [
+    "field",
+    "direction"
+  ],
+  "type": "object"
+}

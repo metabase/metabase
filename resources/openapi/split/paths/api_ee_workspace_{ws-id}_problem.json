@@ -1,0 +1,43 @@
+{
+  "get": {
+    "description": "Detect problems in the workspace that would affect downstream transforms after merge.\n\n   Returns a list of problems, each with:\n   - category:    the problem category (e.g. 'unused', 'internal-downstream', 'external-downstream')\n   - problem:     the specific problem (e.g. 'not-run', 'stale', 'removed-field')\n   - severity:    :error, :warning, or :info\n   - block-merge: whether this problem prevents merging\n   - data:        extra information, shape depends on the problem type\n\n   See `metabase-enterprise.workspaces.types/problem-types` for the full list.",
+    "operationId": "get-api-ee-workspace-ws-id-problem",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "$ref": "../components/schemas/metabase-enterprise.workspaces.types.problem.json"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace/{ws-id}/problem",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

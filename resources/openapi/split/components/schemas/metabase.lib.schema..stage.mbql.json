@@ -1,0 +1,60 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "aggregation": {
+          "$ref": "./metabase.lib.schema.aggregation.aggregations.json"
+        },
+        "breakout": {
+          "$ref": "./metabase.lib.schema.breakouts.json"
+        },
+        "expressions": {
+          "$ref": "./metabase.lib.schema.expression.expressions.json"
+        },
+        "fields": {
+          "$ref": "./metabase.lib.schema.fields.json"
+        },
+        "filters": {
+          "$ref": "./metabase.lib.schema.filters.json"
+        },
+        "joins": {
+          "$ref": "./metabase.lib.schema.join.joins.json"
+        },
+        "lib/stage-metadata": {
+          "$ref": "./metabase.lib.schema.metadata.stage.json"
+        },
+        "lib/type": {
+          "const": "mbql.stage/mbql"
+        },
+        "limit": {
+          "$ref": "./metabase.lib.schema.common.int-greater-than-or-equal-to-zero.json"
+        },
+        "order-by": {
+          "$ref": "./metabase.lib.schema.order-by.order-bys.json"
+        },
+        "page": {
+          "$ref": "./metabase.lib.schema.page.json"
+        },
+        "parameters": {
+          "$ref": "./metabase.lib.schema.parameter.parameters.json"
+        },
+        "source-card": {
+          "$ref": "./metabase.lib.schema.id.card.json"
+        },
+        "source-table": {
+          "$ref": "./metabase.lib.schema.id.table.json"
+        }
+      },
+      "required": [
+        "lib/type"
+      ],
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.lib.schema..stage.valid-refs.json"
+    },
+    {
+      "allOf": []
+    }
+  ]
+}

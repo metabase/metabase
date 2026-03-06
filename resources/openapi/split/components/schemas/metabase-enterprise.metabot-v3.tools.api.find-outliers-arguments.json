@@ -1,0 +1,95 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "data_source": {
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "properties": {
+                    "query": {
+                      "properties": {
+                        "database": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "database"
+                      ],
+                      "type": "object"
+                    },
+                    "query_id": {
+                      "type": "string"
+                    },
+                    "result_field_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "query",
+                    "result_field_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "metric_id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "metric_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "report_id": {
+                      "type": "integer"
+                    },
+                    "result_field_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "report_id",
+                    "result_field_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "result_field_id": {
+                      "type": "string"
+                    },
+                    "table_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "table_id",
+                    "result_field_id"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            {
+              "properties": {},
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "required": [
+        "data_source"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

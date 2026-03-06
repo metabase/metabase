@@ -1,0 +1,10 @@
+{
+  "description": "Schema for writing a valid table data authority.",
+  "enum": [
+    "computed",
+    "authoritative",
+    "unconfigured",
+    "ingested"
+  ],
+  "type": "string"
+}

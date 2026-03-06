@@ -1,0 +1,94 @@
+{
+  "properties": {
+    "db_id": {
+      "$ref": "./metabase-enterprise.workspaces.types.appdb-id.json"
+    },
+    "global": {
+      "properties": {
+        "schema": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "table": {
+          "type": "string"
+        },
+        "table_id": {
+          "oneOf": [
+            {
+              "$ref": "./metabase-enterprise.workspaces.types.appdb-id.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transform_id": {
+          "oneOf": [
+            {
+              "$ref": "./metabase-enterprise.workspaces.types.appdb-id.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "transform_id",
+        "schema",
+        "table",
+        "table_id"
+      ],
+      "type": "object"
+    },
+    "isolated": {
+      "properties": {
+        "schema": {
+          "type": "string"
+        },
+        "table": {
+          "type": "string"
+        },
+        "table_id": {
+          "oneOf": [
+            {
+              "$ref": "./metabase-enterprise.workspaces.types.appdb-id.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transform_id": {
+          "anyOf": [
+            {
+              "$ref": "./metabase-enterprise.workspaces.types.ref-id.json"
+            },
+            {
+              "$ref": "./metabase-enterprise.workspaces.types.appdb-id.json"
+            }
+          ]
+        }
+      },
+      "required": [
+        "transform_id",
+        "schema",
+        "table",
+        "table_id"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "db_id",
+    "global",
+    "isolated"
+  ],
+  "type": "object"
+}

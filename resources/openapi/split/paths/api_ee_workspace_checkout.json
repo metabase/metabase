@@ -1,0 +1,143 @@
+{
+  "get": {
+    "description": "Get checkout status for a global transform.\n\n   Returns:\n   - checkout_disabled: Why this transform cannot be checked out (nil if allowed)\n   - workspaces: All workspaces for this transform's database, with checkout status\n   - transforms: (DEPRECATED) Use :workspaces instead",
+    "operationId": "get-api-ee-workspace-checkout",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "transform-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "checkout_disabled": {
+                  "oneOf": [
+                    {
+                      "enum": [
+                        "mbql",
+                        "card-reference",
+                        "unknown-type"
+                      ],
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "transforms": {
+                  "items": {
+                    "properties": {
+                      "id": {
+                        "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "workspace": {
+                        "properties": {
+                          "id": {
+                            "description": "value must be an integer greater than zero.",
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "workspace"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "workspaces": {
+                  "items": {
+                    "properties": {
+                      "existing": {
+                        "oneOf": [
+                          {
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "ref_id": {
+                                "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+                              }
+                            },
+                            "required": [
+                              "ref_id",
+                              "name"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "id": {
+                        "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "$ref": "../components/schemas/metabase-enterprise.workspaces.api.status.json"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "status",
+                      "existing"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "checkout_disabled",
+                "workspaces",
+                "transforms"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace/checkout",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

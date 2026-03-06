@@ -1,0 +1,59 @@
+{
+  "get": {
+    "description": "Get workspace tables",
+    "operationId": "get-api-ee-workspace-ws-id-table",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "inputs": {
+                  "items": {
+                    "$ref": "../components/schemas/metabase-enterprise.workspaces.api.input-table.json"
+                  },
+                  "type": "array"
+                },
+                "outputs": {
+                  "items": {
+                    "$ref": "../components/schemas/metabase-enterprise.workspaces.api.output-table.json"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "inputs",
+                "outputs"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace/{ws-id}/table",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

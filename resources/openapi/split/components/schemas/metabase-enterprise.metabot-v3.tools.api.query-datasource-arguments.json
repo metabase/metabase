@@ -1,0 +1,94 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "aggregations": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.aggregation.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fields": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.field.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filters": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.filter.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "group_by": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.group-by.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_id": {
+          "type": "integer"
+        },
+        "order_by": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.order-by.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "table_id": {
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

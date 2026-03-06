@@ -1,0 +1,205 @@
+{
+  "get": {
+    "description": "Gets existing `Documents`.",
+    "operationId": "get-api-document",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/document",
+    "tags": [
+      "/api/document"
+    ]
+  },
+  "post": {
+    "description": "Create a new `Document`.",
+    "operationId": "post-api-document",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "cards": {
+                "oneOf": [
+                  {
+                    "additionalProperties": {
+                      "properties": {
+                        "cache_ttl": {
+                          "oneOf": [
+                            {
+                              "description": "value must be an integer greater than zero.",
+                              "minimum": 1,
+                              "type": "integer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "dataset_query": {
+                          "description": "Value must be a map.",
+                          "properties": {},
+                          "type": "object"
+                        },
+                        "description": {
+                          "oneOf": [
+                            {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "display": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "entity_id": {
+                          "oneOf": [
+                            {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "parameter_mappings": {
+                          "oneOf": [
+                            {
+                              "items": {
+                                "description": "Value must be a map.",
+                                "properties": {},
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "parameters": {
+                          "oneOf": [
+                            {
+                              "items": {
+                                "description": "Value must be a map.",
+                                "properties": {},
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "result_metadata": {
+                          "oneOf": [
+                            {
+                              "items": {
+                                "description": "Value must be a map.",
+                                "properties": {},
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "visualization_settings": {
+                          "description": "Value must be a map.",
+                          "properties": {},
+                          "type": "object"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "dataset_query",
+                        "display",
+                        "visualization_settings"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_position": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "document": {},
+              "name": {
+                "maxLength": 254,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "document"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/document",
+    "tags": [
+      "/api/document"
+    ]
+  }
+}

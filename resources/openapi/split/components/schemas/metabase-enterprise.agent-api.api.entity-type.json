@@ -1,0 +1,8 @@
+{
+  "description": "The type of queryable entity.",
+  "enum": [
+    "table",
+    "metric"
+  ],
+  "type": "string"
+}

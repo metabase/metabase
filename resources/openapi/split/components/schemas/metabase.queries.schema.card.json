@@ -1,0 +1,126 @@
+{
+  "description": "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
+  "properties": {
+    "collection_id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.collection.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dashboard_id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.dashboard.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "database_id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.database.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dataset_query": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.queries.schema.query.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "document_id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.documents.schema..document.id.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.card.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "name": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "parameter_mappings": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.parameters.schema.parameter-mappings.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "parameters": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.parameters.schema.parameters.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "result_metadata": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.queries.schema..card.result-metadata.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.metadata..card.type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

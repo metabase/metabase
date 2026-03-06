@@ -1,0 +1,88 @@
+{
+  "post": {
+    "description": "Get the content of a single SQL snippet.",
+    "operationId": "post-api-ee-metabot-tools-get-snippet-details",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+            "properties": {
+              "arguments": {
+                "$ref": "../components/schemas/metabase-enterprise.metabot-v3.tools.api.get-snippet-details-arguments.json"
+              },
+              "conversation_id": {
+                "description": "value must be a valid UUID.",
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                "type": "string"
+              },
+              "profile_id": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "arguments",
+              "conversation_id"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+              "properties": {
+                "conversation_id": {
+                  "description": "value must be a valid UUID.",
+                  "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                  "type": "string"
+                },
+                "profile_id": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "structured_output": {
+                  "$ref": "../components/schemas/metabase-enterprise.metabot-v3.tools.api.full-snippet.json"
+                }
+              },
+              "required": [
+                "structured_output",
+                "conversation_id"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/metabot-tools/get-snippet-details",
+    "tags": [
+      "/api/ee/metabot-tools"
+    ]
+  }
+}

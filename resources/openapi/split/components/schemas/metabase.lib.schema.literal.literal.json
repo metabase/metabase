@@ -1,0 +1,22 @@
+{
+  "anyOf": [
+    {
+      "type": "null"
+    },
+    {
+      "type": "boolean"
+    },
+    {
+      "type": "string"
+    },
+    {
+      "$ref": "./metabase.lib.schema.literal.integer.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.literal.non-integer-real.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.literal.temporal.json"
+    }
+  ]
+}

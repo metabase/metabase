@@ -1,0 +1,5 @@
+{
+  "description": "Valid Sandbox ID",
+  "minimum": 1,
+  "type": "integer"
+}

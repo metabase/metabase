@@ -1,0 +1,76 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.and.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.or.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.not.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema._EQ_.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema._BANG__EQ_.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema._LT_.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema._GT_.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema._LT__EQ_.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema._GT__EQ_.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.between.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.starts-with.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.ends-with.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.contains.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.in.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.not-in.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.does-not-contain.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.inside.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.is-empty.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.not-empty.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.is-null.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.not-null.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.relative-time-interval.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.time-interval.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.during.json"
+    }
+  ]
+}

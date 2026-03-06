@@ -1,0 +1,17 @@
+{
+  "oneOf": [
+    {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.mbql-clause.clause.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.literal.literal.json"
+        }
+      ]
+    },
+    {
+      "type": "null"
+    }
+  ]
+}

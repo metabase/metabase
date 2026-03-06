@@ -1,0 +1,42 @@
+{
+  "description": "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a\n  `:+` clause or a `:field` or `:value` clause.",
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.NumericExpression.json"
+    },
+    {
+      "type": "number"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.StringExpression.json"
+    },
+    {
+      "type": "string"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.BooleanExpression.json"
+    },
+    {
+      "type": "boolean"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.DatetimeExpression.json"
+    },
+    {},
+    {
+      "$ref": "./metabase.legacy-mbql.schema.case.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.if.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.offset.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.value.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.FieldOrExpressionRef.json"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "kind": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.actions.schema..implicit-action.kind.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

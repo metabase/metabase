@@ -1,0 +1,33 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "default": {},
+        "display-name": {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        "id": {
+          "$ref": "./metabase.lib.schema.template-tag.id.json"
+        },
+        "name": {
+          "$ref": "./metabase.lib.schema.template-tag.name.json"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "type": {
+          "$ref": "./metabase.lib.schema.template-tag..raw-value.type.json"
+        }
+      },
+      "required": [
+        "name",
+        "display-name",
+        "type"
+      ],
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.lib.schema.template-tag.disallow-dimension.json"
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "get": {
+    "description": "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public\n   sharing must be enabled.",
+    "operationId": "get-api-public-dashboard-uuid-dashcard-dashcard-id-card-card-id",
+    "parameters": [
+      {
+        "description": "value must be a valid UUID.",
+        "in": "path",
+        "name": "uuid",
+        "required": true,
+        "schema": {
+          "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+          "type": "string"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "dashcard-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "card-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "parameters",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be a valid JSON string.",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/public/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}",
+    "tags": [
+      "/api/public"
+    ]
+  }
+}

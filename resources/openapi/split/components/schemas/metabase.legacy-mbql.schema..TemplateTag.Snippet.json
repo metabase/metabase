@@ -1,0 +1,34 @@
+{
+  "description": "Things required by all template tag types.",
+  "properties": {
+    "database": {
+      "$ref": "./metabase.lib.schema.id.database.json"
+    },
+    "display-name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "id": {
+      "$ref": "./metabase.lib.schema.template-tag.id.json"
+    },
+    "name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "snippet-id": {
+      "$ref": "./metabase.lib.schema.id.snippet.json"
+    },
+    "snippet-name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "type": {
+      "const": "snippet"
+    }
+  },
+  "required": [
+    "type",
+    "name",
+    "display-name",
+    "snippet-name",
+    "snippet-id"
+  ],
+  "type": "object"
+}

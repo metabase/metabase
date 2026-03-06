@@ -1,0 +1,23 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "source": {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.transforms.transform-source.json"
+        },
+        "transform_id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "transform_id",
+        "source"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

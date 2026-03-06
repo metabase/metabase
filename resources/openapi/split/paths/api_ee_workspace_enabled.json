@@ -1,0 +1,51 @@
+{
+  "get": {
+    "description": "Test whether the current user can use Workspaces. Optionally takes a specific database.\n   Factors include: driver support, database user privileges, metabase permissions.",
+    "operationId": "get-api-ee-workspace-enabled",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "database-id",
+        "required": false,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "reason": {
+                  "type": "string"
+                },
+                "supported": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "supported"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace/enabled",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase-enterprise.agent-api.api.construct-query-table-request.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.agent-api.api.construct-query-metric-request.json"
+    }
+  ],
+  "description": "Request schema for /v1/construct-query. Accepts either table_id or metric_id."
+}

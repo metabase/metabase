@@ -1,0 +1,10 @@
+{
+  "anyOf": [
+    {
+      "const": "default"
+    },
+    {
+      "$ref": "./metabase.lib.schema.temporal-bucketing..unit.date-time.interval.json"
+    }
+  ]
+}

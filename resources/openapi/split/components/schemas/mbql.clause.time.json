@@ -1,0 +1,24 @@
+{
+  "prefixItems": [
+    {
+      "const": "time"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.string.json"
+    },
+    {
+      "anyOf": [
+        {
+          "const": "default"
+        },
+        {
+          "$ref": "./metabase.lib.schema.temporal-bucketing..unit.time.interval.json"
+        }
+      ]
+    }
+  ],
+  "type": "array"
+}

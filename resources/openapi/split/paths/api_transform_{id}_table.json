@@ -1,0 +1,40 @@
+{
+  "delete": {
+    "description": "Delete a transform's output table.",
+    "operationId": "delete-api-transform-id-table",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "null"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/transform/{id}/table",
+    "tags": [
+      "/api/transform"
+    ]
+  }
+}

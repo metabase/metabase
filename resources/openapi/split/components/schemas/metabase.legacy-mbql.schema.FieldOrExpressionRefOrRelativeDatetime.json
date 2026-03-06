@@ -1,0 +1,10 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.relative-datetime.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.FieldOrExpressionRef.json"
+    }
+  ]
+}

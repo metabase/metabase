@@ -1,0 +1,79 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "data_source": {
+          "allOf": [
+            {
+              "anyOf": [
+                {
+                  "properties": {
+                    "query": {
+                      "properties": {
+                        "database": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "database"
+                      ],
+                      "type": "object"
+                    },
+                    "query_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "query"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "report_id": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "report_id"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "table_id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "table_id"
+                  ],
+                  "type": "object"
+                }
+              ]
+            },
+            {
+              "properties": {},
+              "type": "object"
+            }
+          ]
+        },
+        "filters": {
+          "items": {
+            "$ref": "./metabase-enterprise.metabot-v3.tools.api.filter.json"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "data_source",
+        "filters"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

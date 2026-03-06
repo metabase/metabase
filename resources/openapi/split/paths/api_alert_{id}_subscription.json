@@ -1,0 +1,33 @@
+{
+  "delete": {
+    "description": "For users to unsubscribe themselves from the given alert.",
+    "operationId": "delete-api-alert-id-subscription",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/alert/{id}/subscription",
+    "tags": [
+      "/api/alert"
+    ]
+  }
+}

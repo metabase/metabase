@@ -1,0 +1,111 @@
+{
+  "description": "Full details of a table including its fields, related tables, metrics, and segments.",
+  "properties": {
+    "database_engine": {
+      "type": "string"
+    },
+    "database_id": {
+      "type": "integer"
+    },
+    "database_schema": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "fields": {
+      "items": {
+        "$ref": "./metabase-enterprise.agent-api.api.field.json"
+      },
+      "type": "array"
+    },
+    "id": {
+      "type": "integer"
+    },
+    "measures": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase-enterprise.agent-api.api.measure.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "metrics": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase-enterprise.agent-api.api.metric-summary.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "related_tables": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase-enterprise.agent-api.api.related-table.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "segments": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase-enterprise.agent-api.api.segment.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "$ref": "./metabase-enterprise.agent-api.api.entity-type.json"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "name",
+    "display_name",
+    "database_id",
+    "database_engine",
+    "fields"
+  ],
+  "type": "object"
+}

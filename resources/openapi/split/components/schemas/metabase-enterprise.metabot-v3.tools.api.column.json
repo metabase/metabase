@@ -1,0 +1,59 @@
+{
+  "properties": {
+    "database_type": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "field_id": {
+      "type": "string"
+    },
+    "field_values": {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.field-values.json"
+    },
+    "name": {
+      "type": "string"
+    },
+    "semantic_type": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.field-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "field_id",
+    "name",
+    "type"
+  ],
+  "type": "object"
+}

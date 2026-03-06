@@ -1,0 +1,11 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.time.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.literal.time.json"
+    }
+  ],
+  "description": "Schema for valid time literals."
+}

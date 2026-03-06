@@ -1,0 +1,113 @@
+{
+  "get": {
+    "description": "Get a list of recent items the current user has been viewing most recently under the `:recents` key.\n  Allows for filtering by context: views or selections",
+    "operationId": "get-api-activity-recents",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "context",
+        "required": true,
+        "schema": {
+          "items": {
+            "enum": [
+              "selections",
+              "views"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_metadata",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/activity/recents",
+    "tags": [
+      "/api/activity"
+    ]
+  },
+  "post": {
+    "description": "Adds a model to the list of recently selected items.",
+    "operationId": "post-api-activity-recents",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "context": {
+                "enum": [
+                  "selection"
+                ],
+                "type": "string"
+              },
+              "model": {
+                "enum": [
+                  "card",
+                  "dataset",
+                  "metric",
+                  "dashboard",
+                  "table",
+                  "collection",
+                  "document"
+                ],
+                "type": "string"
+              },
+              "model_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "model",
+              "model_id",
+              "context"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/activity/recents",
+    "tags": [
+      "/api/activity"
+    ]
+  }
+}

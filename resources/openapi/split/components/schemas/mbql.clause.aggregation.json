@@ -1,0 +1,14 @@
+{
+  "prefixItems": [
+    {
+      "const": "aggregation"
+    },
+    {
+      "$ref": "./metabase.lib.schema.ref.aggregation-options.json"
+    },
+    {
+      "type": "string"
+    }
+  ],
+  "type": "array"
+}

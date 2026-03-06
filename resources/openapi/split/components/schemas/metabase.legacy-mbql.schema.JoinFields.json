@@ -1,0 +1,14 @@
+{
+  "anyOf": [
+    {
+      "enum": [
+        "all",
+        "none"
+      ],
+      "type": "string"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.Fields.json"
+    }
+  ]
+}

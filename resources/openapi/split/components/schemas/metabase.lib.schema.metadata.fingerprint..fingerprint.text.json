@@ -1,0 +1,56 @@
+{
+  "description": "Schema for fingerprint information for Fields deriving from `:type/Text`.",
+  "properties": {
+    "average-length": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "percent-email": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.metadata.fingerprint.percent.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "percent-json": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.metadata.fingerprint.percent.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "percent-state": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.metadata.fingerprint.percent.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "percent-url": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.metadata.fingerprint.percent.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

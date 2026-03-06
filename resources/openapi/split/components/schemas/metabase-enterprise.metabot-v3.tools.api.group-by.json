@@ -1,0 +1,39 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "field_granularity": {
+          "oneOf": [
+            {
+              "enum": [
+                "minute",
+                "hour",
+                "day",
+                "week",
+                "month",
+                "quarter",
+                "year",
+                "day-of-week"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "field_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "field_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

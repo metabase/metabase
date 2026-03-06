@@ -1,0 +1,38 @@
+{
+  "post": {
+    "description": "Check a proposed edit to a card, and return the card IDs for those cards this edit will break.",
+    "operationId": "post-api-ee-dependencies-check-card",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase-enterprise.dependencies.api.card-body.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.dependencies.api.broken-cards-response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/dependencies/check-card",
+    "tags": [
+      "/api/ee/dependencies"
+    ]
+  }
+}

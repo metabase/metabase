@@ -1,0 +1,40 @@
+{
+  "get": {
+    "description": "Phase 1: Discover available lenses for a transform.\n   Returns structural metadata and available lens types.",
+    "operationId": "get-api-transform-id-inspect",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase.transforms-inspector.schema.discovery-response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/transform/{id}/inspect",
+    "tags": [
+      "/api/transform"
+    ]
+  }
+}

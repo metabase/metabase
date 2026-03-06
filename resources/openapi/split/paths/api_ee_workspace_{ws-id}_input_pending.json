@@ -1,0 +1,72 @@
+{
+  "get": {
+    "description": "List all input tables that haven't been granted access yet, excluding tables shadowed by workspace outputs.",
+    "operationId": "get-api-ee-workspace-ws-id-input-pending",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "inputs": {
+                  "items": {
+                    "properties": {
+                      "db_id": {
+                        "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                      },
+                      "schema": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "table": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "db_id",
+                      "schema",
+                      "table"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "inputs"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace/{ws-id}/input/pending",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

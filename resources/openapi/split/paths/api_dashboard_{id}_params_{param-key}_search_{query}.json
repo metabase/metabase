@@ -1,0 +1,51 @@
+{
+  "get": {
+    "description": "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict\n  these values by passing query parameters like `other-parameter=value` e.g.\n\n    ;; fetch values for Dashboard 1 parameter 'abc' that contain 'Cam' and are possible when parameter 'def' is set\n    ;; to 100\n     GET /api/dashboard/1/params/abc/search/Cam?def=100\n\n  Currently limited to first 1000 results.",
+    "operationId": "get-api-dashboard-id-params-param-key-search-query",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "path",
+        "name": "param-key",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      {
+        "in": "path",
+        "name": "query",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/dashboard/{id}/params/{param-key}/search/{query}",
+    "tags": [
+      "/api/dashboard"
+    ]
+  }
+}

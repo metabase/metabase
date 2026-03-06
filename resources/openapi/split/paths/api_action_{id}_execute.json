@@ -1,0 +1,60 @@
+{
+  "post": {
+    "description": "Execute the Action.\n\n   `parameters` should be the mapped dashboard parameters with values.",
+    "operationId": "post-api-action-id-execute",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.actions.schema.id.json"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "oneOf": [
+              {
+                "properties": {
+                  "parameters": {
+                    "oneOf": [
+                      {
+                        "additionalProperties": {},
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/action/{id}/execute",
+    "tags": [
+      "/api/action"
+    ]
+  }
+}

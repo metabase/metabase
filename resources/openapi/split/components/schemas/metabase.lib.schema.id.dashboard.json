@@ -1,0 +1,5 @@
+{
+  "description": "Valid Dashboard ID",
+  "minimum": 1,
+  "type": "integer"
+}

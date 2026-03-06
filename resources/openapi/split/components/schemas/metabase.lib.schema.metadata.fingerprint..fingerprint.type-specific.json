@@ -1,0 +1,26 @@
+{
+  "allOf": [
+    {
+      "additionalProperties": {
+        "properties": {},
+        "type": "object"
+      },
+      "type": "object"
+    },
+    {
+      "properties": {
+        "type/DateTime": {
+          "$ref": "./metabase.lib.schema.metadata.fingerprint..fingerprint.temporal.json"
+        },
+        "type/Number": {
+          "$ref": "./metabase.lib.schema.metadata.fingerprint..fingerprint.number.json"
+        },
+        "type/Text": {
+          "$ref": "./metabase.lib.schema.metadata.fingerprint..fingerprint.text.json"
+        }
+      },
+      "type": "object"
+    }
+  ],
+  "description": "Schema for type-specific fingerprint information."
+}

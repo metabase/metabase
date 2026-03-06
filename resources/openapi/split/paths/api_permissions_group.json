@@ -1,0 +1,83 @@
+{
+  "get": {
+    "description": "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.\n  This API requires superuser or group manager of more than one group.\n  Group manager is only available if `advanced-permissions` is enabled and returns only groups that user\n  is manager of.\n\n  Optional query parameter `tenancy` can be used to filter groups:\n  - `tenancy=external`: Returns only tenant groups (where `is_tenant_group = true`)\n  - `tenancy=internal`: Returns only non-tenant groups (where `is_tenant_group = false`)\n  - No `tenancy` parameter: Returns all groups (default behavior)",
+    "operationId": "get-api-permissions-group",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "tenancy",
+        "required": false,
+        "schema": {
+          "enum": [
+            "external",
+            "internal"
+          ],
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/permissions/group",
+    "tags": [
+      "/api/permissions"
+    ]
+  },
+  "post": {
+    "description": "Create a new `PermissionsGroup`.",
+    "operationId": "post-api-permissions-group",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "is_tenant_group": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/permissions/group",
+    "tags": [
+      "/api/permissions"
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "post": {
+    "description": "Execute an MBQL query and return results.\n\n  Accepts a base64-encoded MBQL query (as returned by /v1/construct-query) and executes it,\n  returning results with column metadata.\n\n  Response format:\n  - On success: {:data {:cols [...] :rows [...]} :row_count N :status :completed :running_time M}\n  - On failure: {:status :failed :error \"message\" ...}\n\n  Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated).",
+    "operationId": "post-api-agent-v1-execute",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase-enterprise.agent-api.api.execute-query-request.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.agent-api.api.execute-query-response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/agent/v1/execute",
+    "tags": [
+      "/api/agent"
+    ]
+  }
+}

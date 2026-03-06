@@ -1,0 +1,29 @@
+{
+  "description": "A section grouping cards in a lens.",
+  "properties": {
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "type": "string"
+    },
+    "layout": {
+      "$ref": "./metabase.transforms-inspector.schema.layout-type.json"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title"
+  ],
+  "type": "object"
+}

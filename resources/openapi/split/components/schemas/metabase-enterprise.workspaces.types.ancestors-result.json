@@ -1,0 +1,29 @@
+{
+  "description": "Result of running stale ancestor transforms.",
+  "properties": {
+    "failed": {
+      "items": {
+        "$ref": "./metabase-enterprise.workspaces.types.ref-id.json"
+      },
+      "type": "array"
+    },
+    "not_run": {
+      "items": {
+        "$ref": "./metabase-enterprise.workspaces.types.ref-id.json"
+      },
+      "type": "array"
+    },
+    "succeeded": {
+      "items": {
+        "$ref": "./metabase-enterprise.workspaces.types.ref-id.json"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "succeeded",
+    "failed",
+    "not_run"
+  ],
+  "type": "object"
+}

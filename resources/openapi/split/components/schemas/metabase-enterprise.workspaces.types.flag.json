@@ -1,0 +1,11 @@
+{
+  "anyOf": [
+    {
+      "const": 1
+    },
+    {
+      "type": "boolean"
+    }
+  ],
+  "description": "Boolean flag that accepts true, false, or 1 (for query param compatibility)."
+}

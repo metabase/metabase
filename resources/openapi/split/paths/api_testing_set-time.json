@@ -1,0 +1,55 @@
+{
+  "post": {
+    "description": "Make java-time see world at exact time.",
+    "operationId": "post-api-testing-set-time",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "add-ms": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer.",
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "time": {
+                "oneOf": [
+                  {
+                    "description": "value must be a valid date string",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/testing/set-time",
+    "tags": [
+      "/api/testing"
+    ]
+  }
+}

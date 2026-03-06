@@ -1,0 +1,17 @@
+{
+  "enum": [
+    "day",
+    "day-of-month",
+    "day-of-week",
+    "day-of-year",
+    "month",
+    "month-of-year",
+    "quarter",
+    "quarter-of-year",
+    "week",
+    "week-of-year",
+    "year",
+    "year-of-era"
+  ],
+  "type": "string"
+}

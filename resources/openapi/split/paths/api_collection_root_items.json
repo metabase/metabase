@@ -1,0 +1,221 @@
+{
+  "get": {
+    "description": "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection\n  doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no\n  `collection_id` exist. It does, however, have its own set of Permissions.\n\n  This endpoint will actually show objects with no `collection_id` for Users that have Root Collection\n  permissions, but for people without Root Collection perms, we'll just show the objects that have an effective\n  location of `/`.\n\n  This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the\n  top-level objects you're allowed to access.\n\n  By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as\n  `snippets`, you can pass the `?namespace=` parameter.\n\n  By default, library collections are excluded from the results; to include them, pass `?include_library=true`.\n\n  Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is\n  changed, that should too.",
+    "operationId": "get-api-collection-root-items",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "models",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "enum": [
+                  "dashboard",
+                  "table",
+                  "dataset",
+                  "no_models",
+                  "timeline",
+                  "snippet",
+                  "collection",
+                  "transform",
+                  "document",
+                  "pulse",
+                  "metric",
+                  "card"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "collection_type",
+        "required": false,
+        "schema": {
+          "enum": [
+            "remote-synced"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_can_run_adhoc_query",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "archived",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "namespace",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_library",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "pinned_state",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "enum": [
+                "is_not_pinned",
+                "is_pinned",
+                "all"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort_column",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "enum": [
+                "model",
+                "name",
+                "last_edited_by",
+                "last_edited_at",
+                "description"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort_direction",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "enum": [
+                "desc",
+                "asc"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "official_collections_first",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "show_dashboard_questions",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/collection/root/items",
+    "tags": [
+      "/api/collection"
+    ]
+  }
+}

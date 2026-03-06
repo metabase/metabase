@@ -1,0 +1,37 @@
+{
+  "get": {
+    "description": "Check if any remote-synced collection or collection item has local changes that have not been pushed\n  to the remote sync source.",
+    "operationId": "get-api-ee-remote-sync-is-dirty",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "is_dirty": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "is_dirty"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/remote-sync/is-dirty",
+    "tags": [
+      "/api/ee/remote-sync"
+    ]
+  }
+}

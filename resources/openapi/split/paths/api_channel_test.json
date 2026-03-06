@@ -1,0 +1,44 @@
+{
+  "post": {
+    "description": "Test a channel connection",
+    "operationId": "post-api-channel-test",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "details": {
+                "properties": {},
+                "type": "object"
+              },
+              "type": {
+                "description": "Must be a namespaced channel. E.g: channel/http"
+              }
+            },
+            "required": [
+              "type",
+              "details"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/channel/test",
+    "tags": [
+      "/api/channel"
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "get": {
+    "description": "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.\n\n   Token should have the following format:\n\n     {:resource {:question <card-id>}\n      :params   <parameters>}",
+    "operationId": "get-api-embed-pivot-card-token-query",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "token",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/embed/pivot/card/{token}/query",
+    "tags": [
+      "/api/embed"
+    ]
+  }
+}

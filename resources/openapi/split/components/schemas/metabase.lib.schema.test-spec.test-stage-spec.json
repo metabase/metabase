@@ -1,0 +1,116 @@
+{
+  "properties": {
+    "aggregations": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase.lib.schema.test-spec.test-aggregation-spec.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "breakouts": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase.lib.schema.test-spec.test-breakout-spec.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "expressions": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase.lib.schema.test-spec.test-named-expression-spec.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "fields": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase.lib.schema.test-spec.test-column-spec.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "filters": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase.lib.schema.test-spec.test-expression-spec.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "joins": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase.lib.schema.test-spec.test-join-spec.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "limit": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "order-bys": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase.lib.schema.test-spec.test-order-by-spec.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.test-spec.test-source-spec.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

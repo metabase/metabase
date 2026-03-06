@@ -1,0 +1,70 @@
+{
+  "post": {
+    "description": "Purchase an add-on.",
+    "operationId": "post-api-ee-cloud-add-ons-product-type",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "product-type",
+        "required": true,
+        "schema": {
+          "enum": [
+            "metabase-ai",
+            "metabase-ai-tiered",
+            "python-execution",
+            "transforms",
+            "transforms-basic",
+            "transforms-advanced"
+          ],
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "quantity": {
+                "oneOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "terms_of_service": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/cloud-add-ons/{product-type}",
+    "tags": [
+      "/api/ee/cloud-add-ons"
+    ]
+  }
+}
