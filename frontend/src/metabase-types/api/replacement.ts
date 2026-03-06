@@ -34,7 +34,6 @@ export type ReplaceSourceErrorType =
 export const REPLACE_SOURCE_COLUMN_ERROR_TYPES = [
   "column-type-mismatch",
   "missing-primary-key",
-  "extra-primary-key",
   "missing-foreign-key",
   "foreign-key-mismatch",
 ] as const;

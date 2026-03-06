@@ -34,18 +34,18 @@
 (mu/defn- column-errors :- [:sequential ::lib-be.schema.source-swap/column-error]
   "Checks for column type mismatches, missing primary keys, extra primary keys, missing foreign keys, and foreign key mismatches."
   [old-column :- ::lib.schema.metadata/column
-   new-column :- ::lib.schema.metadata/column]
+   new-column :- ::lib.schema.metadata/column
+   old-source-type :- ::lib-be.schema.source-swap/source-type
+   new-source-type :- ::lib-be.schema.source-swap/source-type]
   (cond-> []
     (not= (:effective-type old-column) (:effective-type new-column))
     (conj :column-type-mismatch)
 
-    (and (lib.types.isa/primary-key? old-column)
+    (and (= old-source-type :table)
+         (= new-source-type :table)
+         (lib.types.isa/primary-key? old-column)
          (not (lib.types.isa/primary-key? new-column)))
     (conj :missing-primary-key)
-
-    (and (not (lib.types.isa/primary-key? old-column))
-         (lib.types.isa/primary-key? new-column))
-    (conj :extra-primary-key)
 
     (and (lib.types.isa/foreign-key? old-column)
          (not (lib.types.isa/foreign-key? new-column)))
@@ -67,8 +67,8 @@
 (mu/defn check-column-mappings :- [:sequential ::lib-be.schema.source-swap/column-mapping]
   "Build column mappings between source and target columns."
   [mp
-   old-source :- ::lib-be.schema.source-swap/source
-   new-source :- ::lib-be.schema.source-swap/source]
+   [old-source-type, :as old-source] :- ::lib-be.schema.source-swap/source
+   [new-source-type, :as new-source] :- ::lib-be.schema.source-swap/source]
   (let [old-columns    (source-columns mp old-source)
         new-columns    (source-columns mp new-source)
         old-by-name    (m/index-by column-match-key old-columns)
@@ -79,7 +79,7 @@
                  (let [old-column (get old-by-name column-name)
                        new-column (get new-by-name column-name)
                        errors     (when (and old-column new-column)
-                                    (not-empty (column-errors old-column new-column)))]
+                                    (not-empty (column-errors old-column new-column old-source-type new-source-type)))]
                    (cond-> {}
                      old-column (assoc :source old-column)
                      new-column (assoc :target new-column)

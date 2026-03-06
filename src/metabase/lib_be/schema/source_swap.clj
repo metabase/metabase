@@ -22,7 +22,6 @@
 (mr/def ::column-error
   [:enum :column-type-mismatch
    :missing-primary-key
-   :extra-primary-key
    :missing-foreign-key
    :foreign-key-mismatch])
 

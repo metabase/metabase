@@ -43,7 +43,7 @@
    [:semantic_type  [:maybe :string]]])
 
 (mr/def ::column-error-type
-  [:enum :column-type-mismatch :missing-primary-key :extra-primary-key :missing-foreign-key :foreign-key-mismatch])
+  [:enum :column-type-mismatch :missing-primary-key :missing-foreign-key :foreign-key-mismatch])
 
 (mr/def ::error-type
   [:enum :cycle-detected :database-mismatch :incompatible-implicit-joins])

@@ -1,0 +1,2 @@
+Running tests with options {:mode :cli/local, :namespace-pattern #"^(?:(?:metabase.*)|(?:hooks\..*))", :exclude-directories [".clj-kondo/src" "classes" "dev" "enterprise/backend/src" "local" "resources" "resources-ee" "src" "target" "test_config" "test_resources"], :test-warn-time 3000, :exclude-tags [:metabot-v3/e2e], :only metabase.lib-be.source-swap-test/check-column-mappings-card-}
+Running tests in metabase.lib-be.source-swap-test/check-column-mappings-card-

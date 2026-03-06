@@ -19,6 +19,128 @@
    col-name :- :string]
   (m/find-first #(= col-name (:name %)) cols))
 
+(deftest ^:parallel check-column-mappings-table->table-test
+  (let [mp (lib.tu/mock-metadata-provider
+            {:database {:id 1 :name "db" :engine :h2}
+             :tables [{:id 100 :name "old_t" :db-id 1}
+                      {:id 200 :name "new_t" :db-id 1}]
+             :fields [;; old table columns
+                      {:id 1 :table-id 100 :name "MATCH"
+                       :base-type :type/Integer :effective-type :type/Integer}
+                      {:id 2 :table-id 100 :name "TYPE_MISMATCH"
+                       :base-type :type/Integer :effective-type :type/Integer}
+                      {:id 3 :table-id 100 :name "PK_COL"
+                       :base-type :type/Integer :effective-type :type/Integer
+                       :semantic-type :type/PK}
+                      {:id 4 :table-id 100 :name "FK_MISSING"
+                       :base-type :type/Integer :effective-type :type/Integer
+                       :semantic-type :type/FK :fk-target-field-id 999}
+                      {:id 5 :table-id 100 :name "FK_MISMATCH"
+                       :base-type :type/Integer :effective-type :type/Integer
+                       :semantic-type :type/FK :fk-target-field-id 999}
+                      {:id 6 :table-id 100 :name "SOURCE_ONLY"
+                       :base-type :type/Text :effective-type :type/Text}
+                      ;; new table columns
+                      {:id 11 :table-id 200 :name "MATCH"
+                       :base-type :type/Integer :effective-type :type/Integer}
+                      {:id 12 :table-id 200 :name "TYPE_MISMATCH"
+                       :base-type :type/Text :effective-type :type/Text}
+                      {:id 13 :table-id 200 :name "PK_COL"
+                       :base-type :type/Text :effective-type :type/Text}
+                      {:id 14 :table-id 200 :name "FK_MISSING"
+                       :base-type :type/Integer :effective-type :type/Integer}
+                      {:id 15 :table-id 200 :name "FK_MISMATCH"
+                       :base-type :type/Integer :effective-type :type/Integer
+                       :semantic-type :type/FK :fk-target-field-id 888}
+                      {:id 16 :table-id 200 :name "TARGET_ONLY"
+                       :base-type :type/Text :effective-type :type/Text}]})]
+    (is (=? [{:source {:name "FK_MISMATCH"},   :target {:name "FK_MISMATCH"},   :errors [:foreign-key-mismatch]}
+             {:source {:name "FK_MISSING"},    :target {:name "FK_MISSING"},    :errors [:missing-foreign-key]}
+             {:source {:name "MATCH"},         :target {:name "MATCH"}}
+             {:source {:name "PK_COL"},        :target {:name "PK_COL"},        :errors [:column-type-mismatch :missing-primary-key]}
+             {:source {:name "SOURCE_ONLY"}}
+             {:source {:name "TYPE_MISMATCH"}, :target {:name "TYPE_MISMATCH"}, :errors [:column-type-mismatch]}
+             {:target {:name "TARGET_ONLY"}}]
+            (lib-be/check-column-mappings mp [:table 100] [:table 200])))))
+
+(deftest ^:parallel check-column-mappings-card->card-test
+  (let [mp (lib.tu/mock-metadata-provider
+            {:database {:id 1 :name "db" :engine :h2}
+             :cards [{:id 1 :name "old_card" :database-id 1
+                      :result-metadata
+                      [{:name "MATCH"         :base-type :type/Integer :effective-type :type/Integer}
+                       {:name "TYPE_MISMATCH" :base-type :type/Integer :effective-type :type/Integer}
+                       {:name "PK_COL"        :base-type :type/Integer :effective-type :type/Integer
+                        :semantic-type :type/PK}
+                       {:name "FK_MISSING"    :base-type :type/Integer :effective-type :type/Integer
+                        :semantic-type :type/FK :fk-target-field-id 999}
+                       {:name "FK_MISMATCH"   :base-type :type/Integer :effective-type :type/Integer
+                        :semantic-type :type/FK :fk-target-field-id 999}
+                       {:name "SOURCE_ONLY"   :base-type :type/Text    :effective-type :type/Text}]}
+                     {:id 2 :name "new_card" :database-id 1
+                      :result-metadata
+                      [{:name "MATCH"         :base-type :type/Integer :effective-type :type/Integer}
+                       {:name "TYPE_MISMATCH" :base-type :type/Text    :effective-type :type/Text}
+                       {:name "PK_COL"        :base-type :type/Text    :effective-type :type/Text}
+                       {:name "FK_MISSING"    :base-type :type/Integer :effective-type :type/Integer}
+                       {:name "FK_MISMATCH"   :base-type :type/Integer :effective-type :type/Integer
+                        :semantic-type :type/FK :fk-target-field-id 888}
+                       {:name "TARGET_ONLY"   :base-type :type/Text    :effective-type :type/Text}]}]})]
+    (is (=? [{:source {:name "MATCH"},         :target {:name "MATCH"}}
+             {:source {:name "TYPE_MISMATCH"}, :target {:name "TYPE_MISMATCH"}, :errors [:column-type-mismatch]}
+             {:source {:name "PK_COL"},        :target {:name "PK_COL"},        :errors [:column-type-mismatch]}
+             {:source {:name "FK_MISSING"},    :target {:name "FK_MISSING"},    :errors [:missing-foreign-key]}
+             {:source {:name "FK_MISMATCH"},   :target {:name "FK_MISMATCH"},   :errors [:foreign-key-mismatch]}
+             {:source {:name "SOURCE_ONLY"}}
+             {:target {:name "TARGET_ONLY"}}]
+            (lib-be/check-column-mappings mp [:card 1] [:card 2])))))
+
+(deftest ^:parallel check-column-mappings-card->table-test
+  (let [mp (lib.tu/mock-metadata-provider
+            {:database {:id 1 :name "db" :engine :h2}
+             :tables [{:id 100 :name "t1" :db-id 1}
+                      {:id 200 :name "t2" :db-id 1}
+                      {:id 300 :name "target_t" :db-id 1}]
+             :fields [;; table 1: PK + FK
+                      {:id 1 :table-id 100 :name "ID"
+                       :base-type :type/BigInteger :effective-type :type/BigInteger
+                       :semantic-type :type/PK}
+                      {:id 2 :table-id 100 :name "FK"
+                       :base-type :type/Integer :effective-type :type/Integer
+                       :semantic-type :type/FK :fk-target-field-id 11}
+                      ;; table 2: PK only
+                      {:id 11 :table-id 200 :name "ID"
+                       :base-type :type/BigInteger :effective-type :type/BigInteger
+                       :semantic-type :type/PK}
+                      ;; target table: matches card's output columns by desired-column-alias
+                      {:id 21 :table-id 300 :name "ID"
+                       :base-type :type/BigInteger :effective-type :type/BigInteger
+                       :semantic-type :type/PK}
+                      {:id 22 :table-id 300 :name "FK"
+                       :base-type :type/Integer :effective-type :type/Integer
+                       :semantic-type :type/FK :fk-target-field-id 11}
+                      {:id 23 :table-id 300 :name "T2__ID"
+                       :base-type :type/BigInteger :effective-type :type/BigInteger}]
+             :cards [{:id 1 :name "card_with_join" :database-id 1
+                      :result-metadata
+                      [{:name "ID"
+                        :lib/desired-column-alias "ID"
+                        :base-type :type/BigInteger :effective-type :type/BigInteger
+                        :semantic-type :type/PK}
+                       {:name "FK"
+                        :lib/desired-column-alias "FK"
+                        :base-type :type/Integer :effective-type :type/Integer
+                        :semantic-type :type/FK :fk-target-field-id 11}
+                       {:name "ID"
+                        :lib/desired-column-alias "T2__ID"
+                        :base-type :type/BigInteger :effective-type :type/BigInteger}]}]})]
+    (let [mappings (lib-be/check-column-mappings mp [:card 1] [:table 300])]
+      (is (=? [{:source {:name "ID"}, :target {:name "ID"}}
+               {:source {:name "FK"}, :target {:name "FK"}}
+               {:source {:name "ID"}, :target {:name "T2__ID"}}]
+              mappings))
+      (is (every? (complement :errors) mappings)))))
+
 (deftest ^:parallel swap-source-in-query-table->table-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/with-fields [(meta/field-metadata :orders :id)

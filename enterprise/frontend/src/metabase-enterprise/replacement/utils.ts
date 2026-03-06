@@ -49,8 +49,6 @@ export function getColumnErrorMessage(
       return t`This column has a different data type than the original column.`;
     case "missing-primary-key":
       return t`This column is not a primary key, while the original column is.`;
-    case "extra-primary-key":
-      return t`This column is a primary key, while the original column is not.`;
     case "missing-foreign-key":
       return t`This column is not a foreign key, while the original column is.`;
     case "foreign-key-mismatch":
