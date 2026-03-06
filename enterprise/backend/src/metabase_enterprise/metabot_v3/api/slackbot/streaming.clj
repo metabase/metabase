@@ -114,14 +114,14 @@
 
 (defn- viz-output->blocks
   "Build blocks for a visualization to be included in the finalized stop-stream message."
-  [client {:keys [type content]} filename title link]
+  [{:keys [type content]} filename title link]
   (let [text (or (format-viz-title title link) "Query results")]
     (case type
       :table (let [title-block {:type "section"
                                 :text {:type "mrkdwn" :text text}}
                    blocks      (into [title-block] content)]
                blocks)
-      :image (let [{:keys [id]} (channel.slack/upload-file-with-token! (:token client) content (str filename ".png"))
+      :image (let [{:keys [id]} (channel.slack/upload-file! content (str filename ".png"))
                    blocks      [{:type "section"
                                  :text {:type "mrkdwn" :text text}}
                                 {:type       "image"
@@ -267,14 +267,14 @@
   "Wait for all in-flight visualization futures and return blocks to include in stop-stream.
    Returns {:blocks [...], :errors [Exception ...]}.
    For saved cards (static_viz), uses the actual card name as the title."
-  [client prefetched-viz]
+  [prefetched-viz]
   (reduce
    (fn [{:keys [blocks errors] :as acc} [idx {:keys [^Future future filename title link]}]]
      (try
        (let [output         (.get future)
              resolved-title (or (:card-name output) title)
              filename       (or (some-> resolved-title (u/slugify {:max-length 80})) filename)]
-         (assoc acc :blocks (into blocks (viz-output->blocks client output filename resolved-title link))))
+         (assoc acc :blocks (into blocks (viz-output->blocks output filename resolved-title link))))
        (catch ExecutionException e
          (let [cause (or (.getCause e) e)]
            (log/errorf cause "Visualization future %d failed" idx)
@@ -504,7 +504,7 @@
              (request-flush! true)
              (await slack-writer)
              (if-let [{:keys [stream_ts channel]} @stream-state]
-               (let [{:keys [blocks errors]} (collect-viz-blocks client @prefetched-viz)
+               (let [{:keys [blocks errors]} (collect-viz-blocks @prefetched-viz)
                      final-blocks            (into blocks (feedback-blocks conversation-id))]
                  (slackbot.client/stop-stream client channel stream_ts final-blocks)
                  (doseq [e errors]

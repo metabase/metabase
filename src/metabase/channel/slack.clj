@@ -262,11 +262,10 @@
 (defn complete!
   "Completes the file upload to a Slack channel by calling the `files.completeUploadExternal` endpoint, and polls the
    same endpoint until the file is uploaded to the channel. Returns the URL of the uploaded file."
-  [& {:keys [token file-id filename]}]
+  [& {:keys [file-id filename]}]
   (let [complete! (fn []
                     (POST "files.completeUploadExternal"
-                      {:query-params (cond-> {:files (json/encode [{:id file-id, :title filename}])}
-                                       token (assoc :token token))}))
+                      {:query-params {:files (json/encode [{:id file-id, :title filename}])}}))
         complete-response
         (try
           (complete!)
@@ -284,30 +283,15 @@
                             {:filename filename})))]
     (get-in complete-response [:files 0 :url_private])))
 
-(defn- get-upload-url! [filename file & {:keys [token]}]
-  (POST "files.getUploadURLExternal" {:query-params (cond-> {:filename filename
-                                                             :length   (count file)}
-                                                      token (assoc :token token))}))
+(defn- get-upload-url! [filename file]
+  (POST "files.getUploadURLExternal" {:query-params {:filename filename
+                                                     :length   (count file)}}))
 
 (defn- upload-file-to-url! [upload-url file]
   (let [response (http/post upload-url {:multipart [{:name "file", :content file}]})]
     (if (= (:status response) 200)
       response
       (throw (ex-info "Failed to upload file to Slack:" (select-keys response [:status :body]))))))
-
-(defn- upload-file*!
-  [token file filename]
-  (let [;; Step 1: Get the upload URL using files.getUploadURLExternal
-        {:keys [upload_url file_id]} (get-upload-url! filename file :token token)
-        ;; Step 2: Upload the file to the obtained upload URL
-        _ (upload-file-to-url! upload_url file)
-        ;; Step 3: Complete the upload using files.completeUploadExternal
-        file-url (complete! :token token
-                            :file-id file_id
-                            :filename filename)]
-    (u/prog1 {:url file-url
-              :id file_id}
-      (log/debug "Uploaded image" (:url <>)))))
 
 (mu/defn upload-file!
   "Calls Slack API `files.getUploadURLExternal` and `files.completeUploadExternal` endpoints to upload a file and returns
@@ -317,14 +301,16 @@
   {:pre [(channel.settings/slack-configured?)]}
   ;; TODO: we could make uploading files a lot faster by uploading the files in parallel.
   ;; Steps 1 and 2 can be done for all files in parallel, and step 3 can be done once at the end.
-  (upload-file*! nil file filename))
-
-(mu/defn upload-file-with-token!
-  "Variant of [[upload-file!]] that uses an explicit Slack token instead of the globally configured one."
-  [token      :- ms/NonBlankString
-   file       :- NonEmptyByteArray
-   filename   :- ms/NonBlankString]
-  (upload-file*! token file filename))
+  (let [;; Step 1: Get the upload URL using files.getUploadURLExternal
+        {:keys [upload_url file_id]} (get-upload-url! filename file)
+        ;; Step 2: Upload the file to the obtained upload URL
+        _ (upload-file-to-url! upload_url file)
+        ;; Step 3: Complete the upload using files.completeUploadExternal
+        file-url (complete! {:file-id    file_id
+                             :filename   filename})]
+    (u/prog1 {:url file-url
+              :id file_id}
+      (log/debug "Uploaded image" (:url <>)))))
 
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.

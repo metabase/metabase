@@ -240,14 +240,13 @@
        slackbot.client/delete-message (fn [_ msg]
                                         (swap! delete-calls conj msg)
                                         {:ok true})
-       channel.slack/upload-file-with-token! (fn [token image-bytes filename]
-                                               (let [file-id (format "FIMG-%d" (swap! file-counter inc))]
-                                                 (swap! image-calls conj {:token       token
-                                                                          :image-bytes image-bytes
-                                                                          :filename    filename
-                                                                          :file-id     file-id})
-                                                 {:url (str "https://files.slack.com/files/" filename)
-                                                  :id  file-id}))
+       channel.slack/upload-file! (fn [image-bytes filename]
+                                    (let [file-id (format "FIMG-%d" (swap! file-counter inc))]
+                                      (swap! image-calls conj {:image-bytes image-bytes
+                                                               :filename    filename
+                                                               :file-id     file-id})
+                                      {:url (str "https://files.slack.com/files/" filename)
+                                       :id  file-id}))
        ;; Mock the streaming client - returns AISDK-formatted lines
        metabot-v3.client/streaming-request-with-callback
        (fn [opts]
