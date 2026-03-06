@@ -63,11 +63,13 @@
                         (not= query query') (assoc :dataset_query query')
                         (not= viz-settings viz-settings') (assoc :visualization_settings viz-settings')
                         (not= parameters parameters') (assoc :parameters parameters'))
-        ;; result_metadata is set to nil for native queries if not present in changes
+        ;; `:result_metadata` is set to nil for native queries if not present in changes.
+        ;; `:verified-result-metadata?` prevents the Card model hooks from clearing it.
         changes       (cond-> changes
                         (and (seq changes)
                              (lib/native-only-query? query'))
-                        (assoc :result_metadata (:result_metadata card)))]
+                        (assoc :result_metadata (:result_metadata card)
+                               :verified-result-metadata? true))]
     (when (seq changes)
       (t2/update! :model/Card (:id card) changes))))
 

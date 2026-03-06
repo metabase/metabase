@@ -53,11 +53,13 @@
 
                       (not= table-id table-id')
                       (assoc :table_id table-id'))
-          ;; result_metadata is set to nil for native queries if not present in changes
+          ;; `:result_metadata` is set to nil for native queries if not present in changes.
+          ;; `verified-result-metadata?` prevents the Card model hooks from clearing it.
           changes   (cond-> changes
                       (and (seq changes)
                            (lib/native-only-query? query'))
-                      (assoc :result_metadata (:result_metadata card)))]
+                      (assoc :result_metadata (:result_metadata card)
+                             :verified-result-metadata? true))]
       (models.dependency/swap-dependency! :card (:id card) old-source new-source)
       (when (seq changes)
         (t2/update! :model/Card (:id card) changes)

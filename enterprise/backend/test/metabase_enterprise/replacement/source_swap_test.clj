@@ -76,8 +76,8 @@
         (let [mp              (mt/metadata-provider)
               query           (lib/native-query mp "SELECT ID FROM ORDERS")
               result-metadata [{:name "ID" :base_type :type/Integer}]]
-          (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
-            (t2/update! :model/Card card-id {:result_metadata result-metadata})
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query   query
+                                                    :result_metadata result-metadata}]
             (replacement.field-refs/upgrade-field-refs! [:card card-id])
             (replacement.source-swap/swap-source! [:card card-id]
                                                   [:table (mt/id :orders)]
@@ -320,12 +320,13 @@
             (replacement.source-swap/swap-source! [:dashboard dashboard-id]
                                                   [:table (mt/id :orders)]
                                                   [:table (mt/id :reviews)])
-            (let [viz (:visualization_settings (t2/select-one :model/DashboardCard dashcard-id))]
+            (let [viz     (:visualization_settings (t2/select-one :model/DashboardCard dashcard-id))
+                  viz-key (keyword (json/encode target))]
               (is (=? {:click_behavior
                        {:targetId target-card-id
                         :parameterMapping
-                        {string?
-                         {:target {:dimension [:dimension
+                        {viz-key
+                         {:target {:dimension ["dimension"
                                                [:field (mt/id :products :category)
                                                 {:source-field (mt/id :reviews :product_id)}]]}}}}}
                       viz)))))))))
