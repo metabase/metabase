@@ -305,16 +305,19 @@
 (deftest message-deleted-ignored-test
   (testing "POST /events ignores message_deleted events"
     (with-slackbot-setup
-      (let [event-body (update base-dm-event :event merge {:subtype "message_deleted"})]
-        (with-slackbot-mocks
-          {:ai-text "Should not be called"}
-          (fn [{:keys [post-calls]}]
-            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
-                                      (slack-request-options event-body)
-                                      event-body)]
-              (is (= "ok" response))
-              (Thread/sleep 200)
-              (is (= 0 (count @post-calls))))))))))
+      (let [event-body (update base-dm-event :event merge {:subtype "message_deleted"})
+            ignored    (atom false)]
+        (with-redefs [slackbot/ignore-event  (fn [_] (reset! ignored true))
+                      slackbot/process-async (fn [& _] (throw (ex-info "process-async should not be called" {})))]
+          (with-slackbot-mocks
+            {:ai-text "Should not be called"}
+            (fn [{:keys [post-calls]}]
+              (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                        (slack-request-options event-body)
+                                        event-body)]
+                (is (= "ok" response))
+                (is @ignored "Event should have been routed to ignore-event")
+                (is (= 0 (count @post-calls)))))))))))
 
 (deftest slackbot-disabled-setting-test
   (testing "POST /events acks but does not process when slack-connect-enabled is false"
