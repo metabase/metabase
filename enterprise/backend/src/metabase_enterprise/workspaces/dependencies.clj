@@ -176,12 +176,19 @@
     (inputs-from-mbql-query query)))
 
 (defn- inputs-from-python-transform
-  "Extract table refs from a python transform's source-tables.
-   Python transforms require tables to exist (they map name -> table_id). Batch lookup."
+  "Extract table refs from a python transform's source-tables vec.
+   Entries with :database_id/:schema/:table just need a key rename;
+   entries with only :table_id fall back to a batch lookup."
   [source-tables]
-  (let [table-ids  (set (vals source-tables))
-        table-refs (batch-table-refs-from-ids table-ids)]
-    (u/keepv table-refs (vals source-tables))))
+  (let [{full true, partial false} (group-by (fn [e] (boolean (:table e))) source-tables)
+        renamed  (mapv (fn [{:keys [database_id schema table]}]
+                         {:db_id database_id :schema schema :table table})
+                       full)
+        looked   (when (seq partial)
+                   (let [ids    (into #{} (keep :table_id) partial)
+                         lookup (batch-table-refs-from-ids ids)]
+                     (u/keepv lookup (map :table_id partial))))]
+    (into renamed looked)))
 
 (mu/defn analyze-entity :- ::analysis
   "Analyze a workspace entity to find its dependencies.

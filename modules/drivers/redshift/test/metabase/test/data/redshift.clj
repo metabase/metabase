@@ -72,7 +72,7 @@
 
 (def db-connection-details
   (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
+          :port                    (parse-long (tx/db-test-env-var :redshift :port "5439"))
           :db                      (tx/db-test-env-var-or-throw :redshift :db)
           :user                    (tx/db-test-env-var-or-throw :redshift :user)
           :password                (tx/db-test-env-var-or-throw :redshift :password)
@@ -81,8 +81,8 @@
 
 (def db-routing-connection-details
   (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (tx/db-test-env-var-or-throw :redshift :db-routing)
+          :port                    (parse-long (tx/db-test-env-var :redshift :port "5439"))
+          :db                      (tx/db-test-env-var :redshift :db-routing "dev")
           :user                    (tx/db-test-env-var-or-throw :redshift :user)
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
@@ -195,7 +195,7 @@
                              result)))]
       (group-by (fn [schema-name]
                   (if-let [oldest (get schema->time schema-name)]
-                    (if (t/before? (.toInstant oldest) threshold)
+                    (if (t/before? (t/instant oldest) threshold)
                       :expired
                       :recent)
                     ;; Schema not in pg_class_info means no objects - treat as expired

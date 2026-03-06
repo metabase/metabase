@@ -4,9 +4,10 @@
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase.test :as mt]
    [metabase.test.util :as test.util]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent CountDownLatch)))
@@ -24,7 +25,7 @@
                                                                      :name   "swap_tbl"}]
               (let [initial-transform {:name   "Python Transform Initial"
                                        :source {:type            "python"
-                                                :source-tables   {}
+                                                :source-tables   []
                                                 :source-database (mt/id)
                                                 :body            (str "import pandas as pd\n"
                                                                       "\n"
@@ -40,7 +41,7 @@
 
                     (t2/update! :model/Transform (:id transform)
                                 {:source {:type            "python"
-                                          :source-tables   {}
+                                          :source-tables   []
                                           :source-database (mt/id)
                                           :body            (str "import pandas as pd\n"
                                                                 "\n"
@@ -48,10 +49,10 @@
                                                                 "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
 
                   (let [swap-latch (CountDownLatch. 1)
-                        original-rename-tables-atomic! transforms.util/rename-tables!]
-                    (with-redefs [transforms.util/rename-tables! (fn [driver db-id rename-pairs]
-                                                                   (.await swap-latch)
-                                                                   (original-rename-tables-atomic! driver db-id rename-pairs))]
+                        original-rename-tables-atomic! transforms-base.u/rename-tables!]
+                    (mt/with-dynamic-fn-redefs [transforms-base.u/rename-tables! (fn [driver db-id rename-pairs]
+                                                                                   (.await swap-latch)
+                                                                                   (original-rename-tables-atomic! driver db-id rename-pairs))]
                       (let [transform-future (future
                                                (transforms-python.execute/execute-python-transform!
                                                 (t2/select-one :model/Transform (:id transform))
@@ -76,7 +77,7 @@
                                                                      :name   "cleanup_"}]
               (let [transform-def {:name   "Python Transform Cleanup"
                                    :source {:type            "python"
-                                            :source-tables   {}
+                                            :source-tables   []
                                             :source-database (mt/id)
                                             :body            (str "import pandas as pd\n"
                                                                   "\n"
@@ -91,7 +92,7 @@
 
                   (let [db-id (mt/id)
                         tables (t2/select :model/Table :db_id db-id :active true)]
-                    (is (not-any? transforms.util/is-temp-transform-table? tables)
+                    (is (not-any? transforms.u/is-temp-transform-table? tables)
                         "No temp tables should remain after successful Python transform")
 
                     (is (= [[1 "a"] [2 "b"] [3 "c"]] (transforms.tu/table-rows table-name))
@@ -115,7 +116,7 @@
                                              "    return pd.DataFrame({'result': ['should_not_reach_here']})")
                       transform-def {:name   "Python Transform Timeout Test"
                                      :source {:type            "python"
-                                              :source-tables   {}
+                                              :source-tables   []
                                               :source-database (mt/id)
                                               :body            long-running-code}
                                      :target (assoc target :database (mt/id))}]
@@ -145,9 +146,10 @@
                                                          :source {:type            "python"
                                                                   :body            "def transform(input): return input"
                                                                   :source-database (mt/id)
-                                                                  :source-tables   {"input" {:database_id (mt/id)
-                                                                                             :schema      schema
-                                                                                             :table       "nonexistent_table"}}}
+                                                                  :source-tables   [{:alias       "input"
+                                                                                     :database_id (mt/id)
+                                                                                     :schema      schema
+                                                                                     :table       "nonexistent_table"}]}
                                                          :target (assoc target :database (mt/id))}]
                 (testing "Execution throws with informative error message"
                   (is (thrown-with-msg?
@@ -167,9 +169,10 @@
                                                        :source {:type            "python"
                                                                 :body            "def transform(input): return input"
                                                                 :source-database (mt/id)
-                                                                :source-tables   {"input" {:database_id (mt/id)
-                                                                                           :schema      nil
-                                                                                           :table       "missing_table"}}}
+                                                                :source-tables   [{:alias       "input"
+                                                                                   :database_id (mt/id)
+                                                                                   :schema      nil
+                                                                                   :table       "missing_table"}]}
                                                        :target (assoc target :database (mt/id))}]
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
