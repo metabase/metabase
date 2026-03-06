@@ -133,15 +133,17 @@
              (into [] (self.core/lite-aisdk-xf) chunks)))))
 
   (testing "converts tool-output-available to tool-output"
-    (let [chunks [{:type       :tool-output-available
-                   :toolCallId "call-1"
-                   :toolName   "search"
-                   :result     {:data []}}]]
-      (is (= [{:type     :tool-output
-               :id       "call-1"
-               :function "search"
-               :result   {:data []}
-               :error    nil}]
+    (let [chunks [{:type                   :tool-output-available
+                   :toolCallId             "call-1"
+                   :toolName               "search"
+                   :result                 {:data []}
+                   ::self.core/duration-ms 1234}]]
+      (is (= [{:type        :tool-output
+               :id          "call-1"
+               :function    "search"
+               :result      {:data []}
+               :error       nil
+               :duration-ms 1234}]
              (into [] (self.core/lite-aisdk-xf) chunks))))))
 
 ;;; tool executor
@@ -393,7 +395,16 @@
       (is (str/starts-with? line "a:"))
       (let [parsed (json/decode+kw (subs line 2))]
         (is (= "call-456" (:toolCallId parsed)))
-        (is (string? (:error parsed)))))))
+        (is (string? (:error parsed))))))
+
+  (testing ":duration-ms is ignored"
+    (let [line (self.core/format-tool-result-line {:id "call-789"
+                                                   :result {:data [{:id 1}]}
+                                                   :duration-ms 1234})]
+      (is (str/starts-with? line "a:"))
+      (let [parsed (json/decode+kw (subs line 2))]
+        (is (= "call-789" (:toolCallId parsed)))
+        (is (not (contains? parsed :duration-ms)))))))
 
 (deftest format-finish-line-test
   (testing "formats finish message with usage"
@@ -689,17 +700,18 @@
    :tag        "test-tag"})
 
 (deftest call-llm-snowplow-test
-  (testing "fires :snowplow/token_usage event for call-llm"
+  (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with a tool call"
     (let [rasta-id (mt/user->id :rasta)]
       (with-redefs [openrouter/openrouter
                     (constantly (test-util/mock-llm-response
                                  [{:type :start :id "msg-1"}
-                                  {:type :text :text "Hello"}
+                                  {:type :tool-input :id "call-1" :function "get-time"
+                                   :arguments {:tz "UTC"}}
                                   {:type :usage :usage {:promptTokens 100 :completionTokens 20}
                                    :model "test-model" :id "msg-1"}]))]
         (mt/with-current-user rasta-id
           (snowplow-test/with-fake-snowplow-collector
-            (run! identity (self/call-llm "openrouter/test-model" nil [] {} snowplow-tracking-opts))
+            (run! identity (self/call-llm "openrouter/test-model" nil [] test-util/TOOLS snowplow-tracking-opts))
             (is (=? [{:user-id (str rasta-id)
                       :data    {"model_id"            "test-model"
                                 "total_tokens"         120
@@ -709,7 +721,14 @@
                                 "duration_ms"          nat-int?
                                 "source"               "test-source"
                                 "tag"                  "test-tag"
-                                "session_id"           "00000000-0000-0000-0000-000000000002"}}]
+                                "session_id"           "00000000-0000-0000-0000-000000000002"}}
+                     {:user-id (str rasta-id)
+                      :data    {"event"         "agent_used_tool"
+                                "source"        "test-source"
+                                "result"        "success"
+                                "duration_ms"   nat-int?
+                                "session_id"    "00000000-0000-0000-0000-000000000002"
+                                "event_details" {"tool_name" "get-time"}}}]
                     (snowplow-test/pop-event-data-and-user-id!)))))))))
 
 (deftest call-llm-structured-snowplow-test
