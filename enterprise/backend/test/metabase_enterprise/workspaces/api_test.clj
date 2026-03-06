@@ -40,9 +40,13 @@
   "Alias for ws.tu/ws-url for convenience."
   ws.tu/ws-url)
 
+(def ^:private q
+  "Alias for ws.tu/q for convenience."
+  ws.tu/q)
+
 (def ^:private ->native
-  "It's convenient to construct queries using MBQL helper, but only native queries can be used in workspaces."
-  (comp mt/native-query ws.tu/mbql->native))
+  "Alias for ws.tu/->native for convenience."
+  ws.tu/->native)
 
 ;;; Authorization tests for all workspace routes are in service-user-authorization-test at the bottom of this file.
 
@@ -676,7 +680,7 @@
              (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/transform")
                                    {:name   "Should Fail"
                                     :source {:type  "query"
-                                             :query (mt/mbql-query venues)}
+                                             :query (q :venues)}
                                     :target {:type "table"
                                              :name "should_fail"}}))))))
 
@@ -707,7 +711,7 @@
             (let [response (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                                  {:name   "New Transform"
                                                   :source {:type  "query"
-                                                           :query (->native (mt/mbql-query venues))}
+                                                           :query (->native (q :venues))}
                                                   :target {:type "table"
                                                            :name "new_transform_output"}})]
 
@@ -730,7 +734,7 @@
                    (mt/user-http-request :crowberto :post 400 (ws-url ws-id "/transform")
                                          {:name   "Should Fail"
                                           :source {:type  "query"
-                                                   :query (->native (mt/mbql-query venues))}
+                                                   :query (->native (q :venues))}
                                           :target {:type "table"
                                                    :name "should_fail"}})))))))))
 
@@ -747,7 +751,7 @@
                 (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                       {:name   "Workspace Transform"
                                        :source {:type  "query"
-                                                :query (->native (mt/mbql-query transforms_products))}
+                                                :query (->native (q :transforms_products))}
                                        :target {:type "table"
                                                 :name table-name}})))
         (is (=? {:id ws-id, :status "ready"}
@@ -769,7 +773,7 @@
   (with-transform-cleanup! [orig-name "ws_tables_not_run_test"]
     (mt/with-temp [:model/Transform x1 {:name        "My X1"
                                         :source      {:type  "query"
-                                                      :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:limit 10})))}
+                                                      :query (->native (-> (q :orders) (lib/limit 10)))}
                                         :target      {:type     "table"
                                                       :database (mt/id)
                                                       :schema   "public"
@@ -979,7 +983,7 @@
       (let [transform (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform")
                                             {:name   "New Transform"
                                              :source {:type  "query"
-                                                      :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query venues)))}
+                                                      :query (->native (q :venues))}
                                              :target {:type     "table"
                                                       :database (mt/id)
                                                       :schema   "public"
@@ -1066,14 +1070,14 @@
         (let [tx1 (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
                                         {:name   "Transform 1"
                                          :source {:type  "query"
-                                                  :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                  :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                          :target {:type   "table"
                                                   :schema target-schema
                                                   :name   "target_table_1"}})
               _tx2 (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
                                          {:name   "Transform 2"
                                           :source {:type  "query"
-                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                   :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                           :target {:type   "table"
                                                    :schema target-schema
                                                    :name   "target_table_2"}})]
@@ -1108,7 +1112,7 @@
                                                (ws-url (:id workspace) "/transform" new-ref-id)
                                                {:name   "New Transform via Upsert"
                                                 :source {:type  "query"
-                                                         :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                         :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                                 :target {:type   "table"
                                                          :schema target-schema
                                                          :name   "upsert_test_table"}})]
@@ -1138,7 +1142,7 @@
                    (mt/user-http-request :crowberto :put 400
                                          (ws-url (:id workspace) "/transform" ref-id)
                                          {:source {:type  "query"
-                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                   :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                           :target {:type   "table"
                                                    :schema target-schema
                                                    :name   "missing_name_test"}})))))
@@ -1158,7 +1162,7 @@
                                          (ws-url (:id workspace) "/transform" ref-id)
                                          {:name   "Test Transform"
                                           :source {:type  "query"
-                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}})))))))))
+                                                   :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}})))))))))
 
 (deftest upsert-transform-archived-workspace-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 for archived workspace"
@@ -1172,7 +1176,7 @@
                                      (ws-url (:id workspace) "/transform" new-ref-id)
                                      {:name   "New Transform"
                                       :source {:type  "query"
-                                               :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                               :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                       :target {:type   "table"
                                                :schema target-schema
                                                :name   "archived_ws_test"}})))))))
@@ -1185,7 +1189,7 @@
         (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
                               {:name   "Existing Transform"
                                :source {:type  "query"
-                                        :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                        :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                :target {:type   "table"
                                         :schema target-schema
                                         :name   "conflict_target_table"}})
@@ -1196,7 +1200,7 @@
                                        (ws-url (:id workspace) "/transform" new-ref-id)
                                        {:name   "Conflicting Transform"
                                         :source {:type  "query"
-                                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                 :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                         :target {:type   "table"
                                                  :schema target-schema
                                                  :name   "conflict_target_table"}}))))))))
@@ -1212,7 +1216,7 @@
                                 (ws-url (:id workspace) "/transform" new-ref-id)
                                 {:name   "First Transform"
                                  :source {:type  "query"
-                                          :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                          :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                  :target {:type     "table"
                                           :database (mt/id)
                                           :schema   target-schema
@@ -1232,7 +1236,7 @@
                                 (ws-url (:id workspace) "/transform" new-ref-id)
                                 {:name   "First Transform"
                                  :source {:type  "query"
-                                          :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                          :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                  :target {:type   "table"
                                           :schema target-schema
                                           :name   "status_transition_test"}})
@@ -1283,9 +1287,7 @@
         (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
           (mt/with-temp [:model/Transform x1 {:name   "Transform"
                                               :source {:type  "query"
-                                                       :query (-> (mt/mbql-query orders {:aggregation [[:count]]})
-                                                                  ws.tu/mbql->native
-                                                                  mt/native-query)}
+                                                       :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                               :target {:type     "table"
                                                        :database (mt/id)
                                                        :schema   target-schema
@@ -1382,7 +1384,7 @@
                                ws-2 {:name "Workspace 2"}]
         (let [body         {:name   "Transform for execute test"
                             :source {:type  "query"
-                                     :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
+                                     :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                             :target {:type     "table"
                                      :database (mt/id)
                                      :schema   nil
@@ -1696,19 +1698,15 @@
    :schema   (driver.sql/default-schema driver/*driver*)
    :name     (str/replace (str "t_" (random-uuid)) "-" "_")})
 
-(defn- my-native-query [db-id sql & [card-mapping]]
-  ;; TODO (Chris 2025-12-11) -- don't build MBQL manually
-  ;; For some reason, when is use mt/native-query the transforms hook thinks this is MBQL.
-  ;; It's probably a dialect version issue.
-  {:database db-id
-   :lib/type :mbql/query
-   :stages   [{:lib/type      :mbql.stage/native
-               :native        sql
-               :template-tags (u/for-map [[tag card-id] card-mapping]
-                                [tag {:name         tag
-                                      :display-name tag
-                                      :type         :card
-                                      :card-id      card-id}])}]})
+(defn- my-native-query [_db-id sql & [card-mapping]]
+  (let [mp (mt/metadata-provider)]
+    (cond-> (lib/native-query mp sql)
+      card-mapping (lib/with-template-tags
+                    (u/for-map [[tag card-id] card-mapping]
+                      [tag {:name         tag
+                            :display-name tag
+                            :type         :card
+                            :card-id      card-id}])))))
 
 (deftest external-transforms-test
   (testing "GET /api/ee/workspace/id/external/transform"
@@ -1727,7 +1725,7 @@
                                                                  :target (random-target db-1)}
                          :model/Transform          {xf4-id :id} {:name   "Not checked out - mbql"
                                                                  :source {:type     :query
-                                                                          :query    (mt/mbql-query venues)}
+                                                                          :query    (q :venues)}
                                                                  :target (random-target db-1)}
                          :model/Transform          {xf5-id :id} {:name   "Not checked out - native"
                                                                  :source {:type  "query"
@@ -1736,7 +1734,7 @@
                          ;; Native transform referencing a card - should be disabled once BOT-694 is implemented
                          :model/Card               {card-id :id} {:name          "Source Card"
                                                                   :database_id   db-1
-                                                                  :dataset_query (mt/mbql-query venues)}
+                                                                  :dataset_query (q :venues)}
                          :model/Transform          {xf6-id :id} {:name        "Not checked out - native with card dep"
                                                                  :source      {:type  "query"
                                                                                :query (my-native-query
@@ -2118,7 +2116,7 @@
     (testing "MBQL transforms cannot be checked out"
       (mt/with-temp [:model/Transform tx {:name   "MBQL Transform"
                                           :source {:type  :query
-                                                   :query (mt/mbql-query venues)}
+                                                   :query (q :venues)}
                                           :target {:type     "table"
                                                    :database (mt/id)
                                                    :schema   "public"
@@ -2147,7 +2145,7 @@
   (testing "POST /api/ee/workspace/:id/transform blocks MBQL transform checkout"
     (mt/with-temp [:model/Transform tx {:name   "MBQL Transform"
                                         :source {:type  :query
-                                                 :query (mt/mbql-query venues)}
+                                                 :query (q :venues)}
                                         :target {:type     "table"
                                                  :database (mt/id)
                                                  :schema   "public"
@@ -2285,7 +2283,7 @@
     (ws.tu/with-workspaces! [ws {:name "Ungranted Run Test"}]
       (let [transform  {:name   "Transform with input"
                         :source {:type  "query"
-                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                 :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                         :target {:type     "table"
                                  :database (mt/id)
                                  :schema   "public"
