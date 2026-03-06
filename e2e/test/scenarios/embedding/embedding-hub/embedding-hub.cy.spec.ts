@@ -972,6 +972,8 @@ describe("scenarios - embedding hub", () => {
         expect(viewData).to.exist;
         expect(viewData["PUBLIC"][STATIC_ORDERS_ID]).to.equal("sandboxed");
         expect(viewData["PUBLIC"][STATIC_PEOPLE_ID]).to.equal("sandboxed");
+
+        expect(permissions["create-queries"]).to.equal("query-builder");
       });
 
       H.main()
@@ -1194,6 +1196,7 @@ describe("scenarios - embedding hub", () => {
 
           expect(permissions).to.exist;
           expect(permissions["view-data"]).to.equal("impersonated");
+          expect(permissions["create-queries"]).to.equal("query-builder");
         });
       });
     });
