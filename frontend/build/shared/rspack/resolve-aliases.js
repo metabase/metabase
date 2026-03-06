@@ -77,6 +77,7 @@ const RESOLVE_ALIASES = {
       ? ENTERPRISE_SRC_PATH + "/sdk-plugins"
       : SRC_PATH + "/plugins/noop",
   "sdk-specific-imports": SRC_PATH + "/lib/noop",
+  "sdk-docs-snippets": DOCS_PATH + "/embedding/sdk/snippets",
 };
 
 module.exports = { RESOLVE_ALIASES };

@@ -210,10 +210,7 @@ const config = {
       ".css",
       ".svg",
     ],
-    alias: {
-      ...RESOLVE_ALIASES,
-      "sdk-docs-snippets": DOCS_SNIPPETS_PATH,
-    },
+    alias: RESOLVE_ALIASES,
     fallback: {
       buffer: require.resolve("buffer/"),
       url: require.resolve("url/"),
