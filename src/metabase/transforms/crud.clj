@@ -26,16 +26,14 @@
 
 (set! *warn-on-reflection* true)
 
-(defn python-source-table-ref->table-id
-  "Change source of python transform from name->table-ref to name->table-id.
-
-  We now supported table-ref as source but since FE is still expecting table-id we need to temporarily do this.
-  Should update FE to fully use table-ref"
+;; TODO(FE-source-tables): Remove this function and all call sites when FE adopts the array format for source-tables.
+(defn source-tables-vec->map-for-fe
+  "Convert source-tables from internal vec format to legacy map format for FE compatibility.
+  Remove this when FE adopts the array format."
   [transform]
   (if (transforms-base.u/python-transform? transform)
     (update-in transform [:source :source-tables]
-               (fn [source-tables]
-                 (update-vals source-tables #(if (int? %) % (:table_id %)))))
+               transforms-base.u/source-tables-vec->alias-id-map)
     transform))
 
 (defn check-database-feature
@@ -157,8 +155,8 @@
                        (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                        (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
                        (map #(update % :last_run transforms-base.u/localize-run-timestamps))
-                       (map python-source-table-ref->table-id)))
-           transforms.u/add-source-readable))))
+                       (map transforms.u/add-source-readable)
+                       (map source-tables-vec->map-for-fe))))))) ;; TODO(FE-source-tables): remove
 
 (defn get-transform
   "Get a specific transform."
@@ -169,8 +167,8 @@
         (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
         (u/update-some :last_run transforms-base.u/localize-run-timestamps)
         (assoc :table target-table)
-        python-source-table-ref->table-id
-        transforms.u/add-source-readable)))
+        transforms.u/add-source-readable
+        source-tables-vec->map-for-fe))) ;; TODO(FE-source-tables): remove
 
 (defn create-transform!
   "Create new transform in the appdb.
@@ -231,8 +229,8 @@
                     (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
-        python-source-table-ref->table-id
-        transforms.u/add-source-readable)))
+        transforms.u/add-source-readable
+        source-tables-vec->map-for-fe))) ;; TODO(FE-source-tables): remove
 
 (defn delete-transform!
   "Delete a transform and publish the delete event."

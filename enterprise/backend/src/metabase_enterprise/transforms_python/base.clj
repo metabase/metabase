@@ -60,7 +60,7 @@
   [transform]
   (into #{}
         (map source-table-value->dependency)
-        (vals (get-in transform [:source :source-tables]))))
+        (get-in transform [:source :source-tables])))
 
 ;;; ------------------------------------------------- Message Log (in-memory only) -------------------------------------------------
 

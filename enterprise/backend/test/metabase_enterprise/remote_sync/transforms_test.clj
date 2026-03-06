@@ -326,6 +326,39 @@ is_sample: false
             (is (t2/exists? :model/Transform :entity_id transform-entity-id)
                 "Transform should be imported from transforms-namespace collection")))))))
 
+(deftest import-python-transform-with-legacy-map-source-tables-test
+  (testing "Import of a python transform with old map-format source-tables converts to vec format"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temporary-setting-values [remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/Transform :model/Collection]
+          (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                coll-entity-id      "xforms-coll-legacy-01"
+                transform-entity-id "python-legacy-fmt-01x"
+                ;; Use old map format: {alias: table_id} — this is how pre-unification exports look
+                source-tables-yaml  (format "{orders: %d}" (mt/id :orders))
+                test-files {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
+                                    (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms")
+                                    (str "collections/" coll-entity-id "_transforms/transforms/" transform-entity-id "_python_transform.yaml")
+                                    (test-helpers/generate-python-transform-yaml transform-entity-id "Python Transform"
+                                                                                 "test-data (h2)" source-tables-yaml
+                                                                                 :collection-id coll-entity-id)}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)
+                result      (impl/import! (source.p/snapshot mock-source) task-id)]
+            (is (= :success (:status result))
+                (str "Import should succeed. Result: " result))
+            (when-let [transform (t2/select-one :model/Transform :entity_id transform-entity-id)]
+              (let [source-tables (get-in transform [:source :source-tables])]
+                (testing "source-tables is stored as vec format after import"
+                  (is (sequential? source-tables)))
+                (testing "entry has correct alias and table_id"
+                  (let [entry (first source-tables)]
+                    (is (= "orders" (:alias entry)))
+                    (is (= (mt/id :orders) (:table_id entry)))))
+                (testing "entry is enriched with table metadata"
+                  (let [entry (first source-tables)]
+                    (is (= (mt/id) (:database_id entry)))
+                    (is (some? (:table entry)))))))))))))
+
 (deftest archived-transforms-namespace-collection-excluded-from-export-test
   (testing "When a transforms-namespace collection is archived, it and its children are excluded from export"
     (mt/with-premium-features #{:transforms}
@@ -894,3 +927,39 @@ serdes/meta:
                 "Custom tag (built_in_type nil) should be in export roots")
             (is (not (contains? exported-ids builtin-tag-id))
                 "Built-in tag should NOT be in export roots")))))))
+
+(deftest export-includes-builtin-python-library-test
+  (testing "Export includes built-in PythonLibrary (common.py) since it has no export-conditions"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-temp [:model/PythonLibrary builtin-lib {:path "common.py"
+                                                         :source "# builtin"
+                                                         :entity_id transforms-python/builtin-entity-id}
+                       :model/PythonLibrary custom-lib {:path "custom.py"
+                                                        :source "# custom"}]
+          (let [python-lib-spec (spec/spec-for-model-key :model/PythonLibrary)
+                export-roots (spec/query-export-roots python-lib-spec)
+                exported-ids (set (map second export-roots))]
+            (is (contains? exported-ids (:id builtin-lib))
+                "Built-in PythonLibrary should be in export roots")
+            (is (contains? exported-ids (:id custom-lib))
+                "Custom PythonLibrary should be in export roots")))))))
+
+(deftest build-all-removal-paths-excludes-builtin-python-library-test
+  (testing "build-all-removal-paths excludes built-in PythonLibrary via :removal-conditions"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-temp [:model/PythonLibrary _ {:path "common.py"
+                                               :source "# builtin"
+                                               :entity_id transforms-python/builtin-entity-id}
+                       :model/PythonLibrary custom-lib {:path "custom.py"
+                                                        :source "# custom"}]
+          (settings/sync-transform-tracking! true)
+          (settings/sync-transform-tracking! false)
+          (let [paths (spec/build-all-removal-paths)]
+            (is (some #(str/includes? % (:entity_id custom-lib)) paths)
+                "Custom PythonLibrary should be in removal paths")
+            (is (not (some #(str/includes? % transforms-python/builtin-entity-id) paths))
+                "Built-in PythonLibrary should NOT be in removal paths")))))))
