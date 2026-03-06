@@ -2,15 +2,27 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
+   [medley.core :as m]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(defn- find-column
+  [columns col-name]
+  (m/find-first (comp #{col-name} :name) columns))
+
+(defn- viz-column-ref
+  [column]
+  (-> column
+      lib/ref
+      (lib/update-options dissoc :binning :temporal-unit)
+      lib/->legacy-MBQL))
+
 (deftest card-upgrade-field-refs!-query-test
   (testing "should upgrade refs in a query"
-    (let [mp    (mt/metadata-provider)
+    (let [mp (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/aggregate (lib/count))
                     (lib/breakout (lib.metadata/field mp (mt/id :orders :id)))
@@ -27,32 +39,37 @@
 
 (deftest card-upgrade-field-refs!-viz-settings-test
   (testing "should upgrade refs in viz settings"
-    (let [mp    (mt/metadata-provider)
-          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+    (let [mp (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          breakoutable-cols (lib/breakoutable-columns query)
+          query (-> query
                     (lib/aggregate (lib/count))
                     (lib/aggregate (lib/count))
-                    (lib/breakout (lib.metadata/field mp (mt/id :orders :id)))
-                    (lib/breakout (lib.metadata/field mp (mt/id :orders :created_at))))
+                    (lib/breakout (find-column breakoutable-cols "ID"))
+                    (lib/breakout (find-column breakoutable-cols "CREATED_AT")))
+          returned-cols (lib/returned-columns query)
+          id-col (find-column returned-cols "ID")
+          created-at-col (find-column returned-cols "CREATED_AT")
           viz-settings {:column_settings
-                        {(json/encode ["ref" ["field" (mt/id :orders :id) nil]])
+                        {(json/encode ["ref" (viz-column-ref id-col)])
                          {:column_title "Order ID"}
 
-                         (json/encode ["ref" ["field" (mt/id :orders :created_at) nil]])
+                         (json/encode ["ref" (viz-column-ref created-at-col)])
                          {:column_title "Created"}}
 
                         :table.column_formatting
-                        [{:columns [[:field (mt/id :orders :id) nil]]
+                        [{:columns [(viz-column-ref id-col)]
                           :value   10}
-                         {:columns [[:field (mt/id :orders :created_at) nil]]
+                         {:columns [(viz-column-ref created-at-col)]
                           :value   "1970-01-01"}]
 
                         :pivot_table.column_split
-                        {:rows    [[:field (mt/id :orders :id) nil]]
-                         :columns [[:field (mt/id :orders :created_at) nil]]
+                        {:rows    [(viz-column-ref id-col)]
+                         :columns [(viz-column-ref created-at-col)]
                          :values  [[:aggregation 0] [:aggregation 1]]}
 
                         :pivot_table.collapsed_rows
-                        {:rows  [[:field (mt/id :orders :id) nil]]
+                        {:rows  [(viz-column-ref id-col)]
                          :value [10]}}]
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query query
                                                 :visualization_settings viz-settings}]
@@ -71,7 +88,7 @@
                   :pivot_table.column_split
                   {:rows    ["ID"]
                    :columns ["CREATED_AT"]
-                   :values  ["count", "count_2"]}
+                   :values  ["count" "count_2"]}
 
                   :pivot_table.collapsed_rows
                   {:rows  ["ID"]
