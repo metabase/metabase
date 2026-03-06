@@ -13,11 +13,23 @@
   border-radius: 0.5rem;
 }
 
+.codeSnippetWrapper {
+  position: relative;
+}
+
+.codeSnippetCopyButton {
+  position: absolute;
+  top: var(--mantine-spacing-md);
+  right: var(--mantine-spacing-md);
+  z-index: 1;
+  cursor: pointer;
+}
+
 .codeSnippet {
   background: var(--mb-color-background-info);
   border-radius: 8px;
   box-shadow: var(--mb-color-shadow) 0 3px 24px 0;
-  padding: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
 }
 
 .codeSnippet :global(.cm-line) {

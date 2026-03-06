@@ -7,6 +7,7 @@ import { CopyButton } from "metabase/common/components/CopyButton";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import {
   Anchor,
+  Box,
   Button,
   Code,
   Group,
@@ -62,13 +63,20 @@ export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
         <Text>{t`This example code for Node.js sets up an endpoint using Express:`}</Text>
       </Stack>
 
-      <CodeEditor
-        className={S.codeSnippet}
-        language="typescript"
-        value={expressSnippet}
-        readOnly
-        lineNumbers={false}
-      />
+      <Box className={S.codeSnippetWrapper}>
+        <CopyButton
+          className={S.codeSnippetCopyButton}
+          value={expressSnippet}
+        />
+
+        <CodeEditor
+          className={S.codeSnippet}
+          language="typescript"
+          value={expressSnippet}
+          readOnly
+          lineNumbers={false}
+        />
+      </Box>
 
       <Text size="sm" c="text-secondary">
         {jt`You can view more examples in the ${(
