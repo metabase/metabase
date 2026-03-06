@@ -1,6 +1,6 @@
 (ns metabase-enterprise.agent-api.workspace
   "Workspace endpoints for the Agent API, mounted at `/api/agent/v1/workspace/...`.
-  Mirrors the service-user-allowed workspace routes with JWT-based agent authentication."
+  Provides workspace access with JWT-based agent authentication."
   (:require
    [metabase-enterprise.workspaces.api.common :as ws.api.common]
    [metabase-enterprise.workspaces.types :as ws.t]

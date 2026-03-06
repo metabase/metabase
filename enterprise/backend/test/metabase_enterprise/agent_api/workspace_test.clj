@@ -29,11 +29,8 @@
   "Sets up JWT auth and premium features needed for agent API + workspaces."
   [& body]
   `(sso.test-setup/with-jwt-default-setup!
-     ;; Workspace creation produces a service-user API key. Clean it up before the User cleanup
-     ;; in with-jwt-default-setup!, otherwise the FK constraint on api_key.user_id blocks deletion.
-     (mt/with-model-cleanup [:model/ApiKey]
-       (mt/with-additional-premium-features #{:agent-api :metabot-v3 :workspaces :transforms}
-         ~@body))))
+     (mt/with-additional-premium-features #{:agent-api :metabot-v3 :workspaces :transforms}
+       ~@body)))
 
 (defn- auth-headers
   ([] (auth-headers "crowberto@metabase.com"))
@@ -216,12 +213,11 @@
 (deftest agent-workspace-feature-gating-test
   (testing "Workspace endpoints require :agent-api premium feature"
     (sso.test-setup/with-jwt-default-setup!
-      (mt/with-model-cleanup [:model/ApiKey]
-        ;; Enable workspaces but NOT agent-api
-        (mt/with-additional-premium-features #{:workspaces :transforms}
-          (ws.tu/with-resources! [res {:workspace {:name "Gating Test"}}]
-            (let [ws-id  (:workspace-id res)
-                  result (client/client-full-response :get 402 (str "agent/v1/workspace/" ws-id)
-                                                      {:request-options {:headers (auth-headers)}})]
-              (testing "Returns 402 when :agent-api feature is not enabled"
-                (is (= 402 (:status result)))))))))))
+      ;; Enable workspaces but NOT agent-api
+      (mt/with-additional-premium-features #{:workspaces :transforms}
+        (ws.tu/with-resources! [res {:workspace {:name "Gating Test"}}]
+          (let [ws-id  (:workspace-id res)
+                result (client/client-full-response :get 402 (str "agent/v1/workspace/" ws-id)
+                                                    {:request-options {:headers (auth-headers)}})]
+            (testing "Returns 402 when :agent-api feature is not enabled"
+              (is (= 402 (:status result))))))))))
