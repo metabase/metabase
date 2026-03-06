@@ -40,13 +40,12 @@
   "Slack message ids for assistant responses that were soft-deleted."
   [conversation-id slack-msg-ids]
   (when (seq slack-msg-ids)
-    (->> (t2/select-fn-set :slack_msg_id
-                           :model/MetabotMessage
-                           :conversation_id conversation-id
-                           :role "assistant"
-                           :deleted_at [:not= nil]
-                           :slack_msg_id [:in slack-msg-ids])
-         set)))
+    (t2/select-fn-set :slack_msg_id
+                      :model/MetabotMessage
+                      :conversation_id conversation-id
+                      :role "assistant"
+                      :deleted_at [:not= nil]
+                      :slack_msg_id [:in slack-msg-ids])))
 
 (defn response-owner-user-id
   "Find the Metabase user ID who triggered the assistant response for this Slack channel/message.
