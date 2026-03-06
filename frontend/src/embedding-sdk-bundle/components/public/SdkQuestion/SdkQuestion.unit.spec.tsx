@@ -17,6 +17,7 @@ import {
   act,
   mockGetBoundingClientRect,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -186,14 +187,18 @@ describe("InteractiveQuestion", () => {
     it("should render loading state when rerunning the query", async () => {
       await setup({ withCustomLayout: true });
 
-      expect(
-        await within(screen.getByTestId("table-root")).findByText(
-          TEST_COLUMN.display_name,
-        ),
-      ).toBeInTheDocument();
-      expect(
-        await within(screen.getByRole("gridcell")).findByText("Test Row"),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          within(screen.getByTestId("table-root")).getByText(
+            TEST_COLUMN.display_name,
+          ),
+        ).toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(
+          within(screen.getByRole("gridcell")).getByText("Test Row"),
+        ).toBeInTheDocument();
+      });
 
       expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
 
@@ -202,9 +207,11 @@ describe("InteractiveQuestion", () => {
 
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-      expect(
-        within(await screen.findByRole("gridcell")).getByText("Test Row"),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          within(screen.getByRole("gridcell")).getByText("Test Row"),
+        ).toBeInTheDocument();
+      });
     });
   });
 
