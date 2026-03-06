@@ -1,4 +1,3 @@
-
 import {
   InteractiveQuestion,
   type MetabaseTheme,

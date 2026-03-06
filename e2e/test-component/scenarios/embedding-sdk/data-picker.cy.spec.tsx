@@ -1,4 +1,3 @@
-
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { popover } from "e2e/support/helpers";
