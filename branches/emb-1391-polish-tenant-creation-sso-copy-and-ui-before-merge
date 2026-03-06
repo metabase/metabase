@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-1390-fix-rls-tenant-users-unable-to-query-database",
     "hash": "97171fa47b016111672ea6346789d0c790cb37c2"
+  },
+  "upstream": {
+    "branch": "emb-1391-polish-tenant-creation-sso-copy-and-ui-before-merge"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 70477,
+        "gqlID": "PR_kwDOAczgH87Ib1kH"
+      }
+    }
   }
 }
