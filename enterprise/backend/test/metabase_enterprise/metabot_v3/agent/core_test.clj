@@ -501,6 +501,91 @@
 
 ;;; ===================== Snowplow Analytics Tests =====================
 
+(deftest agent-used-tool-snowplow-test
+  (testing "fires :snowplow/ai_service_event 'agent_used_tool' per tool call"
+    (let [call-count (atom 0)
+          rasta-id   (mt/user->id :rasta)]
+      (with-redefs [openrouter/openrouter
+                    (fn [_]
+                      (let [n (swap! call-count inc)]
+                        (if (= 1 n)
+                          (mut/mock-llm-response
+                           [{:type :start :id "msg-1"}
+                            {:type      :tool-input
+                             :id        "t1"
+                             :function  "search"
+                             :arguments {:semantic_queries ["test"]
+                                         :keyword_queries  ["test"]
+                                         :entity_types     ["table"]}}
+                            {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                             :model "test-model" :id "msg-1"}])
+                          (mut/mock-llm-response
+                           [{:type :start :id "msg-2"}
+                            {:type :text :text "Done"}
+                            {:type :usage :usage {:promptTokens 150 :completionTokens 30}
+                             :model "test-model" :id "msg-2"}]))))
+                    metabot-search/search
+                    (fn [_args] [{:id 1 :type "table" :name "test" :display_name "Test" :database_id 1}])]
+        (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
+          (mt/with-current-user rasta-id
+            (snowplow-test/with-fake-snowplow-collector
+              (into [] (agent/run-agent-loop
+                        {:messages        [{:role :user :content "test"}]
+                         :state           {}
+                         :context         {}
+                         :profile-id      :internal
+                         :conversation-id "00000000-0000-0000-0000-000000000001"}))
+              ;; The collector also contains token_usage events; filter for just ai_service_events.
+              (let [events (snowplow-test/pop-event-data-and-user-id!)
+                    tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
+                (is (=? [{:user-id (str rasta-id)
+                          :data    {"event"         "agent_used_tool"
+                                    "source"        "metabot_agent"
+                                    "profile"       "internal"
+                                    "session_id"    "00000000-0000-0000-0000-000000000001"
+                                    "result"        "success"
+                                    "duration_ms"   nat-int?
+                                    "event_details" {"tool_name" "search"
+                                                     "step"      1}}}]
+                        tool-events)))))))))
+
+  (testing "fires 'agent_used_tool' with result=error when tool fails"
+    (let [call-count (atom 0)
+          rasta-id   (mt/user->id :rasta)]
+      (with-redefs [openrouter/openrouter
+                    (fn [_]
+                      (let [n (swap! call-count inc)]
+                        (if (= 1 n)
+                          (mut/mock-llm-response
+                           [{:type :start :id "msg-1"}
+                            {:type      :tool-input
+                             :id        "t1"
+                             :function  "search"
+                             :arguments {:bad-arg "wrong"}}
+                            {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                             :model "test-model" :id "msg-1"}])
+                          (mut/mock-llm-response
+                           [{:type :start :id "msg-2"}
+                            {:type :text :text "Done"}
+                            {:type :usage :usage {:promptTokens 150 :completionTokens 30}
+                             :model "test-model" :id "msg-2"}]))))
+                    metabot-search/search
+                    (fn [_args] (throw (ex-info "should not be called" {})))]
+        (mt/with-log-level [metabase-enterprise.metabot-v3.agent.core :warn]
+          (mt/with-current-user rasta-id
+            (snowplow-test/with-fake-snowplow-collector
+              (into [] (agent/run-agent-loop
+                        {:messages        [{:role :user :content "test"}]
+                         :state           {}
+                         :context         {}
+                         :profile-id      :internal
+                         :conversation-id "00000000-0000-0000-0000-000000000002"}))
+              (let [events (snowplow-test/pop-event-data-and-user-id!)
+                    tool-events (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
+                (is (=? [{:data {"event"  "agent_used_tool"
+                                 "result" "error"}}]
+                        tool-events))))))))))
+
 (deftest token-usage-snowplow-test
   (testing "fires :snowplow/token_usage event per LLM call"
     (let [call-count (atom 0)
@@ -531,26 +616,29 @@
                          :context         {}
                          :profile-id      :internal
                          :conversation-id "00000000-0000-0000-0000-000000000001"}))
-              (is (=? [{:user-id (str rasta-id)
-                        :data    {"model_id"            "test-model"
-                                  "total_tokens"         120
-                                  "prompt_tokens"        100
-                                  "completion_tokens"    20
-                                  "estimated_costs_usd"  0.0
-                                  "duration_ms"          nat-int?
-                                  "profile"              "internal"
-                                  "source"               "metabot_agent"
-                                  "tag"                  "agent"
-                                  "session_id"           "00000000-0000-0000-0000-000000000001"}}
-                       {:user-id (str rasta-id)
-                        :data    {"model_id"            "test-model"
-                                  "total_tokens"         180
-                                  "prompt_tokens"        150
-                                  "completion_tokens"    30
-                                  "estimated_costs_usd"  0.0
-                                  "duration_ms"          nat-int?
-                                  "profile"              "internal"
-                                  "source"               "metabot_agent"
-                                  "tag"                  "agent"
-                                  "session_id"           "00000000-0000-0000-0000-000000000001"}}]
-                      (snowplow-test/pop-event-data-and-user-id!))))))))))
+              ;; Filter for just token_usage events (other events may also be present)
+              (let [events      (snowplow-test/pop-event-data-and-user-id!)
+                    token-events (filter #(contains? (:data %) "total_tokens") events)]
+                (is (=? [{:user-id (str rasta-id)
+                          :data    {"model_id"            "test-model"
+                                    "total_tokens"         120
+                                    "prompt_tokens"        100
+                                    "completion_tokens"    20
+                                    "estimated_costs_usd"  0.0
+                                    "duration_ms"          nat-int?
+                                    "profile"              "internal"
+                                    "source"               "metabot_agent"
+                                    "tag"                  "agent"
+                                    "session_id"           "00000000-0000-0000-0000-000000000001"}}
+                         {:user-id (str rasta-id)
+                          :data    {"model_id"            "test-model"
+                                    "total_tokens"         180
+                                    "prompt_tokens"        150
+                                    "completion_tokens"    30
+                                    "estimated_costs_usd"  0.0
+                                    "duration_ms"          nat-int?
+                                    "profile"              "internal"
+                                    "source"               "metabot_agent"
+                                    "tag"                  "agent"
+                                    "session_id"           "00000000-0000-0000-0000-000000000001"}}]
+                        token-events))))))))))
