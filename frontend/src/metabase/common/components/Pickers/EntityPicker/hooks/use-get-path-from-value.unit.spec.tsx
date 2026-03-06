@@ -106,7 +106,7 @@ const setup = ({
 
   const enterpriseTokenFeatures = {
     library: true,
-    transforms: true,
+    "transforms-basic": true,
     tenants: true,
   };
 

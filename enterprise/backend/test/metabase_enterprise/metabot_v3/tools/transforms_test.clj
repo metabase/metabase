@@ -9,7 +9,7 @@
 
 (deftest get-transforms-test
   (testing "get-transforms correctly returns transform when the user has access to the source database"
-    (mt/with-premium-features #{:metabot-v3 :transforms}
+    (mt/with-premium-features #{:metabot-v3 :transforms-basic}
       (mt/with-temp [:model/Database {db-id :id} {}]
         (let [mp (lib-be/application-database-metadata-provider db-id)]
           (mt/with-temp [:model/Transform transform
@@ -31,7 +31,7 @@
 
 (deftest get-transform-details-test
   (testing "get-transform-details returns transform when user can query the source database"
-    (mt/with-premium-features #{:metabot-v3 :transforms}
+    (mt/with-premium-features #{:metabot-v3 :transforms-basic}
       (mt/with-temp [:model/Transform transform
                      {:name   "Test Transform"
                       :source {:type  "query"
@@ -43,7 +43,7 @@
 
 (deftest get-transform-details-blocked-test
   (testing "get-transform-details throws when user cannot query the source database"
-    (mt/with-premium-features #{:metabot-v3 :transforms}
+    (mt/with-premium-features #{:metabot-v3 :transforms-basic}
       (mt/with-temp [:model/Database {db-id :id} {}]
         (let [mp (lib-be/application-database-metadata-provider db-id)]
           (mt/with-temp [:model/Transform transform

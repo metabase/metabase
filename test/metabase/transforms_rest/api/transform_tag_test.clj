@@ -12,7 +12,7 @@
 
 (deftest create-tag-test
   (testing "POST /api/transform-tag"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-data-analyst-role! (mt/user->id :lucky)
         (testing "Creates a new tag with valid name"
           (let [tag-name (str "test-tag-" (u/generate-nano-id))
@@ -42,7 +42,7 @@
             (is (:errors response) "Should return validation errors for blank name")))))))
 
 (deftest update-tag-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (testing "PUT /api/transform-tag/:tag-id"
       (mt/with-data-analyst-role! (mt/user->id :lucky)
         (testing "Updates tag name successfully"
@@ -71,7 +71,7 @@
 (deftest delete-tag-test
   (testing "DELETE /api/transform-tag/:tag-id"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (testing "Deletes tag successfully"
           (mt/with-temp [:model/TransformTag tag {}]
             (is (t2/exists? :model/TransformTag :id (:id tag)))
@@ -86,7 +86,7 @@
 (deftest list-tags-test
   (testing "GET /api/transform-tag"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (testing "Returns all tags ordered by name"
           (mt/with-temp [:model/TransformTag tag1 {:name "tag 1"}
                          :model/TransformTag tag2 {:name "tag 3"}
@@ -102,7 +102,7 @@
 
 (deftest permissions-test
   (testing "Transform tag endpoints require data-analyst permissions"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (testing "POST /api/transform-tag"
         (is (string? (mt/user-http-request :rasta :post 403 "transform-tag"
                                            {:name "test"}))))

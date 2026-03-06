@@ -2191,7 +2191,7 @@
 
 (deftest transform-tag-extraction-test
   (testing "TransformTag extraction and serialization"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-empty-h2-app-db!
         ;; Delete the existing built-in transform tags
         (t2/delete! :model/TransformTag)
@@ -2239,7 +2239,7 @@
 
 (deftest transform-extraction-test
   (testing "Transform extraction and serialization"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-empty-h2-app-db!
         ;; Delete the existing built-in transform tags
         (t2/delete! :model/TransformTag)
@@ -2349,7 +2349,7 @@
 
 (deftest transform-job-extraction-test
   (testing "TransformJob extraction and serialization"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-empty-h2-app-db!
         ;; Delete the existing built-in transform tags and jobs
         (t2/delete! :model/TransformTag)

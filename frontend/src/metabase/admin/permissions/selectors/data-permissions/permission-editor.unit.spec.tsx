@@ -26,7 +26,9 @@ describe("getShouldShowTransformPermissions", () => {
         settings: createMockSettingsState({
           "is-hosted?": false,
           "transforms-enabled": true,
-          "token-features": createMockTokenFeatures({ transforms: true }),
+          "token-features": createMockTokenFeatures({
+            "transforms-basic": true,
+          }),
         }),
       });
 
@@ -38,7 +40,9 @@ describe("getShouldShowTransformPermissions", () => {
         settings: createMockSettingsState({
           "is-hosted?": false,
           "transforms-enabled": false,
-          "token-features": createMockTokenFeatures({ transforms: true }),
+          "token-features": createMockTokenFeatures({
+            "transforms-basic": true,
+          }),
         }),
       });
 
@@ -52,7 +56,9 @@ describe("getShouldShowTransformPermissions", () => {
         settings: createMockSettingsState({
           "is-hosted?": true,
           "transforms-enabled": false,
-          "token-features": createMockTokenFeatures({ transforms: true }),
+          "token-features": createMockTokenFeatures({
+            "transforms-basic": true,
+          }),
         }),
       });
 
@@ -64,7 +70,9 @@ describe("getShouldShowTransformPermissions", () => {
         settings: createMockSettingsState({
           "is-hosted?": true,
           "transforms-enabled": false,
-          "token-features": createMockTokenFeatures({ transforms: false }),
+          "token-features": createMockTokenFeatures({
+            "transforms-basic": false,
+          }),
         }),
       });
 
@@ -76,7 +84,9 @@ describe("getShouldShowTransformPermissions", () => {
         settings: createMockSettingsState({
           "is-hosted?": true,
           "transforms-enabled": true,
-          "token-features": createMockTokenFeatures({ transforms: false }),
+          "token-features": createMockTokenFeatures({
+            "transforms-basic": false,
+          }),
         }),
       });
 

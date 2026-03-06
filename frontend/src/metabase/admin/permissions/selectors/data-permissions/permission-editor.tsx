@@ -174,7 +174,7 @@ export const getShouldShowTransformPermissions = createSelector(
   (state: State) => getPlan(getSetting(state, "token-features")),
   getIsHosted,
   (state: State) => getSetting(state, "transforms-enabled"),
-  (state: State) => getTokenFeature(state, "transforms"),
+  (state: State) => getTokenFeature(state, "transforms-basic"),
   (plan, isHosted, transformsSettingEnabled, transformsFeatureEnabled) => {
     // Never show in oss
     if (plan === "oss") {

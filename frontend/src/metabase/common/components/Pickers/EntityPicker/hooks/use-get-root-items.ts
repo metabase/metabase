@@ -49,7 +49,7 @@ export const useRootItems = () => {
   const { options, models, searchQuery, namespaces } = useOmniPickerContext();
   const isAdmin = useSelector(getUserIsAdmin);
   const hasTenants = useSetting("use-tenants");
-  const transformsEnabled = useHasTokenFeature("transforms");
+  const transformsEnabled = useHasTokenFeature("transforms-basic");
   const dispatch = useDispatch();
 
   const { data: databaseData, isLoading: isLoadingDatabases } =

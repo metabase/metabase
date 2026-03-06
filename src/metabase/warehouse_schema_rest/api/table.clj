@@ -115,7 +115,7 @@
                                                   [:= :d.to_entity_type "table"]]}]))
         query      {:where where, :order-by [[:name :asc]]}
         hydrations (cond-> [:db]
-                     (premium-features/has-feature? :transforms) (conj :transform))]
+                     (premium-features/has-feature? :transforms-basic) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)

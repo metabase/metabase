@@ -510,7 +510,7 @@
               (is (not= :archived (:status ws-after))))))))))
 
 (deftest merge-history-endpoint-test
-  (mt/with-premium-features #{:transforms :transforms-python :workspaces}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :workspaces}
     (testing "GET /api/transform/:id/merge-history"
       (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_history_test_table"}
                      :model/Transform x1     {:name        "Transform for history"
@@ -1710,7 +1710,7 @@
 
 (deftest external-transforms-test
   (testing "GET /api/ee/workspace/id/external/transform"
-    (mt/with-premium-features #{:transforms :workspaces}
+    (mt/with-premium-features #{:transforms-basic :workspaces}
       (let [db-1 (mt/id)]
         (ws.tu/with-workspaces! [ws1 {:name "Our Workspace"}
                                  ws2 {:name "Their Workspace"}]

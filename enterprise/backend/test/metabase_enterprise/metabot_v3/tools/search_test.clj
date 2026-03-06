@@ -319,7 +319,7 @@
 
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Database {db-id :id} {}]
         (let [mp (lib-be/application-database-metadata-provider db-id)]
           (mt/with-temp [:model/Transform {transform-id :id}

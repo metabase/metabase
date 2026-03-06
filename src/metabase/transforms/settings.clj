@@ -10,7 +10,7 @@
   :type       :integer
   :visibility :internal
   :default    (* 4 60)
-  :feature    :transforms
+  :feature    :transforms-basic
   :doc        false
   :export?    false
   :encryption :no

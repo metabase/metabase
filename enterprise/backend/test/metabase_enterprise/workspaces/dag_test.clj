@@ -12,7 +12,7 @@
 (use-fixtures
   :once
   (fn [f]
-    (mt/with-premium-features [:dependencies :transforms :workspaces]
+    (mt/with-premium-features [:dependencies :transforms-basic :workspaces]
       (mt/with-model-cleanup [:model/Dependency :model/Transform :model/Table :model/Workspace]
         (f)))))
 

@@ -24,7 +24,7 @@
                                                            [:= :r.status "succeeded"]
                                                            [:= [:cast :r.end_time :date] [:cast date :date]]]}))
                              0))
-        advanced?      (and (premium-features/has-feature? :transforms)
+        advanced?      (and (premium-features/has-feature? :transforms-basic)
                             (premium-features/has-feature? :transforms-python))
         yesterday-runs (count-all-runs yesterday-utc)
         today-runs     (count-all-runs today-utc)]

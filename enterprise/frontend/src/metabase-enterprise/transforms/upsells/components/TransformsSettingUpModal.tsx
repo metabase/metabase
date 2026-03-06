@@ -25,7 +25,7 @@ export const TransformsSettingUpModal = ({
   opened,
   isPython = false,
 }: TransformsSettingUpModalProps) => {
-  const featureToCheck = isPython ? "transforms-python" : "transforms";
+  const featureToCheck = isPython ? "transforms-python" : "transforms-basic";
   useTokenRefreshUntil(featureToCheck, { intervalMs: 1000, skip: !opened });
   const isSettingUp = !hasPremiumFeature(featureToCheck);
 

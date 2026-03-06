@@ -57,7 +57,7 @@
         (is (= #{normal-table temp-table}
                (#'sync-tables/table-set db-metadata)))))
     (testing "when hosted with `transforms` enabled, excludes the temp tables"
-      (mt/with-premium-features #{:hosting :transforms}
+      (mt/with-premium-features #{:hosting :transforms-basic}
         (is (= #{normal-table}
                (#'sync-tables/table-set db-metadata)))))))
 

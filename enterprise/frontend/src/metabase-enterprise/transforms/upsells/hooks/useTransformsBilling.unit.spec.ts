@@ -38,7 +38,7 @@ function setup({
   const settings = createMockSettings({
     "is-hosted?": isHosted,
     "token-features": createMockTokenFeatures({
-      transforms: hasBasicTransforms,
+      "transforms-basic": hasBasicTransforms,
       "transforms-python": hasPythonTransforms,
     }),
   });
@@ -47,7 +47,7 @@ function setup({
     settings: mockSettings({
       "is-hosted?": isHosted,
       "token-features": createMockTokenFeatures({
-        transforms: hasBasicTransforms,
+        "transforms-basic": hasBasicTransforms,
         "transforms-python": hasPythonTransforms,
       }),
     }),
@@ -152,7 +152,9 @@ describe("useTransformsBilling", () => {
 
     it("should return hadTransforms=true when previous add-ons include a self-service transforms product", async () => {
       const { result } = setup({
-        previousAddOns: [{ product_type: "transforms", self_service: true }],
+        previousAddOns: [
+          { product_type: "transforms-basic", self_service: true },
+        ],
       });
 
       await waitFor(() => {
@@ -164,7 +166,9 @@ describe("useTransformsBilling", () => {
 
     it("should return hadTransforms=false when previous transforms add-on is not self-service", async () => {
       const { result } = setup({
-        previousAddOns: [{ product_type: "transforms", self_service: false }],
+        previousAddOns: [
+          { product_type: "transforms-basic", self_service: false },
+        ],
       });
 
       await waitFor(() => {

@@ -319,7 +319,7 @@
 
 (deftest check-transform-test
   (testing "POST /api/ee/dependencies/check-transform"
-    (mt/with-premium-features #{:dependencies :transforms}
+    (mt/with-premium-features #{:dependencies :transforms-basic}
       (mt/with-temp [:model/Transform {_transform-id :id :as transform} {}]
         (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check-transform" transform)]
           (is (= {:bad_cards [], :bad_transforms [], :success true}
@@ -410,7 +410,7 @@
 
 (deftest graph-transform-hydrates-creator-test
   (testing "GET /api/ee/dependencies/graph hydrates creator for transforms"
-    (mt/with-premium-features #{:dependencies :transforms}
+    (mt/with-premium-features #{:dependencies :transforms-basic}
       (mt/with-temp [:model/Transform {transform-id :id} {:name "Test Transform"
                                                           :creator_id (mt/user->id :crowberto)}]
         (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
@@ -666,7 +666,7 @@
 
 (deftest check-transform-permissions-test
   (testing "POST /api/ee/dependencies/check-transform requires read permissions on the input transform"
-    (mt/with-premium-features #{:dependencies :transforms}
+    (mt/with-premium-features #{:dependencies :transforms-basic}
       (mt/with-temp [:model/Transform transform {:name "test transform"}]
         (testing "Returns 403 when user is not an admin (only admins can read transforms)"
           (is (= "You don't have permissions to do that."
@@ -684,7 +684,7 @@
 (deftest check-card-bad-transforms-filtered-by-can-read-test
   (testing "POST /api/ee/dependencies/check-card filters bad_transforms by mi/can-read?"
     (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies :transforms}
+      (mt/with-premium-features #{:dependencies :transforms-basic}
         (mt/with-temp [:model/User user {:email "test@test.com"}
                        :model/Transform transform {}]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
