@@ -192,7 +192,6 @@
                                         payload
                                         :connection-timeout streaming-connection-timeout-ms
                                         :socket-timeout     streaming-socket-timeout-ms))]
-    (log/debugf "[slackbot] start-stream response: %s" (pr-str body))
     (if (:ok body)
       {:stream_ts (:ts body)
        :channel   (:channel body)

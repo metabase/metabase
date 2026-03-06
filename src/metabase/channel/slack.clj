@@ -305,9 +305,8 @@
         file-url (complete! :token token
                             :file-id file_id
                             :filename filename)]
-    (u/prog1 {:url file-url
-              :id file_id}
-      (log/debug "Uploaded image" (:url <>)))))
+    {:url file-url
+     :id  file_id}))
 
 (mu/defn upload-file!
   "Calls Slack API `files.getUploadURLExternal` and `files.completeUploadExternal` endpoints to upload a file and returns

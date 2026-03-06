@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.api.slackbot
   "`/api/ee/metabot-v3/slack` routes"
   (:require
-   [better-cond.core :as b]
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
@@ -175,6 +174,27 @@
                                                             (str/join ", " skipped-files))})))
       (slackbot.streaming/send-response client event extra-history))))
 
+(defn- with-processing-reaction
+  "Wrap work with a temporary :eyes: reaction on the triggering message for non-DMs."
+  [client event f]
+  (let [reaction-target (when-not (slackbot.events/dm? event)
+                          {:channel (:channel event)
+                           :ts      (:ts event)
+                           :name    "eyes"})]
+    (when reaction-target
+      (let [res (slackbot.client/add-reaction client reaction-target)]
+        (when-not (:ok res)
+          (log/warnf "[slackbot] Failed to add processing reaction: %s (channel=%s ts=%s name=%s)"
+                     (:error res) (:channel reaction-target) (:ts reaction-target) (:name reaction-target)))))
+    (try
+      (f)
+      (finally
+        (when reaction-target
+          (let [res (slackbot.client/remove-reaction client reaction-target)]
+            (when-not (:ok res)
+              (log/warnf "[slackbot] Failed to remove processing reaction: %s (channel=%s ts=%s name=%s)"
+                         (:error res) (:channel reaction-target) (:ts reaction-target) (:name reaction-target)))))))))
+
 (defn- process-async
   "Process an event asynchronously with logging and error handling.
    Authenticates the user and calls handler with [client event]."
@@ -182,27 +202,14 @@
    (let [event-type (or (:subtype event) (:channel_type event) (:type event))]
      (log/debugf "[slackbot] Processing %s event" event-type)
      (future
-       (let [reaction-target (when-not (slackbot.events/dm? event)
-                               {:channel (:channel event)
-                                :ts      (:ts event)
-                                :name    "eyes"})]
-         (when reaction-target
-           (let [res (slackbot.client/add-reaction client reaction-target)]
-             (when-not (:ok res)
-               (log/warnf "[slackbot] Failed to add processing reaction: %s (channel=%s ts=%s name=%s)"
-                          (:error res) (:channel reaction-target) (:ts reaction-target) (:name reaction-target)))))
-         (try
-           (when-let [user-id (require-authenticated-slack-user! client event)]
-             (request/with-current-user user-id
-               (handler client event)))
-           (catch Exception e
-             (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e)))
-           (finally
-             (when reaction-target
-               (let [res (slackbot.client/remove-reaction client reaction-target)]
-                 (when-not (:ok res)
-                   (log/warnf "[slackbot] Failed to remove processing reaction: %s (channel=%s ts=%s name=%s)"
-                              (:error res) (:channel reaction-target) (:ts reaction-target) (:name reaction-target))))))))))))
+       (with-processing-reaction client event
+         (fn []
+           (try
+             (when-let [user-id (require-authenticated-slack-user! client event)]
+               (request/with-current-user user-id
+                 (handler client event)))
+             (catch Exception e
+               (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e))))))))))
 
 (defn- ignore-event
   "Handle any event we don't care to process"
@@ -213,6 +220,99 @@
 (def ^:private delete-reaction-names
   "Slack emoji names that trigger metabot-response deletion."
   #{"wastebasket" "x"})
+
+(def ^:private removed-notice-blocks
+  [{:type "section"
+    :text {:type "mrkdwn"
+           :text "_Message has been removed._"}}])
+
+(defn- removed-notice-payload
+  [channel-id message-ts]
+  {:channel channel-id
+   :ts      message-ts
+   :text    "Message has been removed."
+   :blocks  removed-notice-blocks})
+
+(defn- replace-response-with-removed-notice!
+  "Replace the Slack message first, then mark the stored response as deleted once Slack confirms the update."
+  [client channel-id message-ts deleter-user-id]
+  (let [res (slackbot.client/update-message client (removed-notice-payload channel-id message-ts))]
+    (if (:ok res)
+      (do
+        (when-not (slackbot.persistence/soft-delete-response! channel-id message-ts deleter-user-id)
+          (log/warnf "[slackbot] Slack message updated but soft delete was not recorded (channel=%s ts=%s user_id=%s)"
+                     channel-id message-ts deleter-user-id))
+        true)
+      (do
+        (log/warnf "[slackbot] Failed to replace metabot response with removed notice: %s (channel=%s ts=%s user_id=%s)"
+                   (:error res) channel-id message-ts deleter-user-id)
+        false))))
+
+(defn- authorize-delete-request
+  "Resolve whether a Slack delete request is authorized for the target metabot response."
+  [slack-user-id channel-id message-ts]
+  (cond
+    (nil? channel-id)
+    {:status :ignored
+     :reason :missing-channel
+     :message-ts message-ts}
+
+    (nil? message-ts)
+    {:status :ignored
+     :reason :missing-message-ts
+     :channel-id channel-id}
+
+    :else
+    (let [request-user-id (slack-id->user-id slack-user-id)]
+      (cond
+        (nil? request-user-id)
+        {:status :ignored
+         :reason :unlinked-user
+         :slack-user-id slack-user-id
+         :channel-id channel-id
+         :message-ts message-ts}
+
+        :else
+        (if-let [owner-user-id (slackbot.persistence/response-owner-user-id channel-id message-ts)]
+          (if (= request-user-id owner-user-id)
+            {:status :authorized
+             :channel-id channel-id
+             :message-ts message-ts
+             :request-user-id request-user-id}
+            {:status :ignored
+             :reason :not-owner
+             :channel-id channel-id
+             :message-ts message-ts
+             :request-user-id request-user-id
+             :owner-user-id owner-user-id})
+          {:status :ignored
+           :reason :untracked-message
+           :channel-id channel-id
+           :message-ts message-ts})))))
+
+(defn- log-ignored-delete-request
+  "Log expected delete-request ignore paths at debug level."
+  [{:keys [source reason channel-id message-ts slack-user-id request-user-id owner-user-id reaction]}]
+  (case reason
+    :missing-channel
+    (log/debugf "[slackbot] Ignoring %s delete request with missing channel for ts=%s reaction=%s"
+                source message-ts reaction)
+
+    :missing-message-ts
+    (log/debugf "[slackbot] Ignoring %s delete request with missing message ts in channel=%s reaction=%s"
+                source channel-id reaction)
+
+    :unlinked-user
+    (log/debugf "[slackbot] Ignoring %s delete request from unlinked slack user=%s reaction=%s channel=%s ts=%s"
+                source slack-user-id reaction channel-id message-ts)
+
+    :not-owner
+    (log/debugf "[slackbot] Ignoring %s delete request from non-owner user_id=%s owner_user_id=%s channel=%s ts=%s reaction=%s"
+                source request-user-id owner-user-id channel-id message-ts reaction)
+
+    :untracked-message
+    (log/debugf "[slackbot] Ignoring %s delete request for untracked message channel=%s ts=%s reaction=%s"
+                source channel-id message-ts reaction)))
 
 (defn- delete-reaction-event?
   "True when this event is a delete reaction added to a message."
@@ -228,36 +328,17 @@
     (let [slack-user-id (:user event)
           reaction      (:reaction event)
           channel-id    (get-in event [:item :channel])
-          message-ts    (get-in event [:item :ts])]
-      (b/cond
-        (nil? channel-id)
-        (log/warnf "[slackbot] Ignoring delete reaction with missing channel for ts=%s reaction=%s" message-ts reaction)
+          message-ts    (get-in event [:item :ts])
+          authorization (authorize-delete-request slack-user-id channel-id message-ts)]
+      (case (:status authorization)
+        :authorized
+        (when (replace-response-with-removed-notice! client channel-id message-ts (:request-user-id authorization))
+          (log/debugf "[slackbot] Replaced metabot response via reaction=%s channel=%s ts=%s"
+                      reaction channel-id message-ts))
 
-        (nil? message-ts)
-        (log/warnf "[slackbot] Ignoring delete reaction with missing message ts in channel=%s reaction=%s" channel-id reaction)
-
-        :let [reactor-user-id (slack-id->user-id slack-user-id)]
-        (nil? reactor-user-id)
-        (log/warnf "[slackbot] Ignoring delete reaction from unlinked slack user=%s reaction=%s channel=%s ts=%s"
-                   slack-user-id reaction channel-id message-ts)
-
-        :else
-        (if-let [owner-user-id (slackbot.persistence/response-owner-user-id channel-id message-ts)]
-          (if (= reactor-user-id owner-user-id)
-            (do
-              (slackbot.persistence/soft-delete-response! channel-id message-ts reactor-user-id)
-              (log/warnf "[slackbot] Replacing metabot response with removed notice via reaction=%s channel=%s ts=%s"
-                         reaction channel-id message-ts)
-              (slackbot.client/update-message client {:channel channel-id
-                                                      :ts      message-ts
-                                                      :text    "Message has been removed."
-                                                      :blocks  [{:type "section"
-                                                                 :text {:type "mrkdwn"
-                                                                        :text "_Message has been removed._"}}]}))
-            (log/warnf "[slackbot] Ignoring delete reaction from non-owner user_id=%s owner_user_id=%s channel=%s ts=%s reaction=%s"
-                       reactor-user-id owner-user-id channel-id message-ts reaction))
-          (log/warnf "[slackbot] Ignoring delete reaction for untracked message channel=%s ts=%s reaction=%s"
-                     channel-id message-ts reaction))))
+        (log-ignored-delete-request (assoc authorization
+                                           :source "reaction"
+                                           :reaction reaction))))
     (catch Exception e
       (log/error e "[slackbot] Error handling delete reaction"))))
 
@@ -301,8 +382,8 @@
         (future (handle-delete-reaction client event))
 
         (= "reaction_added" (:type event))
-        (log/warnf "[slackbot] Ignoring reaction_added for non-delete emoji reaction=%s item_type=%s channel=%s ts=%s"
-                   (:reaction event) (get-in event [:item :type]) (get-in event [:item :channel]) (get-in event [:item :ts]))
+        (log/debugf "[slackbot] Ignoring reaction_added for non-delete emoji reaction=%s item_type=%s channel=%s ts=%s"
+                    (:reaction event) (get-in event [:item :type]) (get-in event [:item :channel]) (get-in event [:item :ts]))
 
         (or (slackbot.events/app-mention? event)
             (slackbot.events/dm? event))
@@ -324,10 +405,10 @@
             ["event_callback"   slackbot.events/SlackEventCallbackEvent]
             [::mc/default       [:map [:type :string]]]]
    request]
-  (log/warnf "[slackbot] Incoming Slack request type=%s slack_event_type=%s request_ts=%s"
-             (:type body)
-             (get-in body [:event :type])
-             (get-in request [:headers "x-slack-request-timestamp"]))
+  (log/debugf "[slackbot] Incoming Slack request type=%s slack_event_type=%s request_ts=%s"
+              (:type body)
+              (get-in body [:event :type])
+              (get-in request [:headers "x-slack-request-timestamp"]))
   (assert-valid-slack-req request)
   (log/debugf "[slackbot] Received Slack event type=%s slack_event_type=%s" (:type body) (get-in body [:event :type]))
   ;; all handlers must respond within 3 seconds or slack will retry
@@ -475,26 +556,17 @@
   "Handle replacing a metabot response message with a removed notice.
    Only the user who triggered the response can do this."
   [{:keys [slack-user-id channel-id message-ts]}]
-  (let [request-user-id (slack-id->user-id slack-user-id)
-        owner-user-id   (when (and channel-id message-ts)
-                          (slackbot.persistence/response-owner-user-id channel-id message-ts))
-        client          {:token (channel.settings/unobfuscated-slack-app-token)}]
-    (when (and request-user-id
-               channel-id
-               message-ts
-               owner-user-id
-               (= request-user-id owner-user-id))
+  (let [authorization (authorize-delete-request slack-user-id channel-id message-ts)
+        client        {:token (channel.settings/unobfuscated-slack-app-token)}]
+    (case (:status authorization)
+      :authorized
       (future
         (try
-          (slackbot.persistence/soft-delete-response! channel-id message-ts request-user-id)
-          (slackbot.client/update-message client {:channel channel-id
-                                                  :ts      message-ts
-                                                  :text    "Message has been removed."
-                                                  :blocks  [{:type "section"
-                                                             :text {:type "mrkdwn"
-                                                                    :text "_Message has been removed._"}}]})
+          (replace-response-with-removed-notice! client channel-id message-ts (:request-user-id authorization))
           (catch Exception e
-            (log/errorf e "[slackbot] Error replacing metabot response with removed notice: %s" (ex-data e))))))))
+            (log/errorf e "[slackbot] Error replacing metabot response with removed notice: %s" (ex-data e)))))
+
+      (log-ignored-delete-request (assoc authorization :source "action")))))
 
 (defn- handle-feedback-modal-submission
   "Handle submission of the feedback details modal.

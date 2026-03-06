@@ -683,7 +683,7 @@
                 (is (= 1 (count @stream-calls)))
                 (is (= "C456" (:channel (first @stream-calls))))
                 (is (some #(= mock-ai-text %) @append-text-calls))
-                (is (some #(= "\n_Rendering results..._" %) @append-text-calls))
+                (is (not-any? #(= "\n_Rendering results..._" %) @append-text-calls))
                 (is (= 1 (count @stop-stream-calls))))
 
               (testing "output generation called for each static_viz"
@@ -1793,6 +1793,39 @@
       (is (= "Coffee sales broken down by region. Coffee sales broken down by state."
              @current-text)))))
 
+(deftest send-with-retries-nil-blocks-test
+  (testing "plain-text fallback is attempted when blocks are nil"
+    (let [calls (atom [])]
+      (is (= {:ok true :attempt :plain}
+             (#'slackbot.streaming/send-with-retries
+              (fn [text blocks]
+                (swap! calls conj {:text text :blocks blocks})
+                {:ok true :attempt :plain})
+              "test-send"
+              "hello"
+              nil)))
+      (is (= [{:text "hello" :blocks nil}] @calls)))))
+
+(deftest send-with-retries-degrades-to-plain-text-test
+  (testing "retries continue past stripped blocks to a final plain-text attempt"
+    (let [calls  (atom [])
+          blocks [{:type "section"}
+                  {:type "context_actions"}]]
+      (is (= {:ok true :attempt :plain}
+             (#'slackbot.streaming/send-with-retries
+              (fn [_text candidate]
+                (swap! calls conj candidate)
+                (if (nil? candidate)
+                  {:ok true :attempt :plain}
+                  {:ok false :error "invalid_blocks"}))
+              "test-send"
+              "hello"
+              blocks)))
+      (is (= [blocks
+              [{:type "section"}]
+              nil]
+             @calls)))))
+
 ;; -------------------------------- PUT /slack/settings Tests --------------------------------
 
 (deftest put-slack-settings-test
@@ -2038,7 +2071,26 @@
                        :message-ts    "123.456"})]
           (is (nil? result))
           (is (empty? @soft-delete-calls))
-          (is (empty? @update-calls)))))))
+          (is (empty? @update-calls))))))
+
+  (testing "failed Slack update does not soft-delete the response"
+    (let [update-calls      (atom [])
+          soft-delete-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id     (constantly (mt/user->id :rasta))
+                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :rasta))
+                    slackbot.persistence/soft-delete-response! (fn [& args]
+                                                                 (swap! soft-delete-calls conj args)
+                                                                 true)
+                    slackbot.client/update-message (fn [_ msg]
+                                                     (swap! update-calls conj msg)
+                                                     {:ok false :error "internal_error"})]
+        (let [result (#'slackbot/handle-delete-action
+                      {:slack-user-id "U123"
+                       :channel-id    "C123"
+                       :message-ts    "123.456"})]
+          @result
+          (is (= 1 (count @update-calls)))
+          (is (empty? @soft-delete-calls)))))))
 
 (deftest handle-delete-reaction-test
   (testing "owner reaction replaces the metabot response message with a removed notice"
@@ -2108,7 +2160,28 @@
                                                        :channel "C123"
                                                        :ts      "123.456"}})
         (is (empty? @soft-delete-calls))
-        (is (empty? @update-calls))))))
+        (is (empty? @update-calls)))))
+
+  (testing "failed Slack update does not soft-delete the response"
+    (let [update-calls      (atom [])
+          soft-delete-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id                 (constantly (mt/user->id :rasta))
+                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :rasta))
+                    slackbot.persistence/soft-delete-response! (fn [& args]
+                                                                 (swap! soft-delete-calls conj args)
+                                                                 true)
+                    slackbot.client/update-message              (fn [_ msg]
+                                                                  (swap! update-calls conj msg)
+                                                                  {:ok false :error "internal_error"})]
+        (#'slackbot/handle-delete-reaction {:token "xoxb-test"}
+                                           {:type     "reaction_added"
+                                            :user     "U123"
+                                            :reaction "wastebasket"
+                                            :item     {:type    "message"
+                                                       :channel "C123"
+                                                       :ts      "123.456"}})
+        (is (= 1 (count @update-calls)))
+        (is (empty? @soft-delete-calls))))))
 
 (deftest handle-feedback-modal-submission-test
   (testing "modal submission sends feedback to harbormaster and replaces buttons"
