@@ -75,12 +75,12 @@
     :on-error        nil}))
 
 (defn- publish!
-  "Publishes messages to the given topic. All active subscribers will receive them.
+  "Publishes messages to the given topic using the specified backend.
   `messages` is a vector of values stored as a JSON array in a single row.
   The message is delivered to local listeners immediately in a background thread.
   The backend stores it for delivery to other nodes via their polling loops."
-  [topic-name messages]
-  (let [id (topic.backend/publish! topic.backend/*backend* topic-name messages)]
+  [backend topic-name messages]
+  (let [id (topic.backend/publish! backend topic-name messages)]
     (if id
       (do
         (swap! locally-published-ids
@@ -132,6 +132,18 @@
   []
   (topic.backend/start! topic.backend/*backend*))
 
+(defn start-all!
+  "Starts all topic backends. Each backend polls *listeners* dynamically."
+  []
+  (doseq [be [:topic.backend/appdb :topic.backend/memory]]
+    (topic.backend/start! be)))
+
+(defn shutdown-all!
+  "Shuts down all topic backends."
+  []
+  (doseq [be [:topic.backend/appdb :topic.backend/memory]]
+    (topic.backend/shutdown! be)))
+
 (defmethod mq.impl/unlisten! "topic"
   [topic-name]
   (swap! *listeners* dissoc topic-name))
@@ -139,13 +151,22 @@
 (defmacro with-topic
   "Runs the body with the ability to add messages to the given topic.
   Messages are buffered and only published if the body completes successfully.
+  Accepts optional opts map with :backend to override *backend*.
   If an exception occurs, no messages are published and the exception is rethrown.
   Publishing is best-effort and not transactional — if the body succeeds but
   `publish!` throws, the body's side effects will have already occurred."
-  [topic-name [buffer-binding] & body]
-  `(mq.impl/with-buffer
-     (fn [msgs#]
-       (#'publish! ~topic-name msgs#))
-     "Error in topic processing, no messages will be published to the topic"
-     [~buffer-binding]
-     ~@body))
+  {:arglists '([topic-name [buffer-binding] & body]
+               [topic-name opts [buffer-binding] & body])}
+  [topic-name & args]
+  (let [[opts [buffer-binding] & body] (if (map? (first args))
+                                         args
+                                         (cons {} args))
+        backend-expr (if-let [be (:backend opts)]
+                       be
+                       `topic.backend/*backend*)]
+    `(mq.impl/with-buffer
+       (fn [msgs#]
+         (#'publish! ~backend-expr ~topic-name msgs#))
+       "Error in topic processing, no messages will be published to the topic"
+       [~buffer-binding]
+       ~@body)))

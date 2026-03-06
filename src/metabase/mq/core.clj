@@ -35,7 +35,6 @@
   (:require
    [metabase.mq.impl :as mq.impl]
    [metabase.mq.queue.appdb :as q.appdb]
-   [metabase.mq.queue.backend :as q.backend]
    [metabase.mq.queue.impl :as q.impl]
    [metabase.mq.queue.memory :as q.memory]
    [metabase.mq.queue.sync :as q.sync]
@@ -74,13 +73,9 @@
 
 (defn shutdown!
   "Shuts down all mq resources: clears listener registries, then delegates to
-  backends for infrastructure cleanup."
+  all backends for infrastructure cleanup."
   []
-  ;; Clear listener registries
   (reset! q.impl/*listeners* {})
   (reset! topic.impl/*listeners* {})
-  ;; Stop the background message manager
-  (q.impl/stop-message-manager!)
-  ;; Backend-specific infrastructure cleanup
-  (q.backend/shutdown! q.backend/*backend*)
-  (topic.backend/shutdown! topic.backend/*backend*))
+  (q.impl/shutdown-all!)
+  (topic.impl/shutdown-all!))

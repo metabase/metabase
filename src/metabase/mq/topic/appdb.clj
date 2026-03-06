@@ -122,9 +122,10 @@
 ;;; ------------------------------------------- Backend Multimethods -------------------------------------------
 
 (defmethod topic.backend/shutdown! :topic.backend/appdb [_]
-  (when-let [^Future f @background-process]
+  (when-let [f @background-process]
     (reset! background-process nil)
-    (.cancel f true)
+    (when (instance? Future f)
+      (.cancel ^Future f true))
     (log/info "Topic polling loop stopped"))
   (reset! offsets {})
   (mq.impl/stop-cleanup-loop! cleanup-future "Topic"))

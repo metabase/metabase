@@ -32,5 +32,6 @@
     (log/infof "Queue backend set to %s" queue-be)
     (log/infof "Topic backend set to %s" topic-be)
     (mq.impl/register-listeners!)
-    (q.impl/start!)
-    (topic.impl/start!)))
+    ;; Start all backends — they share *listeners* and coexist
+    (q.impl/start-all!)
+    (topic.impl/start-all!)))

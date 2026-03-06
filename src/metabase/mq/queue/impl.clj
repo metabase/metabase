@@ -153,6 +153,27 @@
   (when-let [^ScheduledExecutorService exec (first (reset-vals! flush-executor nil))]
     (.shutdownNow exec)))
 
+(defn start-all!
+  "Starts the message manager and all queue backends."
+  []
+  (let [exec (Executors/newSingleThreadScheduledExecutor
+              (reify ThreadFactory
+                (newThread [_ r]
+                  (doto (Thread. r "mq-message-manager")
+                    (.setDaemon true)))))]
+    (if (compare-and-set! flush-executor nil exec)
+      (.scheduleAtFixedRate exec ^Runnable flush-all-pending! 100 100 TimeUnit/MILLISECONDS)
+      (.shutdown exec)))
+  (doseq [be [:queue.backend/appdb :queue.backend/memory]]
+    (q.backend/start! be)))
+
+(defn shutdown-all!
+  "Shuts down all queue backends and the message manager."
+  []
+  (stop-message-manager!)
+  (doseq [be [:queue.backend/appdb :queue.backend/memory]]
+    (q.backend/shutdown! be)))
+
 ;;; ------------------------------------------- Listener registration -------------------------------------------
 
 (defn- register-listener!
@@ -191,22 +212,31 @@
 (defmacro with-queue
   "Runs the body with the ability to add messages to the given queue.
   Messages are buffered and only published if the body completes successfully.
+  Accepts optional opts map with :backend to override *backend*.
   If an exception occurs, no messages are published and the exception is rethrown.
 
   NOTE: Publishing is best-effort and not transactional with the application database.
   If the caller's DB transaction commits but `publish!` subsequently fails, the queue
   message will be lost. Callers that need stronger guarantees should publish within
   the same DB transaction or use an idempotent retry strategy."
-  [queue-name [queue-binding] & body]
-  `(mq.impl/with-buffer
-     (fn [msgs#]
-       (q.backend/publish! q.backend/*backend* ~queue-name msgs#)
-       (mq.impl/analytics-inc! :metabase-mq/queue-messages-published
-                               {:queue (name ~queue-name)}
-                               (count msgs#)))
-     "Error in queue processing, no messages will be persisted to the queue"
-     [~queue-binding]
-     ~@body))
+  {:arglists '([queue-name [queue-binding] & body]
+               [queue-name opts [queue-binding] & body])}
+  [queue-name & args]
+  (let [[opts [queue-binding] & body] (if (map? (first args))
+                                        args
+                                        (cons {} args))
+        backend-expr (if-let [be (:backend opts)]
+                       be
+                       `q.backend/*backend*)]
+    `(mq.impl/with-buffer
+       (fn [msgs#]
+         (q.backend/publish! ~backend-expr ~queue-name msgs#)
+         (mq.impl/analytics-inc! :metabase-mq/queue-messages-published
+                                 {:queue (name ~queue-name)}
+                                 (count msgs#)))
+       "Error in queue processing, no messages will be persisted to the queue"
+       [~queue-binding]
+       ~@body)))
 
 (mu/defn queue-length :- :int
   "The number of message *bundles* in the queue."
