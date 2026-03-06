@@ -3680,6 +3680,21 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v59.2026-03-06T22:39:30
+      author: noahmoss
+      comment: Add user_id to metabot_message to track which user each message belongs to
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: user_id
+                  type: integer
+                  remarks: Metabase user ID associated with this message
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

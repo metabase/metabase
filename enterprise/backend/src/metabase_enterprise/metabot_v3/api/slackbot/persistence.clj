@@ -51,12 +51,11 @@
   "Find the Metabase user ID who triggered the assistant response for this Slack channel/message.
    Returns nil when the message is not tracked."
   [channel-id slack-msg-id]
-  (when-let [conversation-id (t2/select-one-fn :conversation_id
-                                               :model/MetabotMessage
-                                               :channel_id channel-id
-                                               :slack_msg_id slack-msg-id
-                                               :role "assistant")]
-    (t2/select-one-fn :user_id :model/MetabotConversation :id conversation-id)))
+  (t2/select-one-fn :user_id
+                    :model/MetabotMessage
+                    :channel_id   channel-id
+                    :slack_msg_id slack-msg-id
+                    :role         "assistant"))
 
 (defn soft-delete-response!
   "Mark the stored assistant response for this Slack channel/message as soft-deleted."

@@ -219,7 +219,8 @@
                                               conversation-id profile-id
                                               (metabot-v3.u/aisdk->messages :assistant lines)
                                               :channel-id   channel-id
-                                              :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id)))
+                                              :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
+                                              :user-id      api/*current-user-id*)
                                              :store-in-db)})]
     (->> (metabot-v3.u/aisdk->messages :assistant lines)
          (filter #(= (:_type %) :DATA)))))
