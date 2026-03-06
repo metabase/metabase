@@ -14,7 +14,6 @@
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.api.transform]
-   [metabase.transforms.crud]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [get-test-schema
