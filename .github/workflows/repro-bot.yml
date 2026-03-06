@@ -62,7 +62,7 @@ jobs:
 
       - name: Create MCP config with resolved secrets
         run: |
-          cat > .mcp-ci.json <<'ENDOFJSON'
+          cat > .mcp.json <<'ENDOFJSON'
           {
             "mcpServers": {
               "metabase-repro": {
@@ -78,8 +78,8 @@ jobs:
             }
           }
           ENDOFJSON
-          sed -i "s|PLACEHOLDER_UV_PATH|$(which uv)|" .mcp-ci.json
-          sed -i "s|PLACEHOLDER_LINEAR_KEY|${{ secrets.LINEAR_API_KEY }}|" .mcp-ci.json
+          sed -i "s|PLACEHOLDER_UV_PATH|$(which uv)|" .mcp.json
+          sed -i "s|PLACEHOLDER_LINEAR_KEY|${{ secrets.LINEAR_API_KEY }}|" .mcp.json
 
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
@@ -110,7 +110,6 @@ jobs:
             - Docker is available for appdb (Postgres/MySQL/MariaDB) if needed.
             - Java 21 and Python/uv are pre-installed.
           claude_args: |
-            --mcp-config .mcp-ci.json
             --disallowedTools "Bash(git push*),Bash(rm -rf /*)"
 
       - name: Verify repro-bot completed successfully
