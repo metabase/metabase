@@ -260,7 +260,7 @@
 
 (defn select-malli-keys
   "Like select-keys, but with the arguments reversed, and taking the malli schema for the output map.
-   Nothing smart - for example, it doesn't understand optional verus maybe."
+   Nothing smart - for example, it doesn't understand optional versus maybe."
   ([schema m]
    (select-keys m (malli-map-keys schema)))
   ([schema alias-map m]
@@ -675,7 +675,6 @@
   [ws-id transform-id db_id target]
   (let [workspace (api/check-404 (t2/select-one [:model/Workspace :database_id :db_status] ws-id))
         target    (update target :database #(or % db_id))
-        tx-id     (when transform-id (parse-long transform-id))
         ;; For uninitialized workspaces we skip over checks for their db id
         ws-db-id  (when (not= :uninitialized (:db_status workspace)) (:database_id workspace))]
     (cond
@@ -695,7 +694,7 @@
       #_{:status 403 :body (deferred-tru "A table with that name already exists.")}
 
       ;; Consider deferring this validation until merge also.
-      (internal-target-conflict? ws-id target tx-id)
+      (internal-target-conflict? ws-id target transform-id)
       {:status 403 :body (deferred-tru "Another transform in this workspace already targets that table")}
 
       :else

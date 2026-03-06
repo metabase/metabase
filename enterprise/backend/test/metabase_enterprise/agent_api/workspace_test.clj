@@ -6,7 +6,8 @@
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.http-client :as client]))
+   [metabase.test.http-client :as client]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -167,6 +168,50 @@
           (let [result (agent-ws-client :get 200 (str "agent/v1/workspace/" ws-id "/external/transform"))]
             (is (contains? result :transforms))
             (is (sequential? (:transforms result)))))))))
+
+(deftest agent-workspace-execute-test
+  (with-agent-workspace-setup!
+    (ws.tu/with-resources! [res {:workspace {:definitions {:x1 [:t1]}}}]
+      (let [ws-id  (:workspace-id res)
+            ref-id (get-in res [:workspace-map :x1])]
+        (testing "POST transform run returns execution result"
+          (ws.tu/with-mocked-execution
+            (let [result (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/transform/" ref-id "/run"))]
+              (is (contains? result :status)))))
+
+        (testing "POST transform dry-run returns query result"
+          (ws.tu/with-mocked-execution
+            (let [result (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/transform/" ref-id "/dry-run"))]
+              (is (contains? result :status)))))
+
+        (testing "POST query returns query result"
+          (ws.tu/with-mocked-execution
+            (let [result (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/query") {:sql "SELECT 1"})]
+              (is (contains? result :status)))))
+
+        (testing "POST run on archived workspace returns 400"
+          (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/archive"))
+          (is (= "Cannot execute archived workspace"
+                 (agent-ws-client :post 400 (str "agent/v1/workspace/" ws-id "/run")))))))))
+
+(deftest agent-workspace-validate-target-test
+  (with-agent-workspace-setup!
+    (ws.tu/with-resources! [res {:workspace {:definitions {:x1 [:t1]}}}]
+      (let [ws-id  (:workspace-id res)
+            ref-id (get-in res [:workspace-map :x1])
+            target (-> (t2/select-one [:model/WorkspaceTransform :target]
+                                      :workspace_id ws-id :ref_id ref-id)
+                       :target)]
+        (testing "Validating a transform's own target with its ref-id returns 200 (no self-conflict)"
+          (is (= "OK"
+                 (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/transform/validate/target")
+                                  {:transform-id ref-id
+                                   :target       target}))))
+
+        (testing "Validating a conflicting target without transform-id returns 403"
+          (is (= "Another transform in this workspace already targets that table"
+                 (agent-ws-client :post 403 (str "agent/v1/workspace/" ws-id "/transform/validate/target")
+                                  {:target target}))))))))
 
 (deftest agent-workspace-feature-gating-test
   (testing "Workspace endpoints require :agent-api premium feature"
