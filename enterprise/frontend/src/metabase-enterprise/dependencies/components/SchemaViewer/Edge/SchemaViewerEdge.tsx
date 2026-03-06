@@ -8,7 +8,7 @@ import { memo, useMemo } from "react";
 import { usePalette } from "metabase/common/hooks/use-palette";
 
 import { useIsCompactMode } from "../SchemaViewerContext";
-import type { SchemaViewerEdgeData } from "../types";
+import type { SchemaViewerEdgeData, SchemaViewerFlowEdge } from "../types";
 
 // Crow's foot geometry constants
 const GAP = 4;
@@ -17,19 +17,20 @@ const H = 6;
 
 type SymbolType = "one" | "many";
 
-interface SymbolProps {
+type SymbolProps = {
   x: number;
   y: number;
   stroke: string;
   strokeWidth: number;
   scale?: number;
-}
+};
 
 function OneSourceSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps) {
   const gap = GAP * scale;
   const h = H * scale;
   return (
     <line
+      data-testid="schema-viewer-edge-symbol-line"
       x1={x + gap}
       y1={y - h}
       x2={x + gap}
@@ -47,6 +48,7 @@ function ManySourceSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps)
   return (
     <>
       <line
+        data-testid="schema-viewer-edge-symbol-line"
         x1={x + gap + w}
         y1={y}
         x2={x + gap}
@@ -55,6 +57,7 @@ function ManySourceSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps)
         strokeWidth={strokeWidth}
       />
       <line
+        data-testid="schema-viewer-edge-symbol-line"
         x1={x + gap + w}
         y1={y}
         x2={x + gap}
@@ -71,6 +74,7 @@ function OneTargetSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps) 
   const h = H * scale;
   return (
     <line
+      data-testid="schema-viewer-edge-symbol-line"
       x1={x - gap}
       y1={y - h}
       x2={x - gap}
@@ -88,6 +92,7 @@ function ManyTargetSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps)
   return (
     <>
       <line
+        data-testid="schema-viewer-edge-symbol-line"
         x1={x - gap - w}
         y1={y}
         x2={x - gap}
@@ -96,6 +101,7 @@ function ManyTargetSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps)
         strokeWidth={strokeWidth}
       />
       <line
+        data-testid="schema-viewer-edge-symbol-line"
         x1={x - gap - w}
         y1={y}
         x2={x - gap}
@@ -117,14 +123,14 @@ function getSymbolTypes(relationship: SchemaViewerEdgeData["relationship"]): {
   return { source: "many", target: "one" };
 }
 
-interface SymbolWrapperProps {
+type SymbolWrapperProps = {
   type: SymbolType;
   x: number;
   y: number;
   stroke: string;
   strokeWidth: number;
   scale?: number;
-}
+};
 
 function SourceSymbol({ type, x, y, stroke, strokeWidth, scale }: SymbolWrapperProps) {
   return type === "many" ? (
@@ -143,7 +149,7 @@ function TargetSymbol({ type, x, y, stroke, strokeWidth, scale }: SymbolWrapperP
 }
 
 export const SchemaViewerEdge = memo(function SchemaViewerEdge(
-  props: EdgeProps<SchemaViewerEdgeData>,
+  props: EdgeProps<SchemaViewerFlowEdge>,
 ) {
   const palette = usePalette();
   const isInitialized = useNodesInitialized();
@@ -154,7 +160,7 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
 
   const relationship = props.data?.relationship ?? "many-to-one";
   const symbols = useMemo(() => getSymbolTypes(relationship), [relationship]);
-  const stroke = palette["border"];
+  const stroke = palette["border"] ?? "currentColor";
   const strokeWidth = isCompactMode ? 3 : 1.5;
   const scale = isCompactMode ? 2 : 1;
 
@@ -198,13 +204,14 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
   return (
     <>
       <path
+        data-testid="schema-viewer-edge-path"
         d={edgePath}
         fill="none"
         style={style}
         className={`react-flow__edge-path ${animationClass}`}
       />
       {!isHidden && (
-        <g>
+        <g data-testid="schema-viewer-edge-symbols">
           <SourceSymbol
             type={symbols.source}
             x={props.sourceX}

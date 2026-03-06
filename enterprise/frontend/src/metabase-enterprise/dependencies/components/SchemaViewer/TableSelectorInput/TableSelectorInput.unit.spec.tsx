@@ -33,7 +33,11 @@ const createTable = (id: number, name: string, displayName?: string): Table => (
   db_id: 1,
 });
 
-const createNode = (tableId: number, tableName: string): SchemaViewerFlowNode => ({
+const createNode = (
+  tableId: number,
+  tableName: string,
+  isFocal = false,
+): SchemaViewerFlowNode => ({
   id: `table-${tableId}`,
   type: "schemaViewerTable",
   position: { x: 0, y: 0 },
@@ -42,7 +46,7 @@ const createNode = (tableId: number, tableName: string): SchemaViewerFlowNode =>
     table_name: tableName,
     schema: "PUBLIC",
     fields: [],
-    is_focal: false,
+    is_focal: isFocal,
     connectedFieldIds: new Set(),
   },
 });
@@ -411,6 +415,176 @@ describe("TableSelectorInput", () => {
         : selectedTableIds.filter((id) => id !== tableId);
 
       expect(newSelection).toEqual([2]);
+    });
+  });
+
+  describe("focal table selection", () => {
+    it("should show focal table count when isUserModified is false", () => {
+      const tables = [
+        createTable(1, "ORDERS"),
+        createTable(2, "PRODUCTS"),
+        createTable(3, "PEOPLE"),
+      ];
+      // 2 focal tables + 1 related table
+      const nodes = [
+        createNode(1, "ORDERS", true),
+        createNode(2, "PRODUCTS", true),
+        createNode(3, "PEOPLE", false),
+      ];
+
+      renderWithProvider(
+        <TableSelectorInput
+          nodes={nodes}
+          allTables={tables}
+          selectedTableIds={[]}
+          isUserModified={false}
+          onSelectionChange={jest.fn()}
+        />,
+      );
+
+      // Should show "Most relationships" not a count
+      expect(screen.getByText("Most relationships")).toBeInTheDocument();
+    });
+
+    it("should use focalTableIdSet for effective selected count", () => {
+      // Test the underlying logic: focal tables should determine selected count
+      const nodes = [
+        { data: { table_id: 1, is_focal: true } },
+        { data: { table_id: 2, is_focal: true } },
+        { data: { table_id: 3, is_focal: false } },
+      ];
+
+      const focalTableIdSet = new Set<ConcreteTableId>();
+      for (const node of nodes) {
+        if (node.data.is_focal) {
+          focalTableIdSet.add(node.data.table_id as ConcreteTableId);
+        }
+      }
+
+      expect(focalTableIdSet.size).toBe(2);
+      expect(focalTableIdSet.has(1 as ConcreteTableId)).toBe(true);
+      expect(focalTableIdSet.has(2 as ConcreteTableId)).toBe(true);
+      expect(focalTableIdSet.has(3 as ConcreteTableId)).toBe(false);
+    });
+
+    it("should use selectedTableIds when isUserModified is true", () => {
+      const tables = [
+        createTable(1, "ORDERS"),
+        createTable(2, "PRODUCTS"),
+        createTable(3, "PEOPLE"),
+      ];
+      const nodes = [
+        createNode(1, "ORDERS", true),
+        createNode(2, "PRODUCTS", false),
+      ];
+
+      renderWithProvider(
+        <TableSelectorInput
+          nodes={nodes}
+          allTables={tables}
+          selectedTableIds={[1 as ConcreteTableId, 2 as ConcreteTableId]}
+          isUserModified={true}
+          onSelectionChange={jest.fn()}
+        />,
+      );
+
+      // Should show count when user modified
+      expect(screen.getByText("2 tables selected")).toBeInTheDocument();
+    });
+
+    it("should correctly identify focal vs non-focal tables", () => {
+      const isUserModified = false;
+      const selectedTableIds = [1, 2, 3] as ConcreteTableId[];
+      const focalTableIdSet = new Set([1, 2] as ConcreteTableId[]);
+
+      // When not user modified, effective selected should be focal tables only
+      const effectiveSelectedSet = isUserModified
+        ? new Set(selectedTableIds)
+        : focalTableIdSet;
+
+      expect(effectiveSelectedSet.has(1 as ConcreteTableId)).toBe(true);
+      expect(effectiveSelectedSet.has(2 as ConcreteTableId)).toBe(true);
+      expect(effectiveSelectedSet.has(3 as ConcreteTableId)).toBe(false);
+    });
+  });
+
+  describe("table label format", () => {
+    it("should show name only when display_name equals name", () => {
+      const table = createTable(1, "orders", "orders");
+
+      const label =
+        table.display_name && table.display_name !== table.name
+          ? `${table.name} (${table.display_name})`
+          : table.name;
+
+      expect(label).toBe("orders");
+    });
+
+    it("should show name (display_name) when they differ", () => {
+      const table = createTable(1, "orders", "Customer Orders");
+
+      const label =
+        table.display_name && table.display_name !== table.name
+          ? `${table.name} (${table.display_name})`
+          : table.name;
+
+      expect(label).toBe("orders (Customer Orders)");
+    });
+
+    it("should show name only when display_name is undefined", () => {
+      const table = createTable(1, "orders");
+
+      const label =
+        table.display_name && table.display_name !== table.name
+          ? `${table.name} (${table.display_name})`
+          : table.name;
+
+      expect(label).toBe("orders");
+    });
+
+    it("should show name only when display_name is empty string", () => {
+      const table = createTable(1, "orders", "");
+
+      const label =
+        table.display_name && table.display_name !== table.name
+          ? `${table.name} (${table.display_name})`
+          : table.name;
+
+      expect(label).toBe("orders");
+    });
+  });
+
+  describe("selected count with non-existent tables", () => {
+    it("should filter out non-existent table IDs from count", () => {
+      const allTables = [
+        createTable(1, "ORDERS"),
+        createTable(2, "PRODUCTS"),
+      ];
+      const selectedTableIds = [
+        1 as ConcreteTableId,
+        2 as ConcreteTableId,
+        99 as ConcreteTableId, // Doesn't exist
+      ];
+      const isUserModified = true;
+
+      const allTableIdSet = new Set(
+        allTables.map((t) => t.id as ConcreteTableId),
+      );
+
+      const selectedCount = isUserModified
+        ? selectedTableIds.filter((id) => allTableIdSet.has(id)).length
+        : 0;
+
+      expect(selectedCount).toBe(2);
+    });
+
+    it("should use focal table count when isUserModified is false", () => {
+      const focalTableIdSet = new Set([1, 2] as ConcreteTableId[]);
+      const isUserModified = false;
+
+      const selectedCount = isUserModified ? 0 : focalTableIdSet.size;
+
+      expect(selectedCount).toBe(2);
     });
   });
 });

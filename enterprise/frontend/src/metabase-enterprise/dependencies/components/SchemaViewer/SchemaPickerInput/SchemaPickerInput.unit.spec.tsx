@@ -1,360 +1,221 @@
+import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
+import { push } from "react-router-redux";
+
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  useListDatabaseSchemasQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import type { Database, DatabaseId } from "metabase-types/api";
 
-// Test helper functions and logic from SchemaPickerInput
+import { SchemaPickerInput } from "./SchemaPickerInput";
+
+jest.mock("metabase/api", () => ({
+  ...jest.requireActual("metabase/api"),
+  useListDatabasesQuery: jest.fn(),
+  useListDatabaseSchemasQuery: jest.fn(),
+}));
+
+jest.mock("metabase/lib/redux", () => ({
+  ...jest.requireActual("metabase/lib/redux"),
+  useDispatch: jest.fn(),
+}));
+
+jest.mock("react-router-redux", () => ({
+  ...jest.requireActual("react-router-redux"),
+  push: jest.fn((url: string) => ({ type: "PUSH", payload: url })),
+}));
+
+jest.mock("metabase/lib/urls", () => ({
+  ...jest.requireActual("metabase/lib/urls"),
+  dataStudioErdBase: jest.fn(() => "/data-studio/schema-viewer"),
+  dataStudioErdDatabase: jest.fn(
+    (id: number) => `/data-studio/schema-viewer?database-id=${id}`,
+  ),
+  dataStudioErdSchema: jest.fn(
+    (id: number, schema: string) =>
+      `/data-studio/schema-viewer?database-id=${id}&schema=${schema}`,
+  ),
+}));
+
+const mockUseListDatabasesQuery = useListDatabasesQuery as jest.Mock;
+const mockUseListDatabaseSchemasQuery =
+  useListDatabaseSchemasQuery as jest.Mock;
+const mockUseDispatch = useDispatch as jest.Mock;
+const mockPush = push as jest.Mock;
+
+const DATABASES = [
+  {
+    id: 1,
+    name: "Sample Database",
+    engine: "postgres",
+    is_saved_questions: false,
+  },
+  {
+    id: 2,
+    name: "Analytics DB",
+    engine: "postgres",
+    is_saved_questions: false,
+  },
+  {
+    id: -1337,
+    name: "Saved Questions",
+    engine: "saved",
+    is_saved_questions: true,
+  },
+] as Database[];
+
+function setupSchemaMocks(
+  schemasByDatabaseId: Record<number, string[]>,
+  options?: { loadingIds?: number[] },
+) {
+  const loadingIds = new Set(options?.loadingIds ?? []);
+
+  mockUseListDatabaseSchemasQuery.mockImplementation((arg: unknown) => {
+    if (!arg || typeof arg !== "object" || !("id" in arg)) {
+      return {
+        data: undefined,
+        isLoading: false,
+      };
+    }
+
+    const id = Number((arg as { id: number }).id);
+
+    return {
+      data: schemasByDatabaseId[id],
+      isLoading: loadingIds.has(id),
+    };
+  });
+}
+
+function renderSchemaPicker(
+  props?: Partial<ComponentProps<typeof SchemaPickerInput>>,
+) {
+  return renderWithProviders(
+    <SchemaPickerInput
+      databaseId={undefined}
+      schema={undefined}
+      isLoading={false}
+      {...props}
+    />,
+  );
+}
+
 describe("SchemaPickerInput", () => {
-  describe("label construction", () => {
-    it("should show 'Database / Schema' when both exist", () => {
-      const selectedDatabase: Database = {
-        id: 1 as DatabaseId,
-        name: "Sample Database",
-        engine: "postgres",
-      } as Database;
-      const schema = "PUBLIC";
+  const dispatch = jest.fn();
 
-      const displayLabel = `${selectedDatabase.name} / ${schema}`;
-
-      expect(displayLabel).toBe("Sample Database / PUBLIC");
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseDispatch.mockReturnValue(dispatch);
+    mockUseListDatabasesQuery.mockReturnValue({
+      data: { data: DATABASES },
+      isLoading: false,
     });
-
-    it("should show only database name when schema is undefined", () => {
-      const selectedDatabase: Database = {
-        id: 1 as DatabaseId,
-        name: "Sample Database",
-        engine: "postgres",
-      } as Database;
-      const schema = undefined;
-
-      const displayLabel = schema
-        ? `${selectedDatabase.name} / ${schema}`
-        : selectedDatabase.name;
-
-      expect(displayLabel).toBe("Sample Database");
-    });
-
-    it("should show database with auto-selected schema", () => {
-      const selectedDatabase: Database = {
-        id: 1 as DatabaseId,
-        name: "Sample Database",
-        engine: "postgres",
-      } as Database;
-      const currentSchemas = ["PUBLIC"];
-      const schema = undefined;
-
-      const autoSelectedSchema =
-        currentSchemas?.length === 1 ? currentSchemas[0] : null;
-      const displaySchema = schema ?? autoSelectedSchema;
-      const displayLabel = displaySchema
-        ? `${selectedDatabase.name} / ${displaySchema}`
-        : selectedDatabase.name;
-
-      expect(displayLabel).toBe("Sample Database / PUBLIC");
-    });
-
-    it("should not auto-select when multiple schemas exist", () => {
-      const selectedDatabase: Database = {
-        id: 1 as DatabaseId,
-        name: "Sample Database",
-        engine: "postgres",
-      } as Database;
-      const currentSchemas = ["PUBLIC", "ANALYTICS"];
-      const schema = undefined;
-
-      const autoSelectedSchema =
-        currentSchemas?.length === 1 ? currentSchemas[0] : null;
-      const displaySchema = schema ?? autoSelectedSchema;
-      const displayLabel = displaySchema
-        ? `${selectedDatabase.name} / ${displaySchema}`
-        : selectedDatabase.name;
-
-      expect(displayLabel).toBe("Sample Database");
-    });
-
-    it("should return null when no database selected", () => {
-      const selectedDatabase = undefined;
-      const schema = undefined;
-
-      const displayLabel = selectedDatabase
-        ? schema
-          ? `${selectedDatabase.name} / ${schema}`
-          : selectedDatabase.name
-        : null;
-
-      expect(displayLabel).toBeNull();
+    setupSchemaMocks({
+      1: ["PUBLIC", "ANALYTICS"],
+      2: ["REPORTING"],
+      [-1337]: ["metabase"],
     });
   });
 
-  describe("icon selection", () => {
-    it("should use folder icon when schema is displayed", () => {
-      const displaySchema = "PUBLIC";
-      const icon = displaySchema ? "folder" : "database";
+  it("shows empty-state picker text when no database is selected", () => {
+    renderSchemaPicker();
 
-      expect(icon).toBe("folder");
-    });
+    expect(screen.getByText("Pick a database to view")).toBeInTheDocument();
+  });
 
-    it("should use database icon when no schema displayed", () => {
-      const displaySchema = null;
-      const icon = displaySchema ? "folder" : "database";
+  it("shows selected database and explicit schema in button label", () => {
+    renderSchemaPicker({ databaseId: 1 as DatabaseId, schema: "PUBLIC" });
 
-      expect(icon).toBe("database");
-    });
+    expect(screen.getByText("Sample Database / PUBLIC")).toBeInTheDocument();
+  });
 
-    it("should use database icon when auto-selected schema is null", () => {
-      const currentSchemas: string[] | undefined = undefined;
-      const schema = undefined;
+  it("shows auto-selected schema when current database has exactly one schema", () => {
+    setupSchemaMocks({ 2: ["REPORTING"] });
+    renderSchemaPicker({ databaseId: 2 as DatabaseId, schema: undefined });
 
-      const autoSelectedSchema =
-        currentSchemas?.length === 1 ? currentSchemas[0] : null;
-      const displaySchema = schema ?? autoSelectedSchema;
-      const icon = displaySchema ? "folder" : "database";
+    expect(screen.getByText("Analytics DB / REPORTING")).toBeInTheDocument();
+  });
 
-      expect(icon).toBe("database");
+  it("filters out Saved Questions from database list", async () => {
+    renderSchemaPicker();
+    await userEvent.click(screen.getByTestId("schema-picker-button"));
+
+    expect(
+      screen.getByRole("button", { name: "Sample Database" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Saved Questions" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clears current selection when clear icon is clicked", async () => {
+    renderSchemaPicker({ databaseId: 1 as DatabaseId, schema: "PUBLIC" });
+
+    await userEvent.click(screen.getByLabelText("Clear"));
+
+    expect(Urls.dataStudioErdBase).toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith("/data-studio/schema-viewer");
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "PUSH",
+      payload: "/data-studio/schema-viewer",
     });
   });
 
-  describe("selection state", () => {
-    it("should have selection when databaseId is defined", () => {
-      const databaseId = 1 as DatabaseId;
-      const hasSelection = databaseId != null;
+  it("auto-navigates to schema URL when selected database has exactly one schema", async () => {
+    setupSchemaMocks({ 1: ["PUBLIC"] });
+    renderSchemaPicker();
 
-      expect(hasSelection).toBe(true);
+    await userEvent.click(screen.getByTestId("schema-picker-button"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Sample Database" }),
+    );
+
+    await waitFor(() => {
+      expect(Urls.dataStudioErdSchema).toHaveBeenCalledWith(1, "PUBLIC");
     });
-
-    it("should not have selection when databaseId is undefined", () => {
-      const databaseId = undefined;
-      const hasSelection = databaseId != null;
-
-      expect(hasSelection).toBe(false);
-    });
+    expect(mockPush).toHaveBeenCalledWith(
+      "/data-studio/schema-viewer?database-id=1&schema=PUBLIC",
+    );
   });
 
-  describe("loading state display", () => {
-    it("should show loader when isLoading is true", () => {
-      const isLoading = true;
-      const rightSection = isLoading ? "loader" : "close";
+  it("auto-navigates to database URL when selected database has no schemas", async () => {
+    setupSchemaMocks({ 1: [] });
+    renderSchemaPicker();
 
-      expect(rightSection).toBe("loader");
+    await userEvent.click(screen.getByTestId("schema-picker-button"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Sample Database" }),
+    );
+
+    await waitFor(() => {
+      expect(Urls.dataStudioErdDatabase).toHaveBeenCalledWith(1);
     });
-
-    it("should show close icon when isLoading is false and has selection", () => {
-      const isLoading = false;
-      const rightSection = isLoading ? "loader" : "close";
-
-      expect(rightSection).toBe("close");
-    });
-
-    it("should show chevron when no selection and not loading", () => {
-      const isLoading = false;
-      const hasSelection = false;
-
-      const rightSection = isLoading
-        ? "loader"
-        : hasSelection
-          ? "close"
-          : "chevron";
-
-      expect(rightSection).toBe("chevron");
-    });
+    expect(mockPush).toHaveBeenCalledWith(
+      "/data-studio/schema-viewer?database-id=1",
+    );
   });
 
-  describe("auto-select logic", () => {
-    it("should auto-select when single schema exists", () => {
-      const pickerSchemas = ["PUBLIC"];
-      const shouldAutoSelect = pickerSchemas.length === 1;
+  it("shows schema list for multi-schema database and navigates when schema is selected", async () => {
+    setupSchemaMocks({ 1: ["PUBLIC", "ANALYTICS"] });
+    renderSchemaPicker();
 
-      expect(shouldAutoSelect).toBe(true);
-    });
+    await userEvent.click(screen.getByTestId("schema-picker-button"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Sample Database" }),
+    );
 
-    it("should auto-select when no schemas exist", () => {
-      const pickerSchemas: string[] = [];
-      const shouldUseDatabase = pickerSchemas.length === 0;
+    expect(
+      screen.getByRole("button", { name: "Back to databases" }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "ANALYTICS" }));
 
-      expect(shouldUseDatabase).toBe(true);
-    });
-
-    it("should not auto-select when multiple schemas exist", () => {
-      const pickerSchemas = ["PUBLIC", "ANALYTICS"];
-      const shouldShowSchemaList = pickerSchemas.length > 1;
-
-      expect(shouldShowSchemaList).toBe(true);
-    });
-  });
-
-  describe("auto-selected schema calculation", () => {
-    it("should auto-select single schema", () => {
-      const currentSchemas = ["PUBLIC"];
-      const autoSelectedSchema =
-        currentSchemas?.length === 1 ? currentSchemas[0] : null;
-
-      expect(autoSelectedSchema).toBe("PUBLIC");
-    });
-
-    it("should not auto-select with multiple schemas", () => {
-      const currentSchemas = ["PUBLIC", "ANALYTICS", "TEST"];
-      const autoSelectedSchema =
-        currentSchemas?.length === 1 ? currentSchemas[0] : null;
-
-      expect(autoSelectedSchema).toBeNull();
-    });
-
-    it("should not auto-select with no schemas", () => {
-      const currentSchemas: string[] = [];
-      const autoSelectedSchema =
-        currentSchemas?.length === 1 ? currentSchemas[0] : null;
-
-      expect(autoSelectedSchema).toBeNull();
-    });
-
-    it("should not auto-select when currentSchemas is undefined", () => {
-      const currentSchemas = undefined;
-      const autoSelectedSchema =
-        currentSchemas?.length === 1 ? currentSchemas[0] : null;
-
-      expect(autoSelectedSchema).toBeNull();
-    });
-  });
-
-  describe("display schema resolution", () => {
-    it("should prefer explicit schema over auto-selected", () => {
-      const schema = "ANALYTICS";
-      const currentSchemas = ["PUBLIC"];
-      const autoSelectedSchema =
-        currentSchemas?.length === 1 ? currentSchemas[0] : null;
-      const displaySchema = schema ?? autoSelectedSchema;
-
-      expect(displaySchema).toBe("ANALYTICS");
-    });
-
-    it("should use auto-selected when explicit is undefined", () => {
-      const schema = undefined;
-      const currentSchemas = ["PUBLIC"];
-      const autoSelectedSchema =
-        currentSchemas?.length === 1 ? currentSchemas[0] : null;
-      const displaySchema = schema ?? autoSelectedSchema;
-
-      expect(displaySchema).toBe("PUBLIC");
-    });
-
-    it("should be null when both are absent", () => {
-      const schema = undefined;
-      const currentSchemas = ["PUBLIC", "ANALYTICS"];
-      const autoSelectedSchema =
-        currentSchemas?.length === 1 ? currentSchemas[0] : null;
-      const displaySchema = schema ?? autoSelectedSchema;
-
-      expect(displaySchema).toBeNull();
-    });
-  });
-
-  describe("database filtering", () => {
-    it("should filter out saved questions database", () => {
-      const databasesResponse = {
-        data: [
-          {
-            id: 1,
-            name: "Sample Database",
-            is_saved_questions: false,
-          },
-          {
-            id: -1337,
-            name: "Saved Questions",
-            is_saved_questions: true,
-          },
-        ],
-      };
-
-      const databases = databasesResponse.data.filter(
-        (db) => !db.is_saved_questions,
-      );
-
-      expect(databases).toHaveLength(1);
-      expect(databases[0].id).toBe(1);
-    });
-
-    it("should keep all databases when none are saved questions", () => {
-      const databasesResponse = {
-        data: [
-          {
-            id: 1,
-            name: "Database 1",
-            is_saved_questions: false,
-          },
-          {
-            id: 2,
-            name: "Database 2",
-            is_saved_questions: false,
-          },
-        ],
-      };
-
-      const databases = databasesResponse.data.filter(
-        (db) => !db.is_saved_questions,
-      );
-
-      expect(databases).toHaveLength(2);
-    });
-  });
-
-  describe("schema list display logic", () => {
-    it("should show schema list when multiple schemas exist", () => {
-      const selectedDatabaseId = 1 as DatabaseId;
-      const isLoadingSchemas = false;
-      const pickerSchemas = ["PUBLIC", "ANALYTICS"];
-
-      const shouldShowSchemaList =
-        selectedDatabaseId != null &&
-        !isLoadingSchemas &&
-        pickerSchemas != null &&
-        pickerSchemas.length > 1;
-
-      expect(shouldShowSchemaList).toBe(true);
-    });
-
-    it("should show loader when loading schemas", () => {
-      const selectedDatabaseId = 1 as DatabaseId;
-      const isLoadingSchemas = true;
-      const pickerSchemas = null;
-
-      const shouldShowLoader =
-        selectedDatabaseId != null && isLoadingSchemas;
-
-      expect(shouldShowLoader).toBe(true);
-    });
-
-    it("should show database list when no database selected", () => {
-      const selectedDatabaseId = null;
-      const shouldShowDatabaseList = selectedDatabaseId == null;
-
-      expect(shouldShowDatabaseList).toBe(true);
-    });
-  });
-
-  describe("has multiple schemas detection", () => {
-    it("should detect multiple schemas", () => {
-      const schemas = ["PUBLIC", "ANALYTICS"];
-      const hasMultipleSchemas = schemas != null && schemas.length > 1;
-
-      expect(hasMultipleSchemas).toBe(true);
-    });
-
-    it("should not detect multiple with single schema", () => {
-      const schemas = ["PUBLIC"];
-      const hasMultipleSchemas = schemas != null && schemas.length > 1;
-
-      expect(hasMultipleSchemas).toBe(false);
-    });
-
-    it("should not detect multiple with no schemas", () => {
-      const schemas: string[] = [];
-      const hasMultipleSchemas = schemas != null && schemas.length > 1;
-
-      expect(hasMultipleSchemas).toBe(false);
-    });
-
-    it("should not detect multiple when schemas is null", () => {
-      const schemas = null;
-      const hasMultipleSchemas = schemas != null && schemas.length > 1;
-
-      expect(hasMultipleSchemas).toBe(false);
-    });
+    expect(Urls.dataStudioErdSchema).toHaveBeenCalledWith(1, "ANALYTICS");
+    expect(mockPush).toHaveBeenCalledWith(
+      "/data-studio/schema-viewer?database-id=1&schema=ANALYTICS",
+    );
   });
 });

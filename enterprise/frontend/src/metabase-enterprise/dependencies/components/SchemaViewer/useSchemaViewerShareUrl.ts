@@ -9,7 +9,7 @@ interface SchemaViewerShareState {
   hops: number;
 }
 
-function encode(state: SchemaViewerShareState): string {
+export function encode(state: SchemaViewerShareState): string {
   const payload = {
     d: state.databaseId,
     s: state.schema ?? "",
