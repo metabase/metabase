@@ -1741,22 +1741,6 @@
         (is (some? (:deleted_at msg)))
         (is (= user-id (:deleted_by_user_id msg)))))))
 
-(deftest append-text-chunk-test
-  (testing "adds a space between adjacent prose chunks"
-    (is (= "Coffee sales broken down by region. Coffee sales broken down by state."
-           (#'slackbot.streaming/append-text-chunk
-            "Coffee sales broken down by region."
-            "Coffee sales broken down by state."))))
-  (testing "does not add a second space when one already exists"
-    (is (= "Hello world"
-           (#'slackbot.streaming/append-text-chunk "Hello " "world"))))
-  (testing "does not split contractions across chunks"
-    (is (= "I'll show you the results."
-           (#'slackbot.streaming/append-text-chunk "I" "'ll show you the results."))))
-  (testing "does not insert spaces before punctuation continuations"
-    (is (= "Hello,"
-           (#'slackbot.streaming/append-text-chunk "Hello" ",")))))
-
 (deftest channel-callback-status-persists-without-streaming-text-test
   (testing "channel tool status remains visible and text is accumulated without intermediate updates"
     (let [update-calls (atom [])]
@@ -1781,17 +1765,6 @@
           (await slack-writer)
           (is (= 1 (count @update-calls)) "channel text should not be streamed incrementally")
           (is (= "Here is the answer" @current-text)))))))
-
-(deftest channel-callback-joins-adjacent-text-chunks-test
-  (testing "channel text accumulation inserts a space between prose chunks"
-    (let [{:keys [on-text current-text]}
-          (#'slackbot.streaming/make-channel-callbacks {:token "xoxb-test"}
-                                                       {:channel "C123"
-                                                        :message-ts "123.456"})]
-      (on-text "Coffee sales broken down by region.")
-      (on-text "Coffee sales broken down by state.")
-      (is (= "Coffee sales broken down by region. Coffee sales broken down by state."
-             @current-text)))))
 
 (deftest send-with-retries-nil-blocks-test
   (testing "plain-text fallback is attempted when blocks are nil"
@@ -2338,14 +2311,3 @@
       (request-flush! true)
       (await slack-writer)
       (is (= 2 (count @append-calls)) "Force flush should bypass throttle"))))
-
-(deftest ^:parallel streaming-callback-joins-adjacent-text-chunks-test
-  (testing "DM streaming text accumulation inserts a space between prose chunks"
-    (let [{:keys [cbs append-calls]} (make-test-callbacks)
-          {:keys [on-text request-flush! slack-writer]} cbs]
-      (on-text "Coffee sales broken down by region.")
-      (on-text "Coffee sales broken down by state.")
-      (request-flush! true)
-      (await slack-writer)
-      (is (= ["Coffee sales broken down by region. Coffee sales broken down by state."]
-             @append-calls)))))

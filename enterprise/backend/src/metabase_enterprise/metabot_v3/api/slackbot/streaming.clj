@@ -165,33 +165,6 @@
        "\"I'll...\", \"Let me...\", or \"I found...\". Give a brief final answer focused on the result in "
        "1-2 sentences before any table or chart."))
 
-(defn- text-boundary-needs-space?
-  "True when adjacent AI text chunks should be separated by a single space.
-   This is intentionally conservative: only add a space when there is no
-   existing whitespace boundary and the chunks look like separate prose
-   segments rather than punctuation/markdown continuation."
-  [prefix suffix]
-  (when (and (seq prefix) (seq suffix))
-    (let [left  (last prefix)
-          right (first suffix)]
-      (and (not (Character/isWhitespace ^char left))
-           (not (Character/isWhitespace ^char right))
-           (not (contains? #{\' \, \. \! \? \: \; \) \] \}} right))
-           (or (Character/isLetterOrDigit ^char left)
-               (contains? #{\. \! \? \: \; \" \' \) \]} left))
-           (or (Character/isLetterOrDigit ^char right)
-               (contains? #{\< \[ \( \" \_ \* \`} right))))))
-
-(defn- append-text-chunk
-  "Append an AI text chunk, inserting a space when adjacent chunks would
-   otherwise collide into a single sentence."
-  [existing chunk]
-  (cond
-    (str/blank? existing) chunk
-    (str/blank? chunk)    existing
-    (text-boundary-needs-space? existing chunk) (str existing " " chunk)
-    :else (str existing chunk)))
-
 (defn- make-streaming-ai-request
   "Make a streaming AI request with callbacks for each message type.
    Returns data-parts (visualizations) from the response.
@@ -433,7 +406,7 @@
 
         on-text (fn [text]
                   (when (seq text)
-                    (swap! pending-text append-text-chunk text)
+                    (swap! pending-text str text)
                     (when (>= (count @pending-text) min-text-batch-size)
                       (request-flush!))))
 
@@ -683,7 +656,7 @@
               (request-flush! true))]
       {:on-text       (bound-fn* (fn [text]
                                    (when (seq text)
-                                     (swap! current-text append-text-chunk text))))
+                                     (swap! current-text str text))))
        :on-tool-start (fn [{:keys [tool-name]}]
                         (set-status! (str (tool-name->friendly tool-name) "...")))
        :on-tool-end   (constantly nil)
