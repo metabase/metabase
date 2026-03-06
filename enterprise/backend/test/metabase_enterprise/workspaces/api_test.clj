@@ -877,11 +877,11 @@
 (deftest validate-target-test
   (let [table (t2/select-one :model/Table :db_id (mt/id) :active true {:where [:not [:like :schema "mb__%"]]})]
     (ws.tu/with-workspaces! [ws {:name "test" :database_id (:db_id table)}]
-      (mt/with-temp [:model/WorkspaceTransform _x1 {:workspace_id (:id ws)
-                                                    :target       {:database (:db_id table)
-                                                                   :type     "table"
-                                                                   :schema   (:schema table)
-                                                                   :name     (str "q_" (:name table))}}]
+      (mt/with-temp [:model/WorkspaceTransform x1 {:workspace_id (:id ws)
+                                                   :target       {:database (:db_id table)
+                                                                  :type     "table"
+                                                                  :schema   (:schema table)
+                                                                  :name     (str "q_" (:name table))}}]
         (testing "Unique"
           (is (= "OK"
                  (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
@@ -916,7 +916,17 @@
                                          {:db_id  (:db_id table)
                                           :target {:type   "table"
                                                    :schema (:schema table)
-                                                   :name   (str "q_" (:name table))}})))))))))
+                                                   :name   (str "q_" (:name table))}})))))
+
+        (testing "No self-conflict when transform-id matches"
+          (is (= "OK"
+                 (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
+                   (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform/validate/target")
+                                         {:db_id        (:db_id table)
+                                          :transform-id (:ref_id x1)
+                                          :target       {:type   "table"
+                                                         :schema (:schema table)
+                                                         :name   (str "q_" (:name table))}})))))))))
 
 ;;;; Async workspace creation tests
 
