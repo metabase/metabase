@@ -34,6 +34,7 @@ import {
 import type {
   ColumnSettings,
   DatasetColumn,
+  RowValue,
   RowValues,
 } from "metabase-types/api";
 
@@ -43,7 +44,7 @@ import { getCategoryColor } from "./styling";
 interface ColumnValueProps {
   column: DatasetColumn;
   settings: ComputedVisualizationSettings;
-  rawValue: any;
+  rawValue: RowValue;
   style?: React.CSSProperties;
   rows: RowValues[];
   cols: DatasetColumn[];
@@ -184,7 +185,12 @@ export function ColumnValue({
     case isEmail(column):
     case isURL(column) && !isImageURL(column) && !isAvatarURL(column):
       return (
-        <Ellipsified size="sm" fw="bold" style={style} tooltip={rawValue}>
+        <Ellipsified
+          size="sm"
+          fw="bold"
+          style={style}
+          tooltip={typeof rawValue === "object" ? undefined : rawValue}
+        >
           {value}
         </Ellipsified>
       );
