@@ -38,10 +38,12 @@ export class MetricsViewerClickActionsMode {
     this.cardIdToDimensionId = cardIdToDimensionId;
   }
   actionsForClick(clickObject: ClickObject): ClickAction[] {
+    const cardId = clickObject.cardId;
+    if (cardId == null) {
+      return [];
+    }
     const definition = this.definitions.find(
-      (definition) =>
-        definition.id ===
-        this.cardIdToDimensionId[clickObject.cardId as CardId],
+      (definition) => definition.id === this.cardIdToDimensionId[cardId],
     );
     const params = {
       definitions: this.definitions,
@@ -122,9 +124,10 @@ function getZoomInTimeSeriesAction({
 }
 
 function isValidTemporalUnit(unit?: DatetimeUnit): unit is TemporalUnit {
-  return ["year", "quarter", "month", "week", "day", "hour"].includes(
-    unit ?? "",
-  );
+  if (unit == null) {
+    return false;
+  }
+  return ["year", "quarter", "month", "week", "day", "hour"].includes(unit);
 }
 
 function getDimensionFilterForDateAndUnit(
@@ -132,14 +135,17 @@ function getDimensionFilterForDateAndUnit(
   unit: TemporalUnit,
   nextUnit: TemporalUnit,
 ): DimensionFilterValue | undefined {
-  const d = dayjs(date);
-  if (!d.isValid()) {
+  const parsedDate = dayjs(date);
+  if (!parsedDate.isValid()) {
     return undefined;
   }
   return {
     type: "specific-date",
     operator: "between",
-    values: [d.startOf(unit).toDate(), d.endOf(unit).toDate()],
+    values: [
+      parsedDate.startOf(unit).toDate(),
+      parsedDate.endOf(unit).toDate(),
+    ],
     hasTime: nextUnit === "hour" || nextUnit === "minute",
   };
 }

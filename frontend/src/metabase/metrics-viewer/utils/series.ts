@@ -110,10 +110,10 @@ export function computeSourceColors(
     return {};
   }
 
-  const allKeys = entries.flatMap((e) => e.keys);
+  const allKeys = entries.flatMap((entry) => entry.keys);
 
   const firstDef = definitions.find(
-    (d) => d.id === entries[0].sourceId,
+    (definition) => definition.id === entries[0].sourceId,
   )?.definition;
   if (firstDef) {
     const columnName = getDefinitionColumnName(firstDef);
@@ -126,9 +126,11 @@ export function computeSourceColors(
 
   const result: SourceColorMap = {};
   let idx = 0;
-  for (const e of entries) {
-    result[e.sourceId] = e.keys.map((_, i) => colorMapping[allKeys[idx + i]]);
-    idx += e.keys.length;
+  for (const entry of entries) {
+    result[entry.sourceId] = entry.keys.map(
+      (_, i) => colorMapping[allKeys[idx + i]],
+    );
+    idx += entry.keys.length;
   }
   return result;
 }
@@ -202,7 +204,7 @@ function splitByBreakout(
           ...computeColorVizSettings({
             displayType: card.display,
             seriesKey,
-            color: sourceColors?.[i] as string,
+            color: sourceColors?.[i],
           }),
         },
       },
@@ -301,7 +303,7 @@ export function buildRawSeriesFromDefinitions(
       true,
       1,
       null,
-      name as string,
+      name ?? undefined,
     );
 
     const singleSeries: SingleSeriesWithDimensionId = {
@@ -310,7 +312,7 @@ export function buildRawSeriesFromDefinitions(
         ...computeColorVizSettings({
           displayType: display,
           seriesKey,
-          color: sourceColors[entry.id]?.[0] as string,
+          color: sourceColors[entry.id]?.[0],
         }),
       }),
       data: result.data,
@@ -350,8 +352,11 @@ function computeColorVizSettings({
 }: {
   displayType: VisualizationDisplay;
   seriesKey: string;
-  color: string;
+  color: string | undefined;
 }): Partial<Pick<VisualizationSettings, "series_settings" | "map.colors">> {
+  if (color == null) {
+    return {};
+  }
   if (displayType === "map") {
     return {
       "map.colors": getColorplethColorScale(color),
@@ -531,11 +536,8 @@ export function getSelectedMetricsInfo(
 export function getCardIdToDimensionId(
   series: SingleSeriesWithDimensionId[],
 ): Record<CardId, MetricSourceId> {
-  return series.reduce(
-    (acc, series) => {
-      acc[series.card.id] = series.dimensionId;
-      return acc;
-    },
-    {} as Record<CardId, MetricSourceId>,
-  );
+  return series.reduce<Record<CardId, MetricSourceId>>((acc, item) => {
+    acc[item.card.id] = item.dimensionId;
+    return acc;
+  }, {});
 }

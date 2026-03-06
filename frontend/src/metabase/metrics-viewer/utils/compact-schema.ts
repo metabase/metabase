@@ -56,6 +56,18 @@ function isObjectDescriptor(
   return typeof descriptor !== "string";
 }
 
+function hasDefaultValue(
+  descriptor: Exclude<FieldDescriptor, RequiredField>,
+): descriptor is DefaultField | NestedDefaultField {
+  return "default" in descriptor;
+}
+
+function hasNestedSchema(
+  descriptor: Exclude<FieldDescriptor, RequiredField>,
+): descriptor is NestedField | NestedOptionalField | NestedDefaultField {
+  return "schema" in descriptor;
+}
+
 function normalizeDescriptor(descriptor: FieldDescriptor): NormalizedField {
   if (!isObjectDescriptor(descriptor)) {
     return {
@@ -67,17 +79,12 @@ function normalizeDescriptor(descriptor: FieldDescriptor): NormalizedField {
     };
   }
 
-  const hasDefault = "default" in descriptor;
-  const hasSchema = "schema" in descriptor;
-
   return {
     compactKey: descriptor.key,
     optional: "optional" in descriptor && descriptor.optional === true,
-    defaultValue: hasDefault
-      ? (descriptor as DefaultField | NestedDefaultField).default
-      : undefined,
-    hasDefault,
-    schema: hasSchema ? (descriptor as NestedField).schema : null,
+    defaultValue: hasDefaultValue(descriptor) ? descriptor.default : undefined,
+    hasDefault: "default" in descriptor,
+    schema: hasNestedSchema(descriptor) ? descriptor.schema : null,
   };
 }
 

@@ -32,8 +32,8 @@ interface DisplayTypeDefinition {
 interface BaseTabTypeDefinition {
   type: MetricsViewerTabType;
   autoCreate: boolean;
-  dimensionPredicate: (dim: DimensionMetadata) => boolean;
-  dimensionSubtype?: (dim: DimensionMetadata) => string | null;
+  dimensionPredicate: (dimension: DimensionMetadata) => boolean;
+  dimensionSubtype?: (dimension: DimensionMetadata) => string | null;
   defaultDisplayType: MetricsViewerDisplayType;
   availableDisplayTypes: ChartTypeOption[];
 }
@@ -94,10 +94,10 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     type: "category",
     autoCreate: true,
     matchMode: "exact-column",
-    dimensionPredicate: (dim) =>
-      LibMetric.isCategory(dim) &&
-      !isGeoDimension(dim) &&
-      !LibMetric.isBoolean(dim),
+    dimensionPredicate: (dimension) =>
+      LibMetric.isCategory(dimension) &&
+      !isGeoDimension(dimension) &&
+      !LibMetric.isBoolean(dimension),
     defaultDisplayType: "bar",
     availableDisplayTypes: STANDARD_CHART_TYPES,
   },
@@ -113,19 +113,19 @@ export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
     type: "numeric",
     autoCreate: false,
     matchMode: "exact-column",
-    dimensionPredicate: (dim) =>
-      LibMetric.isNumeric(dim) &&
-      !LibMetric.isID(dim) &&
-      !LibMetric.isCoordinate(dim),
+    dimensionPredicate: (dimension) =>
+      LibMetric.isNumeric(dimension) &&
+      !LibMetric.isID(dimension) &&
+      !LibMetric.isCoordinate(dimension),
     defaultDisplayType: "bar",
     availableDisplayTypes: NUMERIC_CHART_TYPES,
   },
 ];
 
 export function getTabConfig(type: MetricsViewerTabType): TabTypeDefinition {
-  const config = TAB_TYPE_REGISTRY.find((c) => c.type === type);
+  const config = TAB_TYPE_REGISTRY.find((config) => config.type === type);
   if (!config) {
-    return TAB_TYPE_REGISTRY[0];
+    throw new Error(`No tab config found for type: ${type}`);
   }
   return config;
 }

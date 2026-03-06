@@ -99,14 +99,3 @@ export const toJsDefinition = createSelector(
     argsMemoize: weakMapMemoize,
   },
 );
-
-export const getBreakoutDefinition = createSelector(
-  (definition: LibMetric.MetricDefinition) => definition,
-  (definition): JsMetricDefinition => {
-    return LibMetric.toJsMetricDefinition(definition);
-  },
-  {
-    memoize: weakMapMemoize,
-    argsMemoize: weakMapMemoize,
-  },
-);

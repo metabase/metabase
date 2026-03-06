@@ -453,11 +453,11 @@ export function computeDefaultTabs(
     );
 
     const sortedDimensions = [...uniqueDimensions.entries()].sort(
-      ([, a], [, b]) => {
-        if (a.canListValues === b.canListValues) {
+      ([, infoA], [, infoB]) => {
+        if (infoA.canListValues === infoB.canListValues) {
           return 0;
         }
-        return a.canListValues ? -1 : 1;
+        return infoA.canListValues ? -1 : 1;
       },
     );
 
@@ -646,12 +646,8 @@ function resolveSubtypeFallback(
   }
 
   return (
-    findDimensionBySubtype(
-      dimensionsByType,
-      tabType,
-      getSubtype,
-      targetSubtype,
-    )?.id ?? null
+    findDimensionBySubtype(dimensionsByType, tabType, getSubtype, targetSubtype)
+      ?.id ?? null
   );
 }
 
@@ -719,7 +715,7 @@ export function findMatchingDimensionForTab(
   baseDefinitions?: Record<MetricSourceId, MetricDefinition | null>,
 ): string | null {
   const dimensions = getDimensionsByType(def);
-  const config = TAB_TYPE_REGISTRY.find((c) => c.type === tab.type);
+  const config = TAB_TYPE_REGISTRY.find((config) => config.type === tab.type);
 
   if (config?.matchMode !== "aggregate") {
     return findExactColumnMatch(dimensions, tab, baseDefinitions);
@@ -855,9 +851,13 @@ export function getAvailableDimensionsForPicker(
     }
   }
 
-  result.shared.sort((a, b) => a.label.localeCompare(b.label));
+  result.shared.sort((first, second) =>
+    first.label.localeCompare(second.label),
+  );
   for (const sourceId of sourceOrder) {
-    result.bySource[sourceId]?.sort((a, b) => a.label.localeCompare(b.label));
+    result.bySource[sourceId]?.sort((first, second) =>
+      first.label.localeCompare(second.label),
+    );
   }
 
   return result;

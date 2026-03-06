@@ -13,7 +13,6 @@ import type {
   MetricsViewerTabState,
 } from "../types/viewer-state";
 import {
-  getBreakoutDefinition,
   getModifiedDefinition,
   toJsDefinition,
 } from "../utils/definition-cache";
@@ -72,7 +71,7 @@ export function useDefinitionQueries(
         return [];
       }
 
-      const jsDefinition = getBreakoutDefinition(entry.definition);
+      const jsDefinition = toJsDefinition(entry.definition);
 
       return [
         {

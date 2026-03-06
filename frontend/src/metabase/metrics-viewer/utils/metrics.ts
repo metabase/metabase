@@ -344,9 +344,9 @@ const GEO_SUBTYPE_PREDICATES: Array<{
   { subtype: "city", predicate: LibMetric.isCity },
 ];
 
-export function getGeoSubtype(dim: DimensionMetadata): GeoSubtype | null {
+export function getGeoSubtype(dimension: DimensionMetadata): GeoSubtype | null {
   for (const { subtype, predicate } of GEO_SUBTYPE_PREDICATES) {
-    if (predicate(dim)) {
+    if (predicate(dimension)) {
       return subtype;
     }
   }
@@ -359,8 +359,8 @@ export function findDimensionById(
   def: MetricDefinition,
   dimensionId: string,
 ): DimensionMetadata | undefined {
-  return LibMetric.projectionableDimensions(def).find((dim) => {
-    const info = LibMetric.dimensionValuesInfo(def, dim);
+  return LibMetric.projectionableDimensions(def).find((dimension) => {
+    const info = LibMetric.dimensionValuesInfo(def, dimension);
     return info.id === dimensionId;
   });
 }
@@ -369,20 +369,20 @@ export function findFilterDimensionById(
   def: MetricDefinition,
   dimensionId: string,
 ): DimensionMetadata | undefined {
-  return LibMetric.filterableDimensions(def).find((dim) => {
-    const info = LibMetric.dimensionValuesInfo(def, dim);
+  return LibMetric.filterableDimensions(def).find((dimension) => {
+    const info = LibMetric.dimensionValuesInfo(def, dimension);
     return info.id === dimensionId;
   });
 }
 
 export function findTemporalBucket(
   def: MetricDefinition,
-  dim: DimensionMetadata,
+  dimension: DimensionMetadata,
   targetUnit: TemporalUnit,
 ): LibMetric.TemporalBucket | null {
-  const buckets = LibMetric.availableTemporalBuckets(def, dim);
-  const bucket = buckets.find((b) => {
-    const info = LibMetric.displayInfo(def, b);
+  const buckets = LibMetric.availableTemporalBuckets(def, dimension);
+  const bucket = buckets.find((bucket) => {
+    const info = LibMetric.displayInfo(def, bucket);
     return info.shortName === targetUnit;
   });
   return bucket ?? null;
@@ -396,7 +396,8 @@ export function findBinningStrategy(
   const strategies = LibMetric.availableBinningStrategies(def, dimension);
   return (
     strategies.find(
-      (s) => LibMetric.displayInfo(def, s).displayName === strategyName,
+      (strategy) =>
+        LibMetric.displayInfo(def, strategy).displayName === strategyName,
     ) ?? null
   );
 }
@@ -413,7 +414,11 @@ function applyBinnedProjection(
   let newProjection: ProjectionClause;
 
   const tempDef = LibMetric.project(
-    projs.reduce<MetricDefinition>((d, p) => LibMetric.removeClause(d, p), def),
+    projs.reduce<MetricDefinition>(
+      (definition, projection) =>
+        LibMetric.removeClause(definition, projection),
+      def,
+    ),
     LibMetric.dimensionReference(dimension),
   );
   const tempProjs = LibMetric.projections(tempDef);
@@ -456,12 +461,12 @@ function applyTemporalUnit(
   }
 
   const projection = projs[0];
-  const dim = LibMetric.projectionDimension(def, projection);
-  if (!dim || !LibMetric.isDateOrDateTime(dim)) {
+  const dimension = LibMetric.projectionDimension(def, projection);
+  if (!dimension || !LibMetric.isDateOrDateTime(dimension)) {
     return def;
   }
 
-  const bucket = findTemporalBucket(def, dim, unit);
+  const bucket = findTemporalBucket(def, dimension, unit);
   if (!bucket) {
     return def;
   }
@@ -519,19 +524,19 @@ export function buildBinnedBreakoutDef(
   }
 
   const proj = projs[projs.length - 1];
-  const dim = LibMetric.projectionDimension(def, proj);
-  if (!dim) {
+  const dimension = LibMetric.projectionDimension(def, proj);
+  if (!dimension) {
     return def;
   }
 
-  if (LibMetric.isBinnable(def, dim)) {
+  if (LibMetric.isBinnable(def, dimension)) {
     return LibMetric.replaceClause(
       def,
       proj,
       LibMetric.withDefaultBinning(def, proj),
     );
   }
-  if (LibMetric.isTemporalBucketable(def, dim)) {
+  if (LibMetric.isTemporalBucketable(def, dimension)) {
     return LibMetric.replaceClause(
       def,
       proj,
@@ -652,19 +657,22 @@ export function getProjectionInfo(def: MetricDefinition): ProjectionInfo {
   if (projDim) {
     const dimInfo = LibMetric.displayInfo(def, projDim);
     const filterableDims = LibMetric.filterableDimensions(def);
-    filterDimension = filterableDims.find((d) => {
-      const info = LibMetric.displayInfo(def, d);
+    filterDimension = filterableDims.find((candidate) => {
+      const info = LibMetric.displayInfo(def, candidate);
       return info.name === dimInfo.name;
     });
 
     if (filterDimension) {
       const existingFilters = LibMetric.filters(def);
-      for (const f of existingFilters) {
-        const parts = LibMetric.filterParts(def, f);
+      for (const existingFilter of existingFilters) {
+        const parts = LibMetric.filterParts(def, existingFilter);
         if (parts) {
-          const fDimInfo = LibMetric.displayInfo(def, parts.dimension);
-          if (fDimInfo.name === dimInfo.name) {
-            filterClause = f;
+          const filterDimensionInfo = LibMetric.displayInfo(
+            def,
+            parts.dimension,
+          );
+          if (filterDimensionInfo.name === dimInfo.name) {
+            filterClause = existingFilter;
             break;
           }
         }
