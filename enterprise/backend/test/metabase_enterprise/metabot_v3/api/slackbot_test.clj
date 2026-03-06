@@ -1070,9 +1070,10 @@
               (testing "image block references a Slack file ID"
                 (is (re-matches #"FIMG-\d+" (:file-id img))))
               (testing "image blocks include feedback controls"
-                (is (= "context_actions" (get-in img [:blocks 1 :type])))
-                (is (= "feedback_buttons" (get-in img [:blocks 1 :elements 0 :type])))
-                (is (= 1 (count (get-in img [:blocks 1 :elements]))))))))))))
+                (is (= ["section" "image" "context_actions"]
+                       (mapv :type (:blocks img))))
+                (is (= "feedback_buttons" (get-in img [:blocks 2 :elements 0 :type])))
+                (is (= 1 (count (get-in img [:blocks 2 :elements]))))))))))))
 
 (deftest table-viz-with-caption-test
   (testing "table viz posts include caption block with link"
