@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
 
 export type IsolationFieldConfig = {
-  /** The attribute key sent to the API, e.g. tenant_identifier */
+  /** The attribute key sent to the API, e.g. organization_id */
   attributeKey: string;
 
   label: string;
@@ -17,8 +17,8 @@ export const getIsolationFieldConfig = (
 ): IsolationFieldConfig | null =>
   match(strategy)
     .with("row-column-level-security", () => ({
-      attributeKey: "tenant_identifier",
-      label: "tenant_identifier",
+      attributeKey: "organization_id",
+      label: "organization_id",
       description: t`Users will only see rows where this matches the value in the column you selected.`,
       placeholder: "1",
     }))

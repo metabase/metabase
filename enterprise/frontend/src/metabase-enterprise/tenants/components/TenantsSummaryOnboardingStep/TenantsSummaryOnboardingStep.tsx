@@ -22,7 +22,7 @@ import { TenantSummaryCard } from "./TenantSummaryCard";
 const MAX_FETCHED_TENANTS_TO_SHOW = 3;
 
 const ISOLATION_ATTRIBUTE_KEYS = [
-  "tenant_identifier",
+  "organization_id",
   "database_role",
   "database_slug",
 ] as const;

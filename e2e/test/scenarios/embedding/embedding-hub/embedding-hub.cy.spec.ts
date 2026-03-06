@@ -543,7 +543,7 @@ describe("scenarios - embedding hub", () => {
 
           cy.log("fill out the tenant form");
           cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
-          cy.findByLabelText("tenant_identifier").type("acme-123");
+          cy.findByLabelText("organization_id").type("acme-123");
           cy.findByPlaceholderText("tenant-slug")
             .clear()
             .type("acme-corp-slug");
@@ -560,7 +560,7 @@ describe("scenarios - embedding hub", () => {
             .clear()
             .type("Beta Inc");
 
-          cy.findAllByLabelText("tenant_identifier")
+          cy.findAllByLabelText("organization_id")
             .should("have.length", 2)
             .last()
             .type("beta-456");
@@ -573,7 +573,7 @@ describe("scenarios - embedding hub", () => {
         });
 
         cy.log("submit the tenant creation form");
-        H.main().findByRole("button", { name: "Next" }).click();
+        H.main().findByRole("button", { name: "Create tenants" }).click();
 
         cy.log("success toast should show");
         H.undoToast()
@@ -628,12 +628,12 @@ describe("scenarios - embedding hub", () => {
 
           expect(acmeTenant).to.exist;
           expect(acmeTenant.attributes).to.deep.equal({
-            tenant_identifier: "acme-123",
+            organization_id: "acme-123",
           });
 
           expect(betaTenant).to.exist;
           expect(betaTenant.attributes).to.deep.equal({
-            tenant_identifier: "beta-456",
+            organization_id: "beta-456",
           });
         });
 
@@ -673,7 +673,7 @@ describe("scenarios - embedding hub", () => {
             .type("existing-tenant");
         });
 
-        H.main().findByRole("button", { name: "Next" }).click();
+        H.main().findByRole("button", { name: "Create tenants" }).click();
 
         cy.log("error toast should be shown");
         H.undoToast()
@@ -708,7 +708,7 @@ describe("scenarios - embedding hub", () => {
           .should("have.attr", "aria-checked", "true");
       });
 
-      it("shows autocomplete suggestions for tenant_identifier based on selected field values", () => {
+      it("shows autocomplete suggestions for organization_id based on selected field values", () => {
         H.restore("setup");
         cy.signInAsAdmin();
         H.activateToken("bleeding-edge");
@@ -817,6 +817,11 @@ describe("scenarios - embedding hub", () => {
       cy.log("navigate to create tenants step");
       H.main().findByRole("listitem", { name: "Create tenants" }).click();
 
+      cy.log("should show dynamic description with the selected column name");
+      H.main()
+        .contains("Enter a value that matches the User ID column.")
+        .should("be.visible");
+
       cy.log("fill out the tenant form");
       H.main().within(() => {
         cy.findByPlaceholderText("Tenant name").clear().type("Acme Corp");
@@ -824,7 +829,7 @@ describe("scenarios - embedding hub", () => {
         cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
       });
 
-      H.main().findByRole("button", { name: "Next" }).click();
+      H.main().findByRole("button", { name: "Create tenants" }).click();
 
       cy.log("success toast should show");
       H.undoToast()
@@ -949,11 +954,11 @@ describe("scenarios - embedding hub", () => {
         expect(peoplePolicy).to.exist;
 
         expect(orderPolicy.attribute_remappings).to.have.property(
-          "tenant_identifier",
+          "organization_id",
         );
 
         expect(peoplePolicy.attribute_remappings).to.have.property(
-          "tenant_identifier",
+          "organization_id",
         );
       });
 
@@ -1020,7 +1025,7 @@ describe("scenarios - embedding hub", () => {
           group_id: allExternalUsersGroup.id,
           card_id: null,
           attribute_remappings: {
-            tenant_identifier: ["dimension", ["field", 2, null]], // USER_ID field
+            organization_id: ["dimension", ["field", 2, null]], // USER_ID field
           },
         });
       });
@@ -1078,8 +1083,7 @@ describe("scenarios - embedding hub", () => {
         expect(orderPolicies.length).to.equal(1);
 
         const [orderPolicy] = orderPolicies;
-        const tenantFieldRef =
-          orderPolicy.attribute_remappings.tenant_identifier;
+        const tenantFieldRef = orderPolicy.attribute_remappings.organization_id;
 
         // attribute_remappings should reference field 3 (PRODUCT_ID),
         // not field 2 (USER_ID)
@@ -1307,7 +1311,7 @@ describe("scenarios - embedding hub", () => {
         cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
       });
 
-      H.main().findByRole("button", { name: "Next" }).click();
+      H.main().findByRole("button", { name: "Create tenants" }).click();
 
       cy.log("success toast should show");
       H.undoToast()
@@ -1372,7 +1376,7 @@ describe("scenarios - embedding hub", () => {
         cy.findByPlaceholderText("tenant-slug").clear().type("acme-corp");
       });
 
-      H.main().findByRole("button", { name: "Next" }).click();
+      H.main().findByRole("button", { name: "Create tenants" }).click();
 
       cy.log("success toast should show");
       H.undoToast()

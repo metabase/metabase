@@ -190,7 +190,7 @@ export const TableColumnCard = ({
           </Text>
 
           <Text size="sm" c="text-secondary" mb="sm">
-            {t`Tenant users will only see rows where this equals the tenant_identifier attribute.`}
+            {t`Tenant users will only see rows where this equals the organization_id attribute.`}
           </Text>
 
           <Select
