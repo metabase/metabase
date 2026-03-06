@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type { GroupIds, UserGroupType } from "metabase/admin/types";
-import { PopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger";
 import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
@@ -14,7 +13,7 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
-import { Icon } from "metabase/ui";
+import { Box, Icon, Popover } from "metabase/ui";
 import type { GroupInfo } from "metabase-types/api";
 
 type GroupSelectProps = {
@@ -55,6 +54,7 @@ export const GroupSelect = ({
   isCurrentUser = false,
   emptyListMessage = t`No groups`,
 }: GroupSelectProps) => {
+
   const triggerElement = (
     <div className={cx(CS.flex, CS.alignCenter)}>
       <GroupSummary
@@ -68,9 +68,12 @@ export const GroupSelect = ({
 
   if (groups.length === 0) {
     return (
-      <PopoverWithTrigger triggerElement={triggerElement}>
-        <span className={CS.p1}>{emptyListMessage}</span>
-      </PopoverWithTrigger>
+      <Popover withinPortal={false} position="bottom-start">
+        <Popover.Target>{triggerElement}</Popover.Target>
+        <Popover.Dropdown style={{ boxSizing: "border-box" }}>
+          <Box p="sm">{emptyListMessage}</Box>
+        </Popover.Dropdown>
+      </Popover>
     );
   }
 
