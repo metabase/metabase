@@ -127,3 +127,25 @@
             resp    (handler {:headers {}})]
         (is (= 404 (:status resp)))
         (is (= "no-store" (get-in resp [:headers "Cache-Control"])))))))
+
+;; -- Path traversal protection --
+
+(deftest serve-chunk-handler-traversal-returns-404
+  (testing "traversal filenames return 404 even when the target file exists"
+    ;; Place a real .js file on the classpath (inside resources/) and verify
+    ;; that path traversal from the chunks directory cannot reach it.
+    (let [tmp-file (java.io.File. "resources" "traversal-test-secret.js")]
+      (try
+        (spit tmp-file "should-not-be-served")
+        ;; Sanity: the file IS reachable via resource-response directly
+        (is (some? (response/resource-response "traversal-test-secret.js"))
+            "Sanity check: temp file is on the classpath")
+        ;; None of these traversal filenames should be able to reach it
+        (doseq [filename ["../../../../traversal-test-secret.js"
+                          "../some/thing" "/etc/passwd" "." ".."]]
+          (let [handler (mw.embedding-sdk-bundle/serve-chunk-handler filename)
+                resp    (handler {:headers {}})]
+            (is (= 404 (:status resp))
+                (str "Expected 404 for filename: " (pr-str filename)))))
+        (finally
+          (.delete tmp-file))))))
