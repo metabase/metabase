@@ -115,27 +115,26 @@ run_migrate_down() {
   local version="$2"
   log "Running 'migrate down' with image: $image"
 
-  # HACK: The HEAD Docker image has version "vUNKNOWN" in its version.properties,
+  # The HEAD Docker image has version "vUNKNOWN" in its version.properties,
   # which causes `migrate down` to fail with a NullPointerException when trying
   # to determine the current major version. To work around this, we extract the
-  # JAR, replace version.properties with a fake version (v1.XX.1000), and mount
-  # the modified JAR. This ensures HEAD is treated as "newer" than any released
-  # version, so migrate down will properly roll back all migrations.
+  # JAR, replace version.properties with the upcoming version, and mount the
+  # modified JAR.
   #
-  # This is a temporary workaround. See: [TODO: add Linear issue link]
-  # To remove this hack, Metabase would need to handle vUNKNOWN in rollback-major-version!
+  # HEAD is the next major version (CURRENT_VERSION + 1).
   #
-  # TODO: Remove the hack if we get around to fixing DEV-1636
+  # See DEV-1636 for a potential backend fix that would make this unnecessary.
   if [[ "$version" == "HEAD" ]]; then
     if [[ -z "$CURRENT_VERSION" ]]; then
       error "CURRENT_VERSION must be set when testing HEAD downgrades"
       return 1
     fi
-    local fake_version="v1.${CURRENT_VERSION}.1000"
-    local work_dir="/tmp/metabase-head-hack"
+    local next_version=$((CURRENT_VERSION + 1))
+    local upcoming_version="v1.${next_version}.0"
+    local work_dir="/tmp/metabase-head-jar"
     local modified_jar="$work_dir/metabase.jar"
 
-    log "HACK: Patching HEAD JAR with fake version: $fake_version"
+    log "Patching HEAD JAR with upcoming version: $upcoming_version"
     rm -rf "$work_dir"
     mkdir -p "$work_dir"
 
@@ -144,13 +143,13 @@ run_migrate_down() {
     docker cp metabase-jar-extract:/app/metabase.jar "$modified_jar"
     docker rm metabase-jar-extract >/dev/null
 
-    # Create fake version.properties and update the JAR
-    echo "tag=$fake_version" > "$work_dir/version.properties"
+    # Create version.properties with upcoming version and update the JAR
+    echo "tag=$upcoming_version" > "$work_dir/version.properties"
     echo "hash=HEAD" >> "$work_dir/version.properties"
     echo "date=$(date +%Y-%m-%d)" >> "$work_dir/version.properties"
     (cd "$work_dir" && zip -u metabase.jar version.properties >/dev/null)
 
-    log "HACK: JAR patched successfully"
+    log "JAR patched successfully"
 
     METABASE_IMAGE="$image" docker compose run --rm \
       -v "$modified_jar:/app/metabase.jar:ro" \
