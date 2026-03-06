@@ -179,11 +179,14 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
       const controller = new AbortController();
       tile._fetchCtrl = controller;
 
-      GET(tileUrl, {
-        fetch: true,
-        signal: controller.signal,
-        transformResponse: ({ response }: { response: Response }) => response,
-      })()
+      (
+        GET(tileUrl, {
+          fetch: true,
+          signal: controller.signal,
+          transformResponse: ({ response }: { response: Response }) => response,
+          // TODO: Remove  casting after api.js is migrated to TS
+        })() as Promise<Response>
+      )
         .then((response) => response.blob())
         .then((blob) => {
           const reader = new FileReader();
