@@ -790,7 +790,7 @@ describe("Issue 26512", () => {
       H.CustomExpressionEditor.clear()
         .type(formula, { allowFastSet: true })
         .blur();
-      H.popover().findByText("Types are incompatible.").should("be.visible");
+      H.popover().findByText("Types are incompatible").should("be.visible");
     });
   });
 });
