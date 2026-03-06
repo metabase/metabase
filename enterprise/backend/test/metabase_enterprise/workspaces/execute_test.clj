@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2])
@@ -280,10 +281,26 @@
                  :schema "public" :table "orders" :table_id 123}]
                (:source-tables (remap-python-source table-mapping source))))))))
 
+(defn- sql-tools-quote
+  "Quote an identifier using the same pipeline as the workspace middleware.
+   Pre-quotes with sql.u/quote-name (triggering was_quoted in the sql-tools backend),
+   then feeds through sql-tools/replace-names to get the final dialect-specific quoting
+   (e.g., brackets for SQL Server, backticks for MySQL, double quotes for ANSI)."
+  [s]
+  (let [pre-quoted (sql.u/quote-name driver/*driver* :table s)
+        result     (sql-tools/replace-names
+                    driver/*driver*
+                    "SELECT * FROM __placeholder__"
+                    {:tables {{:table "__placeholder__"} pre-quoted}}
+                    {:allow-unused? true})]
+    (second (re-find #"(?i)SELECT \* FROM (.+)" result))))
+
 (deftest workspace-sql-remapping-test
   (let [db-id (mt/id)
         ;; The middleware quotes replacement identifiers to preserve case for drivers like Snowflake.
-        q     (fn [s] (sql.u/quote-name driver/*driver* :table s))]
+        ;; The final quoting style depends on the sql-tools backend dialect (not HoneySQL),
+        ;; so we derive it from the same pipeline the middleware uses.
+        q     sql-tools-quote]
     (doseq [[label table-mapping input-sql expected-sql]
             [["remaps qualified table reference to isolated table"
               {[db-id "public" "orders"] {:db-id db-id :schema "ws_isolated_123" :table "public__orders" :id 456}}

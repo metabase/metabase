@@ -27,12 +27,12 @@
                     {:query query, :remapping remapping}))
 
     :else
-    (let [;; Quote replacement identifiers so the SQL parser preserves their case.
-          ;; Drivers like Snowflake uppercase unquoted identifiers; without quoting, a lowercase
-          ;; isolation schema like `mb__isolation_xxx` would become `MB__ISOLATION_XXX` and not match.
-          ;; The same applies to table names containing lowercase characters.
-          quote-id  (fn [s] (if s (sql.u/quote-name driver/*driver* :table s) s))
-          ;; tables has the form {:schema,:table} => {:schema,:table}, and we want to quote the target schema + table.
+    ;; Replacement identifiers must be quoted to preserve case — e.g., Snowflake uppercases
+    ;; unquoted identifiers, so `mb__isolation_xxx` would become `MB__ISOLATION_XXX`.
+    ;; TODO (2026-03-07): We pre-quote here with HoneySQL, but sql-tools/replace-names strips
+    ;; and re-quotes using its own dialect convention. Consider adding a :force-quote? flag to
+    ;; replace-names so it can handle quoting internally without this round-trip.
+    (let [quote-id  (fn [s] (if s (sql.u/quote-name driver/*driver* :table s) s))
           remapping (update remapping :tables update-vals #(update-vals % quote-id))]
       (u/update-in-if-exists query [:stages 0 :native]
                              (fn [sql] (sql-tools/replace-names driver/*driver*
