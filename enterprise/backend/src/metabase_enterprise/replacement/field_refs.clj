@@ -12,8 +12,8 @@
 
 (defn- ref->column-name
   "Resolve a `ref` to a deduplicated column name used in `:visualization_settings`."
-  [query ref]
-  (when-some [column (lib/metadata query -1 ref)]
+  [ref columns]
+  (when-some [column (lib/find-matching-column ref columns)]
     ((some-fn :lib/deduplicated-name :name) column)))
 
 (defn- upgrade-source-card-ref
@@ -48,11 +48,12 @@
                         query)
         viz-settings  (:visualization_settings card)
         viz-settings' (if valid-query?
-                        (lib/with-aggregation-list (lib/aggregations query')
-                          (some-> viz-settings
-                                  vs/db->norm
-                                  (replacement.walk/walk-viz-settings-refs #(ref->column-name query' %))
-                                  vs/norm->db))
+                        (let [columns (lib/returned-columns query')]
+                          (lib/with-aggregation-list (lib/aggregations query')
+                            (some-> viz-settings
+                                    vs/db->norm
+                                    (replacement.walk/walk-viz-settings-refs #(ref->column-name % columns))
+                                    vs/norm->db)))
                         viz-settings)
         parameters    (:parameters card)
         parameters'   (if (seq parameters)
