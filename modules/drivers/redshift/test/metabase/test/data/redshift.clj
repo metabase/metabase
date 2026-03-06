@@ -161,10 +161,12 @@
                                       :recent))
                                   :lacking-created-at)))
                             (catch com.amazon.redshift.util.RedshiftException e
-                              (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
-                                :old-style-cache
-                                (do (log/error e "Error classifying cache schema")
-                                    :unknown-error)))
+                              (let [msg (or (ex-message e) "")]
+                                (if (or (re-find #"relation .* does not exist" msg)
+                                        (re-find #"schema .* not found" msg))
+                                  :old-style-cache
+                                  (do (log/error e "Error classifying cache schema")
+                                      :unknown-error))))
                             (catch Exception e
                               (log/error e "Error classifying cache schema")
                               :unknown-error)))]
