@@ -29,6 +29,7 @@ const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const DOCS_SNIPPETS_PATH = __dirname + "/docs/embedding/sdk/snippets";
+const DOCS_SNIPPETS_RE = /docs\/embedding\/sdk\/snippets/;
 
 const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
 const isDevMode = IS_DEV_MODE;
@@ -137,7 +138,7 @@ const config = {
         // Embedding onboarding flow requires sharing snippets from
         // docs, so we treat TypeScript files inside docs/ as raw text
         test: /\.ts$/,
-        include: [DOCS_SNIPPETS_PATH],
+        include: [DOCS_SNIPPETS_RE],
         type: "asset/source",
       },
       {
@@ -146,7 +147,7 @@ const config = {
           /node_modules/,
           /cljs/,
           /css\/core\/fonts\.styled\.ts/,
-          DOCS_SNIPPETS_PATH,
+          DOCS_SNIPPETS_RE,
         ],
         use: [SWC_LOADER],
         type: "javascript/auto",
@@ -349,6 +350,7 @@ if (shouldEnableHotRefresh) {
 
   config.plugins.unshift(
     new ReactRefreshPlugin({
+      exclude: [/node_modules/, DOCS_SNIPPETS_RE],
       overlay: false,
     }),
   );
