@@ -18,6 +18,12 @@ import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 
 import S from "./MetricSearchInput.module.css";
+import {
+  EntityPickerModal,
+  MiniPicker,
+  OmniPickerItem,
+} from "metabase/common/components/Pickers";
+import { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 
 type MetricSearchInputProps = {
   selectedMetrics: SelectedMetric[];
@@ -43,6 +49,7 @@ export function MetricSearchInput({
 }: MetricSearchInputProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isBrowsing, setIsBrowsing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedMetricIds = useMemo(
@@ -135,34 +142,16 @@ export function MetricSearchInput({
             />
           );
         })}
-        <Popover
+        {/* <Popover
           opened={isOpen}
           onChange={setIsOpen}
           position="bottom-start"
           shadow="md"
           withinPortal
         >
-          <Popover.Target>
-            <TextInput
-              ref={inputRef}
-              classNames={{ input: S.inputField }}
-              flex={1}
-              miw={120}
-              ml="xs"
-              variant="unstyled"
-              placeholder={
-                selectedMetrics.length === 0 ? t`Search for metrics...` : ""
-              }
-              value={searchText}
-              onChange={(event) => {
-                setSearchText(event.target.value);
-                setIsOpen(true);
-              }}
-              onClick={handleInputClick}
-              onKeyDown={handleKeyDown}
-              data-testid="metrics-viewer-search-input"
-            />
-          </Popover.Target>
+          <Popover.Target> */}
+
+        {/*</Popover.Target>
           <Popover.Dropdown p={0} miw={300} maw={400}>
             {isOpen && (
               <MetricSearchDropdown
@@ -173,7 +162,79 @@ export function MetricSearchInput({
               />
             )}
           </Popover.Dropdown>
-        </Popover>
+        </Popover> */}
+
+        <>
+          <MiniPicker
+            opened={isOpen && !isBrowsing}
+            onClose={() => setIsOpen(false)}
+            // minipicker doesn't support picking a database
+            models={["metric", "measure"]}
+            searchQuery={searchText}
+            onBrowseAll={() => setIsBrowsing(true)}
+            trapFocus
+            onChange={(value: MiniPickerPickableItem) => {
+              if (value.model === "metric" || value.model === "measure") {
+                handleSelect({
+                  id: value.id,
+                  sourceType: value.model,
+                  name: value.name,
+                });
+              }
+              setIsOpen(false);
+            }}
+            shouldShowLibrary
+            menuDropdownProps={{
+              mt: "md",
+            }}
+          ></MiniPicker>
+          <TextInput
+            ref={inputRef}
+            classNames={{ input: S.inputField }}
+            flex={1}
+            miw={120}
+            ml="xs"
+            variant="unstyled"
+            placeholder={
+              selectedMetrics.length === 0 ? t`Search for metrics...` : ""
+            }
+            value={searchText}
+            onChange={(event) => {
+              setSearchText(event.target.value);
+              setIsOpen(true);
+            }}
+            onClick={handleInputClick}
+            onKeyDown={handleKeyDown}
+            data-testid="metrics-viewer-search-input"
+          />
+          {isOpen && isBrowsing && (
+            <EntityPickerModal
+              models={["metric", "measure"]}
+              options={{
+                hasSearch: true,
+                hasRecents: true,
+                hasLibrary: true,
+                hasDatabases: true,
+                hasRootCollection: true,
+                hasConfirmButtons: false,
+                hasPersonalCollections: true,
+              }}
+              title="Pick a metric or measure"
+              onClose={() => setIsBrowsing(false)}
+              onChange={(value: OmniPickerItem) => {
+                if (value.model === "metric" || value.model === "measure") {
+                  handleSelect({
+                    id: value.id,
+                    sourceType: value.model,
+                    name: value.name,
+                  });
+                }
+                setIsOpen(false);
+                setIsBrowsing(false);
+              }}
+            />
+          )}
+        </>
       </Flex>
     </Flex>
   );
