@@ -134,9 +134,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
-            image: cimg/mysql:8.0
+          - name: MySQL 8.4
+            junit-name: be-tests-mysql-8-4-ee
+            image: cimg/mysql:8.4
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'

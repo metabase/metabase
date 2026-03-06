@@ -90,7 +90,7 @@ jobs:
           base-ref: ${{ env.BASE_REF }}
           head-ref: ${{ env.HEAD_REF }}
 
-  migrations-mysql-8-0-ee:
+  migrations-mysql-8-4-ee:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     env:
@@ -102,7 +102,7 @@ jobs:
       MB_DB_USER: root
     services:
       mysql:
-        image: cimg/mysql:8.0
+        image: cimg/mysql:8.4
         ports:
           - "3306:3306"
     steps:

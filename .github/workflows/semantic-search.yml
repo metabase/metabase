@@ -149,9 +149,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MySQL 8.0 with pgvector pg17
-            junit-name: semantic-search-tests-mysql-8-0
-            mysql-image: cimg/mysql:8.0
+          - name: MySQL 8.4 with pgvector pg17
+            junit-name: semantic-search-tests-mysql-8-4
+            mysql-image: cimg/mysql:8.4
             pgvector-image: pgvector/pgvector:pg17
           - name: MySQL Latest with pgvector pg17
             junit-name: semantic-search-tests-mysql-latest

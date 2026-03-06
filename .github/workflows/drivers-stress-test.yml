@@ -298,7 +298,7 @@ jobs:
         junit-name: 'be-tests-mongo-latest-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
-  be-tests-mysql-8-0-ee:
+  be-tests-mysql-8-4-ee:
     if: inputs.driver == 'MySQL'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
@@ -313,15 +313,15 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mysql:
-        image: cimg/mysql:8.0
+        image: cimg/mysql:8.4
         ports:
           - "3306:3306"
     steps:
     - uses: actions/checkout@v4
-    - name: Test MySQL driver (8.0)
+    - name: Test MySQL driver (8.4)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mysql-8-0-ee'
+        junit-name: 'be-tests-mysql-8-4-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mysql-latest-ee:
