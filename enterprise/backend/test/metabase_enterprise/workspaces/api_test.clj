@@ -1702,11 +1702,11 @@
   (let [mp (mt/metadata-provider)]
     (cond-> (lib/native-query mp sql)
       card-mapping (lib/with-template-tags
-                    (u/for-map [[tag card-id] card-mapping]
-                      [tag {:name         tag
-                            :display-name tag
-                            :type         :card
-                            :card-id      card-id}])))))
+                     (u/for-map [[tag card-id] card-mapping]
+                       [tag {:name         tag
+                             :display-name tag
+                             :type         :card
+                             :card-id      card-id}])))))
 
 (deftest external-transforms-test
   (testing "GET /api/ee/workspace/id/external/transform"
