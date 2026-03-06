@@ -9,10 +9,6 @@ import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-export function createMetrics(metrics: StructuredQuestionDetailsWithName[]) {
-  metrics.forEach((metric) => H.createQuestion(metric));
-}
-
 type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
 };
@@ -283,11 +279,10 @@ describe("scenarios > metrics > explorer", () => {
 
     it("should switch between tabs", () => {
       H.MetricsViewer.tabsShouldBe([
-        "All dimensions",
         "Created At",
         "State",
+        "Title",
         "Category",
-        "Vendor",
       ]);
       H.MetricsViewer.assertVizType("Line");
 
@@ -302,43 +297,12 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.assertVizType("Line");
     });
 
-    it("should show all dimension tabs in a grid on the All dimensions tab", () => {
-      const dimensionTabs = ["Created At", "State", "Category", "Vendor"];
-
-      addMetric("Count of products");
-      cy.wait("@dataset");
-
-      cy.log("All dimensions tab should be selected by default");
-      H.MetricsViewer.tablist()
-        .findByRole("tab", { name: "All dimensions" })
-        .click();
-
-      cy.log("should show one visualization card per dimension tab");
-      H.MetricsViewer.getAllCards().should("have.length", dimensionTabs.length);
-
-      cy.log("each card should be labeled with its dimension name");
-      dimensionTabs.forEach((name) => {
-        H.MetricsViewer.getAllCards().contains(name).should("be.visible");
-      });
-
-      cy.log(
-        "clicking a dimension tab should show a single visualization instead of the grid",
-      );
-      switchToTab("Category");
-      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 1);
-
-      cy.log("switching back to All dimensions should restore the grid");
-      switchToTab("All dimensions");
-      H.MetricsViewer.getAllCards().should("have.length", dimensionTabs.length);
-    });
-
     it("should add a dimension tab and remove it", () => {
       H.MetricsViewer.tabsShouldBe([
-        "All dimensions",
         "Created At",
         "State",
+        "Title",
         "Category",
-        "Vendor",
       ]);
 
       cy.log("add a new dimension tab");
@@ -348,11 +312,10 @@ describe("scenarios > metrics > explorer", () => {
       cy.wait("@dataset");
 
       H.MetricsViewer.tabsShouldBe([
-        "All dimensions",
         "Created At",
         "State",
+        "Title",
         "Category",
-        "Vendor",
         "Source",
       ]);
 
@@ -373,11 +336,10 @@ describe("scenarios > metrics > explorer", () => {
         .findByRole("tab", { name: "Source" })
         .should("not.exist");
       H.MetricsViewer.tabsShouldBe([
-        "All dimensions",
         "Created At",
         "State",
+        "Title",
         "Category",
-        "Vendor",
       ]);
     });
   });
@@ -572,3 +534,7 @@ describe("scenarios > metrics > explorer > BigInt filters", () => {
     });
   });
 });
+
+function createMetrics(metrics: StructuredQuestionDetailsWithName[]) {
+  metrics.forEach((metric) => H.createQuestion(metric));
+}

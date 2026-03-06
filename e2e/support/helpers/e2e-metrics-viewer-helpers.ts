@@ -1,11 +1,3 @@
-const { H } = cy;
-
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
-
-type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
-  name: string;
-};
-
 export const MetricsViewer = {
   goToViewer: () => cy.visit("/explore"),
   searchInput: () => cy.findByTestId("metrics-viewer-search-input"),
@@ -42,8 +34,8 @@ export const MetricsViewer = {
     cy.findByRole("button", { name: "Add dimension tab" }),
   getRemoveTabButton: (tabLabel: string) =>
     cy.findByRole("button", { name: `Remove ${tabLabel} tab` }),
+  openMetricHomePage: (metricName: string) => {
+    MetricsViewer.searchBarPills().contains(metricName).rightclick();
+    cy.findByText(/Go to metric home page/).click();
+  },
 };
-
-export function createMetrics(metrics: StructuredQuestionDetailsWithName[]) {
-  metrics.forEach((metric) => H.createQuestion(metric));
-}
