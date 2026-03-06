@@ -64,6 +64,7 @@ cypress.env.json
 /resources/frontend_client/app/embed.js
 /resources/frontend_client/app/embedding-sdk.js
 /resources/frontend_client/app/embedding-sdk.js.map
+/resources/frontend_client/app/embedding-sdk/
 /resources/frontend_client/tmp-*/
 /resources/frontend_client/embed.html
 /resources/frontend_client/embed-sdk.html
