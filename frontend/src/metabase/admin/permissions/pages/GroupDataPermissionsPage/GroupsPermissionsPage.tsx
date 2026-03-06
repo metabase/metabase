@@ -1,6 +1,4 @@
-import { bindActionCreators } from "@reduxjs/toolkit";
-import PropTypes from "prop-types";
-import { Fragment, useCallback } from "react";
+import { Fragment, type ReactNode, useCallback } from "react";
 import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { t } from "ttag";
@@ -10,8 +8,9 @@ import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/perm
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
-import { PermissionsApi } from "metabase/services";
 import { Center, Loader } from "metabase/ui";
+import type { GroupId } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import {
   PermissionsEditor,
@@ -20,37 +19,50 @@ import {
 import { PermissionsEditorSplitPermsMessage } from "../../components/PermissionsEditor/PermissionsEditorSplitPermsMessage";
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 import {
-  LOAD_DATA_PERMISSIONS_FOR_GROUP,
+  type UpdateDataPermissionParams,
+  loadDataPermissionsForGroup,
   updateDataPermission,
 } from "../../permissions";
 import {
+  type DataTreeNodeItem,
+  type GroupSidebarProps,
   getDatabasesPermissionEditor,
   getGroupsSidebar,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
 } from "../../selectors/data-permissions";
+import type {
+  DataPermissionValue,
+  PermissionAction,
+  PermissionEditorBreadcrumb,
+  PermissionEditorEntity,
+  PermissionSectionConfig,
+  RawGroupRouteParams,
+} from "../../types";
+import { parseGroupRouteParams } from "../../types";
 import {
   GROUPS_BASE_PATH,
   getGroupFocusPermissionsUrl,
 } from "../../utils/urls";
 
-const mapDispatchToProps = (dispatch) => ({
-  dispatch,
-  ...bindActionCreators(
-    {
-      updateDataPermission,
-      switchView: (entityType) =>
-        push(`/admin/permissions/data/${entityType}/`),
-      navigateToItem: (item) => push(`${GROUPS_BASE_PATH}/${item.id}`),
-      navigateToTableItem: (item, { groupId }) => {
-        return push(getGroupFocusPermissionsUrl(groupId, item.entityId));
-      },
-    },
-    dispatch,
-  ),
-});
+const mapDispatchToProps = {
+  updateDataPermission,
+  switchView: (entityType: string) =>
+    push(`/admin/permissions/data/${entityType}/`),
+  navigateToItem: (item: DataTreeNodeItem) =>
+    push(`${GROUPS_BASE_PATH}/${item.id}`),
+  navigateToTableItem: (
+    item: PermissionEditorEntity,
+    { groupId }: { groupId: GroupId },
+  ) => {
+    return push(getGroupFocusPermissionsUrl(groupId, item.entityId));
+  },
+};
 
-const mapStateToProps = (state, props) => {
+const mapStateToProps = (
+  state: State,
+  props: { params: RawGroupRouteParams },
+) => {
   return {
     sidebar: getGroupsSidebar(state, props),
     isEditorLoading: getIsLoadingDatabaseTables(state, props),
@@ -58,22 +70,20 @@ const mapStateToProps = (state, props) => {
   };
 };
 
-const propTypes = {
-  params: PropTypes.shape({
-    groupId: PropTypes.string,
-    databaseId: PropTypes.string,
-    schemaName: PropTypes.string,
-  }),
-  children: PropTypes.node,
-  sidebar: PropTypes.object,
-  navigateToItem: PropTypes.func.isRequired,
-  switchView: PropTypes.func.isRequired,
-  navigateToTableItem: PropTypes.func.isRequired,
-  updateDataPermission: PropTypes.func.isRequired,
-  dispatch: PropTypes.func.isRequired,
-  isEditorLoading: PropTypes.bool,
-  editorError: PropTypes.string,
-};
+interface GroupsPermissionsPageInnerProps {
+  sidebar: GroupSidebarProps;
+  params: RawGroupRouteParams;
+  children: ReactNode;
+  navigateToItem: (item: any) => void;
+  switchView: (entityType: string) => void;
+  navigateToTableItem: (
+    item: PermissionEditorEntity,
+    { groupId }: { groupId: GroupId },
+  ) => void;
+  updateDataPermission: (params: UpdateDataPermissionParams) => void;
+  isEditorLoading: boolean | undefined;
+  editorError: string | undefined;
+}
 
 function GroupsPermissionsPageInner({
   sidebar,
@@ -85,20 +95,15 @@ function GroupsPermissionsPageInner({
   updateDataPermission,
   isEditorLoading,
   editorError,
-}) {
+}: GroupsPermissionsPageInnerProps) {
+  const groupRouteParams = parseGroupRouteParams(params);
   const dispatch = useDispatch();
 
   const { loading: isLoading } = useAsync(async () => {
-    if (params.groupId) {
-      const response = await PermissionsApi.graphForGroup({
-        groupId: params.groupId,
-      });
-      await dispatch({
-        type: LOAD_DATA_PERMISSIONS_FOR_GROUP,
-        payload: response,
-      });
+    if (groupRouteParams.groupId) {
+      await dispatch(loadDataPermissionsForGroup(groupRouteParams.groupId));
     }
-  }, [params.groupId]);
+  }, [groupRouteParams.groupId]);
 
   const permissionEditor = useSelector((state) =>
     getDatabasesPermissionEditor(state, { params }),
@@ -108,46 +113,60 @@ function GroupsPermissionsPageInner({
   );
 
   const handleEntityChange = useCallback(
-    (entityType) => {
+    (entityType: string) => {
       switchView(entityType);
     },
     [switchView],
   );
 
-  const handleSidebarItemSelect = useCallback(
-    (item) => {
-      navigateToItem(item, params);
-    },
-    [navigateToItem, params],
-  );
-
   const handleTableItemSelect = useCallback(
-    (item) => {
-      navigateToTableItem(item, params);
+    (item: PermissionEditorEntity) => {
+      if (groupRouteParams.groupId == null) {
+        return;
+      }
+      navigateToTableItem(item, { groupId: groupRouteParams.groupId });
     },
-    [navigateToTableItem, params],
+    [navigateToTableItem, groupRouteParams.groupId],
   );
 
   const handlePermissionChange = useCallback(
-    async (item, permission, value) => {
-      await updateDataPermission({
-        groupId: parseInt(params.groupId),
+    (
+      item: PermissionEditorEntity,
+      permission: PermissionSectionConfig,
+      value: DataPermissionValue,
+    ) => {
+      if (item.entityId == null || groupRouteParams.groupId == null) {
+        return;
+      }
+      updateDataPermission({
+        groupId: groupRouteParams.groupId,
         permission,
         value,
         entityId: item.entityId,
         view: "group",
       });
     },
-    [params, updateDataPermission],
+    [groupRouteParams.groupId, updateDataPermission],
   );
 
-  const handleAction = (action, item) => {
-    dispatch(action.actionCreator(item.entityId, params.groupId, "group"));
+  const handleAction = (
+    action: PermissionAction,
+    item: PermissionEditorEntity,
+  ) => {
+    if (groupRouteParams.groupId == null) {
+      return;
+    }
+    dispatch(
+      action.actionCreator(item.entityId, groupRouteParams.groupId, "group"),
+    );
   };
 
-  const handleBreadcrumbsItemSelect = (item) => dispatch(push(item.url));
+  const handleBreadcrumbsItemSelect = (item: PermissionEditorBreadcrumb) => {
+    if (item.url) {
+      dispatch(push(item.url));
+    }
+  };
 
-  const showEmptyState = !permissionEditor && !isEditorLoading && !editorError;
   const showLegacyNoSelfServiceWarning =
     PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
     !!permissionEditor?.hasLegacyNoSelfServiceValueInPermissionGraph;
@@ -156,7 +175,7 @@ function GroupsPermissionsPageInner({
     <Fragment>
       <PermissionsSidebar
         {...sidebar}
-        onSelect={handleSidebarItemSelect}
+        onSelect={navigateToItem}
         onEntityChange={handleEntityChange}
       />
 
@@ -166,14 +185,14 @@ function GroupsPermissionsPageInner({
         </Center>
       )}
 
-      {showEmptyState && !isLoading && (
+      {!permissionEditor && !isLoading && (
         <PermissionsEditorEmptyState
           icon="group"
           message={t`Select a group to see its data permissions`}
         />
       )}
 
-      {!showEmptyState && !isLoading && (
+      {permissionEditor && !isLoading && (
         <PermissionsEditor
           {...permissionEditor}
           isLoading={isEditorLoading}
@@ -201,8 +220,6 @@ function GroupsPermissionsPageInner({
     </Fragment>
   );
 }
-
-GroupsPermissionsPageInner.propTypes = propTypes;
 
 export const GroupsPermissionsPage = _.compose(
   connect(mapStateToProps, mapDispatchToProps),

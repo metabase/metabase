@@ -548,7 +548,7 @@
            metabase.driver.common.parameters
            metabase.driver.common.parameters.parse
            metabase.driver.connection
-          metabase.driver.connection.workspaces
+           metabase.driver.connection.workspaces
            metabase.driver.ddl.interface
            metabase.driver.h2
            metabase.driver.impl
@@ -741,7 +741,6 @@
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.protocols
-           metabase.lib.options
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
