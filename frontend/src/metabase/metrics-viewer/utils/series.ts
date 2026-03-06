@@ -13,6 +13,7 @@ import type {
   Card,
   CardId,
   Dataset,
+  DimensionId,
   MetricBreakoutValuesResponse,
   RowValue,
   RowValues,
@@ -22,7 +23,6 @@ import type {
 } from "metabase-types/api";
 
 import type {
-  DimensionId,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDisplayType,
