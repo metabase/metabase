@@ -15,6 +15,7 @@
    [metabase-enterprise.metabot-v3.persistence :as metabot-v3.persistence]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
+   [metabase.channel.slack :as channel.slack]
    [metabase.permissions.core :as perms]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -111,21 +112,22 @@
       full-link             (str "📊 <" full-link "|Open in Metabase>")
       :else                 nil)))
 
-(defn- deliver-viz!
-  "Post the visualization as a new message with a title and link.
-   Both tables and images follow the same pattern: post content with title."
-  [client channel thread-ts {:keys [type content]} filename title link]
+(defn- viz-output->blocks
+  "Build blocks for a visualization to be included in the finalized stop-stream message."
+  [client {:keys [type content]} filename title link]
   (let [text (or (format-viz-title title link) "Query results")]
     (case type
       :table (let [title-block {:type "section"
                                 :text {:type "mrkdwn" :text text}}
                    blocks      (into [title-block] content)]
-               (slackbot.client/post-message client {:channel   channel
-                                                     :thread_ts thread-ts
-                                                     :blocks    blocks
-                                                     :text      text}))
-      :image (slackbot.client/post-image client content (str filename ".png") channel thread-ts
-                                         :initial-comment text))))
+               blocks)
+      :image (let [{:keys [id]} (channel.slack/upload-file-with-token! (:token client) content (str filename ".png"))
+                   blocks      [{:type "section"
+                                 :text {:type "mrkdwn" :text text}}
+                                {:type       "image"
+                                 :slack_file {:id id}
+                                 :alt_text   (or title filename "Visualization")}]]
+               blocks))))
 
 (def ^:private tool-friendly-names
   "Map of tool names to user-friendly gerund descriptions for slackbot profile tools."
@@ -261,24 +263,27 @@
     (catch Exception post-e
       (log/error post-e "Failed to post visualization error"))))
 
-(defn- send-visualizations!
-  "Wait for all in-flight visualization futures and post results to Slack.
-   Called after stop-stream so results always appear after streamed text.
+(defn- collect-viz-blocks
+  "Wait for all in-flight visualization futures and return blocks to include in stop-stream.
+   Returns {:blocks [...], :errors [Exception ...]}.
    For saved cards (static_viz), uses the actual card name as the title."
-  [client channel thread-ts prefetched-viz]
-  (doseq [[idx {:keys [^Future future filename title link]}] (sort-by first prefetched-viz)]
-    (try
-      (let [output   (.get future)
-            title    (or (:card-name output) title)
-            filename (or (some-> title (u/slugify {:max-length 80})) filename)]
-        (deliver-viz! client channel thread-ts output filename title link))
-      (catch ExecutionException e
-        (let [cause (or (.getCause e) e)]
-          (log/errorf cause "Visualization future %d failed" idx)
-          (post-viz-error! client channel thread-ts cause)))
-      (catch Exception e
-        (log/errorf e "Visualization future %d failed" idx)
-        (post-viz-error! client channel thread-ts e)))))
+  [client prefetched-viz]
+  (reduce
+   (fn [{:keys [blocks errors] :as acc} [idx {:keys [^Future future filename title link]}]]
+     (try
+       (let [output         (.get future)
+             resolved-title (or (:card-name output) title)
+             filename       (or (some-> resolved-title (u/slugify {:max-length 80})) filename)]
+         (assoc acc :blocks (into blocks (viz-output->blocks client output filename resolved-title link))))
+       (catch ExecutionException e
+         (let [cause (or (.getCause e) e)]
+           (log/errorf cause "Visualization future %d failed" idx)
+           {:blocks blocks :errors (conj errors cause)}))
+       (catch Exception e
+         (log/errorf e "Visualization future %d failed" idx)
+         {:blocks blocks :errors (conj errors e)})))
+   {:blocks [] :errors []}
+   (sort-by first prefetched-viz)))
 
 (defn- ensure-stream-started!
   "Ensure the Slack stream has been started, attempting once if not already tried."
@@ -499,9 +504,11 @@
              (request-flush! true)
              (await slack-writer)
              (if-let [{:keys [stream_ts channel]} @stream-state]
-               (do
-                 (slackbot.client/stop-stream client channel stream_ts (feedback-blocks conversation-id))
-                 (send-visualizations! client channel thread-ts @prefetched-viz))
+               (let [{:keys [blocks errors]} (collect-viz-blocks client @prefetched-viz)
+                     final-blocks            (into blocks (feedback-blocks conversation-id))]
+                 (slackbot.client/stop-stream client channel stream_ts final-blocks)
+                 (doseq [e errors]
+                   (post-viz-error! client channel thread-ts e)))
                (send-fallback "I wasn't able to generate a response. Please try again.")))
            (catch Exception e
              (run! #(.cancel ^Future (:future %) true) (vals @prefetched-viz))

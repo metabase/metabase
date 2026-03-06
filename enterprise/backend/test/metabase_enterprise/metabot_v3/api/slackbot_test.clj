@@ -16,6 +16,7 @@
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.channel.settings :as channel.settings]
+   [metabase.channel.slack :as channel.slack]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.test :as mt]
@@ -177,6 +178,7 @@
                                       body)]
               (is (= "ok" response) "Should ACK the event with 200 OK"))))))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn- with-slackbot-mocks
   "Helper to set up common mocks for slackbot tests.
    Options:
@@ -204,6 +206,7 @@
         append-text-calls           (atom [])
         stop-stream-calls           (atom [])
         fake-png-bytes              (byte-array [0x89 0x50 0x4E 0x47])
+        file-counter                (atom 0)
         placeholder-counter         (atom 0)
         mock-user-id                (cond
                                       (= user-id ::default) (mt/user->id :rasta)
@@ -212,19 +215,19 @@
     (mt/with-dynamic-fn-redefs
       [slackbot/slack-id->user-id (constantly mock-user-id)
        slackbot.client/get-bot-user-id (constantly "UBOT123")
-       slackbot.client/auth-test            (constantly {:ok true :user_id "UBOT123" :team_id "T123"})
-       slackbot.client/fetch-thread         (constantly {:ok true, :messages []})
+       slackbot.client/auth-test (constantly {:ok true :user_id "UBOT123" :team_id "T123"})
+       slackbot.client/fetch-thread (constantly {:ok true, :messages []})
        ;; Mock Slack streaming APIs
-       slackbot.client/start-stream         (fn [_ opts]
-                                              (swap! stream-calls conj opts)
-                                              {:stream_ts "stream123" :channel (:channel opts) :thread_ts (:thread_ts opts)})
-       slackbot.client/append-stream        (constantly {:ok true})
+       slackbot.client/start-stream (fn [_ opts]
+                                      (swap! stream-calls conj opts)
+                                      {:stream_ts "stream123" :channel (:channel opts) :thread_ts (:thread_ts opts)})
+       slackbot.client/append-stream (constantly {:ok true})
        slackbot.client/append-markdown-text (fn [_ _channel _stream-ts text]
                                               (swap! append-text-calls conj text)
                                               {:ok true})
-       slackbot.client/stop-stream          (fn [_ channel stream-ts & [blocks]]
-                                              (swap! stop-stream-calls conj {:channel channel :stream_ts stream-ts :blocks blocks})
-                                              {:ok true})
+       slackbot.client/stop-stream (fn [_ channel stream-ts & [blocks]]
+                                     (swap! stop-stream-calls conj {:channel channel :stream_ts stream-ts :blocks blocks})
+                                     {:ok true})
        slackbot.client/post-message (fn [_ msg]
                                       (swap! post-calls conj msg)
                                       {:ok      true
@@ -237,14 +240,14 @@
        slackbot.client/delete-message (fn [_ msg]
                                         (swap! delete-calls conj msg)
                                         {:ok true})
-       slackbot.client/post-image     (fn [_client image-bytes filename channel thread-ts
-                                           & {:keys [initial-comment]}]
-                                        (swap! image-calls conj {:image-bytes     image-bytes
-                                                                 :filename        filename
-                                                                 :channel         channel
-                                                                 :thread-ts       thread-ts
-                                                                 :initial-comment initial-comment})
-                                        {:ok true :file_id "F123"})
+       channel.slack/upload-file-with-token! (fn [token image-bytes filename]
+                                               (let [file-id (format "FIMG-%d" (swap! file-counter inc))]
+                                                 (swap! image-calls conj {:token       token
+                                                                          :image-bytes image-bytes
+                                                                          :filename    filename
+                                                                          :file-id     file-id})
+                                                 {:url (str "https://files.slack.com/files/" filename)
+                                                  :id  file-id}))
        ;; Mock the streaming client - returns AISDK-formatted lines
        metabot-v3.client/streaming-request-with-callback
        (fn [opts]
@@ -263,12 +266,13 @@
            (when-let [on-complete (:on-complete opts)]
              (on-complete mock-lines))
            mock-lines))
-       slackbot.query/generate-card-output     (fn [card-id]
-                                                 (swap! generate-card-output-calls conj {:card-id card-id})
-                                                 {:type :image :content fake-png-bytes :card-name (str "Card " card-id)})
+       slackbot.query/generate-card-output (fn [card-id]
+                                             (swap! generate-card-output-calls conj {:card-id card-id})
+                                             {:type :image :content fake-png-bytes :card-name (str "Card " card-id)})
        slackbot.query/generate-adhoc-output (fn [query & {:keys [display]}]
                                               (swap! generate-adhoc-output-calls conj {:query query :display display})
-                                              (if (#{:bar :line :pie :area :row :scatter :funnel :waterfall :combo :progress :gauge :map} display)
+                                              (if (#{:bar :line :pie :area :row :scatter :funnel :waterfall :combo :progress :gauge :map}
+                                                   display)
                                                 {:type :image :content fake-png-bytes}
                                                 {:type :table :content [{:type "table" :rows [] :column_settings []}]}))]
       (body-fn {:post-calls                  post-calls
@@ -501,7 +505,7 @@
                     (#'slackbot.streaming/slack-thread->conversation-id "T1" "C1" "123.456")))))
 
 (deftest user-message-with-visualizations-test
-  (testing "POST /events with visualizations posts images"
+  (testing "POST /events with visualizations uploads images and finalizes them in stop-stream blocks"
     (with-slackbot-setup
       (let [mock-ai-text "Here are your charts"
             mock-data-parts [{:type "static_viz" :value {:entity_id 101}}
@@ -538,14 +542,18 @@
                 (is (= 2 (count @generate-card-output-calls)))
                 (is (= #{101 202} (set (map :card-id @generate-card-output-calls)))))
 
-              (testing "images posted"
+              (testing "rendered PNGs are uploaded to Slack"
                 (is (= 2 (count @image-calls)))
-                (is (every? #(= "C456" (:channel %)) @image-calls))
-                (is (every? #(= "1234567890.000000" (:thread-ts %)) @image-calls))
                 (is (= #{"card_101.png" "card_202.png"}
                        (set (map :filename @image-calls))))
                 (is (every? #(= (vec fake-png-bytes) (vec (:image-bytes %)))
-                            @image-calls))))))))))
+                            @image-calls)))
+
+              (testing "stop-stream includes both image blocks and feedback controls"
+                (let [blocks (:blocks (first @stop-stream-calls))]
+                  (is (= ["section" "image" "section" "image" "context_actions"]
+                         (mapv :type blocks)))
+                  (is (= "feedback_buttons" (get-in blocks [4 :elements 0 :type]))))))))))))
 
 (deftest user-not-linked-sends-auth-message-test
   (testing "POST /events with unlinked user sends ephemeral auth message (DMs always threaded)"
@@ -640,7 +648,7 @@
 ;; -------------------------------- Ad-Hoc Query Visualization Tests --------------------------------
 
 (deftest adhoc-viz-execution-test
-  (testing "POST /events with adhoc_viz executes query and posts image"
+  (testing "POST /events with adhoc_viz executes query and uploads image"
     (with-slackbot-setup
       (let [mock-ai-text    "Here's your data"
             mock-query      {:database 1
@@ -674,12 +682,16 @@
                 (is (= mock-query (:query (first @generate-adhoc-output-calls))))
                 (is (= :bar (:display (first @generate-adhoc-output-calls)))))
 
-              (testing "image posted with adhoc filename"
+              (testing "image uploaded with adhoc filename"
                 (is (= 1 (count @image-calls)))
-                (is (= "C789" (:channel (first @image-calls))))
-                (is (= "1234567890.000000" (:thread-ts (first @image-calls))))
                 (is (re-matches #"adhoc-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.png" (:filename (first @image-calls))))
-                (is (= (vec fake-png-bytes) (vec (:image-bytes (first @image-calls)))))))))))))
+                (is (= (vec fake-png-bytes) (vec (:image-bytes (first @image-calls))))))
+
+              (testing "stop-stream includes the uploaded image and feedback controls"
+                (let [blocks (:blocks (first @stop-stream-calls))]
+                  (is (= ["section" "image" "context_actions"]
+                         (mapv :type blocks)))
+                  (is (re-matches #"FIMG-\d+" (get-in blocks [1 :slack_file :id]))))))))))))
 
 (deftest adhoc-viz-default-display-test
   (testing "POST /events with adhoc_viz uses :table when display not specified"
@@ -721,7 +733,7 @@
         (with-slackbot-mocks
           {:ai-text    "Here's everything"
            :data-parts mock-data-parts}
-          (fn [{:keys [image-calls generate-card-output-calls generate-adhoc-output-calls]}]
+          (fn [{:keys [image-calls stop-stream-calls generate-card-output-calls generate-adhoc-output-calls]}]
             (mt/client :post 200 "ee/metabot-v3/slack/events"
                        (slack-request-options event-body)
                        event-body)
@@ -733,11 +745,15 @@
             (testing "adhoc_viz query rendered"
               (is (= 1 (count @generate-adhoc-output-calls)))
               (is (= :line (:display (first @generate-adhoc-output-calls)))))
-            (testing "all images posted"
+            (testing "all images uploaded"
               (is (= 3 (count @image-calls)))
               (is (= #{"card_101.png" "card_202.png"}
                      (set (filter #(str/starts-with? % "card") (map :filename @image-calls)))))
-              (is (= 1 (count (filter #(str/starts-with? % "adhoc-") (map :filename @image-calls))))))))))))
+              (is (= 1 (count (filter #(str/starts-with? % "adhoc-") (map :filename @image-calls))))))
+            (testing "stop-stream includes all uploaded image blocks"
+              (let [blocks (:blocks (first @stop-stream-calls))]
+                (is (= ["section" "image" "section" "image" "section" "image" "context_actions"]
+                       (mapv :type blocks)))))))))))
 
 (deftest generate-card-output-display-type-test
   (testing "generate-card-output returns correct type based on card display"
@@ -818,7 +834,7 @@
               (testing "error message posted for failing viz"
                 (is (some #(= "Query execution failed, please try again." (:text %))
                           @post-calls)))
-              (testing "second card still rendered"
+              (testing "second card still uploads"
                 (is (= 1 (count @image-calls)))))))))))
 
 (deftest format-viz-title-test
@@ -867,46 +883,53 @@
                                        (>= (count @image-calls) 1))
                      :done?      true?
                      :timeout-ms 5000})
-            (let [img (first @image-calls)]
+            (let [img    (first @image-calls)
+                  blocks (:blocks (first @stop-stream-calls))]
               (testing "filename uses slugified card name"
                 (is (= "card_101.png" (:filename img))))
-              (testing "initial-comment uses card name with link, not AI caption"
-                (is (str/includes? (:initial-comment img) "Card 101"))
-                (is (not (str/includes? (:initial-comment img) "AI-generated caption")))
-                (is (str/includes? (:initial-comment img) "/question/101"))))))))))
+              (testing "caption block uses card name with link, not AI caption"
+                (let [caption-text (get-in blocks [0 :text :text])]
+                  (is (str/includes? caption-text "Card 101"))
+                  (is (not (str/includes? caption-text "AI-generated caption")))
+                  (is (str/includes? caption-text "/question/101"))))
+              (testing "image block references the uploaded Slack file"
+                (is (= (:file-id img) (get-in blocks [1 :slack_file :id]))))))))))
 
-(deftest table-viz-with-caption-test
-  (testing "table viz posts include caption block with link"
-    (with-slackbot-setup
-      (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
-            mock-data-parts [{:type  "adhoc_viz"
-                              :value {:query   mock-query
-                                      :title   "Sales Data"
-                                      :link    "/question#abc123"}}]
-            event-body      (update base-dm-event :event merge
-                                    {:text      "Show sales"
-                                     :ts        "1234567890.000021"
-                                     :event_ts  "1234567890.000021"
-                                     :thread_ts "1234567890.000000"})]
-        (with-slackbot-mocks
-          {:ai-text    "Here's your table"
-           :data-parts mock-data-parts}
-          (fn [{:keys [post-calls stop-stream-calls generate-adhoc-output-calls]}]
-            (mt/client :post 200 "ee/metabot-v3/slack/events"
-                       (slack-request-options event-body)
-                       event-body)
-            (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
-                                       (>= (count @generate-adhoc-output-calls) 1))
-                     :done?      true?
-                     :timeout-ms 5000})
-            (let [viz-post (some (fn [p] (when (:blocks p) p)) @post-calls)]
-              (testing "table viz posted as message with blocks"
-                (is (some? viz-post)))
-              (testing "first block is caption with mrkdwn text"
-                (let [caption-block (first (:blocks viz-post))]
-                  (is (= "section" (:type caption-block)))
-                  (is (= "mrkdwn" (get-in caption-block [:text :type])))
-                  (is (str/includes? (get-in caption-block [:text :text]) "Sales Data")))))))))))
+  (deftest table-viz-with-caption-test
+    (testing "table viz posts include caption block with link"
+      (with-slackbot-setup
+        (let [mock-query      {:database 1 :type "query" :query {:source-table 2}}
+              mock-data-parts [{:type  "adhoc_viz"
+                                :value {:query   mock-query
+                                        :title   "Sales Data"
+                                        :link    "/question#abc123"}}]
+              event-body      (update base-dm-event :event merge
+                                      {:text      "Show sales"
+                                       :ts        "1234567890.000021"
+                                       :event_ts  "1234567890.000021"
+                                       :thread_ts "1234567890.000000"})]
+          (with-slackbot-mocks
+            {:ai-text    "Here's your table"
+             :data-parts mock-data-parts}
+            (fn [{:keys [stop-stream-calls generate-adhoc-output-calls]}]
+              (mt/client :post 200 "ee/metabot-v3/slack/events"
+                         (slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(and (>= (count @stop-stream-calls) 1)
+                                         (>= (count @generate-adhoc-output-calls) 1))
+                       :done?      true?
+                       :timeout-ms 5000})
+              (let [viz-blocks (:blocks (first @stop-stream-calls))]
+                (testing "table viz is finalized in stop-stream blocks"
+                  (is (seq viz-blocks)))
+                (testing "first block is caption with mrkdwn text"
+                  (let [caption-block (first viz-blocks)]
+                    (is (= "section" (:type caption-block)))
+                    (is (= "mrkdwn" (get-in caption-block [:text :type])))
+                    (is (str/includes? (get-in caption-block [:text :text]) "Sales Data"))))
+                (testing "feedback controls are appended after table blocks"
+                  (is (= "context_actions" (get-in viz-blocks [2 :type])))
+                  (is (= "feedback_buttons" (get-in viz-blocks [2 :elements 0 :type]))))))))))))
 
 (deftest generate-card-output-failed-qp-result-test
   (testing "throws when QP returns :status :failed for table card"
