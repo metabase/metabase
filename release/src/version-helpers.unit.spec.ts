@@ -938,6 +938,12 @@ describe("version-helpers", () => {
       // ignores edition prefix (v0 vs v1)
       ["v1.58.6", "v0.58.7", "upgrade"],
       ["v0.58.7", "v1.58.6", "downgrade"],
+      // HEAD (always newer than any released version)
+      ["HEAD", "HEAD", "same"],
+      ["HEAD", "v0.59.0", "downgrade"],
+      ["HEAD", "v1.59.0", "downgrade"],
+      ["v0.59.0", "HEAD", "upgrade"],
+      ["v1.59.0", "HEAD", "upgrade"],
     ] as const)("%s -> %s = %s", (source, target, expected) => {
       expect(compareVersions(source, target)).toBe(expected);
     });
@@ -965,6 +971,11 @@ describe("version-helpers", () => {
       ["v1.58.7", "metabase/metabase-enterprise:v1.58.7"],
       ["v1.57.13", "metabase/metabase-enterprise:v1.57.13"],
       ["v1.50.13.5", "metabase/metabase-enterprise:v1.50.13.5"], // patch version
+      // Rolling tags (.x)
+      ["v0.59.x", "metabase/metabase:v0.59.x"],
+      ["v1.59.x", "metabase/metabase-enterprise:v1.59.x"],
+      ["v0.50.x", "metabase/metabase:v0.50.x"],
+      ["v1.50.x", "metabase/metabase-enterprise:v1.50.x"],
     ] as const)("%s -> %s", (version, expected) => {
       expect(getDockerImage(version)).toBe(expected);
     });
@@ -972,6 +983,12 @@ describe("version-helpers", () => {
     it("should throw for invalid version", () => {
       expect(() => getDockerImage("invalid")).toThrow(
         "Invalid version string: invalid",
+      );
+    });
+
+    it("should return enterprise HEAD image for HEAD", () => {
+      expect(getDockerImage("HEAD")).toBe(
+        "metabase/metabase-enterprise-head:latest",
       );
     });
   });

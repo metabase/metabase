@@ -405,6 +405,17 @@ export const compareVersions = (
   source: string,
   target: string,
 ): VersionComparisonResult => {
+  // Handle HEAD (always considered newer than any released version)
+  if (source === "HEAD" && target === "HEAD") {
+    return "same";
+  }
+  if (source === "HEAD") {
+    return "downgrade";
+  }
+  if (target === "HEAD") {
+    return "upgrade";
+  }
+
   if (!isValidVersionString(source)) {
     throw new Error(`Invalid version string: ${source}`);
   }
@@ -412,16 +423,33 @@ export const compareVersions = (
     throw new Error(`Invalid version string: ${target}`);
   }
   const result = versionSort(source, target);
-  if (result < 0) return "upgrade";
-  if (result > 0) return "downgrade";
+  if (result < 0) {
+    return "upgrade";
+  }
+
+  if (result > 0) {
+    return "downgrade";
+  }
+
   return "same";
 };
 
 export const getDockerImage = (version: string): string => {
-  if (!isValidVersionString(version)) {
+  // HEAD always uses enterprise image
+  if (version === "HEAD") {
+    return "metabase/metabase-enterprise-head:latest";
+  }
+
+  // Handle .x rolling tags (e.g., v1.59.x, v0.59.x)
+  const isRollingTag = version.endsWith(".x");
+
+  if (!isRollingTag && !isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
   }
-  const isEE = isEnterpriseVersion(version);
+
+  const isEE = isRollingTag
+    ? version.startsWith("v1.")
+    : isEnterpriseVersion(version);
   const repo = isEE ? "metabase/metabase-enterprise" : "metabase/metabase";
   return `${repo}:${version}`;
 };
