@@ -22,7 +22,6 @@
    [metabase.lib.extraction :as lib.extraction]
    [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
-   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.field.util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.desugar]
@@ -88,7 +87,6 @@
          lib.extraction/keep-me
          lib.fe-util/keep-me
          lib.field/keep-me
-         lib.field.resolution/keep-me
          metabase.lib.field.util/keep-me
          lib.filter.update/keep-me
          metabase.lib.filter.desugar/keep-me
@@ -457,7 +455,6 @@
   with-different-table
   with-wrapped-native-query
   wrap-native-query-with-mbql]
-
  [lib.query.test-spec
   test-native-query
   test-query]

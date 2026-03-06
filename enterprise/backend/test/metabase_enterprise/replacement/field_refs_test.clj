@@ -8,28 +8,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-;; card-upgrade-field-refs!
-;; - [ ] card with native query
-;; - [ ] card with broken query (just `{}` as dataset query) (might need to disable malli enforcement for this test)
-;; - [ ] card with broken source card in a parameter (the card has `{}` as dataset query)
-;; - [ ] card with non-existent source card id in a parameter
-;; - [ ] card without changes
-;;
-;; transform-upgrade-field-refs!
-;; - [ ] transform with mbql query
-;; - [ ] transform with native query
-;; - [ ] transform with broken query
-;; - [ ] transform without changes
-;;
-;; segment-upgrade-field-refs!
-;; - [ ] segment with mbql query
-;; - [ ] segment with broken query
-;; - [ ] segment without changes
-;;
-;; measure-upgrade-field-refs! 
-;; - [ ] measure with mbql query
-;; - [ ] measure with broken query
-;; - [ ] measure without changes
+;;; ------------------------------------------------ Card --------------------------------------------------------
 
 (deftest card-upgrade-field-refs!-query-test
   (testing "should upgrade refs in a query"
@@ -141,3 +120,189 @@
                                :values_source_config {:card_id card1-id
                                                       :value_field [:field "CATEGORY" {}]}}]}
                 (t2/select-one :model/Card card2-id)))))))
+
+(deftest card-upgrade-field-refs!-native-query-test
+  (testing "should not change a card with a native query"
+    (let [mp    (mt/metadata-provider)
+          query (lib/native-query mp "SELECT * FROM orders")]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+        (replacement.field-refs/upgrade-field-refs! [:card card-id])
+        (is (=? {:dataset_query {:stages [{:native "SELECT * FROM orders"}]}}
+                (t2/select-one :model/Card card-id)))))))
+
+(deftest card-upgrade-field-refs!-broken-query-test
+  (testing "should not crash on a card with a broken query"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query mp "SELECT 1")}]
+        ;; simulate a broken query by updating the dataset_query directly
+        (t2/update! :model/Card card-id {:dataset_query {}})
+        (replacement.field-refs/upgrade-field-refs! [:card card-id])
+        (is (=? {:dataset_query {}}
+                (t2/select-one :model/Card card-id)))))))
+
+(deftest card-upgrade-field-refs!-broken-source-card-test
+  (testing "should not crash when a parameter references a card with a broken query"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {broken-card-id :id} {:dataset_query (lib/native-query mp "SELECT 1")}
+                     :model/Card {card-id :id}        {:dataset_query (lib/native-query mp "SELECT 1")
+                                                       :parameters [{:id   "test-param"
+                                                                     :name "category"
+                                                                     :type :string/=
+                                                                     :values_source_type "card"
+                                                                     :values_source_config
+                                                                     {:card_id broken-card-id
+                                                                      :value_field [:field 1 nil]}}]}]
+        ;; simulate a broken source card
+        (t2/update! :model/Card broken-card-id {:dataset_query {}})
+        (replacement.field-refs/upgrade-field-refs! [:card card-id])
+        (is (=? {:parameters [{:name "category"
+                               :values_source_config {:card_id broken-card-id
+                                                      :value_field [:field 1 nil]}}]}
+                (t2/select-one :model/Card card-id)))))))
+
+(deftest card-upgrade-field-refs!-nonexistent-source-card-test
+  (testing "should not crash when a parameter references a non-existent card"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {source-card-id :id} {:dataset_query (lib/native-query mp "SELECT 1")}
+                     :model/Card {card-id :id}        {:dataset_query (lib/native-query mp "SELECT 1")
+                                                       :parameters [{:id   "test-param"
+                                                                     :name "category"
+                                                                     :type :string/=
+                                                                     :values_source_type "card"
+                                                                     :values_source_config
+                                                                     {:card_id source-card-id
+                                                                      :value_field [:field 1 nil]}}]}]
+        ;; delete the source card to simulate a non-existent reference
+        (t2/delete! :model/Card source-card-id)
+        (replacement.field-refs/upgrade-field-refs! [:card card-id])
+        (is (=? {:parameters [{:name "category"
+                               :values_source_config {:card_id source-card-id
+                                                      :value_field [:field 1 nil]}}]}
+                (t2/select-one :model/Card card-id)))))))
+
+(deftest card-upgrade-field-refs!-no-changes-test
+  (testing "should not update a card when there are no changes"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {card-id :id, updated-at :updated_at} {:dataset_query query}]
+        (replacement.field-refs/upgrade-field-refs! [:card card-id])
+        (is (= updated-at (:updated_at (t2/select-one :model/Card card-id))))))))
+
+;;; ------------------------------------------------ Transform --------------------------------------------------------
+
+(deftest transform-upgrade-field-refs!-mbql-query-test
+  (testing "should upgrade refs in a transform with an mbql query"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/breakout (lib.metadata/field mp (mt/id :orders :id)))
+                    lib/append-stage
+                    (lib/filter (lib/= (lib.metadata/field mp (mt/id :orders :id)) 1)))]
+      (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
+                                                          :source {:type "query" :query query}
+                                                          :target {:database (mt/id) :table "out"}}]
+        (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
+        (is (=? {:source {:type  :query
+                          :query {:stages [{:source-table (mt/id :orders)
+                                            :breakout [[:field {} (mt/id :orders :id)]]}
+                                           {:filters [[:= {} [:field {} "ID"] 1]]}]}}}
+                (t2/select-one :model/Transform transform-id)))))))
+
+(deftest transform-upgrade-field-refs!-native-query-test
+  (testing "should not change a transform with a native query"
+    (let [mp    (mt/metadata-provider)
+          query (lib/native-query mp "SELECT * FROM orders")]
+      (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
+                                                          :source {:type "query" :query query}
+                                                          :target {:database (mt/id) :table "out"}}]
+        (is (nil? (replacement.field-refs/upgrade-field-refs! [:transform transform-id])))))))
+
+(deftest transform-upgrade-field-refs!-broken-query-test
+  (testing "should not crash on a transform with a broken query"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
+                                                          :source {:type "query" :query (lib/native-query mp "SELECT 1")}
+                                                          :target {:database (mt/id) :table "out"}}]
+        ;; simulate a broken query by updating source directly in the DB
+        (t2/query-one {:update :transform
+                       :set    {:source "{\"type\":\"query\",\"query\":{}}"}
+                       :where  [:= :id transform-id]})
+        (is (nil? (replacement.field-refs/upgrade-field-refs! [:transform transform-id])))))))
+
+(deftest transform-upgrade-field-refs!-no-changes-test
+  (testing "should not update a transform when there are no changes"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Transform {transform-id :id, updated-at :updated_at} {:name   "test transform"
+                                                                                  :source {:type "query" :query query}
+                                                                                  :target {:database (mt/id) :table "out"}}]
+        (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
+        (is (= updated-at (:updated_at (t2/select-one :model/Transform transform-id))))))))
+
+;;; ------------------------------------------------- Segment ----------------------------------------------------------
+
+(deftest segment-upgrade-field-refs!-mbql-query-test
+  (testing "should handle a segment with a valid mbql query without error"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
+      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
+                                                      :definition query}]
+        (is (nil? (replacement.field-refs/upgrade-field-refs! [:segment segment-id])))))))
+
+(deftest segment-upgrade-field-refs!-broken-query-test
+  (testing "should not crash on a segment with a broken definition"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
+      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
+                                                      :definition query}]
+        (t2/query-one {:update :segment
+                       :set    {:definition "{}"}
+                       :where  [:= :id segment-id]})
+        (is (nil? (replacement.field-refs/upgrade-field-refs! [:segment segment-id])))))))
+
+(deftest segment-upgrade-field-refs!-no-changes-test
+  (testing "should not update a segment when there are no changes"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
+      (mt/with-temp [:model/Segment {segment-id :id, updated-at :updated_at} {:table_id   (mt/id :orders)
+                                                                              :definition query}]
+        (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
+        (is (= updated-at (:updated_at (t2/select-one :model/Segment segment-id))))))))
+
+;;; ------------------------------------------------- Measure ----------------------------------------------------------
+
+(deftest measure-upgrade-field-refs!-mbql-query-test
+  (testing "should handle a measure with a valid mbql query without error"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :id)))))]
+      (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
+                                                      :name       "test measure"
+                                                      :definition query}]
+        (is (nil? (replacement.field-refs/upgrade-field-refs! [:measure measure-id])))))))
+
+(deftest measure-upgrade-field-refs!-broken-query-test
+  (testing "should not crash on a measure with a broken definition"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/count)))]
+      (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
+                                                      :name       "test measure"
+                                                      :definition query}]
+        (t2/query-one {:update :measure
+                       :set    {:definition "{}"}
+                       :where  [:= :id measure-id]})
+        (is (nil? (replacement.field-refs/upgrade-field-refs! [:measure measure-id])))))))
+
+(deftest measure-upgrade-field-refs!-no-changes-test
+  (testing "should not update a measure when there are no changes"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :id)))))]
+      (mt/with-temp [:model/Measure {measure-id :id, updated-at :updated_at} {:table_id   (mt/id :orders)
+                                                                              :name       "test measure"
+                                                                              :definition query}]
+        (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
+        (is (= updated-at (:updated_at (t2/select-one :model/Measure measure-id))))))))
