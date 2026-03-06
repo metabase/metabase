@@ -3660,7 +3660,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: deleted_at
-                  type: timestamp with time zone
+                  type: ${timestamp_type}
                   remarks: Soft delete timestamp for removed Slack metabot responses
                   constraints:
                     nullable: true
