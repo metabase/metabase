@@ -10,8 +10,11 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { DatasetColumn } from "metabase-types/api";
 
-const ObjectDetailProperties = {
+import type { VisualizationDefinition } from "../types";
+
+const ObjectDetailProperties: VisualizationDefinition = {
   getUiName() {
     return t`Detail`;
   },
@@ -29,12 +32,12 @@ const ObjectDetailProperties = {
     ...columnSettings({ hidden: true }),
     ...tableColumnSettings({ isShowingDetailsOnlyColumns: true }),
   },
-  columnSettings: (column) => {
+  columnSettings: () => {
     const settings = {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: (column) => displayNameForColumn(column),
+        getDefault: (column: DatasetColumn) => displayNameForColumn(column),
       },
       click_behavior: {},
 
@@ -48,6 +51,7 @@ const ObjectDetailProperties = {
     return settings;
   },
   isSensible: () => true,
+  checkRenderable: () => true,
 };
 
 const ObjectDetailWithProperties = Object.assign(
