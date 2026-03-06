@@ -102,7 +102,8 @@ export function MetricSearchPanel({
                     variant="light"
                     color="filter"
                     size="xs"
-                    p="sm"
+                    py="sm"
+                    px="md"
                     aria-label={toggleLabel}
                     onClick={(event) => {
                       event.stopPropagation();
@@ -131,7 +132,12 @@ export function MetricSearchPanel({
           />
         </Box>
         {hasFilters && isFilterPillsExpanded && (
-          <Box className={S.filterPillsSection} px="sm" py="xs">
+          <Box
+            className={S.filterPillsSection}
+            px="sm"
+            py="xs"
+            bg="background-filter"
+          >
             <MetricsFilterPills
               definitions={readyDefinitions}
               sourceColors={metricColors}

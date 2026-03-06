@@ -58,7 +58,7 @@ export function MetricsFilterPillPopover({
         >
           {displayParts.label}
           {displayParts.value && (
-            <Text component="span" fw={700} c="saturated-purple" fz="sm">
+            <Text component="span" fw={700} c="text-filter" fz="sm">
               {" "}
               {displayParts.value}
             </Text>

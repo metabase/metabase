@@ -104,7 +104,6 @@ export function MetricSearchInput({
   return (
     <Flex
       className={S.inputWrapper}
-      bg="background-secondary"
       align="center"
       gap="sm"
       px="sm"

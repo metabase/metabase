@@ -24,6 +24,20 @@ const baseColors = {
     5: "color-mix(in srgb, var(--mb-color-brand), white 96%)",
   },
 
+  filter: {
+    100: "color-mix(in srgb, var(--mb-color-filter), black 86%)",
+    90: "color-mix(in srgb, var(--mb-color-filter), black 75%)",
+    80: "color-mix(in srgb, var(--mb-color-filter), black 62%)",
+    70: "color-mix(in srgb, var(--mb-color-filter), black 47%)",
+    60: "color-mix(in srgb, var(--mb-color-filter), black 28%)",
+    50: "color-mix(in srgb, var(--mb-color-filter), black 12%)",
+    40: "var(--mb-color-filter)", // This is the base filter color
+    30: "color-mix(in srgb, var(--mb-color-filter), white 35%)",
+    20: "color-mix(in srgb, var(--mb-color-filter), white 70%)",
+    10: "color-mix(in srgb, var(--mb-color-filter), white 91%)",
+    5: "color-mix(in srgb, var(--mb-color-filter), white 96%)",
+  },
+
   // Deprecated Blue
   blue: {
     100: "hsla(208, 100%, 8%, 1.00)",

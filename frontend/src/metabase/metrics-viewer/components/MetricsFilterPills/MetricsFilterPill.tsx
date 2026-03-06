@@ -45,12 +45,12 @@ export const MetricsFilterPill = forwardRef(function MetricsFilterPill(
         fallbackIcon={fallbackIcon}
         size={12}
       />
-      <Text c="saturated-purple" fz="sm">
+      <Text c="text-filter" fz="sm">
         {children}
       </Text>
       {onRemoveClick && (
         <Icon
-          c="saturated-purple"
+          c="text-filter"
           name="close"
           size={12}
           role="button"

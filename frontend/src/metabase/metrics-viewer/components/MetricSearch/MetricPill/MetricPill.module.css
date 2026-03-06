@@ -3,9 +3,7 @@
   border-radius: var(--mantine-radius-md);
   cursor: pointer;
   transition: background-color 150ms ease;
-  box-shadow:
-    0 0 0 0.5px var(--mb-color-border),
-    0 1px 2px 0 var(--mb-color-shadow);
+  border: 1px solid var(--mb-color-border);
 }
 
 .metricPill:hover {
