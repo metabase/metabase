@@ -11,7 +11,6 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins/oss/tenants";
 import { Group, Icon, Stack, Text, Title } from "metabase/ui";
-import type { FieldId } from "metabase-types/api";
 
 import { ConnectionImpersonationStepContent } from "./ConnectionImpersonationStepContent";
 import {
@@ -20,6 +19,7 @@ import {
 } from "./DataSegregationStrategyPicker";
 import { DatabaseRoutingStepContent } from "./DatabaseRoutingStepContent";
 import { EnableTenantsStepContent } from "./EnableTenantsStepContent";
+import type { RlsSelectionResult } from "./RlsDataSelector";
 import { RlsDataSelector } from "./RlsDataSelector";
 import S from "./SetupPermissionsAndTenantsPage.module.css";
 
@@ -41,8 +41,12 @@ export const SetupPermissionsAndTenantsPage = () => {
   // Track the tenants created in this onboarding flow
   const [createdTenants, setCreatedTenants] = useState<CreatedTenantData[]>([]);
 
-  // Track the selected field IDs from the RLS step (in-session only)
-  const [selectedFieldIds, setSelectedFieldIds] = useState<FieldId[]>([]);
+  // Track RLS selection from the "Select data" step (in-session only)
+  const [rlsSelection, setRlsSelection] = useState<RlsSelectionResult>({
+    fieldIds: [],
+    tableNames: [],
+    columnName: null,
+  });
 
   // Prefer in-session UI state; fall back to backend detection for reloads
   const activeStrategy =
@@ -152,8 +156,8 @@ export const SetupPermissionsAndTenantsPage = () => {
           {match(activeStrategy)
             .with("row-column-level-security", () => (
               <RlsDataSelector
-                onSuccess={(fieldIds) => {
-                  setSelectedFieldIds(fieldIds);
+                onSuccess={(result) => {
+                  setRlsSelection(result);
 
                   // User might had already created tenants before,
                   // so we allow jumping straight to the summary flow.
@@ -176,7 +180,7 @@ export const SetupPermissionsAndTenantsPage = () => {
         >
           <PLUGIN_TENANTS.CreateTenantsOnboardingStep
             onTenantsCreated={setCreatedTenants}
-            selectedFieldIds={selectedFieldIds}
+            selectedFieldIds={rlsSelection.fieldIds}
             strategy={activeStrategy}
           />
         </OnboardingStepper.Step>
@@ -189,6 +193,8 @@ export const SetupPermissionsAndTenantsPage = () => {
           <PLUGIN_TENANTS.TenantsSummaryOnboardingStep
             tenants={createdTenants}
             strategy={activeStrategy}
+            rlsTableNames={rlsSelection.tableNames}
+            rlsColumnName={rlsSelection.columnName}
           />
         </OnboardingStepper.Step>
       </OnboardingStepper>
