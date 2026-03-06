@@ -255,6 +255,8 @@ export const useDataGridInstance = <TData, TValue>({
     pinnedLeftColumnsCount,
     hasRowIdColumn,
     hasColumnRowSelectColumn,
+    columnSizingMap,
+    gridRef,
   });
 
   const rowPinning = useRowPinningByCount({
