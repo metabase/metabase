@@ -14,7 +14,6 @@
    [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
-   [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.search :as metabot-v3.tools.search]
    [metabase-enterprise.metabot-v3.tools.snippets :as metabot-v3.tools.snippets]
@@ -541,42 +540,6 @@
   {:args-schema   ::field-values-arguments
    :result-schema ::field-values-result
    :handler       metabot-v3.tools.field-stats/field-values})
-
-(mr/def ::find-outliers-arguments
-  [:and
-   [:map
-    [:data_source [:and
-                   [:or
-                    [:map
-                     [:query [:map
-                              [:database :int]]]
-                     [:query_id {:optional true} :string]
-                     [:result_field_id :string]]
-                    [:map
-                     [:metric_id :int]]
-                    [:map
-                     [:report_id :int]
-                     [:result_field_id :string]]
-                    [:map
-                     [:table_id :string]
-                     [:result_field_id :string]]]
-                   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
-
-(mr/def ::find-outliers-result
-  [:or
-   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
-    [:structured_output [:sequential
-                         [:map
-                          [:dimension :any]
-                          [:value [:or :int :double]]]]]]
-   [:map [:output :string]]])
-
-(deftool "/find-outliers"
-  "Find outliers in the values provided by a data source for a given column."
-  {:args-schema   ::find-outliers-arguments
-   :result-schema ::find-outliers-result
-   :handler       metabot-v3.tools.find-outliers/find-outliers})
 
 (mr/def ::generate-insights-arguments
   [:map
