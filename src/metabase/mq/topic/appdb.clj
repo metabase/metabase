@@ -56,32 +56,35 @@
 (defn- start-polling!
   "Starts the single shared polling loop if not already running. Idempotent."
   []
-  (when-not @background-process
-    (let [f (future
-              (try
-                (loop []
-                  (when @background-process
-                    (doseq [topic-name (keys @topic.impl/*listeners*)]
-                      (try
-                        (let [offset (if (contains? @offsets topic-name)
-                                       (get @offsets topic-name)
-                                       ;; Lazily initialize offset for newly registered topics
-                                       (let [o (current-max-id topic-name)]
-                                         (swap! offsets assoc topic-name o)
-                                         o))
-                              rows (poll-messages! topic-name offset)]
-                          (doseq [{:keys [id messages]} rows]
-                            (when-not (topic.impl/locally-published? topic-name id)
-                              (topic.impl/handle! topic-name (json/decode messages)))
-                            (swap! offsets assoc topic-name id)))
-                        (catch Exception e
-                          (log/errorf e "Error polling topic %s" (name topic-name)))))
-                    (Thread/sleep (long poll-interval-ms))
-                    (recur)))
-                (catch InterruptedException _
-                  (log/info "Topic polling loop interrupted"))))]
-      (when-not (compare-and-set! background-process nil f)
-        (future-cancel f)))))
+  (when (compare-and-set! background-process nil ::starting)
+    (try
+      (reset! background-process
+              (future
+                (try
+                  (loop []
+                    (when @background-process
+                      (doseq [topic-name (keys @topic.impl/*listeners*)]
+                        (try
+                          (let [offset (if (contains? @offsets topic-name)
+                                         (get @offsets topic-name)
+                                         ;; Lazily initialize offset for newly registered topics
+                                         (let [o (current-max-id topic-name)]
+                                           (swap! offsets assoc topic-name o)
+                                           o))
+                                rows (poll-messages! topic-name offset)]
+                            (doseq [{:keys [id messages]} rows]
+                              (when-not (topic.impl/locally-published? topic-name id)
+                                (topic.impl/handle! topic-name (json/decode messages)))
+                              (swap! offsets assoc topic-name id)))
+                          (catch Exception e
+                            (log/errorf e "Error polling topic %s" (name topic-name)))))
+                      (Thread/sleep (long poll-interval-ms))
+                      (recur)))
+                  (catch InterruptedException _
+                    (log/info "Topic polling loop interrupted")))))
+      (catch Exception e
+        (reset! background-process nil)
+        (throw e)))))
 
 ;;; ------------------------------------------- Automatic Periodic Cleanup -------------------------------------------
 
