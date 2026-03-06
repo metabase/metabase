@@ -69,6 +69,19 @@
         ;; Should have state data (final part)
         (is (some #(= :data (:type %)) result)))))
 
+  (testing "sql profile requests required tool choice"
+    (let [captured (atom nil)]
+      (with-redefs [self/call-llm (fn [_model _system _parts _tools _tracking-opts llm-opts]
+                                    (reset! captured llm-opts)
+                                    (mut/mock-llm-response
+                                     [{:type :text :text "Hello"}]))]
+        (into [] (agent/run-agent-loop
+                  {:messages   [{:role :user :content "Hi"}]
+                   :state      {}
+                   :profile-id :sql
+                   :context    {}}))
+        (is (= {:tool-choice "required"} @captured)))))
+
   (testing "runs agent loop with tool execution"
     (let [call-count (atom 0)]
       (with-redefs [openrouter/openrouter (fn [_]

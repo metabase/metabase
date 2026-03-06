@@ -188,9 +188,11 @@
   Builds AISDK parts from memory and passes them to the adapter which converts
   them to its native wire format."
   [memory context profile tools iteration tracking-opts]
-  (let [model       (:model profile)
-        system-msg  (messages/build-system-message context profile tools)
-        input-parts (messages/build-message-history memory)]
+  (let [model        (:model profile)
+        system-msg   (messages/build-system-message context profile tools)
+        input-parts  (messages/build-message-history memory)
+        llm-opts     (cond-> {}
+                       (:required-tool-call? profile) (assoc :tool-choice "required"))]
     (when *debug-log*
       (debug-log! {:iteration iteration
                    :phase     :request
@@ -200,7 +202,7 @@
                    :tools     (mapv (fn [[name _]] name) tools)}))
     (eduction (streaming/post-process-xf (get-in memory [:state :queries] {})
                                          (get-in memory [:state :charts] {}))
-              (self/call-llm model (:content system-msg) input-parts tools tracking-opts))))
+              (self/call-llm model (:content system-msg) input-parts tools tracking-opts llm-opts))))
 
 ;;; Memory management
 

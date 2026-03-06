@@ -208,32 +208,44 @@
   `tracking-opts` is a map with analytics context for prometheus and snowplow events. See [[report-token-usage-xf]]
   above for details.
 
+  `llm-opts` is an optional map of provider-facing call options. Currently this
+  supports `:tool-choice`, used by profiles like `:sql` that must end in a tool
+  call instead of plain assistant text.
+
   Returns a reducible that, when consumed, traces the full LLM round-trip
   (HTTP call + streaming response) as an OTel span. Retries transient errors
   (429 rate limit, 529 overloaded, connection errors) up to 3 attempts with
   exponential backoff, matching the Python ai-service retry behavior."
-  [provider-and-model system-msg parts tools tracking-opts]
-  (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)]
-    (log/info "Calling LLM" {:provider provider :model model :parts (count parts) :tools (count tools)})
-    (let [tracking-opts  (assoc tracking-opts :model model)
-          streaming-opts (cond-> {:model model :input parts :tools (vec tools)}
-                           system-msg (assoc :system system-msg))
-          make-source    (fn []
-                           (eduction (comp (core/tool-executor-xf tools)
-                                           (core/lite-aisdk-xf)
-                                           (report-aisdk-errors-xf tracking-opts)
-                                           (report-token-usage-xf tracking-opts))
-                                     (stream-fn streaming-opts)))]
-      (reify clojure.lang.IReduceInit
-        (reduce [_ rf init]
-          (with-span :info {:name       :metabot-v3.agent/call-llm
-                            :provider   provider
-                            :model      model
-                            :part-count (count parts)
-                            :tool-count (count tools)}
-            (with-retries
-              tracking-opts
-              #(reduce rf init (make-source)))))))))
+  ([provider-and-model system-msg parts tools tracking-opts]
+   (call-llm provider-and-model system-msg parts tools tracking-opts nil))
+  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
+   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)]
+     (log/info "Calling LLM" {:provider    provider
+                              :model       model
+                              :parts       (count parts)
+                              :tools       (count tools)
+                              :tool-choice tool-choice})
+     (let [tracking-opts  (assoc tracking-opts :model model)
+           streaming-opts (cond-> {:model model :input parts :tools (vec tools)}
+                            system-msg              (assoc :system system-msg)
+                            (and (seq tools)
+                                 tool-choice)       (assoc :tool_choice tool-choice))
+           make-source    (fn []
+                            (eduction (comp (core/tool-executor-xf tools)
+                                            (core/lite-aisdk-xf)
+                                            (report-aisdk-errors-xf tracking-opts)
+                                            (report-token-usage-xf tracking-opts))
+                                      (stream-fn streaming-opts)))]
+       (reify clojure.lang.IReduceInit
+         (reduce [_ rf init]
+           (with-span :info {:name       :metabot-v3.agent/call-llm
+                             :provider   provider
+                             :model      model
+                             :part-count (count parts)
+                             :tool-count (count tools)}
+             (with-retries
+               tracking-opts
+               #(reduce rf init (make-source))))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.

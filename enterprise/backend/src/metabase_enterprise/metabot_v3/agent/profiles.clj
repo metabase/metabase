@@ -99,6 +99,8 @@
                     #'agent-tools/todo-write-tool
                     #'agent-tools/todo-read-tool]})
 
+;; SQL responses are rendered from tool results in the native port, so this
+;; profile must always end with a tool call rather than free-form assistant text.
 (register-profile!
  {:name                :sql
   :prompt-template     "sql-querying-only.selmer"
