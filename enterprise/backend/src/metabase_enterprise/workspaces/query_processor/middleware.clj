@@ -31,18 +31,11 @@
           ;; Drivers like Snowflake uppercase unquoted identifiers; without quoting, a lowercase
           ;; isolation schema like `mb__isolation_xxx` would become `MB__ISOLATION_XXX` and not match.
           ;; The same applies to table names containing lowercase characters.
-          drv       driver/*driver*
-          quote-id  (fn [s] (if s (sql.u/quote-name drv :table s) s))
-          remapping (update remapping :tables
-                            (fn [tables]
-                              (into {}
-                                    (map (fn [[src tgt]]
-                                           [src (-> tgt
-                                                    (update :schema quote-id)
-                                                    (update :table quote-id))]))
-                                    tables)))]
+          quote-id  (fn [s] (if s (sql.u/quote-name driver/*driver* :table s) s))
+          ;; tables has the form {:schema,:table} => {:schema,:table}, and we want to quote the target schema + table.
+          remapping (update remapping :tables update-vals #(update-vals % quote-id))]
       (u/update-in-if-exists query [:stages 0 :native]
-                             (fn [sql] (sql-tools/replace-names drv
+                             (fn [sql] (sql-tools/replace-names driver/*driver*
                                                                 sql
                                                                 remapping
                                                                 {:allow-unused? true}))))))
