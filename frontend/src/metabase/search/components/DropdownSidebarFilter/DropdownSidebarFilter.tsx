@@ -3,6 +3,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { isEmpty } from "underscore";
 
+import { useCaptureEvent } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -106,6 +107,17 @@ export const DropdownSidebarFilter = ({
       return isPopoverOpen ? "chevronup" : "chevrondown";
     }
   };
+
+  useCaptureEvent(
+    "keydown",
+    (e) => {
+      if (e.key === "Escape") {
+        e.stopImmediatePropagation();
+        setIsPopoverOpen(false);
+      }
+    },
+    { enabled: isPopoverOpen },
+  );
 
   return (
     <Popover
