@@ -23,7 +23,7 @@
 
   .body {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
   }
 
   &[data-variant="stretch"] {
