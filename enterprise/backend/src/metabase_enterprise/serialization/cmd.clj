@@ -43,7 +43,7 @@
       :or   {token-check? true
              require-initialized-db? true}}]
   (plugins/load-plugins!)
-  (mdb/setup-db! :create-sample-content? false)
+  (mdb/setup-db!)
   (when (and require-initialized-db? (not (setup/has-user-setup)))
     (throw (ex-info "You cannot `import` into an empty database. Please set up Metabase normally, then retry." {})))
   (when token-check?
@@ -98,7 +98,7 @@
   "Exports Metabase app data to directory at path"
   [path {:keys [collection-ids] :as opts}]
   (log/infof "Exporting Metabase to %s" path)
-  (mdb/setup-db! :create-sample-content? false)
+  (mdb/setup-db!)
   (check-premium-token!)
   (t2/select :model/User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (let [f (io/file path)]

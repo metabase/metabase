@@ -19,7 +19,7 @@
 (deftest metabase-analytics-metrics-test
   (testing "Metabase Analytics doesn't contribute to stats"
     (mt/with-temp-empty-app-db [_conn :h2]
-      (mdb/setup-db! :create-sample-content? false)
+      (mdb/setup-db!)
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
       (testing "sense check: Collection, Dashboard, and Cards exist"
         (is (true? (t2/exists? :model/Collection)))
@@ -41,7 +41,7 @@
 
 (deftest ee-transform-metrics-test
   (mt/with-temp-empty-app-db [_conn :h2]
-    (mdb/setup-db! :create-sample-content? false)
+    (mdb/setup-db!)
     (testing "with no transforms"
       (is (=? {:transforms 0 :transform_runs_last_24h 0}
               (ee-stats/ee-transform-metrics))))
