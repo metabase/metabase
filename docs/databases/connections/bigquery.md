@@ -97,7 +97,7 @@ This can be useful for [auditing](../../usage-and-performance-tools/usage-analyt
 
 ### Maximum bytes billed per query
 
-Set an upper limit on the number of bytes a single query can scan. If a query would exceed this limit, BigQuery rejects it before it runs — preventing accidental full-table scans on large tables from causing unexpected costs.
+Set an upper limit on the number of bytes a single query can scan. If a query exceeds this limit, BigQuery will reject it before it runs, preventing accidental full-table scans on large tables from causing unexpected costs.
 
 The value is specified in **bytes**. For example:
 
