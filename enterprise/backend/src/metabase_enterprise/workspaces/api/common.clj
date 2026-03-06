@@ -1,6 +1,6 @@
 (ns metabase-enterprise.workspaces.api.common
   "Shared schemas, validations, and handler logic for workspace API routes.
-  Used by both `workspaces.api` (service-user routes) and `agent-api.workspace` (agent routes)."
+  Used by both `workspaces.api` and `agent-api.workspace` (agent routes)."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -27,7 +27,6 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -51,10 +50,7 @@
    [:database_id ::ws.t/appdb-id]
    [:status ::status]
    [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]
-   ;; Only present in POST response - the unmasked API key for workspace service user.
-   ;; This is the only time the key is available; after creation it's hashed and unrecoverable.
-   [:api_key {:optional true} :string]])
+   [:updated_at ms/TemporalInstant]])
 
 ;; Transform-related schemas (adapted from transforms/api.clj)
 ;; TODO (Chris 2026-02-02) -- We should reuse these schemas, by exposing common types from the transforms module. They *can* match exactly.
@@ -196,13 +192,11 @@
   (boolean (#{1 true} v)))
 
 (defn ws->response
-  "Transform a workspace record into an API response, computing the backwards-compatible status.
-   If :api_key is present (only at creation time), it is preserved in the response."
+  "Transform a workspace record into an API response, computing the backwards-compatible status."
   [ws]
   (-> ws
-      (select-keys [:id :name :collection_id :database_id :created_at :updated_at :api_key])
-      (assoc :status (ws.model/computed-status ws))
-      (cond-> (:api_key ws) (update :api_key u.secret/expose))))
+      (select-keys [:id :name :collection_id :database_id :created_at :updated_at])
+      (assoc :status (ws.model/computed-status ws))))
 
 (defn check-transforms-enabled!
   "Validates that the database supports transforms: exists, is not sample/audit, supports :transforms/table, and no DB routing."

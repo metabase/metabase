@@ -15,7 +15,7 @@
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :as routes.common :refer [+auth]]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.config.core :as config]
    [metabase.driver.util :as driver.u]
    [metabase.request.core :as request]
@@ -26,83 +26,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;;; ------------------------------------------------- Authorization --------------------------------------------------
-
-(def ^:private ws-prefix "/api/ee/workspace/\\d+")
-
-(defn- ws-pattern
-  "Compile a regex matching the workspace API prefix followed by `suffix`."
-  ^java.util.regex.Pattern [suffix]
-  (re-pattern (str ws-prefix suffix)))
-
-;; Service users may read workspace state, manage transforms, and archive their own workspace.
-;; All other routes relate to the lifecycle of the workspace itself, and require superuser — including:
-;;   GET/POST  /                              (list/create workspaces)
-;;   GET       /enabled, /database, /checkout (cross-workspace state)
-;;   PUT       /:ws-id                        (reconfigure workspace)
-;;   POST      /:ws-id/unarchive              (unarchive workspace)
-;;   DELETE    /:ws-id                        (delete workspace)
-;;   POST      /:ws-id/merge                  (merge workspace)
-;;   POST      /:ws-id/transform/:tx-id/merge (merge single transform)
-;;   POST      /test-resources                (create test resources - available in non-prod environments only)
-(def ^:private service-user-patterns
-  "URI patterns that workspace service users may access.
-   New routes default to admin-only for safety."
-  (update-vals
-   {;; Read workspace state
-    :get    ["$"
-             "/table$"
-             "/log$"
-             "/graph$"
-             "/problem$"
-             "/external/transform$"
-             "/input/pending$"
-             "/transform$"
-             "/transform/[^/]+$"]
-    ;; Manage & run transforms
-    :post   ["/archive$"
-             "/transform$"
-             "/transform/[^/]+/archive$"
-             "/transform/[^/]+/unarchive$"
-             "/transform/validate/target$"
-             "/run$"
-             "/transform/[^/]+/run$"
-             "/transform/[^/]+/dry-run$"
-             "/query$"]
-    :put    ["/transform/[^/]+$"]
-    :delete ["/transform/[^/]+$"]}
-   (partial mapv ws-pattern)))
-
-(defn- service-user-allowed?
-  "True if this request can be made by a workspace's service user."
-  [{:keys [uri request-method]}]
-  (when-let [patterns (get service-user-patterns request-method)]
-    (some #(re-matches % uri) patterns)))
-
-(defn- owns-workspace?
-  "True if the current user is the service user for the workspace in this request's URI."
-  [uri]
-  (when-let [[_ ws-id-str] (re-find #"/api/ee/workspace/(\d+)" uri)]
-    (let [ws-id   (parse-long ws-id-str)
-          user-id api/*current-user-id*]
-      (and user-id (t2/exists? :model/Workspace :id ws-id :execution_user user-id)))))
-
-(defn- authorize*
-  "Authorization middleware for workspace routes.
-
-   Access rules:
-   - Service user routes: superuser OR the workspace's own service user
-   - All other routes: superuser required (default)"
-  [handler]
-  (fn [request respond raise]
-    (if (service-user-allowed? request)
-      (api/check-403 (or api/*is-superuser?* (owns-workspace? (:uri request))))
-      (api/check-superuser))
-    (handler request respond raise)))
-
-(def ^:private +authorize
-  (routes.common/wrap-middleware-for-open-api-spec-generation authorize*))
 
 ;;; --------------------------------------------------- Routes -------------------------------------------------------
 
@@ -136,14 +59,12 @@
       [:inputs [:sequential ::ws.api.common/input-table]]
       [:outputs [:sequential ::ws.api.common/output-table]]]
   "Get workspace tables"
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
   (ws.api.common/get-workspace-tables ws-id))
 
 (api.macros/defendpoint :get "/:ws-id" :- ws.api.common/Workspace
   "Get a single workspace by ID"
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
   (ws.api.common/get-workspace ws-id))
@@ -164,7 +85,6 @@
                            [:status [:maybe :keyword]]
                            [:message [:maybe :string]]]]]]
   "Get workspace creation status and recent log entries for polling during async setup"
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
   (ws.api.common/get-workspace-log ws-id))
@@ -267,7 +187,6 @@
 
 (api.macros/defendpoint :post "/:ws-id/archive" :- ws.api.common/Workspace
   "Archive a workspace. Deletes the isolated schema and tables, but preserves mirrored entities."
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params
    _body-params]
@@ -295,7 +214,6 @@
 
 (api.macros/defendpoint :get "/:ws-id/external/transform" :- [:map [:transforms [:sequential ws.api.common/ExternalTransform]]]
   "Get transforms that are external to the workspace, i.e. no matching workspace_transform row exists."
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    {:keys [database-id]} :- [:map [:database-id {:optional true} ::ws.t/appdb-id]]]
   (ws.api.common/get-external-transforms ws-id database-id))
@@ -307,7 +225,6 @@
       [:not_run [:sequential ::ws.t/ref-id]]]
   "Execute all transforms in the workspace in dependency order.
    Returns which transforms succeeded, failed, and were not run."
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params
    ;; Hmmm, I wonder why this isn't a boolean? T_T
@@ -316,7 +233,6 @@
 
 (api.macros/defendpoint :get "/:ws-id/graph" :- ws.api.common/GraphResult
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
   (ws.api.common/get-workspace-graph ws-id))
@@ -334,7 +250,6 @@
    - data:        extra information, shape depends on the problem type
 
    See `metabase-enterprise.workspaces.types/problem-types` for the full list."
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
   (ws.api.common/get-workspace-problems ws-id))
@@ -342,7 +257,6 @@
 (api.macros/defendpoint :post "/:ws-id/transform/validate/target"
   :- [:map [:status :int] [:body [:or :string i18n/LocalizedString]]]
   "Validate the target table for a workspace transform"
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    {:keys [transform-id]} :- [:map [:transform-id {:optional true} ::ws.t/ref-id]]
    {:keys [db_id target]} :- [:map
@@ -357,7 +271,6 @@
 (api.macros/defendpoint :post "/:ws-id/transform"
   :- ws.api.common/WorkspaceTransform
   "Add another transform to the Changeset. This could be a fork of an existing global transform, or something new."
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params
    body :- [:map #_{:closed true}
@@ -370,13 +283,11 @@
 
 (api.macros/defendpoint :get "/:ws-id/transform" :- [:map [:transforms [:sequential ws.api.common/WorkspaceTransformListing]]]
   "Get all transforms in a workspace."
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]]
   (ws.api.common/list-transforms ws-id))
 
 (api.macros/defendpoint :get "/:ws-id/transform/:tx-id" :- ws.api.common/WorkspaceTransform
   "Get a specific transform in a workspace."
-  {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (ws.api.common/fetch-ws-transform ws-id tx-id))
 
@@ -384,7 +295,6 @@
   "Update or create a transform in a workspace.
    If the transform exists, updates it. If it doesn't exist, creates a new transform with the provided ref_id.
    For creation, name, source, and target are required."
-  {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
    _query-params
    body :- [:map
@@ -397,20 +307,17 @@
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/archive" :- :nil
   "Mark the given transform to be archived when the workspace is merged.
    For provisional transforms we will skip even creating it in the first place."
-  {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (ws.api.common/archive-transform! ws-id tx-id))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/unarchive" :- :nil
   "Unmark the given transform for archival. This will recall the last definition it had within the workspace."
-  {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (ws.api.common/unarchive-transform! ws-id tx-id))
 
 (api.macros/defendpoint :delete "/:ws-id/transform/:tx-id" :- :nil
   "Discard a transform from the changeset.
    Equivalent to resetting a checked-out transform to its global definition, or deleting a provisional transform."
-  {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (ws.api.common/delete-transform! ws-id tx-id))
 
@@ -423,7 +330,6 @@
   When run_stale_ancestors is true, any stale ancestor transforms will be executed first
   in dependency order. If any ancestor fails, execution stops and remaining ancestors
   are marked as not_run. The target transform will not run if any ancestor failed."
-  {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
    _query-params
    {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true} ::ws.t/flag]]]
@@ -439,7 +345,6 @@
   When run_stale_ancestors is true, any stale ancestor transforms will be executed first
   in dependency order (these ARE persisted). If any ancestor fails, execution stops and
   the dry-run will not proceed."
-  {:access :workspace}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
    _query-params
    {:keys [run_stale_ancestors]} :- [:map [:run_stale_ancestors {:optional true} ::ws.t/flag]]]
@@ -450,7 +355,6 @@
   "Execute an arbitrary SQL query in the workspace's isolated database context.
    Table references are remapped to isolated workspace tables.
    Returns the first 2000 rows of query results."
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params
    {:keys [sql]} :- [:map [:sql [:string {:min 1}]]]]
@@ -461,7 +365,6 @@
 (api.macros/defendpoint :get "/:ws-id/input/pending"
   :- [:map [:inputs [:sequential ws.api.common/PendingInput]]]
   "List all input tables that haven't been granted access yet, excluding tables shadowed by workspace outputs."
-  {:access :workspace}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]]
   (ws.api.common/get-pending-inputs ws-id))
 
@@ -713,4 +616,4 @@
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace/` routes."
-  (api.macros/ns-handler *ns* +authorize +auth))
+  (api.macros/ns-handler *ns* api/+check-superuser +auth))
