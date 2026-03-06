@@ -107,6 +107,17 @@
     (str database_schema "." name)
     name))
 
+(defn- fetch-current-user-info
+  []
+  (try
+    (when-let [user (tool-structured-output (entity-details/get-current-user {}))]
+      (-> user
+          (update :type #(or % :user))
+          (assoc :email (or (:email user) (:email-address user)))))
+    (catch Exception e
+      (log/error e "Error fetching current user info")
+      nil)))
+
 (defn- format-simple-entity
   [entity]
   (te/lines
@@ -311,5 +322,6 @@
   {:current_time (format-current-time context)
    :first_day_of_week (get context :first_day_of_week "Sunday")
    :sql_dialect (extract-sql-dialect context)
+   :current_user_info (format-current-user-info)
    :viewing_context (format-viewing-context context)
    :recent_views (format-recent-views context)})

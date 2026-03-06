@@ -75,8 +75,9 @@
   - template: Template string (from load-system-prompt-template)
   - context: Map of template variables
 
-  Common context variables:
-  - :current-time - User's current time string
+   Common context variables:
+   - :current-user-info - Formatted current user info and glossary
+   - :current-time - User's current time string
   - :first-day-of-week - Calendar week start (default \"Sunday\")
   - :sql-dialect - SQL dialect name
   - :sql-dialect-instructions - Dialect-specific guidance (markdown)
@@ -203,6 +204,8 @@
             dialect-instructions (when sql-dialect
                                    (get-cached-dialect-instructions sql-dialect))
             tool-instructions    (extract-tool-instructions tools)
+            current-user-info    (or (get context :current_user_info)
+                                     (get context :current-user-info))
             current-time         (or (get context :current_time)
                                      (get context :current-time))
             first-day-of-week    (or (get context :first_day_of_week)
@@ -212,6 +215,7 @@
             recent-views         (or (get context :recent_views)
                                      (get context :recent-views))
             template-context     {:current_time             current-time
+                                  :current_user_info        current-user-info
                                   :first_day_of_week        first-day-of-week
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_instructions dialect-instructions
