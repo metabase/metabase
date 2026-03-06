@@ -5,5 +5,5 @@
   "gulp.autoDetect": "off",
   "npm.autoDetect": "off",
   "typescript.tsdk": "node_modules/typescript/lib",
-  "cssVariables.lookupFiles": ["**/*.d.css"]
+  "cssVariables.lookupFiles": ["**/*.d.css", "node_modules/@mantine/core/*.css"]
 }
