@@ -694,6 +694,28 @@
                           :tracking-opts   {:session-id "00000000-0000-0000-0000-000000000003"}})
         (is (false? @classify-called))))))
 
+(deftest user-intent-not-tracked-when-internal-tasks-disabled-test
+  (let [opts            {:messages      [{:role :user :content "Show sales by region"}]
+                         :state         {}
+                         :context       {}
+                         :profile-id    :internal
+                         :tracking-opts {:session-id         "00000000-0000-0000-0000-000000000005"
+                                         :track-user-intent? true}}
+        classify-called (atom 0)]
+    (with-redefs [openrouter/openrouter
+                  (fn [_] (mut/mock-llm-response mock-llm-response-for-intent))
+
+                  agent-analytics/classify-and-track-user-intent-async!
+                  (fn [_ _] (swap! classify-called inc))]
+      (testing "does not call classify-and-track-user-intent-async! when ee-ai-metabot-internal-tasks-enabled? is false"
+        (mt/with-temporary-setting-values [ee-ai-metabot-internal-tasks-enabled? false]
+          (run-agent-loop! opts)
+          (is (zero? @classify-called))))
+      (testing "calls classify-and-track-user-intent-async! when ee-ai-metabot-internal-tasks-enabled? is true"
+        (mt/with-temporary-setting-values [ee-ai-metabot-internal-tasks-enabled? true]
+          (run-agent-loop! opts)
+          (is (= 1 @classify-called)))))))
+
 (deftest user-intent-classifier-exception-swallowed-test
   (testing "does not propagate exception if classify-user-intent throws"
     (let [classify-called (atom false)]
