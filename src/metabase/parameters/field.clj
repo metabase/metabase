@@ -2,15 +2,17 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.field.search-values-query :as search-values-query]
-   [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.metadata-from-qp :as warehouse-schema.metadata-from-qp]
    [toucan2.core :as t2])
   (:import
    (java.text NumberFormat)))
@@ -101,12 +103,6 @@
     (.parse (NumberFormat/getInstance) value)
     value))
 
-(defn- table-id [field]
-  (u/the-id (:table_id field)))
-
-(defn- db-id [field]
-  (u/the-id (t2/select-one-fn :db_id :model/Table :id (table-id field))))
-
 (defn remapped-value
   "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like
 
@@ -120,17 +116,16 @@
       ;; -> [20 \"Peter Watsica\"]"
   [field remapped-field value]
   (try
-    (let [field   (follow-fks field)
-          results (qp/process-query
-                   {:database (db-id field)
-                    :type     :query
-                    :query    {:source-table (table-id field)
-                               :filter       [:= [:field (u/the-id field) nil] value]
-                               :fields       [[:field (u/the-id field) nil]
-                                              [:field (u/the-id remapped-field) nil]]
-                               :limit        1}})]
-      ;; return first row if it exists
-      (first (get-in results [:data :rows])))
+    (let [field          (follow-fks field)
+          field-col      (lib-be/instance->metadata field :metadata/column)
+          remapped-col   (lib-be/instance->metadata remapped-field :metadata/column)
+          query-xform    (fn [query]
+                           (-> query
+                               (lib/filter (lib/= field-col value))
+                               (lib/with-fields [field-col remapped-col])
+                               (lib/limit 1)))]
+      (first (get-in (warehouse-schema.metadata-from-qp/table-query (u/the-id (:table_id field)) query-xform)
+                     [:data :rows])))
     ;; as with fn above this error can usually be safely ignored which is why log level is log/debug
     (catch Throwable e
       (log/debug e "Error searching for remapping")
