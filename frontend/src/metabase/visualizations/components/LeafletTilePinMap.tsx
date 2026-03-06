@@ -30,10 +30,18 @@ type TileLayerWithInternals = L.TileLayer & {
   createTile: (coords: L.Coords, done?: L.DoneCallback) => HTMLElement;
 };
 
-function hasTileLayerInternals(
+function isTileLayerWithInternals(
   tileLayer: L.TileLayer,
 ): tileLayer is TileLayerWithInternals {
-  return "_url" in tileLayer;
+  return (
+    "_url" in tileLayer &&
+    "_tileOnError" in tileLayer &&
+    "createTile" in tileLayer
+  );
+}
+
+function isTileImage(tile: unknown): tile is TileImage {
+  return tile instanceof HTMLImageElement;
 }
 
 interface LeafletTilePinMapProps extends LeafletMapProps {
@@ -72,7 +80,7 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
 
     try {
       const { pinTileLayer } = this;
-      if (!pinTileLayer || !hasTileLayerInternals(pinTileLayer)) {
+      if (!pinTileLayer || !isTileLayerWithInternals(pinTileLayer)) {
         return;
       }
 
@@ -139,24 +147,22 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
    */
   _overrideCreateTileToUseFetch = (tileLayerInstance: L.TileLayer) => {
     const onTileUnload = (event: L.TileEvent) => {
-      const tile = event.tile as TileImage | undefined;
-      if (!tile) {
-        return;
-      }
+      const { tile } = event;
 
       try {
-        tile._fetchCtrl?.abort();
+        if (isTileImage(tile)) {
+          tile._fetchCtrl?.abort();
+        }
       } catch {}
     };
 
-    (tileLayerInstance as unknown as L.Evented).on(
-      "tileabort",
-      onTileUnload as L.LeafletEventHandlerFn,
-    );
     tileLayerInstance.on("tileunload", onTileUnload);
 
-    const tileLayer = tileLayerInstance as TileLayerWithInternals;
-    tileLayer.createTile = function (
+    if (!isTileLayerWithInternals(tileLayerInstance)) {
+      return;
+    }
+
+    tileLayerInstance.createTile = function (
       this: TileLayerWithInternals,
       coords: L.Coords,
       done?: L.DoneCallback,
@@ -173,13 +179,11 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
       const controller = new AbortController();
       tile._fetchCtrl = controller;
 
-      (
-        GET(tileUrl, {
-          fetch: true,
-          signal: controller.signal,
-          transformResponse: ({ response }: { response: Response }) => response,
-        })() as Promise<Response>
-      )
+      GET(tileUrl, {
+        fetch: true,
+        signal: controller.signal,
+        transformResponse: ({ response }: { response: Response }) => response,
+      })()
         .then((response) => response.blob())
         .then((blob) => {
           const reader = new FileReader();
