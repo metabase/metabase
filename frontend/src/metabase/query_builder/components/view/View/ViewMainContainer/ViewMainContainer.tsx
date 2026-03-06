@@ -29,7 +29,6 @@ import type { QueryBuilderMode } from "metabase-types/store";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
-import { SqlFixerInlinePromptProvider } from "./SqlFixerInlinePromptContext";
 import ViewMainContainerS from "./ViewMainContainer.module.css";
 
 interface ViewMainContainerProps {
@@ -121,7 +120,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
 
   const availableHeight = mainHeight ? mainHeight - footerHeight : undefined;
 
-  const content = (
+  return (
     <Box
       component="main"
       className={cx(ViewMainContainerS.QueryBuilderMain, {
@@ -161,10 +160,4 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       </Box>
     </Box>
   );
-
-  if (!isNative) {
-    return content;
-  }
-
-  return <SqlFixerInlinePromptProvider>{content}</SqlFixerInlinePromptProvider>;
 };

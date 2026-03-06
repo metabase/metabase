@@ -42,19 +42,14 @@ function useRegisterCodeEditorMetabotContext(
   bufferId: string,
 ): void {
   useRegisterMetabotContextProvider(
-    async () =>
-      buffer
-        ? {
-            user_is_viewing: [
-              {
-                type: "code_editor",
-                buffers: [
-                  extractMetabotBufferContext(buffer, databaseId, bufferId),
-                ],
-              },
-            ],
-          }
-        : {},
+    async () => ({
+      user_is_viewing: [
+        {
+          type: "code_editor",
+          buffers: [extractMetabotBufferContext(buffer, databaseId, bufferId)],
+        },
+      ],
+    }),
     [buffer],
   );
 }
