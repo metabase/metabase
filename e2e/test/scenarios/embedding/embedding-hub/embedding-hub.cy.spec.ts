@@ -1032,10 +1032,10 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
-      cy.log("wait for the all steps to collapse");
+      cy.log("wait for create tenants step to be active and unlocked");
       H.main()
-        .findByRole("radio", { name: /Row and column level security/ })
-        .should("not.exist");
+        .findByRole("listitem", { name: "Create tenants" })
+        .should("have.attr", "data-active", "true");
 
       H.main()
         .findByText("Which data segregation strategy does your database use?")
