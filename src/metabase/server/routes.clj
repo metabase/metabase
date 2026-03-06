@@ -71,6 +71,10 @@
 (defroutes ^:private static-files-handler
   (GET "/embedding-sdk.js" request
     ((mw.embedding-sdk-bundle/serve-bundle-handler) request))
+  ;; All SDK chunks live in embedding-sdk/chunks/ — filenames contain content
+  ;; hashes, so we serve them with far-future immutable cache headers.
+  (GET ["/embedding-sdk/chunks/:filename" :filename #"[^/]+\.js"] [filename :as request]
+    ((mw.embedding-sdk-bundle/serve-chunk-handler filename) request))
 
   ;; fall back to serving _all_ other files under /app
   (route/resources "/" {:root "frontend_client/app"})

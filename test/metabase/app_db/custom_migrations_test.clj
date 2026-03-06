@@ -2775,3 +2775,155 @@
           (is (= db-id (id->target target-id)))
           (is (nil? (id->target none-id)))
           (is (nil? (id->target deleted-id))))))))
+
+(deftest unify-source-tables-format-test
+  (testing "v59.2026-03-03T12:00:00: convert source-tables from map to vec format"
+    (impl/test-migrations ["v59.2026-03-03T12:00:00"] [migrate!]
+      (let [user-id     (:id (new-instance-with-default :core_user))
+            db-id       (:id (new-instance-with-default :metabase_database))
+            ;; source-tables as map with int values (FE format)
+            int-source  (json/encode {:type "python" :body "x=1" :source-database db-id
+                                      :source-tables {"orders" 42 "products" 99}})
+            ;; source-tables as map with ref values (normalized format)
+            ref-source  (json/encode {:type "python" :body "x=1" :source-database db-id
+                                      :source-tables {"input" {"database_id" db-id "schema" "public"
+                                                               "table" "my_table" "table_id" 7}}})
+            ;; query transform (no source-tables) — should be untouched
+            query-source (json/encode {:type "query" :query {:database db-id}})
+            target       (json/encode {:type "table" :schema "public" :name "out"})
+            insert-transform!
+            (fn [source]
+              (t2/insert-returning-pk!
+               :transform {:name               (mt/random-name)
+                           :source             source
+                           :target             target
+                           :source_type        "python"
+                           :source_database_id db-id
+                           :created_at         :%now
+                           :updated_at         :%now}))
+            int-id   (insert-transform! int-source)
+            ref-id   (insert-transform! ref-source)
+            query-id (insert-transform! query-source)
+            ;; Also test workspace_transform
+            ws-id    (:id (t2/insert-returning-instance!
+                           :workspace {:name       "test-ws"
+                                       :creator_id user-id
+                                       :created_at :%now
+                                       :updated_at :%now}))
+            _        (t2/insert! :workspace_transform
+                                 {:ref_id       (str (random-uuid))
+                                  :workspace_id ws-id
+                                  :name         "ws-transform"
+                                  :source       int-source
+                                  :target       target
+                                  :created_at   :%now
+                                  :updated_at   :%now})
+            get-source-tables (fn [table-name pk-map]
+                                (let [where (into [:and] (map (fn [[k v]] [:= k v]) pk-map))
+                                      row   (first (t2/query {:select [:source] :from [table-name] :where where}))]
+                                  (get (json/decode (:source row)) "source-tables")))]
+        (testing "Before migration, source-tables are maps"
+          (is (map? (get-source-tables :transform {:id int-id})))
+          (is (map? (get-source-tables :transform {:id ref-id}))))
+
+        (migrate!)
+
+        (testing "After migration, int-value maps become vec of entries"
+          (let [st (get-source-tables :transform {:id int-id})]
+            (is (sequential? st))
+            (is (= 2 (count st)))
+            (is (= #{"orders" "products"} (set (map #(get % "alias") st))))
+            (is (= #{42 99} (set (map #(get % "table_id") st))))))
+
+        (testing "After migration, ref-value maps become vec of entries with alias"
+          (let [st (get-source-tables :transform {:id ref-id})]
+            (is (sequential? st))
+            (is (= "input" (get (first st) "alias")))
+            (is (= 7 (get (first st) "table_id")))))
+
+        (testing "Query transforms are untouched"
+          (is (nil? (get-source-tables :transform {:id query-id}))))
+
+        (testing "workspace_transform is also migrated"
+          (let [ws-rows (t2/query {:select [:source] :from [:workspace_transform] :where [:= :workspace_id ws-id]})
+                st      (get (json/decode (:source (first ws-rows))) "source-tables")]
+            (is (sequential? st))
+            (is (= 2 (count st)))))
+
+        (testing "Rollback converts vec back to map"
+          (migrate! :down 58)
+          (let [st (get-source-tables :transform {:id int-id})]
+            (is (map? st))
+            (is (= 42 (get st "orders")))
+            (is (= 99 (get st "products")))))))))
+(deftest fix-clickhouse-upload-db-schema-names-test
+  (testing "FixClickHouseUploadDBSchemaNames, v59.2026-03-04T00:00:00: fix clickhouse upload db schema names"
+    (encryption-test/with-secret-key "fake-secret-key"
+      ;; Test when the upload db doesn't have an upload_schema_name set (both upload db and upload
+      ;; tables are in a bad state) and when it does have an upload_schema_name set (upload db and
+      ;; new upload tables are in a good state, but existing upload tables are in a bad state)
+      (doseq [uploads-schema-name [nil "db_foo"]]
+        (impl/test-migrations
+         ["v59.2026-03-04T00:00:00"] [migrate!]
+          (let [db-id (t2/insert-returning-pk! :metabase_database
+                                               {:name "clickhouse cloud upload db"
+                                                :engine "clickhouse"
+                                                :created_at :%now
+                                                :updated_at :%now
+                                                :uploads_enabled true
+                                                :uploads_schema_name uploads-schema-name
+                                                :uploads_table_prefix "uploads_"
+                                                :details (mi/encrypted-json-in {:dbname "db_foo"})})
+                insert-table! (fn [db-id name schema active is-upload display-name]
+                                (t2/insert-returning-pk! :metabase_table
+                                                         {:db_id db-id
+                                                          :name name
+                                                          :schema schema
+                                                          :active active
+                                                          :is_upload is-upload
+                                                          :display_name display-name
+                                                          :created_at :%now
+                                                          :updated_at :%now}))
+                ;; An uploads table in a good state, created before uploads_schema_name was set to null
+                uploaded-0 (insert-table! db-id "uploads_test_table_0" "db_foo" true true "Test Table 0")
+                ;; Two upload tables in a bad state, created after uploads_schema_name was set to null
+                uploaded-1 (insert-table! db-id "uploads_test_table_1" nil false true "Test Table 1")
+                uploaded-2 (insert-table! db-id "uploads_test_table_2" nil false true "Test Table 2")
+                ;; The two non-upload versions of the above tables, created by the sync process
+                synced-1 (insert-table! db-id "uploads_test_table_1" "db_foo" true false "Uploads Test Table 1")
+                synced-2 (insert-table! db-id "uploads_test_table_2" "db_foo" true false "Uploads Test Table 2")
+                ;; An unrelated non-upload table in the same schema that should be left alone
+                unrelated (insert-table! db-id "unrelated_table" "db_foo" true false "Unrelated Table")]
+            (migrate!)
+            ;; The uploads db has the correct uploads_schema_name from the details
+            (is (= "db_foo" (:uploads_schema_name (t2/select-one :metabase_database :id db-id))))
+            (are [exp table-id] (= exp
+                                   (t2/select-one [:metabase_table :name :schema :active :is_upload] :id table-id))
+              ;; The upload table that was already in a good state remains unchanged
+              {:name "uploads_test_table_0"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-0
+              ;; The two upload tables in a bad state are updated to be active and have the correct schema
+              {:name "uploads_test_table_1"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-1
+              {:name "uploads_test_table_2"
+               :schema "db_foo"
+               :active true
+               :is_upload true} uploaded-2
+              ;; The two non-upload tables created by the sync have been renamed and set as inactive
+              {:name "uploads_test_table_1_retired_69667"
+               :schema "db_foo"
+               :active false
+               :is_upload false} synced-1
+              {:name "uploads_test_table_2_retired_69667"
+               :schema "db_foo"
+               :active false
+               :is_upload false} synced-2
+              ;; The unrelated table remains unchanged
+              {:name "unrelated_table"
+               :schema "db_foo"
+               :active true
+               :is_upload false} unrelated)))))))
