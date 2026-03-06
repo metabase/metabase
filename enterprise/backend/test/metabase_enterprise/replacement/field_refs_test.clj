@@ -306,3 +306,73 @@
                                                                               :definition query}]
         (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
         (is (= updated-at (:updated_at (t2/select-one :model/Measure measure-id))))))))
+
+;;; ------------------------------------------------ Dashboard --------------------------------------------------------
+
+(deftest dashboard-upgrade-field-refs!-parameters-test
+  (testing "should upgrade refs in dashboard parameters with values_source_config"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card      {card-id :id}      {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
+                     :model/Dashboard {dashboard-id :id} {:parameters [{:id   "test-param"
+                                                                        :name "category"
+                                                                        :type :string/=
+                                                                        :values_source_type "card"
+                                                                        :values_source_config
+                                                                        {:card_id     card-id
+                                                                         :value_field [:field (mt/id :products :category) nil]}}]}]
+        (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
+        (is (=? {:parameters [{:name "category"
+                               :values_source_config {:card_id     card-id
+                                                      :value_field [:field "CATEGORY" {}]}}]}
+                (t2/select-one :model/Dashboard dashboard-id)))))))
+
+(deftest dashboard-upgrade-field-refs!-parameter-mappings-test
+  (testing "should upgrade refs in dashcard parameter mappings"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/breakout (lib.metadata/field mp (mt/id :orders :id)))
+                    lib/append-stage)]
+      (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query query}
+                     :model/Dashboard     {dashboard-id :id} {}
+                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id       dashboard-id
+                                                              :card_id            card-id
+                                                              :parameter_mappings [{:parameter_id "my-param"
+                                                                                    :card_id      card-id
+                                                                                    :target       [:dimension [:field (mt/id :orders :id) nil] {:stage-number 1}]}]}]
+        (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
+        (is (=? {:parameter_mappings [{:parameter_id "my-param"
+                                       :card_id      card-id
+                                       :target       [:dimension [:field "ID" {}] {:stage-number 1}]}]}
+                (t2/select-one :model/DashboardCard dashcard-id)))))))
+
+(deftest dashboard-upgrade-field-refs!-broken-source-card-test
+  (testing "should not crash when a dashcard references a card with a broken query"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card          {card-id :id}      {:dataset_query (lib/native-query mp "SELECT 1")}
+                     :model/Dashboard     {dashboard-id :id} {}
+                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id       dashboard-id
+                                                              :card_id            card-id
+                                                              :parameter_mappings [{:parameter_id "my-param"
+                                                                                    :card_id      card-id
+                                                                                    :target       [:dimension [:field 1 nil]]}]}]
+        ;; simulate a broken card
+        (t2/update! :model/Card card-id {:dataset_query {}})
+        (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
+        (is (=? {:parameter_mappings [{:target [:dimension [:field 1 nil]]}]}
+                (t2/select-one :model/DashboardCard dashcard-id)))))))
+
+(deftest dashboard-upgrade-field-refs!-no-changes-test
+  (testing "should not update a dashboard or dashcards when there are no changes"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card          {card-id :id}                            {:dataset_query query}
+                     :model/Dashboard     {dashboard-id :id, dash-updated :updated_at} {}
+                     :model/DashboardCard {dashcard-id :id, dc-updated :updated_at}
+                     {:dashboard_id       dashboard-id
+                      :card_id            card-id
+                      :parameter_mappings [{:parameter_id "my-param"
+                                            :card_id      card-id
+                                            :target       [:dimension [:field (mt/id :orders :id) nil]]}]}]
+        (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
+        (is (= dash-updated (:updated_at (t2/select-one :model/Dashboard dashboard-id))))
+        (is (= dc-updated (:updated_at (t2/select-one :model/DashboardCard dashcard-id))))))))
