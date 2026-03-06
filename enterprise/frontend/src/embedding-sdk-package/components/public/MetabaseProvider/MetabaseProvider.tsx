@@ -28,7 +28,9 @@ const MetabaseProviderInitDataWrapper = memo(function InitDataWrapper() {
 const MetabaseProviderInner = memo(function MetabaseProviderInner(
   props: Omit<MetabaseProviderProps, "children">,
 ) {
-  useLoadSdkBundle(props.authConfig.metabaseInstanceUrl);
+  useLoadSdkBundle(props.authConfig.metabaseInstanceUrl, {
+    useLegacyMonolithicBundle: props.useLegacyMonolithicBundle ?? false,
+  });
 
   const { isLoading } = useSdkLoadingState();
 
