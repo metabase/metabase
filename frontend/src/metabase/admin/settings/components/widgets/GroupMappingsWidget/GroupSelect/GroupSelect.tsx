@@ -54,7 +54,6 @@ export const GroupSelect = ({
   isCurrentUser = false,
   emptyListMessage = t`No groups`,
 }: GroupSelectProps) => {
-
   const triggerElement = (
     <div className={cx(CS.flex, CS.alignCenter)}>
       <GroupSummary
