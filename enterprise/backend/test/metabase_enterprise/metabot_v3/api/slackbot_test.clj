@@ -1601,7 +1601,7 @@
                          :total_tokens    5
                          :data            []})
             (is (= requester-id  (slackbot.persistence/response-owner-user-id channel-id slack-ts)))
-            (is (= later-user-id (slackbot.persistence/response-owner-user-id channel-id second-slack-ts))))))))))
+            (is (= later-user-id (slackbot.persistence/response-owner-user-id channel-id second-slack-ts)))))))))
 
 (deftest authorize-delete-request-test
   (testing "authorize-delete-request"
