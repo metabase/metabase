@@ -1,6 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import {
+  type BucketPickerItem,
+  BucketPickerPopover,
+} from "metabase/common/components/BucketPickerPopover";
 import type {
   DimensionMetadata,
   MetricDefinition,
@@ -9,11 +13,6 @@ import type {
   TemporalBucketDisplayInfo,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-
-import {
-  type BucketItem,
-  DimensionBucketPicker,
-} from "../DimensionBucketPicker";
 
 interface DimensionTemporalUnitPickerProps {
   definition: MetricDefinition;
@@ -66,7 +65,7 @@ export function DimensionTemporalUnitPicker({
     [definition, dimension],
   );
 
-  const items: BucketItem[] = useMemo(
+  const items: BucketPickerItem[] = useMemo(
     () => [
       ...buckets.map((bucket) => {
         const info = LibMetric.displayInfo(definition, bucket);
@@ -123,7 +122,7 @@ export function DimensionTemporalUnitPicker({
   );
 
   return (
-    <DimensionBucketPicker
+    <BucketPickerPopover
       triggerLabel={triggerLabel}
       items={items}
       onSelect={handleSelect}

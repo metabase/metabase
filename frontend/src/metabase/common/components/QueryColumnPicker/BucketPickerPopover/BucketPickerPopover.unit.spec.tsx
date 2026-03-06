@@ -8,7 +8,7 @@ import {
   columnFinder,
 } from "metabase-lib/test-helpers";
 
-import { BucketPickerPopover } from "./BucketPickerPopover";
+import { ColumnBucketPickerPopover } from "./ColumnBucketPickerPopover";
 
 const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 const findColumn = columnFinder(query, Lib.breakoutableColumns(query, 0));
@@ -20,7 +20,7 @@ function setup({ column }: { column: Lib.ColumnMetadata }) {
   const onSelect = jest.fn();
   render(
     <div data-testid="container">
-      <BucketPickerPopover
+      <ColumnBucketPickerPopover
         query={query}
         stageIndex={0}
         column={column}
@@ -49,7 +49,7 @@ async function setupTemporalBucketPicker({
   await screen.findByText("Year");
 }
 
-describe("BucketPickerPopover", () => {
+describe("ColumnBucketPickerPopover", () => {
   it("should collapse advanced temporal bucket options", async () => {
     const buckets = Lib.availableTemporalBuckets(query, 0, dateColumn);
     await setupTemporalBucketPicker({ column: dateColumn });

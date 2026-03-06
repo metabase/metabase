@@ -1,11 +1,10 @@
 import * as Lib from "metabase-lib";
 
-import { BaseBucketPickerPopover } from "./BaseBucketPickerPopover";
 import { BinningStrategyPickerPopover } from "./BinningStrategyPickerPopover";
 import { TemporalBucketPickerPopover } from "./TemporalBucketPickerPopover";
 import type { CommonBucketPickerProps } from "./types";
 
-interface BucketPickerPopoverProps
+interface ColumnBucketPickerPopoverProps
   extends Omit<CommonBucketPickerProps, "buckets"> {
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
@@ -16,14 +15,14 @@ interface BucketPickerPopoverProps
   };
 }
 
-function _BucketPickerPopover({
+export function ColumnBucketPickerPopover({
   query,
   stageIndex,
   column,
   hasBinning = false,
   hasTemporalBucketing = false,
   ...props
-}: BucketPickerPopoverProps) {
+}: ColumnBucketPickerPopoverProps) {
   if (hasBinning) {
     const buckets = Lib.availableBinningStrategies(query, stageIndex, column);
 
@@ -58,8 +57,3 @@ function _BucketPickerPopover({
 
   return null;
 }
-
-export const BucketPickerPopover = Object.assign(_BucketPickerPopover, {
-  displayName: "BucketPickerPopover",
-  TriggerButton: BaseBucketPickerPopover.TriggerButton,
-});

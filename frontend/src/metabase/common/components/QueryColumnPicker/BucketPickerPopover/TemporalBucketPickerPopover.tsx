@@ -1,19 +1,27 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import {
+  type BucketPickerItem,
+  BucketPickerPopover,
+} from "metabase/common/components/BucketPickerPopover";
 import * as Lib from "metabase-lib";
 
-import type { BucketListItem } from "./BaseBucketPickerPopover";
-import {
-  BaseBucketPickerPopover,
-  getBucketListItem,
-} from "./BaseBucketPickerPopover";
 import type { CommonBucketPickerProps } from "./types";
 
 export const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
 
-function checkBucketIsSelected(item: BucketListItem) {
-  return !!item.selected;
+function getBucketPickerItem(
+  query: Lib.Query,
+  stageIndex: number,
+  bucket: Lib.Bucket,
+): BucketPickerItem {
+  const info = Lib.displayInfo(query, stageIndex, bucket);
+  return {
+    displayName: info.displayName,
+    isDefault: info.default,
+    isSelected: info.selected,
+  };
 }
 
 export function TemporalBucketPickerPopover({
@@ -23,46 +31,60 @@ export function TemporalBucketPickerPopover({
   buckets,
   isEditing,
   onSelect,
-  ...props
+  hasChevronDown,
+  color,
+  className,
+  classNames,
 }: CommonBucketPickerProps) {
   const selectedBucket = useMemo(() => Lib.temporalBucket(column), [column]);
 
-  const items = useMemo(
+  const items: BucketPickerItem[] = useMemo(
     () => [
-      ...buckets.map((bucket) => getBucketListItem(query, stageIndex, bucket)),
+      ...buckets.map((bucket) =>
+        getBucketPickerItem(query, stageIndex, bucket),
+      ),
       {
         displayName: t`Don't bin`,
-        bucket: null,
-        selected: !selectedBucket && isEditing,
+        isSelected: !selectedBucket && isEditing,
       },
     ],
     [buckets, selectedBucket, isEditing, query, stageIndex],
   );
 
-  const handleBucketSelect = useCallback(
-    (bucket: Lib.Bucket | null) => {
+  const triggerLabel = useMemo(() => {
+    const displayBucket = isEditing
+      ? selectedBucket
+      : buckets.find((bucket) => {
+          const info = Lib.displayInfo(query, stageIndex, bucket);
+          return info.default;
+        });
+    if (displayBucket) {
+      const info = Lib.displayInfo(query, stageIndex, displayBucket);
+      return t`by ${info.displayName.toLowerCase()}`;
+    }
+    return t`Unbinned`;
+  }, [query, stageIndex, isEditing, selectedBucket, buckets]);
+
+  const handleSelect = useCallback(
+    (index: number) => {
+      const bucket: Lib.Bucket | null =
+        index < buckets.length ? buckets[index] : null;
       onSelect(Lib.withTemporalBucket(column, bucket));
     },
-    [column, onSelect],
+    [column, buckets, onSelect],
   );
 
   return (
-    <BaseBucketPickerPopover
-      {...props}
-      query={query}
-      isEditing={isEditing}
-      stageIndex={stageIndex}
+    <BucketPickerPopover
+      triggerLabel={triggerLabel}
+      ariaLabel={t`Temporal bucket`}
       items={items}
-      selectedBucket={selectedBucket}
-      triggerLabel={t`Temporal bucket`}
+      onSelect={handleSelect}
       initiallyVisibleItemsCount={INITIALLY_VISIBLE_ITEMS_COUNT}
-      checkBucketIsSelected={checkBucketIsSelected}
-      renderTriggerContent={renderTriggerContent}
-      onSelect={handleBucketSelect}
+      color={color}
+      hasChevronDown={hasChevronDown}
+      className={className}
+      classNames={classNames}
     />
   );
-}
-
-function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
-  return bucket ? t`by ${bucket.displayName.toLowerCase()}` : t`Unbinned`;
 }

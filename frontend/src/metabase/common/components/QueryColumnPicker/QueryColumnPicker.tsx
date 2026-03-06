@@ -26,7 +26,7 @@ import { DelayGroup, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import * as Lib from "metabase-lib";
 
-import { BucketPickerPopover } from "./BucketPickerPopover";
+import { ColumnBucketPickerPopover } from "./BucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
 
 const CUSTOM_EXPRESSION_SECTION_KEY = "custom-expression";
@@ -268,7 +268,7 @@ export function QueryColumnPicker({
 
       return (
         (hasBinning || hasTemporalBucketing) && (
-          <BucketPickerPopover
+          <ColumnBucketPickerPopover
             classNames={{
               root: S.itemWrapper,
               /*

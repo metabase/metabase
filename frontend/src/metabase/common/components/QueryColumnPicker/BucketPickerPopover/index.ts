@@ -1,1 +1,1 @@
-export * from "./BucketPickerPopover";
+export { ColumnBucketPickerPopover } from "./ColumnBucketPickerPopover";

@@ -9,7 +9,7 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
-import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
+import { ColumnBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Tooltip } from "metabase/ui";
 import { Box, type BoxProps, Flex } from "metabase/ui";
@@ -119,7 +119,7 @@ export function BreakoutColumnListItem({
             {displayName}
           </Box>
         </Flex>
-        <BucketPickerPopover
+        <ColumnBucketPickerPopover
           className={BreakoutColumnListItemS.BucketTriggerButton}
           query={query}
           stageIndex={stageIndex}

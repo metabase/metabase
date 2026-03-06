@@ -1,6 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import {
+  type BucketPickerItem,
+  BucketPickerPopover,
+} from "metabase/common/components/BucketPickerPopover";
 import type {
   BinningStrategy,
   DimensionMetadata,
@@ -10,10 +14,6 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 
 import { applyProjection } from "../../utils/metrics";
-import {
-  type BucketItem,
-  DimensionBucketPicker,
-} from "../DimensionBucketPicker";
 
 interface DimensionBinningPickerProps {
   definition: MetricDefinition;
@@ -59,7 +59,7 @@ export function DimensionBinningPicker({
     [definition, dimension],
   );
 
-  const items: BucketItem[] = useMemo(
+  const items: BucketPickerItem[] = useMemo(
     () => [
       ...strategies.map((strategy) => {
         const info = LibMetric.displayInfo(definition, strategy);
@@ -113,7 +113,7 @@ export function DimensionBinningPicker({
   );
 
   return (
-    <DimensionBucketPicker
+    <BucketPickerPopover
       triggerLabel={triggerLabel}
       items={items}
       onSelect={handleSelect}

@@ -1,16 +1,28 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import {
+  type BucketPickerItem,
+  BucketPickerPopover,
+} from "metabase/common/components/BucketPickerPopover";
 import * as Lib from "metabase-lib";
 
-import type { BucketListItem } from "./BaseBucketPickerPopover";
-import {
-  BaseBucketPickerPopover,
-  getBucketListItem,
-} from "./BaseBucketPickerPopover";
 import type { CommonBucketPickerProps } from "./types";
 
 const INITIALLY_VISIBLE_ITEMS_COUNT = 5;
+
+function getBucketPickerItem(
+  query: Lib.Query,
+  stageIndex: number,
+  bucket: Lib.Bucket,
+): BucketPickerItem {
+  const info = Lib.displayInfo(query, stageIndex, bucket);
+  return {
+    displayName: info.displayName,
+    isDefault: info.default,
+    isSelected: info.selected,
+  };
+}
 
 export function BinningStrategyPickerPopover({
   query,
@@ -19,54 +31,59 @@ export function BinningStrategyPickerPopover({
   buckets,
   isEditing,
   onSelect,
-  ...props
+  hasChevronDown,
+  color,
+  className,
+  classNames,
 }: CommonBucketPickerProps) {
   const selectedBucket = useMemo(() => Lib.binning(column), [column]);
 
-  const items = useMemo(
+  const items: BucketPickerItem[] = useMemo(
     () => [
-      ...buckets.map((bucket) => getBucketListItem(query, stageIndex, bucket)),
-      { displayName: t`Don't bin`, bucket: null },
+      ...buckets.map((bucket) =>
+        getBucketPickerItem(query, stageIndex, bucket),
+      ),
+      {
+        displayName: t`Don't bin`,
+        isSelected: !selectedBucket && isEditing,
+      },
     ],
-    [query, stageIndex, buckets],
+    [query, stageIndex, buckets, selectedBucket, isEditing],
   );
 
-  const handleBucketSelect = useCallback(
-    (bucket: Lib.Bucket | null) => {
+  const triggerLabel = useMemo(() => {
+    const displayBucket = isEditing
+      ? selectedBucket
+      : buckets.find((bucket) => {
+          const info = Lib.displayInfo(query, stageIndex, bucket);
+          return info.default;
+        });
+    if (displayBucket) {
+      return Lib.displayInfo(query, stageIndex, displayBucket).displayName;
+    }
+    return t`Unbinned`;
+  }, [query, stageIndex, isEditing, selectedBucket, buckets]);
+
+  const handleSelect = useCallback(
+    (index: number) => {
+      const bucket: Lib.Bucket | null =
+        index < buckets.length ? buckets[index] : null;
       onSelect(Lib.withBinning(column, bucket));
     },
-    [column, onSelect],
-  );
-
-  const checkBucketIsSelected = useCallback(
-    (item: BucketListItem) => {
-      // `bucket: null` represents the "Don't bin" option
-      // It's considered selected when editing an existing clause without a binning strategy
-      if (item.bucket === null) {
-        return !selectedBucket && isEditing;
-      }
-      return !!item.selected;
-    },
-    [selectedBucket, isEditing],
+    [column, buckets, onSelect],
   );
 
   return (
-    <BaseBucketPickerPopover
-      {...props}
-      query={query}
-      stageIndex={stageIndex}
+    <BucketPickerPopover
+      triggerLabel={triggerLabel}
+      ariaLabel={t`Binning strategy`}
       items={items}
-      selectedBucket={selectedBucket}
-      isEditing={isEditing}
-      triggerLabel={t`Binning strategy`}
+      onSelect={handleSelect}
       initiallyVisibleItemsCount={INITIALLY_VISIBLE_ITEMS_COUNT}
-      checkBucketIsSelected={checkBucketIsSelected}
-      renderTriggerContent={renderTriggerContent}
-      onSelect={handleBucketSelect}
+      color={color}
+      hasChevronDown={hasChevronDown}
+      className={className}
+      classNames={classNames}
     />
   );
-}
-
-function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
-  return bucket ? bucket.displayName : t`Unbinned`;
 }
