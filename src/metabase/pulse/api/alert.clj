@@ -116,6 +116,20 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:id/duplicate"
+  "Duplicate an alert, creating a new alert with the same configuration.
+  Returns the duplicated alert."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (let [original-notification (-> (notification.api/get-notification id)
+                                   api/read-check)]
+    (-> (notification.api/duplicate-notification! original-notification api/*current-user-id*)
+        notification->pulse)))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [{:keys [id]} :- [:map
