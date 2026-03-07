@@ -447,6 +447,25 @@ export const fetchCardData =
     );
   };
 
+// Leave 1 connection free for interactive requests (browser HTTP/1.1 limit is 6)
+const CONCURRENT_CARD_FETCH_LIMIT = 5;
+
+async function runWithConcurrencyLimit(
+  tasks: (() => Promise<void>)[],
+  limit: number,
+): Promise<void> {
+  let index = 0;
+  async function worker() {
+    while (index < tasks.length) {
+      const taskIndex = index++;
+      await tasks[taskIndex]();
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(limit, tasks.length) }, worker),
+  );
+}
+
 export const fetchDashboardCardData =
   ({ isRefreshing = false, reload = false, clearCache = false } = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
@@ -499,20 +518,21 @@ export const fetchDashboardCardData =
       );
     }
 
-    const promises = nonVirtualDashcardsToFetch.map(
-      async ({ card, dashcard }) => {
-        await dispatch(
-          // TODO: fix the return type of getAllDashboardCards to make sure
-          // that the relationship between a dashcard and its card
-          // is actually reflected in the type system
-          fetchCardData(card as Card, dashcard, {
-            reload,
-            clearCache,
-            dashboardLoadId,
-          }),
-        );
-        await dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
-      },
+    const tasks = nonVirtualDashcardsToFetch.map(
+      ({ card, dashcard }) =>
+        async () => {
+          await dispatch(
+            // TODO: fix the return type of getAllDashboardCards to make sure
+            // that the relationship between a dashcard and its card
+            // is actually reflected in the type system
+            fetchCardData(card as Card, dashcard, {
+              reload,
+              clearCache,
+              dashboardLoadId,
+            }),
+          );
+          await dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
+        },
     );
 
     if (nonVirtualDashcardsToFetch.length > 0) {
@@ -522,9 +542,11 @@ export const fetchDashboardCardData =
 
       // TODO: There is a race condition here, when refreshing a dashboard before
       // the previous API calls finished.
-      return Promise.all(promises).then(() => {
-        dispatch(loadingComplete());
-      });
+      return runWithConcurrencyLimit(tasks, CONCURRENT_CARD_FETCH_LIMIT).then(
+        () => {
+          dispatch(loadingComplete());
+        },
+      );
     }
   };
 
@@ -536,10 +558,10 @@ export const reloadDashboardCards =
       return;
     }
 
-    const reloads = getAllDashboardCards(dashboard)
+    const reloadTasks = getAllDashboardCards(dashboard)
       .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
-      .map(({ card, dashcard }) =>
-        dispatch(
+      .map(({ card, dashcard }) => async () => {
+        await dispatch(
           // TODO: fix the return type of getAllDashboardCards to make sure
           // that the relationship between a dashcard and its card
           // is actually reflected in the type system
@@ -547,10 +569,10 @@ export const reloadDashboardCards =
             reload: true,
             ignoreCache: true,
           }),
-        ),
-      );
+        );
+      });
 
-    await Promise.all(reloads);
+    await runWithConcurrencyLimit(reloadTasks, CONCURRENT_CARD_FETCH_LIMIT);
   };
 
 export const cancelFetchDashboardCardData = createThunkAction(
