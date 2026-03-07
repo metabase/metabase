@@ -508,8 +508,8 @@
        (if config/*disable-setting-cache*
          (db-value setting)
          (do
-            ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
-           (setting.cache/restore-cache-if-needed!)
+           (when (nil? (setting.cache/cache))
+             (setting.cache/restore-cache!))
            (let [cache (setting.cache/cache)]
              (if (nil? cache)
                 ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
@@ -808,11 +808,9 @@
               (set-new-setting! setting-name new-value))
             ;; update cached value
             (setting.cache/update-cache! setting-name new-value)
-            ;; Record the fact that a Setting has been updated so eventually other instances (if applicable) find out
-            ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
-            ;; cause other instances to do needless reloading of the cache from the DB)
+            ;; Broadcast to other nodes so they invalidate their caches too.
             (when-not config/*disable-setting-cache*
-              (setting.cache/update-settings-last-updated!))))
+              (setting.cache/broadcast-cache-invalidation!))))
         ;; Now return the `new-value`.
         new-value))))
 

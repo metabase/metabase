@@ -10,7 +10,7 @@
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
-   [metabase.settings.core :as setting]
+
    [metabase.store-api.core :as store-api]
    [metabase.task.bootstrap :as task.bootstrap]
    [metabase.task.core :as task]
@@ -228,7 +228,8 @@
       (cloud-migration.settings/read-only-mode! true)
       (when (cluster?)
         (log/info "Cluster detected, waiting for read-only mode to propagate")
-        (Thread/sleep (int (* 1.5 setting/cache-update-check-interval-ms))))
+        ;; Wait briefly for topic-based cache invalidation to propagate to other nodes
+        (Thread/sleep 5000))
       (log/info "Stopping scheduler")
       (task/stop-scheduler!)
 

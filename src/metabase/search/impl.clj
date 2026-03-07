@@ -1,9 +1,13 @@
 (ns metabase.search.impl
   (:require
    [clojure.string :as str]
+   [metabase.analytics.core :as analytics]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
+   [metabase.mq.core :as mq]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
@@ -11,6 +15,7 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.spec :as search.spec]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -450,3 +455,85 @@
                             true (add-collection-effective-location)
                             true (map serialize))]
     (search-results search-ctx search.engine/model-set total-results)))
+
+(defn supports-index?
+  "Does this instance support a search index, of any sort?"
+  []
+  (seq (search.engine/active-engines)))
+
+(defn sync-reindex!
+  "Synchronously populate a new index, and make it active. Simultaneously updates the current index.
+  Prefer [[reindex!]] which routes through the queue. This is for use by the queue handler itself."
+  [& {:as opts}]
+  (when (supports-index?)
+    (lib-be/with-metadata-provider-cache
+      (try
+        (log/info "Reindexing searchable entities")
+        (let [timer    (u/start-timer)
+              report   (reduce (partial merge-with max)
+                               nil
+                               (for [e (search.engine/active-engines)]
+                                 (search.engine/reindex! e opts)))
+              duration (u/since-ms timer)]
+          (analytics/inc! :metabase-search/index-reindex-ms duration)
+          (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
+          (doseq [[model cnt] report]
+            (analytics/inc! :metabase-search/index-reindexes {:model model} cnt))
+          (log/infof "Done reindexing in %.0fms %s" duration (sort-by (comp - val) report))
+          report)
+        (catch Exception e
+          (analytics/inc! :metabase-search/index-error)
+          (throw e))))))
+
+(defn sync-init-index!
+  "Synchronously ensure there is an index ready to be populated."
+  [& {:as opts}]
+  (when (supports-index?)
+    (log/info "Initializing search indexes")
+    (lib-be/with-metadata-provider-cache
+      ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
+      (try
+        (let [timer    (u/start-timer)
+              report   (reduce (partial merge-with max)
+                               nil
+                               (for [e (search.engine/active-engines)]
+                                 (search.engine/init! e opts)))
+              duration (u/since-ms timer)]
+          (if (seq report)
+            (do
+              (prometheus/inc! :metabase-search/index-reindex-ms duration)
+              (prometheus/observe! :metabase-search/index-reindex-duration-ms duration)
+              (doseq [[model cnt] report]
+                (prometheus/inc! :metabase-search/index-reindexes {:model model} cnt))
+              (log/infof "Index initialized in %.0fms %s" duration (sort-by (comp - val) report))
+              report)
+            (log/info "Found existing search index, and using it.")))
+        (catch Exception e
+          (prometheus/inc! :metabase-search/index-error)
+          (throw e))))))
+
+(defn queue-init!
+  "Enqueue an init command. The actual initialization is performed by the queue listener."
+  [& {:as opts}]
+  (mq/with-queue :queue/search-reindex [q]
+    (mq/put q (cond-> {:command :init
+                       :version (search.spec/index-version-hash)}
+                (:force-reset? opts) (assoc :force-reset? true)
+                (:re-populate? opts) (assoc :re-populate? true)
+                (:engine opts)       (assoc :engine (:engine opts))))))
+
+(defn queue-reindex!
+  "Enqueue a reindex command. The actual reindexing is performed by the queue listener."
+  [& {:as opts}]
+  (mq/with-queue :queue/search-reindex [q]
+    (mq/put q (cond-> {:command :reindex}
+                (:in-place? opts) (assoc :in-place? true)
+                (:engine opts)    (assoc :engine (:engine opts))))))
+
+(defn queue-delete!
+  "Enqueue a delete command. The actual deletion is performed by the queue listener."
+  [model ids]
+  (mq/with-queue :queue/search-reindex [q]
+    (mq/put q {:command :delete
+               :model   model
+               :ids     ids})))

@@ -583,6 +583,7 @@
            legacy-mbql
            lib
            lib-be
+           mq
            premium-features
            query-processor
            settings
@@ -890,6 +891,17 @@
            transforms-base
            util}
    :friends #{transforms}}
+
+  mq
+  {:team "UX West"
+   :api  #{metabase.mq.core
+           metabase.mq.init}
+   :uses #{analytics
+           app-db
+           models
+           settings
+           startup
+           util}}
 
   native-query-snippets
   {:team "Querying"
@@ -1304,6 +1316,7 @@
            lib
            lib-be
            models
+           mq
            permissions
            premium-features
            queries
@@ -1390,6 +1403,7 @@
            config
            events
            models
+           mq
            premium-features
            util
            enterprise/advanced-permissions}}
@@ -1890,6 +1904,7 @@
            events
            lib
            models
+           mq
            query-processor
            util
            warehouse-schema}}

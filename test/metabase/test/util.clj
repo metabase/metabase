@@ -899,7 +899,7 @@
     model
     [model (first (t2/primary-keys model))]))
 
-;; It is safe to call `search/reindex!` when we are in a `with-temp-index-table` scope.
+;; It is safe to call `search/queue-reindex!` when we are in a `with-temp-index-table` scope.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-model-cleanup [models f]
   {:pre [(sequential? models) (every?
@@ -935,7 +935,7 @@
              {:delete-from (t2/table-name model)
               :where where-clause})))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
-        (search/reindex! {:in-place? true :async? false})))))
+        (search/queue-reindex! {:in-place? true})))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`.

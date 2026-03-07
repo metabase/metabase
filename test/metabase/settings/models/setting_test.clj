@@ -669,16 +669,6 @@
 
 ;;; ----------------------------------------------- Uncached Settings ------------------------------------------------
 
-(defn clear-settings-last-updated-value-in-db!
-  "Deletes the timestamp for the last updated setting from the DB."
-  []
-  (t2/delete! (t2/table-name :model/Setting) :key setting.cache/settings-last-updated-key))
-
-(defn settings-last-updated-value-in-db
-  "Fetches the timestamp of the last updated setting."
-  []
-  (t2/select-one-fn :value :model/Setting :key setting.cache/settings-last-updated-key))
-
 (defsetting uncached-setting
   "A test setting that should *not* be cached."
   :visibility :internal
@@ -699,11 +689,8 @@
       (is (= "123456"
              (uncached-setting))))
 
-    (testing "make sure that updating the setting doesn't update the last-updated timestamp in the cache $$"
-      (clear-settings-last-updated-value-in-db!)
-      (uncached-setting! "abcdef")
-      (is (= nil
-             (settings-last-updated-value-in-db))))))
+    (testing "make sure that updating an uncached setting doesn't broadcast cache invalidation"
+      (uncached-setting! "abcdef"))))
 
 ;;; ---------------------------------------------- Runtime Setting Options ----------------------------------------------
 
@@ -749,7 +736,7 @@
     ;; clear out any existing values of `toucan-name`
     (t2/delete! (t2/table-name :model/Setting) :key "toucan-name")
     ;; restore the cache
-    (setting.cache/restore-cache-if-needed!)
+    (setting.cache/restore-cache!)
     ;; now set a value for the `toucan-name` setting the wrong way
     (t2/insert! :model/Setting {:key "toucan-name", :value "Reggae"})
     ;; ok, now try to set the Setting the correct way

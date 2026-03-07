@@ -539,7 +539,41 @@
    (prometheus/histogram :metabase-sql-tools/operation-duration-ms
                          {:description "Duration in milliseconds of sql-tools operations."
                           :labels [:parser :operation]
-                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})])
+                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+
+   ;; messaging metrics
+   (prometheus/counter :metabase-mq/queue-messages-published
+                       {:description "Total messages published to queues."
+                        :labels [:queue]})
+   (prometheus/counter :metabase-mq/queue-bundles-handled
+                       {:description "Queue bundles handled by status."
+                        :labels [:queue :status]})
+   (prometheus/histogram :metabase-mq/queue-handle-duration-ms
+                         {:description "Duration in milliseconds to process a queue bundle."
+                          :labels [:queue]
+                          :buckets [1 5 10 50 100 500 1000 5000 10000 30000]})
+   (prometheus/counter :metabase-mq/queue-bundle-retries
+                       {:description "Queue bundles retried after transient failure."
+                        :labels [:queue]})
+   (prometheus/counter :metabase-mq/queue-bundle-permanent-failures
+                       {:description "Queue bundles that exhausted retries."
+                        :labels [:queue]})
+   (prometheus/counter :metabase-mq/topic-messages-published
+                       {:description "Total messages published to topics."
+                        :labels [:topic]})
+   (prometheus/counter :metabase-mq/topic-messages-received
+                       {:description "Topic batches delivered to subscriber handlers."
+                        :labels [:topic]})
+   (prometheus/counter :metabase-mq/topic-handler-errors
+                       {:description "Errors in topic subscriber handlers."
+                        :labels [:topic]})
+   (prometheus/counter :metabase-mq/topic-bundles-handled
+                       {:description "Topic bundles handled by status."
+                        :labels [:topic :status]})
+   (prometheus/histogram :metabase-mq/topic-handle-duration-ms
+                         {:description "Duration in milliseconds to process a topic batch."
+                          :labels [:topic]
+                          :buckets [1 5 10 50 100 500 1000 5000 10000 30000]})])
 
 (defn- quartz-collectors
   []

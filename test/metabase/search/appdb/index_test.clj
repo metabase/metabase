@@ -47,23 +47,22 @@
   "Ensure a clean, small index."
   [& body]
   `(search.tu/with-temp-index-table
-     (binding [search.ingestion/*force-sync* true]
-       (mt/dataset ~(symbol "test-data")
+     (mt/dataset ~(symbol "test-data")
          ;; Sneaky trick so make sure we have a user with ID 1
-         (mt/with-temp [:model/User       {}            (when-not (t2/exists? :model/User 1) {:id 1})
-                        :model/Collection {col-id# :id} {:name "Collection"}
-                        :model/Card       {}            {:name "Customer Satisfaction"          :collection_id col-id#}
-                        :model/Card       {}            {:name "The Latest Revenue Projections" :collection_id col-id#}
-                        :model/Card       {}            {:name "Projected Revenue"              :collection_id col-id#}
-                        :model/Card       {}            {:name "Employee Satisfaction"          :collection_id col-id#}
-                        :model/Card       {}            {:name "Projected Satisfaction"         :collection_id col-id#}
-                        :model/Card       {}            {:name "Organization Reference"         :collection_id col-id#}
+       (mt/with-temp [:model/User       {}            (when-not (t2/exists? :model/User 1) {:id 1})
+                      :model/Collection {col-id# :id} {:name "Collection"}
+                      :model/Card       {}            {:name "Customer Satisfaction"          :collection_id col-id#}
+                      :model/Card       {}            {:name "The Latest Revenue Projections" :collection_id col-id#}
+                      :model/Card       {}            {:name "Projected Revenue"              :collection_id col-id#}
+                      :model/Card       {}            {:name "Employee Satisfaction"          :collection_id col-id#}
+                      :model/Card       {}            {:name "Projected Satisfaction"         :collection_id col-id#}
+                      :model/Card       {}            {:name "Organization Reference"         :collection_id col-id#}
                         ;; this is to show off that our storage can give false positives (stemming etc)
-                        :model/Card       {}            {:name "Nobody Expects Organi"          :collection_id col-id#}
-                        :model/Database   {db-id# :id}  {:name "Indexed Database"}
-                        :model/Table      {}            {:name "Indexed Table", :db_id db-id#}]
-           (search.engine/reindex! :search.engine/appdb {:in-place? true})
-           ~@body)))))
+                      :model/Card       {}            {:name "Nobody Expects Organi"          :collection_id col-id#}
+                      :model/Database   {db-id# :id}  {:name "Indexed Database"}
+                      :model/Table      {}            {:name "Indexed Table", :db_id db-id#}]
+         (search.engine/reindex! :search.engine/appdb {:in-place? true})
+         ~@body))))
 
 (deftest idempotent-test
   (with-index
