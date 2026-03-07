@@ -71,6 +71,16 @@
   [timezone-id & body]
   `(do-with-app-db-timezone-id! ~timezone-id (fn [] ~@body)))
 
+(defn- maybe-prepend-version
+  "For directory-based migration paths (e.g. migrations/060/...), prepend v{version}. to
+   the changeset ID, matching what liquibase/prepend-version-to-directory-changeset-ids! does."
+  [file-path id-str]
+  (if-let [[_ version-str] (re-find #"migrations/(\d{3})/" file-path)]
+    (if (str/starts-with? id-str "v")
+      id-str
+      (str "v" (parse-long version-str) "." id-str))
+    id-str))
+
 (defn liquibase-file->included-ids
   "Read a liquibase migration file and returns all the migration id that is applied to `db-type`.
   Ids are orderer in the order it's defined in migration file."
@@ -86,16 +96,30 @@
       ;; remove ignored changeSets
          (remove #(get-in % [:changeSet :ignore]))
          (map #(str (get-in % [:changeSet :id])))
-         (remove str/blank?))))
+         (remove str/blank?)
+         (map #(maybe-prepend-version file-path %)))))
 
 (defn all-migration-files
   "Returns a list of existing migration files."
   [include-legacy?]
   (into (if include-legacy?
-          ["migrations/000_legacy_migrations.yaml" "migrations/001_update_migrations.yaml"]
+          ["liquibase_legacy_migrations.yaml" "migrations/001_update_migrations.yaml"]
           ["migrations/001_update_migrations.yaml"])
-        (filter io/resource (for [n (range 56 100)]
-                              (format "migrations/%03d_update_migrations.yaml" n)))))
+        (concat
+         ;; Per-release migration files (v56-v59 pattern)
+         (filter io/resource (for [n (range 56 100)]
+                               (format "migrations/%03d_update_migrations.yaml" n)))
+         ;; Directory-based migration files (v60+ pattern)
+         (let [migrations-dir (io/resource "migrations")]
+           (when migrations-dir
+             (->> (io/file migrations-dir)
+                  file-seq
+                  (filter (fn [^java.io.File f]
+                            (and (.isFile f)
+                                 (re-matches #".*\d{3}/\d{8}_\d{6}\.yaml$" (str f)))))
+                  sort
+                  (map (fn [^java.io.File f]
+                         (str "migrations/" (.getName (.getParentFile f)) "/" (.getName f))))))))))
 
 (defn all-liquibase-ids
   "Returns a set of all changeset IDs from all migration files."
