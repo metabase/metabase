@@ -4,6 +4,7 @@
    For now there is no divergence, so we catch unintentional drift by comparing the response schemas of both routes."
   (:require
    [clojure.test :refer :all]
+   [clojure.walk]
    [metabase-enterprise.agent-api.workspace]
    [metabase-enterprise.workspaces.api]
    [metabase.api.macros :as api.macros]))
@@ -22,13 +23,29 @@
   {;; example: [:get "/:ws-id/agent-path"] [:get "/:ws-id/ee-path"]
    })
 
+(defn- resolve-schema-form
+  "Resolve symbols in a schema form to their var values within `ns-sym`, leaving
+   everything else (keywords, vectors, maps) untouched. This avoids false positives
+   from two namespaces defining the same symbol name with different values."
+  [ns-sym form]
+  (clojure.walk/prewalk
+   (fn [x]
+     (if (symbol? x)
+       (if-let [v (ns-resolve (the-ns ns-sym) x)]
+         (var-get v)
+         x)
+       x))
+   form))
+
 (defn- endpoint-schemas
-  "Returns a map of {[method route] -> response-schema} for a namespace."
+  "Returns a map of {[method route] -> resolved-response-schema} for a namespace.
+   Symbols in schema forms are resolved to their var values so that comparisons
+   don't produce false positives when two namespaces define the same symbol name."
   [ns-sym]
   (into {}
         (keep (fn [[[method route _params] info]]
                 (when-let [schema (get-in info [:form :response-schema])]
-                  [[method route] schema])))
+                  [[method route] (resolve-schema-form ns-sym schema)])))
         (api.macros/ns-routes ns-sym)))
 
 (deftest response-schemas-in-sync-test
