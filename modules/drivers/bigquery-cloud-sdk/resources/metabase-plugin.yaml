@@ -36,6 +36,14 @@ driver:
       type: boolean
       visible-if:
         advanced-options: true
+    - name: maximum-bytes-billed
+      display-name: Maximum bytes billed per query
+      helper-text: "Reject queries that would scan more than this many bytes (e.g. 1099511627776 for 1 TB). Queries exceeding the limit will fail before running, preventing unexpected costs. Leave blank for no limit."
+      required: false
+      type: string
+      placeholder: "1099511627776"
+      visible-if:
+        advanced-options: true
     - name: host
       display-name: Alternate hostname
       helper-text: Alternate hostname used to connect to BigQuery

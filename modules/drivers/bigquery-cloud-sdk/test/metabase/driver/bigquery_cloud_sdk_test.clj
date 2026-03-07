@@ -28,7 +28,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
-   (com.google.cloud.bigquery BigQuery TableResult)))
+   (com.google.cloud.bigquery BigQuery QueryJobConfiguration TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -986,6 +986,21 @@
               (is (= "Query cancelled" (.getMessage e)))
               ;; make sure that the fake exception was thrown
               (is (true? @fake-execute-called)))))))))
+
+(deftest ^:parallel build-bigquery-request-maximum-bytes-billed-test
+  (let [build-fn @#'bigquery/build-bigquery-request]
+    (testing "maximum-bytes-billed is set when present in database details"
+      (let [^QueryJobConfiguration request (build-fn "SELECT 1" [] {:maximum-bytes-billed "1099511627776"})]
+        (is (= (Long/valueOf 1099511627776) (.getMaximumBytesBilled request)))))
+    (testing "maximum-bytes-billed is not set when absent from database details"
+      (let [^QueryJobConfiguration request (build-fn "SELECT 1" [] {})]
+        (is (nil? (.getMaximumBytesBilled request)))))
+    (testing "maximum-bytes-billed is not set when blank"
+      (let [^QueryJobConfiguration request (build-fn "SELECT 1" [] {:maximum-bytes-billed ""})]
+        (is (nil? (.getMaximumBytesBilled request)))))
+    (testing "maximum-bytes-billed accepts numeric values (e.g. from API clients)"
+      (let [^QueryJobConfiguration request (build-fn "SELECT 1" [] {:maximum-bytes-billed 1099511627776})]
+        (is (= (Long/valueOf 1099511627776) (.getMaximumBytesBilled request)))))))
 
 (defn- future-thread-names []
   ;; kinda hacky but we don't control this thread pool
