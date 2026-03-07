@@ -293,7 +293,7 @@
                  (t2/update! :model/Database (:id database) {:provider_name provider})
                  (catch Throwable provider-e
                    (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database)))))))
-         (when (:write_data_details database)
+         (when (driver.conn/database-write-data-details (driver.u/ensure-lib-database database))
            (let [write-details (driver.conn/without-resolution-telemetry
                                 (driver.conn/with-write-connection
                                   (driver.conn/effective-details database)))]

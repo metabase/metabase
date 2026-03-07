@@ -316,12 +316,12 @@
 
         (testing "No updates are propagated back to core app on merge failure"
           (let [update-transform! transforms.core/update-transform!]
-            (with-redefs [transforms.core/update-transform! (let [call-count (atom 0)]
-                                                              (fn [& args]
-                                                                (when (> @call-count 0)
-                                                                  (throw (Exception. "boom")))
-                                                                (swap! call-count inc)
-                                                                (apply update-transform! args)))]
+            (mt/with-dynamic-fn-redefs [transforms.core/update-transform! (let [call-count (atom 0)]
+                                                                            (fn [& args]
+                                                                              (when (> @call-count 0)
+                                                                                (throw (Exception. "boom")))
+                                                                              (swap! call-count inc)
+                                                                              (apply update-transform! args)))]
               (testing "API response: empty merged, single error"
                 (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
                   (is (empty? (get-in resp [:merged :transforms])))
@@ -574,8 +574,8 @@
           _ (mt/user-http-request :crowberto :post 204
                                   (ws-url ws-id "/transform" ws-x-1-id "/archive"))]
       (testing "Failure on merge"
-        (with-redefs [transforms.core/delete-transform! (fn [& _args]
-                                                          (throw (Exception. "boom")))]
+        (mt/with-dynamic-fn-redefs [transforms.core/delete-transform! (fn [& _args]
+                                                                        (throw (Exception. "boom")))]
           (let [resp (mt/user-http-request :crowberto :post 500
                                            (ws-url ws-id "/transform" ws-x-1-id "/merge"))]
             (testing "Response"
@@ -1283,7 +1283,9 @@
         (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
           (mt/with-temp [:model/Transform x1 {:name   "Transform"
                                               :source {:type  "query"
-                                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
+                                                       :query (-> (mt/mbql-query orders {:aggregation [[:count]]})
+                                                                  ws.tu/mbql->native
+                                                                  mt/native-query)}
                                               :target {:type     "table"
                                                        :database (mt/id)
                                                        :schema   target-schema
@@ -1452,14 +1454,14 @@
                   :not_run   []}
                  (run!))))))))
 
-(deftest dry-run-workspace-transform-test
+(deftest dry-run-workspace-transform-api-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/dry-run returns 404 if transform not in workspace"
     (ws.tu/with-workspaces! [ws1 {:name "Workspace 1"}
                              ws2 {:name "Workspace 2"}]
       (mt/with-temp [:model/Transform x1 {:name   "Transform in WS1"
                                           :source {:type  "query"
                                                    :query (mt/native-query
-                                                           {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world' ORDER BY 1"})}
+                                                           {:query "SELECT * FROM (SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world') t ORDER BY 1"})}
                                           :target {:type     "table"
                                                    :database (mt/id)
                                                    :schema   "public"
@@ -2078,9 +2080,7 @@
   (testing "GET /api/ee/workspace/checkout returns checkout status for a transform"
     (mt/with-temp [:model/Transform tx {:name   "Native Transform"
                                         :source {:type  :query
-                                                 :query {:database (mt/id)
-                                                         :type     :native
-                                                         :native   {:query "SELECT 1"}}}
+                                                 :query (mt/native-query {:query "SELECT 1"})}
                                         :target {:type     "table"
                                                  :database (mt/id)
                                                  :schema   "public"

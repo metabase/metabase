@@ -26,6 +26,8 @@ export type AdminPath = {
   path: string;
 };
 
+export type TemporaryPasswordsState = Record<number, string | null>;
+
 export interface AdminState {
   app: AdminAppState;
   permissions: {
@@ -54,6 +56,9 @@ export interface AdminState {
   };
   datamodel: {
     revisions: Revision[] | null;
+  };
+  people: {
+    temporaryPasswords: TemporaryPasswordsState;
   };
 }
 

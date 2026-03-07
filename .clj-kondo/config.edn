@@ -422,6 +422,8 @@
     ring.util.codec                           codec
     ring.util.response                        response
     saml20-clj.core                           saml
+    metabase.transforms-base.util              transforms-base.u
+    metabase.transforms.util                   transforms.u
     toucan2.core                              t2}}}
 
  :lint-as

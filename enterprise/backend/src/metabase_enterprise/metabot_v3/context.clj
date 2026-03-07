@@ -8,7 +8,7 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -99,7 +99,7 @@
     (when-let [source-database (get-in item [:source :source-database])]
       (when-let [source-tables (not-empty (get-in item [:source :source-tables]))]
         {:database-id source-database
-         :table-ids (vals source-tables)}))))
+         :table-ids (map :table_id source-tables)}))))
 
 (defn- python-transform-tables-for-context
   "Get tables for Python transform formatted for metabot context."
@@ -146,9 +146,9 @@
                   (try
                     (if (and (= (:type item) "transform")
                              (not (:source_type item)))
-                      (let [transform (transforms.util/normalize-transform item)]
+                      (let [transform (transforms-base.u/normalize-transform item)]
                         (assoc transform
-                               :source_type (transforms.util/transform-source-type (:source transform))))
+                               :source_type (transforms-base.u/transform-source-type (:source transform))))
                       item)
                     (catch Exception e
                       (log/error e "Error annotating transform source type for metabot context")
