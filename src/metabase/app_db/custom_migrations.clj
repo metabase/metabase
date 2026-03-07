@@ -1993,3 +1993,89 @@
                                                                  :schema uploads_schema_name}
                                                            :where [:= :id id]}))]
           (run! retire-and-revive-upload-table! inactive-upload-tables))))))
+
+(define-migration BackfillProvisionalTables
+  ;; For each transform that has a target (database, schema, name), ensure a metabase_table row exists.
+  ;; If the table already exists (active or inactive), do nothing. Otherwise, insert a provisional row.
+  ;;
+  ;; Similarly, backfill workspace_output rows missing global_table_id or isolated_table_id.
+  (let [;; Simple humanization: replace _ with space, capitalize words
+        humanize (fn [s]
+                   (when s
+                     (->> (str/split s #"_")
+                          (map str/capitalize)
+                          (str/join " "))))
+        find-table-id (fn [db-id schema table-name]
+                        (:id (first (t2/query {:select [:id]
+                                               :from   [:metabase_table]
+                                               :where  [:and
+                                                        [:= :db_id db-id]
+                                                        (if (some? schema)
+                                                          [:= :schema schema]
+                                                          [:is :schema nil])
+                                                        [:= :name table-name]]
+                                               :limit  1}))))
+        upsert-table! (fn [db-id schema table-name]
+                        (or (find-table-id db-id schema table-name)
+                            (try
+                              (t2/query {:insert-into :metabase_table
+                                         :values      [{:db_id               db-id
+                                                        :schema              schema
+                                                        :name                table-name
+                                                        :display_name        (humanize table-name)
+                                                        :active              false
+                                                        :provisional         true
+                                                        :data_source         "transform"
+                                                        :initial_sync_status "complete"}]})
+                              (find-table-id db-id schema table-name)
+                              (catch Exception _
+                                (find-table-id db-id schema table-name)))))]
+    ;; 1. Backfill for transforms: create provisional tables for targets that don't exist
+    (doseq [{:keys [target target_db_id]} (t2/query {:select [:target :target_db_id]
+                                                     :from   [:transform]
+                                                     :where  [:not= :target_db_id nil]})]
+      (let [target-map (json-out target false)]
+        (when-let [table-name (get target-map "name")]
+          (let [schema (get target-map "schema")
+                db-id  target_db_id]
+            (upsert-table! db-id schema table-name)))))
+    ;; 2. Backfill workspace_output rows missing global_table_id
+    (doseq [{:keys [id db_id global_schema global_table]} (t2/query {:select [:id :db_id :global_schema :global_table]
+                                                                     :from   [:workspace_output]
+                                                                     :where  [:= :global_table_id nil]})]
+      (when-let [table-id (upsert-table! db_id global_schema global_table)]
+        (t2/query {:update :workspace_output
+                   :set    {:global_table_id table-id}
+                   :where  [:= :id id]})))
+    ;; 3. Backfill workspace_output rows missing isolated_table_id
+    (doseq [{:keys [id db_id isolated_schema isolated_table]} (t2/query {:select [:id :db_id :isolated_schema :isolated_table]
+                                                                         :from   [:workspace_output]
+                                                                         :where  [:= :isolated_table_id nil]})]
+      (when-let [table-id (upsert-table! db_id isolated_schema isolated_table)]
+        (t2/query {:update :workspace_output
+                   :set    {:isolated_table_id table-id}
+                   :where  [:= :id id]})))
+    ;; 4. Backfill workspace_output_external rows missing global_table_id
+    (doseq [{:keys [id db_id global_schema global_table]} (t2/query {:select [:id :db_id :global_schema :global_table]
+                                                                     :from   [:workspace_output_external]
+                                                                     :where  [:= :global_table_id nil]})]
+      (when-let [table-id (upsert-table! db_id global_schema global_table)]
+        (t2/query {:update :workspace_output_external
+                   :set    {:global_table_id table-id}
+                   :where  [:= :id id]})))
+    ;; 5. Backfill workspace_output_external rows missing isolated_table_id
+    (doseq [{:keys [id db_id isolated_schema isolated_table]} (t2/query {:select [:id :db_id :isolated_schema :isolated_table]
+                                                                         :from   [:workspace_output_external]
+                                                                         :where  [:= :isolated_table_id nil]})]
+      (when-let [table-id (upsert-table! db_id isolated_schema isolated_table)]
+        (t2/query {:update :workspace_output_external
+                   :set    {:isolated_table_id table-id}
+                   :where  [:= :id id]})))
+    ;; 6. Backfill workspace_input rows missing table_id
+    (doseq [{:keys [id db_id schema table]} (t2/query {:select [:id :db_id :schema :table]
+                                                       :from   [:workspace_input]
+                                                       :where  [:= :table_id nil]})]
+      (when-let [table-id (find-table-id db_id schema table)]
+        (t2/query {:update :workspace_input
+                   :set    {:table_id table-id}
+                   :where  [:= :id id]})))))

@@ -31,6 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -334,8 +335,8 @@
                                                 :data_authority :computed
                                                 :data_source :metabase-transform)
                                 {:create? true})]
-    (when-not (:active table)
-      (t2/update! :model/Table (:id table) {:active true}))
+    (when (or (not (:active table)) (:provisional table))
+      (t2/update! :model/Table (:id table) {:active true :provisional false}))
     table))
 
 (defn sync-target!
@@ -634,9 +635,12 @@
               (and (:table_id entry) (not (:table entry)))
               (merge (int-id->metadata (:table_id entry)) entry)
 
-              ;; Has table metadata but no table_id — look it up
+              ;; Has table metadata but no table_id — look it up, upsert provisional if not found
               (missing-table-id? entry)
-              (assoc entry :table_id (ref-lookup (source-table-ref->key entry)))
+              (assoc entry :table_id (or (ref-lookup (source-table-ref->key entry))
+                                         (when (and (:database_id entry) (:table entry))
+                                           (table/upsert-provisional-table!
+                                            (:database_id entry) (:schema entry) (:table entry)))))
 
               ;; Already fully populated
               :else entry))

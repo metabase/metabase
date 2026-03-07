@@ -3635,6 +3635,35 @@ databaseChangeLog:
             columnName: api_key_id
       rollback:
 
+  - changeSet:
+      id: v59.2026-03-07T00:00:03
+      author: christruter
+      comment: Add provisional column to metabase_table for eagerly created table rows
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: provisional
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+                  remarks: Whether this table row was eagerly created before the physical table exists
+      rollback:
+        - dropColumn:
+            tableName: metabase_table
+            columnName: provisional
+
+  - changeSet:
+      id: v59.2026-03-07T00:00:04
+      author: christruter
+      comment: Backfill provisional tables for existing transforms and workspace outputs
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.BackfillProvisionalTables
+      rollback:
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

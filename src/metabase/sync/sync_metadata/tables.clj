@@ -160,7 +160,7 @@
                                              (dissoc :visibility_type)
 
                                              true
-                                             (assoc :active true)
+                                             (assoc :active true :provisional false)
 
                                              (:is_sample database)
                                              (assoc :data_authority :ingested
