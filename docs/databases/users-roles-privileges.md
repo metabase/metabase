@@ -7,13 +7,13 @@ summary: "Set up database users and roles for Metabase: read-only access for que
 
 ## Recommended setup
 
-We recommend creating a dedicated `metabase` database user with the **read-only** access to your database with [minimum database privileges for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
+We recommend creating a dedicated `metabase` database user with **read-only** access to your database with [minimum database privileges for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
 
 Some Metabase functionality requires write access to the database. Depending on other Metabase features you're planning to use, you might want to create additional roles:
 
 - Optional [`metabase_transforms` for write access](#privileges-to-enable-transforms) to the schema used for Metabase transforms.
 - Optional [`metabase_uploads` for write access](#privileges-to-enable-uploads) to schema used for CSV uploads.
-- Optional [`metabase_actions` for write access](#privileges-to-enable-actions-and-editable-table-data) to tables used for editable tables or Metabase actions .
+- Optional [`metabase_actions` for write access](#privileges-to-enable-actions-and-editable-table-data) to tables used for editable tables or Metabase actions.
 - Optional [`metabase_model_persistence` for write access](#privileges-to-enable-model-persistence) to the schema used for Metabase model persistence.
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
@@ -54,12 +54,13 @@ GRANT analytics TO metabase;
 
 -- Add query privileges to the role (options 1-4):
 
--- Option 1: Uncomment the line below to let users with the analytics role query ALL DATA (In Postgres 14 or higher. See [Predefined Roles](https://www.postgresql.org/docs/current/predefined-roles.html#PREDEFINED-ROLES)).
+-- Option 1: Uncomment the line below to let users with the analytics role query ALL DATA
+-- (In Postgres 14 or higher. See Predefined Roles: https://www.postgresql.org/docs/current/predefined-roles.html#PREDEFINED-ROLES).
 -- GRANT pg_read_all_data TO analytics;
 
 -- Option 2: Uncomment the line below to let users with the analytics role query anything in the DATABASE.
 -- GRANT USAGE ON DATABASE "your_schema" TO analytics;
--- GRANT SELECT ON DATABASE "your_schema"  TO analytics;
+-- GRANT SELECT ON DATABASE "your_schema" TO analytics;
 
 -- Option 3: Uncomment the line below to let users with the analytics role query anything in a specific SCHEMA.
 -- GRANT USAGE ON SCHEMA "your_schema" TO analytics;
@@ -69,6 +70,12 @@ GRANT analytics TO metabase;
 -- GRANT USAGE ON SCHEMA "your_schema" TO analytics;
 -- GRANT SELECT ON "your_table" IN SCHEMA "your_schema" TO analytics;
 ```
+
+> **New tables not appearing?** Options 2–4 only grant access to tables that exist at the time you run the statement. If you add tables later, run the grant again — or use `ALTER DEFAULT PRIVILEGES` to grant access to future tables automatically:
+>
+> ```sql
+> ALTER DEFAULT PRIVILEGES IN SCHEMA "your_schema" GRANT SELECT ON TABLES TO analytics;
+> ```
 
 Depending on how you use Metabase, you can also additionally grant:
 
@@ -96,9 +103,9 @@ This is a good option if you're connecting to a local database for development o
 
 ## Privileges to enable actions and editable table data
 
-Both [actions](../actions/introduction.md) and the [editable table data](../data-modeling/editable-tables.md) let Metabase write back to specific tables in your database.
+Both [actions](../actions/introduction.md) and [editable table data](../data-modeling/editable-tables.md) let Metabase write back to specific tables in your database.
 
-if you're using actions or editable tables, then in addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables you want to be able to write to.
+If you're using actions or editable tables, then in addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables you want to be able to write to.
 
 - Create a new role called `metabase_writer`.
 - Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the relevant tables.
@@ -108,7 +115,7 @@ if you're using actions or editable tables, then in addition to the [minimum dat
 -- Create a role to bundle database privileges for Metabase writing to your database.
 CREATE ROLE metabase_writer WITH LOGIN;
 
--- Grant write privileges to the TABLE
+-- Grant write privileges to the TABLE.
 GRANT INSERT, UPDATE, DELETE ON "your_table" IN SCHEMA "your_schema" TO metabase_writer;
 
 -- Grant role to the metabase user.
@@ -131,7 +138,7 @@ In addition to the [minimum database privileges](#minimum-database-privileges):
 CREATE ROLE metabase_model_persistence WITH LOGIN;
 
 -- If you don't want to give CREATE access to your database,
--- add the schema manually before enabling modeling persistence.
+-- add the schema manually before enabling model persistence.
 GRANT CREATE ON "database" TO metabase_model_persistence;
 
 -- Grant write privileges to the SCHEMA used for model persistence.
