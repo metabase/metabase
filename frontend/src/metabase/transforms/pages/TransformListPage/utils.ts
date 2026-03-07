@@ -51,7 +51,7 @@ export function buildTreeData(
       owner: transform.owner,
       owner_email: transform.owner_email,
       transformId: transform.id,
-      source_readable: transform.source_readable,
+      can_read: transform.can_read,
     };
   }
 

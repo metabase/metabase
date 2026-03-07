@@ -21,11 +21,15 @@
   {:added "0.57.0" :arglists '([transform])}
   transform->transform-type)
 
+(defmethod source-db-id :default [_transform] nil)
+
 (defmulti target-db-id
   "Return the ID of the target database for a given `transform`. The target database is the destination where the
   transformed data will be written. Often this is the same database as the source database."
   {:added "0.57.0" :arglists '([transform])}
   transform->transform-type)
+
+(defmethod target-db-id :default [_transform] nil)
 
 (defmulti table-dependencies
   "Return a set of logical table dependencies of the transform, including indirect dependencies via cards.

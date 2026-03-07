@@ -4,7 +4,7 @@ creator_id: internal@metabase.com
 description: A test transform for serialization
 entity_id: 2HzIFwJ6720JAx07UMavl
 name: Test Transform
-source_database_id: My Database
+source_db_id: My Database
 owner_email: null
 owner_user_id: null
 source:

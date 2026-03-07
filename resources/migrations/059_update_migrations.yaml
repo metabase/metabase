@@ -48,16 +48,6 @@ databaseChangeLog:
       rollback: # No need to roll back
 
   - changeSet:
-      id: v59.2025-12-01T18:53:27
-      author: nvoxland
-      comment: Make transform.source_database_id not nullable
-      changes:
-        - addNotNullConstraint:
-            tableName: transform
-            columnName: source_database_id
-            columnDataType: int
-
-  - changeSet:
       id: v59.2025-12-04T12:00:00
       author: metabase
       comment: Create measure table for saved aggregation expressions
@@ -229,7 +219,6 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: An optional email address of the owner of this transform (for external owners), exclusive with owner_user_id
 
-
   - changeSet:
       id: v59.2026-01-06T10:00:02
       author: gantoreno
@@ -281,7 +270,6 @@ databaseChangeLog:
                   type: int
                   remarks: The user ID who triggered this run (owner for scheduled runs, current user for manual runs)
 
-
   - changeSet:
       id: v59.2026-01-06T10:00:06
       author: gantoreno
@@ -306,7 +294,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_transform_run_user_id
             onDelete: SET NULL
-
 
   - changeSet:
       id: v59.2026-01-07T00:00:01
@@ -878,7 +865,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_transform_run_transform_id
             onDelete: SET NULL
-
 
   - changeSet:
       id: v59.2026-01-27T12:00:00
@@ -2873,7 +2859,6 @@ databaseChangeLog:
                     nullable: true
       rollback:
 
-
   - changeSet:
       id: v59.2026-01-31T12:01:23
       author: christruter
@@ -3573,6 +3558,58 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
+
+  ## The original changeset that made this not null has been removed, but keep the switch to nullable to handle existing DBs.
+  - changeSet:
+      id: v59.2026-03-01T11:00:00
+      author: nvoxland
+      comment: Make transform.source_database_id nullable
+      changes:
+        - dropNotNullConstraint:
+            tableName: transform
+            columnName: source_database_id
+            columnDataType: int
+      rollback: ## don't roll back, we don't want to add a null constraint that shouldn't have been there
+
+  - changeSet:
+      id: v59.2026-03-01T11:01:00
+      author: nvoxland
+      comment: Rename transform.source_database_id to source_db_id
+      changes:
+        - renameColumn:
+            tableName: transform
+            columnDataType: int
+            oldColumnName: source_database_id
+            newColumnName: source_db_id
+
+  - changeSet:
+      id: v59.2026-03-01T11:02:00
+      author: nvoxland
+      comment: Drop foreign key on transform(source_db_id) to recreate it
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: transform
+            constraintName: fk_tranform_source_database_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_db_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranform_source_database_id
+
+  - changeSet:
+      id: v59.2026-03-01T11:03:00
+      author: nvoxland
+      comment: Add foreign key on transform(source_db_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: source_db_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_tranforms_source_db_id
+            onDelete: SET NULL
 
   - changeSet:
       id: v59.2026-03-03T12:00:00

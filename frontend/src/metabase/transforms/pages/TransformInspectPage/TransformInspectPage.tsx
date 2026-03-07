@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import * as Urls from "metabase/lib/urls";
+import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Alert, Center, Icon, Text } from "metabase/ui";
 
 import { TransformHeader } from "../../components/TransformHeader";
@@ -23,8 +24,16 @@ export const TransformInspectPage = ({
   location,
 }: TransformInspectPageProps) => {
   const transformId = Urls.extractEntityId(params.transformId);
+  const {
+    transform,
+    isLoading: isLoadingTransform,
+    error: transformError,
+  } = useTransformWithPolling(transformId);
+  const { readOnly, isLoadingDatabases, databasesError } =
+    useTransformPermissions({ transform });
 
-  const { transform, isLoading, error } = useTransformWithPolling(transformId);
+  const isLoading = isLoadingTransform || isLoadingDatabases;
+  const error = transformError || databasesError;
 
   if (isLoading || error || !transform) {
     return (
@@ -42,7 +51,11 @@ export const TransformInspectPage = ({
           <Alert color="brand" icon={<Icon name="info" />}>
             <Text>{t`To inspect the transform you need to run it first.`}</Text>
           </Alert>
-          <RunSection transform={transform} noTitle={true} />
+          <RunSection
+            transform={transform}
+            noTitle={true}
+            readOnly={readOnly}
+          />
         </>
       ) : (
         <InspectorContent
