@@ -102,12 +102,12 @@
     [:notification/testing   :map]]])
 
 (defn- logo-url
-  "Return the URL for the application logo. If the logo is the default, return a URL to the Metabase logo.
+  "Return the URL for the application logo. If the logo is the default, return a URL to the logo served by this Metabase instance.
    For data URIs, returns the raw data URI - the email channel will convert it to an attachment."
   []
   (let [url (appearance/application-logo-url)]
     (if (= url "app/assets/img/logo.svg")
-      "http://static.metabase.com/email_logo.png"
+      (str (system/site-url) "/" (appearance/default-logo-path))
       url)))
 
 (defn- button-style

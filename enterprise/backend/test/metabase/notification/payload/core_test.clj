@@ -20,7 +20,7 @@
                                :custom      {}}
                 :context     {:application_name     "Metabase Test"
                               :application_color    "#509EE3"
-                              :application_logo_url "http://static.metabase.com/email_logo.png"
+                              :application_logo_url "https://metabase.com/app/assets/img/logo.png"
                               :include_branding     false
                               :site_name            "Metabase Test"
                               :site_url             "https://metabase.com"
