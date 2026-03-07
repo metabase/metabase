@@ -19,7 +19,11 @@ import { useLlmSqlGenerationEnabled } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatabaseId, DatasetQuery } from "metabase-types/api";
+import type {
+  DatabaseId,
+  DatasetQuery,
+  GenerateSqlResponse,
+} from "metabase-types/api";
 
 import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
 import {
@@ -37,19 +41,14 @@ function useRegisterCodeEditorMetabotContext(
   bufferId: string,
 ): void {
   useRegisterMetabotContextProvider(
-    async () =>
-      buffer
-        ? {
-            user_is_viewing: [
-              {
-                type: "code_editor",
-                buffers: [
-                  extractMetabotBufferContext(buffer, databaseId, bufferId),
-                ],
-              },
-            ],
-          }
-        : {},
+    async () => ({
+      user_is_viewing: [
+        {
+          type: "code_editor",
+          buffers: [extractMetabotBufferContext(buffer, databaseId, bufferId)],
+        },
+      ],
+    }),
     [buffer],
   );
 }
@@ -92,7 +91,7 @@ export function useInlineSQLPrompt(
   );
 
   useRegisterCodeEditorMetabotContext(
-    portalTarget?.view,
+    portalTarget?.view ?? undefined,
     question.databaseId(),
     bufferId,
   );
@@ -114,6 +113,13 @@ export function useInlineSQLPrompt(
     });
   }, [sourceSqlTables]);
 
+  const onGenerated = useCallback((res: GenerateSqlResponse | undefined) => {
+    if (res) {
+      setSelectedTables(res.referenced_entities as unknown as SelectedTable[]);
+    }
+    setPromptValue("");
+  }, []);
+
   const {
     source: generatedSource,
     isLoading,
@@ -127,18 +133,11 @@ export function useInlineSQLPrompt(
   } = PLUGIN_METABOT.useMetabotSQLSuggestion({
     databaseId,
     bufferId,
-    onGenerated: (res) => {
-      if (res) {
-        setSelectedTables(
-          res.referenced_entities as unknown as SelectedTable[],
-        );
-      }
-      setPromptValue("");
-    },
+    onGenerated,
   });
 
   const getSourceSql = useCallback(() => {
-    return portalTarget?.view.state.doc.toString() ?? "";
+    return portalTarget?.view?.state.doc.toString() ?? "";
   }, [portalTarget?.view]);
 
   const prevDatabaseIdRef = useRef(databaseId);
