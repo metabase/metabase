@@ -39,10 +39,10 @@
    [ring.util.codec :as codec])
   (:import
    (java.io File)
+   (java.net URI URLDecoder)
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (java.util Properties)
-   (net.snowflake.client.jdbc SnowflakeConnectString SnowflakeSQLException)))
+   (net.snowflake.client.api.exception SnowflakeSQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -141,12 +141,28 @@
 
 (defn connection-str->parameters
   "Get map of parameters from Snowflake `conn-str`, where keys are uppercase string parameter names and values
-  are strings. Returns nil when string is invalid."
+  are strings. Returns nil when string is invalid.
+   This is based on the implementation of SnowflakeConnectString.parse in https://github.com/snowflakedb/snowflake-jdbc"
   [conn-str]
-  (let [^SnowflakeConnectString conn-str* (SnowflakeConnectString/parse conn-str (Properties.))]
-    (if-not (.isValid conn-str*)
-      (log/warn "Invalid connection string.")
-      (.getParameters conn-str*))))
+  (when conn-str
+    (let [prefix "jdbc:snowflake://"
+          pos (str/index-of conn-str prefix)]
+      (when (= 0 pos)
+        (let [afterPrefix (subs conn-str (+ pos (count prefix)))
+              afterPrefix' (if (or (str/starts-with? afterPrefix "http://")
+                                   (str/starts-with? afterPrefix "https://"))
+                             afterPrefix
+                             (subs conn-str (str/index-of conn-str "snowflake:")))
+              uri (URI. afterPrefix')]
+          (when-let [queryData (.getRawQuery uri)]
+            (into {}
+                  (keep (fn [param]
+                          (let [key-val (str/split param #"=")]
+                            (when (= 2 (count key-val))
+                              (let [[k v] key-val]
+                                [(u/upper-case-en (URLDecoder/decode ^String k "UTF-8"))
+                                 (URLDecoder/decode ^String v "UTF-8")]))))
+                        (str/split queryData #"&")))))))))
 
 (defn- maybe-add-role-to-spec-url
   "Maybe add role to `spec`'s `:connection-uri`. This is necessary for rsa auth to work, because at the time of writing
@@ -213,7 +229,7 @@
   (let [upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
-    (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
+    (-> (merge {:classname                                  "net.snowflake.client.api.driver.SnowflakeDriver"
                 :subprotocol                                "snowflake"
                 :client_metadata_request_use_connection_ctx true
                 :ssl                                        true

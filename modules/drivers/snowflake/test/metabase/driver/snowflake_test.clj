@@ -518,7 +518,7 @@
                                                              (original-query db sql-params (or opts {})))))]
             (is (can-connect? (:details (mt/db))))))
         (is (thrown?
-             net.snowflake.client.jdbc.SnowflakeSQLException
+             net.snowflake.client.api.exception.SnowflakeSQLException
              (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
             "can-connect? should throw for Snowflake databases that don't exist (#9511)")
         (is (can-connect? (-> (:details (mt/db))
@@ -1022,25 +1022,23 @@
       nil "" "asdf" "snowflake:jdbc://x")))
 
 (deftest ^:parallel connection-str->parameters-test-2
-  (testing "Returns `\"ACCOUNT\"` for valid strings of no parameters"
-    (are [conn-str] (= {"ACCOUNT" "x"} (driver.snowflake/connection-str->parameters conn-str))
-      "jdbc:snowflake://x.snowflakecomputing.com"
-      "jdbc:snowflake://x.snowflakecomputing.com/"
-      "jdbc:snowflake://x.snowflakecomputing.com/?")))
+  (testing "Returns nil or an empty map for valid strings of no parameters"
+    (are [conn-str exp] (= exp (driver.snowflake/connection-str->parameters conn-str))
+      "jdbc:snowflake://x.snowflakecomputing.com" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/?" {})))
 
 (deftest ^:parallel connection-str->parameters-test-3
   (testing "Returns decoded parameters"
     (let [role "!@#$%^&*()"]
-      (is (= {"ACCOUNT" "x"
-              "ROLE" role}
+      (is (= {"ROLE" role}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role))))))))
 
 (deftest ^:parallel connection-str->parameters-test-4
   (testing "Returns multiple url parameters"
     (let [role "!@#$%^&*()"]
-      (is (= {"ACCOUNT" "x"
-              "ROLE" role
+      (is (= {"ROLE" role
               "FOO" "bar"}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role)
