@@ -151,3 +151,43 @@
               3 #{}}
              (graph/children-of (graph/filtered-graph g #(<= % 3))
                                 [1 2 3]))))))
+
+(defn- with-timeout
+  "Runs `f` in a future with a timeout. Returns the result or throws if it times out."
+  [timeout-ms f]
+  (let [fut (future (f))
+        result (deref fut timeout-ms ::timeout)]
+    (when (= result ::timeout)
+      (future-cancel fut)
+      (throw (ex-info (str "Timed out after " timeout-ms "ms (possible infinite loop)")
+                      {:timeout-ms timeout-ms})))
+    result))
+
+(deftest ^:parallel transitive-children-of-self-loop-test
+  (testing "transitive-children-of terminates with a self-referential node (#70452)"
+    (let [g (graph/in-memory {:a #{:b}
+                              :b #{:b}})]  ;; :b depends on itself
+      (is (= {:a #{:b}
+              :b #{:b}}
+             (with-timeout 200
+               #(graph/transitive-children-of g [:a]))))))
+  (testing "transitive-children-of terminates with a cycle between two nodes"
+    (let [g (graph/in-memory {:a #{:b}
+                              :b #{:c}
+                              :c #{:b}})]  ;; :b and :c form a cycle
+      (is (= {:a #{:b}
+              :b #{:c}
+              :c #{:b}}
+             (with-timeout 200
+               #(graph/transitive-children-of g [:a])))))))
+
+(deftest ^:parallel transitive-self-loop-test
+  (testing "transitive terminates with a self-referential node"
+    (let [g (graph/in-memory {:a #{:b}
+                              :b #{:b}})]
+      (is (= [:b] (vec (graph/transitive g [:a]))))))
+  (testing "transitive terminates with a cycle between two nodes"
+    (let [g (graph/in-memory {:a #{:b}
+                              :b #{:c}
+                              :c #{:b}})]
+      (is (= #{:b :c} (set (graph/transitive g [:a])))))))
