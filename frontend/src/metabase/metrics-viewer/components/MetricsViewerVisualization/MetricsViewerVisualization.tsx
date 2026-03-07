@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { noop } from "underscore";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
@@ -50,12 +51,16 @@ export function MetricsViewerVisualization({
   const { ref, width } = useElementSize();
   const cols = getGridColumns(width, rawSeries.length);
 
-  const clickActionsMode = new MetricsViewerClickActionsMode({
-    definitions,
-    tab,
-    onTabUpdate,
-    cardIdToDimensionId,
-  });
+  const clickActionsMode = useMemo(
+    () =>
+      new MetricsViewerClickActionsMode({
+        definitions,
+        tab,
+        onTabUpdate,
+        cardIdToDimensionId,
+      }),
+    [cardIdToDimensionId, definitions, onTabUpdate, tab],
+  );
 
   return (
     <Flex

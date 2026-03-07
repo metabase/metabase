@@ -26,7 +26,7 @@ import { DelayGroup, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import * as Lib from "metabase-lib";
 
-import { ColumnBucketPickerPopover } from "./BucketPickerPopover";
+import { ColumnBucketPickerPopover } from "./ColumnBucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
 
 const CUSTOM_EXPRESSION_SECTION_KEY = "custom-expression";

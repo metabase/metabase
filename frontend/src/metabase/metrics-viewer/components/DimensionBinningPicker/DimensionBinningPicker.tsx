@@ -2,11 +2,10 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import {
-  type BucketPickerItem,
+  type BucketItem,
   BucketPickerPopover,
 } from "metabase/common/components/BucketPickerPopover";
 import type {
-  BinningStrategy,
   DimensionMetadata,
   MetricDefinition,
   ProjectionClause,
@@ -59,7 +58,7 @@ export function DimensionBinningPicker({
     [definition, dimension],
   );
 
-  const items: BucketPickerItem[] = useMemo(
+  const items: BucketItem[] = useMemo(
     () => [
       ...strategies.map((strategy) => {
         const info = LibMetric.displayInfo(definition, strategy);
@@ -103,13 +102,13 @@ export function DimensionBinningPicker({
   }, [definition, activeBucketKey, defaultBucket, isEditing]);
 
   const handleSelect = useCallback(
-    (index: number) => {
-      const bucket: BinningStrategy | null =
-        index < strategies.length ? strategies[index] : null;
+    (item: BucketItem) => {
+      const index = items.indexOf(item);
+      const bucket = strategies.at(index) ?? null;
       const newProjection = LibMetric.withBinning(dimension, bucket);
       onSelect(newProjection);
     },
-    [dimension, strategies, onSelect],
+    [dimension, items, strategies, onSelect],
   );
 
   return (

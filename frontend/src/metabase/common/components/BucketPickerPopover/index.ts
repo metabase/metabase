@@ -1,5 +1,5 @@
 export { BucketPickerPopover } from "./BucketPickerPopover";
 export type {
-  BucketPickerItem,
+  BucketItem,
   BucketPickerPopoverProps,
 } from "./BucketPickerPopover";

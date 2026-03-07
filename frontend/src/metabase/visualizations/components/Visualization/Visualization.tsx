@@ -23,7 +23,6 @@ import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
-import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import {
   getIsShowingRawTable,
   getUiControls,
@@ -50,6 +49,7 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import { getCardKey, isSameSeries } from "metabase/visualizations/lib/utils";
 import {
   type ClickActionModeGetter,
+  type ClickActionsMode,
   type ClickObject,
   type HoveredObject,
   type QueryClickActionsMode,
@@ -57,6 +57,7 @@ import {
   type VisualizationGridSize,
   type VisualizationPassThroughProps,
   type Visualization as VisualizationType,
+  isClickActionsMode,
   isRegularClickAction,
 } from "metabase/visualizations/types";
 import {
@@ -150,9 +151,8 @@ type VisualizationOwnProps = {
   metadata?: Metadata;
   mode?:
     | ClickActionModeGetter
-    | Mode
-    | QueryClickActionsMode
-    | MetricsViewerClickActionsMode;
+    | ClickActionsMode
+    | QueryClickActionsMode;
   onEditSummary?: () => void;
   rawSeries?: (
     | SingleSeries
@@ -423,9 +423,8 @@ class Visualization extends PureComponent<
     clickedObject: ClickObject | null | undefined,
     mode:
       | ClickActionModeGetter
-      | Mode
+      | ClickActionsMode
       | QueryClickActionsMode
-      | MetricsViewerClickActionsMode
       | undefined,
     computedSettings: Record<string, string>,
     dashcard?: DashboardCard,
@@ -480,9 +479,8 @@ class Visualization extends PureComponent<
   private static getMode(
     modeOrModeGetter:
       | ClickActionModeGetter
-      | Mode
+      | ClickActionsMode
       | QueryClickActionsMode
-      | MetricsViewerClickActionsMode
       | undefined,
     question: Question | undefined,
   ) {
@@ -493,10 +491,7 @@ class Visualization extends PureComponent<
           : null
         : modeOrModeGetter;
 
-    if (
-      modeOrQueryMode instanceof Mode ||
-      modeOrQueryMode instanceof MetricsViewerClickActionsMode
-    ) {
+    if (isClickActionsMode(modeOrQueryMode)) {
       return modeOrQueryMode;
     }
 

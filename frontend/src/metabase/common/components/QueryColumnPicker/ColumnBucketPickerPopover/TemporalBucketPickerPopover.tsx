@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import {
-  type BucketPickerItem,
+  type BucketItem,
   BucketPickerPopover,
 } from "metabase/common/components/BucketPickerPopover";
 import * as Lib from "metabase-lib";
@@ -11,11 +11,11 @@ import type { CommonBucketPickerProps } from "./types";
 
 export const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
 
-function getBucketPickerItem(
+function getBucketItem(
   query: Lib.Query,
   stageIndex: number,
   bucket: Lib.Bucket,
-): BucketPickerItem {
+): BucketItem {
   const info = Lib.displayInfo(query, stageIndex, bucket);
   return {
     displayName: info.displayName,
@@ -38,11 +38,9 @@ export function TemporalBucketPickerPopover({
 }: CommonBucketPickerProps) {
   const selectedBucket = useMemo(() => Lib.temporalBucket(column), [column]);
 
-  const items: BucketPickerItem[] = useMemo(
+  const items: BucketItem[] = useMemo(
     () => [
-      ...buckets.map((bucket) =>
-        getBucketPickerItem(query, stageIndex, bucket),
-      ),
+      ...buckets.map((bucket) => getBucketItem(query, stageIndex, bucket)),
       {
         displayName: t`Don't bin`,
         isSelected: !selectedBucket && isEditing,
@@ -66,12 +64,12 @@ export function TemporalBucketPickerPopover({
   }, [query, stageIndex, isEditing, selectedBucket, buckets]);
 
   const handleSelect = useCallback(
-    (index: number) => {
-      const bucket: Lib.Bucket | null =
-        index < buckets.length ? buckets[index] : null;
+    (item: BucketItem) => {
+      const index = items.indexOf(item);
+      const bucket = buckets.at(index) ?? null;
       onSelect(Lib.withTemporalBucket(column, bucket));
     },
-    [column, buckets, onSelect],
+    [column, items, buckets, onSelect],
   );
 
   return (

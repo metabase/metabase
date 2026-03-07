@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
@@ -29,41 +30,40 @@ function getFilterDisplayName(
     return getDateFilterDisplayName(datePickerValue);
   }
 
-  switch (dimensionFilter.type) {
-    case "boolean": {
-      if (
-        dimensionFilter.operator === "=" &&
-        dimensionFilter.values.length > 0
-      ) {
-        return dimensionFilter.values[0] ? t`True` : t`False`;
+  return match(dimensionFilter)
+    .with({ type: "boolean" }, (filter) => {
+      if (filter.operator === "=" && filter.values.length > 0) {
+        return filter.values[0] ? t`True` : t`False`;
       }
-      return Lib.describeFilterOperator(dimensionFilter.operator).toLowerCase();
-    }
-    case "time": {
+      return Lib.describeFilterOperator(filter.operator).toLowerCase();
+    })
+    .with({ type: "time" }, (filter) => {
       const operator = Lib.describeFilterOperator(
-        dimensionFilter.operator,
+        filter.operator,
       ).toLowerCase();
-      const formattedValues = dimensionFilter.values
+      const formattedValues = filter.values
         .map((date) => date.toLocaleTimeString())
         .join(", ");
       return `${operator} ${formattedValues}`;
-    }
-    case "string":
-    case "number":
-    case "coordinate": {
-      const operator = Lib.describeFilterOperator(
-        dimensionFilter.operator,
-      ).toLowerCase();
-      if (dimensionFilter.values.length === 0) {
-        return operator;
-      }
-      return `${operator} ${dimensionFilter.values.join(", ")}`;
-    }
-    case "default":
-      return Lib.describeFilterOperator(dimensionFilter.operator).toLowerCase();
-    default:
-      return "";
-  }
+    })
+    .with(
+      { type: "string" },
+      { type: "number" },
+      { type: "coordinate" },
+      (filter) => {
+        const operator = Lib.describeFilterOperator(
+          filter.operator,
+        ).toLowerCase();
+        if (filter.values.length === 0) {
+          return operator;
+        }
+        return `${operator} ${filter.values.join(", ")}`;
+      },
+    )
+    .with({ type: "default" }, (filter) =>
+      Lib.describeFilterOperator(filter.operator).toLowerCase(),
+    )
+    .exhaustive();
 }
 
 type DimensionFilterButtonProps = {

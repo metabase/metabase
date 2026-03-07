@@ -1,15 +1,14 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
-import type { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import type { IconName, IconProps } from "metabase/ui";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
 import type {
   ClickActionModeGetter,
+  ClickActionsMode,
   ClickObject,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
@@ -232,9 +231,8 @@ export type VisualizationPassThroughProps = {
   ) => ReactNode;
   mode?:
     | ClickActionModeGetter
-    | Mode
-    | QueryClickActionsMode
-    | MetricsViewerClickActionsMode;
+    | ClickActionsMode
+    | QueryClickActionsMode;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx

@@ -10,7 +10,7 @@ import { color } from "metabase/ui/utils/colors";
 
 import S from "./BucketPickerPopover.module.css";
 
-export type BucketPickerItem = {
+export type BucketItem = {
   displayName: string;
   isDefault?: boolean;
   isSelected?: boolean;
@@ -19,8 +19,8 @@ export type BucketPickerItem = {
 export interface BucketPickerPopoverProps {
   triggerLabel: string;
   ariaLabel?: string;
-  items: BucketPickerItem[];
-  onSelect: (index: number) => void;
+  items: BucketItem[];
+  onSelect: (item: BucketItem) => void;
   initiallyVisibleItemsCount?: number;
   color?: ColorName;
   hasChevronDown?: boolean;
@@ -119,7 +119,7 @@ export function BucketPickerPopover({
             } as React.CSSProperties
           }
         >
-          {visibleItems.map((item, index) => (
+          {visibleItems.map((item) => (
             <SelectList.Item
               className={S.selectListItem}
               id={item.displayName}
@@ -128,7 +128,7 @@ export function BucketPickerPopover({
               isSelected={item.isSelected}
               onSelect={(_id, event) => {
                 event.stopPropagation();
-                onSelect(index);
+                onSelect(item);
                 handleClose();
               }}
             />
@@ -154,7 +154,7 @@ export function BucketPickerPopover({
 }
 
 function shouldAutoExpand(
-  items: BucketPickerItem[],
+  items: BucketItem[],
   canExpand: boolean,
   initiallyVisibleItemsCount?: number,
 ): boolean {

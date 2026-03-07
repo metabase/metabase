@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import type * as Lib from "metabase-lib";
@@ -88,14 +89,14 @@ function getFilterParts(
 function getOperatorDisplayName(operator: Lib.TimeFilterOperator): string {
   switch (operator) {
     case "<":
-      return "Before";
+      return t`Before`;
     case ">":
-      return "After";
+      return t`After`;
     case "between":
-      return "Between";
+      return t`Between`;
     case "is-null":
-      return "Is empty";
+      return t`Is empty`;
     case "not-null":
-      return "Not empty";
+      return t`Not empty`;
   }
 }

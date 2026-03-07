@@ -1,6 +1,10 @@
 import dayjs from "dayjs";
 
-import type { ClickAction, ClickObject } from "metabase/visualizations/types";
+import type {
+  ClickAction,
+  ClickActionsMode,
+  ClickObject,
+} from "metabase/visualizations/types";
 import * as LibMetric from "metabase-lib/metric";
 import type { CardId, DatetimeUnit, TemporalUnit } from "metabase-types/api";
 
@@ -10,9 +14,7 @@ import type {
   MetricsViewerTabState,
 } from "../types/viewer-state";
 
-import type { DimensionFilterValue } from "./metrics";
-
-import { findDimensionById } from ".";
+import { type DimensionFilterValue, findDimensionById } from "./metrics";
 
 type MetricsViewerClickActionParams = {
   definitions: MetricsViewerDefinitionEntry[];
@@ -21,7 +23,7 @@ type MetricsViewerClickActionParams = {
   cardIdToDimensionId: Record<CardId, MetricSourceId>;
 };
 
-export class MetricsViewerClickActionsMode {
+export class MetricsViewerClickActionsMode implements ClickActionsMode {
   private definitions: MetricsViewerDefinitionEntry[];
   private tab: MetricsViewerTabState;
   private onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;

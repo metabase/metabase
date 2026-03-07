@@ -2,14 +2,13 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import {
-  type BucketPickerItem,
+  type BucketItem,
   BucketPickerPopover,
 } from "metabase/common/components/BucketPickerPopover";
 import type {
   DimensionMetadata,
   MetricDefinition,
   ProjectionClause,
-  TemporalBucket,
   TemporalBucketDisplayInfo,
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -65,7 +64,7 @@ export function DimensionTemporalUnitPicker({
     [definition, dimension],
   );
 
-  const items: BucketPickerItem[] = useMemo(
+  const items: BucketItem[] = useMemo(
     () => [
       ...buckets.map((bucket) => {
         const info = LibMetric.displayInfo(definition, bucket);
@@ -112,13 +111,13 @@ export function DimensionTemporalUnitPicker({
   }, [definition, activeBucket, activeBucketKey, defaultBucket, isEditing]);
 
   const handleSelect = useCallback(
-    (index: number) => {
-      const bucket: TemporalBucket | null =
-        index < buckets.length ? buckets[index] : null;
+    (item: BucketItem) => {
+      const index = items.indexOf(item);
+      const bucket = buckets.at(index) ?? null;
       const newProjection = LibMetric.withTemporalBucket(dimension, bucket);
       onSelect(newProjection);
     },
-    [dimension, buckets, onSelect],
+    [dimension, items, buckets, onSelect],
   );
 
   return (
