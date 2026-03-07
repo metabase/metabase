@@ -27,6 +27,72 @@
       (#'mdb.setup/verify-db-connection :h2 (mdb.data-source/raw-connection-string->DataSource
                                              (format "jdbc:h2:mem:%s" (mt/random-name)))))))
 
+(deftest supported-app-db-version?-test
+  (testing "Should be able to check if an app DB is a supported version"
+    (testing "for H2"
+      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 1 :patch 214})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 3 :minor 1 :patch 214})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 2 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 3 :minor 0 :patch 0})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 1 :patch 213})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 0 :patch 214})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 1 :minor 1 :patch 214}))))
+    (testing "for postgres"
+      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 0 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 13 :minor 0 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 1 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 1 :patch 1})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 11 :minor 0 :patch 0})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor -1 :patch 0})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 0 :patch -1}))))
+
+    (testing "for mysql"
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 17})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 9 :minor 0 :patch 17})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 1 :patch 17})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 18})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 7 :minor 0 :patch 17})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor -1 :patch 17})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 16}))))
+
+    (testing "for mariadb"
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 2 :patch 2})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 11 :minor 2 :patch 2})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 3 :patch 2})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 2 :patch 3})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 9 :minor 2 :patch 2})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 1 :patch 2})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 2 :patch 1}))))))
+
+(deftest parse-db-version-test
+  (testing "Can parse H2 version strings"
+    (is (= {:major 2 :minor 1 :patch 214} (#'mdb.setup/parse-db-version "2.1.214 (2022-06-13)"))))
+  (testing "Can parse postgres version strings"
+    (is (= {:major 18 :minor 3 :patch 0} (#'mdb.setup/parse-db-version "18.3 (Debian 18.3-1.pgdg13+1)")))
+    (is (= {:major 14 :minor 22 :patch 0} (#'mdb.setup/parse-db-version "14.22 (Debian 14.22-1.pgdg13+1)")))
+    (is (= {:major 11 :minor 16 :patch 0} (#'mdb.setup/parse-db-version "11.16 (Debian 11.16-1.pgdg90+1)"))))
+
+  (testing "Can parse mysql version strings"
+    (is (= {:major 9 :minor 6 :patch 0} (#'mdb.setup/parse-db-version "9.6.0")))
+    (is (= {:major 8 :minor 0 :patch 45} (#'mdb.setup/parse-db-version "8.0.45"))))
+
+  (testing "Can parse mariadb version strings"
+    (is (= {:major 12 :minor 2 :patch 2} (#'mdb.setup/parse-db-version "12.2.2-MariaDB-ubu2404")))))
+
+(comment
+
+  [(mdb.connection/db-type)
+
+   (.. (mdb.connection/data-source)
+       (getConnection)
+       (getMetaData)
+       (getDatabaseProductName))
+
+   (.. (mdb.connection/data-source)
+       (getConnection)
+       (getMetaData)
+       (getDatabaseProductVersion))])
+
 (deftest setup-db-test
   (testing "Should be able to set up an arbitrary application DB"
     (letfn [(test* [data-source]
