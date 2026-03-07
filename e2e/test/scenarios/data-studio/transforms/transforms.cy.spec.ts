@@ -4224,6 +4224,11 @@ describe("scenarios > data studio > transforms > permissions > pro-self-hosted",
 
   it("should have transforms available in self-hosted pro without upsell gem icon", () => {
     H.activateToken("pro-self-hosted").then(() => {
+      cy.request("GET", "/api/session/properties").then((resp) => {
+        cy.log(
+          "token-features: " + JSON.stringify(resp.body["token-features"]),
+        );
+      });
       cy.log("ensure that transform permissions are not shown");
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
 
