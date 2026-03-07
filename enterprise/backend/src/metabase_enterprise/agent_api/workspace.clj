@@ -5,8 +5,6 @@
    [metabase-enterprise.workspaces.api.common :as ws.api.common]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase.api.macros :as api.macros]
-   [metabase.queries.schema :as queries.schema]
-   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]))
 
@@ -31,25 +29,9 @@
    [:database_id ::ws.t/appdb-id]
    [:status WorkspaceStatus]
    [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]
-   [:api_key {:optional true} :string]])
+   [:updated_at ms/TemporalInstant]])
 
-(def ^:private TransformSource
-  [:multi {:dispatch (comp keyword :type)}
-   [:query
-    [:map
-     [:type [:= "query"]]
-     [:query ::queries.schema/query]]]
-   [:python
-    [:map {:closed true}
-     [:source-database {:optional true} :int]
-     [:source-tables   [:sequential {:decode/normalize (fn [st]
-                                                         (if (map? st)
-                                                           (transforms-base.u/source-tables-map->vec st)
-                                                           st))}
-                        [:map [:alias [:string {:min 1}]] [:table_id :int]]]]
-     [:type [:= "python"]]
-     [:body :string]]]])
+(def ^:private TransformSource ws.api.common/TransformSource)
 
 (def ^:private TransformTarget
   [:map {:closed true}

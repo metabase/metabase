@@ -10,6 +10,7 @@
    [metabase-enterprise.workspaces.models.workspace-input-external]
    [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.models.workspace-output-external]
+   [metabase-enterprise.workspaces.types :as ws.t]
    [metabase-enterprise.workspaces.validation :as ws.validation]
    [metabase.api.common :as api]
    [metabase.database-routing.core :as database-routing]
@@ -17,6 +18,8 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.util :as transforms.u]
@@ -39,6 +42,41 @@
 
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
+
+(def TransformSource
+  "Schema for a transform source. Shared across APIs — this is a data model concern, not an API contract."
+  [:multi {:dispatch transforms-base.u/keyword-type-dispatch}
+   [:query
+    [:map
+     [:type [:= "query"]]
+     [:query ::queries.schema/query]]]
+   [:python
+    [:map {:closed true}
+     [:source-database {:optional true} :int]
+     [:source-tables   [:sequential {:decode/normalize transforms-base.u/normalize-source-tables-structure}
+                        [:map [:alias [:string {:min 1}]] [:table_id :int]]]]
+     [:type [:= "python"]]
+     [:body :string]]]])
+
+(def ^:private WorkspaceTransform
+  "Internal schema used by handler functions for column selection. Each API namespace maintains
+   its own copy of this schema for response validation — keep them in sync."
+  [:map
+   [:ref_id ::ws.t/ref-id]
+   [:global_id [:maybe ::ws.t/appdb-id]]
+   [:name :string]
+   [:description [:maybe :string]]
+   [:source :map]
+   [:target :map]
+   [:target_stale [:maybe :boolean]]
+   [:workspace_id ::ws.t/appdb-id]
+   [:creator_id [:maybe ::ws.t/appdb-id]]
+   [:archived_at :any]
+   [:created_at :any]
+   [:updated_at :any]
+   [:last_run_at :any]
+   [:last_run_status [:maybe :string]]
+   [:last_run_message [:maybe :string]]])
 
 ;;; ------------------------------------------------- Utilities ------------------------------------------------------
 

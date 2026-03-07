@@ -18,9 +18,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.config.core :as config]
    [metabase.driver.util :as driver.u]
-   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
-   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
@@ -44,22 +42,7 @@
    [:created_at ms/TemporalInstant]
    [:updated_at ms/TemporalInstant]])
 
-(def ^:private TransformSource
-  [:multi {:dispatch (comp keyword :type)}
-   [:query
-    [:map
-     [:type [:= "query"]]
-     [:query ::queries.schema/query]]]
-   [:python
-    [:map {:closed true}
-     [:source-database {:optional true} :int]
-     [:source-tables   [:sequential {:decode/normalize (fn [st]
-                                                         (if (map? st)
-                                                           (transforms-base.u/source-tables-map->vec st)
-                                                           st))}
-                        [:map [:alias [:string {:min 1}]] [:table_id :int]]]]
-     [:type [:= "python"]]
-     [:body :string]]]])
+(def ^:private TransformSource ws.api.common/TransformSource)
 
 (def ^:private TransformTarget
   [:map {:closed true}
