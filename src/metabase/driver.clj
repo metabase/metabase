@@ -280,6 +280,13 @@
   ::driver
   [driver database f] (f driver database))
 
+(defmulti db-tables
+  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given
+    schema. Returns a reducible sequence of results."
+  {:arglists '([driver metadata schema-or-nil db-name-or-nil])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti describe-database*
   "Impl multimethod for [[describe-database]]"
   {:added "0.56.3" :arglists '([driver database])}

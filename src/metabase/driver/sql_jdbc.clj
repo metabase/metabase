@@ -95,6 +95,10 @@
   [driver database]
   (sql-jdbc.sync/dbms-version driver (sql-jdbc.conn/db->pooled-connection-spec database)))
 
+(defmethod driver/db-tables :sql-jdbc
+  [driver metadata schema-or-nil db-name-or-nil]
+  (sql-jdbc.describe-database/db-tables driver metadata schema-or-nil db-name-or-nil))
+
 (defmethod driver/describe-database* :sql-jdbc
   [driver database]
   (sql-jdbc.sync/describe-database driver database))

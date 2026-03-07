@@ -128,7 +128,7 @@
             (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name :retry? true)
             allow?))))))
 
-(defn- jdbc-get-tables
+(defn jdbc-get-tables
   [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]
   (sql-jdbc.sync.common/reducible-results
    #(do (log/debugf "jdbc-get-tables: Calling .getTables for catalog `%s`" catalog)
@@ -235,7 +235,7 @@
                                       (-> table
                                           (dissoc :type)
                                           (assoc :is_writable (privilege-fn table :write))))))
-                         (db-tables driver metadata schema db-name-or-nil))))
+                         (driver/db-tables driver metadata schema db-name-or-nil))))
               syncable-schemas)))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
@@ -259,7 +259,7 @@
              (-> table
                  (dissoc :type)
                  (assoc :is_writable (privilege-fn table :write))))))
-     (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
+     (driver/db-tables driver (.getMetaData conn) nil db-name-or-nil))))
 
 (defn db-or-id-or-spec->database
   "Get database instance from `db-or-id-or-spec`."
