@@ -10,7 +10,6 @@
    [metabase-enterprise.workspaces.models.workspace-input-external]
    [metabase-enterprise.workspaces.models.workspace-log]
    [metabase-enterprise.workspaces.models.workspace-output-external]
-   [metabase-enterprise.workspaces.types :as ws.t]
    [metabase-enterprise.workspaces.validation :as ws.validation]
    [metabase.api.common :as api]
    [metabase.database-routing.core :as database-routing]
@@ -18,171 +17,28 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
-   [metabase.queries.schema :as queries.schema]
-   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------------- Schemas ------------------------------------------------------
 
-(mr/def ::appdb-or-ref-id [:or ::ws.t/appdb-id ::ws.t/ref-id])
-
 (def computed-statuses
   "All possible values returned by computed-status (computed from base_status, etc.)"
   #{:uninitialized :pending :ready :broken :archived})
-
-(mr/def ::status (into [:enum] computed-statuses))
-
-(def Workspace
-  "Schema for a workspace API response."
-  [:map
-   [:id ::ws.t/appdb-id]
-   [:name :string]
-   [:collection_id ::ws.t/appdb-id]
-   [:database_id ::ws.t/appdb-id]
-   [:status ::status]
-   [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]])
-
-;; Transform-related schemas (adapted from transforms/api.clj)
-;; TODO (Chris 2026-02-02) -- We should reuse these schemas, by exposing common types from the transforms module. They *can* match exactly.
-
-(mr/def ::transform-source
-  [:multi {:dispatch (comp keyword :type)}
-   [:query
-    [:map
-     [:type [:= "query"]]
-     [:query ::queries.schema/query]]]
-   [:python
-    [:map {:closed true}
-     [:source-database {:optional true} :int]
-     ;; TODO (Ngoc 2026-03-04) -- remove decode/normalize when FE sends array format for source-tables
-     [:source-tables   [:sequential {:decode/normalize (fn [st]
-                                                         (if (map? st)
-                                                           (transforms-base.u/source-tables-map->vec st)
-                                                           st))}
-                        [:map [:alias [:string {:min 1}]] [:table_id :int]]]]
-     [:type [:= "python"]]
-     [:body :string]]]])
-
-(mr/def ::transform-target
-  [:map {:closed true}
-   [:database {:optional true} ::ws.t/appdb-id]
-   [:type [:enum "table"]]
-   [:schema {:optional true} [:maybe [:string {:min 1}]]]
-   [:name [:string {:min 1}]]])
-
-(mr/def ::run-trigger
-  [:enum "none" "global-schedule"])
-
-(mr/def ::input-table
-  [:map
-   ;; Future-proof with cross-db Python transforms
-   [:db_id ::ws.t/appdb-id]
-   [:schema [:maybe :string]]
-   [:table :string]
-   [:table_id [:maybe ::ws.t/appdb-id]]])
-
-(mr/def ::output-table
-  [:map
-   ;; Future-proof with multi-db Workspaces, plus necessary to resolve table references when id is null.
-   [:db_id ::ws.t/appdb-id]
-   [:global [:map
-             ;; transform_id is nil for workspace outputs, int for external outputs
-             [:transform_id [:maybe ::ws.t/appdb-id]]
-             [:schema [:maybe :string]]
-             [:table :string]
-             [:table_id [:maybe ::ws.t/appdb-id]]]]
-   [:isolated [:map
-               ;; transform_id is ref_id (string) for workspace outputs, int for external outputs
-               [:transform_id [:or ::ws.t/ref-id ::ws.t/appdb-id]]
-               [:schema :string]
-               [:table :string]
-               [:table_id [:maybe ::ws.t/appdb-id]]]]])
-
-(def WorkspaceTransform
-  "Schema for a full workspace transform API response."
-  [:map
-   [:ref_id ::ws.t/ref-id]
-   [:global_id [:maybe ::ws.t/appdb-id]]
-   [:name :string]
-   [:description [:maybe :string]]
-   [:source :map]
-   [:target :map]
-   ;; Not yet calculated, see https://linear.app/metabase/issue/BOT-684/mark-stale-transforms-workspace-only
-   [:target_stale [:maybe :boolean]]
-   [:workspace_id ::ws.t/appdb-id]
-   [:creator_id [:maybe ::ws.t/appdb-id]]
-   [:archived_at :any]
-   [:created_at :any]
-   [:updated_at :any]
-   [:last_run_at :any]
-   [:last_run_status [:maybe :string]]
-   [:last_run_message [:maybe :string]]])
 
 (def workspace-transform-alias
   "Alias map for workspace transform fields (e.g. :target_stale -> :definition_changed)."
   {:target_stale :definition_changed})
 
-;; TODO (Sanya 2025-12-12) -- Confirm precisely which fields are needed by the FE
-(def WorkspaceTransformListing
-  "Schema for a transform in a workspace"
-  [:map {:closed true}
-   [:ref_id ::ws.t/ref-id]
-   [:global_id [:maybe ::ws.t/appdb-id]]
-   [:name :string]
-   [:source_type [:maybe :keyword]]
-   [:creator_id [:maybe ::ws.t/appdb-id]]
-   ;[:last_run :map]
-   ; See https://metaboat.slack.com/archives/C099RKNLP6U/p1765205882655869?thread_ts=1765205222.888209&cid=C099RKNLP6U
-   #_[:target_stale :boolean]])
-
-(def ExternalTransform
-  "Schema for an external (non-workspace) transform visible to a workspace."
-  ;; Might be interesting to show whether they're enclosed, once we have the graph.
-  ;; When they're enclosed, it could also be interesting to know whether they're stale.
-  [:map
-   [:id ::ws.t/appdb-id]
-   [:name :string]
-   [:source_type :keyword]
-   [:checkout_disabled [:maybe :string]]])
-
-(def PendingInput
-  "Schema for an input table that has not yet been granted access."
-  [:map
-   [:db_id ::ws.t/appdb-id]
-   [:schema [:maybe :string]]
-   [:table :string]])
-
-(mr/def ::graph-node-type [:enum :input-table :external-transform :workspace-transform])
-
-(mr/def ::graph-node
-  [:map
-   [:id ::appdb-or-ref-id]
-   [:type [:enum :input-table :external-transform :workspace-transform]]
-   [:dependents_count [:map-of ::graph-node-type ms/PositiveInt]]
-   [:data :map]])
-
-(mr/def ::graph-edge
-  [:map
-   [:from_entity_id ::appdb-or-ref-id]
-   [:from_entity_type :string]
-   [:to_entity_id ::appdb-or-ref-id]
-   [:to_entity_type :string]])
-
-(def GraphResult
-  "Schema for the workspace dependency graph response."
-  [:map
-   [:nodes [:sequential ::graph-node]]
-   [:edges [:sequential ::graph-edge]]])
+(mr/def ::run-trigger
+  [:enum "none" "global-schedule"])
 
 ;;; ------------------------------------------------- Utilities ------------------------------------------------------
 
