@@ -90,6 +90,52 @@ Output shape:
 
 Use to find existing content before creating duplicates.
 
+## get-field
+
+Get full field metadata including statistical fingerprint.
+
+```bash
+./metabase-agent get-field 42
+```
+
+Output shape:
+```json
+{"id": 42, "name": "total", "display_name": "Total", "table_id": 5,
+ "base_type": "type/Float", "semantic_type": null,
+ "has_field_values": "none",
+ "fingerprint": {
+   "distinct_count": 200, "null_percent": 0.0,
+   "min": 12.5, "max": 1250.0, "avg": 89.43, "q1": 35.0, "q3": 120.0, "sd": 75.2
+ }}
+```
+
+Fingerprint content depends on field type:
+- **Numbers**: `min`, `max`, `avg`, `q1`, `q3`, `sd` (standard deviation), `distinct_count`, `null_percent`
+- **Dates**: `earliest`, `latest`, `distinct_count`, `null_percent`
+- **Text**: `average_length`, `distinct_count`, `null_percent`
+
+Use to understand value ranges before building filters (e.g., knowing the min/max of a price field).
+
+## get-field-values
+
+Get distinct values stored in a field. Essential for building correct filters.
+
+```bash
+./metabase-agent get-field-values 50
+```
+
+Output shape:
+```json
+{"field_id": 50, "values": ["cancelled", "completed", "pending", "shipped"], "has_more_values": false}
+```
+
+Use this to discover valid filter values. For example, before writing `(filter (= (field "ORDERS" "STATUS") "completed"))`, run `get-field-values` on the status field to see all possible values.
+
+Notes:
+- Only works for fields with `has_field_values: "list"` (typically low-cardinality fields like status, category, etc.)
+- For high-cardinality fields (IDs, timestamps), returns empty values — use `get-field` fingerprint instead for range info
+- If a field has remapped display values, returns `[original_value, display_name]` pairs
+
 ## ping
 
 Health check. No arguments.
@@ -107,7 +153,13 @@ Health check. No arguments.
 2. ./metabase-agent get-table <table_id>
    --> Learn field names, types, relationships
 
-3. ./metabase-agent search "keyword" --models card,dashboard
+3. ./metabase-agent get-field-values <field_id>
+   --> Discover valid values for categorical fields (status, type, category)
+
+4. ./metabase-agent get-field <field_id>
+   --> Check value ranges for numeric/date fields (min, max, avg, date range)
+
+5. ./metabase-agent search "keyword" --models card,dashboard
    --> Check if the analysis already exists
 ```
 
