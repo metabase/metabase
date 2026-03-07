@@ -3603,6 +3603,11 @@ databaseChangeLog:
       id: v59.2026-03-07T00:00:00
       author: christruter
       comment: Delete orphaned API keys that were created for workspace service users
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: workspace
+            columnName: api_key_id
       changes:
         - sql:
             sql: >-

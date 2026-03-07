@@ -216,6 +216,38 @@
                  (agent-ws-client :post 403 (str "agent/v1/workspace/" ws-id "/transform/validate/target")
                                   {:target target}))))))))
 
+(defn- scoped-auth-headers [scope]
+  {"authorization" (str "Bearer " (sign-jwt {:email "crowberto@metabase.com" :scope scope}))})
+
+(deftest agent-workspace-scope-enforcement-test
+  (with-agent-workspace-setup!
+    (ws.tu/with-resources! [res {:workspace {:definitions {:x1 [:t1]}}}]
+      (let [ws-id  (:workspace-id res)
+            ref-id (get-in res [:workspace-map :x1])]
+        (testing "read scope can GET but not POST"
+          (let [headers (scoped-auth-headers "agent:workspace:read")]
+            (is (=? {:id ws-id}
+                    (client/client :get 200 (str "agent/v1/workspace/" ws-id)
+                                   {:request-options {:headers headers}})))
+            (is (= {:error   "unsupported_scope"
+                    :message "Token does not have required scope: agent:workspace:write"}
+                   (client/client :post 403 (str "agent/v1/workspace/" ws-id "/archive")
+                                  {:request-options {:headers headers}})))))
+
+        (testing "write scope can POST archive but not run"
+          (let [headers (scoped-auth-headers "agent:workspace:write")]
+            (is (= {:error   "unsupported_scope"
+                    :message "Token does not have required scope: agent:workspace:execute"}
+                   (client/client :post 403 (str "agent/v1/workspace/" ws-id "/run")
+                                  {:request-options {:headers headers}})))))
+
+        (testing "execute scope can POST run but not GET workspace"
+          (let [headers (scoped-auth-headers "agent:workspace:execute")]
+            (is (= {:error   "unsupported_scope"
+                    :message "Token does not have required scope: agent:workspace:read"}
+                   (client/client :get 403 (str "agent/v1/workspace/" ws-id)
+                                  {:request-options {:headers headers}})))))))))
+
 (deftest agent-workspace-feature-gating-test
   ;; Feature gates fire before routing, so we don't need a real workspace - just a valid-looking URL.
   (sso.test-setup/with-jwt-default-setup!
