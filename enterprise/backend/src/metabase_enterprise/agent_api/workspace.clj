@@ -5,14 +5,146 @@
    [metabase-enterprise.workspaces.api.common :as ws.api.common]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase.api.macros :as api.macros]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
+;;; ------------------------------------------------ Agent API Schemas -----------------------------------------------
+;;
+;; These schemas define the agent API contract independently of the EE workspace API.
+;; In practice we will often sync with ws.api.common, but we must be conscious and explicit with breaking changes to
+;; so that we can keep our skills and integrations (e.g. CLI, MCP) updated.
+
+(def ^:private WorkspaceStatus
+  "Computed workspace status enum."
+  (into [:enum] ws.api.common/computed-statuses))
+
+(def ^:private Workspace
+  "Schema for a workspace API response."
+  [:map
+   [:id ::ws.t/appdb-id]
+   [:name :string]
+   [:collection_id ::ws.t/appdb-id]
+   [:database_id ::ws.t/appdb-id]
+   [:status WorkspaceStatus]
+   [:created_at ms/TemporalInstant]
+   [:updated_at ms/TemporalInstant]
+   [:api_key {:optional true} :string]])
+
+(def ^:private TransformSource
+  [:multi {:dispatch (comp keyword :type)}
+   [:query
+    [:map
+     [:type [:= "query"]]
+     [:query ::queries.schema/query]]]
+   [:python
+    [:map {:closed true}
+     [:source-database {:optional true} :int]
+     [:source-tables   [:sequential {:decode/normalize (fn [st]
+                                                         (if (map? st)
+                                                           (transforms-base.u/source-tables-map->vec st)
+                                                           st))}
+                        [:map [:alias [:string {:min 1}]] [:table_id :int]]]]
+     [:type [:= "python"]]
+     [:body :string]]]])
+
+(def ^:private TransformTarget
+  [:map {:closed true}
+   [:database {:optional true} ::ws.t/appdb-id]
+   [:type [:enum "table"]]
+   [:schema {:optional true} [:maybe [:string {:min 1}]]]
+   [:name [:string {:min 1}]]])
+
+(def ^:private InputTable
+  [:map
+   [:db_id ::ws.t/appdb-id]
+   [:schema [:maybe :string]]
+   [:table :string]
+   [:table_id [:maybe ::ws.t/appdb-id]]])
+
+(def ^:private OutputTable
+  [:map
+   [:db_id ::ws.t/appdb-id]
+   [:global [:map
+             [:transform_id [:maybe ::ws.t/appdb-id]]
+             [:schema [:maybe :string]]
+             [:table :string]
+             [:table_id [:maybe ::ws.t/appdb-id]]]]
+   [:isolated [:map
+               [:transform_id [:or ::ws.t/ref-id ::ws.t/appdb-id]]
+               [:schema :string]
+               [:table :string]
+               [:table_id [:maybe ::ws.t/appdb-id]]]]])
+
+(def ^:private WorkspaceTransform
+  "Schema for a full workspace transform API response."
+  [:map
+   [:ref_id ::ws.t/ref-id]
+   [:global_id [:maybe ::ws.t/appdb-id]]
+   [:name :string]
+   [:description [:maybe :string]]
+   [:source :map]
+   [:target :map]
+   [:target_stale [:maybe :boolean]]
+   [:workspace_id ::ws.t/appdb-id]
+   [:creator_id [:maybe ::ws.t/appdb-id]]
+   [:archived_at :any]
+   [:created_at :any]
+   [:updated_at :any]
+   [:last_run_at :any]
+   [:last_run_status [:maybe :string]]
+   [:last_run_message [:maybe :string]]])
+
+(def ^:private WorkspaceTransformListing
+  "Schema for a transform in a workspace listing."
+  [:map {:closed true}
+   [:ref_id ::ws.t/ref-id]
+   [:global_id [:maybe ::ws.t/appdb-id]]
+   [:name :string]
+   [:source_type [:maybe :keyword]]
+   [:creator_id [:maybe ::ws.t/appdb-id]]])
+
+(def ^:private ExternalTransform
+  "Schema for an external (non-workspace) transform visible to a workspace."
+  [:map
+   [:id ::ws.t/appdb-id]
+   [:name :string]
+   [:source_type :keyword]
+   [:checkout_disabled [:maybe :string]]])
+
+(def ^:private PendingInput
+  "Schema for an input table that has not yet been granted access."
+  [:map
+   [:db_id ::ws.t/appdb-id]
+   [:schema [:maybe :string]]
+   [:table :string]])
+
+(def ^:private GraphNode
+  [:map
+   [:id [:or ::ws.t/appdb-id ::ws.t/ref-id]]
+   [:type [:enum :input-table :external-transform :workspace-transform]]
+   [:dependents_count [:map-of [:enum :input-table :external-transform :workspace-transform] ms/PositiveInt]]
+   [:data :map]])
+
+(def ^:private GraphEdge
+  [:map
+   [:from_entity_id [:or ::ws.t/appdb-id ::ws.t/ref-id]]
+   [:from_entity_type :string]
+   [:to_entity_id [:or ::ws.t/appdb-id ::ws.t/ref-id]]
+   [:to_entity_type :string]])
+
+(def ^:private GraphResult
+  "Schema for the workspace dependency graph response."
+  [:map
+   [:nodes [:sequential GraphNode]]
+   [:edges [:sequential GraphEdge]]])
+
 ;;; ------------------------------------------------ Read Endpoints ---------------------------------------------------
 
-(api.macros/defendpoint :get "/:ws-id" :- ws.api.common/Workspace
+(api.macros/defendpoint :get "/:ws-id" :- Workspace
   "Get a single workspace by ID."
   {:scope "agent:workspace:read"}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
@@ -21,8 +153,8 @@
 
 (api.macros/defendpoint :get "/:ws-id/table"
   :- [:map {:closed true}
-      [:inputs [:sequential ::ws.api.common/input-table]]
-      [:outputs [:sequential ::ws.api.common/output-table]]]
+      [:inputs [:sequential InputTable]]
+      [:outputs [:sequential OutputTable]]]
   "Get workspace input and output tables."
   {:scope "agent:workspace:read"}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
@@ -32,7 +164,7 @@
 (api.macros/defendpoint :get "/:ws-id/log"
   :- [:map
       [:workspace_id ms/PositiveInt]
-      [:status ::ws.api.common/status]
+      [:status WorkspaceStatus]
       [:updated_at :any]
       [:last_completed_at [:maybe :any]]
       [:logs [:sequential [:map
@@ -50,7 +182,7 @@
    _query-params]
   (ws.api.common/get-workspace-log ws-id))
 
-(api.macros/defendpoint :get "/:ws-id/graph" :- ws.api.common/GraphResult
+(api.macros/defendpoint :get "/:ws-id/graph" :- GraphResult
   "Get the dependency graph for a workspace."
   {:scope "agent:workspace:read"}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
@@ -64,7 +196,7 @@
    _query-params]
   (ws.api.common/get-workspace-problems ws-id))
 
-(api.macros/defendpoint :get "/:ws-id/external/transform" :- [:map [:transforms [:sequential ws.api.common/ExternalTransform]]]
+(api.macros/defendpoint :get "/:ws-id/external/transform" :- [:map [:transforms [:sequential ExternalTransform]]]
   "List external transforms not checked out into this workspace."
   {:scope "agent:workspace:read"}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
@@ -72,7 +204,7 @@
   (ws.api.common/get-external-transforms ws-id database-id))
 
 (api.macros/defendpoint :get "/:ws-id/input/pending"
-  :- [:map [:inputs [:sequential ws.api.common/PendingInput]]]
+  :- [:map [:inputs [:sequential PendingInput]]]
   "List pending input grants."
   {:scope "agent:workspace:read"}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]]
@@ -80,19 +212,19 @@
 
 ;;; ------------------------------------------ Transform CRUD ---------------------------------------------------------
 
-(api.macros/defendpoint :get "/:ws-id/transform" :- [:map [:transforms [:sequential ws.api.common/WorkspaceTransformListing]]]
+(api.macros/defendpoint :get "/:ws-id/transform" :- [:map [:transforms [:sequential WorkspaceTransformListing]]]
   "List all transforms in a workspace."
   {:scope "agent:workspace:read"}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]]
   (ws.api.common/list-transforms ws-id))
 
-(api.macros/defendpoint :get "/:ws-id/transform/:tx-id" :- ws.api.common/WorkspaceTransform
+(api.macros/defendpoint :get "/:ws-id/transform/:tx-id" :- WorkspaceTransform
   "Get a specific transform in a workspace."
   {:scope "agent:workspace:read"}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (ws.api.common/fetch-ws-transform ws-id tx-id))
 
-(api.macros/defendpoint :post "/:ws-id/archive" :- ws.api.common/Workspace
+(api.macros/defendpoint :post "/:ws-id/archive" :- Workspace
   "Archive a workspace."
   {:scope "agent:workspace:write"}
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
@@ -101,7 +233,7 @@
   (ws.api.common/archive-workspace! ws-id))
 
 (api.macros/defendpoint :post "/:ws-id/transform"
-  :- ws.api.common/WorkspaceTransform
+  :- WorkspaceTransform
   "Create a new transform in the workspace."
   {:scope "agent:workspace:write"}
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
@@ -109,8 +241,8 @@
    body :- [:map #_{:closed true}
             [:name :string]
             [:description {:optional true} [:maybe :string]]
-            [:source ::ws.api.common/transform-source]
-            #_[:target ::ws.api.common/transform-target]]]
+            [:source TransformSource]
+            #_[:target TransformTarget]]]
   (ws.api.common/create-workspace-transform! ws-id body))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/archive" :- :nil
@@ -183,7 +315,7 @@
 
 ;;; ------------------------------------------ Update / Delete --------------------------------------------------------
 
-(api.macros/defendpoint :put "/:ws-id/transform/:tx-id" :- ws.api.common/WorkspaceTransform
+(api.macros/defendpoint :put "/:ws-id/transform/:tx-id" :- WorkspaceTransform
   "Update or create a transform in a workspace."
   {:scope "agent:workspace:write"}
   [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]
@@ -191,8 +323,8 @@
    body :- [:map
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::ws.api.common/transform-source]
-            [:target {:optional true} ::ws.api.common/transform-target]]]
+            [:source {:optional true} TransformSource]
+            [:target {:optional true} TransformTarget]]]
   (ws.api.common/update-transform! ws-id tx-id body))
 
 (api.macros/defendpoint :delete "/:ws-id/transform/:tx-id" :- :nil
