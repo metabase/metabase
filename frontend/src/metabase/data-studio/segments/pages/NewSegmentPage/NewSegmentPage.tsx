@@ -14,7 +14,12 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatasetQuery, Segment, Table } from "metabase-types/api";
+import {
+  type DatasetQuery,
+  type Segment,
+  type Table,
+  isConcreteTableId,
+} from "metabase-types/api";
 
 import { NewSegmentHeader } from "../../components/NewSegmentHeader";
 import { SegmentEditor } from "../../components/SegmentEditor";
@@ -71,6 +76,12 @@ export function NewSegmentPage({
     if (!table || !definition || !isValid) {
       return;
     }
+
+    if (!isConcreteTableId(table.id)) {
+      sendErrorToast(t`Failed to create segment for card`);
+      return;
+    }
+
     const { data: segment, error } = await createSegment({
       name: name.trim(),
       table_id: table.id,

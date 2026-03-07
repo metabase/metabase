@@ -10,7 +10,7 @@ import type { UserId, UserInfo } from "./user";
 
 export type ConcreteTableId = number;
 export type VirtualTableId = string; // e.g. "card__17" where 17 is a card id
-export type TableId = ConcreteTableId | VirtualTableId;
+export type TableId = ConcreteTableId;
 export type SchemaId = string; // ideally this should be typed as `${DatabaseId}:${SchemaName}`
 
 export function isConcreteTableId(
@@ -141,7 +141,7 @@ export interface GetTableRequest {
 }
 
 export interface GetTableQueryMetadataRequest {
-  id: TableId;
+  id: ConcreteTableId;
   include_sensitive_fields?: boolean;
   include_hidden_fields?: boolean;
   include_editable_data_model?: boolean;

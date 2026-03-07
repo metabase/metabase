@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import type Table from "metabase-lib/v1/metadata/Table";
+import type { TableId } from "metabase-types/api";
 
 import { Description, EmptyDescription } from "../MetadataInfo";
 import {
@@ -19,7 +20,7 @@ import { InfoContainer, MetadataContainer } from "./TableInfo.styled";
 
 export type TableInfoProps = {
   className?: string;
-  tableId: Table["id"];
+  tableId: TableId;
   onConnectedTableClick?: (table: Table) => void;
 };
 

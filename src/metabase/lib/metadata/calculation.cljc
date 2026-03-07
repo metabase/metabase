@@ -1,31 +1,31 @@
-(ns metabase.lib.metadata.calculation
-  (:refer-clojure :exclude [select-keys mapv empty? #?(:clj for)])
-  (:require
-   #?(:clj  [metabase.config.core :as config]
-      :cljs [metabase.lib.cache :as lib.cache])
-   [clojure.string :as str]
-   [medley.core :as m]
-   [metabase.lib.computed :as lib.computed]
-   [metabase.lib.dispatch :as lib.dispatch]
-   [metabase.lib.field.util :as lib.field.util]
-   [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.cache :as lib.metadata.cache]
-   [metabase.lib.options :as lib.options]
-   [metabase.lib.ref :as lib.ref]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [select-keys mapv empty? #?(:clj for)]]))
+ (ns metabase.lib.metadata.calculation
+   (:refer-clojure :exclude [select-keys mapv empty? #?(:clj for)])
+   (:require
+    #?(:clj  [metabase.config.core :as config]
+       :cljs [metabase.lib.cache :as lib.cache])
+    [clojure.string :as str]
+    [medley.core :as m]
+    [metabase.lib.computed :as lib.computed]
+    [metabase.lib.dispatch :as lib.dispatch]
+    [metabase.lib.field.util :as lib.field.util]
+    [metabase.lib.hierarchy :as lib.hierarchy]
+    [metabase.lib.metadata :as lib.metadata]
+    [metabase.lib.metadata.cache :as lib.metadata.cache]
+    [metabase.lib.options :as lib.options]
+    [metabase.lib.ref :as lib.ref]
+    [metabase.lib.schema :as lib.schema]
+    [metabase.lib.schema.common :as lib.schema.common]
+    [metabase.lib.schema.expression :as lib.schema.expression]
+    [metabase.lib.schema.metadata :as lib.schema.metadata]
+    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+    [metabase.lib.types.isa :as lib.types.isa]
+    [metabase.lib.util :as lib.util]
+    [metabase.util :as u]
+    [metabase.util.i18n :as i18n]
+    [metabase.util.log :as log]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]
+    [metabase.util.performance :refer [select-keys mapv empty? #?(:clj for)]]))
 
 (mr/def ::display-name-style
   "Schema for valid values of `display-name-style` as passed to [[display-name-method]].

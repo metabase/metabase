@@ -16,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :plugins))
+(use-fixtures :once (fixtures/initialize :plugins :db))
 
 ;; Helper Fns
 
@@ -872,8 +872,9 @@
 (deftest coercion-strategy-is-respected-after-follow-up-request-test
   (testing "Coercion is not erased on follow-up requests (#60483)"
     (mt/with-temp-copy-of-db
-      (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
-                            {:coercion_strategy "Coercion/UNIXSeconds->DateTime"})
+      (is (=? {:id (mt/id :venues :price)}
+              (mt/user-http-request :crowberto :put 200 (str "field/" (mt/id :venues :price))
+                                    {:coercion_strategy "Coercion/UNIXSeconds->DateTime"})))
       (let [field (t2/select-one :model/Field :id (mt/id :venues :price))]
         (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
         (is (isa? (:effective_type field) :type/DateTime)))

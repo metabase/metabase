@@ -45,11 +45,12 @@
    ;; have to do this -- we should try to fix flaws in metadata thru normalization if at all possible.
    [:schema
     {:decode/normalize (fn [xs]
-                         (if-not (mr/validate [:sequential ::lib.schema.metadata/lib-or-legacy-column] xs)
-                           (do
-                             (log/warn "Ignoring invalid Card result_metadata")
-                             nil)
-                           xs))}
+                         (when xs
+                           (if-not (mr/validate [:sequential ::lib.schema.metadata/lib-or-legacy-column] xs)
+                             (do
+                               (log/warn "Ignoring invalid Card result_metadata")
+                               nil)
+                             xs)))}
     :any]])
 
 ;;; TODO (Cam 9/29/25) -- fill this out more, `:metabase.lib.schema.metadata/card` has a lot of stuff and there's also

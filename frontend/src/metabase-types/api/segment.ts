@@ -1,5 +1,5 @@
 import type { DatasetQuery } from "./query";
-import type { Table, TableId } from "./table";
+import type { ConcreteTableId, Table } from "./table";
 import type { UserInfo } from "./user";
 
 export type SegmentId = number;
@@ -8,7 +8,7 @@ export interface Segment {
   id: SegmentId;
   name: string;
   description: string;
-  table_id: TableId;
+  table_id: ConcreteTableId;
   table?: Table;
   archived: boolean;
   // Backend always returns MBQL5 format
@@ -23,7 +23,7 @@ export interface Segment {
 
 export interface CreateSegmentRequest {
   name: string;
-  table_id: TableId;
+  table_id: ConcreteTableId;
   definition: DatasetQuery;
   description?: string;
 }

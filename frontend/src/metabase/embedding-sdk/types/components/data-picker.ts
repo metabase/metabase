@@ -1,4 +1,9 @@
-import type { CardType, CollectionId, TableId } from "metabase-types/api";
+import type {
+  CardType,
+  CollectionId,
+  TableId,
+  WrappedCardId,
+} from "metabase-types/api";
 
 export interface DataSourceSelectorProps {
   isInitiallyOpen: boolean;
@@ -11,7 +16,7 @@ export interface DataSourceSelectorProps {
   /** false when joining data, true otherwise */
   canChangeDatabase: boolean;
   selectedDatabaseId: number | null;
-  selectedTableId?: TableId;
+  selectedTableId?: TableId | WrappedCardId;
   selectedCollectionId?: CollectionId | null;
   canSelectModel: boolean;
   canSelectTable: boolean;

@@ -27,7 +27,8 @@ export const FileUploadStatus = () => {
     "collectionId",
   );
 
-  const tables = Object.keys(groupedTables) as TableId[];
+  // TODO(romeovs): This is an ugly type fix
+  const tables = Object.keys(groupedTables) as unknown as TableId[];
   const collections = Object.keys(groupedCollections) as CollectionId[];
 
   return (

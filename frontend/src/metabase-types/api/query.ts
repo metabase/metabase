@@ -1,7 +1,7 @@
 import type * as Lib from "metabase-lib";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
-import type { CardId } from "./card";
+import type { CardId, WrappedCardId } from "./card";
 import type { DatabaseId } from "./database";
 import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
 import type { FieldId } from "./field";
@@ -319,7 +319,7 @@ export type JoinFields = "all" | "none" | JoinedFieldReference[];
 
 type JoinClause = Array<Join>;
 export type Join = {
-  "source-table"?: TableId;
+  "source-table"?: TableId | WrappedCardId;
   "source-query"?: StructuredQuery;
   condition: JoinCondition;
   alias?: JoinAlias;

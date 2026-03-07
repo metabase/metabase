@@ -11,8 +11,9 @@ import {
 } from "metabase/redux/embedding-data-picker";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { CardType, TableId } from "metabase-types/api";
+import Question from "metabase-lib/v1/Question";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { TableId, WrappedCardId } from "metabase-types/api";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { DataPickerTarget } from "../DataPickerTarget";
@@ -67,11 +68,11 @@ export function EmbeddingDataPicker({
   const forceMultiStagedDataPicker = dataPicker === "staged";
 
   // a table or a virtual table (card)
-  const sourceTable = useSourceTable(query);
-  const {
-    collectionId: sourceModelCollectionId,
-    isFetching: isSourceModelFetching,
-  } = useSourceEntityCollectionId(query);
+  const sourceId = Lib.sourceTableOrCardId(query);
+  const source = useSourceTableOrCard(sourceId);
+  const sourceType = source instanceof Question ? source.type() : source?.type;
+  const sourceModelCollectionId =
+    source instanceof Question ? source.card().collection_id : null;
 
   if (isDataSourceCountLoading) {
     return null;
@@ -123,13 +124,9 @@ export function EmbeddingDataPicker({
   const isSourceSelected = Boolean(pickerInfo?.tableId);
   return (
     <PLUGIN_EMBEDDING.DataSourceSelector
-      key={
-        isSourceSelected
-          ? pickerInfo?.tableId
-          : `${sourceTable?.id}:${isSourceModelFetching}`
-      }
-      isInitiallyOpen={isSourceModelFetching ? false : !table}
-      querySourceType={sourceTable?.type}
+      key={isSourceSelected ? pickerInfo?.tableId : sourceId}
+      isInitiallyOpen={!table}
+      querySourceType={sourceType}
       canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
@@ -156,22 +153,13 @@ export function EmbeddingDataPicker({
   );
 }
 
-function useSourceTable(query: Lib.Query) {
+function useSourceTableOrCard(id: TableId | WrappedCardId | null) {
   const metadata = useSelector(getMetadata);
-  return metadata.table(Lib.sourceTableOrCardId(query));
-}
-
-function useSourceEntityCollectionId(query: Lib.Query) {
-  const sourceTable = useSourceTable(query);
-  const isCard =
-    sourceTable?.type &&
-    (["model", "question"] as CardType[]).includes(sourceTable.type);
-  const cardId = isCard
-    ? getQuestionIdFromVirtualTableId(sourceTable?.id)
-    : undefined;
-  const { data: card, isFetching } = useGetCardQuery(
-    cardId ? { id: cardId } : skipToken,
-  );
-
-  return { collectionId: card?.collection_id, isFetching };
+  if (!id) {
+    return null;
+  }
+  if (isVirtualCardId(id)) {
+    return metadata.question(id);
+  }
+  return metadata.table(id);
 }
