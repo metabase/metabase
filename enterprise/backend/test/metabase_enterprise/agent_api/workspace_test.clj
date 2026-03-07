@@ -235,11 +235,13 @@
   (testing "Workspace endpoints require :workspaces premium feature"
     (sso.test-setup/with-jwt-default-setup!
       (mt/with-model-cleanup [:model/ApiKey]
-        ;; Enable agent-api but NOT workspaces
-        (mt/with-additional-premium-features #{:agent-api :metabot-v3 :transforms}
+        ;; Create workspace with all features enabled
+        (mt/with-additional-premium-features #{:agent-api :metabot-v3 :workspaces :transforms}
           (ws.tu/with-resources! [res {:workspace {:name "Gating Test"}}]
-            (let [ws-id  (:workspace-id res)
-                  result (client/client-full-response :get 402 (str "agent/v1/workspace/" ws-id)
-                                                      {:request-options {:headers (auth-headers)}})]
-              (testing "Returns 402 when :workspaces feature is not enabled"
-                (is (= 402 (:status result)))))))))))
+            (let [ws-id (:workspace-id res)]
+              ;; Now restrict to agent-api only (no :workspaces), keeping sso-jwt for auth
+              (mt/with-premium-features #{:agent-api :metabot-v3 :transforms :sso-jwt :audit-app}
+                (let [result (client/client-full-response :get 402 (str "agent/v1/workspace/" ws-id)
+                                                          {:request-options {:headers (auth-headers)}})]
+                  (testing "Returns 402 when :workspaces feature is not enabled"
+                    (is (= 402 (:status result)))))))))))))

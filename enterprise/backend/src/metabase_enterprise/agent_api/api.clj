@@ -5,7 +5,7 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase-enterprise.agent-api.workspace :as agent-workspace]
-   [metabase-enterprise.api.routes.common :as ee.api]
+   [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.metabot-v3.tools.api :as tools.api]
    [metabase-enterprise.metabot-v3.tools.deftool :as deftool]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
