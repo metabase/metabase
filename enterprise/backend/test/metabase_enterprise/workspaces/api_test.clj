@@ -1283,7 +1283,9 @@
         (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
           (mt/with-temp [:model/Transform x1 {:name   "Transform"
                                               :source {:type  "query"
-                                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
+                                                       :query (-> (mt/mbql-query orders {:aggregation [[:count]]})
+                                                                  ws.tu/mbql->native
+                                                                  mt/native-query)}
                                               :target {:type     "table"
                                                        :database (mt/id)
                                                        :schema   target-schema
@@ -2078,9 +2080,7 @@
   (testing "GET /api/ee/workspace/checkout returns checkout status for a transform"
     (mt/with-temp [:model/Transform tx {:name   "Native Transform"
                                         :source {:type  :query
-                                                 :query {:database (mt/id)
-                                                         :type     :native
-                                                         :native   {:query "SELECT 1"}}}
+                                                 :query (mt/native-query {:query "SELECT 1"})}
                                         :target {:type     "table"
                                                  :database (mt/id)
                                                  :schema   "public"

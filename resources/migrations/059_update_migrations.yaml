@@ -3575,7 +3575,23 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v59.2026-02-18T12:00:00
+      id: v59.2026-03-03T12:00:00
+      author: qnkhuat
+      comment: Unify source-tables format from map to ordered array
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.UnifySourceTablesFormat"
+
+  - changeSet:
+      id: v59.2026-03-04T00:00:00
+      author: rileythompson
+      comment: Fix ClickHouse upload DB schema name and models
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
+
+  - changeSet:
+      id: v59.2026-03-06T12:00:00
       author: bcm
       comment: Create source_replacement_run table to track async source replacement executions
       changes:
@@ -3663,7 +3679,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v59.2026-02-18T12:00:01
+      id: v59.2026-03-06T12:00:01
       author: bcm
       comment: Enforce at most one active source replacement run cluster-wide
       changes:

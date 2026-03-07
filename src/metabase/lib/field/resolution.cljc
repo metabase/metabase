@@ -135,7 +135,8 @@
     :effective-type
     :display-name
     :lib/transformation-added-base-type
-    :lib/original-effective-type})
+    :lib/original-effective-type
+    :qp.pivot/pivot-grouping?})
 
 (def ^:private opts-propagated-renamed-keys
   "Keys in `:field` opts that get copied into column metadata with different keys when they have non-nil values.

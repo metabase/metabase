@@ -143,8 +143,8 @@
         (let [input {:user_is_viewing [{:type "transform"
                                         :source {:type "python"
                                                  :source-database 2
-                                                 :source-tables {:orders 24
-                                                                 :products 31}}}]}
+                                                 :source-tables [{:alias "orders" :table_id 24}
+                                                                 {:alias "products" :table_id 31}]}}]}
               result (#'context/enhance-context-with-schema input)
               used-tables (get-in result [:user_is_viewing 0 :used_tables])]
           (is (= mock-tables used-tables)))))))
@@ -157,7 +157,7 @@
         (let [input {:user_is_viewing [{:type "transform"
                                         :source {:type "python"
                                                  :source-database 2
-                                                 :source-tables {}}}]}
+                                                 :source-tables []}}]}
               result (#'context/enhance-context-with-schema input)]
           (is (nil? (get-in result [:user_is_viewing 0 :used_tables])))
           (is (false? @called?)))))))
@@ -169,7 +169,7 @@
                     (fn [_] (reset! called? true) nil)]
         (let [input {:user_is_viewing [{:type "transform"
                                         :source {:type "python"
-                                                 :source-tables {:orders 24}}}]}
+                                                 :source-tables [{:alias "orders" :table_id 24}]}}]}
               result (#'context/enhance-context-with-schema input)]
           (is (nil? (get-in result [:user_is_viewing 0 :used_tables])))
           (is (false? @called?)))))))

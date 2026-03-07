@@ -185,72 +185,69 @@
           (is (= {} result)))))))
 
 (deftest normalize-source-tables-test
-  (testing "normalize-source-tables converts all entries to map format"
+  (testing "normalize-source-tables enriches vec entries"
     (mt/with-temp [:model/Database db {}
                    :model/Table    t1 {:db_id (:id db) :name "existing_table" :schema nil}]
-      (testing "converts integer table ID to map format"
-        (let [result (transforms-base.u/normalize-source-tables {"t" (:id t1)})]
-          (is (map? (get result "t")))
-          (is (= (:id db) (get-in result ["t" :database_id])))
-          (is (= "existing_table" (get-in result ["t" :table])))
-          (is (= (:id t1) (get-in result ["t" :table_id])))))
+      (testing "enriches entry with table_id but no table metadata"
+        (let [result (transforms-base.u/normalize-source-tables [{:alias "t" :table_id (:id t1)}])
+              entry  (first result)]
+          (is (= (:id db) (:database_id entry)))
+          (is (= "existing_table" (:table entry)))
+          (is (= (:id t1) (:table_id entry)))))
 
-      (testing "throws for non-existent integer table ID"
+      (testing "throws for non-existent table_id"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found for ids: 999999"
-                              (transforms-base.u/normalize-source-tables {"t" 999999}))))
+                              (transforms-base.u/normalize-source-tables [{:alias "t" :table_id 999999}]))))
 
-      (testing "populates table_id for existing table"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table"}}
+      (testing "populates table_id for existing table ref"
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "existing_table"}]
               result (transforms-base.u/normalize-source-tables source-tables)]
-          (is (= (:id t1) (get-in result ["t" :table_id])))))
+          (is (= (:id t1) (:table_id (first result))))))
 
-      (testing "preserves existing table_id"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table" :table_id 999}}
+      (testing "preserves existing table_id when table metadata present"
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "existing_table" :table_id 999}]
               result (transforms-base.u/normalize-source-tables source-tables)]
-          (is (= 999 (get-in result ["t" :table_id])))))
+          (is (= 999 (:table_id (first result))))))
 
       (testing "leaves table_id nil for non-existent table ref"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]
               result (transforms-base.u/normalize-source-tables source-tables)]
-          (is (nil? (get-in result ["t" :table_id])))))
+          (is (nil? (:table_id (first result))))))
 
-      (testing "handles mixed int and map entries"
-        (let [source-tables {"t1" (:id t1)
-                             "t2" {:database_id (:id db) :schema nil :table "existing_table"}}
+      (testing "handles entries needing different kinds of enrichment"
+        (let [source-tables [{:alias "t1" :table_id (:id t1)}
+                             {:alias "t2" :database_id (:id db) :schema nil :table "existing_table"}]
               result (transforms-base.u/normalize-source-tables source-tables)]
-          (is (map? (get result "t1")))
-          (is (= (:id t1) (get-in result ["t1" :table_id])))
-          (is (= (:id t1) (get-in result ["t2" :table_id]))))))))
+          (is (= "existing_table" (:table (first result))))
+          (is (= (:id t1) (:table_id (first result))))
+          (is (= (:id t1) (:table_id (second result)))))))))
 
 (deftest resolve-source-tables-test
-  (testing "resolve-source-tables returns {alias -> table_id} map"
+  (testing "resolve-source-tables returns {alias -> table_id} map from vec input"
     (mt/with-temp [:model/Database db {}
                    :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema nil}]
-      (testing "passes through integer entries (old format)"
-        (is (= {"t" 123} (transforms-base.u/resolve-source-tables {"t" 123}))))
-
-      (testing "resolves map with table_id"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}}]
+      (testing "resolves entry with table_id"
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}]]
           (is (= {"t" (:id t1)} (transforms-base.u/resolve-source-tables source-tables)))))
 
-      (testing "looks up table_id for map without it"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one"}}]
+      (testing "looks up table_id for entry without it"
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one"}]]
           (is (= {"t" (:id t1)} (transforms-base.u/resolve-source-tables source-tables)))))
 
       (testing "throws for non-existent table"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}]
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: nonexistent"
                                 (transforms-base.u/resolve-source-tables source-tables)))))
 
       (testing "throws with schema in error message"
-        (let [source-tables {"t" {:database_id (:id db) :schema "my_schema" :table "nonexistent"}}]
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema "my_schema" :table "nonexistent"}]]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: my_schema\.nonexistent"
                                 (transforms-base.u/resolve-source-tables source-tables)))))
 
-      (testing "handles mixed entries (old and new format)"
-        (let [source-tables {"t1" (:id t1)
-                             "t2" {:database_id (:id db) :schema nil :table "table_two"}}]
+      (testing "handles multiple entries"
+        (let [source-tables [{:alias "t1" :table_id (:id t1)}
+                             {:alias "t2" :database_id (:id db) :schema nil :table "table_two"}]]
           (is (= {"t1" (:id t1) "t2" (:id t2)}
                  (transforms-base.u/resolve-source-tables source-tables))))))))
 
@@ -269,12 +266,12 @@
 
               (testing "returns true for python transform when user can read all source tables"
                 (let [transform {:source {:type :python
-                                          :source-tables {"t1" table-id}}}]
+                                          :source-tables [{:alias "t1" :table_id table-id}]}}]
                   (is (true? (transforms.u/source-tables-readable? transform)))))
 
-              (testing "handles source tables with table_id in map format"
+              (testing "handles source tables with table_id"
                 (let [transform {:source {:type :python
-                                          :source-tables {"t1" {:table_id table-id}}}}]
+                                          :source-tables [{:alias "t1" :table_id table-id}]}}]
                   (is (true? (transforms.u/source-tables-readable? transform))))))))))))
 
 (deftest source-tables-readable-permissions-test
@@ -298,7 +295,7 @@
 
           (testing "Python transforms - blocked database access"
             (let [transform {:source {:type          :python
-                                      :source-tables {"t1" table1-id}}}]
+                                      :source-tables [{:alias "t1" :table_id table1-id}]}}]
               (mt/with-user-in-groups [group {:name "Blocked Group"}
                                        user [group]]
                 (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :blocked
@@ -309,8 +306,8 @@
 
           (testing "Python transforms - granular access but missing some tables"
             (let [transform {:source {:type          :python
-                                      :source-tables {"t1" table1-id
-                                                      "t2" table2-id}}}]
+                                      :source-tables [{:alias "t1" :table_id table1-id}
+                                                      {:alias "t2" :table_id table2-id}]}}]
               (mt/with-user-in-groups [group {:name "Limited Granular Group"}
                                        user [group]]
                 ;; Block all-users from viewing data at database level, then grant specific access via test group

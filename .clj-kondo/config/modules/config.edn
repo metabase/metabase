@@ -152,6 +152,7 @@
            metabase.api.docs
            metabase.api.init
            metabase.api.macros
+           metabase.api.macros.scope
            metabase.api.open-api
            metabase.api.response
            metabase.api.routes.common
@@ -2540,6 +2541,7 @@
            lib
            lib-be
            models
+           premium-features
            queries
            ;; NOTE: we will remove this once we get "pure transforms" module.
            query-processor
