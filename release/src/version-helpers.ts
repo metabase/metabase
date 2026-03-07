@@ -399,6 +399,76 @@ export async function getLastReleaseTag({
   return lastRelease;
 }
 
+export type VersionComparisonResult = "upgrade" | "downgrade" | "same";
+
+export const compareVersions = (
+  source: string,
+  target: string,
+): VersionComparisonResult => {
+  // Handle HEAD (always considered newer than any released version)
+  if (source === "HEAD" && target === "HEAD") {
+    return "same";
+  }
+  if (source === "HEAD") {
+    return "downgrade";
+  }
+  if (target === "HEAD") {
+    return "upgrade";
+  }
+
+  // Handle .x rolling tags (e.g., v1.59.x) - compare major versions
+  const sourceRolling = source.endsWith(".x");
+  const targetRolling = target.endsWith(".x");
+  if (sourceRolling || targetRolling) {
+    const sourceMajor = parseInt(source.match(/v\d+\.(\d+)/)?.[1] || "0", 10);
+    const targetMajor = parseInt(target.match(/v\d+\.(\d+)/)?.[1] || "0", 10);
+    if (sourceMajor < targetMajor) {
+      return "upgrade";
+    }
+    if (sourceMajor > targetMajor) {
+      return "downgrade";
+    }
+    return "same";
+  }
+
+  if (!isValidVersionString(source)) {
+    throw new Error(`Invalid version string: ${source}`);
+  }
+  if (!isValidVersionString(target)) {
+    throw new Error(`Invalid version string: ${target}`);
+  }
+  const result = versionSort(source, target);
+  if (result < 0) {
+    return "upgrade";
+  }
+
+  if (result > 0) {
+    return "downgrade";
+  }
+
+  return "same";
+};
+
+export const getDockerImage = (version: string): string => {
+  // HEAD always uses enterprise image
+  if (version === "HEAD") {
+    return "metabase/metabase-enterprise-head:latest";
+  }
+
+  // Handle .x rolling tags (e.g., v1.59.x, v0.59.x)
+  const isRollingTag = version.endsWith(".x");
+
+  if (!isRollingTag && !isValidVersionString(version)) {
+    throw new Error(`Invalid version string: ${version}`);
+  }
+
+  const isEE = isRollingTag
+    ? version.startsWith("v1.")
+    : isEnterpriseVersion(version);
+  const repo = isEE ? "metabase/metabase-enterprise" : "metabase/metabase";
+  return `${repo}:${version}`;
+};
+
 export const findNextPatchVersion = (version: string) => {
   if (!isValidVersionString(version)) {
     throw new Error(`Invalid version string: ${version}`);
