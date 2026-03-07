@@ -12,12 +12,12 @@ export function useGetDependenciesCount(args: GetDependencyGraphRequest) {
     return { dependenciesCount: 0, dependentsCount: 0 };
   }
 
-  const thisTable = dependencyGraphData.nodes.find(
+  const thisNode = dependencyGraphData.nodes.find(
     (node) => node.id === args.id,
   );
 
   const dependentsCount = Object.values(
-    thisTable?.dependents_count ?? {},
+    thisNode?.dependents_count ?? {},
   ).reduce((acc, curr) => acc + curr, 0);
 
   if (!dependencyGraphData?.edges) {
