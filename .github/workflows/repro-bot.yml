@@ -60,8 +60,28 @@ jobs:
           npm install -g @playwright/cli@latest
           playwright-cli install --skills
 
-      - name: Resolve UV path
-        run: echo "UV_PATH=$(which uv)" >> $GITHUB_ENV
+      - name: Create project MCP config
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          UV_PATH="$(which uv)"
+          jq -n \
+            --arg uv "$UV_PATH" \
+            --arg key "$LINEAR_API_KEY" \
+            '{
+              mcpServers: {
+                "metabase-repro": {
+                  command: $uv,
+                  args: ["run", "--directory", "mcp", "--with", "fastmcp", "python", "-m", "metabase_repro"]
+                },
+                "linear-server": {
+                  url: "https://mcp.linear.app/mcp",
+                  headers: {
+                    Authorization: ("Bearer " + $key)
+                  }
+                }
+              }
+            }' > .mcp.json
 
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
@@ -75,6 +95,7 @@ jobs:
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
         env:
+          CLAUDE_CODE_DEBUG_LOGS_DIR: /tmp/claude-debug-logs
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           GITHUB_ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -91,9 +112,7 @@ jobs:
             - The GITHUB_ACTIONS_RUN_URL environment variable is set. If any phase fails catastrophically, follow the CI error handling in repro.md to post the error to Linear with the action run URL.
             - Docker is available for appdb (Postgres/MySQL/MariaDB) if needed.
             - Java 21 and Python/uv are pre-installed.
-          claude_args: |
-            --mcp-config '{"mcpServers":{"metabase-repro":{"command":"${{ env.UV_PATH }}","args":["run","--directory","mcp","--with","fastmcp","python","-m","metabase_repro"]},"linear-server":{"url":"https://mcp.linear.app/mcp","headers":{"Authorization":"Bearer ${{ secrets.LINEAR_API_KEY }}"}}}}'
-            --disallowedTools "Bash(git push*),Bash(rm -rf /*)"
+          claude_args: '--disallowedTools "Bash(git push*),Bash(rm -rf /*)"'
 
       - name: Verify repro-bot completed successfully
         run: |
@@ -121,4 +140,12 @@ jobs:
         with:
           name: repro-suggestions
           path: repro/*/SUGGESTIONS.md
+          if-no-files-found: ignore
+
+      - name: Upload Claude debug logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: claude-debug-logs
+          path: /tmp/claude-debug-logs/
           if-no-files-found: ignore
