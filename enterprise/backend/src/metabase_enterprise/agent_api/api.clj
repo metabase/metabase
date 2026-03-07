@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [metabase-enterprise.agent-api.workspace :as agent-workspace]
+   [metabase-enterprise.api.routes.common :as ee.api]
    [metabase-enterprise.metabot-v3.tools.api :as tools.api]
    [metabase-enterprise.metabot-v3.tools.deftool :as deftool]
    [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
@@ -23,6 +24,7 @@
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -543,4 +545,6 @@
    (api.macros/ns-handler *ns* +auth)
    (handlers/route-map-handler
     {"/v1" (handlers/route-map-handler
-            {"/workspace" (agent-workspace/workspace-handler +auth)})})))
+            {"/workspace" (ee.api/+require-premium-feature
+                           :workspaces (deferred-tru "Workspaces")
+                           (agent-workspace/workspace-handler +auth))})})))

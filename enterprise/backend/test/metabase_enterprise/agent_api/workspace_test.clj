@@ -62,7 +62,12 @@
         (testing "No JWT gets 401"
           (is (= {:error   "missing_authorization"
                   :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
-                 (client/client :get 401 (str "agent/v1/workspace/" ws-id)))))))))
+                 (client/client :get 401 (str "agent/v1/workspace/" ws-id)))))
+
+        (testing "Non-superuser gets 403"
+          (is (= "You don't have permissions to do that."
+                 (client/client :get 403 (str "agent/v1/workspace/" ws-id)
+                                {:request-options {:headers (auth-headers "rasta@metabase.com")}}))))))))
 
 (deftest agent-workspace-get-test
   (with-agent-workspace-setup!
@@ -204,9 +209,10 @@
                        :target)]
         (testing "Validating a transform's own target with its ref-id returns 200 (no self-conflict)"
           (is (= "OK"
-                 (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/transform/validate/target")
-                                  {:transform-id ref-id
-                                   :target       target}))))
+                 (client/client :post 200 (str "agent/v1/workspace/" ws-id "/transform/validate/target")
+                                {:request-options {:headers (auth-headers)}}
+                                {:target target}
+                                :transform-id ref-id))))
 
         (testing "Validating a conflicting target without transform-id returns 403"
           (is (= "Another transform in this workspace already targets that table"
@@ -224,4 +230,16 @@
                   result (client/client-full-response :get 402 (str "agent/v1/workspace/" ws-id)
                                                       {:request-options {:headers (auth-headers)}})]
               (testing "Returns 402 when :agent-api feature is not enabled"
+                (is (= 402 (:status result))))))))))
+
+  (testing "Workspace endpoints require :workspaces premium feature"
+    (sso.test-setup/with-jwt-default-setup!
+      (mt/with-model-cleanup [:model/ApiKey]
+        ;; Enable agent-api but NOT workspaces
+        (mt/with-additional-premium-features #{:agent-api :metabot-v3 :transforms}
+          (ws.tu/with-resources! [res {:workspace {:name "Gating Test"}}]
+            (let [ws-id  (:workspace-id res)
+                  result (client/client-full-response :get 402 (str "agent/v1/workspace/" ws-id)
+                                                      {:request-options {:headers (auth-headers)}})]
+              (testing "Returns 402 when :workspaces feature is not enabled"
                 (is (= 402 (:status result)))))))))))

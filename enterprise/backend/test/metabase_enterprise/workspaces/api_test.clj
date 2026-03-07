@@ -922,11 +922,11 @@
           (is (= "OK"
                  (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
                    (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform/validate/target")
-                                         {:db_id        (:db_id table)
-                                          :transform-id (:ref_id x1)
-                                          :target       {:type   "table"
-                                                         :schema (:schema table)
-                                                         :name   (str "q_" (:name table))}})))))))))
+                                         {:db_id  (:db_id table)
+                                          :target {:type   "table"
+                                                   :schema (:schema table)
+                                                   :name   (str "q_" (:name table))}}
+                                         :transform-id (:ref_id x1))))))))))
 
 ;;;; Async workspace creation tests
 
