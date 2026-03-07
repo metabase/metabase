@@ -328,7 +328,7 @@
 
 (deftest segment-create-event-test
   (testing :segment-create
-    (mt/with-temp [:model/Segment segment]
+    (mt/with-temp [:model/Segment segment {:table_id (mt/id :checkins)}]
       (mt/with-test-user :rasta
         (is (= {:object segment :user-id (mt/user->id :rasta)}
                (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :rasta)})))
@@ -344,7 +344,7 @@
 
 (deftest segment-update-event-test
   (testing :segment-update
-    (mt/with-temp [:model/Segment segment]
+    (mt/with-temp [:model/Segment segment {:table_id (mt/id :checkins)}]
       (let [event (-> {:object segment}
                       (assoc :revision-message "update this mofo")
                       (assoc :user-id (mt/user->id :rasta)))]
@@ -363,7 +363,7 @@
 
 (deftest segment-delete-event-test
   (testing :segment-delete
-    (mt/with-temp [:model/Segment segment]
+    (mt/with-temp [:model/Segment segment {:table_id (mt/id :checkins)}]
       (let [event (assoc {:object segment}
                          :revision-message "deleted"
                          :user-id (mt/user->id :rasta))]

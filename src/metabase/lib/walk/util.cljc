@@ -11,6 +11,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [not-empty]]))
 
 (defn- transduce-stages
@@ -230,6 +231,14 @@
                (mapcat all-field-ids))
          (all-template-tags query))))
 
+(mu/defn all-template-tag-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
+  "Set of all Table IDs referenced in table template tags."
+  [query :- ::lib.schema/query]
+  (not-empty
+   (into #{}
+         (keep :table-id)
+         (all-template-tags query))))
+
 ;;; TODO (Cam 10/1/25) -- overlapping responsibilities with [[metabase.lib.template-tags/template-tags->snippet-ids]]
 (mu/defn all-template-tag-snippet-ids :- [:maybe [:set {:min 1} ::lib.schema.id/snippet]]
   "Set of all Native Query Snippet IDs used in template tags."
@@ -239,3 +248,36 @@
          (comp (filter #(= (:type %) :snippet))
                (keep :snippet-id))
          (all-template-tags query))))
+
+(mr/def ::referenced-entity-ids
+  [:map
+   [:table [:set ::lib.schema.id/table]]
+   [:card [:set ::lib.schema.id/card]]
+   [:metric [:set ::lib.schema.id/metric]]
+   [:measure [:set ::lib.schema.id/measure]]
+   [:segment [:set ::lib.schema.id/segment]]
+   [:snippet [:set ::lib.schema.id/snippet]]])
+
+(mu/defn all-referenced-entity-ids :- ::referenced-entity-ids
+  "Return a map of all referenced entity IDs in `queries`."
+  [queries :- [:sequential ::lib.schema/query]]
+  (let [source-table-ids (into #{} (mapcat all-source-table-ids) queries)
+        source-card-ids (into #{} (mapcat all-source-card-ids) queries)
+        implicitly-joined-field-ids (into #{} (mapcat all-implicitly-joined-field-ids) queries)
+        template-tag-field-ids (into #{} (mapcat all-template-tag-field-ids) queries)
+        template-tag-table-ids (into #{} (mapcat all-template-tag-table-ids) queries)
+        template-tag-card-ids (into #{} (mapcat all-template-tag-card-ids) queries)
+        template-tag-snippet-ids (into #{} (mapcat all-template-tag-snippet-ids) queries)
+        metric-ids (into #{} (mapcat all-metric-ids) queries)
+        measure-ids (into #{} (mapcat all-measure-ids) queries)
+        segment-ids (into #{} (mapcat all-segment-ids) queries)
+        all-field-ids (set/union implicitly-joined-field-ids template-tag-field-ids)
+        all-field-table-ids (when (seq queries)
+                              (->> (lib.metadata/bulk-metadata (first queries) :metadata/column all-field-ids)
+                                   (into #{} (keep :table-id))))]
+    {:table (set/union source-table-ids all-field-table-ids template-tag-table-ids)
+     :card (set/union source-card-ids template-tag-card-ids)
+     :metric metric-ids
+     :measure measure-ids
+     :segment segment-ids
+     :snippet template-tag-snippet-ids}))

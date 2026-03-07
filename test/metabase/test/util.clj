@@ -215,8 +215,7 @@
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
              :definition {}
-             :name "Mock Measure"
-             :table_id (data/id :checkins)}))
+             :name "Mock Measure"}))
 
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
@@ -295,8 +294,7 @@
             {:creator_id (rasta-id)
              :definition {}
              :description "Lookin' for a blueberry"
-             :name "Toucans in the rainforest"
-             :table_id (data/id :checkins)}))
+             :name "Toucans in the rainforest"}))
 
    ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
    ;; Tech debt issue: #39329

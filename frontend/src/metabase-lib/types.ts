@@ -693,3 +693,9 @@ export type FieldItem = {
 export type DependentItem = DatabaseItem | SchemaItem | TableItem | FieldItem;
 
 export type ValidationError = { message: string };
+
+export type JsColumnTypeInfo = {
+  base_type?: string;
+  effective_type?: string;
+  semantic_type?: string | null;
+};

@@ -116,7 +116,7 @@
 (deftest update-permissions-test
   (testing "PUT /api/segment/:id"
     (testing "test security. requires superuser perms"
-      (mt/with-temp [:model/Segment segment {}]
+      (mt/with-temp [:model/Segment segment {:table_id (mt/id :checkins)}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "segment/" (:id segment))
                                      {:name             "abc"
@@ -175,7 +175,8 @@
 (deftest partial-update-test
   (testing "PUT /api/segment/:id"
     (testing "Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?"
-      (mt/with-temp [:model/Segment segment {:definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
+      (mt/with-temp [:model/Segment segment {:table_id   (mt/id :checkins)
+                                             :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
         ;; just make sure API call doesn't barf
         (is (some? (mt/user-http-request :crowberto :put 200 (str "segment/" (u/the-id segment))
                                          {:name             "Cool name"
@@ -206,7 +207,8 @@
 (deftest archive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we archive a Segment with the PUT endpoint?"
-      (mt/with-temp [:model/Segment {:keys [id]} {:definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
+      (mt/with-temp [:model/Segment {:keys [id]} {:table_id   (mt/id :checkins)
+                                                  :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived true, :revision_message "Archive the Segment"})))
         (is (true?
@@ -215,7 +217,8 @@
 (deftest unarchive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we unarchive a Segment with the PUT endpoint?"
-      (mt/with-temp [:model/Segment {:keys [id]} {:archived true
+      (mt/with-temp [:model/Segment {:keys [id]} {:table_id   (mt/id :checkins)
+                                                  :archived true
                                                   :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived false, :revision_message "Unarchive the Segment"})))
@@ -227,7 +230,8 @@
 (deftest delete-permissions-test
   (testing "DELETE /api/segment/:id"
     (testing "test security. requires superuser perms"
-      (mt/with-temp [:model/Segment {:keys [id]} {:definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
+      (mt/with-temp [:model/Segment {:keys [id]} {:table_id   (mt/id :checkins)
+                                                  :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :delete 403 (str "segment/" id)
                                      :revision_message "yeeeehaw!")))))))
@@ -311,7 +315,8 @@
                                                                       [:= $price 4]
                                                                       [:= $category_id->categories.name "BBQ"]]}))}
                    ;; inactive segments shouldn't show up
-                   :model/Segment {id-3 :id} {:archived true
+                   :model/Segment {id-3 :id} {:table_id   (mt/id :checkins)
+                                              :archived true
                                               :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
       (mt/with-full-data-perms-for-all-users!
         (is (=? [{:id                     id-1
@@ -357,7 +362,8 @@
 (deftest related-entities-test
   (testing "GET /api/segment/:id/related"
     (testing "related/recommended entities"
-      (mt/with-temp [:model/Segment {segment-id :id} {:definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :checkins)
+                                                      :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}]
         (is (= #{:table :metrics :segments :linked-from}
                (-> (mt/user-http-request :crowberto :get 200 (format "segment/%s/related" segment-id))
                    keys

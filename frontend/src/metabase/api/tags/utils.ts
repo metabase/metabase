@@ -108,6 +108,7 @@ export function provideActivityItemListTags(
   items: RecentItem[] | PopularItem[],
 ): TagDescription<TagType>[] {
   return [
+    listTag("activity-item"),
     ...ACTIVITY_MODELS.map((model) => listTag(TAG_TYPE_MAPPING[model])),
     ...items.flatMap(provideActivityItemTags),
   ];

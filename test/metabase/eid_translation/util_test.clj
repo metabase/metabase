@@ -96,7 +96,7 @@
      :model/Dashboard          {dashboard_id            :id dashboard_eid            :entity_id} {}
      :model/DashboardTab       {dashboard_tab_id        :id dashboard_tab_eid        :entity_id} {:dashboard_id dashboard_id}
      :model/DashboardCard      {dashboardcard_id        :id dashboardcard_eid        :entity_id} {:dashboard_id dashboard_id}
-     :model/Segment            {segment_id              :id segment_eid              :entity_id} {}
+     :model/Segment            {segment_id              :id segment_eid              :entity_id} {:table_id (mt/id :checkins)}
      :model/Timeline           {timeline_id             :id timeline_eid             :entity_id} {}]
     (let [core_user_eid (u/generate-nano-id)]
       (t2/update! :model/User core_user_id {:entity_id core_user_eid})
