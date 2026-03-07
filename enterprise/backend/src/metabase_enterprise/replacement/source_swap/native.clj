@@ -4,13 +4,14 @@
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.parameters.parse :as lib.params.parse]
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.sql-tools.core :as sql-tools]
    ;; sql-tools.init registers multimethod implementations for :macaw parser backend
    [metabase.sql-tools.init]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -153,34 +154,25 @@
 ;;; ====================== Dimension Tag Helpers ======================
 ;;;
 ;;; Dimension tags are `:type :dimension` (field filters) containing
-;;; `:dimension [:field <field-id> opts]`. When swapping tables, we need
+;;; `:dimension [:field <opts> <id>]`. When swapping tables, we need
 ;;; to remap field IDs to the equivalent fields on the new table.
 
 (defn- update-dimension-tags
-  "Update :type :dimension template tags, remapping field IDs from old table to new table.
+  "Update :type :dimension and :type :temporal-unit template tags, remapping field IDs from old table to new table.
    Finds matching fields by name."
-  [template-tags old-table-id new-table-id]
-  (reduce-kv
-   (fn [acc k tag]
-     (if (= (:type tag) :dimension)
-       (let [dimension  (:dimension tag)
-             field-id   (when (and (vector? dimension)
-                                   (= :field (first dimension)))
-                          (second dimension))
-             field      (when field-id
-                          (t2/select-one :model/Field :id field-id))]
-         (if (and field (= (:table_id field) old-table-id))
-           ;; Find matching field on new table by name
-           (if-let [new-field (t2/select-one :model/Field
-                                             :name (:name field)
-                                             :table_id new-table-id)]
-             (assoc acc k (assoc tag :dimension [:field (:id new-field) (nth dimension 2 nil)]))
-             ;; No matching field - leave as-is (will error at runtime)
-             (assoc acc k tag))
-           (assoc acc k tag)))
-       (assoc acc k tag)))
-   {}
-   template-tags))
+  [query template-tags old-table-id new-table-id]
+  (let [old-fields (lib.metadata/fields query old-table-id)
+        new-fields (lib.metadata/fields query new-table-id)]
+    (reduce-kv
+     (fn [acc k tag]
+       (assoc acc k
+              (or (when (#{:dimension :temporal-unit} (:type tag))
+                    (when-some [field (lib/find-matching-column (:dimension tag) old-fields)]
+                      (when-some [new-field (some #(when (= (:name %) (:name field)) %) new-fields)]
+                        (assoc tag :dimension (lib/ref new-field)))))
+                  tag)))
+     {}
+     template-tags)))
 
 (defn- update-table-tags-for-card-swap
   "Update :type :table template tags when swapping table→card.
@@ -280,23 +272,26 @@
    - old-table-id: ID of table to replace
    - new-table-id: ID of replacement table"
   [query old-table-id new-table-id]
-  (let [old-table (t2/select-one :model/Table :id old-table-id)
-        new-table (t2/select-one :model/Table :id new-table-id)
-        database  (t2/select-one :model/Database :id (:db_id old-table))
-        driver    (:engine database)
-        sql       (get-in query [:stages 0 :native])
-        ;; 1. Replace raw SQL table references (handles both schema-qualified and unqualified)
-        old-spec  (cond-> {:table (:name old-table)}
-                    (:schema old-table) (assoc :schema (:schema old-table)))
-        new-spec  (cond-> {:table (:name new-table)}
-                    (:schema new-table) (assoc :schema (:schema new-table)))
-        new-sql   (replace-table-in-native-sql driver sql old-spec new-spec)]
-    (-> query
-        (assoc-in [:stages 0 :native] new-sql)
-        ;; 2. Update :type :table template tags
-        (update-in [:stages 0 :template-tags] update-table-tags-for-table-swap old-table-id new-table-id)
-        ;; 3. Update :type :dimension template tags (field filters)
-        (update-in [:stages 0 :template-tags] update-dimension-tags old-table-id new-table-id))))
+  (or (when-let [database  (lib.metadata/database query)]
+        (when-let [old-table (lib.metadata/table query old-table-id)]
+          (when-let [new-table (lib.metadata/table query new-table-id)]
+            (let [driver    (:engine database)
+                  sql       (lib/raw-native-query query)
+                  tags      (lib/template-tags query)
+                  old-spec  (cond-> {:table (:name old-table)}
+                              (:schema old-table) (assoc :schema (:schema old-table)))
+                  new-spec  (cond-> {:table (:name new-table)}
+                              (:schema new-table) (assoc :schema (:schema new-table)))
+                  new-sql   (replace-table-in-native-sql driver sql old-spec new-spec)
+                  new-tags  (update-dimension-tags
+                             query
+                             (update-table-tags-for-table-swap tags old-table-id new-table-id)
+                             old-table-id
+                             new-table-id)]
+              (-> query
+                  (lib/with-native-query new-sql)
+                  (lib/with-template-tags new-tags))))))
+      query))
 
 (defn- replace-table-with-card-in-native
   "Replace table references in native SQL with a card template tag.
@@ -312,46 +307,35 @@
    - old-table-id: ID of table to replace
    - new-card-id: ID of card to reference"
   [query old-table-id new-card-id]
-  (let [old-table      (t2/select-one :model/Table :id old-table-id)
-        new-card       (t2/select-one :model/Card :id new-card-id)
-        database       (t2/select-one :model/Database :id (:db_id old-table))
-        driver         (:engine database)
-        sql            (get-in query [:stages 0 :native])
-        template-tags  (get-in query [:stages 0 :template-tags])
-        ;; Generate card tag with slug
-        slug           (card-slug (:name new-card))
-        card-tag       (str "#" new-card-id "-" slug)
-        card-ref       (str "{{" card-tag "}}")
-        ;; 1. Replace raw SQL table name with card reference
-        old-spec       (cond-> {:table (:name old-table)}
-                         (:schema old-table) (assoc :schema (:schema old-table)))
-        sql-after-raw  (replace-table-in-native-sql driver sql old-spec card-ref)
-        ;; 2. Handle any :type :table template tags pointing to old-table-id
-        {:keys [sql template-tags]} (update-table-tags-for-card-swap
-                                     sql-after-raw
-                                     template-tags
-                                     old-table-id
-                                     new-card-id
-                                     (:name new-card))
-        ;; 3. Add new card template tag entry (for raw SQL replacement)
-        new-tag        {:type         :card
-                        :card-id      new-card-id
-                        :name         card-tag
-                        :display-name card-tag}]
-    (-> query
-        (assoc-in [:stages 0 :native] sql)
-        (assoc-in [:stages 0 :template-tags] template-tags)
-        ;; Add card tag if not already present (from table tag conversion)
-        (update-in [:stages 0 :template-tags] #(if (contains? % card-tag) % (assoc % card-tag new-tag))))))
-
-(defn- find-tag-by-card-id
-  "Find the key in template-tags map for a given card-id.
-   Handles both plain (#42) and slugged (#42-my-query) formats."
-  [template-tags card-id]
-  (some (fn [[k v]]
-          (when (= (:card-id v) card-id)
-            k))
-        template-tags))
+  (or (when-let [database  (lib.metadata/database query)]
+        (when-let [old-table (lib.metadata/table query old-table-id)]
+          (when-let [new-card  (lib.metadata/card query new-card-id)]
+            (let [driver         (:engine database)
+                  sql            (lib/raw-native-query query)
+                  template-tags  (lib/template-tags query)
+                  slug           (card-slug (:name new-card))
+                  card-tag       (str "#" new-card-id "-" slug)
+                  card-ref       (str "{{" card-tag "}}")
+                  old-spec       (cond-> {:table (:name old-table)}
+                                   (:schema old-table) (assoc :schema (:schema old-table)))
+                  sql-after-raw  (replace-table-in-native-sql driver sql old-spec card-ref)
+                  {:keys [sql template-tags]} (update-table-tags-for-card-swap
+                                               sql-after-raw
+                                               template-tags
+                                               old-table-id
+                                               new-card-id
+                                               (:name new-card))
+                  new-tag        {:type         :card
+                                  :card-id      new-card-id
+                                  :name         card-tag
+                                  :display-name card-tag}
+                  template-tags  (if (contains? template-tags card-tag)
+                                   template-tags
+                                   (assoc template-tags card-tag new-tag))]
+              (-> query
+                  (lib/with-native-query sql)
+                  (lib/with-template-tags template-tags))))))
+      query))
 
 (defn- replace-card-refs-with-table
   "Walk parsed SQL tokens, replacing card references to old-card-id with table-name.
@@ -388,21 +372,19 @@
    - old-card-id: ID of card template tag to replace
    - new-table-id: ID of table to reference directly"
   [query old-card-id new-table-id]
-  (let [new-table   (t2/select-one :model/Table :id new-table-id)
-        old-card    (t2/select-one :model/Card :id old-card-id)
-        database    (t2/select-one :model/Database :id (:database_id old-card))
-        driver      (:engine database)
-        sql         (get-in query [:stages 0 :native])
-        ;; Use schema-qualified, properly quoted table name
-        table-ref   (if (:schema new-table)
-                      (sql.u/quote-name driver :table (:schema new-table) (:name new-table))
-                      (sql.u/quote-name driver :table (:name new-table)))
-        parsed      (params.parse/parse sql)
-        new-sql     (replace-card-refs-with-table parsed old-card-id table-ref)
-        old-tag-key (find-tag-by-card-id (get-in query [:stages 0 :template-tags]) old-card-id)]
-    (cond-> query
-      true        (assoc-in [:stages 0 :native] new-sql)
-      old-tag-key (update-in [:stages 0 :template-tags] dissoc old-tag-key))))
+  (or (when-let [database  (lib.metadata/database query)]
+        (when-let [new-table (lib.metadata/table query new-table-id)]
+          (let [driver    (:engine database)
+                sql       (lib/raw-native-query query)
+                table-ref (if (:schema new-table)
+                            (sql.u/quote-name driver :table (:schema new-table) (:name new-table))
+                            (sql.u/quote-name driver :table (:name new-table)))
+                parsed    (params.parse/parse sql)
+                new-sql   (replace-card-refs-with-table parsed old-card-id table-ref)]
+            ;; with-native-query re-extracts template tags from the SQL;
+            ;; since the card ref is gone, its tag is automatically removed.
+            (lib/with-native-query query new-sql))))
+      query))
 
 (defn- replace-template-tags
   "Replaces references to `old-card-id` with `new-card-id` in a template-tags map.
@@ -467,22 +449,24 @@
 
 (defn- swap-card-in-native-query
   "Pure transformation: replaces references to `old-card-id` with `new-card-id`
-   in a native dataset-query's query text and template-tag map.
-   Handles pMBQL format ([:stages 0 :native] and [:stages 0 :template-tags]).
+   in a native query's SQL text and template-tag map.
 
    Uses the Metabase parameter parser to properly identify card references,
    handling edge cases like:
    - Card refs with slugs: {{#42-my-query}}
    - Card refs with whitespace: {{ #42 }}
    - Card refs in optional clauses: [[...{{#42}}...]]"
-  [dataset-query old-card-id new-card-id]
-  (let [sql (get-in dataset-query [:stages 0 :native])
-        new-card-name (:name (t2/select-one [:model/Card :name] :id new-card-id))
-        parsed (params.parse/parse sql)
-        new-sql (replace-card-refs-in-parsed parsed old-card-id new-card-id new-card-name)]
-    (-> dataset-query
-        (assoc-in [:stages 0 :native] new-sql)
-        (update-in [:stages 0 :template-tags] replace-template-tags old-card-id new-card-id new-card-name))))
+  [query old-card-id new-card-id]
+  (or (when-let [new-card (lib.metadata/card query new-card-id)]
+        (let [sql           (lib/raw-native-query query)
+              new-card-name (:name new-card)
+              parsed        (params.parse/parse sql)
+              new-sql       (replace-card-refs-in-parsed parsed old-card-id new-card-id new-card-name)
+              new-tags      (replace-template-tags (lib/template-tags query) old-card-id new-card-id new-card-name)]
+          (-> query
+              (lib/with-native-query new-sql)
+              (lib/with-template-tags new-tags))))
+      query))
 
 (defn update-native-stages
   "Dispatch native query updates based on old/new source types.

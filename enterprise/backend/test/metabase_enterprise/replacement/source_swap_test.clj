@@ -66,8 +66,7 @@
                                                   [:table (mt/id :orders)]
                                                   [:table (mt/id :reviews)])
             (is (= "SELECT ID FROM PUBLIC.REVIEWS"
-                   (get-in (t2/select-one :model/Card card-id)
-                           [:dataset_query :stages 0 :native])))))))))
+                   (lib/raw-native-query (:dataset_query (t2/select-one :model/Card card-id)))))))))))
 
 (deftest card-swap-source!-native-query-preserves-result-metadata-test
   (testing "swap-source! should preserve `:result_metadata` for native queries"
@@ -84,7 +83,7 @@
                                                   [:table (mt/id :reviews)])
             (let [card (t2/select-one :model/Card card-id)]
               (is (= "SELECT ID FROM PUBLIC.REVIEWS"
-                     (get-in card [:dataset_query :stages 0 :native])))
+                     (lib/raw-native-query (:dataset_query card))))
               (is (=? [{:name "ID" :base_type :type/Integer}]
                       (:result_metadata card))))))))))
 

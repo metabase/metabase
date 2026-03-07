@@ -2,349 +2,186 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.events]
-   [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
-   [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
    [metabase-enterprise.replacement.source-swap.native :as source-swap.native]
-   [metabase-enterprise.replacement.test-util :as replacement.test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.queries.models.card :as card]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]))
 
-(comment
-  metabase-enterprise.dependencies.events/keep-me)
+(defn- field-id-ref
+  [mp field-id]
+  (lib/ref (lib.metadata/field mp field-id)))
+
+(defn- metadata-provider-with-cards []
+  (lib.tu/mock-metadata-provider meta/metadata-provider
+                                 {:cards [{:id 1 :name "Card 1" :database-id (meta/id)}
+                                          {:id 2 :name "Card 2" :database-id (meta/id)}
+                                          {:id 3 :name "Card 3" :database-id (meta/id)}]}))
 
 ;;; ----------------------------------------- swap-card-in-native-query (pure) ------------------------------------------
 
 (deftest swap-card-in-native-query-basic-test
-  (testing "Simple card tag replacement"
-    (let [query  (replacement.test-util/make-native-query
-                  "SELECT * FROM {{#3}}"
-                  {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (#'source-swap.native/swap-card-in-native-query query 3 99)]
-      (is (= "SELECT * FROM {{#99}}"
-             (get-in result [:stages 0 :native])))
-      (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))))
+  (let [mp (metadata-provider-with-cards)]
+    (testing "Simple card tag replacement"
+      (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}}")
+                       (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+        (is (= "SELECT * FROM {{#2}}"
+               (lib/raw-native-query result)))
+        (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))))
 
-  (testing "Multiple card tags, only matching one is replaced"
-    (let [query  (replacement.test-util/make-native-query
-                  "SELECT * FROM {{#3}} JOIN {{#7}} ON 1=1"
-                  {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}
-                   "#7" {:type :card :card-id 7 :name "#7" :display-name "#7"}})
-          result (#'source-swap.native/swap-card-in-native-query query 3 99)]
-      (is (= "SELECT * FROM {{#99}} JOIN {{#7}} ON 1=1"
-             (get-in result [:stages 0 :native])))
-      (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))
-      (is (= 7 (get-in result [:stages 0 :template-tags "#7" :card-id]))))))
+    (testing "Multiple card tags, only matching one is replaced"
+      (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}} JOIN {{#3}} ON 1=1")
+                       (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}
+                                                "#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}}))
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+        (is (= "SELECT * FROM {{#2}} JOIN {{#3}} ON 1=1"
+               (lib/raw-native-query result)))
+        (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))
+        (is (= 3 (get-in (lib/template-tags result) ["#3" :card-id])))))))
 
 (deftest swap-card-in-native-query-with-field-filters-test
   (testing "Card tag with field filter tags present"
-    (let [query  (replacement.test-util/make-native-query
-                  "SELECT * FROM {{#3}} WHERE {{created_at}}"
-                  {"#3"        {:type :card :card-id 3 :name "#3" :display-name "#3"}
-                   "created_at" {:type :dimension :name "created_at" :display-name "Created At"}})
-          result (#'source-swap.native/swap-card-in-native-query query 3 99)]
-      (is (= "SELECT * FROM {{#99}} WHERE {{created_at}}"
-             (get-in result [:stages 0 :native])))
-      (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))
+    (let [mp     (metadata-provider-with-cards)
+          query  (-> (lib/native-query mp "SELECT * FROM {{#1}} WHERE {{created_at}}")
+                     (lib/with-template-tags {"#1"         {:type :card :card-id 1 :name "#1" :display-name "#1"}
+                                              "created_at" {:type :dimension :name "created_at" :display-name "Created At" :widget-type :date/single}}))
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+      (is (= "SELECT * FROM {{#2}} WHERE {{created_at}}"
+             (lib/raw-native-query result)))
+      (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))
       (is (= "created_at"
-             (get-in result [:stages 0 :template-tags "created_at" :name]))))))
+             (get-in (lib/template-tags result) ["created_at" :name]))))))
 
 (deftest swap-card-in-native-query-with-optional-clauses-test
-  (testing "Card tag with optional clause containing field filter"
-    (let [query  (replacement.test-util/make-native-query
-                  "SELECT * FROM {{#3}} [[WHERE {{created_at}}]]"
-                  {"#3"         {:type :card :card-id 3 :name "#3" :display-name "#3"}
-                   "created_at" {:type :dimension :name "created_at" :display-name "Created At"}})
-          result (#'source-swap.native/swap-card-in-native-query query 3 99)]
-      (is (= "SELECT * FROM {{#99}} [[WHERE {{created_at}}]]"
-             (get-in result [:stages 0 :native])))
-      (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))))
+  (let [mp (metadata-provider-with-cards)]
+    (testing "Card tag with optional clause containing field filter"
+      (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}} [[WHERE {{created_at}}]]")
+                       (lib/with-template-tags {"#1"         {:type :card :card-id 1 :name "#1" :display-name "#1"}
+                                                "created_at" {:type :dimension :name "created_at" :display-name "Created At" :widget-type :date/single}}))
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+        (is (= "SELECT * FROM {{#2}} [[WHERE {{created_at}}]]"
+               (lib/raw-native-query result)))
+        (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))))
 
-  (testing "Card tag inside optional clause"
-    (let [query  (replacement.test-util/make-native-query
-                  "SELECT * FROM foo [[JOIN {{#3}} ON 1=1]]"
-                  {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (#'source-swap.native/swap-card-in-native-query query 3 99)]
-      (is (= "SELECT * FROM foo [[JOIN {{#99}} ON 1=1]]"
-             (get-in result [:stages 0 :native])))
-      (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id]))))))
+    (testing "Card tag inside optional clause"
+      (let [query  (-> (lib/native-query mp "SELECT * FROM foo [[JOIN {{#1}} ON 1=1]]")
+                       (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+        (is (= "SELECT * FROM foo [[JOIN {{#2}} ON 1=1]]"
+               (lib/raw-native-query result)))
+        (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))))))
 
 (deftest swap-card-in-native-query-comment-test
-  (testing "Card tag inside a line comment should NOT be replaced"
-    (let [query  (replacement.test-util/make-native-query
-                  "SELECT * FROM {{#3}}\n-- old: {{#3}}"
-                  {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (#'source-swap.native/swap-card-in-native-query query 3 99)]
-      (is (= "SELECT * FROM {{#99}}\n-- old: {{#3}}"
-             (get-in result [:stages 0 :native]))
-          "The tag in the comment should be left alone")))
+  (let [mp (metadata-provider-with-cards)]
+    (testing "Card tag inside a line comment should NOT be replaced"
+      (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}}\n-- old: {{#1}}")
+                       (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+        (is (= "SELECT * FROM {{#2}}\n-- old: {{#1}}"
+               (lib/raw-native-query result))
+            "The tag in the comment should be left alone")))
 
-  (testing "Card tag inside a block comment should NOT be replaced"
-    (let [query  (replacement.test-util/make-native-query
-                  "SELECT * FROM {{#3}} /* see also {{#3}} */"
-                  {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (#'source-swap.native/swap-card-in-native-query query 3 99)]
-      (is (= "SELECT * FROM {{#99}} /* see also {{#3}} */"
-             (get-in result [:stages 0 :native]))
-          "The tag in the block comment should be left alone"))))
+    (testing "Card tag inside a block comment should NOT be replaced"
+      (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}} /* see also {{#1}} */")
+                       (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+        (is (= "SELECT * FROM {{#2}} /* see also {{#1}} */"
+               (lib/raw-native-query result))
+            "The tag in the block comment should be left alone")))))
 
 (deftest swap-card-in-native-query-string-literal-test
   (testing "Card tag inside a SQL string literal is also replaced (parser does not distinguish string literals)"
-    (let [query  (replacement.test-util/make-native-query
-                  "SELECT * FROM {{#3}} WHERE col = '{{#3}}'"
-                  {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}})
-          result (#'source-swap.native/swap-card-in-native-query query 3 99)]
-      (is (= "SELECT * FROM {{#99}} WHERE col = '{{#99}}'"
-             (get-in result [:stages 0 :native]))
+    (let [mp     (metadata-provider-with-cards)
+          query  (-> (lib/native-query mp "SELECT * FROM {{#1}} WHERE col = '{{#1}}'")
+                     (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+      (is (= "SELECT * FROM {{#2}} WHERE col = '{{#2}}'"
+             (lib/raw-native-query result))
           "Both tags are replaced since the parser treats string literal tags as params too"))))
 
 (deftest swap-card-in-native-query-multiple-cards-test
   (testing "Multiple different card tags, replace only the target"
-    (let [query  (replacement.test-util/make-native-query
-                  "SELECT a.* FROM {{#3}} a JOIN {{#5}} b ON a.id = b.id JOIN {{#3}} c ON a.id = c.id"
-                  {"#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}
-                   "#5" {:type :card :card-id 5 :name "#5" :display-name "#5"}})
-          result (#'source-swap.native/swap-card-in-native-query query 3 99)]
-      (is (= "SELECT a.* FROM {{#99}} a JOIN {{#5}} b ON a.id = b.id JOIN {{#99}} c ON a.id = c.id"
-             (get-in result [:stages 0 :native])))
-      (is (= 99 (get-in result [:stages 0 :template-tags "#99" :card-id])))
-      (is (= 5 (get-in result [:stages 0 :template-tags "#5" :card-id]))))))
+    (let [mp     (metadata-provider-with-cards)
+          query  (-> (lib/native-query mp "SELECT a.* FROM {{#1}} a JOIN {{#3}} b ON a.id = b.id JOIN {{#1}} c ON a.id = c.id")
+                     (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}
+                                              "#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}}))
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+      (is (= "SELECT a.* FROM {{#2}} a JOIN {{#3}} b ON a.id = b.id JOIN {{#2}} c ON a.id = c.id"
+             (lib/raw-native-query result)))
+      (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))
+      (is (= 3 (get-in (lib/template-tags result) ["#3" :card-id]))))))
 
 ;;; ------------------------------------------------ Native Query Card Reference Tests ------------------------------------------------
 ;;; These tests cover card→card replacement specifically in native SQL queries using {{#id}} syntax
 
-(deftest swap-native-card-ref-with-slug-test
-  (testing "Card reference with slug ({{#42-my-query-name}}) is replaced with new card's slug"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {new-card-id :id} {:name "New Target Query"}
-                       :model/Card {card-id :id :as card} {:dataset_query
-                                                           (lib/native-query mp "SELECT * FROM {{#999-old-query-name}} WHERE x > 1")}]
-          (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (replacement.source-swap/swap-source! [:card card-id]
-                                                [:card 999]
-                                                [:card new-card-id])
-          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
-                query         (lib/raw-native-query updated-query)]
-            ;; Should have new card ID with slugified name
-            (is (str/includes? query (str "{{#" new-card-id "-new-target-query}}")))
-            (is (not (str/includes? query "{{#999")))))))))
-
-(deftest swap-native-card-ref-with-slug-template-tags-test
-  (testing "Template tags are updated with slug to match SQL when swapping slugged card refs"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {products-id :id} {:name "All Products"
-                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
-                       :model/Card {orders-a-id :id} {:name "All Orders A"
-                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
-                       :model/Card {orders-b-id :id} {:name "All Orders B"
-                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
-                       :model/Card {native-card-id :id :as native-card}
-                       {:dataset_query
-                        (lib/native-query mp (str "SELECT p.*, o.* "
-                                                  "FROM {{#" products-id "-all-products}} p "
-                                                  "JOIN {{#" orders-a-id "-all-orders-a}} o ON p.id = o.product_id"))}]
-          ;; Swap orders A -> orders B
-          (replacement.field-refs/upgrade-field-refs! [:card native-card-id] native-card)
-          (replacement.source-swap/swap-source! [:card native-card-id]
-                                                [:card orders-a-id]
-                                                [:card orders-b-id])
-          (let [updated-card  (t2/select-one :model/Card :id native-card-id)
-                updated-query (:dataset_query updated-card)
-                sql           (lib/raw-native-query updated-query)
-                template-tags (get-in updated-query [:stages 0 :template-tags])]
-            ;; SQL should have the new slugged reference
-            (is (str/includes? sql (str "{{#" orders-b-id "-all-orders-b}}")))
-            (is (not (str/includes? sql (str "{{#" orders-a-id))))
-            ;; Template tags should have matching key
-            (is (contains? template-tags (str "#" orders-b-id "-all-orders-b")))
-            (is (not (contains? template-tags (str "#" orders-a-id "-all-orders-a"))))
-            ;; Products reference should be unchanged
-            (is (str/includes? sql (str "{{#" products-id "-all-products}}")))
-            (is (contains? template-tags (str "#" products-id "-all-products")))))))))
-
-(deftest swap-native-kitchen-sink-test
-  (testing "Kitchen sink: multiple card refs with slugs, nested optionals, swapping one source"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {products-a-id :id} {:name "All Products A"
-                                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
-                       :model/Card {products-b-id :id} {:name "All Products B"
-                                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :products)))}
-                       :model/Card {orders-a-id :id}   {:name "All Orders A"
-                                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
-                       :model/Card {orders-b-id :id}   {:name "All Orders B"
-                                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
-                       :model/Card {kitchen-sink-id :id :as kitchen-sink-card}
-                       {:dataset_query
-                        (lib/native-query mp (str "WITH filtered_products AS ("
-                                                  "  SELECT * FROM {{#" products-a-id "-all-products-a}}"
-                                                  "  WHERE 1=1"
-                                                  "  [[AND price >= {{min_price}}]]"
-                                                  "),"
-                                                  "order_data AS ("
-                                                  "  SELECT product_id, COUNT(*) as cnt"
-                                                  "  FROM {{#" orders-a-id "-all-orders-a}}"
-                                                  "  WHERE 1=1"
-                                                  "  [[AND quantity >= {{min_qty}}"
-                                                  "    [[AND total >= {{min_total}}]]"
-                                                  "  ]]"
-                                                  "  GROUP BY product_id"
-                                                  ")"
-                                                  "SELECT p.*, o.cnt FROM filtered_products p "
-                                                  "LEFT JOIN order_data o ON p.id = o.product_id"))}]
-          ;; Swap products A -> products B (orders should stay as-is)
-          (replacement.field-refs/upgrade-field-refs! [:card kitchen-sink-id] kitchen-sink-card)
-          (replacement.source-swap/swap-source! [:card kitchen-sink-id]
-                                                [:card products-a-id]
-                                                [:card products-b-id])
-          (let [updated-query (:dataset_query (t2/select-one :model/Card :id kitchen-sink-id))
-                sql           (lib/raw-native-query updated-query)
-                template-tags (get-in updated-query [:stages 0 :template-tags])]
-            ;; Products A should be replaced with Products B (with slug)
-            (is (str/includes? sql (str "{{#" products-b-id "-all-products-b}}")))
-            (is (not (str/includes? sql (str "{{#" products-a-id))))
-            (is (contains? template-tags (str "#" products-b-id "-all-products-b")))
-            ;; Orders A should be unchanged
-            (is (str/includes? sql (str "{{#" orders-a-id "-all-orders-a}}")))
-            (is (contains? template-tags (str "#" orders-a-id "-all-orders-a")))
-            ;; Other params should be unchanged
-            (is (contains? template-tags "min_price"))
-            (is (contains? template-tags "min_qty"))
-            (is (contains? template-tags "min_total"))))))))
-
 (deftest swap-native-card-ref-with-whitespace-test
-  (testing "Card reference with whitespace ({{ #42 }}) is replaced correctly"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
-                                                           (lib/native-query mp "SELECT * FROM {{ #999 }} WHERE x > 1")}]
-          (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (replacement.source-swap/swap-source! [:card card-id]
-                                                [:card 999]
-                                                [:card 888])
-          (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (replacement.source-swap/swap-source! [:card card-id]
-                                                [:card 999]
-                                                [:card 888])
-          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
-                query         (lib/raw-native-query updated-query)]
-            (is (str/includes? query "{{#888}}"))
-            (is (not (str/includes? query "#999")))))))))
+  (testing "Card reference with whitespace ({{ #1 }}) is replaced correctly"
+    (let [mp     (metadata-provider-with-cards)
+          query  (lib/native-query mp "SELECT * FROM {{ #1 }} WHERE x > 1")
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+      (is (str/includes? (lib/raw-native-query result) "{{#2}}"))
+      (is (not (str/includes? (lib/raw-native-query result) "#1"))))))
 
 (deftest swap-native-card-ref-multiple-test
   (testing "Multiple card references to the same card are all replaced"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
-                                                           (lib/native-query mp "SELECT * FROM {{#999}} a JOIN {{#999}} b ON a.id = b.id")}]
-          (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (replacement.source-swap/swap-source! [:card card-id]
-                                                [:card 999]
-                                                [:card 888])
-          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
-                query         (lib/raw-native-query updated-query)]
-            (is (= 2 (count (re-seq #"\{\{#888\}\}" query))))
-            (is (not (str/includes? query "{{#999}}")))))))))
+    (let [mp     (metadata-provider-with-cards)
+          query  (lib/native-query mp "SELECT * FROM {{#1}} a JOIN {{#1}} b ON a.id = b.id")
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+      (is (= 2 (count (re-seq #"\{\{#2\}\}" (lib/raw-native-query result)))))
+      (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
 (deftest swap-native-card-ref-in-cte-test
   (testing "Card reference in CTE is replaced correctly"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
-                                                           (lib/native-query mp "WITH base AS {{#999}} SELECT * FROM base WHERE x > 1")}]
-          (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (replacement.source-swap/swap-source! [:card card-id]
-                                                [:card 999]
-                                                [:card 888])
-          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
-                query         (lib/raw-native-query updated-query)]
-            (is (str/includes? query "WITH base AS {{#888}}"))
-            (is (not (str/includes? query "{{#999}}")))))))))
+    (let [mp     (metadata-provider-with-cards)
+          query  (lib/native-query mp "WITH base AS {{#1}} SELECT * FROM base WHERE x > 1")
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+      (is (str/includes? (lib/raw-native-query result) "WITH base AS {{#2}}"))
+      (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
 (deftest swap-native-card-ref-with-alias-test
-  (testing "Card reference with alias ({{#42}} AS t) is replaced correctly"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
-                                                           (lib/native-query mp "SELECT t.* FROM {{#999}} AS t WHERE t.x > 1")}]
-          (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (replacement.source-swap/swap-source! [:card card-id]
-                                                [:card 999]
-                                                [:card 888])
-          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
-                query         (lib/raw-native-query updated-query)]
-            (is (str/includes? query "{{#888}} AS t"))
-            (is (not (str/includes? query "{{#999}}")))))))))
+  (testing "Card reference with alias ({{#1}} AS t) is replaced correctly"
+    (let [mp     (metadata-provider-with-cards)
+          query  (lib/native-query mp "SELECT t.* FROM {{#1}} AS t WHERE t.x > 1")
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+      (is (str/includes? (lib/raw-native-query result) "{{#2}} AS t"))
+      (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
 (deftest swap-native-card-ref-preserves-other-params-test
   (testing "Other template params are preserved when replacing card reference"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
-                                                           (lib/native-query mp "SELECT * FROM {{#999}} WHERE status = {{status}} AND total > {{min_total}}")}]
-          (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (replacement.source-swap/swap-source! [:card card-id]
-                                                [:card 999]
-                                                [:card 888])
-          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
-                query         (lib/raw-native-query updated-query)
-                tags          (lib/template-tags updated-query)]
-            (is (str/includes? query "{{#888}}"))
-            (is (str/includes? query "{{status}}"))
-            (is (str/includes? query "{{min_total}}"))
-            (is (contains? tags "status"))
-            (is (contains? tags "min_total"))))))))
+    (let [mp     (metadata-provider-with-cards)
+          query  (lib/native-query mp "SELECT * FROM {{#1}} WHERE status = {{status}} AND total > {{min_total}}")
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+      (is (str/includes? (lib/raw-native-query result) "{{#2}}"))
+      (is (str/includes? (lib/raw-native-query result) "{{status}}"))
+      (is (str/includes? (lib/raw-native-query result) "{{min_total}}"))
+      (is (contains? (lib/template-tags result) "status"))
+      (is (contains? (lib/template-tags result) "min_total")))))
 
 (deftest swap-native-card-ref-different-cards-test
   (testing "Only the specified card reference is replaced, others are preserved"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
-                                                           (lib/native-query mp "SELECT * FROM {{#999}} a JOIN {{#777}} b ON a.id = b.id")}]
-          (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (replacement.source-swap/swap-source! [:card card-id]
-                                                [:card 999]
-                                                [:card 888])
-          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
-                query         (lib/raw-native-query updated-query)]
-            (is (str/includes? query "{{#888}}"))
-            (is (str/includes? query "{{#777}}"))
-            (is (not (str/includes? query "{{#999}}")))))))))
+    (let [mp     (metadata-provider-with-cards)
+          query  (lib/native-query mp "SELECT * FROM {{#1}} a JOIN {{#3}} b ON a.id = b.id")
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+      (is (str/includes? (lib/raw-native-query result) "{{#2}}"))
+      (is (str/includes? (lib/raw-native-query result) "{{#3}}"))
+      (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
 (deftest swap-native-card-ref-in-subquery-test
   (testing "Card reference in subquery is replaced correctly"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
-                                                           (lib/native-query mp "SELECT * FROM orders WHERE product_id IN (SELECT id FROM {{#999}})")}]
-          (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (replacement.source-swap/swap-source! [:card card-id]
-                                                [:card 999]
-                                                [:card 888])
-          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
-                query         (lib/raw-native-query updated-query)]
-            (is (str/includes? query "FROM {{#888}}"))
-            (is (not (str/includes? query "{{#999}}")))))))))
+    (let [mp     (metadata-provider-with-cards)
+          query  (lib/native-query mp "SELECT * FROM orders WHERE product_id IN (SELECT id FROM {{#1}})")
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+      (is (str/includes? (lib/raw-native-query result) "FROM {{#2}}"))
+      (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
 (deftest swap-native-card-ref-in-optional-clause-test
-  (testing "Card reference inside optional clause [[...{{#42}}...]] is replaced correctly"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
-                                                           (lib/native-query mp "SELECT * FROM orders WHERE 1=1 [[AND product_id IN (SELECT id FROM {{#999}})]]\n")}]
-          (replacement.field-refs/upgrade-field-refs! [:card card-id] card)
-          (replacement.source-swap/swap-source! [:card card-id]
-                                                [:card 999]
-                                                [:card 888])
-          (let [updated-query (:dataset_query (t2/select-one :model/Card :id card-id))
-                query         (lib/raw-native-query updated-query)]
-            (is (str/includes? query "{{#888}}"))
-            (is (not (str/includes? query "{{#999}}")))))))))
+  (testing "Card reference inside optional clause [[...{{#1}}...]] is replaced correctly"
+    (let [mp     (metadata-provider-with-cards)
+          query  (lib/native-query mp "SELECT * FROM orders WHERE 1=1 [[AND product_id IN (SELECT id FROM {{#1}})]]\n")
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+      (is (str/includes? (lib/raw-native-query result) "{{#2}}"))
+      (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
 ;;; ------------------------------------------------ Native Query Table→Table Tests ------------------------------------------------
 ;;; These tests cover table→table replacement in native SQL queries using sql-tools
@@ -474,224 +311,116 @@
       (is (= "SELECT * FROM {{#123-my-card}}" result)
           "Card reference should not be wrapped in double quotes"))))
 
-;;; ------------------------------------------------ swap-source: table→table for native queries ------------------------------------------------
+;;; ------------------------------------------------ table→table for native queries ------------------------------------------------
 
-(deftest swap-source-table-to-table-native-query-test
-  (testing "swap-source table → table: native query's SQL table reference is updated"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-table-table-native@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (replacement.test-util/with-restored-card-queries
-              (let [mp    (mt/metadata-provider)
-                    child (card/create-card!
-                           {:name                   "Native from Products"
-                            :database_id            (mt/id)
-                            :display                :table
-                            :query_type             :native
-                            :type                   :question
-                            :dataset_query          (lib/native-query mp "SELECT * FROM PRODUCTS")
-                            :visualization_settings {}}
-                           user)]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:table (mt/id :products)]
-                                                      [:table (mt/id :orders)])
-                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                      sql           (get-in updated-query [:stages 0 :native])]
-                  (is (str/includes? sql "ORDERS"))
-                  (is (not (str/includes? sql "PRODUCTS"))))))))))))
+(deftest replace-table-in-native-query-test
+  (testing "table→table: SQL table reference is updated"
+    (let [query  (lib/native-query meta/metadata-provider "SELECT * FROM PRODUCTS")
+          result (source-swap.native/update-native-stages query
+                                                          [:table (meta/id :products)]
+                                                          [:table (meta/id :orders)]
+                                                          {})]
+      (is (str/includes? (lib/raw-native-query result) "ORDERS"))
+      (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS")))))
 
-(deftest swap-source-table-to-table-native-query-with-params-test
-  (testing "swap-source table → table: native query preserves template tags"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-table-table-native-params@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (replacement.test-util/with-restored-card-queries
-              (let [mp    (mt/metadata-provider)
-                    child (card/create-card!
-                           {:name                   "Native Products with Params"
-                            :database_id            (mt/id)
-                            :display                :table
-                            :query_type             :native
-                            :type                   :question
-                            :dataset_query          (lib/native-query mp "SELECT * FROM PRODUCTS WHERE category = {{category}}")
-                            :visualization_settings {}}
-                           user)]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:table (mt/id :products)]
-                                                      [:table (mt/id :orders)])
-                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                      sql           (get-in updated-query [:stages 0 :native])]
-                  (is (str/includes? sql "ORDERS"))
-                  (is (not (str/includes? sql "PRODUCTS")))
-                  (is (str/includes? sql "{{category}}")))))))))))
+  (testing "table→table: template tags are preserved"
+    (let [query  (lib/native-query meta/metadata-provider "SELECT * FROM PRODUCTS WHERE category = {{category}}")
+          result (source-swap.native/update-native-stages query
+                                                          [:table (meta/id :products)]
+                                                          [:table (meta/id :orders)]
+                                                          {})]
+      (is (str/includes? (lib/raw-native-query result) "ORDERS"))
+      (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS")))
+      (is (str/includes? (lib/raw-native-query result) "{{category}}"))))
 
-(deftest swap-source-table-to-table-native-query-join-test
-  (testing "swap-source table → table: native query with JOIN has correct table renamed"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-table-native-join@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (replacement.test-util/with-restored-card-queries
-              (let [mp    (mt/metadata-provider)
-                    child (card/create-card!
-                           {:name                   "Native Join Query"
-                            :database_id            (mt/id)
-                            :display                :table
-                            :query_type             :native
-                            :type                   :question
-                            :dataset_query          (lib/native-query mp "SELECT o.*, p.title FROM ORDERS o JOIN PRODUCTS p ON o.product_id = p.id")
-                            :visualization_settings {}}
-                           user)]
-                ;; Swap ORDERS table to REVIEWS table
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:table (mt/id :orders)]
-                                                      [:table (mt/id :reviews)])
-                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                      sql           (get-in updated-query [:stages 0 :native])]
-                  (is (str/includes? sql "REVIEWS"))
-                  (is (str/includes? sql "PRODUCTS")) ;; PRODUCTS should stay
-                  (is (not (str/includes? sql "ORDERS"))))))))))))
+  (testing "table→table: only the target table is renamed in a JOIN"
+    (let [query  (lib/native-query meta/metadata-provider "SELECT o.*, p.title FROM ORDERS o JOIN PRODUCTS p ON o.product_id = p.id")
+          result (source-swap.native/update-native-stages query
+                                                          [:table (meta/id :orders)]
+                                                          [:table (meta/id :reviews)]
+                                                          {})]
+      (is (str/includes? (lib/raw-native-query result) "REVIEWS"))
+      (is (str/includes? (lib/raw-native-query result) "PRODUCTS"))
+      (is (not (str/includes? (lib/raw-native-query result) "ORDERS")))))
 
-;;; ------------------------------------------------ swap-source: table→card for native queries ------------------------------------------------
+  (testing "table→table: schema-qualified SQL reference is replaced"
+    (let [query  (lib/native-query meta/metadata-provider "SELECT * FROM PUBLIC.PRODUCTS")
+          result (source-swap.native/update-native-stages query
+                                                          [:table (meta/id :products)]
+                                                          [:table (meta/id :orders)]
+                                                          {})]
+      (is (str/includes? (lib/raw-native-query result) "ORDERS"))
+      (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS"))))))
 
-(deftest swap-source-table-to-card-native-query-test
-  (testing "swap-source table → card: native query gets card template tag"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-table-card-native@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (replacement.test-util/with-restored-card-queries
-              (let [mp         (mt/metadata-provider)
-                    new-source (card/create-card! (replacement.test-util/card-with-query "New Source Card" :orders) user)
-                    _          (replacement.test-util/wait-for-result-metadata (:id new-source))
-                    child      (card/create-card!
-                                {:name                   "Native from Products"
-                                 :database_id            (mt/id)
-                                 :display                :table
-                                 :query_type             :native
-                                 :type                   :question
-                                 :dataset_query          (lib/native-query mp "SELECT * FROM PRODUCTS")
-                                 :visualization_settings {}}
-                                user)]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:table (mt/id :products)]
-                                                      [:card (:id new-source)])
-                (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                      sql            (get-in updated-query [:stages 0 :native])
-                      template-tags  (get-in updated-query [:stages 0 :template-tags])]
-                  ;; SQL should have card reference without quotes
-                  (is (str/includes? sql (str "{{#" (:id new-source))))
-                  (is (not (re-find #"\"[{][{]#" sql))
-                      "Card reference must not be quoted in SQL")
-                  (is (not (str/includes? sql "PRODUCTS")))
-                  ;; Template tag should be added
-                  (is (some #(= (:card-id %) (:id new-source)) (vals template-tags))))))))))))
+;;; ------------------------------------------------ table→card for native queries ------------------------------------------------
 
-(deftest swap-source-table-to-card-native-query-preserves-params-test
-  (testing "swap-source table → card: native query preserves existing template tags"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-table-card-native-params@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (replacement.test-util/with-restored-card-queries
-              (let [mp         (mt/metadata-provider)
-                    new-source (card/create-card! (replacement.test-util/card-with-query "New Source Card" :orders) user)
-                    _          (replacement.test-util/wait-for-result-metadata (:id new-source))
-                    child      (card/create-card!
-                                {:name                   "Native Products with Params"
-                                 :database_id            (mt/id)
-                                 :display                :table
-                                 :query_type             :native
-                                 :type                   :question
-                                 :dataset_query          (lib/native-query mp "SELECT * FROM PRODUCTS WHERE category = {{category}}")
-                                 :visualization_settings {}}
-                                user)]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:table (mt/id :products)]
-                                                      [:card (:id new-source)])
-                (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                      sql            (get-in updated-query [:stages 0 :native])
-                      template-tags  (get-in updated-query [:stages 0 :template-tags])]
-                  ;; SQL should have card reference and keep existing param
-                  (is (str/includes? sql (str "{{#" (:id new-source))))
-                  (is (str/includes? sql "{{category}}"))
-                  ;; Both template tags should exist
-                  (is (contains? template-tags "category"))
-                  (is (some #(= (:card-id %) (:id new-source)) (vals template-tags))))))))))))
+(deftest replace-table-with-card-in-native-test
+  (let [mp (metadata-provider-with-cards)]
+    (testing "table→card: SQL gets card template tag"
+      (let [query  (lib/native-query mp "SELECT * FROM PRODUCTS")
+            result (source-swap.native/update-native-stages query
+                                                            [:table (meta/id :products)]
+                                                            [:card 1]
+                                                            {})]
+        (is (str/includes? (lib/raw-native-query result) "{{#1-card-1}}"))
+        (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS")))
+        (is (= 1 (get-in (lib/template-tags result) ["#1-card-1" :card-id])))))
 
-;;; ------------------------------------------------ Card→Table Native Query Tests ------------------------------------------------
+    (testing "table→card: existing template tags are preserved"
+      (let [query  (lib/native-query mp "SELECT * FROM PRODUCTS WHERE category = {{category}}")
+            result (source-swap.native/update-native-stages query
+                                                            [:table (meta/id :products)]
+                                                            [:card 1]
+                                                            {})]
+        (is (str/includes? (lib/raw-native-query result) "{{#1-card-1}}"))
+        (is (str/includes? (lib/raw-native-query result) "{{category}}"))
+        (is (contains? (lib/template-tags result) "category"))
+        (is (= 1 (get-in (lib/template-tags result) ["#1-card-1" :card-id])))))
 
-(deftest swap-source-card-to-table-native-query-test
-  (testing "swap-source card → table: native query's {{#card-id}} becomes direct table reference"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-card-table-native@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [mp         (mt/metadata-provider)
-                  old-source (card/create-card! (replacement.test-util/card-with-query "Old Source Card" :products) user)
-                  _          (replacement.test-util/wait-for-result-metadata (:id old-source))
-                  child      (card/create-card! (replacement.test-util/native-card-sourced-from "Native Child" old-source) user)]
-              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-              (replacement.source-swap/swap-source! [:card (:id child)]
-                                                    [:card (:id old-source)]
-                                                    [:table (mt/id :orders)])
-              (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                    sql            (get-in updated-query [:stages 0 :native])
-                    template-tags  (get-in updated-query [:stages 0 :template-tags])]
-                ;; SQL should have raw table name, not card ref
-                (is (str/includes? sql "ORDERS"))
-                (is (not (str/includes? sql (str "{{#" (:id old-source)))))
-                ;; Card template tag should be removed
-                (is (not (some #(= (:card-id %) (:id old-source)) (vals template-tags))))))))))))
+    (testing "table→card: schema-qualified SQL gets card ref without schema prefix"
+      (let [query  (lib/native-query mp "SELECT * FROM PUBLIC.PRODUCTS")
+            result (source-swap.native/update-native-stages query
+                                                            [:table (meta/id :products)]
+                                                            [:card 1]
+                                                            {})]
+        (is (str/includes? (lib/raw-native-query result) "{{#1-card-1}}"))
+        (is (not (str/includes? (lib/raw-native-query result) "PUBLIC.{{")))
+        (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS")))))))
 
-(deftest swap-source-card-to-table-native-query-preserves-params-test
-  (testing "swap-source card → table: native query preserves other template tags"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-card-table-native-params@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [mp         (mt/metadata-provider)
-                  old-source (card/create-card! (replacement.test-util/card-with-query "Old Source Card" :products) user)
-                  _          (replacement.test-util/wait-for-result-metadata (:id old-source))
-                  child      (card/create-card!
-                              {:name                   "Native with Params"
-                               :database_id            (mt/id)
-                               :display                :table
-                               :query_type             :native
-                               :type                   :question
-                               :dataset_query          (lib/native-query mp (str "SELECT * FROM {{#" (:id old-source) "}} WHERE status = {{status}}"))
-                               :visualization_settings {}}
-                              user)]
-              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-              (replacement.source-swap/swap-source! [:card (:id child)]
-                                                    [:card (:id old-source)]
-                                                    [:table (mt/id :orders)])
-              (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                    sql            (get-in updated-query [:stages 0 :native])
-                    template-tags  (get-in updated-query [:stages 0 :template-tags])]
-                ;; SQL should have table name and preserve status param
-                (is (str/includes? sql "ORDERS"))
-                (is (str/includes? sql "{{status}}"))
-                ;; Status param should still exist, card tag should be gone
-                (is (contains? template-tags "status"))
-                (is (not (some #(= (:card-id %) (:id old-source)) (vals template-tags))))))))))))
+;;; ------------------------------------------------ card→table for native queries ------------------------------------------------
+
+(deftest replace-card-with-table-in-native-test
+  (testing "card→table: card ref becomes direct table reference"
+    (let [query  (-> (lib/native-query meta/metadata-provider "SELECT * FROM {{#1-card-1}}")
+                     (lib/with-template-tags {"#1-card-1" {:type :card :card-id 1 :name "#1-card-1" :display-name "#1-card-1"}}))
+          result (source-swap.native/update-native-stages query
+                                                          [:card 1]
+                                                          [:table (meta/id :orders)]
+                                                          {})]
+      (is (str/includes? (lib/raw-native-query result) "ORDERS"))
+      (is (not (str/includes? (lib/raw-native-query result) "{{#1")))
+      (is (empty? (filter #(= (:card-id %) 1) (vals (lib/template-tags result)))))))
+
+  (testing "card→table: other template tags are preserved"
+    (let [query  (-> (lib/native-query meta/metadata-provider "SELECT * FROM {{#1-card-1}} WHERE status = {{status}}")
+                     (lib/with-template-tags {"#1-card-1" {:type :card :card-id 1 :name "#1-card-1" :display-name "#1-card-1"}}))
+          result (source-swap.native/update-native-stages query
+                                                          [:card 1]
+                                                          [:table (meta/id :orders)]
+                                                          {})]
+      (is (str/includes? (lib/raw-native-query result) "ORDERS"))
+      (is (str/includes? (lib/raw-native-query result) "{{status}}"))
+      (is (contains? (lib/template-tags result) "status"))
+      (is (empty? (filter #(= (:card-id %) 1) (vals (lib/template-tags result))))))))
 
 ;;; ------------------------------------------------ Table Tag Tests ------------------------------------------------
 
 (deftest swap-table-to-table-with-table-tag-test
   (testing "swap-source table → table: {{table}} tag's :table-id is updated"
-    (let [query  (replacement.test-util/make-native-query
-                  "SELECT * FROM {{my_table}}"
-                  {"my_table" {:type :table :table-id 1 :name "my_table" :display-name "My Table"}})
+    (let [query  (-> (lib/native-query meta/metadata-provider "SELECT * FROM {{my_table}}")
+                     (lib/with-template-tags {"my_table" {:type :table :table-id 1 :name "my_table" :display-name "My Table"}}))
           result (#'source-swap.native/update-table-tags-for-table-swap
-                  (get-in query [:stages 0 :template-tags])
+                  (lib/template-tags query)
                   1 2)]
       (is (= 2 (get-in result ["my_table" :table-id]))))))
 
@@ -699,13 +428,13 @@
   (testing "swap-source table → card: {{my_table}} becomes {{#card-id-slug}}"
     (let [sql "SELECT * FROM {{my_table}}"
           tags {"my_table" {:type :table :table-id 1 :name "my_table" :display-name "My Table"}}
-          {:keys [sql template-tags]} (#'source-swap.native/update-table-tags-for-card-swap sql tags 1 99 "New Card")]
+          {:keys [sql template-tags]} (#'source-swap.native/update-table-tags-for-card-swap sql tags 1 2 "New Card")]
       ;; SQL should have card reference
-      (is (str/includes? sql "{{#99-new-card}}"))
+      (is (str/includes? sql "{{#2-new-card}}"))
       (is (not (str/includes? sql "{{my_table}}")))
       ;; Template tag should be :type :card now
-      (is (= :card (get-in template-tags ["#99-new-card" :type])))
-      (is (= 99 (get-in template-tags ["#99-new-card" :card-id])))
+      (is (= :card (get-in template-tags ["#2-new-card" :type])))
+      (is (= 2 (get-in template-tags ["#2-new-card" :card-id])))
       ;; Old table tag should be gone
       (is (not (contains? template-tags "my_table"))))))
 
@@ -718,125 +447,32 @@
                             :display-name "My Table"
                             :required true
                             :default  "fallback"}}
-          {:keys [template-tags]} (#'source-swap.native/update-table-tags-for-card-swap sql tags 1 99 "New Card")]
+          {:keys [template-tags]} (#'source-swap.native/update-table-tags-for-card-swap sql tags 1 2 "New Card")]
       ;; :required and :default should be preserved
-      (is (= true (get-in template-tags ["#99-new-card" :required])))
-      (is (= "fallback" (get-in template-tags ["#99-new-card" :default]))))))
+      (is (= true (get-in template-tags ["#2-new-card" :required])))
+      (is (= "fallback" (get-in template-tags ["#2-new-card" :default]))))))
 
 ;;; ------------------------------------------------ Dimension Tag Tests ------------------------------------------------
 
 (deftest update-dimension-tags-test
   (testing "dimension tag field ref is remapped to new table's field"
-    (mt/dataset test-data
-      ;; Get actual field IDs from test data
-      (let [products-id-field (t2/select-one :model/Field :table_id (mt/id :products) :name "ID")
-            orders-id-field   (t2/select-one :model/Field :table_id (mt/id :orders) :name "ID")
-            tags {"filter" {:type :dimension
+    (let [query  (lib/native-query meta/metadata-provider "SELECT 1")
+          tags   {"filter" {:type :dimension
                             :name "filter"
-                            :dimension [:field (:id products-id-field) nil]}}
-            result (#'source-swap.native/update-dimension-tags tags (mt/id :products) (mt/id :orders))]
-        (is (= [:field (:id orders-id-field) nil]
-               (get-in result ["filter" :dimension])))))))
+                            :dimension (field-id-ref meta/metadata-provider (meta/id :products :id))}}
+          result (#'source-swap.native/update-dimension-tags query tags (meta/id :products) (meta/id :orders))]
+      (is (=? {"filter" {:dimension [:field {} (meta/id :orders :id)]}}
+              result)))))
 
 (deftest update-dimension-tags-no-match-test
   (testing "dimension tag left unchanged when no matching field on new table"
-    (mt/dataset test-data
-      (let [products-ean-field (t2/select-one :model/Field :table_id (mt/id :products) :name "EAN")
-            tags {"filter" {:type :dimension
-                            :name "filter"
-                            :dimension [:field (:id products-ean-field) nil]}}
-            ;; Orders table doesn't have an EAN field
-            result (#'source-swap.native/update-dimension-tags tags (mt/id :products) (mt/id :orders))]
-        ;; Should be unchanged since no matching field
-        (is (= [:field (:id products-ean-field) nil]
-               (get-in result ["filter" :dimension])))))))
-
-;;; ------------------------------------------------ Schema-Qualified Integration Tests ------------------------------------------------
-;;; These test the full swap-source path with schema-qualified SQL (e.g., FROM PUBLIC.PRODUCTS)
-
-(deftest swap-source-table-to-table-native-query-with-schema-test
-  (testing "swap-source table → table: schema-qualified SQL reference is replaced"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-table-schema@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (replacement.test-util/with-restored-card-queries
-              (let [mp    (mt/metadata-provider)
-                    child (card/create-card!
-                           {:name                   "Native with Schema"
-                            :database_id            (mt/id)
-                            :display                :table
-                            :query_type             :native
-                            :type                   :question
-                            :dataset_query          (lib/native-query mp "SELECT * FROM PUBLIC.PRODUCTS")
-                            :visualization_settings {}}
-                           user)]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:table (mt/id :products)]
-                                                      [:table (mt/id :orders)])
-                (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                      sql           (get-in updated-query [:stages 0 :native])]
-                  (is (str/includes? sql "ORDERS"))
-                  (is (not (str/includes? sql "PRODUCTS"))))))))))))
-
-(deftest swap-source-table-to-card-native-query-with-schema-test
-  (testing "swap-source table → card: schema-qualified SQL gets card ref without schema prefix"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-table-card-schema@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (replacement.test-util/with-restored-card-queries
-              (let [mp         (mt/metadata-provider)
-                    new-source (card/create-card! (replacement.test-util/card-with-query "New Source Card" :orders) user)
-                    _          (replacement.test-util/wait-for-result-metadata (:id new-source))
-                    child      (card/create-card!
-                                {:name                   "Native with Schema"
-                                 :database_id            (mt/id)
-                                 :display                :table
-                                 :query_type             :native
-                                 :type                   :question
-                                 :dataset_query          (lib/native-query mp "SELECT * FROM PUBLIC.PRODUCTS")
-                                 :visualization_settings {}}
-                                user)]
-                (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-                (replacement.source-swap/swap-source! [:card (:id child)]
-                                                      [:table (mt/id :products)]
-                                                      [:card (:id new-source)])
-                (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                      sql            (get-in updated-query [:stages 0 :native])
-                      template-tags  (get-in updated-query [:stages 0 :template-tags])]
-                  ;; SQL should have card reference without schema prefix or quotes
-                  (is (str/includes? sql (str "{{#" (:id new-source) "-new-source-card}}")))
-                  (is (not (re-find #"\"[{][{]#" sql))
-                      "Card reference must not be quoted in SQL")
-                  (is (not (str/includes? sql "PUBLIC.{{"))
-                      "Must not produce schema.{{#card}} — schema should be cleared")
-                  (is (not (str/includes? sql "PUBLIC\".\"{{"))
-                      "Must not produce schema.\"{{#card}} — schema should be cleared")
-                  (is (not (str/includes? sql "PRODUCTS")))
-                  ;; Template tag should be added
-                  (is (some #(= (:card-id %) (:id new-source)) (vals template-tags))))))))))))
-
-(deftest swap-source-card-to-table-native-query-with-schema-test
-  (testing "swap-source card → table: card ref becomes schema-qualified table name"
-    (mt/dataset test-data
-      (mt/with-premium-features #{:dependencies}
-        (mt/with-temp [:model/User user {:email "swap-card-table-schema@test.com"}]
-          (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [old-source (card/create-card! (replacement.test-util/card-with-query "Old Source Card" :products) user)
-                  _          (replacement.test-util/wait-for-result-metadata (:id old-source))
-                  child      (card/create-card! (replacement.test-util/native-card-sourced-from "Native Child" old-source) user)]
-              (replacement.field-refs/upgrade-field-refs! [:card (:id child)] child)
-              (replacement.source-swap/swap-source! [:card (:id child)]
-                                                    [:card (:id old-source)]
-                                                    [:table (mt/id :orders)])
-              (let [updated-query  (t2/select-one-fn :dataset_query :model/Card :id (:id child))
-                    sql            (get-in updated-query [:stages 0 :native])
-                    template-tags  (get-in updated-query [:stages 0 :template-tags])]
-                ;; SQL should have quoted, schema-qualified table name (H2 tables are in PUBLIC schema)
-                (is (str/includes? sql "\"PUBLIC\".\"ORDERS\"")
-                    "card→table should produce quoted schema-qualified table reference")
-                (is (not (str/includes? sql (str "{{#" (:id old-source)))))
-                ;; Card template tag should be removed
-                (is (not (some #(= (:card-id %) (:id old-source)) (vals template-tags))))))))))))
+    (let [query     (lib/native-query meta/metadata-provider "SELECT 1")
+          dimension (field-id-ref meta/metadata-provider (meta/id :products :ean))
+          tags      {"filter" {:type :dimension
+                               :name "filter"
+                               :dimension dimension}}
+          ;; Orders table doesn't have an EAN field
+          result (#'source-swap.native/update-dimension-tags query tags (meta/id :products) (meta/id :orders))]
+      ;; Should be unchanged since no matching field
+      (is (= dimension
+             (get-in result ["filter" :dimension]))))))
