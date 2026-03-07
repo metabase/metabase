@@ -6,6 +6,8 @@ import { t } from "ttag";
 
 import { SchedulePicker } from "metabase/common/components/SchedulePicker/SchedulePicker";
 import { FormField } from "metabase/forms";
+import { useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import { Box, rem } from "metabase/ui";
 import type {
   DatabaseData,
@@ -38,6 +40,9 @@ export const DatabaseCacheScheduleField = ({
 }: DatabaseCacheScheduleFieldProps): JSX.Element => {
   const { values, setFieldValue } = useFormikContext<DatabaseData>();
   const [{ value }, , { setValue }] = useField(name);
+  const timezone = useSelector((state) =>
+    getSetting(state, "report-timezone-short"),
+  );
 
   const handleScheduleChange = useCallback(
     (value: ScheduleSettings) => {
@@ -93,6 +98,7 @@ export const DatabaseCacheScheduleField = ({
         <SchedulePicker
           schedule={value ?? DEFAULT_SCHEDULE}
           scheduleOptions={SCHEDULE_OPTIONS}
+          timezone={timezone}
           onScheduleChange={handleScheduleChange}
         />
       )}
