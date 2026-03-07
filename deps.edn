@@ -631,6 +631,29 @@
                ;; and a simple reproduction repo can be found here https://github.com/metabase/snowplow-eastwood-issue
                :exclude-namespaces [metabase.analytics.snowplow]}}
 
+  ;; Test counterpart of :eastwood. Starts with :reflection only; add more linters as we fix other eastwood
+  ;; issues in tests.
+  ;;
+  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+  :eastwood/test
+  {:exec-fn   metabase.linters.eastwood/eastwood
+   :exec-args {:source-paths ["test"
+                              "enterprise/backend/test"]
+               :linters      [:reflection]
+               :exclude-namespaces
+               [;; byte/1 dispatch value trips up Eastwood's reader
+                metabase.test.http-client
+                ;; Cookie/.getName qualified method trips up Eastwood's analyzer
+                metabase.server.middleware.settings-cache-test
+                ;; .cljc syntax error during Eastwood's analyze+eval phase
+                metabase.lib.query-test
+                ;; "count not supported on this type: Symbol" in Eastwood's analyzer
+                metabase.query-processor.parameters.temporal-units-test
+                ;; Syntax error compiling fn* in Eastwood's analyzer
+                metabase.sql-tools.macaw.references-test
+                ;; Method too large for Eastwood's analyzer
+                metabase.sql-tools.sqlglot.references-test]}}
+
   ;; clojure -T:whitespace-linter
   :whitespace-linter
   {:deps       {com.github.camsaul/whitespace-linter {:sha "e35bc252ccf5cc74f7d543ef95ad8a3e5131f25b"}}
