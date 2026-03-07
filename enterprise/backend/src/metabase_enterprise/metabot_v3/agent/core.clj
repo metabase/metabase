@@ -2,6 +2,7 @@
   "Main agent loop implementation using reducible streaming infrastructure."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.llm.settings :as llm.settings]
    [metabase-enterprise.metabot-v3.agent.analytics :as agent-analytics]
    [metabase-enterprise.metabot-v3.agent.memory :as memory]
    [metabase-enterprise.metabot-v3.agent.messages :as messages]
@@ -437,8 +438,9 @@
             [:debug? {:optional true} [:maybe :boolean]]]]
   (let [profile-id         (:profile-id opts)
         debug?             (:debug? opts)
-        track-user-intent? (some-> opts :tracking-opts :track-user-intent?)
-        labels             {:profile-id (name profile-id)}]
+        labels             {:profile-id (name profile-id)}
+        track-user-intent? (and (llm.settings/ee-ai-metabot-internal-tasks-enabled?)
+                                (some-> opts :tracking-opts :track-user-intent?))]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
         (with-span :info {:name       :metabot-v3.agent/run-agent-loop
