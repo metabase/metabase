@@ -13,8 +13,10 @@ export const numberInputOverrides = {
       hideControls: true,
     },
     classNames: {
+      wrapper: Styles.wrapper,
       input: Styles.input,
       error: Styles.error,
+      control: Styles.control,
     },
   }),
 };

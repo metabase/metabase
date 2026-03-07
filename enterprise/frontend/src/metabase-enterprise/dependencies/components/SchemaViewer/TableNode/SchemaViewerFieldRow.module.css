@@ -1,0 +1,23 @@
+.row {
+  position: relative;
+  white-space: nowrap;
+
+  &[data-expandable] {
+    &:hover {
+      background-color: var(--mb-color-background-hover);
+    }
+  }
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.handle {
+  width: 1px;
+  height: 1px;
+  background: transparent;
+  border: none;
+  opacity: 0;
+}

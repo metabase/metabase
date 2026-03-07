@@ -9,6 +9,7 @@ import {
 import type Question from "metabase-lib/v1/Question";
 import type {
   CheckDependenciesResponse,
+  Database as DatabaseType,
   GetDependencyGraphRequest,
   PythonTransformSourceDraft,
   Transform,
@@ -71,15 +72,21 @@ export type PythonTransformsPlugin = {
   sharedLibImportPath: string;
 };
 
+export type DatabaseSchemaViewerSectionProps = {
+  database: DatabaseType;
+};
+
 type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
   getDataStudioDependencyDiagnosticsRoutes: () => ReactNode;
+  getDataStudioSchemaViewerRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
+  DatabaseSchemaViewerSection: ComponentType<DatabaseSchemaViewerSectionProps>;
   useCheckCardDependencies: (
     props: UseCheckDependenciesProps<Question>,
   ) => UseCheckDependenciesResult<Question>;
@@ -163,11 +170,13 @@ const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
   getDataStudioDependencyDiagnosticsRoutes: () => null,
+  getDataStudioSchemaViewerRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,
+  DatabaseSchemaViewerSection: PluginPlaceholder,
   useCheckCardDependencies: useCheckDependencies,
   useCheckSnippetDependencies: useCheckDependencies,
   useCheckTransformDependencies: useCheckDependencies,

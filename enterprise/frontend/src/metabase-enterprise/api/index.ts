@@ -6,6 +6,7 @@ export * from "./cloud-add-ons";
 export * from "./content-translation";
 export * from "./db-routing";
 export * from "./dependencies";
+export * from "./erd";
 export * from "./gdrive";
 export * from "./library";
 export * from "./metabot";

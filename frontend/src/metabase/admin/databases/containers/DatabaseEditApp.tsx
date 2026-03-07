@@ -18,6 +18,7 @@ import { connect, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
+  PLUGIN_DEPENDENCIES,
   PLUGIN_TABLE_EDITING,
   PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
@@ -105,6 +106,10 @@ function DatabaseEditAppInner({
                   <DatabaseConnectionInfoSection database={database} />
 
                   <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
+                    database={database}
+                  />
+
+                  <PLUGIN_DEPENDENCIES.DatabaseSchemaViewerSection
                     database={database}
                   />
 
