@@ -227,20 +227,11 @@
    With epochal versioning, we always insert new rows - cleanup of old versions happens separately.
    Silently ignores constraint violations from concurrent inserts."
   [workspace-id ref-id isolated-schema {:keys [db_id schema table]} normalize-sql transform-version]
+  ;; 5 queries here: 2 × upsert-provisional-table! (2 queries each) + 1 insert.
+  ;; Worst case 9 on concurrent upsert conflicts.
   (let [isolated-table    (ws.u/isolated-table-name schema table)
-        qry-table-id      (fn [s t]
-                            (or (t2/select-one-fn :id [:model/Table :id]
-                                                  :db_id db_id
-                                                  :schema (normalize-sql s)
-                                                  :name (normalize-sql t))
-                                ;; Turns out transforms don't normalize the metadata they create
-                                ;; TODO (Chris 2026-01-26) -- This is getting really tangled and expensive, revisit
-                                (t2/select-one-fn :id [:model/Table :id]
-                                                  :db_id db_id
-                                                  :schema s
-                                                  :name t)))
-        global-table-id   (qry-table-id schema table)
-        isolated-table-id (qry-table-id isolated-schema isolated-table)]
+        global-table-id   (transforms-base.u/upsert-provisional-table! db_id schema table)
+        isolated-table-id (transforms-base.u/upsert-provisional-table! db_id isolated-schema isolated-table)]
     (ws.u/ignore-constraint-violation
      (t2/insert! :model/WorkspaceOutput
                  {:workspace_id      workspace-id
