@@ -1,27 +1,49 @@
-/* eslint-disable react/prop-types */
 import "leaflet/dist/leaflet.css";
+import type { Feature } from "geojson";
 import L from "leaflet";
 
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/ui/utils/colors";
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
+import type { GeoJSONData, Series } from "metabase-types/api";
 
 import { CardRenderer } from "./CardRenderer";
+
+type FeatureInteraction = {
+  feature: Feature;
+  event: MouseEvent;
+};
+
+interface LeafletChoroplethProps {
+  series?: Series;
+  geoJson?: GeoJSONData;
+  minimalBounds?: L.LatLngBounds;
+  getColor?: (feature: Feature) => string;
+  onHoverFeature?: (payload: FeatureInteraction | null) => void;
+  onClickFeature?: (payload: FeatureInteraction) => void;
+  onRenderError?: (error?: unknown) => void;
+}
 
 export const LeafletChoropleth = ({
   series = [],
   geoJson,
-  minimalBounds = computeMinimalBounds(geoJson.features || [geoJson]),
+  minimalBounds = geoJson
+    ? computeMinimalBounds(
+        "features" in geoJson && Array.isArray(geoJson.features)
+          ? geoJson.features
+          : [geoJson],
+      )
+    : undefined,
   getColor = () => color("brand"),
   onHoverFeature = () => {},
   onClickFeature = () => {},
   onRenderError = () => {},
-}) => (
+}: LeafletChoroplethProps) => (
   <CardRenderer
     card={{ display: "map" }}
     series={series}
     className={CS.spread}
-    renderer={(element, props) => {
+    renderer={(element: HTMLElement) => {
       element.className = CS.spread;
       element.style.backgroundColor = "transparent";
 
@@ -45,26 +67,26 @@ export const LeafletChoropleth = ({
         keyboard: false,
       });
 
-      const style = (feature) => ({
-        fillColor: getColor(feature),
+      const style = (feature?: Feature): L.PathOptions => ({
+        fillColor: feature ? getColor(feature) : color("brand"),
         weight: 1,
         opacity: 1,
         color: "white",
         fillOpacity: 1,
       });
 
-      const onEachFeature = (feature, layer) => {
+      const onEachFeature = (feature: Feature, layer: L.Layer) => {
         layer.on({
-          mousemove: (e) => {
+          mousemove: (e: L.LeafletMouseEvent) => {
             onHoverFeature({
               feature,
               event: e.originalEvent,
             });
           },
-          mouseout: (e) => {
+          mouseout: () => {
             onHoverFeature(null);
           },
-          click: (e) => {
+          click: (e: L.LeafletMouseEvent) => {
             onClickFeature({
               feature,
               event: e.originalEvent,
@@ -73,15 +95,19 @@ export const LeafletChoropleth = ({
         });
       };
 
-      // main layer
-      L.featureGroup([
-        L.geoJson(geoJson, {
-          style,
-          onEachFeature,
-        }),
-      ]).addTo(map);
+      if (geoJson) {
+        // main layer
+        L.featureGroup([
+          L.geoJSON(geoJson, {
+            style,
+            onEachFeature,
+          }),
+        ]).addTo(map);
+      }
 
-      map.fitBounds(minimalBounds);
+      if (minimalBounds) {
+        map.fitBounds(minimalBounds);
+      }
 
       return () => {
         map.remove();
