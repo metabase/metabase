@@ -24,6 +24,9 @@
   top: 0;
   z-index: 2;
   border-bottom: 1px solid var(--mb-color-border-subtle);
+  /*
+    HEADER_HEIGHT (36px) + HEADER_BORDER_SIZE (1px).
+  */
   height: 37px;
 }
 
@@ -137,6 +140,19 @@
 
 .bodyCell:hover .cellHoverVisible {
   visibility: visible;
+}
+
+.cellWithRightSeparator {
+  border-right: 3px solid var(--mb-color-border-subtle);
+}
+
+.rowWithBottomSeparator {
+  /*
+    Since each cell already has border-bottom: 1px,
+    the total horizontal separator is now 2px + 1px = 3px,
+    matching the vertical cellWithRightSeparator at 3px.
+  */
+  border-bottom: 2px solid var(--mb-color-border-subtle);
 }
 
 /** Used for storybook examples for class Styles Api */

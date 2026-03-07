@@ -37,9 +37,11 @@ export const useVirtualGrid = <TData,>({
   const { rows: tableRows } = table.getRowModel();
   const visibleColumns = table.getVisibleLeafColumns();
 
+  const columnPinning = table.getState().columnPinning;
   const pinnedColumnsIndices = useMemo(
     () => table.getLeftVisibleLeafColumns().map((c) => c.getPinnedIndex()),
-    [table],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `columnPinning` affects pinnedColumnsIndices
+    [table, columnPinning],
   );
 
   const columnVirtualizer = useVirtualizer({
@@ -65,20 +67,48 @@ export const useVirtualGrid = <TData,>({
     overscan: 3,
   });
 
+  const rowPinning = table.getState().rowPinning;
+
+  const pinnedRowIndices = useMemo(
+    () =>
+      table
+        .getTopRows()
+        .concat(table.getBottomRows())
+        .map((row) => row.getPinnedIndex()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `rowPinning` affects pinnedRowIndices
+    [table, rowPinning],
+  );
+
   const rowVirtualizer = useVirtualizer({
     count: tableRows.length,
     getScrollElement: () => gridRef.current,
     estimateSize: () => defaultRowHeight,
+    rangeExtractor: useCallback(
+      (range: Range) => {
+        const rowIndices = defaultRangeExtractor(range);
+        if (pinnedRowIndices.length === 0) {
+          return rowIndices;
+        }
+        return Array.from(new Set([...pinnedRowIndices, ...rowIndices]));
+      },
+      [pinnedRowIndices],
+    ),
     overscan: 3,
     enabled: enableRowVirtualization,
     measureElement: (element) => {
-      const rowIndexRaw = element?.getAttribute("data-dataset-index");
-      const rowIndex = rowIndexRaw != null ? parseInt(rowIndexRaw, 10) : null;
-      if (rowIndex == null || !isFinite(rowIndex)) {
+      if (!element) {
         return defaultRowHeight;
       }
-
-      return measureRowHeight(rowIndex);
+      let contentHeight = defaultRowHeight;
+      const rowIndexRaw = element.getAttribute("data-dataset-index");
+      if (rowIndexRaw) {
+        const rowIndex = parseInt(rowIndexRaw, 10);
+        contentHeight = measureRowHeight(rowIndex);
+      }
+      if (element instanceof HTMLElement) {
+        return Math.max(contentHeight, element.offsetHeight);
+      }
+      return contentHeight;
     },
   });
 

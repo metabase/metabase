@@ -1,6 +1,8 @@
 import {
   type ColumnSizingState,
   type PaginationState,
+  type Row,
+  type RowData,
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -42,16 +44,31 @@ import { getTruncatedColumnSizing } from "../utils/column-sizing";
 import { maybeExpandColumnWidths } from "../utils/maybe-expand-column-widths";
 
 import { useCellSelection } from "./use-cell-selection";
+import { useColumnPinningByCount } from "./use-column-pinning-by-count";
 import { useExpandColumnsToMinGridWidth } from "./use-expand-columns-to-min-grid-width";
+import { useRowPinningByCount } from "./use-row-pinning-by-count";
 
 // Disable pagination by setting pageSize to -1
 const DISABLED_PAGINATION_STATE = { pageSize: -1, pageIndex: 0 };
 
-// Creates a column order array with row ID column first if present
-const getColumnOrder = (dataColumnsOrder: string[], hasRowIdColumn: boolean) =>
-  _.uniq(
-    hasRowIdColumn ? [ROW_ID_COLUMN_ID, ...dataColumnsOrder] : dataColumnsOrder,
-  );
+// Creates a column order array with special (row ID and/or a selection) columns first if present
+const getColumnOrder = (
+  dataColumnsOrder: string[],
+  hasRowIdColumn: boolean,
+  columnRowSelectId?: string,
+) => {
+  const prefix = [
+    columnRowSelectId,
+    hasRowIdColumn ? ROW_ID_COLUMN_ID : null,
+  ].filter(isNotNull);
+  return _.uniq([...prefix, ...dataColumnsOrder]);
+};
+
+export const defaultGetRowId = <TData extends RowData>(
+  originalRow: TData,
+  index: number,
+  parent?: Row<TData>,
+) => `${parent ? [parent.id, index].join(".") : index}`;
 
 /**
  * Main hook for creating and managing a data grid instance.
@@ -62,7 +79,8 @@ export const useDataGridInstance = <TData, TValue>({
   data,
   columnOrder: controlledColumnOrder,
   columnSizingMap: controlledColumnSizingMap,
-  columnPinning: controlledColumnPinning,
+  pinnedLeftColumnsCount = 0,
+  pinnedTopRowsCount,
   sorting,
   defaultRowHeight = 36,
   minGridWidth: minGridWidthProp,
@@ -79,15 +97,18 @@ export const useDataGridInstance = <TData, TValue>({
   onColumnResize,
   onColumnReorder,
   measurementRenderWrapper,
+  getRowId = defaultGetRowId,
 }: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
   const hasRowIdColumn = rowId != null;
+  const hasColumnRowSelectColumn = columnRowSelectOptions != null;
 
   // Initialize column order (either controlled or from column options)
   const [columnOrder, setColumnOrder] = useState<string[]>(
     getColumnOrder(
       controlledColumnOrder ?? columnsOptions.map((column) => column.id),
       hasRowIdColumn,
+      columnRowSelectOptions?.id,
     ),
   );
 
@@ -114,8 +135,14 @@ export const useDataGridInstance = <TData, TValue>({
 
   // Update column order when controlled value changes
   useLayoutEffect(() => {
-    setColumnOrder(getColumnOrder(controlledColumnOrder ?? [], hasRowIdColumn));
-  }, [controlledColumnOrder, hasRowIdColumn]);
+    setColumnOrder(
+      getColumnOrder(
+        controlledColumnOrder ?? [],
+        hasRowIdColumn,
+        columnRowSelectOptions?.id,
+      ),
+    );
+  }, [controlledColumnOrder, hasRowIdColumn, columnRowSelectOptions?.id]);
 
   // Handler for updating column expanded state
   const handleUpdateColumnExpanded = useCallback(
@@ -223,13 +250,30 @@ export const useDataGridInstance = <TData, TValue>({
       : minGridWidthProp - getScrollBarSize();
   }, [enablePagination, minGridWidthProp]);
 
+  const columnPinning = useColumnPinningByCount({
+    columnOrder,
+    pinnedLeftColumnsCount,
+    hasRowIdColumn,
+    hasColumnRowSelectColumn,
+    columnSizingMap,
+    gridRef,
+  });
+
+  const rowPinning = useRowPinningByCount({
+    top: pinnedTopRowsCount,
+    data,
+    getRowId,
+  });
+
   const table = useReactTable({
     data,
     columns,
+    getRowId,
     state: {
       columnSizing: columnSizingMap,
       columnOrder,
-      columnPinning: controlledColumnPinning ?? { left: [ROW_ID_COLUMN_ID] },
+      columnPinning,
+      rowPinning,
       sorting,
       pagination,
       rowSelection: rowSelection ?? {},
