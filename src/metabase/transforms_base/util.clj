@@ -8,6 +8,7 @@
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -307,27 +308,16 @@
    If it already exists (active or inactive), returns its id without modification.
    Returns the table id."
   [db-id schema table-name]
-  (or (t2/select-one-pk :model/Table
-                        :db_id db-id
-                        :schema schema
-                        :name table-name)
-      (try
-        (:id (t2/insert-returning-instance!
-              :model/Table
-              {:db_id               db-id
-               :schema              schema
-               :name                table-name
-               :display_name        ((requiring-resolve 'metabase.models.humanization/name->human-readable-name) table-name)
-               :active              false
-               :provisional         true
-               :data_source         :transform
-               :initial_sync_status "complete"}))
-        ;; Handle unique constraint violation from concurrent inserts
-        (catch Exception _
-          (t2/select-one-pk :model/Table
-                            :db_id db-id
-                            :schema schema
-                            :name table-name)))))
+  (app-db/update-or-insert!
+   :model/Table
+   {:db_id db-id :schema schema :name table-name}
+   (fn [existing]
+     (when-not existing
+       {:display_name        ((requiring-resolve 'metabase.models.humanization/name->human-readable-name) table-name)
+        :active              false
+        :provisional         true
+        :data_source         :transform
+        :initial_sync_status "complete"}))))
 
 ;;; ------------------------------------------------- Target Table Management -------------------------------------------------
 

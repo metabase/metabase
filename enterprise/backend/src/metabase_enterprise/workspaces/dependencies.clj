@@ -225,6 +225,8 @@
    With epochal versioning, we always insert new rows - cleanup of old versions happens separately.
    Silently ignores constraint violations from concurrent inserts."
   [workspace-id ref-id isolated-schema {:keys [db_id schema table]} transform-version]
+  ;; 5 queries here: 2 × upsert-provisional-table! (2 queries each) + 1 insert.
+  ;; Worst case 9 on concurrent upsert conflicts.
   (let [isolated-table    (ws.u/isolated-table-name schema table)
         global-table-id   (transforms-base.u/upsert-provisional-table! db_id schema table)
         isolated-table-id (transforms-base.u/upsert-provisional-table! db_id isolated-schema isolated-table)]

@@ -580,6 +580,12 @@
   (when-not (t2/exists? :model/WorkspaceOutputExternal :workspace_id workspace-id :graph_version [:>= graph-version])
     (let [external-tx-ids (extract-external-transform-ids entities)]
       (when (seq external-tx-ids)
+        ;; There are 4N + 3 queries for N transforms, we may want to optimize...
+        ;;    1 exists
+        ;;  + 1 select
+        ;;  + N × 2 upsert-provisional-table! (2 queries each)
+        ;;  + 1 batch insert
+        ;; Worst case 8N + 3 on concurrent upsert conflicts.
         (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])
               rows       (for [{tx-id :id, {:keys [database schema name]} :target} transforms]
                            (let [isolated-table    (ws.u/isolated-table-name schema name)
