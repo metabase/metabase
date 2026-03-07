@@ -233,7 +233,10 @@
 (def ^:private db+schema+table (juxt :database :schema :name))
 
 (defn internal-target-conflict?
-  "Check whether the given table is the target of another transform within the workspace. Ignores global transforms."
+  "Check whether the given table is the target of another transform within the workspace. Ignores global transforms.
+   NOTE: This intentionally includes archived transforms in the conflict check. Excluding them would allow a new
+   transform to target the same table, creating a catch-22 when unarchiving the original (it can't be edited until
+   after unarchiving, but unarchiving would create a conflict). Revisit if product decides on a UX for this."
   [ws-id target & [tx-id]]
   (contains?
    (t2/select-fn-set (comp db+schema+table :target)
@@ -673,18 +676,19 @@
 (defn validate-target
   "Handler body for POST /:ws-id/transform/validate/target."
   [ws-id transform-id db_id target]
-  (let [workspace (api/check-404 (t2/select-one [:model/Workspace :database_id :db_status] ws-id))
-        target    (update target :database #(or % db_id))
+  (let [workspace    (api/check-404 (t2/select-one [:model/Workspace :database_id :db_status] ws-id))
+        target       (update target :database #(or % db_id))
+        target-db-id (:database target)
         ;; For uninitialized workspaces we skip over checks for their db id
-        ws-db-id  (when (not= :uninitialized (:db_status workspace)) (:database_id workspace))]
+        ws-db-id     (when (not= :uninitialized (:db_status workspace)) (:database_id workspace))]
     (cond
       (not= "table" (:type target))
       {:status 403 :body (deferred-tru "Unsupported target type")}
 
-      (and db_id ws-db-id (not= db_id ws-db-id))
+      (and target-db-id ws-db-id (not= target-db-id ws-db-id))
       {:status 403 :body (deferred-tru "Must target the workspace database")}
 
-      (not (or db_id ws-db-id))
+      (not (or target-db-id ws-db-id))
       {:status 403 :body (deferred-tru "Must target a database")}
 
       (when-let [schema (:schema target)] (str/starts-with? schema "mb__isolation_"))

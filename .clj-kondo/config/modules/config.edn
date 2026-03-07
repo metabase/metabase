@@ -1977,6 +1977,7 @@
            request
            server
            util
+           enterprise/api
            enterprise/metabot-v3
            enterprise/workspaces}}
 

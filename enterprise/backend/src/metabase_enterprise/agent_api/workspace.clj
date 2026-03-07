@@ -4,7 +4,9 @@
   (:require
    [metabase-enterprise.workspaces.api.common :as ws.api.common]
    [metabase-enterprise.workspaces.types :as ws.t]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :as api.routes.common]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]))
 
@@ -203,7 +205,17 @@
 
 ;;; ------------------------------------------------ Handler ----------------------------------------------------------
 
+(defn- authorize-workspace-access
+  "Authorization middleware for agent workspace routes. Requires superuser."
+  [handler]
+  (fn [request respond raise]
+    (api/check-superuser)
+    (handler request respond raise)))
+
+(def ^:private +authorize
+  (api.routes.common/wrap-middleware-for-open-api-spec-generation authorize-workspace-access))
+
 (defn workspace-handler
   "Returns the workspace handler for the agent API, wrapped with the given auth middleware."
   [+auth]
-  (api.macros/ns-handler 'metabase-enterprise.agent-api.workspace +auth))
+  (api.macros/ns-handler 'metabase-enterprise.agent-api.workspace +authorize +auth))
