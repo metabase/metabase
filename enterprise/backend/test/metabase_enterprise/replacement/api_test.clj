@@ -14,6 +14,20 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- poll-run
+  "Poll a run until it's no longer active or we hit the timeout.
+   Returns the final run state."
+  [run-id & {:keys [timeout-ms interval-ms]
+             :or   {timeout-ms 10000 interval-ms 100}}]
+  (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
+    (loop []
+      (let [run (mt/user-http-request :crowberto :get 200 (str "ee/replacement/runs/" run-id))]
+        (if (or (not (:is_active run))
+                (> (System/currentTimeMillis) deadline))
+          run
+          (do (Thread/sleep (long interval-ms))
+              (recur)))))))
+
 ;;; ------------------------------------------------ POST /check-replace-source ------------------------------------------------
 
 (deftest check-replace-source-success-test
@@ -53,6 +67,116 @@
 
 ;;; ------------------------------------------------ POST /replace-source ------------------------------------------------
 
+(deftest replace-model-acceptance-test
+  (testing "Full replacement: MBQL children, native children, grandchildren, transforms, dashboards"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card      {old-id :id :as old-model}
+                       {:database_id   (mt/id)
+                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        :type          :model
+                        :name          "Old Model"}
+
+                       :model/Card      {new-id :id}
+                       {:database_id   (mt/id)
+                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        :type          :model
+                        :name          "New Model"}
+
+                       :model/Card      {mbql-child-1-id :id :as mbql-child-1}
+                       {:database_id   (mt/id)
+                        :dataset_query (lib/query mp (lib.metadata/card mp old-id))
+                        :type          :question
+                        :name          "MBQL Child 1"}
+
+                       :model/Card      {mbql-child-2-id :id :as mbql-child-2}
+                       {:database_id   (mt/id)
+                        :dataset_query (lib/query mp (lib.metadata/card mp old-id))
+                        :type          :question
+                        :name          "MBQL Child 2"}
+
+                       :model/Card      {native-child-id :id :as native-child}
+                       {:database_id   (mt/id)
+                        :dataset_query (lib/native-query mp (str "SELECT * FROM {{#" old-id "}}"))
+                        :type          :question
+                        :name          "Native Child"}
+
+                       :model/Card      {grandchild-id :id :as grandchild}
+                       {:database_id   (mt/id)
+                        :dataset_query (lib/query mp (lib.metadata/card mp mbql-child-1-id))
+                        :type          :question
+                        :name          "Grandchild"}
+
+                       :model/Card      {grandchild-native-id :id :as grandchild-native}
+                       {:database_id   (mt/id)
+                        :dataset_query (lib/query mp (lib.metadata/card mp native-child-id))
+                        :type          :question
+                        :name          "Grandchild via Native"}
+
+                       :model/Transform {transform-id :id}
+                       {:source {:type  "query"
+                                 :query (lib/query mp (lib.metadata/card mp old-id))}
+                        :name   "acceptance_transform"
+                        :target {:database (mt/id) :table "acceptance_transform"}}
+
+                       :model/Dashboard     {dashboard-id :id}
+                       {:name "Acceptance Dashboard"}
+
+                       :model/DashboardCard _
+                       {:dashboard_id dashboard-id :card_id old-id}
+
+                       :model/DashboardCard _
+                       {:dashboard_id dashboard-id :card_id mbql-child-1-id}]
+
+          (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
+            ;; Populate dependencies via events
+            (doseq [card [old-model mbql-child-1 mbql-child-2 native-child grandchild grandchild-native]]
+              (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
+
+            (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
+                                                 {:source_entity_id   old-id
+                                                  :source_entity_type :card
+                                                  :target_entity_id   new-id
+                                                  :target_entity_type :card})
+                  run-id   (:run_id response)
+                  final    (poll-run run-id)]
+              (is (= "succeeded" (:status final)))
+
+              (testing "MBQL children have updated source-card"
+                (doseq [[label card-id] [["MBQL Child 1" mbql-child-1-id]
+                                         ["MBQL Child 2" mbql-child-2-id]]]
+                  (testing label
+                    (let [q (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+                      (is (= new-id (lib/primary-source-card-id q)))))))
+
+              (testing "Native child references new model in SQL"
+                (let [q   (t2/select-one-fn :dataset_query :model/Card :id native-child-id)
+                      sql (get-in q [:stages 0 :native])]
+                  (is (re-find (re-pattern (str "\\{\\{#" new-id "[^0-9]")) sql))
+                  (is (not (re-find (re-pattern (str "\\{\\{#" old-id "[^0-9]")) sql)))))
+
+              (testing "Grandchild still references its direct parent"
+                (let [q (t2/select-one-fn :dataset_query :model/Card :id grandchild-id)]
+                  (is (= mbql-child-1-id (lib/primary-source-card-id q)))))
+
+              (testing "Grandchild via native still references native child"
+                (let [q (t2/select-one-fn :dataset_query :model/Card :id grandchild-native-id)]
+                  (is (= native-child-id (lib/primary-source-card-id q)))))
+
+              (testing "Transform's source query references new model"
+                (let [src (t2/select-one-fn :source :model/Transform :id transform-id)]
+                  (is (= new-id (lib/primary-source-card-id (:query src))))))
+
+              (testing "Dependencies point to new model"
+                (let [deps-to-old (t2/select :model/Dependency
+                                             :to_entity_type :card
+                                             :to_entity_id   old-id)
+                      deps-to-new (t2/select :model/Dependency
+                                             :to_entity_type :card
+                                             :to_entity_id   new-id)]
+                  (is (empty? deps-to-old))
+                  (is (seq deps-to-new)))))))))))
+
 (deftest concurrent-run-returns-409-test
   (testing "POST /replace-source — returns 409 when another run is already active"
     (mt/with-premium-features #{:dependencies}
@@ -83,20 +207,6 @@
                                  :target_entity_type :card}))))))
 
 ;;; ------------------------------------------------ GET /runs/:id ------------------------------------------------
-
-(defn- poll-run
-  "Poll a run until it's no longer active or we hit the timeout.
-   Returns the final run state."
-  [run-id & {:keys [timeout-ms interval-ms]
-             :or   {timeout-ms 10000 interval-ms 100}}]
-  (let [deadline (+ (System/currentTimeMillis) timeout-ms)]
-    (loop []
-      (let [run (mt/user-http-request :crowberto :get 200 (str "ee/replacement/runs/" run-id))]
-        (if (or (not (:is_active run))
-                (> (System/currentTimeMillis) deadline))
-          run
-          (do (Thread/sleep (long interval-ms))
-              (recur)))))))
 
 (deftest replace-source-swaps-child-card-test
   (testing "POST /replace-source — swaps source reference in child card"
