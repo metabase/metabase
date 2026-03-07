@@ -16,7 +16,7 @@
   (str "\n\n"
        "For this Slack channel response: the user already saw tool progress updates. "
        "Do not narrate the steps you took, do not recap tool calls, and do not include preambles like "
-       "\"I'll...\", \"Let me...\", or \"I found...\". Give a brief final answer focused on the result in "
+       "\"I'll...\", \"Let me...\", or \"I found...\". Give a brief final response in "
        "1-2 sentences before any table or chart."))
 
 (defn- channel-request-prompt
