@@ -70,6 +70,66 @@
                                                                                                           :highlight_row true}]})
                                                 "any value" "test" 1))))))
 
+(deftest rgba-alpha-is-not-rewritten-for-email-test
+  (let [alpha-script "function makeCellBackgroundGetter(rows, colsJSON, settingsJSON) {
+                        return function(_value, _rowIndex, _columnName) {
+                          return \"rgba(100, 150, 200, 0.6500000000000001)\";
+                        }
+                      }"]
+    (with-test-js-engine! alpha-script
+      (let [color-selector (js.color/make-color-selector {:cols [{:name "test"}]
+                                                          :rows [[1]]}
+                                                         {})]
+        (is (= "rgba(100, 150, 200, 0.6500000000000001)"
+               (js.color/get-background-color color-selector "any value" "test" 0)))))))
+
+(deftest pivoted-email-preserves-column-formatting-rules-test
+  (let [pivot-script "function makeCellBackgroundGetter(rows, colsJSON, settingsJSON) {
+                        var settings = JSON.parse(settingsJSON);
+                        return function(_value, _rowIndex, _columnName) {
+                          var formats = settings[\"table.column_formatting\"] || [];
+                          if (settings[\"table.pivot\"] === true && formats.length > 0) {
+                            return \"rgba(10, 20, 30, 0.654321)\";
+                          }
+                          return null;
+                        }
+                      }"]
+    (with-test-js-engine! pivot-script
+      (let [color-selector (js.color/make-color-selector {:cols [{:name "category" :source "breakout"}
+                                                                 {:name "pivot-grouping" :source "breakout"}
+                                                                 {:name "sum" :source "aggregation"}]
+                                                          :rows [["A" 0 10]]}
+                                                         {:table.column_formatting [{:columns       ["sum"]
+                                                                                     :type          "single"
+                                                                                     :operator      ">"
+                                                                                     :value         5
+                                                                                     :color         "#ff0000"
+                                                                                     :highlight_row true}]})]
+        (is (= "rgba(10, 20, 30, 0.654321)"
+               (js.color/get-background-color color-selector 10 "sum" 0)))))))
+
+(deftest regular-email-does-not-set-pivot-flag-test
+  (let [regular-script "function makeCellBackgroundGetter(rows, colsJSON, settingsJSON) {
+                          var settings = JSON.parse(settingsJSON);
+                          return function(_value, _rowIndex, _columnName) {
+                            if (settings[\"table.pivot\"] !== true) {
+                              return \"rgba(1, 2, 3, 0.65)\";
+                            }
+                            return null;
+                          }
+                        }"]
+    (with-test-js-engine! regular-script
+      (let [color-selector (js.color/make-color-selector {:cols [{:name "sum" :source "aggregation"}]
+                                                          :rows [[10]]}
+                                                         {:table.column_formatting [{:columns       ["sum"]
+                                                                                     :type          "single"
+                                                                                     :operator      ">"
+                                                                                     :value         5
+                                                                                     :color         "#ff0000"
+                                                                                     :highlight_row true}]})]
+        (is (= "rgba(1, 2, 3, 0.65)"
+               (js.color/get-background-color color-selector 10 "sum" 0)))))))
+
 (deftest text-wrapper-null-empty-str-test
   (testing "get-background-color should correctly handle not-null operator for nulls and empty strings (VIZ-87)"
     (let [test-script "function makeCellBackgroundGetter(rows, colsJSON, settingsJSON) {

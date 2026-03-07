@@ -89,6 +89,55 @@
                find-table-body
                cell-value->background-color)))))
 
+(deftest pivot-grouping-column-does-not-shift-color-lookup-test
+  (let [columns [{:name "category"} {:name "pivot-grouping"} {:name "metric"}]
+        rows    [{:row ["Category" "pivot-grouping" "Metric"]}
+                 {:row [(formatter/->TextWrapper "A" "A")
+                        (formatter/map->NumericWrapper {:num-str "0" :num-value 0})
+                        (formatter/map->NumericWrapper {:num-str "10" :num-value 10})]}
+                 {:row [(formatter/->TextWrapper "B" "B")
+                        (formatter/map->NumericWrapper {:num-str "1" :num-value 1})
+                        (formatter/map->NumericWrapper {:num-str "20" :num-value 20})]}]]
+    (with-redefs [js.color/get-background-color
+                  (fn [_color-selector _cell column-name row-idx]
+                    (when (= "metric" (some-> column-name str/lower-case))
+                      (if (zero? row-idx)
+                        "rgba(255, 0, 0, 0.65)"
+                        "rgba(255, 0, 0, 0.2)")))]
+      (is (= {"A" nil
+              "10" "rgba(255, 0, 0, 0.65)"}
+             (-> (#'table/render-table
+                  :unused-color-selector
+                  {:col-names             ["Category" "pivot-grouping" "Metric"]
+                   :cols-for-color-lookup ["category" "pivot-grouping" "metric"]}
+                  rows
+                  columns
+                  {}
+                  nil)
+                 find-table-body
+                 cell-value->background-color))))))
+
+(deftest cols-for-color-lookup-applies-colors-for-all-rows-test
+  (let [columns [{:name "metric"}]
+        rows    [{:row [(formatter/->TextWrapper "10" 10)]}
+                 {:row [(formatter/->TextWrapper "20" 20)]}]
+        body    (#'table/render-table-body
+                 (fn [_cell column-name row-idx]
+                   (when (= "metric" column-name)
+                     (if (zero? row-idx)
+                       "rgba(255, 0, 0, 0.65)"
+                       "rgba(255, 0, 0, 0.2)")))
+                 '("metric")
+                 rows
+                 columns
+                 {}
+                 nil
+                 {}
+                 false)]
+    (is (= {"10" "rgba(255, 0, 0, 0.65)"
+            "20" "rgba(255, 0, 0, 0.2)"}
+           (cell-value->background-color body)))))
+
 (deftest header-truncation-test []
   (let [[normal-heading long-heading :as row] ["Count" (apply str (repeat 120 "A"))]
         [normal-rendered long-rendered]       (->> (#'table/render-table-head row {:row row} nil {} false)

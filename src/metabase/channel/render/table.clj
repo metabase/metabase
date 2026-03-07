@@ -201,13 +201,13 @@
          (inc row-idx)])
       (for [[col-idx cell] (m/indexed row)]
         (let [column       (nth columns col-idx)
-              column-name  (get column-names col-idx)
+              column-name  (nth column-names col-idx nil)
               minibar-col  (first (filter #(= (:name column) (:name %)) minibar-cols))
               col-settings (get-in viz-settings [::mb.viz/column-settings {::mb.viz/column-name column-name}] {})]
           [:td {:style (style/style
                         (row-style-for-type cell)
                         (get col->styles (:name column))
-                        {:background-color (get-background-color cell (get column-names col-idx) row-idx)}
+                        {:background-color (get-background-color cell column-name row-idx)}
                         (when (= row-idx (dec (count rows)))
                           {:border-bottom 0})
                         (when (= col-idx (dec (count row)))
@@ -310,6 +310,9 @@
          pivot-grouping-idx (u/index-of #{"pivot-grouping"} col-names)
          col-names          (cond->> col-names
                               pivot-grouping-idx (m/remove-nth pivot-grouping-idx))
+         cols-for-color-lookup (cond->> cols-for-color-lookup
+                                 pivot-grouping-idx (m/remove-nth pivot-grouping-idx)
+                                 true               vec)
          header             (cond-> header
                               pivot-grouping-idx (update :row #(m/remove-nth pivot-grouping-idx %)))
          rows               (cond->> rows
