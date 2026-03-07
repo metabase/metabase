@@ -677,6 +677,17 @@
              (assoc v :alias (name alias))))
          m)))
 
+(defn normalize-source-tables-structure
+  "Converts legacy map format to vec format if needed, otherwise passes through."
+  [st]
+  (if (map? st)
+    (source-tables-map->vec st)
+    st))
+
+(def keyword-type-dispatch
+  "Dispatch function for malli :multi schemas that dispatch on `(keyword (:type m))`."
+  (comp keyword :type))
+
 ;;; ------------------------------------------------- Timestamp Helpers -------------------------------------------------
 
 (defn ->instant
