@@ -336,6 +336,6 @@
   Currently only v1; new versions can be added here without changing api.clj."
   [+auth]
   (handlers/route-map-handler
-   {"/v1/workspace" (ee.api/+require-premium-feature
-                     :workspaces (deferred-tru "Workspaces")
-                     (api.macros/ns-handler 'metabase-enterprise.agent-api.workspace +authorize +auth))}))
+   {"/v1" {"/workspace" (ee.api/+require-premium-feature
+                         :workspaces (deferred-tru "Workspaces")
+                         (api.macros/ns-handler 'metabase-enterprise.agent-api.workspace +authorize +auth))}}))
