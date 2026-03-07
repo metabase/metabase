@@ -200,6 +200,9 @@
    Note that the generated entity must be consistent with `select-map`, if it disagrees on any keys then an exception
    will be thrown. It is OK for the entity to omit fields from `select-map`, they will implicitly be added on.
 
+   When called with an existing record, `update-fn` may return nil to signal that no update is needed. In this case
+   the existing row is left untouched and its primary key is returned. This is useful for \"get-or-create\" patterns.
+
    This is more general than using `UPSERT`, `MERGE` or `INSERT .. ON CONFLICT`, and it also allows one to avoid
    calculating initial values that may be expensive, or require side effects.
 
@@ -217,16 +220,20 @@
         pk-key     (keyword (first pks))
         update-fn  (fn [existing]
                      (let [updated (update-fn existing)]
-                       ;; the inserted / updated values must be consistent with the select query
-                       (assert (not (u/conflicting-keys? select-map updated))
-                               "This should not be used to change any of the identifying values")
-                       ;; For convenience, we allow the update-fn to omit fields in the search-map
-                       (merge updated select-map)))]
+                       ;; When called with an existing record, returning nil signals "no update needed".
+                       (when (or updated (not existing))
+                         ;; the inserted / updated values must be consistent with the select query
+                         (assert (not (u/conflicting-keys? select-map updated))
+                                 "This should not be used to change any of the identifying values")
+                         ;; For convenience, we allow the update-fn to omit fields in the search-map
+                         (merge updated select-map))))]
     (with-conflict-retry
       (if-let [existing (apply t2/select-one model select-kvs)]
-        (let [pk      (pk-key existing)
-              updated (update-fn existing)]
-          (t2/update! model pk updated)
-          ;; the private key may have been changed by the update, and this is OK.
-          (pk-key updated pk))
+        (let [pk (pk-key existing)]
+          (if-let [updated (update-fn existing)]
+            (do (t2/update! model pk updated)
+                ;; the primary key may have been changed by the update, and this is OK.
+                (pk-key updated pk))
+            ;; update-fn returned nil — no update needed, return existing pk.
+            pk))
         (t2/insert-returning-pk! model (update-fn nil))))))
