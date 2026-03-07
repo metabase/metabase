@@ -2,12 +2,14 @@
   "Workspace endpoints for the Agent API, mounted at `/api/agent/v1/workspace/...`.
   Mirrors the service-user-allowed workspace routes with JWT-based agent authentication."
   (:require
+   [metabase-enterprise.api.core :as ee.api]
    [metabase-enterprise.workspaces.api.common :as ws.api.common]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :as api.routes.common]
-   [metabase.util.i18n :as i18n]
+   [metabase.api.util.handlers :as handlers]
+   [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -216,6 +218,10 @@
   (api.routes.common/wrap-middleware-for-open-api-spec-generation authorize-workspace-access))
 
 (defn workspace-handler
-  "Returns the workspace handler for the agent API, wrapped with the given auth middleware."
+  "Returns the workspace routes for the agent API, keyed by version prefix.
+  Currently only v1; new versions can be added here without changing api.clj."
   [+auth]
-  (api.macros/ns-handler 'metabase-enterprise.agent-api.workspace +authorize +auth))
+  (handlers/route-map-handler
+   {"/v1/workspace" (ee.api/+require-premium-feature
+                     :workspaces (deferred-tru "Workspaces")
+                     (api.macros/ns-handler 'metabase-enterprise.agent-api.workspace +authorize +auth))}))
