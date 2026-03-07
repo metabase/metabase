@@ -96,7 +96,6 @@ describe("Scalar", () => {
 
 describe("scalar viz settings", () => {
   beforeAll(() => {
-    // @ts-expect-error: incompatible prop types with registerVisualization
     registerVisualization(Scalar);
   });
 

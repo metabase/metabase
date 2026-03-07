@@ -10,27 +10,21 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationProps } from "../../types";
 
-Object.assign(
-  BarChart,
-  getCartesianChartDefinition({
-    getUiName: () => t`Bar`,
-    identifier: "bar",
-    iconName: "bar",
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    noun: t`bar chart`,
-    minSize: getMinSize("bar"),
-    defaultSize: getDefaultSize("bar"),
-    settings: {
-      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
-  }),
-);
+const BAR_CHART_DEFINITION = getCartesianChartDefinition({
+  getUiName: () => t`Bar`,
+  identifier: "bar",
+  iconName: "bar",
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+  noun: t`bar chart`,
+  minSize: getMinSize("bar"),
+  defaultSize: getDefaultSize("bar"),
+  settings: COMBO_CHARTS_SETTINGS_DEFINITIONS,
+});
 
-export function BarChart(props: VisualizationProps) {
+function BarChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const BarChart = Object.assign(BarChartComponent, BAR_CHART_DEFINITION);

@@ -20,7 +20,7 @@ export type TransformSeries = (
 export interface TransformedVisualizationProps {
   transformSeries: TransformSeries;
   originalProps: VisualizationProps;
-  VisualizationComponent: React.FC<VisualizationProps>;
+  VisualizationComponent: (props: VisualizationProps) => React.ReactNode;
   renderingContext?: RenderingContext;
 }
 

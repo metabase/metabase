@@ -20,6 +20,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ColumnSettingDefinition,
+  VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
@@ -39,7 +40,9 @@ import { ListViewConfiguration } from "../ListView/ListViewConfiguration";
 
 import S from "./ListViz.module.css";
 
-const vizDefinition = {
+const LIST_VIZ_DEFINITION: VisualizationDefinition & {
+  columnSettings: (column: DatasetColumn) => Record<string, unknown>;
+} = {
   identifier: "list",
   iconName: "list",
   getUiName: () => t`List`,
@@ -256,13 +259,13 @@ const vizDefinition = {
   },
 };
 
-export const ListViz = ({
+function ListVizComponent({
   data,
   settings,
   onVisualizationClick,
   queryBuilderMode,
   isDashboard,
-}: VisualizationProps) => {
+}: VisualizationProps) {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const isShowingListViewConfiguration = useSelector(
@@ -388,6 +391,6 @@ export const ListViz = ({
       )}
     </Box>
   );
-};
+}
 
-Object.assign(ListViz, vizDefinition);
+export const ListViz = Object.assign(ListVizComponent, LIST_VIZ_DEFINITION);

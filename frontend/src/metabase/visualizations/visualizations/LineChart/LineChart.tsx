@@ -10,27 +10,24 @@ import {
   getCartesianChartDefinition,
 } from "metabase/visualizations/visualizations/CartesianChart/chart-definition";
 
-import type {
-  VisualizationProps,
-  VisualizationSettingsDefinitions,
-} from "../../types";
+import type { VisualizationProps } from "../../types";
 
-Object.assign(
-  LineChart,
-  getCartesianChartDefinition({
-    getUiName: () => t`Line`,
-    identifier: "line",
-    iconName: "line",
-    // eslint-disable-next-line ttag/no-module-declaration
-    noun: t`line chart`,
-    minSize: getMinSize("line"),
-    defaultSize: getDefaultSize("line"),
-    settings: {
-      ...COMBO_CHARTS_SETTINGS_DEFINITIONS,
-    } as any as VisualizationSettingsDefinitions,
-  }),
-);
+const LINE_CHART_DEFINITION = getCartesianChartDefinition({
+  getUiName: () => t`Line`,
+  identifier: "line",
+  iconName: "line",
+  // eslint-disable-next-line ttag/no-module-declaration
+  noun: t`line chart`,
+  minSize: getMinSize("line"),
+  defaultSize: getDefaultSize("line"),
+  settings: COMBO_CHARTS_SETTINGS_DEFINITIONS,
+});
 
-export function LineChart(props: VisualizationProps) {
+function LineChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const LineChart = Object.assign(
+  LineChartComponent,
+  LINE_CHART_DEFINITION,
+);

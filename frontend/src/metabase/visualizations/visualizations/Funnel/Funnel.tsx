@@ -25,6 +25,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
+  VisualizationDefinition,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
@@ -44,7 +45,7 @@ const getUniqueFunnelRows = (rows: FunnelRow[]) => {
   return [...new Map(rows.map((row) => [row.key, row])).values()];
 };
 
-Object.assign(Funnel, {
+const FUNNEL_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Funnel`,
   identifier: "funnel",
   iconName: "funnel",
@@ -188,9 +189,9 @@ Object.assign(Funnel, {
       useRawSeries: true,
     },
   },
-});
+};
 
-export function Funnel(props: VisualizationProps) {
+function FunnelComponent(props: VisualizationProps) {
   const {
     headerIcon,
     settings,
@@ -256,3 +257,5 @@ export function Funnel(props: VisualizationProps) {
     </div>
   );
 }
+
+export const Funnel = Object.assign(FunnelComponent, FUNNEL_CHART_DEFINITION);

@@ -245,7 +245,7 @@ export type VisualizationPassThroughProps = {
    * Items that will be shown in a menu when the title is clicked.
    * Used for visualizer cards to jump to underlying questions
    */
-  titleMenuItems?: ReactNode[];
+  titleMenuItems?: React.ReactNode;
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
@@ -414,11 +414,7 @@ type Value = unknown;
 type Props = Record<string, unknown>;
 
 /** Object keys are kept in alphabetical order */
-export type VisualizationSettingsDefinitions<
-  LabelValueFrequencyWidgetProps extends Props =
-    | ChartSettingEnumToggleProps<"fit" | "all">
-    | ChartSettingSegmentedControlProps,
-> = {
+export type VisualizationSettingsDefinitions = {
   _column_title_full?: DatasetColumnSettingDefinition<Value, Props>;
   _header_unit?: DatasetColumnSettingDefinition<Value, Props>;
   _numberFormatter?: DatasetColumnSettingDefinition<Value, Props>;
@@ -448,10 +444,9 @@ export type VisualizationSettingsDefinitions<
   "graph.colors"?: SeriesSettingDefinition<Value, Props>;
   "graph.dimensions"?: SeriesSettingDefinition<Value, Props>;
   "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
-  "graph.label_value_frequency"?: SeriesSettingDefinition<
-    Value,
-    LabelValueFrequencyWidgetProps
-  >;
+  "graph.label_value_frequency"?:
+    | SeriesSettingDefinition<Value, ChartSettingEnumToggleProps<"fit" | "all">>
+    | SeriesSettingDefinition<Value, ChartSettingSegmentedControlProps>;
   "graph.label_value_formatting"?: SeriesSettingDefinition<Value, Props>;
   "graph.max_categories"?: SeriesSettingDefinition<
     Value,
@@ -570,11 +565,8 @@ export type VisualizationGridSize = {
 };
 
 // TODO: add component property for the react component instead of the intersection
-export type Visualization = ComponentType<
-  Omit<VisualizationProps, "width" | "height"> & {
-    width?: number | null;
-    height?: number | null;
-  } & VisualizationPassThroughProps
+export type Visualization = React.ComponentType<
+  VisualizationProps & VisualizationPassThroughProps
 > &
   VisualizationDefinition;
 
@@ -604,7 +596,7 @@ export type VisualizationDefinition = {
 
   settings: VisualizationSettingsDefinitions;
 
-  transformSeries?: (series: Series) => TransformedSeries;
+  transformSeries?: (series: Series) => Series;
   isSensible: (data: DatasetData) => boolean;
   columnSettings?:
     | VisualizationSettingsDefinitions

@@ -486,10 +486,16 @@ export function getAvailableAdditionalColumns(
   }
 
   getCardsColumns(rawSeries, settings).forEach((cardColumns) => {
-    alreadyIncludedColumns.add(cardColumns.dimension.column);
+    if (cardColumns.dimension?.column) {
+      alreadyIncludedColumns.add(cardColumns.dimension.column);
+    }
     if ("breakout" in cardColumns) {
-      alreadyIncludedColumns.add(cardColumns.breakout.column);
-      alreadyIncludedColumns.add(cardColumns.metric.column);
+      if (cardColumns.breakout?.column) {
+        alreadyIncludedColumns.add(cardColumns.breakout.column);
+      }
+      if (cardColumns.metric?.column) {
+        alreadyIncludedColumns.add(cardColumns.metric.column);
+      }
     } else {
       cardColumns.metrics.forEach((columnDescriptor) =>
         alreadyIncludedColumns.add(columnDescriptor.column),

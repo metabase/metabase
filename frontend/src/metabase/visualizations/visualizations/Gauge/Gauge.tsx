@@ -30,9 +30,7 @@ import {
 import { isGaugeRange, isGaugeSegmentsArray } from "./types";
 import { getValue, radians } from "./utils";
 
-Object.assign(Gauge, GAUGE_CHART_DEFINITION);
-
-export function Gauge({
+function GaugeComponent({
   className,
   isSettings,
   height: heightProp,
@@ -245,3 +243,5 @@ export function Gauge({
     </div>
   );
 }
+
+export const Gauge = Object.assign(GaugeComponent, GAUGE_CHART_DEFINITION);

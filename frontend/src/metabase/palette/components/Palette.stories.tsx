@@ -36,13 +36,9 @@ const initialState = _.pick(storeInitialState, ...publicReducerNames) as State;
 
 const storeMiddleware = [Api.middleware];
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(SmartScalar);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(ComboChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(LineChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
 
 const store = getStore(

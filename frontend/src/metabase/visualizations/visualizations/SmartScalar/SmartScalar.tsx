@@ -17,6 +17,7 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
+  VisualizationDefinition,
   VisualizationPassThroughProps,
   VisualizationProps,
   VisualizationSettingsDefinitions,
@@ -47,20 +48,23 @@ import {
   validateComparisons,
 } from "./utils";
 
-export function SmartScalar({
-  onVisualizationClick,
-  isDashboard,
-  settings,
-  visualizationIsClickable,
-  series,
-  rawSeries,
-  gridSize,
-  width,
-  height,
-  totalNumGridCols,
-  fontFamily,
-  onRenderError,
-}: VisualizationProps & VisualizationPassThroughProps) {
+type SmartScalarProps = VisualizationProps & VisualizationPassThroughProps;
+
+function SmartScalarComponent(props: SmartScalarProps) {
+  const { totalNumGridCols } = props;
+  const {
+    onVisualizationClick,
+    isDashboard,
+    settings,
+    visualizationIsClickable,
+    series,
+    rawSeries,
+    gridSize,
+    width,
+    height,
+    fontFamily,
+    onRenderError,
+  } = props;
   const scalarRef = useRef(null);
   const { getColor } = useBrowserRenderingContext({ fontFamily });
 
@@ -127,7 +131,7 @@ export function SmartScalar({
             gridSize={gridSize}
             height={valueHeight}
             totalNumGridCols={totalNumGridCols}
-            value={displayValue as string}
+            value={String(displayValue)}
             width={getValueWidth(width)}
           />
         </span>
@@ -233,7 +237,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   click_behavior: {},
 };
 
-Object.assign(SmartScalar, {
+const SMART_SCALAR_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
@@ -265,4 +269,9 @@ Object.assign(SmartScalar, {
   },
 
   hasEmptyState: true,
-});
+};
+
+export const SmartScalar = Object.assign(
+  SmartScalarComponent,
+  SMART_SCALAR_DEFINITION,
+);

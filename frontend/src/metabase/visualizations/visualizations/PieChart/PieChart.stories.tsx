@@ -23,7 +23,6 @@ export default {
   component: PieChart,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(PieChart);
 
 const Template: StoryFn = (args) => {

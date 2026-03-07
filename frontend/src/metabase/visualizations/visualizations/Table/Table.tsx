@@ -8,6 +8,7 @@ import * as DataGrid from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
+import type { IconName } from "metabase/ui";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import {
   ChartSettingsTableFormatting,
@@ -47,6 +48,7 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api/visualization";
 
 import { TableInteractive } from "../../components/TableInteractive";
 import type {
@@ -69,8 +71,8 @@ interface TableState {
 
 export class Table extends Component<TableProps, TableState> {
   static getUiName = () => t`Table`;
-  static identifier = "table";
-  static iconName = "table2";
+  static identifier: VisualizationDisplay = "table";
+  static iconName: IconName = "table2";
   static canSavePng = false;
 
   static minSize = getMinSize("table");

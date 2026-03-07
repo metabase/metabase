@@ -6,10 +6,7 @@ import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "metabase/visualizations";
-import {
-  ChartSettingEnumToggle,
-  type ChartSettingEnumToggleProps,
-} from "metabase/visualizations/components/settings/ChartSettingEnumToggle";
+import { ChartSettingEnumToggle } from "metabase/visualizations/components/settings/ChartSettingEnumToggle";
 import { ChartSettingMaxCategories } from "metabase/visualizations/components/settings/ChartSettingMaxCategories";
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
@@ -982,9 +979,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.series_labels": {},
 };
 
-export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions<
-  ChartSettingEnumToggleProps<"fit" | "all">
-> = {
+export const BOXPLOT_SETTINGS: VisualizationSettingsDefinitions = {
   "boxplot.whisker_type": {
     get section() {
       return t`Display`;

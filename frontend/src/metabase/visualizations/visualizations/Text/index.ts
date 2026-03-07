@@ -4,13 +4,14 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
+import type { VisualizationDefinition } from "metabase/visualizations/types";
 
 import { Text } from "./Text";
 
-const TextWrapper = Object.assign(Text, {
+const TEXT_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Text`,
   identifier: "text",
-  iconName: "text",
+  iconName: "string",
   canSavePng: false,
 
   disableSettingsConfig: false,
@@ -24,6 +25,7 @@ const TextWrapper = Object.assign(Text, {
   checkRenderable: () => {
     // text can always be rendered, nothing needed here
   },
+  isSensible: () => false,
 
   settings: {
     "card.title": {
@@ -85,6 +87,8 @@ const TextWrapper = Object.assign(Text, {
       default: true,
     },
   },
-});
+};
+
+const TextWrapper = Object.assign(Text, TEXT_DEFINITION);
 
 export { TextWrapper as Text };

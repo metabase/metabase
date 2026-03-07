@@ -14,8 +14,8 @@ import type { Dashboard, VirtualDashboardCard } from "metabase-types/api";
 import type { VisualizationProps } from "../types";
 
 type Props = VisualizationProps & {
-  dashcard: VirtualDashboardCard;
-  dashboard: Dashboard;
+  dashcard?: VirtualDashboardCard;
+  dashboard?: Dashboard;
   isEditingParameter?: boolean;
 };
 
@@ -28,6 +28,10 @@ function DashCardPlaceholderInner({
 }: Props) {
   const [isQuestionPickerOpen, setQuestionPickerOpen] = useState(false);
   const dispatch = useDispatch();
+
+  if (!dashboard || !dashcard) {
+    return null;
+  }
 
   const handleSelectQuestion = (nextCard: OmniPickerItem) => {
     if (typeof nextCard.id === "number") {
@@ -113,8 +117,8 @@ function preventDragging(e: React.MouseEvent<HTMLButtonElement>) {
 
 export const DashCardPlaceholder = Object.assign(DashCardPlaceholderInner, {
   getUiName: () => t`Empty card`,
-  identifier: "placeholder",
-  iconName: "table",
+  identifier: "placeholder" as const,
+  iconName: "table" as const,
 
   canSavePng: false,
   noHeader: true,

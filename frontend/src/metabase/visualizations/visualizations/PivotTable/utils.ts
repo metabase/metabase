@@ -10,8 +10,8 @@ import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pi
 import type {
   ColumnNameColumnSplitSetting,
   DatasetColumn,
-  DatasetData,
   PivotTableColumnSplitSetting,
+  Series,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -224,10 +224,12 @@ export function isSensible({ cols }: { cols: DatasetColumn[] }) {
 }
 
 export function checkRenderable(
-  [{ data }]: [{ data: DatasetData }],
+  series: Series,
   settings: VisualizationSettings,
   query?: NativeQuery | null,
 ) {
+  const [{ data }] = series;
+
   if (data.cols.some((col) => col.source === "native")) {
     throw new Error(
       t`Pivot tables are only supported for questions built in the query builder.`,
