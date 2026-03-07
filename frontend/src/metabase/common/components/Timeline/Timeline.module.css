@@ -1,0 +1,21 @@
+.timestampRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.viewDiffButton {
+  font-size: 0.75rem;
+  padding: 0;
+  height: auto;
+  color: var(--mb-color-brand);
+  cursor: pointer;
+  background: none;
+  border: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.viewDiffButton:hover {
+  color: var(--mb-color-brand-hover);
+}
