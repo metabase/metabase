@@ -2151,6 +2151,7 @@
            request
            revisions
            settings
+           sql-tools
            task
            transforms
            transforms-base
