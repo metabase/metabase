@@ -9,6 +9,7 @@ import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { addUndo } from "metabase/redux/undo";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
@@ -343,6 +344,10 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
+
+                if (part.value.buffer_id === "qb") {
+                  dispatch(setIsNativeEditorOpen(true));
+                }
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));

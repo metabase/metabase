@@ -128,44 +128,17 @@
           structured  (assoc result :result-type :query)
           qid         (:query-id result)
           instr       (instructions/edit-sql-query-instructions-for qid)
-          results-url (streaming/query->question-url (:query result))]
+          results-url (streaming/query->question-url (:query result))
+          buffer-id  (first-code-editor-buffer-id)]
       {:output (format-query-output structured instr)
        :structured-output structured
        :instructions instr
-       :data-parts [(streaming/navigate-to-part results-url)]})
+       :data-parts [(if buffer-id (code-edit-part buffer-id (:query-content result)) (streaming/navigate-to-part results-url))]})
     (catch Exception e
       (log/error e "Error editing SQL query")
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
-
-(mu/defn ^{:tool-name "edit_sql_query"
-           :capabilities #{:permission-write-sql-queries}}
-  edit-sql-query-code-edit-tool
-  "Edit an existing SQL query and update the code editor buffer."
-  [{:keys [query_id edits checklist]}
-   :- [:map {:closed true}
-       [:query_id [:or :string :int]]
-       [:checklist :string]
-       [:edits [:sequential [:map {:closed true}
-                             [:old_string :string]
-                             [:new_string :string]
-                             [:replace_all {:optional true} [:maybe :boolean]]]]]]]
-  (let [result (edit-sql-query-tools/edit-sql-query
-                {:query-id query_id
-                 :edits edits
-                 :checklist checklist
-                 :queries-state (shared/current-queries-state)})
-        structured (assoc result :result-type :query)
-        qid        (:query-id result)
-        instr      (instructions/edit-sql-query-instructions-for qid)
-        buffer-id  (first-code-editor-buffer-id)]
-    (if buffer-id
-      {:output (format-query-output structured instr)
-       :structured-output structured
-       :instructions instr
-       :data-parts [(code-edit-part buffer-id (:query-content result))]}
-      {:output "No active code editor buffer found for SQL editing."})))
 
 (mu/defn ^{:tool-name "replace_sql_query"
            :capabilities #{:permission-write-sql-queries}}
@@ -185,38 +158,14 @@
           structured  (assoc result :result-type :query)
           qid         (:query-id result)
           instr       (instructions/replace-sql-query-instructions-for qid)
-          results-url (streaming/query->question-url (:query result))]
+          results-url (streaming/query->question-url (:query result))
+          buffer-id  (first-code-editor-buffer-id)]
       {:output (format-query-output structured instr)
        :structured-output structured
        :instructions instr
-       :data-parts [(streaming/navigate-to-part results-url)]})
+       :data-parts [(if buffer-id (code-edit-part buffer-id (:query-content result)) (streaming/navigate-to-part results-url))]})
     (catch Exception e
       (log/error e "Error replacing SQL query")
       (if (:agent-error? (ex-data e))
         {:output (ex-message e)}
         {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))
-
-(mu/defn ^{:tool-name "replace_sql_query"
-           :capabilities #{:permission-write-sql-queries}}
-  replace-sql-query-code-edit-tool
-  "Replace an SQL query and update the code editor buffer."
-  [{:keys [query_id new_query checklist]}
-   :- [:map {:closed true}
-       [:query_id [:or :string :int]]
-       [:checklist :string]
-       [:new_query :string]]]
-  (let [result (replace-sql-query-tools/replace-sql-query
-                {:query-id query_id
-                 :sql new_query
-                 :checklist checklist
-                 :queries-state (shared/current-queries-state)})
-        structured (assoc result :result-type :query)
-        qid        (:query-id result)
-        instr      (instructions/replace-sql-query-instructions-for qid)
-        buffer-id  (first-code-editor-buffer-id)]
-    (if buffer-id
-      {:output (format-query-output structured instr)
-       :structured-output structured
-       :instructions instr
-       :data-parts [(code-edit-part buffer-id (:query-content result))]}
-      {:output "No active code editor buffer found for SQL editing."})))
