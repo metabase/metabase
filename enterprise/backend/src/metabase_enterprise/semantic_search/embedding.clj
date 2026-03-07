@@ -2,7 +2,6 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.semantic-search.models.token-tracking :as semantic.models.token-tracking]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
    [metabase.analytics.core :as analytics]
@@ -11,7 +10,8 @@
    [metabase.util.log :as log])
   (:import
    [com.knuddels.jtokkit Encodings]
-   [com.knuddels.jtokkit.api Encoding EncodingType]))
+   [com.knuddels.jtokkit.api Encoding EncodingType]
+   [java.net ConnectException]))
 
 (set! *warn-on-reflection* true)
 
@@ -43,8 +43,8 @@
 (defn abbrev-provider-name
   "Abbreviate long provider names for use in index names."
   [provider-name]
-  (if (= provider-name "ai-service")
-    "ais"
+  (case provider-name
+    "embedding-service" "es"
     (clean-provider-name provider-name)))
 
 ;;; Token Counting for OpenAI Models
@@ -65,22 +65,20 @@
   [texts]
   (reduce + 0 (map count-tokens texts)))
 
-;;; Decode OpenAI base64 response
-
-(defn- extract-base64-response-embeddings
-  "Decode and extract the base64 encoded embedding from an /v1/embeddings OpenAI response"
-  [response]
-  (->> response
-       :data
-       (map (comp vec
-                  (fn [^String base64-str]
-                    (let [bytes (.decode (java.util.Base64/getDecoder) base64-str)
-                          buffer (java.nio.ByteBuffer/wrap bytes)
-                          _ (.order buffer java.nio.ByteOrder/LITTLE_ENDIAN)
-                          float-count (/ (count bytes) 4)]
-                      (repeatedly float-count #(.getFloat buffer))))
-                  :embedding))
-       vec))
+(defn- decode-embeddings
+  "Decode OpenAI base64 response"
+  [data]
+  (vec
+   (for [{:keys [embedding]} data]
+     (let [bytes  (u/decode-base64-to-bytes ^String embedding)
+           buffer (doto (java.nio.ByteBuffer/wrap bytes)
+                    (.order java.nio.ByteOrder/LITTLE_ENDIAN))
+           length (/ (alength bytes) 4)
+           _      (when-not (int? length)
+                    (throw (ex-info "Invalid base64 length, not divisible by 4" {:length (alength bytes)})))
+           result (float-array length)]
+       (.get (.asFloatBuffer buffer) result)
+       result))))
 
 ;;; Batching Logic
 
@@ -177,34 +175,7 @@
 (defmethod get-embeddings-batch "ollama" [{:keys [model-name]} texts & {:as _opts}] (ollama-get-embeddings-batch model-name texts))
 (defmethod pull-model           "ollama" [{:keys [model-name]}]       (ollama-pull-model model-name))
 
-;;;; AI Service impl
-
-(defn- ai-service-get-embeddings-batch [model-name texts & {:as opts}]
-  (try
-    (log/debug "Calling AI Service embeddings API" {:documents (count texts) :tokens (count-tokens-batch texts)})
-    (let [response (metabot-v3.client/generate-embeddings model-name texts)
-          total-tokens (->> response :usage :total_tokens)]
-      (analytics/inc! :metabase-search/semantic-embedding-tokens
-                      {:provider "ai-service", :model model-name}
-                      total-tokens)
-      (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens)
-      (extract-base64-response-embeddings response))
-    (catch Exception e
-      (log/error e "AI Service embeddings API call failed" {:documents (count texts) :tokens (count-tokens-batch texts)})
-      (throw e))))
-
-(defn- ai-service-get-embedding [model-name text & {:as opts}]
-  (try
-    (log/debug "Generating AI Service embedding for text of length:" (count text))
-    (first (ai-service-get-embeddings-batch model-name [text] opts))
-    (catch Exception e
-      (log/error e "Failed to generate AI Service embedding for text of length:" (count text))
-      (throw e))))
-
-(defmethod get-embedding        "ai-service" [{:keys [model-name]} text & {:as opts}]  (ai-service-get-embedding model-name text opts))
-(defmethod get-embeddings-batch "ai-service" [{:keys [model-name]} texts & {:as opts}] (ai-service-get-embeddings-batch model-name texts opts))
-
-;;;; OpenAI impl
+;;;; OpenAI-compatible embedding service impl (shared by "embedding-service" and "openai" providers)
 
 (defn- supports-dimensions?
   "Check whether the model's API supports dimensions in request's body. At the time of writing supported on OpenAI's
@@ -214,45 +185,118 @@
    (when (string? model-name)
      (str/starts-with? model-name "text-embedding-3"))))
 
-(defn- openai-get-embeddings-batch
-  [{:keys [model-name vector-dimensions] :as embedding-model} texts & {:as opts}]
-  (let [api-key (semantic-settings/openai-api-key)
-        endpoint (str (semantic-settings/openai-api-base-url) "/v1/embeddings")]
-    (when-not api-key
-      (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
-    (try
-      (log/debug "Calling OpenAI embeddings API" {:documents (count texts) :tokens (count-tokens-batch texts)})
-      (let [response (-> (http/post endpoint
-                                    {:headers {"Content-Type" "application/json"
-                                               "Authorization" (str "Bearer " api-key)}
-                                     :body    (json/encode (merge {:model model-name
-                                                                   :input texts
-                                                                   :encoding_format "base64"}
-                                                                  (when (supports-dimensions? embedding-model)
-                                                                    {:dimensions vector-dimensions})))})
-                         :body
-                         (json/decode true))
-            total-tokens (->> response :usage :total_tokens)]
-        (analytics/inc! :metabase-search/semantic-embedding-tokens
-                        {:provider "openai", :model model-name}
-                        total-tokens)
-        (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens)
-        (extract-base64-response-embeddings response))
-      (catch Exception e
-        (log/error e "OpenAI embeddings API call failed" {:documents (count texts) :tokens (count-tokens-batch texts)})
-        (throw e)))))
+(defn- openai-compatible-get-embeddings-batch
+  "Call an OpenAI-compatible /v1/embeddings endpoint. Shared implementation for both
+  the `embedding-service` and `openai` providers.
 
-(defn- openai-get-embedding [embedding-model text & {:as opts}]
+  `provider`   — label for analytics (e.g. \"embedding-service\", \"openai\")
+  `endpoint`   — full URL including /v1/embeddings
+  `api-key`    — Bearer token
+  `model-name` — model identifier sent in the request body
+  `texts`      — collection of input strings
+  `opts`       — keyword opts; `:type` is forwarded to token tracking,
+                 `:extra-body` is merged into the request body (e.g. {:dimensions 1024}),
+                 `:snowplow?` when true fires a Snowplow token_usage event"
+  [provider endpoint api-key model-name texts
+   & {:keys [extra-body snowplow?] :as opts}]
   (try
-    (log/debug "Generating OpenAI embedding for text of length:" (count text))
-    (first (openai-get-embeddings-batch embedding-model [text] opts))
+    (log/debug (str "Calling " provider " embeddings API")
+               {:endpoint endpoint :documents (count texts) :tokens (count-tokens-batch texts)})
+    (let [start-ms             (u/start-timer)
+          {:keys [usage data]} (-> (http/post endpoint
+                                              {:headers {"Content-Type"  "application/json"
+                                                         "Authorization" (str "Bearer " api-key)}
+                                               :body    (json/encode (merge {:model           model-name
+                                                                             :input           texts
+                                                                             :encoding_format "base64"}
+                                                                            extra-body))})
+                                   :body
+                                   (json/decode true))
+          total-tokens         (:total_tokens usage 0)
+          prompt-tokens        (:prompt_tokens usage total-tokens)]
+      (analytics/inc! :metabase-search/semantic-embedding-tokens
+                      {:provider provider :model model-name}
+                      total-tokens)
+      (when snowplow?
+        (analytics/track-token-usage!
+         {:snowplow            true
+          :prometheus          false    ; already tracked via inc! above
+          :request-id          (analytics/uuid->token-usage-request-id (str (random-uuid)))
+          :model-id            model-name
+          :total-tokens        total-tokens
+          :prompt-tokens       prompt-tokens
+          :completion-tokens   0        ; embedding models don't produce completion tokens
+          :estimated-costs-usd 0.0
+          :duration-ms         (long (u/since-ms start-ms))
+          :tag                 "embedding_generation"}))
+      (semantic.models.token-tracking/record-tokens model-name (:type opts) total-tokens)
+      (decode-embeddings data))
+    (catch ConnectException e
+      (log/error e (str "Failed to connect to " provider) {:endpoint endpoint})
+      (throw (ex-info (str provider " unavailable (connection refused)")
+                      {:status 502 :endpoint endpoint}
+                      e)))
     (catch Exception e
-      (log/error e "Failed to generate OpenAI embedding for text of length:" (count text))
+      (log/error e (str provider " embeddings API call failed")
+                 {:documents (count texts) :tokens (count-tokens-batch texts)})
       (throw e))))
 
-(defmethod get-embedding        "openai" [embedding-model text & {:as opts}]  (openai-get-embedding embedding-model text opts))
-(defmethod get-embeddings-batch "openai" [embedding-model texts & {:as opts}] (openai-get-embeddings-batch embedding-model texts opts))
-(defmethod pull-model           "openai" [_] (log/debug "OpenAI provider does not require pulling a model"))
+;;;; Embedding-service provider
+
+(defn- embedding-service-resolve-config!
+  "Returns [endpoint api-key] or throws if not configured."
+  []
+  (let [base-url (semantic-settings/ee-embedding-service-base-url)
+        api-key  (semantic-settings/ee-embedding-service-api-key)]
+    (when-not base-url
+      (throw (ex-info "Embedding service base URL not configured"
+                      {:setting "ee-embedding-service-base-url"})))
+    (when-not api-key
+      (throw (ex-info "Embedding service API key not configured"
+                      {:setting "ee-embedding-service-api-key"})))
+    [(str base-url "/v1/embeddings") api-key]))
+
+(defmethod get-embedding "embedding-service" [{:keys [model-name]} text & {:as opts}]
+  (let [[endpoint api-key] (embedding-service-resolve-config!)]
+    (first (openai-compatible-get-embeddings-batch
+            "embedding-service" endpoint api-key model-name [text]
+            (assoc opts :snowplow? true)))))
+
+(defmethod get-embeddings-batch "embedding-service" [{:keys [model-name]} texts & {:as opts}]
+  (let [[endpoint api-key] (embedding-service-resolve-config!)]
+    (openai-compatible-get-embeddings-batch
+     "embedding-service" endpoint api-key model-name texts
+     (assoc opts :snowplow? true))))
+
+(defmethod pull-model "embedding-service" [_]
+  (log/debug "Embedding-service provider does not require pulling a model"))
+
+;;;; OpenAI provider
+
+(defn- openai-resolve-config!
+  "Returns [endpoint api-key] or throws if not configured."
+  []
+  (let [api-key (semantic-settings/openai-api-key)]
+    (when-not api-key
+      (throw (ex-info "OpenAI API key not configured" {:setting "ee-openai-api-key"})))
+    [(str (semantic-settings/openai-api-base-url) "/v1/embeddings") api-key]))
+
+(defmethod get-embedding "openai" [embedding-model text & {:as opts}]
+  (let [[endpoint api-key] (openai-resolve-config!)]
+    (first (openai-compatible-get-embeddings-batch
+            "openai" endpoint api-key (:model-name embedding-model) [text]
+            (assoc opts :extra-body (when (supports-dimensions? embedding-model)
+                                      {:dimensions (:vector-dimensions embedding-model)}))))))
+
+(defmethod get-embeddings-batch "openai" [embedding-model texts & {:as opts}]
+  (let [[endpoint api-key] (openai-resolve-config!)]
+    (openai-compatible-get-embeddings-batch
+     "openai" endpoint api-key (:model-name embedding-model) texts
+     (assoc opts :extra-body (when (supports-dimensions? embedding-model)
+                               {:dimensions (:vector-dimensions embedding-model)})))))
+
+(defmethod pull-model "openai" [_]
+  (log/debug "OpenAI provider does not require pulling a model"))
 
 ;;;; Global embedding model
 
@@ -290,7 +334,7 @@
                 (fn [batch-idx batch-texts]
                   (let [embeddings (u/profile (format "Embedding batch %d/%d %s"
                                                       (inc batch-idx) (count batches) (str (calc-token-metrics batch-texts)))
-                                     (openai-get-embeddings-batch embedding-model batch-texts opts))
+                                     (get-embeddings-batch embedding-model batch-texts opts))
                         text-embedding-map (zipmap batch-texts embeddings)]
                     (process-fn text-embedding-map)))]
 
@@ -302,11 +346,13 @@
 
 (comment
   ;; Configuration:
-  ;; MB_EE_EMBEDDING_PROVIDER:  "openai" or "ollama" (default)
+  ;; MB_EE_EMBEDDING_PROVIDER:  "embedding-service" (default), "openai", or "ollama"
   ;; MB_EE_EMBEDDING_MODEL: optional override (leave empty for provider defaults)
   ;;   - OpenAI default: "text-embedding-3-small"
   ;;   - Ollama default: "mxbai-embed-large"
-  ;; MB_EE_OPENAI_API_KEY your OpenAI API key
+  ;; MB_EE_EMBEDDING_SERVICE_BASE_URL: URL of the embedding service (for embedding-service provider)
+  ;; MB_EE_EMBEDDING_SERVICE_API_KEY: API key for the embedding service
+  ;; MB_EE_OPENAI_API_KEY: your OpenAI API key (for openai provider)
   ;; MB_EE_EMBEDDING_MODEL_DIMENSIONS: defaults to 1024.
 
   (def embedding-model (get-configured-model))
