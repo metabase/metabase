@@ -16,6 +16,7 @@ import {
 } from "../../../utils/source-ids";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
+import { getSelectedMeasureIds, getSelectedMetricIds } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
 
@@ -46,22 +47,12 @@ export function MetricSearchInput({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedMetricIds = useMemo(
-    () =>
-      new Set(
-        selectedMetrics
-          .filter((metric) => metric.sourceType === "metric")
-          .map((metric) => metric.id),
-      ),
+    () => getSelectedMetricIds(selectedMetrics),
     [selectedMetrics],
   );
 
   const selectedMeasureIds = useMemo(
-    () =>
-      new Set(
-        selectedMetrics
-          .filter((metric) => metric.sourceType === "measure")
-          .map((metric) => metric.id),
-      ),
+    () => getSelectedMeasureIds(selectedMetrics),
     [selectedMetrics],
   );
 

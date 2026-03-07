@@ -10,6 +10,7 @@ import {
 } from "../../../hooks/use-metric-measure-search";
 import type { SelectedMetric } from "../../../types/viewer-state";
 import { MetricSearchResults } from "../MetricSearchResults";
+import { filterSearchResults } from "../utils";
 
 import S from "./MetricSearchDropdown.module.css";
 
@@ -46,14 +47,11 @@ export function MetricSearchDropdown({
 
   const filteredResults = useMemo(
     () =>
-      results.filter(
-        (r) =>
-          (r.model === "metric"
-            ? !selectedMetricIds.has(r.id)
-            : !selectedMeasureIds.has(r.id)) &&
-          (!excludeMetric ||
-            r.id !== excludeMetric.id ||
-            r.model !== excludeMetric.sourceType),
+      filterSearchResults(
+        results,
+        selectedMetricIds,
+        selectedMeasureIds,
+        excludeMetric,
       ),
     [results, selectedMetricIds, selectedMeasureIds, excludeMetric],
   );

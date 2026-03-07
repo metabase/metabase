@@ -22,6 +22,7 @@ import type {
 import type { MetricSourceId, SourceColorMap } from "../../types/viewer-state";
 
 import S from "./FilterPopover.module.css";
+import { filterDisplayGroupsBySearch } from "./utils";
 
 const LIST_WIDTH = "20rem";
 const FILTER_WIDTH = "24rem";
@@ -75,29 +76,10 @@ export function FilterPopoverContent({
     });
   }, [definitions, metricColors]);
 
-  const filteredDisplayGroups = useMemo((): DisplayMetricGroup[] | null => {
-    if (!searchText.trim()) {
-      return null;
-    }
-    const lowerSearch = searchText.toLowerCase();
-    return displayGroups
-      .map((group) => {
-        const filteredSections: DimensionSection[] = group.sections
-          .map((section) => ({
-            ...section,
-            items: section.items?.filter((item) =>
-              item.name.toLowerCase().includes(lowerSearch),
-            ),
-          }))
-          .filter((section) => section.items && section.items.length > 0);
-
-        return {
-          ...group,
-          sections: filteredSections,
-        };
-      })
-      .filter((group) => group.sections.length > 0);
-  }, [displayGroups, searchText]);
+  const filteredDisplayGroups = useMemo(
+    () => filterDisplayGroupsBySearch(displayGroups, searchText),
+    [displayGroups, searchText],
+  );
 
   const handleDimensionSelect = useCallback((item: DimensionListItem) => {
     setNavState({
