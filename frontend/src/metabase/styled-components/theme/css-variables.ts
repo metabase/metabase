@@ -44,6 +44,9 @@ export function getMetabaseCssVariables({
   return css`
     :root {
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
+      /* Default font weights (overridden by GlobalStyles when using custom fonts) */
+      --mb-font-weight-bold: 700;
+      --mb-font-weight-heavy: 900;
 
       /* Semantic colors */
       ${createColorVars(colorScheme, whitelabelColors)}

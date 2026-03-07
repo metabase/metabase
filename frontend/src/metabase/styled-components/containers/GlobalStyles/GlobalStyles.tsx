@@ -14,8 +14,32 @@ import { useSelector } from "metabase/lib/redux";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
+import type { FontFile } from "metabase-types/api";
 
 import { getFont, getFontFiles } from "../../selectors";
+
+/**
+ * Derive bold and heavy font weights from custom font files so the UI can
+ * respect the font's actual weights instead of defaulting to 700/900.
+ */
+function getCustomFontWeightVariables(
+  fontFiles: FontFile[] | null | undefined,
+): { bold: number; heavy: number } {
+  const defaultWeights = { bold: 700, heavy: 900 };
+  if (!fontFiles?.length) {
+    return defaultWeights;
+  }
+  const weights = [...new Set(fontFiles.map((f) => f.fontWeight))].sort(
+    (a, b) => a - b,
+  );
+  if (weights.length === 1) {
+    return { bold: weights[0], heavy: weights[0] };
+  }
+  if (weights.length === 2) {
+    return { bold: weights[1], heavy: weights[1] };
+  }
+  return { bold: weights[1], heavy: weights[weights.length - 1] };
+}
 
 export const GlobalStyles = (): JSX.Element => {
   const font = useSelector(getFont);
@@ -25,6 +49,11 @@ export const GlobalStyles = (): JSX.Element => {
   const sitePath = getSitePath();
   const theme = useMantineTheme();
   const { colorScheme } = theme.other;
+
+  const fontWeights = useMemo(
+    () => getCustomFontWeightVariables(fontFiles),
+    [fontFiles],
+  );
 
   // This can get expensive so we should memoize it separately
   const cssVariables = useMemo(() => {
@@ -36,6 +65,8 @@ export const GlobalStyles = (): JSX.Element => {
       ${cssVariables}
       :root {
         --mb-default-font-family: "${font}";
+        --mb-font-weight-bold: ${fontWeights.bold};
+        --mb-font-weight-heavy: ${fontWeights.heavy};
       }
 
       ${defaultFontFiles({ baseUrl: sitePath })}
@@ -59,9 +90,15 @@ export const GlobalStyles = (): JSX.Element => {
         ${rootStyle}
       }
 
+      /* Respect custom font weights for bold/heavy instead of defaulting to 700/900 */
+      body b,
+      body strong {
+        font-weight: var(--mb-font-weight-bold) !important;
+      }
+
       ${baseStyle}
     `;
-  }, [cssVariables, font, sitePath, fontFiles, colorScheme]);
+  }, [cssVariables, font, sitePath, fontFiles, fontWeights, colorScheme]);
 
   return <Global styles={styles} />;
 };

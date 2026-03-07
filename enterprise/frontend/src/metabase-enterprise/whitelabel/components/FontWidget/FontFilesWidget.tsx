@@ -16,8 +16,13 @@ import {
   TableHeaderRow,
   TableRoot,
 } from "./FontFilesWidget.styled";
-import type { FontFileOption, FontFilesSetting } from "./types";
-import { getFontFiles, getFontOptions, getFontUrls } from "./utils";
+import type { FontFilesSetting } from "./types";
+import type { FontSlot } from "./utils";
+import {
+  getFontFilesFromSlots,
+  getFontOptions,
+  getFontSlots,
+} from "./utils";
 
 export interface FontFilesWidgetProps {
   setting: FontFilesSetting;
@@ -31,57 +36,79 @@ export const FontFilesWidget = () => {
     description: fontFilesDescription,
   } = useAdminSetting("application-font-files");
 
-  const urls = useMemo(() => getFontUrls(files ?? []), [files]);
+  const slots = useMemo(() => getFontSlots(files ?? []), [files]);
 
-  const handleChange = useCallback(
-    async (option: FontFileOption, url: string) => {
-      if (
-        urls[option.fontWeight] === url ||
-        (!urls[option.fontWeight] && !url)
-      ) {
-        return;
-      }
-
+  const updateSlots = useCallback(
+    async (nextSlots: FontSlot[]) => {
       await updateSetting({
         key: "application-font-files",
-        value: getFontFiles({ ...urls, [option.fontWeight]: url }),
+        value: getFontFilesFromSlots(nextSlots),
       });
     },
-    [urls, updateSetting],
+    [updateSetting],
+  );
+
+  const handleUrlChange = useCallback(
+    async (slotKey: number, url: string) => {
+      const nextSlots = slots.map((slot) =>
+        slot.slotKey === slotKey ? { ...slot, url } : slot,
+      );
+      await updateSlots(nextSlots);
+    },
+    [slots, updateSlots],
+  );
+
+  const handleWeightChange = useCallback(
+    async (slotKey: number, weight: number) => {
+      const nextSlots = slots.map((slot) =>
+        slot.slotKey === slotKey ? { ...slot, weight } : slot,
+      );
+      await updateSlots(nextSlots);
+    },
+    [slots, updateSlots],
   );
 
   return (
     <Stack mt="md" gap="sm">
       <Text c="text-secondary">{fontFilesDescription}</Text>
-      <FontFilesTable urls={urls} onChange={handleChange} />
+      <FontFilesTable
+        slots={slots}
+        onUrlChange={handleUrlChange}
+        onWeightChange={handleWeightChange}
+      />
     </Stack>
   );
 };
 
 interface FontFilesTableProps {
-  urls: Record<string, string>;
-  onChange: (option: FontFileOption, url: string) => void;
+  slots: FontSlot[];
+  onUrlChange: (slotKey: number, url: string) => void;
+  onWeightChange: (slotKey: number, weight: number) => void;
 }
 
 const FontFilesTable = ({
-  urls,
-  onChange,
+  slots,
+  onUrlChange,
+  onWeightChange,
 }: FontFilesTableProps): JSX.Element => {
+  const options = getFontOptions();
   return (
     <TableRoot data-testid="font-files-widget">
       <TableHeader>
         <TableHeaderRow>
-          <TableHeaderCell>{t`Font weight`}</TableHeaderCell>
+          <TableHeaderCell>{t`Style`}</TableHeaderCell>
+          <TableHeaderCell>{t`Weight`}</TableHeaderCell>
           <TableHeaderCell>{t`URL`}</TableHeaderCell>
         </TableHeaderRow>
       </TableHeader>
       <TableBody>
-        {getFontOptions().map((option) => (
+        {slots.map((slot, index) => (
           <FontFileRow
-            key={option.name}
-            url={urls[option.fontWeight]}
-            option={option}
-            onChange={onChange}
+            key={slot.slotKey}
+            slot={slot}
+            name={options[index].name}
+            onUrlChange={onUrlChange}
+            onWeightChange={onWeightChange}
           />
         ))}
       </TableBody>
@@ -90,35 +117,60 @@ const FontFilesTable = ({
 };
 
 interface FontFileRowProps {
-  url?: string;
-  option: FontFileOption;
-  onChange: (option: FontFileOption, url: string) => void;
+  slot: FontSlot;
+  name: string;
+  onUrlChange: (slotKey: number, url: string) => void;
+  onWeightChange: (slotKey: number, weight: number) => void;
 }
 
 const FontFileRow = ({
-  url,
-  option,
-  onChange,
+  slot,
+  name,
+  onUrlChange,
+  onWeightChange,
 }: FontFileRowProps): JSX.Element => {
-  const handleBlur = useCallback(
+  const handleUrlBlur = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
-      onChange(option, event.currentTarget.value);
+      onUrlChange(slot.slotKey, event.currentTarget.value);
     },
-    [option, onChange],
+    [slot.slotKey, onUrlChange],
+  );
+
+  const handleWeightChange = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      const value = parseInt(event.currentTarget.value, 10);
+      if (!Number.isNaN(value) && value >= 1 && value <= 999) {
+        onWeightChange(slot.slotKey, value);
+      }
+    },
+    [slot.slotKey, onWeightChange],
   );
 
   return (
     <TableBodyRow>
-      <TableBodyCell fontWeight={option.fontWeight}>
-        {option.name}
-        <TableBodyCellLabel>{option.fontWeight}</TableBodyCellLabel>
+      <TableBodyCell fontWeight={slot.weight}>
+        {name}
+        <TableBodyCellLabel>{slot.slotKey}</TableBodyCellLabel>
       </TableBodyCell>
       <TableBodyCell>
         <TextInput
-          defaultValue={url}
+          key={`weight-${slot.slotKey}-${slot.weight}`}
+          defaultValue={slot.weight}
+          type="number"
+          min={1}
+          max={999}
+          onBlur={handleWeightChange}
+          aria-label={t`Weight for ${name}`}
+          styles={{ input: { width: 80 } }}
+        />
+      </TableBodyCell>
+      <TableBodyCell>
+        <TextInput
+          key={slot.slotKey}
+          defaultValue={slot.url}
           placeholder="https://some.trusted.location/font-file.woff2"
-          onBlur={handleBlur}
-          aria-label={option.name}
+          onBlur={handleUrlBlur}
+          aria-label={name}
         />
       </TableBodyCell>
     </TableBodyRow>
