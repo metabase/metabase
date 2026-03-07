@@ -114,12 +114,13 @@
                  (metabot-v3.context/create-context {:capabilities #{"permission:write_sql_queries"}})
                  :references references)
         parts (into [] (metabot-v3.agent/run-agent-loop
-                        {:messages      [{:role :user
-                                          :content instructions}]
-                         :profile-id    :document-generate-content
-                         :state         {}
-                         :context       context
-                         :tracking-opts {:source "document_generate_content"}}))
+                        {:messages           [{:role :user
+                                               :content instructions}]
+                         :profile-id         :document-generate-content
+                         :state              {}
+                         :context            context
+                         :tracking-opts      {:source              "document_generate_content"
+                                              :track-user-intent?  true}}))
         chart-output (latest-chart-structured-output parts)
         draft-card (draft-card-from-chart-output chart-output)
         description (or (:description chart-output)
