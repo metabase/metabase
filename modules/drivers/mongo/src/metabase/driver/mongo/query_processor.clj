@@ -1077,7 +1077,7 @@ function(bin) {
         ;; Find the fields the join condition refers to that are not coming from the joined query.
         ;; These have to be bound in the :let property of the $lookup stage, they cannot be referred to directly.
         own-fields (driver-api/match-many condition
-                     [:field _ (opts :guard (not= (:join-alias opts) alias))] &match)
+                     [:field _ {:join-alias (ja :guard (not= ja alias))}] &match)
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
                                              ;; ~ in let aliases provokes a parse error in Mongo. For correct function,
@@ -1765,10 +1765,9 @@ function(bin) {
       [:field & _]
       (update-field-ref &match)
 
-      (join :guard (and (map? join)
-                        (driver-api/qp.add.alias join)
-                        (not= (driver-api/qp.add.alias join) (:alias join))))
-      (&recur (assoc join :alias (driver-api/qp.add.alias join))))))
+      (:and join
+            {driver-api/qp.add.alias (add-alias :guard (and add-alias (not= add-alias (:alias join))))})
+      (&recur (assoc join :alias add-alias)))))
 
 (defn- preprocess
   [inner-query]

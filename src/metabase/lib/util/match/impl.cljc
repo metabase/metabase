@@ -68,7 +68,7 @@
   [m ks f & args]
   (if-not (seq (get-in m ks))
     m
-    (apply update-in m ks f args)))
+    (apply update-in m ks f )))
 
 (defn vector!
   "Return nil if `obj` is not a vector, otherwise return `obj`."

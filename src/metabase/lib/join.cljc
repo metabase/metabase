@@ -564,7 +564,7 @@
 (defn- add-alias-to-join-refs [query stage-number form join-alias join-cols]
   (lib.util.match/replace-lite form
     (field :guard (and (lib.util/field-clause? field)
-                       (boolean (lib.equality/find-matching-column query stage-number field join-cols))))
+                       (lib.equality/find-matching-column query stage-number field join-cols)))
     (with-join-alias field join-alias)))
 
 (defn- add-alias-to-condition

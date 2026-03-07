@@ -1279,27 +1279,23 @@
 (declare ^:private mbql-deps-map)
 
 (defn- mbql-deps-vector [entity]
-  (match entity
-    [:field     (field :guard vector?)]      #{(field->path field)}
-    ["field"    (field :guard vector?)]      #{(field->path field)}
-    [:field-id  (field :guard vector?)]      #{(field->path field)}
-    ["field-id" (field :guard vector?)]      #{(field->path field)}
-    [:field     (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
-    ["field"    (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
-    [:field-id  (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
-    ["field-id" (field :guard vector?) tail] (into #{(field->path field)} (mbql-deps-map tail))
-    [:metric    (field :guard portable-id?)] #{[{:model "Card" :id field}]}
-    ["metric"   (field :guard portable-id?)] #{[{:model "Card" :id field}]}
-    [:segment   (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
-    ["segment"  (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
-    [:measure   (field :guard portable-id?)] #{[{:model "Measure" :id field}]}
-    ["measure"  (field :guard portable-id?)] #{[{:model "Measure" :id field}]}
-    :else (reduce #(cond
-                     (map? %2)    (into %1 (mbql-deps-map %2))
-                     (vector? %2) (into %1 (mbql-deps-vector %2))
-                     :else %1)
-                  #{}
-                  entity)))
+  (lib.util.match/match-lite entity
+    [#{:field "field" :field-id "field-id"} (field :guard vector?) & tail]
+    (into #{(field->path field)} (some-> (first tail) mbql-deps-map))
+
+    [(tag :guard #{:metric "metric" :segment "segment" :measure "measure"}) (field :guard portable-id?)]
+    #{[{:model (case tag
+                 (:metric "metric") "Card"
+                 (:segment "segment") "Segment"
+                 (:measure "measure") "Measure")
+        :id field}]}
+
+    _ (reduce #(cond
+                 (map? %2)    (into %1 (mbql-deps-map %2))
+                 (vector? %2) (into %1 (mbql-deps-vector %2))
+                 :else %1)
+              #{}
+              entity)))
 
 (defn- mbql-deps-map [entity]
   (assert (not (:lib/type entity))
@@ -1505,17 +1501,9 @@
 
 (defn- export-visualizations [entity]
   (lib.util.match/replace-lite entity
-    ["field-id" (id :guard number?)]      ["field-id" (*export-field-fk* id)]
-    [:field-id  (id :guard number?)]      [:field-id  (*export-field-fk* id)]
-    ["field-id" (id :guard number?) tail] ["field-id" (*export-field-fk* id) (export-visualizations tail)]
-    [:field-id  (id :guard number?) tail] [:field-id  (*export-field-fk* id) (export-visualizations tail)]
-    ["field"    (id :guard number?)]      ["field"    (*export-field-fk* id)]
-    [:field     (id :guard number?)]      [:field     (*export-field-fk* id)]
-    ["field"    (id :guard number?) tail] ["field"    (*export-field-fk* id) (export-visualizations tail)]
-    [:field     (id :guard number?) tail] [:field     (*export-field-fk* id) (export-visualizations tail)]
-
-    (_ :guard map?)
-    (m/map-vals export-visualizations &match)
+    [(tag :guard #{:field "field" :field-id "field-id"}) (id :guard number?) & [tail]]
+    (cond-> [tag (*export-field-fk* id)]
+      tail (conj (export-visualizations tail)))
 
     (_ :guard vector?)
     (mapv export-visualizations &match)))
@@ -1589,18 +1577,9 @@
 
 (defn- import-visualizations [entity]
   (lib.util.match/replace-lite entity
-    [#{:field-id "field-id"} (fully-qualified-name :guard vector?) tail]
-    [:field-id (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
-    [#{:field-id "field-id"} (fully-qualified-name :guard vector?)]
-    [:field-id (*import-field-fk* fully-qualified-name)]
-
-    [#{:field "field"} (fully-qualified-name :guard vector?) tail]
-    [:field (*import-field-fk* fully-qualified-name) (import-visualizations tail)]
-    [#{:field "field"} (fully-qualified-name :guard vector?)]
-    [:field (*import-field-fk* fully-qualified-name)]
-
-    (_ :guard map?)
-    (m/map-vals import-visualizations &match)
+    [(tag :guard #{:field-id "field-id" :field "field"}) (fully-qualified-name :guard vector?) & [tail]]
+    (cond-> [(keyword tag) (*import-field-fk* fully-qualified-name)]
+      tail (conj (import-visualizations tail)))
 
     (_ :guard vector?)
     (mapv import-visualizations &match)))
