@@ -55,10 +55,15 @@ export interface Padding {
   right: number;
 }
 
-export type Formatter = (value: unknown, options?: OptionsType) => string;
+export type Formatter = (
+  value: RowValue,
+  options?: OptionsType,
+) => string | null;
 export type TableCellFormatter = (value: RowValue) => ReactNode;
 
 export type ColorGetter = (colorName: string) => string;
+
+export type Extent = [number, number];
 
 export interface RenderingContext {
   getColor: ColorGetter;

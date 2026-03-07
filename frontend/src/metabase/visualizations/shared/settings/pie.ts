@@ -210,7 +210,7 @@ export function getPieRows(
       return NULL_DISPLAY_VALUE;
     }
 
-    return formatter(value, dimensionColSettings);
+    return formatter(value, dimensionColSettings) ?? NULL_DISPLAY_VALUE;
   };
 
   let colors = getColors(rawSeries, settings);

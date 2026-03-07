@@ -1,3 +1,4 @@
+import type { ClickObjectDimension } from "metabase-lib";
 import type {
   CacheStrategy,
   LocalFieldReference,
@@ -21,7 +22,9 @@ import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean | object;
-export type RowValues = RowValue[];
+export type RowValues = RowValue[] & {
+  _dimension?: ClickObjectDimension; // present in pivoted data
+};
 
 export function getRowsForStableKeys(
   data: Pick<DatasetData, "rows" | "untranslatedRows">,
@@ -85,6 +88,9 @@ export interface DatasetColumn {
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+
+  _dimension?: ClickObjectDimension; // present in pivoted data
+  remapping?: Map<RowValue, string | number>;
 }
 
 export interface ResultsMetadata {
@@ -109,6 +115,8 @@ export interface DatasetData {
     "show-column-totals"?: boolean;
   };
   untranslatedRows?: RowValues[];
+
+  sourceRows?: (number | null)[][]; // present in pivoted data
 }
 
 export type JsonQuery = DatasetQuery & {

@@ -1,6 +1,10 @@
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetData, RowValue, RowValues } from "metabase-types/api";
 
-export function dimensionIsNumeric({ cols, rows }, i = 0) {
+export function dimensionIsNumeric(
+  { cols, rows }: DatasetData,
+  i = 0,
+): boolean {
   if (isNumeric(cols[i])) {
     return true;
   }
@@ -13,7 +17,7 @@ export function dimensionIsNumeric({ cols, rows }, i = 0) {
   return hasNumbersOrNullsOnly && hasAtLeastOneNumber;
 }
 
-export const isMultipleOf = (value, base) => {
+export const isMultipleOf = (value: number, base: number): boolean => {
   // Ideally we could use Number.EPSILON as constant diffThreshold here.
   // However, we sometimes see very small errors that are bigger than EPSILON.
   // For example, when called 1.23456789 and 1e-8 we see a diff of ~1e-16.
@@ -24,10 +28,20 @@ export const isMultipleOf = (value, base) => {
 // We seem to run into float bugs if we get any more precise than this.
 const SMALLEST_PRECISION_EXP = -13;
 
-export function precision(a) {
-  if (!isFinite(a)) {
+export function precision(a: RowValue): number {
+  if (typeof a === "string") {
+    return precision(Number(a));
+  }
+
+  if (
+    a == null ||
+    typeof a === "boolean" ||
+    typeof a === "object" ||
+    !isFinite(a)
+  ) {
     return 0;
   }
+
   if (!a) {
     return 0;
   }
@@ -42,12 +56,12 @@ export function precision(a) {
   return Math.pow(10, e);
 }
 
-export function decimalCount(a) {
+export function decimalCount(a: number): number {
   if (!isFinite(a)) {
     return 0;
   }
-  let e = 1,
-    p = 0;
+  let e = 1;
+  let p = 0;
   while (Math.round(a * e) / e !== a) {
     e *= 10;
     p++;
@@ -55,7 +69,7 @@ export function decimalCount(a) {
   return p;
 }
 
-export function computeNumericDataInterval(xValues) {
+export function computeNumericDataInterval(xValues: RowValues): number {
   let bestPrecision = Infinity;
   for (const value of xValues) {
     const p = precision(value) || 1;
@@ -66,7 +80,7 @@ export function computeNumericDataInterval(xValues) {
   return bestPrecision;
 }
 
-export function computeChange(comparisonVal, currVal) {
+export function computeChange(comparisonVal: number, currVal: number): number {
   if (comparisonVal === 0) {
     return currVal === 0 ? 0 : currVal > 0 ? Infinity : -Infinity;
   }
