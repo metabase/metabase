@@ -3645,7 +3645,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: provisional
-                  type: boolean
+                  type: ${boolean.type}
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
