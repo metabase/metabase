@@ -82,14 +82,14 @@ describe("BrowseMetrics (OSS)", () => {
     });
     expect(
       within(table).getByRole("link", { name: /Metric 1/ }),
-    ).toHaveAttribute("href", "/metric/1-metric-1");
+    ).toHaveAttribute("href", "/explore?metricId=1");
     expect(
       within(table).getByRole("link", { name: /Metric 2/ }),
-    ).toHaveAttribute("href", "/metric/2-metric-2");
+    ).toHaveAttribute("href", "/explore?metricId=2");
 
     expect(screen.queryByTestId("metric-detail-page")).not.toBeInTheDocument();
     await userEvent.click(within(table).getByText("Metric 1"));
     expect(screen.getByTestId("metric-detail-page")).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe("/metric/1-metric-1");
+    expect(history?.getCurrentLocation().pathname).toBe("/explore");
   });
 });

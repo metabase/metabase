@@ -1,8 +1,10 @@
+import type { FieldValue } from "./field";
 import type { DatasetQuery, OpaqueDatasetQuery } from "./query";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 
 export type MeasureId = number;
+export type DimensionId = string;
 
 export interface Measure {
   id: MeasureId;
@@ -18,6 +20,7 @@ export interface Measure {
   creator_id: number;
   creator?: UserInfo;
   updated_at: string;
+  result_column_name?: string;
 }
 
 export interface CreateMeasureRequest {
@@ -35,3 +38,26 @@ export interface UpdateMeasureRequest {
   archived?: boolean;
   description?: string;
 }
+
+export type GetMeasureDimensionValuesRequest = {
+  measureId: MeasureId;
+  dimensionId: DimensionId;
+};
+
+export type GetMeasureDimensionValuesResponse = {
+  values: FieldValue[];
+  has_more_values: boolean;
+};
+
+export type SearchMeasureDimensionValuesRequest = {
+  measureId: MeasureId;
+  dimensionId: DimensionId;
+  query: string;
+  limit: number;
+};
+
+export type GetRemappedMeasureDimensionValueRequest = {
+  measureId: MeasureId;
+  dimensionId: DimensionId;
+  value: string;
+};

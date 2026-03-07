@@ -130,6 +130,24 @@ describe("QueryColumnPicker", () => {
   });
 
   describe("bucketing", () => {
+    it("should show binning picker for numeric columns", () => {
+      setup();
+
+      const total = screen.getByRole("option", { name: "Total" });
+      expect(
+        within(total).getByLabelText("Binning strategy"),
+      ).toBeInTheDocument();
+    });
+
+    it("should show temporal bucket picker for date columns", () => {
+      setup();
+
+      const createdAt = screen.getByRole("option", { name: "Created At" });
+      expect(
+        within(createdAt).getByLabelText("Temporal bucket"),
+      ).toBeInTheDocument();
+    });
+
     it("shouldn't show bucketing options for non-bucketable columns", () => {
       setup();
 
