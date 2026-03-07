@@ -2570,7 +2570,6 @@
            metabase-enterprise.workspaces.init}
    :friends #{enterprise/agent-api}
    :uses #{api
-           api-keys
            app-db
            config
            database-routing
