@@ -1676,7 +1676,8 @@
            lib-be
            query-processor
            sync
-           util}
+           util
+           warehouse-schema}
    :friends #{transforms
               enterprise/transforms-python
               enterprise/workspaces}}
@@ -2223,7 +2224,8 @@
            task
            transforms
            transforms-base
-           util}}
+           util
+           warehouse-schema}}
 
   enterprise/email
   {:team "UX West"
@@ -2642,6 +2644,7 @@
            transforms
            transforms-base
            util
+           warehouse-schema
            enterprise/transforms-python}}
 
   enterprise/writable-connection
