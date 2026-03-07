@@ -79,7 +79,7 @@
 
 ;;; ------------------------------------------------- Utilities ------------------------------------------------------
 
-(defn flag-enabled?
+(defn- flag-enabled?
   "Coerce a flag parameter (true, false, or 1) to boolean."
   [v]
   (boolean (#{1 true} v)))
@@ -593,6 +593,7 @@
   (let [workspace (t2/select-one :model/Workspace :id ws-id)
         _         (api/check-404 workspace)
         _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+        _         (check-transforms-enabled! (:database_id workspace))
         graph     (ws.impl/get-or-calculate-graph! workspace)]
     (ws.impl/execute-workspace! workspace graph {:stale-only? (flag-enabled? stale_only)})))
 
