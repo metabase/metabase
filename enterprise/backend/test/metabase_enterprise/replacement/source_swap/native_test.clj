@@ -20,7 +20,7 @@
 
 ;;; ----------------------------------------- swap-card-in-native-query (pure) ------------------------------------------
 
-(deftest swap-card-in-native-query-basic-test
+(deftest ^:parallel swap-card-in-native-query-basic-test
   (let [mp (metadata-provider-with-cards)]
     (testing "Simple card tag replacement"
       (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}}")
@@ -40,7 +40,7 @@
         (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))
         (is (= 3 (get-in (lib/template-tags result) ["#3" :card-id])))))))
 
-(deftest swap-card-in-native-query-with-field-filters-test
+(deftest ^:parallel swap-card-in-native-query-with-field-filters-test
   (testing "Card tag with field filter tags present"
     (let [mp     (metadata-provider-with-cards)
           query  (-> (lib/native-query mp "SELECT * FROM {{#1}} WHERE {{created_at}}")
@@ -53,7 +53,7 @@
       (is (= "created_at"
              (get-in (lib/template-tags result) ["created_at" :name]))))))
 
-(deftest swap-card-in-native-query-with-optional-clauses-test
+(deftest ^:parallel swap-card-in-native-query-with-optional-clauses-test
   (let [mp (metadata-provider-with-cards)]
     (testing "Card tag with optional clause containing field filter"
       (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}} [[WHERE {{created_at}}]]")
@@ -72,7 +72,7 @@
                (lib/raw-native-query result)))
         (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))))))
 
-(deftest swap-card-in-native-query-comment-test
+(deftest ^:parallel swap-card-in-native-query-comment-test
   (let [mp (metadata-provider-with-cards)]
     (testing "Card tag inside a line comment should NOT be replaced"
       (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}}\n-- old: {{#1}}")
@@ -90,7 +90,7 @@
                (lib/raw-native-query result))
             "The tag in the block comment should be left alone")))))
 
-(deftest swap-card-in-native-query-string-literal-test
+(deftest ^:parallel swap-card-in-native-query-string-literal-test
   (testing "Card tag inside a SQL string literal is also replaced (parser does not distinguish string literals)"
     (let [mp     (metadata-provider-with-cards)
           query  (-> (lib/native-query mp "SELECT * FROM {{#1}} WHERE col = '{{#1}}'")
@@ -100,7 +100,7 @@
              (lib/raw-native-query result))
           "Both tags are replaced since the parser treats string literal tags as params too"))))
 
-(deftest swap-card-in-native-query-multiple-cards-test
+(deftest ^:parallel swap-card-in-native-query-multiple-cards-test
   (testing "Multiple different card tags, replace only the target"
     (let [mp     (metadata-provider-with-cards)
           query  (-> (lib/native-query mp "SELECT a.* FROM {{#1}} a JOIN {{#3}} b ON a.id = b.id JOIN {{#1}} c ON a.id = c.id")
@@ -115,7 +115,7 @@
 ;;; ------------------------------------------------ Native Query Card Reference Tests ------------------------------------------------
 ;;; These tests cover card→card replacement specifically in native SQL queries using {{#id}} syntax
 
-(deftest swap-native-card-ref-with-whitespace-test
+(deftest ^:parallel swap-native-card-ref-with-whitespace-test
   (testing "Card reference with whitespace ({{ #1 }}) is replaced correctly"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM {{ #1 }} WHERE x > 1")
@@ -123,7 +123,7 @@
       (is (str/includes? (lib/raw-native-query result) "{{#2}}"))
       (is (not (str/includes? (lib/raw-native-query result) "#1"))))))
 
-(deftest swap-native-card-ref-multiple-test
+(deftest ^:parallel swap-native-card-ref-multiple-test
   (testing "Multiple card references to the same card are all replaced"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM {{#1}} a JOIN {{#1}} b ON a.id = b.id")
@@ -131,7 +131,7 @@
       (is (= 2 (count (re-seq #"\{\{#2\}\}" (lib/raw-native-query result)))))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
-(deftest swap-native-card-ref-in-cte-test
+(deftest ^:parallel swap-native-card-ref-in-cte-test
   (testing "Card reference in CTE is replaced correctly"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "WITH base AS {{#1}} SELECT * FROM base WHERE x > 1")
@@ -139,7 +139,7 @@
       (is (str/includes? (lib/raw-native-query result) "WITH base AS {{#2}}"))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
-(deftest swap-native-card-ref-with-alias-test
+(deftest ^:parallel swap-native-card-ref-with-alias-test
   (testing "Card reference with alias ({{#1}} AS t) is replaced correctly"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT t.* FROM {{#1}} AS t WHERE t.x > 1")
@@ -147,7 +147,7 @@
       (is (str/includes? (lib/raw-native-query result) "{{#2}} AS t"))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
-(deftest swap-native-card-ref-preserves-other-params-test
+(deftest ^:parallel swap-native-card-ref-preserves-other-params-test
   (testing "Other template params are preserved when replacing card reference"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM {{#1}} WHERE status = {{status}} AND total > {{min_total}}")
@@ -158,7 +158,7 @@
       (is (contains? (lib/template-tags result) "status"))
       (is (contains? (lib/template-tags result) "min_total")))))
 
-(deftest swap-native-card-ref-different-cards-test
+(deftest ^:parallel swap-native-card-ref-different-cards-test
   (testing "Only the specified card reference is replaced, others are preserved"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM {{#1}} a JOIN {{#3}} b ON a.id = b.id")
@@ -167,7 +167,7 @@
       (is (str/includes? (lib/raw-native-query result) "{{#3}}"))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
-(deftest swap-native-card-ref-in-subquery-test
+(deftest ^:parallel swap-native-card-ref-in-subquery-test
   (testing "Card reference in subquery is replaced correctly"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM orders WHERE product_id IN (SELECT id FROM {{#1}})")
@@ -175,7 +175,7 @@
       (is (str/includes? (lib/raw-native-query result) "FROM {{#2}}"))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
-(deftest swap-native-card-ref-in-optional-clause-test
+(deftest ^:parallel swap-native-card-ref-in-optional-clause-test
   (testing "Card reference inside optional clause [[...{{#1}}...]] is replaced correctly"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM orders WHERE 1=1 [[AND product_id IN (SELECT id FROM {{#1}})]]\n")
@@ -186,7 +186,7 @@
 ;;; ------------------------------------------------ Native Query Table→Table Tests ------------------------------------------------
 ;;; These tests cover table→table replacement in native SQL queries using sql-tools
 
-(deftest replace-table-in-native-sql-basic-test
+(deftest ^:parallel replace-table-in-native-sql-basic-test
   (testing "Basic table rename in native SQL"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "SELECT * FROM ORDERS"
@@ -194,7 +194,7 @@
       (is (str/includes? result "NEW_ORDERS"))
       (is (not (str/includes? result "ORDERS "))))))
 
-(deftest replace-table-in-native-sql-with-template-tags-test
+(deftest ^:parallel replace-table-in-native-sql-with-template-tags-test
   (testing "Table rename preserves template tags"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "SELECT * FROM ORDERS WHERE status = {{status}}"
@@ -202,7 +202,7 @@
       (is (str/includes? result "NEW_ORDERS"))
       (is (str/includes? result "{{status}}")))))
 
-(deftest replace-table-in-native-sql-with-optional-clause-test
+(deftest ^:parallel replace-table-in-native-sql-with-optional-clause-test
   (testing "Table rename works with optional clauses"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "SELECT * FROM ORDERS WHERE 1=1 [[AND status = {{status}}]]"
@@ -212,7 +212,7 @@
       (is (str/includes? result "]]"))
       (is (str/includes? result "{{status}}")))))
 
-(deftest replace-table-in-native-sql-table-in-optional-test
+(deftest ^:parallel replace-table-in-native-sql-table-in-optional-test
   (testing "Table inside optional clause is renamed"
     ;; Note: [[...]] must contain at least one {{param}} per Metabase parser rules
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
@@ -221,7 +221,7 @@
       (is (str/includes? result "NEW_PRODUCTS"))
       (is (not (str/includes? result "FROM PRODUCTS"))))))
 
-(deftest replace-table-in-native-sql-with-join-test
+(deftest ^:parallel replace-table-in-native-sql-with-join-test
   (testing "Table rename in JOIN"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "SELECT * FROM ORDERS o JOIN PRODUCTS p ON o.product_id = p.id"
@@ -229,7 +229,7 @@
       (is (str/includes? result "NEW_PRODUCTS"))
       (is (str/includes? result "ORDERS")))))
 
-(deftest replace-table-in-native-sql-with-cte-test
+(deftest ^:parallel replace-table-in-native-sql-with-cte-test
   (testing "Table inside CTE is renamed"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "WITH recent AS (SELECT * FROM ORDERS WHERE created > '2024-01-01') SELECT * FROM recent"
@@ -237,7 +237,7 @@
       (is (str/includes? result "NEW_ORDERS"))
       (is (str/includes? result "recent")))))
 
-(deftest replace-table-in-native-sql-multiple-tags-test
+(deftest ^:parallel replace-table-in-native-sql-multiple-tags-test
   (testing "Table rename with multiple template tags"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "SELECT * FROM ORDERS WHERE status = {{status}} AND total > {{min_total}}"
@@ -246,7 +246,7 @@
       (is (str/includes? result "{{status}}"))
       (is (str/includes? result "{{min_total}}")))))
 
-(deftest replace-table-in-native-sql-nested-optionals-test
+(deftest ^:parallel replace-table-in-native-sql-nested-optionals-test
   (testing "Table rename with nested optional clauses"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "SELECT * FROM ORDERS WHERE 1=1 [[AND total > {{min}} [[AND status = {{status}}]]]]"
@@ -256,7 +256,7 @@
       (is (str/includes? result "{{min}}"))
       (is (str/includes? result "{{status}}")))))
 
-(deftest replace-table-in-native-sql-comment-with-bracket-markers-test
+(deftest ^:parallel replace-table-in-native-sql-comment-with-bracket-markers-test
   (testing "SQL comments containing bracket markers are not modified"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "SELECT * FROM\n-- /*]]*/ \nORDERS LIMIT 5"
@@ -266,7 +266,7 @@
 
 ;;; ------------------------------------------------ Schema-Qualified Native SQL Tests ------------------------------------------------
 
-(deftest replace-table-in-native-sql-schema-qualified-test
+(deftest ^:parallel replace-table-in-native-sql-schema-qualified-test
   (testing "Schema-qualified table reference is matched and renamed"
     (let [result (#'source-swap.native/replace-table-in-native-sql :h2
                                                                    "SELECT * FROM PUBLIC.ORDERS"
@@ -313,7 +313,7 @@
 
 ;;; ------------------------------------------------ table→table for native queries ------------------------------------------------
 
-(deftest replace-table-in-native-query-test
+(deftest ^:parallel replace-table-in-native-query-test
   (testing "table→table: SQL table reference is updated"
     (let [query  (lib/native-query meta/metadata-provider "SELECT * FROM PRODUCTS")
           result (source-swap.native/update-native-stages query
@@ -354,7 +354,7 @@
 
 ;;; ------------------------------------------------ table→card for native queries ------------------------------------------------
 
-(deftest replace-table-with-card-in-native-test
+(deftest ^:parallel replace-table-with-card-in-native-test
   (let [mp (metadata-provider-with-cards)]
     (testing "table→card: SQL gets card template tag"
       (let [query  (lib/native-query mp "SELECT * FROM PRODUCTS")
@@ -389,7 +389,7 @@
 
 ;;; ------------------------------------------------ card→table for native queries ------------------------------------------------
 
-(deftest replace-card-with-table-in-native-test
+(deftest ^:parallel replace-card-with-table-in-native-test
   (testing "card→table: card ref becomes direct table reference"
     (let [query  (-> (lib/native-query meta/metadata-provider "SELECT * FROM {{#1-card-1}}")
                      (lib/with-template-tags {"#1-card-1" {:type :card :card-id 1 :name "#1-card-1" :display-name "#1-card-1"}}))
@@ -415,7 +415,7 @@
 
 ;;; ------------------------------------------------ Table Tag Tests ------------------------------------------------
 
-(deftest swap-table-to-table-with-table-tag-test
+(deftest ^:parallel swap-table-to-table-with-table-tag-test
   (testing "swap-source table → table: {{table}} tag's :table-id is updated"
     (let [query  (-> (lib/native-query meta/metadata-provider "SELECT * FROM {{my_table}}")
                      (lib/with-template-tags {"my_table" {:type :table :table-id 1 :name "my_table" :display-name "My Table"}}))
@@ -424,7 +424,7 @@
                   1 2)]
       (is (= 2 (get-in result ["my_table" :table-id]))))))
 
-(deftest swap-table-to-card-with-table-tag-test
+(deftest ^:parallel swap-table-to-card-with-table-tag-test
   (testing "swap-source table → card: {{my_table}} becomes {{#card-id-slug}}"
     (let [sql "SELECT * FROM {{my_table}}"
           tags {"my_table" {:type :table :table-id 1 :name "my_table" :display-name "My Table"}}
@@ -438,7 +438,7 @@
       ;; Old table tag should be gone
       (is (not (contains? template-tags "my_table"))))))
 
-(deftest swap-table-to-card-preserves-required-flag-test
+(deftest ^:parallel swap-table-to-card-preserves-required-flag-test
   (testing "swap-source table → card: :required flag is preserved"
     (let [sql "SELECT * FROM {{my_table}}"
           tags {"my_table" {:type     :table
@@ -454,7 +454,7 @@
 
 ;;; ------------------------------------------------ Dimension Tag Tests ------------------------------------------------
 
-(deftest update-dimension-tags-test
+(deftest ^:parallel update-dimension-tags-test
   (testing "dimension tag field ref is remapped to new table's field"
     (let [query  (lib/native-query meta/metadata-provider "SELECT 1")
           tags   {"filter" {:type :dimension
@@ -464,7 +464,7 @@
       (is (=? {"filter" {:dimension [:field {} (meta/id :orders :id)]}}
               result)))))
 
-(deftest update-dimension-tags-no-match-test
+(deftest ^:parallel update-dimension-tags-no-match-test
   (testing "dimension tag left unchanged when no matching field on new table"
     (let [query     (lib/native-query meta/metadata-provider "SELECT 1")
           dimension (field-id-ref meta/metadata-provider (meta/id :products :ean))
