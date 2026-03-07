@@ -502,20 +502,20 @@
 
 (deftest ^:parallel diagnose-expression-test-2
   (testing "type errors are reported"
-    (are [mode expr] (=? {:message  "Types are incompatible."
-                          :friendly true}
-                         (lib.expression/diagnose-expression
-                          (lib.tu/venues-query) 0 mode
-                          (lib.convert/->pMBQL expr)
-                          #?(:clj nil :cljs js/undefined)))
-      :expression  [:/ [:field 1 {:base-type :type/Address}] 100]
-        ;; To make this test case work, the aggregation schema has to be
-        ;; tighter and not allow anything. That's a bigger piece of work,
-        ;; because it makes expressions and aggregations mutually recursive
-        ;; or requires a large amount of duplication.
+    (are [mode expr msg] (=? {:message  msg
+                              :friendly true}
+                             (lib.expression/diagnose-expression
+                              (lib.tu/venues-query) 0 mode
+                              (lib.convert/->pMBQL expr)
+                              #?(:clj nil :cljs js/undefined)))
+      :expression  [:/ [:field 1 {:base-type :type/Address}] 100] "Types are incompatible: / expects a number."
+      ;; To make this test case work, the aggregation schema has to be
+      ;; tighter and not allow anything. That's a bigger piece of work,
+      ;; because it makes expressions and aggregations mutually recursive
+      ;; or requires a large amount of duplication.
       #_#_:aggregation [:sum [:is-empty [:field 1 {:base-type :type/Boolean}]]]
-      :filter      [:sum [:field 1 {:base-type :type/Integer}]]
-      :filter      [:value "not a boolean" {:base_type :type/Text}])))
+      :filter      [:sum [:field 1 {:base-type :type/Integer}]] "Types are incompatible."
+      :filter      [:value "not a boolean" {:base_type :type/Text}] "Types are incompatible.")))
 
 (deftest ^:parallel diagnose-expression-test-3
   (testing "correct expression are accepted silently"
@@ -626,6 +626,37 @@
                     (lib/* 2))]
       (is (=? {:message (str "Cycle detected: " expr-name " → " expr-name)}
               (lib.expression/diagnose-expression query2 0 :aggregation expr 1))))))
+
+(deftest ^:parallel diagnose-expression-incompatible-types-test
+  (testing "expressions with incompatible types show correct error messages"
+    (are [expr msg] (= {:message msg
+                        :friendly true}
+                       (lib.expression/diagnose-expression
+                        (lib.tu/venues-query) 0 :expression
+                        (lib.convert/->pMBQL expr)
+                        #?(:clj nil :cljs js/undefined)))
+      ;; basic checks with different types
+      [:+ 1 true]  "Types are incompatible: + expects a number."
+      [:- 1 "str"] "Types are incompatible: - expects a number."
+      [:* false 1] "Types are incompatible: * expects a number."
+      [:/ "str" 1] "Types are incompatible: / expects a number."
+      ;; functions that expect different types
+      [:upper 1]   "Types are incompatible: upper expects a string."
+      [:get-day 1] "Types are incompatible: get-day expects a date or time."
+      [:not 1]     "Types are incompatible: not expects a boolean."
+      ;; function with multiple args of different types
+      [:substring 1 1 1]        "Types are incompatible: substring expects a string."
+      [:substring "str" 1 true] "Types are incompatible: substring expects an integer."
+      [:substring "str" true 1] "Types are incompatible: substring expects an integer."
+      [:substring 1 true false] "Types are incompatible: substring expects a string."
+      ;; nested expressions
+      [:+ 1 [:- 1 true] 1] "Types are incompatible: - expects a number."
+      [:+ true [:- 1 1] 1] "Types are incompatible: + expects a number."
+      [:+ 1 [:- 1 1] true] "Types are incompatible: + expects a number."
+      [:+ true [:- 1 true] 1] "Types are incompatible: + expects a number."
+      [:+ 1 [:- 1 true] true] "Types are incompatible: - expects a number."
+      [:+ 1 [:- 1 [:* 1 [:/ 1 true]]]] "Types are incompatible: / expects a number."
+      [:+ 1 [:- 1 [:* true [:/ 1 1]]]] "Types are incompatible: * expects a number.")))
 
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
