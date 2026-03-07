@@ -132,11 +132,11 @@
     response-not-eligible
 
     (and (= product-type "transforms")
-         (premium-features/enable-transforms-basic?))
+         (premium-features/enable-basic-transforms?))
     response-not-eligible
 
     (and (= product-type "transforms-basic")
-         (premium-features/enable-transforms-basic?))
+         (premium-features/enable-basic-transforms?))
     response-not-eligible
 
     (and (= product-type "transforms-advanced")

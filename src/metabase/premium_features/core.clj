@@ -80,7 +80,7 @@
   enable-sso-saml?
   enable-sso-slack?
   enable-support-users?
-  enable-transforms-basic?
+  enable-basic-transforms?
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?

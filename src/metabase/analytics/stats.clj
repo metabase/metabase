@@ -939,8 +939,8 @@
     :available (premium-features/table-data-editing?)
     :enabled   (premium-features/table-data-editing?)}
    {:name      :transforms-basic
-    :available (premium-features/enable-transforms-basic?)
-    :enabled   (premium-features/enable-transforms-basic?)}
+    :available (premium-features/enable-basic-transforms?)
+    :enabled   (premium-features/enable-basic-transforms?)}
    {:name      :transforms-python
     :available (premium-features/enable-python-transforms?)
     :enabled   (premium-features/enable-python-transforms?)}
