@@ -17,7 +17,7 @@
 ;;; ------------------------------------------------ Agent API Schemas -----------------------------------------------
 ;;
 ;; These schemas define the agent API contract independently of the EE workspace API.
-;; In practice we will often sync with ws.api.common, but we must be conscious and explicit with breaking changes to
+;; In practice we will often sync with ws.api.common, but we must be conscious and explicit about breaking changes
 ;; so that we can keep our skills and integrations (e.g. CLI, MCP) updated.
 
 (def ^:private WorkspaceStatus
