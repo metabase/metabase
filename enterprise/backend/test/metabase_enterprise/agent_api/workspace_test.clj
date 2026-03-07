@@ -220,28 +220,14 @@
                                   {:target target}))))))))
 
 (deftest agent-workspace-feature-gating-test
-  (testing "Workspace endpoints require :agent-api premium feature"
-    (sso.test-setup/with-jwt-default-setup!
-      (mt/with-model-cleanup [:model/ApiKey]
-        ;; Enable workspaces but NOT agent-api
-        (mt/with-additional-premium-features #{:workspaces :transforms}
-          (ws.tu/with-resources! [res {:workspace {:name "Gating Test"}}]
-            (let [ws-id  (:workspace-id res)
-                  result (client/client-full-response :get 402 (str "agent/v1/workspace/" ws-id)
-                                                      {:request-options {:headers (auth-headers)}})]
-              (testing "Returns 402 when :agent-api feature is not enabled"
-                (is (= 402 (:status result))))))))))
+  ;; Feature gates fire before routing, so we don't need a real workspace - just a valid-looking URL.
+  (sso.test-setup/with-jwt-default-setup!
+    (testing "Returns 402 when :agent-api feature is not enabled"
+      (mt/with-additional-premium-features #{:workspaces}
+        (is (= 402 (:status (client/client-full-response :get 402 "agent/v1/workspace/1"
+                                                         {:request-options {:headers (auth-headers)}}))))))
 
-  (testing "Workspace endpoints require :workspaces premium feature"
-    (sso.test-setup/with-jwt-default-setup!
-      (mt/with-model-cleanup [:model/ApiKey]
-        ;; Create workspace with all features enabled
-        (mt/with-additional-premium-features #{:agent-api :metabot-v3 :workspaces :transforms}
-          (ws.tu/with-resources! [res {:workspace {:name "Gating Test"}}]
-            (let [ws-id (:workspace-id res)]
-              ;; Now restrict to agent-api only (no :workspaces), keeping sso-jwt for auth
-              (mt/with-premium-features #{:agent-api :metabot-v3 :transforms :sso-jwt :audit-app}
-                (let [result (client/client-full-response :get 402 (str "agent/v1/workspace/" ws-id)
-                                                          {:request-options {:headers (auth-headers)}})]
-                  (testing "Returns 402 when :workspaces feature is not enabled"
-                    (is (= 402 (:status result)))))))))))))
+    (testing "Returns 402 when :workspaces feature is not enabled"
+      (mt/with-additional-premium-features #{:agent-api}
+        (is (= 402 (:status (client/client-full-response :get 402 "agent/v1/workspace/1"
+                                                         {:request-options {:headers (auth-headers)}}))))))))
