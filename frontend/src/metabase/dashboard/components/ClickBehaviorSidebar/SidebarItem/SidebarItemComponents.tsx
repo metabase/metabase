@@ -50,5 +50,5 @@ export const Content = (props: FlexProps) => {
 };
 
 export const Name = (props: TitleProps) => (
-  <Title order={4} ta="left" textWrap="wrap" {...props} />
+  <Title order={5} ta="left" textWrap="wrap" {...props} />
 );
