@@ -12,7 +12,7 @@ import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { NumberFilterValuePicker } from "../FilterValuePicker";
-import { COMBOBOX_PROPS, WIDTH } from "../constants";
+import { COMBOBOX_PROPS, FILTER_PICKER_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 import { CoordinateDimensionPicker } from "./CoordinateDimensionPicker";
@@ -72,7 +72,7 @@ export function CoordinateFilterPicker({
   return (
     <Box
       component="form"
-      w={WIDTH}
+      w={FILTER_PICKER_WIDTH}
       data-testid="coordinate-filter-picker"
       onSubmit={handleFormSubmit}
     >

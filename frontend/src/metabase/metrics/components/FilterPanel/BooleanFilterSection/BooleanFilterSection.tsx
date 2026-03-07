@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
@@ -11,19 +12,28 @@ export function BooleanFilterSection({
   filter,
   onRemove,
 }: FilterSectionWidgetProps) {
-  const filterParts = LibMetric.booleanFilterParts(definition, filter);
-  if (filterParts == null) {
+  const filterInfo = useMemo(() => {
+    const filterParts = LibMetric.booleanFilterParts(definition, filter);
+    if (filterParts == null) {
+      return null;
+    }
+    const dimensionInfo = LibMetric.displayInfo(
+      definition,
+      filterParts.dimension,
+    );
+    return { filterParts, dimensionInfo };
+  }, [definition, filter]);
+
+  if (filterInfo == null) {
     return null;
   }
 
-  const dimensionInfo = LibMetric.displayInfo(
-    definition,
-    filterParts.dimension,
-  );
-
   return (
-    <FilterSectionLayout label={dimensionInfo.displayName} onRemove={onRemove}>
-      {getBooleanDisplayValue(filterParts)}
+    <FilterSectionLayout
+      label={filterInfo.dimensionInfo.displayName}
+      onRemove={onRemove}
+    >
+      {getBooleanDisplayValue(filterInfo.filterParts)}
     </FilterSectionLayout>
   );
 }

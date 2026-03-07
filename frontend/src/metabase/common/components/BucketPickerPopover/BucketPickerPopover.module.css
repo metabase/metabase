@@ -1,13 +1,9 @@
 .triggerButton {
   border-radius: 0;
   visibility: hidden;
-  color: color-mix(
-    in srgb,
-    var(--mb-color-text-primary-inverse),
-    transparent 40%
-  );
+  color: var(--mb-color-text-tertiary-inverse);
   border-left: 2px solid
-    color-mix(in srgb, var(--mb-color-border), transparent 80%);
+    var(--mb-color-border-subtle);
 }
 
 *:hover > .triggerButton {
@@ -47,5 +43,5 @@
 }
 
 .moreButton:hover {
-  background-color: var(--mb-color-background-hover) !important;
+  background-color: var(--mb-color-background-hover);
 }

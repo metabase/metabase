@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import * as LibMetric from "metabase-lib/metric";
 
 import { BooleanFilterSection } from "../BooleanFilterSection";
@@ -18,7 +20,11 @@ export function FilterSection({
   filter,
   onRemove,
 }: FilterSectionProps) {
-  const FilterSectionWidget = getFilterSection(definition, filter);
+  const FilterSectionWidget = useMemo(
+    () => getFilterSection(definition, filter),
+    [definition, filter],
+  );
+
   if (FilterSectionWidget == null) {
     return null;
   }

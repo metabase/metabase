@@ -10,9 +10,9 @@ import type {
   SdkQuestionId,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type {
   ClickActionModeGetter,
+  ClickActionsMode,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
@@ -161,7 +161,7 @@ export type SdkQuestionContextType = Omit<
     | "onVisualizationChange"
   > & {
     plugins: SdkQuestionConfig["componentPlugins"] | null;
-    mode: QueryClickActionsMode | Mode | null | undefined;
+    mode: QueryClickActionsMode | ClickActionsMode | null | undefined;
     originalId: SdkQuestionId | null;
     token: EntityToken | null | undefined;
     resetQuestion: () => void;

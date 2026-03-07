@@ -9,7 +9,7 @@ import * as LibMetric from "metabase-lib/metric";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { WIDTH } from "../constants";
+import { FILTER_PICKER_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 import { useTimeFilter } from "./hooks";
@@ -66,7 +66,7 @@ export function TimeFilterPicker({
   return (
     <Box
       component="form"
-      w={WIDTH}
+      w={FILTER_PICKER_WIDTH}
       data-testid="time-filter-picker"
       onSubmit={handleFormSubmit}
     >

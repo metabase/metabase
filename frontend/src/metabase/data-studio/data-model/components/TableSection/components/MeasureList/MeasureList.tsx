@@ -61,7 +61,7 @@ export function MeasureList({ table }: MeasureListProps) {
         <EmptyState
           className={S.EmptyState}
           spacing="sm"
-          illustrationElement={<Icon name="sum" size={32} c="text-secondary" />}
+          illustrationElement={<Icon name="ruler" size={32} c="text-secondary" />}
           title={t`No measures yet`}
           message={t`Create a measure to define a reusable aggregation for this table.`}
         />

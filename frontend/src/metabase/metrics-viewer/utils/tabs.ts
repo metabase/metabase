@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { getObjectEntries } from "metabase/lib/objects";
 import type { IconName } from "metabase/ui";
 import type {
@@ -875,4 +877,88 @@ export function getSourceDisplayName(
   sourceDataById: Record<MetricSourceId, SourceDisplayInfo>,
 ): string {
   return sourceDataById[sourceId]?.name ?? sourceId;
+}
+
+// ── Dimension picker sections ──
+
+export type DimensionPickerItem = AvailableDimension & {
+  name: string;
+};
+
+export type DimensionPickerSection = {
+  name?: string;
+  items: DimensionPickerItem[];
+};
+
+export function buildDimensionPickerSections({
+  availableDimensions,
+  sourceOrder,
+  sourceDataById,
+  hasMultipleSources,
+}: {
+  availableDimensions: AvailableDimensionsResult;
+  sourceOrder: MetricSourceId[];
+  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>;
+  hasMultipleSources: boolean;
+}): DimensionPickerSection[] {
+  const sections: DimensionPickerSection[] = [];
+
+  const splitByGroup = (
+    dimensions: AvailableDimension[],
+    sectionName?: string,
+  ) => {
+    const groups = new Map<string | undefined, AvailableDimension[]>();
+    for (const dimension of dimensions) {
+      const groupId = dimension.group?.id;
+      const existing = groups.get(groupId);
+      if (existing) {
+        existing.push(dimension);
+      } else {
+        groups.set(groupId, [dimension]);
+      }
+    }
+
+    if (groups.size <= 1) {
+      sections.push({
+        name: sectionName,
+        items: dimensions.map((dimension) => ({
+          ...dimension,
+          name: dimension.label,
+        })),
+      });
+      return;
+    }
+
+    for (const [, groupDimensions] of groups) {
+      const groupName = groupDimensions[0].group?.displayName;
+      const name = sectionName ? `${sectionName} · ${groupName}` : groupName;
+      sections.push({
+        name,
+        items: groupDimensions.map((dimension) => ({
+          ...dimension,
+          name: dimension.label,
+        })),
+      });
+    }
+  };
+
+  if (hasMultipleSources && availableDimensions.shared.length > 0) {
+    splitByGroup(availableDimensions.shared, t`Shared`);
+  }
+
+  for (const sourceId of sourceOrder) {
+    const sourceDimensions = availableDimensions.bySource[sourceId];
+    if (!sourceDimensions || sourceDimensions.length === 0) {
+      continue;
+    }
+
+    if (hasMultipleSources) {
+      const sourceName = getSourceDisplayName(sourceId, sourceDataById);
+      splitByGroup(sourceDimensions, sourceName);
+    } else {
+      splitByGroup(sourceDimensions);
+    }
+  }
+
+  return sections;
 }

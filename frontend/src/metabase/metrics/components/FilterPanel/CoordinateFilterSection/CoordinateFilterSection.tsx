@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 
@@ -9,25 +11,31 @@ export function CoordinateFilterSection({
   filter,
   onRemove,
 }: FilterSectionWidgetProps) {
-  const filterParts = LibMetric.coordinateFilterParts(definition, filter);
-  if (filterParts == null) {
+  const filterInfo = useMemo(() => {
+    const filterParts = LibMetric.coordinateFilterParts(definition, filter);
+    if (filterParts == null) {
+      return null;
+    }
+    const dimensionInfo = LibMetric.displayInfo(
+      definition,
+      filterParts.dimension,
+    );
+    const operatorName = Lib.describeFilterOperator(
+      filterParts.operator,
+    ).toLowerCase();
+    return { filterParts, dimensionInfo, operatorName };
+  }, [definition, filter]);
+
+  if (filterInfo == null) {
     return null;
   }
 
-  const dimensionInfo = LibMetric.displayInfo(
-    definition,
-    filterParts.dimension,
-  );
-  const operatorName = Lib.describeFilterOperator(
-    filterParts.operator,
-  ).toLowerCase();
-
   return (
     <FilterSectionLayout
-      label={`${dimensionInfo.displayName} ${operatorName}`}
+      label={`${filterInfo.dimensionInfo.displayName} ${filterInfo.operatorName}`}
       onRemove={onRemove}
     >
-      {filterParts.values.join(", ")}
+      {filterInfo.filterParts.values.join(", ")}
     </FilterSectionLayout>
   );
 }

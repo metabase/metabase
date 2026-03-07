@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { getDatePickerValue } from "metabase/metrics/utils/dates";
 import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import * as LibMetric from "metabase-lib/metric";
@@ -10,23 +12,29 @@ export function DateFilterSection({
   filter,
   onRemove,
 }: FilterSectionWidgetProps) {
-  const filterParts = LibMetric.filterParts(definition, filter);
-  const filterValue = getDatePickerValue(definition, filter);
-  if (filterParts == null || filterValue == null) {
+  const filterInfo = useMemo(() => {
+    const filterParts = LibMetric.filterParts(definition, filter);
+    const filterValue = getDatePickerValue(definition, filter);
+    if (filterParts == null || filterValue == null) {
+      return null;
+    }
+    const dimensionInfo = LibMetric.displayInfo(
+      definition,
+      filterParts.dimension,
+    );
+    return { dimensionInfo, filterValue };
+  }, [definition, filter]);
+
+  if (filterInfo == null) {
     return null;
   }
 
-  const dimensionInfo = LibMetric.displayInfo(
-    definition,
-    filterParts.dimension,
-  );
-
   return (
     <FilterSectionLayout
-      label={`${dimensionInfo.displayName}`}
+      label={filterInfo.dimensionInfo.displayName}
       onRemove={onRemove}
     >
-      {getDateFilterDisplayName(filterValue)}
+      {getDateFilterDisplayName(filterInfo.filterValue)}
     </FilterSectionLayout>
   );
 }

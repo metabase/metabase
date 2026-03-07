@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 
@@ -9,29 +11,34 @@ export function TimeFilterSection({
   filter,
   onRemove,
 }: FilterSectionWidgetProps) {
-  const filterParts = LibMetric.timeFilterParts(definition, filter);
-  if (filterParts == null) {
+  const filterInfo = useMemo(() => {
+    const filterParts = LibMetric.timeFilterParts(definition, filter);
+    if (filterParts == null) {
+      return null;
+    }
+    const dimensionInfo = LibMetric.displayInfo(
+      definition,
+      filterParts.dimension,
+    );
+    const operatorName = Lib.describeFilterOperator(
+      filterParts.operator,
+    ).toLowerCase();
+    const formattedValues = filterParts.values
+      .map((date) => date.toLocaleTimeString())
+      .join(", ");
+    return { dimensionInfo, operatorName, formattedValues };
+  }, [definition, filter]);
+
+  if (filterInfo == null) {
     return null;
   }
 
-  const dimensionInfo = LibMetric.displayInfo(
-    definition,
-    filterParts.dimension,
-  );
-  const operatorName = Lib.describeFilterOperator(
-    filterParts.operator,
-  ).toLowerCase();
-
-  const formattedValues = filterParts.values
-    .map((d) => d.toLocaleTimeString())
-    .join(", ");
-
   return (
     <FilterSectionLayout
-      label={`${dimensionInfo.displayName} ${operatorName}`}
+      label={`${filterInfo.dimensionInfo.displayName} ${filterInfo.operatorName}`}
       onRemove={onRemove}
     >
-      {formattedValues}
+      {filterInfo.formattedValues}
     </FilterSectionLayout>
   );
 }

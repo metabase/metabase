@@ -6,7 +6,7 @@ import * as LibMetric from "metabase-lib/metric";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { WIDTH } from "../constants";
+import { FILTER_PICKER_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 import { useDefaultFilter } from "./hooks";
@@ -54,7 +54,7 @@ export function DefaultFilterPicker({
   return (
     <Box
       component="form"
-      miw={WIDTH}
+      miw={FILTER_PICKER_WIDTH}
       data-testid="default-filter-picker"
       onSubmit={handleFormSubmit}
     >

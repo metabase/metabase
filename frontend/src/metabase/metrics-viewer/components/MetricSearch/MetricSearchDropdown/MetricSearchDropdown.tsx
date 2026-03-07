@@ -104,8 +104,7 @@ export function MetricSearchDropdown({
     return (
       <Flex
         direction="column"
-        miw="19rem"
-        maw="25rem"
+        w="22rem"
         mah="25rem"
         onClick={(e) => e.stopPropagation()}
       >

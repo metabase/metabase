@@ -1,19 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  AccordionList,
-  type Section,
-} from "metabase/common/components/AccordionList";
+import { AccordionList } from "metabase/common/components/AccordionList";
 import { ActionIcon, Icon, Popover } from "metabase/ui";
 
 import type { MetricSourceId } from "../../../types/viewer-state";
 import type {
-  AvailableDimension,
   AvailableDimensionsResult,
+  DimensionPickerItem,
   SourceDisplayInfo,
 } from "../../../utils/tabs";
-import { getSourceDisplayName } from "../../../utils/tabs";
+import { buildDimensionPickerSections } from "../../../utils/tabs";
 
 import S from "./AddDimensionPopover.module.css";
 
@@ -25,10 +22,6 @@ type AddDimensionPopoverProps = {
   onAddTab: (dimensionId: string) => void;
 };
 
-type DimensionItem = AvailableDimension & {
-  name: string;
-};
-
 export function AddDimensionPopover({
   availableDimensions,
   sourceOrder,
@@ -38,62 +31,19 @@ export function AddDimensionPopover({
 }: AddDimensionPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const sections: Section<DimensionItem>[] = useMemo(() => {
-    const result: Section<DimensionItem>[] = [];
-
-    const splitByGroup = (dims: AvailableDimension[], sectionName?: string) => {
-      const groups = new Map<string | undefined, AvailableDimension[]>();
-      for (const dim of dims) {
-        const groupId = dim.group?.id;
-        const arr = groups.get(groupId);
-        if (arr) {
-          arr.push(dim);
-        } else {
-          groups.set(groupId, [dim]);
-        }
-      }
-
-      if (groups.size <= 1) {
-        result.push({
-          name: sectionName,
-          items: dims.map((dim) => ({ ...dim, name: dim.label })),
-        });
-        return;
-      }
-
-      for (const [, groupDims] of groups) {
-        const groupName = groupDims[0].group?.displayName;
-        const name = sectionName ? `${sectionName} · ${groupName}` : groupName;
-        result.push({
-          name,
-          items: groupDims.map((dim) => ({ ...dim, name: dim.label })),
-        });
-      }
-    };
-
-    if (hasMultipleSources && availableDimensions.shared.length > 0) {
-      splitByGroup(availableDimensions.shared, t`Shared`);
-    }
-
-    for (const sourceId of sourceOrder) {
-      const sourceDimensions = availableDimensions.bySource[sourceId];
-      if (!sourceDimensions || sourceDimensions.length === 0) {
-        continue;
-      }
-
-      if (hasMultipleSources) {
-        const sourceName = getSourceDisplayName(sourceId, sourceDataById);
-        splitByGroup(sourceDimensions, sourceName);
-      } else {
-        splitByGroup(sourceDimensions);
-      }
-    }
-
-    return result;
-  }, [availableDimensions, sourceOrder, sourceDataById, hasMultipleSources]);
+  const sections = useMemo(
+    () =>
+      buildDimensionPickerSections({
+        availableDimensions,
+        sourceOrder,
+        sourceDataById,
+        hasMultipleSources,
+      }),
+    [availableDimensions, sourceOrder, sourceDataById, hasMultipleSources],
+  );
 
   const handleSelect = useCallback(
-    (item: DimensionItem) => {
+    (item: DimensionPickerItem) => {
       onAddTab(item.dimensionId);
       setIsOpen(false);
     },
@@ -101,7 +51,7 @@ export function AddDimensionPopover({
   );
 
   const renderItemIcon = useCallback(
-    (item: DimensionItem) => <Icon name={item.icon} />,
+    (item: DimensionPickerItem) => <Icon name={item.icon} />,
     [],
   );
 

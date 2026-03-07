@@ -10,7 +10,7 @@ import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { StringFilterValuePicker } from "../FilterValuePicker";
-import { COMBOBOX_PROPS, WIDTH } from "../constants";
+import { COMBOBOX_PROPS, FILTER_PICKER_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 import { useStringFilter } from "./hooks";
@@ -66,7 +66,7 @@ export function StringFilterPicker({
   return (
     <Box
       component="form"
-      w={WIDTH}
+      w={FILTER_PICKER_WIDTH}
       data-testid="string-filter-picker"
       onSubmit={handleFormSubmit}
     >

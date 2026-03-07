@@ -12,7 +12,7 @@ import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { NumberFilterValuePicker } from "../FilterValuePicker";
-import { COMBOBOX_PROPS, WIDTH } from "../constants";
+import { COMBOBOX_PROPS, FILTER_PICKER_WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 import { useNumberFilter } from "./hooks";
@@ -67,7 +67,7 @@ export function NumberFilterPicker({
   return (
     <Box
       component="form"
-      w={WIDTH}
+      w={FILTER_PICKER_WIDTH}
       data-testid="number-filter-picker"
       onSubmit={handleFormSubmit}
     >

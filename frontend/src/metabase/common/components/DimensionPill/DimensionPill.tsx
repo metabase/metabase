@@ -111,21 +111,6 @@ export function DimensionPill({
     [options],
   );
 
-  const pillContent = (
-    <Flex
-      className={cx(S.pill, isInteractive && S.interactive)}
-      align="center"
-      gap="xs"
-      opacity={disabled || isEmpty ? 0.6 : undefined}
-      onClick={isInteractive ? () => setIsOpen(true) : undefined}
-    >
-      <SourceColorIndicator colors={colors} fallbackIcon={icon ?? "add"} />
-      <Text size="sm" lh={1} c={isEmpty ? "text-tertiary" : undefined}>
-        {pillLabel}
-      </Text>
-    </Flex>
-  );
-
   return (
     <Popover
       opened={isOpen}
@@ -133,7 +118,20 @@ export function DimensionPill({
       position="top-start"
       disabled={!canOpenPopover}
     >
-      <Popover.Target>{pillContent}</Popover.Target>
+      <Popover.Target>
+        <Flex
+          className={cx(S.pill, isInteractive && S.interactive)}
+          align="center"
+          gap="xs"
+          opacity={disabled || isEmpty ? 0.6 : undefined}
+          onClick={isInteractive ? () => setIsOpen(true) : undefined}
+        >
+          <SourceColorIndicator colors={colors} fallbackIcon={icon ?? "add"} />
+          <Text size="sm" lh={1} c={isEmpty ? "text-tertiary" : undefined}>
+            {pillLabel}
+          </Text>
+        </Flex>
+      </Popover.Target>
       <Popover.Dropdown px={0} py="xs" mah={300} className={S.dropdown}>
         {hasMultipleOptions && (
           <AccordionList

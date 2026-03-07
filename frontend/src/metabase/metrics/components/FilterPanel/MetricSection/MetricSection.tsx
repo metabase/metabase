@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { FixedSizeIcon, Group, type IconName, Stack } from "metabase/ui";
 import * as LibMetric from "metabase-lib/metric";
 
@@ -9,7 +11,11 @@ type MetricSectionProps = {
 };
 
 export function MetricSection({ definition, onRemove }: MetricSectionProps) {
-  const filters = LibMetric.filters(definition);
+  const filters = useMemo(
+    () => LibMetric.filters(definition),
+    [definition],
+  );
+
   if (filters.length === 0) {
     return null;
   }
@@ -36,8 +42,13 @@ type MetricHeaderProps = {
 };
 
 function MetricHeader({ definition }: MetricHeaderProps) {
-  const label = getMetricLabel(definition);
-  const icon = getMetricIcon(definition);
+  const { label, icon } = useMemo(
+    () => ({
+      label: getMetricLabel(definition),
+      icon: getMetricIcon(definition),
+    }),
+    [definition],
+  );
 
   return (
     <Group>

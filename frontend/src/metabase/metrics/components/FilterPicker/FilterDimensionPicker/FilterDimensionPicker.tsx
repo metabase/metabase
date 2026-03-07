@@ -13,7 +13,7 @@ import {
 } from "metabase/ui";
 import type * as LibMetric from "metabase-lib/metric";
 
-import { WIDTH } from "../constants";
+import { FILTER_PICKER_WIDTH } from "../constants";
 
 import S from "./FilterDimensionPicker.module.css";
 import type { DimensionListItem, DimensionSection } from "./types";
@@ -67,7 +67,7 @@ export function FilterDimensionPicker({
         renderItemName={(item) => item.name}
         renderItemDescription={() => undefined}
         renderItemIcon={renderItemIcon}
-        width={WIDTH}
+        width={FILTER_PICKER_WIDTH}
         maxHeight={Infinity}
         itemTestId="dimension-list-item"
         alwaysExpanded
@@ -91,7 +91,7 @@ export function FilterDimensionPicker({
           renderItemName={(item) => item.name}
           renderItemDescription={() => undefined}
           renderItemIcon={renderItemIcon}
-          width={WIDTH}
+          width={FILTER_PICKER_WIDTH}
           maxHeight={Infinity}
           itemTestId="dimension-list-item"
           alwaysExpanded
