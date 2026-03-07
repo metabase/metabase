@@ -7,6 +7,8 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -124,7 +126,12 @@
                                                               (deps.calculation/upstream-deps:transform object)))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Transform (:id object) {:dependency_analysis_version models.dependency/current-dependency-analysis-version}))
-      (drop-outdated-target-dep! object))))
+      (drop-outdated-target-dep! object)
+      ;; Ensure a provisional table row exists for the transform's target
+      (let [target (:target object)
+            db-id  (transforms-base.i/target-db-id object)]
+        (when (and db-id (:name target))
+          (transforms-base.u/upsert-provisional-table! db-id (:schema target) (:name target)))))))
 
 (derive ::transform-delete :metabase/event)
 (derive :event/delete-transform ::transform-delete)

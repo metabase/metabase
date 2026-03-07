@@ -299,6 +299,36 @@
               qp.compile/compile
               (post-process-incremental-query driver source checkpoint)))))))
 
+;;; ------------------------------------------------- Provisional Table Management -------------------------------------------------
+
+(defn upsert-provisional-table!
+  "Ensure a metabase_table row exists for the given (db_id, schema, name) triple.
+   If the table doesn't exist, creates it as provisional (inactive, not yet physically materialized).
+   If it already exists (active or inactive), returns its id without modification.
+   Returns the table id."
+  [db-id schema table-name]
+  (or (t2/select-one-pk :model/Table
+                        :db_id db-id
+                        :schema schema
+                        :name table-name)
+      (try
+        (:id (t2/insert-returning-instance!
+              :model/Table
+              {:db_id               db-id
+               :schema              schema
+               :name                table-name
+               :display_name        ((requiring-resolve 'metabase.models.humanization/name->human-readable-name) table-name)
+               :active              false
+               :provisional         true
+               :data_source         :transform
+               :initial_sync_status "complete"}))
+        ;; Handle unique constraint violation from concurrent inserts
+        (catch Exception _
+          (t2/select-one-pk :model/Table
+                            :db_id db-id
+                            :schema schema
+                            :name table-name)))))
+
 ;;; ------------------------------------------------- Target Table Management -------------------------------------------------
 
 (defn target-table
@@ -334,8 +364,8 @@
                                                 :data_authority :computed
                                                 :data_source :metabase-transform)
                                 {:create? true})]
-    (when-not (:active table)
-      (t2/update! :model/Table (:id table) {:active true}))
+    (when (or (not (:active table)) (:provisional table))
+      (t2/update! :model/Table (:id table) {:active true :provisional false}))
     table))
 
 (defn sync-target!
@@ -634,9 +664,11 @@
               (and (:table_id entry) (not (:table entry)))
               (merge (int-id->metadata (:table_id entry)) entry)
 
-              ;; Has table metadata but no table_id — look it up
+              ;; Has table metadata but no table_id — look it up, upsert provisional if not found
               (missing-table-id? entry)
-              (assoc entry :table_id (ref-lookup (source-table-ref->key entry)))
+              (assoc entry :table_id (or (ref-lookup (source-table-ref->key entry))
+                                         (when (and (:database_id entry) (:table entry))
+                                           (upsert-provisional-table! (:database_id entry) (:schema entry) (:table entry)))))
 
               ;; Already fully populated
               :else entry))
