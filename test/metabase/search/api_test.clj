@@ -1891,8 +1891,7 @@
 (deftest ^:synchronized multiple-limits-test
   (mq.tu/with-sync-mq
     (when (search/supports-index?)
-      ;; This test is failing with "no index" for some reason, forcing the reindex
-      (mt/user-http-request :crowberto :post 200 "search/force-reindex"))
+      (search/queue-reindex!))
     (testing "Multiple `limit` query args should be handled correctly (#45345)"
       (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product") ;; using real request to support the double limit query params
                             :data count)

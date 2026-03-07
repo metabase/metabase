@@ -39,7 +39,6 @@
    [metabase.mq.queue.memory :as q.memory]
    [metabase.mq.queue.sync :as q.sync]
    [metabase.mq.topic.appdb :as topic.appdb]
-   [metabase.mq.topic.backend :as topic.backend]
    [metabase.mq.topic.impl :as topic.impl]
    [metabase.mq.topic.memory :as topic.memory]
    [metabase.mq.topic.sync :as topic.sync]

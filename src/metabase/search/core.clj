@@ -93,4 +93,3 @@
                             seq)]
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
       (search.ingestion/queue-updates updates))))
-

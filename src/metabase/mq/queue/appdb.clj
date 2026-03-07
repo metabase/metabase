@@ -24,18 +24,20 @@
 
 (defn- supports-skip-locked?
   "Returns true if the current app DB supports SELECT ... FOR UPDATE SKIP LOCKED.
-  Postgres (9.5+), H2, and MySQL 8.0+ support it. MariaDB only supports it since 10.6."
+  Postgres (9.5+) and MySQL 8.0+ support it. MariaDB only supports it since 10.6. H2 does not support it."
   []
-  (if (= :mysql (mdb/db-type))
-    (with-open [conn (.getConnection ^DataSource (mdb/data-source))]
-      (let [metadata (.getMetaData conn)
-            product  (.getDatabaseProductName metadata)
-            major    (.getDatabaseMajorVersion metadata)
-            minor    (.getDatabaseMinorVersion metadata)]
-        (if (= product "MariaDB")
-          (or (> major 10) (and (= major 10) (>= minor 6)))
-          ;; MySQL 8.0+ supports SKIP LOCKED
-          (>= major 8))))
+  (case (mdb/db-type)
+    :h2    false
+    :mysql (with-open [conn (.getConnection ^DataSource (mdb/data-source))]
+             (let [metadata (.getMetaData conn)
+                   product  (.getDatabaseProductName metadata)
+                   major    (.getDatabaseMajorVersion metadata)
+                   minor    (.getDatabaseMinorVersion metadata)]
+               (if (= product "MariaDB")
+                 (or (> major 10) (and (= major 10) (>= minor 6)))
+                 ;; MySQL 8.0+ supports SKIP LOCKED
+                 (>= major 8))))
+    ;; Postgres 9.5+ supports SKIP LOCKED
     true))
 
 (def ^:private skip-locked-supported? (delay (supports-skip-locked?)))
