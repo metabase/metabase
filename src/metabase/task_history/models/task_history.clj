@@ -136,7 +136,7 @@
   "Schema for `info` passed to the `with-task-history` macro."
   [:map {:closed true}
    [:task                             ms/NonBlankString] ; task name, i.e. `send-pulses`. Conventionally lisp-cased
-   [:parent          {:optional true} [:maybe :string]]  ; parent task name
+   [:parent          {:optional true} [:maybe :int]]     ; parent task ID
    [:db_id           {:optional true} [:maybe :int]]     ; DB involved, for sync operations or other tasks where this is applicable.
    [:on-success-info {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
    [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
@@ -219,8 +219,8 @@
               nil)
             (clojure.tools.logging.impl/write! base-logger level ex msg)))))))
 
-(mu/defn do-with-task-history
-  "Impl for `with-task-history` macro; see documentation below."
+(mu/defn do-with-task-history-with-id
+  "Implementation for with-task-history macro. Passes the task ID to the function."
   [info :- TaskHistoryInfo f]
   (let [on-success-info (or (:on-success-info info) (fn [& args] (first args)))
         on-fail-info    (or (:on-fail-info info) (fn [& args] (first args)))
@@ -231,12 +231,13 @@
                                                  (cond-> (assoc info
                                                                 :status     :started
                                                                 :started_at (t/instant))
-                                                   run-id (assoc :run_id run-id)))
+                                                   run-id (assoc :run_id run-id)
+                                                   (:parent info) (assoc :parent (:parent info))))
         logs-atom       (log-capture-atom)]
     (binding [clojure.tools.logging/*logger-factory*
               (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]
       (try
-        (u/prog1 (f)
+        (u/prog1 (f th-id)
           (update-task-history! th-id start-time-ns (on-success-info {:status       :success
                                                                       :task_details (:task_details info)
                                                                       :logs         (log-capture-entries @logs-atom)}
@@ -254,6 +255,12 @@
                                               e))
           (throw e))))))
 
+(mu/defn do-with-task-history
+  "Impl for `with-task-history` macro; see documentation below.
+   Delegates to do-with-task-history-with-id but ignores the task ID for backward compatibility."
+  [info :- TaskHistoryInfo f]
+  (do-with-task-history-with-id info (fn [_task-id] (f))))
+
 (defmacro with-task-history
   "Record a TaskHistory before executing the body, updating TaskHistory accordingly when the body completes.
   `info` should contain at least a name for the task (conventionally lisp-cased) as `:task`;
@@ -265,14 +272,23 @@
                         :on-fail-info (fn [info e] (assoc-in info [:task-details :exception-class] (class e)))}
       ...)
 
-  Optionally takes:
+  Can also accept an optional binding vector to receive the task history ID:
+
+    (with-task-history {:task \"parent-task\"} [task-id]
+      ;; task-id is available here
+      (child-task task-id))
+
+  The info map optionally takes:
     - on-success-info: a function that takes the updated task history and the result of the task,
       returns a map of task history info to update when the task succeeds.
     - on-fail-info: a function that takes the updated task history and the exception thrown by the task,
       returns a map of task history info to update when the task fails."
   {:style/indent 1}
-  [info & body]
-  `(do-with-task-history ~info (fn [] ~@body)))
+  [info & args]
+  (if (vector? (first args)) ;; has a parent
+    (let [[id-binding & body] args]
+      `(do-with-task-history-with-id ~info (fn ~id-binding ~@body)))
+    `(do-with-task-history ~info (fn [] ~@args))))
 
 ;; TaskHistory can contain an exception for logging purposes, so use the built-in
 ;; serialization of a `Throwable->map` to make this something that can be JSON encoded.

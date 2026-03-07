@@ -13,6 +13,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [toucan2.core :as t2]))
 
@@ -104,69 +105,77 @@
   {:id true, :db_id true, :started_at true, :ended_at true :status :success})
 
 (defn- fetch-task-history-row [task-name]
-  (let [task-history (t2/select-one :model/TaskHistory :task task-name)]
+  (let [task-history (t2/select-one :model/TaskHistory :task task-name)
+        parent-value (:parent task-history)]
     (assert (integer? (:duration task-history)))
-    (tu/boolean-ids-and-timestamps (dissoc task-history :duration))))
+    (-> (tu/boolean-ids-and-timestamps (dissoc task-history :duration :logs :run_id))
+        (assoc :parent parent-value))))
 
 (deftest task-history-test
-  (let [process-name (mt/random-name)
-        step-1-name  (mt/random-name)
-        step-2-name  (mt/random-name)
-        sync-steps   [(sync-util/create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:foo "bar"}))
-                      (sync-util/create-sync-step step-2-name (fn [_] (Thread/sleep 10)))]
-        mock-db      (mi/instance :model/Database {:name "test", :id 1, :engine :h2})
-        [results]    (:operation-results
-                      (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps)))]
-    (testing "valid operation metadata?"
-      (is (true?
-           (validate-times results))))
-    (testing "valid step metadata?"
-      (is (= [true true]
-             (map (comp validate-times second) (:steps results)))))
-    (testing "step names"
-      (is (= [step-1-name step-2-name]
-             (map first (:steps results)))))
-    (testing "operation history"
-      (is (=? (merge default-task-history {:task process-name, :task_details nil, :parent nil})
-              (fetch-task-history-row process-name))))
-    (testing "step 1 history"
-      (is (=? (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}, :parent process-name})
-              (fetch-task-history-row step-1-name))))
-    (testing "step 2 history"
-      (is (=? (merge default-task-history {:task step-2-name, :task_details nil, :parent process-name})
-              (fetch-task-history-row step-2-name))))))
+  ((fixtures/initialize :db)
+   (fn []
+     (let [process-name (mt/random-name)
+           step-1-name  (mt/random-name)
+           step-2-name  (mt/random-name)
+           sync-steps   [(sync-util/create-sync-step step-1-name (fn [_] (Thread/sleep 10) {:foo "bar"}))
+                         (sync-util/create-sync-step step-2-name (fn [_] (Thread/sleep 10)))]
+           mock-db      (mi/instance :model/Database {:name "test", :id 1, :engine :h2})
+           [results]    (:operation-results
+                         (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps)))]
+       (testing "valid operation metadata?"
+         (is (true?
+              (validate-times results))))
+       (testing "valid step metadata?"
+         (is (= [true true]
+                (map (comp validate-times second) (:steps results)))))
+       (testing "step names"
+         (is (= [step-1-name step-2-name]
+                (map first (:steps results)))))
+       (testing "operation history"
+         (let [parent-task (fetch-task-history-row process-name)]
+           (is (=? (merge default-task-history {:task process-name, :task_details nil, :parent nil})
+                   parent-task))
+           (testing "step 1 history"
+             (is (=? (merge default-task-history {:task step-1-name, :task_details {:foo "bar"}, :parent pos-int?})
+                     (fetch-task-history-row step-1-name))))
+           (testing "step 2 history"
+             (is (=? (merge default-task-history {:task step-2-name, :task_details nil, :parent pos-int?})
+                     (fetch-task-history-row step-2-name))))))))))
 
 (deftest run-sync-operation-record-failed-task-history-test
-  (let [process-name (mt/random-name)
-        step-name-1  (mt/random-name)
-        step-name-2  (mt/random-name)
-        mock-db      (mi/instance :model/Database {:name "test", :id 1, :engine :h2})
-        sync-steps   [(sync-util/create-sync-step step-name-1
-                                                  (fn [_]
-                                                    (throw (ex-info "Sorry" {}))))
-                      (sync-util/create-sync-step step-name-2
-                                                  (fn [_]
-                                                    (sync-util/with-error-handling "fail"
-                                                      (throw (ex-info "Sorry" {})))))]]
-    (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps))
-    (testing "operation history"
-      (is (=? (merge default-task-history {:task process-name, :task_details nil, :parent nil})
-              (fetch-task-history-row process-name))))
-    (testing "step history should has status is failed"
-      (is (=? (merge default-task-history
-                     {:task         step-name-1
-                      :task_details {:exception  (mt/malli=? :string)
-                                     :stacktrace (mt/malli=? [:sequential :string])}
-                      :status       :failed
-                      :parent       process-name})
-              (fetch-task-history-row step-name-1)))
-      (is (=? (merge default-task-history
-                     {:task         step-name-2
-                      :task_details {:exception  (mt/malli=? :string)
-                                     :stacktrace (mt/malli=? [:sequential :string])}
-                      :status       :failed
-                      :parent       process-name})
-              (fetch-task-history-row step-name-2))))))
+  ((fixtures/initialize :db)
+   (fn []
+     (let [process-name (mt/random-name)
+           step-name-1  (mt/random-name)
+           step-name-2  (mt/random-name)
+           mock-db      (mi/instance :model/Database {:name "test", :id 1, :engine :h2})
+           sync-steps   [(sync-util/create-sync-step step-name-1
+                                                     (fn [_]
+                                                       (throw (ex-info "Sorry" {}))))
+                         (sync-util/create-sync-step step-name-2
+                                                     (fn [_]
+                                                       (sync-util/with-error-handling "fail"
+                                                         (throw (ex-info "Sorry" {})))))]]
+       (call-with-operation-info! #(sync-util/run-sync-operation process-name mock-db sync-steps))
+       (testing "operation history"
+         (let [parent-task (fetch-task-history-row process-name)]
+           (is (=? (merge default-task-history {:task process-name, :task_details nil, :parent nil})
+                   parent-task))
+           (testing "step history should has status is failed"
+             (is (=? (merge default-task-history
+                            {:task         step-name-1
+                             :task_details {:exception  (mt/malli=? :string)
+                                            :stacktrace (mt/malli=? [:sequential :string])}
+                             :status       :failed
+                             :parent       pos-int?})
+                     (fetch-task-history-row step-name-1)))
+             (is (=? (merge default-task-history
+                            {:task         step-name-2
+                             :task_details {:exception  (mt/malli=? :string)
+                                            :stacktrace (mt/malli=? [:sequential :string])}
+                             :status       :failed
+                             :parent       pos-int?})
+                     (fetch-task-history-row step-name-2))))))))))
 
 (defn- create-test-sync-summary [step-name log-summary-fn]
   (let [start (t/zoned-date-time)]
