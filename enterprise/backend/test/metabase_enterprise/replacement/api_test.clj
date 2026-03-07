@@ -342,4 +342,3 @@
   (testing "POST /runs/:id/cancel — returns 404 for non-existent run"
     (mt/with-premium-features #{:dependencies}
       (mt/user-http-request :crowberto :post 404 "ee/replacement/runs/999999/cancel"))))
-

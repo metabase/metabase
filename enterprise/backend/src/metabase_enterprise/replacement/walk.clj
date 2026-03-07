@@ -24,7 +24,7 @@
   (mapv #(m/update-existing-in % [:values_source_config :card_id] card-id-fn) parameters))
 
 (mu/defn walk-parameter-source-card-refs :- [:sequential :map]
-  "Walk the parameters and update the refs in `:value_field` and `:label_field` 
+  "Walk the parameters and update the refs in `:value_field` and `:label_field`
   in the `:values_source_config` using the provided function.
 
   `ref-fn` will be called with a ref and a card ID and should return a new ref."
