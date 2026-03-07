@@ -747,7 +747,7 @@ describe("scenarios > question > native", () => {
 // causes error in cypress 13
 describe("no native access", { tags: ["@external", "@skip"] }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
     cy.intercept("/api/database?saved=true").as("database");
     cy.updatePermissionsGraph({

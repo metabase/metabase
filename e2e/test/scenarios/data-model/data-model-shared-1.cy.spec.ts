@@ -122,7 +122,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           .should("not.exist");
 
         cy.log("database selected");
-        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getDatabase("Writable Postgres14").click();
         H.DataModel.get()
           .findByText(/Not found/)
           .should("not.exist");
@@ -303,7 +303,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           TablePicker.getDatabase("Sample Database").should("be.visible");
 
           cy.log("open database");
-          TablePicker.getDatabase("Writable Postgres12")
+          TablePicker.getDatabase("Writable Postgres14")
             .should("be.visible")
             .click();
           checkLocation(`/database/${WRITABLE_DB_ID}`);
@@ -374,10 +374,10 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
           cy.log("close database");
           if (area === "admin") {
-            TablePicker.getDatabase("Writable Postgres12").click();
+            TablePicker.getDatabase("Writable Postgres14").click();
           }
           if (area === "data studio") {
-            TablePicker.getDatabase("Writable Postgres12").within(() => {
+            TablePicker.getDatabase("Writable Postgres14").within(() => {
               cy.findByRole("button", { name: "Collapse" }).click();
             });
           }
@@ -395,8 +395,8 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
           if (area === "admin") {
             cy.log("databases, schemas, and tables should be links");
             TablePicker.getDatabase("Sample Database").click();
-            TablePicker.getDatabase("Writable Postgres12").click();
-            TablePicker.getDatabase("Writable Postgres12")
+            TablePicker.getDatabase("Writable Postgres14").click();
+            TablePicker.getDatabase("Writable Postgres14")
               .should("have.prop", "tagName", "A")
               .and(
                 "have.attr",
@@ -543,7 +543,7 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
         visit();
-        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getDatabase("Writable Postgres14").click();
         TablePicker.getSchema("Domestic").click();
         TablePicker.getTable("Animals").click();
 

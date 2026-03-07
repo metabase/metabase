@@ -230,12 +230,12 @@ describe("scenarios > question > custom column > function browser", () => {
 
 describe("scenarios > question > custom column > splitPart", () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
 
     H.startNewQuestion();
     H.miniPicker().within(() => {
-      cy.findByText("QA Postgres12").click();
+      cy.findByText("QA Postgres14").click();
       cy.findByText("People").click();
     });
 
@@ -286,14 +286,14 @@ describe("scenarios > question > custom column > splitPart", () => {
 
 describe("exercise today() function", () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
   });
 
   it("should show today's date", () => {
     H.startNewQuestion();
     H.miniPicker().within(() => {
-      cy.findByText("QA Postgres12").click();
+      cy.findByText("QA Postgres14").click();
       cy.findByText("Products").click();
     });
 

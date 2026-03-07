@@ -254,7 +254,7 @@ describe("issue 38354", { tags: "@external" }, () => {
   };
 
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
     H.createQuestion(QUESTION_DETAILS, { visitQuestion: true });
   });
@@ -264,7 +264,7 @@ describe("issue 38354", { tags: "@external" }, () => {
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
     H.miniPicker().within(() => {
       H.miniPickerHeader().click();
-      cy.findByText("QA Postgres12").click();
+      cy.findByText("QA Postgres14").click();
       cy.findByText("Orders").click();
     });
 

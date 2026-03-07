@@ -201,7 +201,7 @@ describe("issue 52411", { tags: "@external" }, () => {
     cy.visit("/admin/datamodel/segments");
     cy.findByTestId("segment-list-table").findByText("Filter by table").click();
     H.popover().within(() => {
-      cy.findByText("Writable Postgres12").click();
+      cy.findByText("Writable Postgres14").click();
       cy.findByText("Wild").click();
       cy.findByText("Birds").click();
     });

@@ -66,7 +66,7 @@ describe(
   { tags: ["@external", "@actions"] },
   () => {
     beforeEach(() => {
-      H.restore("postgres-12");
+      H.restore("postgres-14");
       cy.signInAsAdmin();
       H.setActionsEnabledForDB(WRITABLE_DB_ID);
 
@@ -196,7 +196,7 @@ describe(
         cy.findByDisplayValue(SAMPLE_QUERY_ACTION.name).should("be.disabled");
 
         cy.findByText("Sample Database").should("not.exist");
-        cy.findByText("QA Postgres12").should("not.exist");
+        cy.findByText("QA Postgres14").should("not.exist");
 
         cy.button("Save").should("not.exist");
         cy.button("Update").should("not.exist");
@@ -215,10 +215,10 @@ describe(
       cy.reload();
 
       // Check can pick between all databases
-      cy.findByRole("dialog").findByText("QA Postgres12").click();
+      cy.findByRole("dialog").findByText("QA Postgres14").click();
       H.popover().within(() => {
         cy.findByText("Sample Database").should("be.visible");
-        cy.findByText("QA Postgres12").should("be.visible");
+        cy.findByText("QA Postgres14").should("be.visible");
       });
 
       cy.signInAsAdmin();
@@ -228,7 +228,7 @@ describe(
 
       // Check can only see the action database
       cy.findByRole("dialog").within(() => {
-        cy.findByText("QA Postgres12").click();
+        cy.findByText("QA Postgres14").click();
 
         cy.findByText("Sample Database").should("not.exist");
       });

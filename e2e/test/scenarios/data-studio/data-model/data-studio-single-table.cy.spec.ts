@@ -99,10 +99,10 @@ describe("Table editing", () => {
   );
 
   it("should allow to edit attributes", { tags: ["@external"] }, () => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     H.activateToken("bleeding-edge");
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("QA Postgres12").click();
+    TablePicker.getDatabase("QA Postgres14").click();
     TablePicker.getTable("Orders").click();
 
     H.selectHasValue("Owner", "No owner").click();
@@ -163,7 +163,7 @@ describe("Table editing", () => {
         name: TRANSFORM_NAME,
       }).then(() => {
         H.DataModel.visitDataStudio();
-        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getDatabase("Writable Postgres14").click();
         TablePicker.getSchema(TARGET_SCHEMA).click();
         TablePicker.getTable(TRANSFORM_TABLE_DISPLAY_NAME).click();
 

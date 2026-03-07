@@ -91,7 +91,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.log("shows workspace db");
         Workspaces.getWorkspaceDatabaseSelect()
-          .should("have.value", "Writable Postgres12")
+          .should("have.value", "Writable Postgres14")
           .should("be.enabled");
 
         cy.log("Doesn't show workspace setup logs");
@@ -593,13 +593,13 @@ describe("scenarios > data studio > workspaces", () => {
       H.popover()
         .findByRole("option", { name: "Sample Database" })
         .should("not.exist");
-      H.popover().findByRole("option", { name: "Writable Postgres12" }).click();
+      H.popover().findByRole("option", { name: "Writable Postgres14" }).click();
 
       cy.log("Verify database was changed");
       verifyAndCloseToast("Successfully updated workspace database");
       Workspaces.getWorkspaceDatabaseSelect().should(
         "have.value",
-        "Writable Postgres12",
+        "Writable Postgres14",
       );
     });
 
@@ -623,7 +623,7 @@ describe("scenarios > data studio > workspaces", () => {
         cy.log("Database dropdown should be disabled after adding transforms");
         Workspaces.getWorkspaceDatabaseSelect()
           .should("be.disabled")
-          .should("have.value", "Writable Postgres12");
+          .should("have.value", "Writable Postgres14");
 
         cy.log("Setup log should be visible");
         cy.findByText(/Setting up the workspace/).should("be.visible");
@@ -1686,7 +1686,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.visitTransformListPage();
       cy.button("Create a transform").click();
       H.popover().findByText("SQL query").click();
-      H.popover().findByText("Writable Postgres12").click();
+      H.popover().findByText("Writable Postgres14").click();
 
       cy.get("@modelId").then((modelId) => {
         H.NativeEditor.type(`SELECT * FROM {{#${modelId}-animals}} as t;`);
@@ -2273,7 +2273,7 @@ describe("scenarios > data studio > workspaces", () => {
       // to avoid flakiness on editor's focus
       cy.findByTestId("native-query-top-bar").should(
         "contain.text",
-        "Writable Postgres12",
+        "Writable Postgres14",
       );
       NativeEditor.type("select 1");
       cy.button("Save").click();

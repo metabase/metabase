@@ -9,7 +9,7 @@ const PG_DB_ID = 2;
 describe("impersonated permission", { tags: "@external" }, () => {
   describe("admins", () => {
     beforeEach(() => {
-      H.restore("postgres-12");
+      H.restore("postgres-14");
       H.createTestRoles({ type: "postgres" });
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
@@ -45,7 +45,7 @@ describe("impersonated permission", { tags: "@external" }, () => {
       };
 
       beforeEach(() => {
-        H.restore("postgres-12");
+        H.restore("postgres-14");
         H.createTestRoles({ type: "postgres" });
         cy.signInAsAdmin();
         H.activateToken("pro-self-hosted");
@@ -78,7 +78,7 @@ describe("impersonated permission", { tags: "@external" }, () => {
         H.startNewNativeQuestion();
 
         cy.findByTestId("gui-builder-data").click();
-        cy.findByLabelText("QA Postgres12").click();
+        cy.findByLabelText("QA Postgres14").click();
         H.NativeEditor.type("select * from reviews");
         H.runNativeQuery();
 
@@ -103,7 +103,7 @@ describe("impersonated permission", { tags: "@external" }, () => {
         );
         H.startNewNativeQuestion();
         cy.findByTestId("gui-builder-data").click();
-        cy.findByLabelText("QA Postgres12").click();
+        cy.findByLabelText("QA Postgres14").click();
         H.NativeEditor.type("select * from reviews");
         H.runNativeQuery();
         H.saveQuestion("foo", undefined, {

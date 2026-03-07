@@ -273,7 +273,7 @@ describe(
   { tags: "@external" },
   () => {
     beforeEach(() => {
-      H.restore("postgres-12");
+      H.restore("postgres-14");
       cy.signInAsAdmin();
     });
 
@@ -363,7 +363,7 @@ describe("exercise binary datetime() cast function", () => {
 
 describe("exercise today() function", () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
   });
 
@@ -395,7 +395,7 @@ describe("exercise today() function", () => {
 function startNewQuestion() {
   H.startNewQuestion();
   H.miniPicker().within(() => {
-    cy.findByText("QA Postgres12").click();
+    cy.findByText("QA Postgres14").click();
     cy.findByText("Products").click();
   });
 }

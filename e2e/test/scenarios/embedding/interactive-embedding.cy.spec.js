@@ -443,7 +443,7 @@ describe("scenarios > embedding > full app", () => {
         "should select a table when there are multiple databases",
         { tags: "@external" },
         () => {
-          H.restore("postgres-12");
+          H.restore("postgres-14");
           cy.signInAsAdmin();
           startNewEmbeddingQuestion();
           selectFirstDataSource("Orders");
@@ -466,11 +466,11 @@ describe("scenarios > embedding > full app", () => {
 
           verifyTableSelected({
             tableName: "Orders",
-            databaseName: "QA Postgres12",
+            databaseName: "QA Postgres14",
           });
           verifyTableSelected({
             tableName: "Accounts",
-            databaseName: "QA Postgres12",
+            databaseName: "QA Postgres14",
           });
         },
       );
@@ -503,7 +503,7 @@ describe("scenarios > embedding > full app", () => {
           verifyTableSelected({
             tableName: "Birds",
             schemaName: "Wild",
-            databaseName: "Writable Postgres12",
+            databaseName: "Writable Postgres14",
           });
         },
       );
@@ -959,18 +959,18 @@ describe("scenarios > embedding > full app", () => {
         "should select a table when there are multiple databases (metabase#54127)",
         { tags: "@external" },
         () => {
-          H.restore("postgres-12");
+          H.restore("postgres-14");
           cy.signInAsAdmin();
           H.createModelFromTableName({
             tableName: "orders",
             modelName: "Orders Model (Postgres)",
           });
           startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
-          selectTable({ tableName: "Orders", databaseName: "QA Postgres12" });
+          selectTable({ tableName: "Orders", databaseName: "QA Postgres14" });
           clickOnDataSource("Orders");
           verifyTableSelected({
             tableName: "Orders",
-            databaseName: "QA Postgres12",
+            databaseName: "QA Postgres14",
           });
 
           cy.log(
@@ -981,7 +981,7 @@ describe("scenarios > embedding > full app", () => {
             cy.findByRole("heading", { name: "Sample Database" }).should(
               "be.visible",
             );
-            cy.findByRole("heading", { name: "QA Postgres12" }).should(
+            cy.findByRole("heading", { name: "QA Postgres14" }).should(
               "be.visible",
             );
 
@@ -1003,7 +1003,7 @@ describe("scenarios > embedding > full app", () => {
             cy.findByRole("heading", { name: "Sample Database" }).should(
               "not.exist",
             );
-            cy.findByRole("heading", { name: "QA Postgres12" }).should(
+            cy.findByRole("heading", { name: "QA Postgres14" }).should(
               "be.visible",
             );
           });
@@ -1048,13 +1048,13 @@ describe("scenarios > embedding > full app", () => {
           selectTable({
             tableName: "Animals",
             schemaName: "Domestic",
-            databaseName: "Writable Postgres12",
+            databaseName: "Writable Postgres14",
           });
           clickOnDataSource("Animals");
           verifyTableSelected({
             tableName: "Animals",
             schemaName: "Domestic",
-            databaseName: "Writable Postgres12",
+            databaseName: "Writable Postgres14",
           });
         },
       );

@@ -561,9 +561,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MariaDB 10.2
-            junit-name: be-tests-mariadb-10-2-ee
-            image: circleci/mariadb:10.2.23
+          - name: MariaDB 10.4
+            junit-name: be-tests-mariadb-10-6-ee
+            image: circleci/mariadb:10.6
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
@@ -573,9 +573,9 @@ jobs:
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
-          - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
-            image: mysql:8.0
+          - name: MySQL 8.4
+            junit-name: be-tests-mysql-8-4-ee
+            image: mysql:8.4
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
@@ -652,7 +652,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_AURORA_IAM_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
-    # "be-tests-mariadb-10-2-ee (0)"
+    # "be-tests-mariadb-10-6-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
@@ -988,9 +988,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: Postgres 12.x
+          - name: Postgres 14.x
             junit-name: postgres-ee
-            docker-image: postgres:12-alpine
+            docker-image: postgres:14-alpine
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'

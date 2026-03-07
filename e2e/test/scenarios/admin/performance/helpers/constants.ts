@@ -51,7 +51,7 @@ export const sampleDashboard: StrategyBearer & { name: string } = {
 
 export const sampleDatabase: StrategyBearer = {
   model: "database",
-  name: "Writable Postgres12",
+  name: "Writable Postgres14",
 };
 
 export const instanceDefault: StrategyBearer = {

@@ -100,7 +100,7 @@ describe("scenarios > data studio > datamodel", () => {
         it("should restore previously selected table when expanding the tree", () => {
           H.DataModel.visitDataStudio();
 
-          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres14").click();
           TablePicker.getSchema("Domestic").click();
           TablePicker.getTable("Animals").click();
           TablePicker.getSchema("Wild").click();
@@ -118,8 +118,8 @@ describe("scenarios > data studio > datamodel", () => {
             "true",
           );
 
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getDatabase("Writable Postgres12").click();
+          TablePicker.getDatabase("Writable Postgres14").click();
+          TablePicker.getDatabase("Writable Postgres14").click();
 
           TableSection.getNameInput().should("have.value", "Birds");
         });
@@ -127,7 +127,7 @@ describe("scenarios > data studio > datamodel", () => {
     );
 
     describe("Extra info about tables", () => {
-      const databaseName = "Writable Postgres12";
+      const databaseName = "Writable Postgres14";
       const domesticSchema = "Domestic";
       const wildSchema = "Wild";
       const domesticAnimalsTable = "Animals";
@@ -400,7 +400,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       H.DataModel.visitDataStudio();
 
-      const databaseName = "Writable Postgres12";
+      const databaseName = "Writable Postgres14";
       const sampleDatabaseName = "Sample Database";
       const domesticSchema = "Domestic";
       const wildSchema = "Wild";
@@ -1278,7 +1278,7 @@ describe("scenarios > data studio > datamodel", () => {
       it("should show empty state when there is no data", () => {
         H.DataModel.visitDataStudio();
 
-        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getDatabase("Writable Postgres14").click();
         TablePicker.getSchema("Domestic").click();
         TablePicker.getTable("Animals").click();
         TableSection.clickField("Name");

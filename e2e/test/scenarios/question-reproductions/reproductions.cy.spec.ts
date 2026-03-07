@@ -1372,7 +1372,7 @@ describe("issue 64293", () => {
 describe("issue 13347", () => {
   beforeEach(() => {
     H.restore();
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
 
     H.createQuestion({
@@ -1426,7 +1426,7 @@ describe("issue 13347", () => {
 describe("issue #47005", () => {
   beforeEach(() => {
     H.restore();
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsNormalUser();
 
     H.createQuestion({

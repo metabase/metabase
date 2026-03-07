@@ -19,7 +19,7 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
     restoreAndAuthenticate();
 
     addPostgresDatabase();
-    snapshot("postgres-12");
+    snapshot("postgres-14");
 
     convertToWritable("postgres");
     snapshot("postgres-writable");
@@ -57,7 +57,7 @@ function convertToWritable(engine) {
   cy.get(idAlias).then((id) => {
     cy.log("**-- Enabling actions --**");
     cy.request("PUT", `/api/database/${id}`, {
-      name: engine === "postgres" ? "Writable Postgres12" : "Writable MySQL8",
+      name: engine === "postgres" ? "Writable Postgres14" : "Writable MySQL8",
       details: {
         dbname: "writable_db",
         ...(engine === "mysql" ? { user: "root" } : {}),

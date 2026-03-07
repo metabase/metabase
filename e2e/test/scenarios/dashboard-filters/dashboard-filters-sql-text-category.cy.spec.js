@@ -194,7 +194,7 @@ GROUP BY PRODUCTS.CATEGORY`;
   const PG_DB_ID = 2;
 
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
 
     // We update Postgres DB content to make sure dashcard with multiple datasets return values from both DBs

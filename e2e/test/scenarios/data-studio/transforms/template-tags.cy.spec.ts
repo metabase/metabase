@@ -2,7 +2,7 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 const { H } = cy;
 
-const DB_NAME = "Writable Postgres12";
+const DB_NAME = "Writable Postgres14";
 const SOURCE_TABLE = "Animals";
 const TARGET_SCHEMA = "Schema A";
 const TARGET_TABLE = "transform_table";
@@ -51,7 +51,7 @@ describe("scenarios > admin > transforms", () => {
         .within(() => {
           cy.log("The current database should be opened by default");
           cy.findByText("Data Reference").should("not.exist");
-          cy.findByText("Writable Postgres12").should("be.visible");
+          cy.findByText("Writable Postgres14").should("be.visible");
         });
 
       cy.findByTestId("native-query-editor-action-buttons")

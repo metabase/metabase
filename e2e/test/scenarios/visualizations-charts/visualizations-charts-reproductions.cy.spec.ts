@@ -557,7 +557,7 @@ describe("issue 55853", () => {
   };
 
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
   });
 

@@ -164,7 +164,7 @@ describe("scenarios > organization > entity picker", () => {
           H.miniPickerBrowseAll().click();
           H.entityPickerModal().within(() => {
             H.entityPickerModalItem(0, "Databases").click();
-            cy.findByText("Writable Postgres12").click();
+            cy.findByText("Writable Postgres14").click();
             enterSearchText({
               text: "anim",
               placeholder: "Search…",

@@ -28,7 +28,7 @@ describe(
 
     beforeEach(() => {
       H.restore();
-      H.restore("postgres-12");
+      H.restore("postgres-14");
 
       cy.signInAsAdmin();
     });
@@ -55,7 +55,7 @@ describe(
     it("should understand date functions", () => {
       H.startNewQuestion();
       H.miniPicker().within(() => {
-        cy.findByText("QA Postgres12").click();
+        cy.findByText("QA Postgres14").click();
         cy.findByText("Orders").click();
       });
 

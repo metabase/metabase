@@ -48,7 +48,7 @@ describe("bulk table operations", () => {
     H.restore("postgres-writable");
     H.activateToken("bleeding-edge");
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.getDatabase("Writable Postgres14").click();
     cy.wait("@getSchema").then(({ response }) => {
       const tables = response?.body ?? [];
       const accountTableId = getTableId(tables, "Orders");
@@ -124,7 +124,7 @@ describe("bulk table operations", () => {
       H.DataModel.visitDataStudio();
 
       cy.log("select multiple tables");
-      TablePicker.getDatabase("Writable Postgres12").click();
+      TablePicker.getDatabase("Writable Postgres14").click();
       TablePicker.getTable("Orders").findByRole("checkbox").check();
       TablePicker.getTable("Products").findByRole("checkbox").check();
       TablePicker.getTable("Reviews").findByRole("checkbox").check();
@@ -166,7 +166,7 @@ describe("bulk table operations", () => {
     H.activateToken("bleeding-edge");
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.getDatabase("Writable Postgres14").click();
     TablePicker.getTable("Orders").find('input[type="checkbox"]').check();
     TablePicker.getTable("Products").find('input[type="checkbox"]').check();
 
@@ -227,7 +227,7 @@ describe("bulk table operations", () => {
       it("should change metadata and see that is changed for all selected tables without filters", () => {
         cy.log("change the owner and check the owner column");
 
-        TablePicker.getDatabase("Writable Postgres12").click();
+        TablePicker.getDatabase("Writable Postgres14").click();
         TablePicker.getDatabase("Sample Database").click();
         TablePicker.getSchema("Domestic").click();
         TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
@@ -295,7 +295,7 @@ describe("bulk table operations", () => {
     H.createLibrary();
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12")
+    TablePicker.getDatabase("Writable Postgres14")
       .find('input[type="checkbox"]')
       .check();
 
@@ -315,7 +315,7 @@ describe("bulk table operations", () => {
     H.modal().findByText("Publish these tables").click();
     cy.wait("@publishTables");
 
-    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.getDatabase("Writable Postgres14").click();
 
     cy.findAllByTestId("tree-item")
       .filter('[data-type="table"]')
@@ -337,7 +337,7 @@ describe("bulk table operations", () => {
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
     H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("Writable Postgres12").click();
+    TablePicker.getDatabase("Writable Postgres14").click();
     TablePicker.getSchema("Schema A").find('input[type="checkbox"]').check();
     TablePicker.getSchema("Schema B").find('input[type="checkbox"]').check();
 

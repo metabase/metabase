@@ -1238,7 +1238,7 @@ describe("issue 27521", () => {
 
 describe("issue 42385", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
   });
 
@@ -1253,7 +1253,7 @@ describe("issue 42385", { tags: "@external" }, () => {
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
     H.miniPickerHeader().click();
     H.miniPicker().within(() => {
-      cy.findByText("QA Postgres12").click();
+      cy.findByText("QA Postgres14").click();
       cy.findByText("Reviews").click();
     });
 
@@ -1284,7 +1284,7 @@ describe("issue 42385", { tags: "@external" }, () => {
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
     H.miniPickerHeader().click();
     H.miniPicker().within(() => {
-      cy.findByText("QA Postgres12").click();
+      cy.findByText("QA Postgres14").click();
       cy.findByText("Reviews").click();
     });
 

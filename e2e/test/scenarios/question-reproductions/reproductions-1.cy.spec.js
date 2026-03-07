@@ -237,7 +237,7 @@ describe("issue 13097", { tags: "@mongo" }, () => {
 
 describe("postgres > user > query", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
       ({ body }) => {
@@ -270,10 +270,10 @@ describe("postgres > user > query", { tags: "@external" }, () => {
 });
 
 describe("issue 14957", { tags: "@external" }, () => {
-  const PG_DB_NAME = "QA Postgres12";
+  const PG_DB_NAME = "QA Postgres14";
 
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
   });
 
@@ -292,7 +292,7 @@ describe("issue 14957", { tags: "@external" }, () => {
 
 describe("postgres > question > custom columns", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
 
     cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
@@ -374,7 +374,7 @@ const correctValues = [
 
 describe("issue 15876", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
   });
 

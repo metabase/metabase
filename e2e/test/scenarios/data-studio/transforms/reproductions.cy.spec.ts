@@ -19,7 +19,7 @@ describe("issue #68378", () => {
     visitTransformListPage();
     cy.button("Create a transform").click();
     H.popover().findByText("SQL query").click();
-    H.popover().findByText("Writable Postgres12").click();
+    H.popover().findByText("Writable Postgres14").click();
     H.NativeEditor.type("SELECT 42", { allowFastSet: true }).blur();
 
     cy.log("Save with empty_schema as target schema");

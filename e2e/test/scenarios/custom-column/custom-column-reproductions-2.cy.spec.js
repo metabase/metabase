@@ -797,12 +797,12 @@ describe("Issue 26512", () => {
 
 describe("Issue 38498", { tags: "@external" }, () => {
   beforeEach(() => {
-    H.restore("postgres-12");
+    H.restore("postgres-14");
     cy.signInAsAdmin();
 
     H.startNewQuestion();
     H.miniPicker().within(() => {
-      cy.findByText("QA Postgres12").click();
+      cy.findByText("QA Postgres14").click();
       cy.findByText("Orders").click();
     });
   });

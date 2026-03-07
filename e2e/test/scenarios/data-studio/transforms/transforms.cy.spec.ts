@@ -25,7 +25,7 @@ const { H } = cy;
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const DB_NAME = "Writable Postgres12";
+const DB_NAME = "Writable Postgres14";
 const SOURCE_TABLE = "Animals";
 const TARGET_TABLE = "transform_table";
 const TARGET_TABLE_2 = "transform_table_2";
@@ -184,7 +184,7 @@ describe("scenarios > admin > transforms", () => {
         });
 
         cy.findByTestId("python-transform-top-bar")
-          .findByText("Writable Postgres12")
+          .findByText("Writable Postgres14")
           .click();
 
         cy.log("Unsupported databases should be disabled");
@@ -199,7 +199,7 @@ describe("scenarios > admin > transforms", () => {
         H.entityPickerModal().findByText("Animals").click();
 
         getPythonDataPicker().within(() => {
-          cy.findByText("Writable Postgres12 / Schema A").should("be.visible");
+          cy.findByText("Writable Postgres14 / Schema A").should("be.visible");
           cy.findByText("Animals").should("be.visible");
           cy.findByPlaceholderText("Enter alias").should(
             "have.value",
@@ -219,7 +219,7 @@ describe("scenarios > admin > transforms", () => {
           .should("contain", "def transform(foo_bar):")
           .should(
             "contain",
-            'foo_bar: DataFrame containing the data from the "Writable Postgres12.Schema A.Animals" table',
+            'foo_bar: DataFrame containing the data from the "Writable Postgres14.Schema A.Animals" table',
           );
 
         getPythonDataPicker().within(() => {
@@ -563,7 +563,7 @@ LIMIT
       H.popover().findByText("SQL query").click();
 
       cy.findByTestId("gui-builder-data")
-        .findByText("Writable Postgres12")
+        .findByText("Writable Postgres14")
         .click();
 
       H.popover()
