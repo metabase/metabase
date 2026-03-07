@@ -11,9 +11,9 @@
    [metabase.api.common :as api]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.util :as sql.util]
-   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (defn- query-ungranted-external-inputs
@@ -589,8 +589,8 @@
         (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])
               rows       (for [{tx-id :id, {:keys [database schema name]} :target} transforms]
                            (let [isolated-table    (ws.u/isolated-table-name schema name)
-                                 global-table-id   (transforms-base.u/upsert-provisional-table! database schema name)
-                                 isolated-table-id (transforms-base.u/upsert-provisional-table! database isolated-schema isolated-table)]
+                                 global-table-id   (table/upsert-provisional-table! database schema name)
+                                 isolated-table-id (table/upsert-provisional-table! database isolated-schema isolated-table)]
                              {:workspace_id      workspace-id
                               :transform_id      tx-id
                               :graph_version     graph-version

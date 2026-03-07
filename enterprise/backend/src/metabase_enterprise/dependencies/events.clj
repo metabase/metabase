@@ -8,9 +8,9 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -131,7 +131,7 @@
       (let [target (:target object)
             db-id  (transforms-base.i/target-db-id object)]
         (when (and db-id (:name target))
-          (transforms-base.u/upsert-provisional-table! db-id (:schema target) (:name target)))))))
+          (table/upsert-provisional-table! db-id (:schema target) (:name target)))))))
 
 (derive ::transform-delete :metabase/event)
 (derive :event/delete-transform ::transform-delete)

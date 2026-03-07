@@ -8,7 +8,6 @@
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -32,6 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -299,25 +299,6 @@
               massage-sql-query
               qp.compile/compile
               (post-process-incremental-query driver source checkpoint)))))))
-
-;;; ------------------------------------------------- Provisional Table Management -------------------------------------------------
-
-(defn upsert-provisional-table!
-  "Ensure a metabase_table row exists for the given (db_id, schema, name) triple.
-   If the table doesn't exist, creates it as provisional (inactive, not yet physically materialized).
-   If it already exists (active or inactive), returns its id without modification.
-   Returns the table id."
-  [db-id schema table-name]
-  (app-db/update-or-insert!
-   :model/Table
-   {:db_id db-id :schema schema :name table-name}
-   (fn [existing]
-     (when-not existing
-       {:display_name        ((requiring-resolve 'metabase.models.humanization/name->human-readable-name) table-name)
-        :active              false
-        :provisional         true
-        :data_source         :transform
-        :initial_sync_status "complete"}))))
 
 ;;; ------------------------------------------------- Target Table Management -------------------------------------------------
 
@@ -658,7 +639,8 @@
               (missing-table-id? entry)
               (assoc entry :table_id (or (ref-lookup (source-table-ref->key entry))
                                          (when (and (:database_id entry) (:table entry))
-                                           (upsert-provisional-table! (:database_id entry) (:schema entry) (:table entry)))))
+                                           (table/upsert-provisional-table!
+                                            (:database_id entry) (:schema entry) (:table entry)))))
 
               ;; Already fully populated
               :else entry))

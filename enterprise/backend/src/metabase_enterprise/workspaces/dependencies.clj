@@ -57,12 +57,12 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 ;;; ---------------------------------------- Schemas ----------------------------------------
@@ -228,8 +228,8 @@
   ;; 5 queries here: 2 × upsert-provisional-table! (2 queries each) + 1 insert.
   ;; Worst case 9 on concurrent upsert conflicts.
   (let [isolated-table    (ws.u/isolated-table-name schema table)
-        global-table-id   (transforms-base.u/upsert-provisional-table! db_id schema table)
-        isolated-table-id (transforms-base.u/upsert-provisional-table! db_id isolated-schema isolated-table)]
+        global-table-id   (table/upsert-provisional-table! db_id schema table)
+        isolated-table-id (table/upsert-provisional-table! db_id isolated-schema isolated-table)]
     (ws.u/ignore-constraint-violation
      (t2/insert! :model/WorkspaceOutput
                  {:workspace_id      workspace-id
