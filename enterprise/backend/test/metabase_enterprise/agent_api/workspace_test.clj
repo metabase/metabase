@@ -177,19 +177,16 @@
       (let [ws-id  (:workspace-id res)
             ref-id (get-in res [:workspace-map :x1])]
         (testing "POST transform run returns execution result"
-          (ws.tu/with-mocked-execution
-            (let [result (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/transform/" ref-id "/run"))]
-              (is (contains? result :status)))))
+          (let [result (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/transform/" ref-id "/run"))]
+            (is (contains? result :status))))
 
         (testing "POST transform dry-run returns query result"
-          (ws.tu/with-mocked-execution
-            (let [result (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/transform/" ref-id "/dry-run"))]
-              (is (contains? result :status)))))
+          (let [result (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/transform/" ref-id "/dry-run"))]
+            (is (contains? result :status))))
 
         (testing "POST query returns query result"
-          (ws.tu/with-mocked-execution
-            (let [result (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/query") {:sql "SELECT 1"})]
-              (is (contains? result :status)))))
+          (let [result (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/query") {:sql "SELECT 1"})]
+            (is (contains? result :status))))
 
         (testing "POST run on archived workspace returns 400"
           (agent-ws-client :post 200 (str "agent/v1/workspace/" ws-id "/archive"))
@@ -221,9 +218,8 @@
 
 (deftest agent-workspace-scope-enforcement-test
   (with-agent-workspace-setup!
-    (ws.tu/with-resources! [res {:workspace {:definitions {:x1 [:t1]}}}]
-      (let [ws-id  (:workspace-id res)
-            ref-id (get-in res [:workspace-map :x1])]
+    (ws.tu/with-resources! [res {:workspace {:name "Scope Test"}}]
+      (let [ws-id (:workspace-id res)]
         (testing "read scope can GET but not POST"
           (let [headers (scoped-auth-headers "agent:workspace:read")]
             (is (=? {:id ws-id}
