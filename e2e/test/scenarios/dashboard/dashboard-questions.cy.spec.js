@@ -816,7 +816,7 @@ describe("Dashboard > Dashboard Questions", () => {
         H.visitDashboard(blueDashboardId);
       });
 
-      // add the quanity question to the blue dashboard
+      // add the quantity question to the blue dashboard
       H.editDashboard();
       H.openQuestionsSidebar();
 
@@ -848,7 +848,7 @@ describe("Dashboard > Dashboard Questions", () => {
 
       H.saveDashboard();
       H.dashboardCards()
-        .findByText(/Average Quantity by Month/)
+        .contains(/Average Quantity by Month/)
         .should("be.visible");
 
       // move the quantity question to an entirely different dashboard
