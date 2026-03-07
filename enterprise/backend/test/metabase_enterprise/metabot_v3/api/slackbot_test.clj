@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.api.slackbot :as slackbot]
+   [metabase-enterprise.metabot-v3.api.slackbot.channel :as slackbot.channel]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
    [metabase-enterprise.metabot-v3.api.slackbot.config :as slackbot.config]
    [metabase-enterprise.metabot-v3.api.slackbot.persistence :as slackbot.persistence]
@@ -16,6 +17,7 @@
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.channel.settings :as channel.settings]
+   [metabase.channel.slack :as channel.slack]
    [metabase.premium-features.core :as premium-features]
    [metabase.server.middleware.auth :as mw.auth]
    [metabase.test :as mt]
@@ -115,7 +117,9 @@
               (is (contains? response :display_information))
               (is (contains? response :features))
               (is (contains? response :oauth_config))
-              (is (contains? response :settings))))
+              (is (contains? response :settings))
+              (is (some #{"reactions:read"} (get-in response [:oauth_config :scopes :bot])))
+              (is (some #{"reactions:write"} (get-in response [:oauth_config :scopes :bot])))))
           (testing "non-admins cannot access manifest"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 "slack/manifest"))))))
@@ -177,7 +181,7 @@
                                       body)]
               (is (= "ok" response) "Should ACK the event with 200 OK"))))))))
 
-(defn- with-slackbot-mocks
+(defn- with-slackbot-mocks!
   "Helper to set up common mocks for slackbot tests.
    Options:
    - :ai-text - The text response from make-ai-request
@@ -187,8 +191,9 @@
 
    Calls body-fn with a map containing tracking atoms:
    {:post-calls, :delete-calls, :image-calls, :generate-card-output-calls,
-    :generate-adhoc-output-calls, :ephemeral-calls, :ai-request-calls,
-    :fake-png-bytes, :stream-calls, :append-text-calls, :stop-stream-calls}"
+   :generate-adhoc-output-calls, :ephemeral-calls, :ai-request-calls,
+    :fake-png-bytes, :stream-calls, :append-text-calls, :stop-stream-calls,
+    :add-reaction-calls, :remove-reaction-calls}"
   [{:keys [ai-text data-parts user-id]
     :or   {data-parts []
            user-id    ::default}}
@@ -201,10 +206,16 @@
         ephemeral-calls             (atom [])
         ai-request-calls            (atom [])
         stream-calls                (atom [])
+        stream-meta                 (atom {})
         append-text-calls           (atom [])
+        update-calls                (atom [])
         stop-stream-calls           (atom [])
+        add-reaction-calls          (atom [])
+        remove-reaction-calls       (atom [])
+        image-upload-calls          (atom [])
         fake-png-bytes              (byte-array [0x89 0x50 0x4E 0x47])
         placeholder-counter         (atom 0)
+        post-meta                   (atom {})
         mock-user-id                (cond
                                       (= user-id ::default) (mt/user->id :rasta)
                                       (= user-id ::no-user) nil
@@ -217,6 +228,7 @@
        ;; Mock Slack streaming APIs
        slackbot.client/start-stream         (fn [_ opts]
                                               (swap! stream-calls conj opts)
+                                              (swap! stream-meta assoc "stream123" {:thread_ts (:thread_ts opts)})
                                               {:stream_ts "stream123" :channel (:channel opts) :thread_ts (:thread_ts opts)})
        slackbot.client/append-stream        (constantly {:ok true})
        slackbot.client/append-markdown-text (fn [_ _channel _stream-ts text]
@@ -224,27 +236,76 @@
                                               {:ok true})
        slackbot.client/stop-stream          (fn [_ channel stream-ts & [blocks]]
                                               (swap! stop-stream-calls conj {:channel channel :stream_ts stream-ts :blocks blocks})
+                                              (let [feedback-block (when (= "context_actions" (:type (last blocks)))
+                                                                     (last blocks))
+                                                    thread-ts      (get-in @stream-meta [stream-ts :thread_ts])]
+                                                (doseq [idx (keep-indexed (fn [i block]
+                                                                            (when (= "image" (:type block))
+                                                                              i))
+                                                                          blocks)]
+                                                  (let [image-block   (nth blocks idx)
+                                                        section-block (when (and (pos? idx)
+                                                                                 (= "section" (:type (nth blocks (dec idx)))))
+                                                                        (nth blocks (dec idx)))
+                                                        grouped       (cond-> []
+                                                                        section-block (conj section-block)
+                                                                        true          (conj image-block)
+                                                                        feedback-block (conj feedback-block))]
+                                                    (swap! image-calls conj {:channel   channel
+                                                                             :thread-ts thread-ts
+                                                                             :file-id   (get-in image-block [:slack_file :id])
+                                                                             :alt-text  (:alt_text image-block)
+                                                                             :blocks    grouped}))))
                                               {:ok true})
        slackbot.client/post-message (fn [_ msg]
                                       (swap! post-calls conj msg)
-                                      {:ok      true
-                                       :ts      (str "placeholder-" (swap! placeholder-counter inc))
-                                       :channel (:channel msg)
-                                       :message msg})
+                                      (let [ts (str "placeholder-" (swap! placeholder-counter inc))]
+                                        (swap! post-meta assoc ts msg)
+                                        {:ok      true
+                                         :ts      ts
+                                         :channel (:channel msg)
+                                         :message msg}))
+       slackbot.client/update-message (fn [_ msg]
+                                        (swap! update-calls conj msg)
+                                        (let [blocks         (:blocks msg)
+                                              feedback-block (when (= "context_actions" (:type (last blocks)))
+                                                               (last blocks))
+                                              thread-ts      (get-in @post-meta [(:ts msg) :thread_ts])]
+                                          (doseq [idx (keep-indexed (fn [i block]
+                                                                      (when (= "image" (:type block))
+                                                                        i))
+                                                                    blocks)]
+                                            (let [image-block   (nth blocks idx)
+                                                  section-block (when (and (pos? idx)
+                                                                           (= "section" (:type (nth blocks (dec idx)))))
+                                                                  (nth blocks (dec idx)))
+                                                  grouped       (cond-> []
+                                                                  section-block (conj section-block)
+                                                                  true          (conj image-block)
+                                                                  feedback-block (conj feedback-block))]
+                                              (swap! image-calls conj {:channel   (:channel msg)
+                                                                       :thread-ts thread-ts
+                                                                       :file-id   (get-in image-block [:slack_file :id])
+                                                                       :alt-text  (:alt_text image-block)
+                                                                       :blocks    grouped}))))
+                                        {:ok true})
        slackbot.client/post-ephemeral-message (fn [_ msg]
                                                 (swap! ephemeral-calls conj msg)
                                                 {:ok true, :message_ts "1234567890.123456"})
+       slackbot.client/add-reaction (fn [_ msg]
+                                      (swap! add-reaction-calls conj msg)
+                                      {:ok true})
+       slackbot.client/remove-reaction (fn [_ msg]
+                                         (swap! remove-reaction-calls conj msg)
+                                         {:ok true})
        slackbot.client/delete-message (fn [_ msg]
                                         (swap! delete-calls conj msg)
                                         {:ok true})
-       slackbot.client/post-image     (fn [_client image-bytes filename channel thread-ts
-                                           & {:keys [initial-comment]}]
-                                        (swap! image-calls conj {:image-bytes     image-bytes
-                                                                 :filename        filename
-                                                                 :channel         channel
-                                                                 :thread-ts       thread-ts
-                                                                 :initial-comment initial-comment})
-                                        {:ok true :file_id "F123"})
+       channel.slack/upload-file-with-token!  (fn [_token image-bytes filename]
+                                                (let [idx (inc (count @image-upload-calls))]
+                                                  (swap! image-upload-calls conj {:image-bytes image-bytes
+                                                                                  :filename    filename})
+                                                  {:id (str "FIMG-" idx)}))
        ;; Mock the streaming client - returns AISDK-formatted lines
        metabot-v3.client/streaming-request-with-callback
        (fn [opts]
@@ -280,7 +341,11 @@
                 :ai-request-calls            ai-request-calls
                 :stream-calls                stream-calls
                 :append-text-calls           append-text-calls
+                :update-calls                update-calls
                 :stop-stream-calls           stop-stream-calls
+                :add-reaction-calls          add-reaction-calls
+                :remove-reaction-calls       remove-reaction-calls
+                :image-upload-calls          image-upload-calls
                 :fake-png-bytes              fake-png-bytes}))))
 
 (deftest edited-message-ignored-test
@@ -290,7 +355,7 @@
                                 ["with message_changed subtype" {:subtype "message_changed"}]]]
         (testing desc
           (let [event-body (update base-dm-event :event merge {:text "Edited message"} event-mod)]
-            (with-slackbot-mocks
+            (with-slackbot-mocks!
               {:ai-text "Should not be called"}
               (fn [{:keys [post-calls ephemeral-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -327,7 +392,7 @@
                 [["message.im event"  (assoc-in base-dm-event [:event :channel] "D123")]
                  ["app_mention event" base-mention-event]]]
           (testing desc
-            (with-slackbot-mocks
+            (with-slackbot-mocks!
               {:ai-text "Should not be called"}
               (fn [{:keys [post-calls delete-calls ephemeral-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -345,9 +410,9 @@
     (with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
             event-body   base-dm-event]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text mock-ai-text}
-          (fn [{:keys [stream-calls append-text-calls stop-stream-calls]}]
+          (fn [{:keys [stream-calls append-text-calls stop-stream-calls add-reaction-calls remove-reaction-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
@@ -362,37 +427,48 @@
               (testing "AI response was streamed"
                 (is (some #(= mock-ai-text %) @append-text-calls)))
               (testing "stream was stopped"
-                (is (= 1 (count @stop-stream-calls)))))))))))
+                (is (= 1 (count @stop-stream-calls))))
+              (testing "DMs do not use processing reactions"
+                (is (empty? @add-reaction-calls))
+                (is (empty? @remove-reaction-calls))))))))))
 
 (deftest app-mention-triggers-response-test
-  (testing "POST /events with app_mention triggers AI response via streaming"
+  (testing "POST /events with app_mention uses visible post/update replies"
     (with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
             event-body   base-mention-event]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text mock-ai-text}
-          (fn [{:keys [stream-calls append-text-calls stop-stream-calls]}]
+          (fn [{:keys [post-calls update-calls stream-calls stop-stream-calls add-reaction-calls remove-reaction-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              ;; Wait for streaming to complete
-              (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
+              (u/poll {:thunk #(and (>= (count @update-calls) 1)
+                                    (>= (count @remove-reaction-calls) 1))
                        :done? true?
                        :timeout-ms 5000})
-              (testing "stream was started"
-                (is (= 1 (count @stream-calls)))
-                (is (= "C123" (:channel (first @stream-calls)))))
-              (testing "AI response was streamed"
-                (is (some #(= mock-ai-text %) @append-text-calls)))
-              (testing "stream was stopped"
-                (is (= 1 (count @stop-stream-calls)))))))))))
+              (testing "a visible threaded reply is posted immediately"
+                (is (= 1 (count @post-calls)))
+                (is (= "_Thinking..._" (:text (first @post-calls))))
+                (is (= "1234567890.000001" (:thread_ts (first @post-calls)))))
+              (testing "the triggering message gets a temporary eyes reaction"
+                (is (= [{:channel "C123" :ts "1234567890.000001" :name "eyes"}]
+                       @add-reaction-calls))
+                (is (= [{:channel "C123" :ts "1234567890.000001" :name "eyes"}]
+                       @remove-reaction-calls)))
+              (testing "the visible reply is updated with the answer"
+                (is (= 1 (count @update-calls)))
+                (is (some #(str/includes? (:text %) mock-ai-text) @update-calls)))
+              (testing "streaming APIs are not used for app mentions"
+                (is (empty? @stream-calls))
+                (is (empty? @stop-stream-calls))))))))))
 
 (deftest stream-start-failure-test
   (testing "When start-stream fails, falls back to a regular message"
     (with-slackbot-setup
       (let [event-body base-dm-event]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text "Here is your answer"}
           (fn [{:keys [post-calls stop-stream-calls]}]
             ;; Override start-stream to simulate failure
@@ -412,11 +488,74 @@
                 (testing "stop-stream is never called"
                   (is (= 0 (count @stop-stream-calls))))))))))))
 
+(deftest stop-stream-failure-falls-back-to-post-message-test
+  (testing "When stop-stream fails, falls back to a regular threaded message"
+    (with-slackbot-setup
+      (let [event-body base-dm-event
+            stop-calls (atom [])]
+        (with-slackbot-mocks!
+          {:ai-text "Here is your answer"}
+          (fn [{:keys [post-calls]}]
+            (mt/with-dynamic-fn-redefs
+              [slackbot.client/stop-stream (fn [_ channel stream-ts & [_blocks]]
+                                             (swap! stop-calls conj {:channel channel :stream_ts stream-ts})
+                                             {:ok false :error "internal_error"})]
+              (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                        (slack-request-options event-body)
+                                        event-body)]
+                (is (= "ok" response))
+                (u/poll {:thunk      #(some (fn [m]
+                                              (= "I generated a response, but Slack failed to finalize streaming. Sharing results below."
+                                                 (:text m)))
+                                            @post-calls)
+                         :done?      true?
+                         :timeout-ms 5000})
+                (is (= 1 (count @stop-calls)))
+                (is (some #(= "I generated a response, but Slack failed to finalize streaming. Sharing results below."
+                              (:text %))
+                          @post-calls))))))))))
+
+(deftest stop-stream-failure-falls-back-to-plain-error-message-test
+  (testing "When stop-stream fails, fallback posts a plain error message"
+    (with-slackbot-setup
+      (let [event-body      (update base-dm-event :event merge
+                                    {:text      "Please show chart"
+                                     :channel   "C456"
+                                     :thread_ts "1234567890.000000"})
+            mock-data-parts [{:type "static_viz" :value {:entity_id 101}}]
+            stop-calls      (atom [])
+            fallback-calls  (atom [])
+            fallback-text   "I generated a response, but Slack could not render it. Please try again."]
+        (with-slackbot-mocks!
+          {:ai-text "Here is your chart"
+           :data-parts mock-data-parts}
+          (fn [_]
+            (mt/with-dynamic-fn-redefs
+              [slackbot.client/stop-stream (fn [_ channel stream-ts & [_blocks]]
+                                             (swap! stop-calls conj {:channel channel :stream_ts stream-ts})
+                                             {:ok false :error "internal_error"})
+               slackbot.client/post-message (fn [_ msg]
+                                              (when (= fallback-text (:text msg))
+                                                (swap! fallback-calls conj msg))
+                                              {:ok true :channel (:channel msg) :ts "123.456"})]
+              (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                        (slack-request-options event-body)
+                                        event-body)]
+                (is (= "ok" response))
+                (u/poll {:thunk      #(>= (count @fallback-calls) 1)
+                         :done?      true?
+                         :timeout-ms 5000})
+                (is (= 1 (count @stop-calls)))
+                (is (= [{:channel "C456"
+                         :thread_ts "1234567890.000000"
+                         :text fallback-text}]
+                       @fallback-calls))))))))))
+
 (deftest ai-request-error-stops-stream-test
   (testing "When the AI request throws after the stream has started, the stream is stopped"
     (with-slackbot-setup
       (let [event-body base-dm-event]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text "unused"}
           (fn [{:keys [stop-stream-calls stream-calls append-text-calls]}]
             ;; Override the AI client to start the stream via on-line, then throw
@@ -449,7 +588,7 @@
               [["DM message"            (assoc-in base-dm-event [:event :channel] "D-MY-DM-CHANNEL")]
                ["app_mention in channel" (assoc-in base-mention-event [:event :channel] "C-PUBLIC-CHANNEL")]]]
         (testing desc
-          (with-slackbot-mocks
+          (with-slackbot-mocks!
             {:ai-text "response"}
             (fn [{:keys [ai-request-calls]}]
               (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -464,18 +603,25 @@
                 (is (map? (:context opts)))
                 (is (= (get-in event-body [:event :channel])
                        (get-in opts [:context :slack_channel_id])))
-                (is (= (get-in event-body [:event :text])
-                       (get-in opts [:message :content])))
+                (if (= "im" (get-in event-body [:event :channel_type]))
+                  (is (= (get-in event-body [:event :text])
+                         (get-in opts [:message :content])))
+                  (is (str/starts-with? (get-in opts [:message :content])
+                                        (get-in event-body [:event :text]))))
                 (is (vector? (:history opts)))
+                (is (not-any? #(= :system (:role %)) (:history opts)))
+                (when (not= "im" (get-in event-body [:event :channel_type]))
+                  (is (str/includes? (get-in opts [:message :content])
+                                     "Do not narrate the steps you took")))
                 (is (fn? (:on-line opts)))))))))))
 
 (deftest slack-msg-id-stored-test
-  (testing "User and bot messages are stored with their Slack ts as slack_msg_id"
+  (testing "User and bot messages are stored with their Slack ts and channel_id"
     (with-slackbot-setup
       ;; Text must be > 50 chars to trigger stream start via request-flush!
       (let [event-ts  "1709567890.000001"
             long-text (apply str (repeat 60 "x"))]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text long-text}
           (fn [{:keys [stop-stream-calls]}]
             (mt/with-model-cleanup [:model/MetabotMessage
@@ -491,10 +637,12 @@
                       bot-msg  (t2/select-one :model/MetabotMessage :slack_msg_id "stream123")]
                   (testing "user message has event ts"
                     (is (some? user-msg))
-                    (is (= event-ts (:slack_msg_id user-msg))))
+                    (is (= event-ts (:slack_msg_id user-msg)))
+                    (is (= "C123" (:channel_id user-msg))))
                   (testing "bot message has stream ts"
                     (is (some? bot-msg))
-                    (is (= "stream123" (:slack_msg_id bot-msg)))))))))))))
+                    (is (= "stream123" (:slack_msg_id bot-msg)))
+                    (is (= "C123" (:channel_id bot-msg)))))))))))))
 
 (deftest ^:parallel slack-thread-conversation-id-test
   (testing "Same thread produces same conversation ID"
@@ -530,11 +678,11 @@
                                 :ts        "1234567890.000002"
                                 :event_ts  "1234567890.000002"
                                 :thread_ts "1234567890.000000"})]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text mock-ai-text
            :data-parts mock-data-parts}
           (fn [{:keys [stream-calls append-text-calls stop-stream-calls image-calls
-                       generate-card-output-calls fake-png-bytes]}]
+                       image-upload-calls generate-card-output-calls fake-png-bytes]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
@@ -549,6 +697,7 @@
                 (is (= 1 (count @stream-calls)))
                 (is (= "C456" (:channel (first @stream-calls))))
                 (is (some #(= mock-ai-text %) @append-text-calls))
+                (is (not-any? #(= "\n_Rendering results..._" %) @append-text-calls))
                 (is (= 1 (count @stop-stream-calls))))
 
               (testing "output generation called for each static_viz"
@@ -559,16 +708,56 @@
                 (is (= 2 (count @image-calls)))
                 (is (every? #(= "C456" (:channel %)) @image-calls))
                 (is (every? #(= "1234567890.000000" (:thread-ts %)) @image-calls))
-                (is (= #{"card_101.png" "card_202.png"}
-                       (set (map :filename @image-calls))))
+                (is (every? #(re-matches #"FIMG-\d+" (:file-id %)) @image-calls))
+                (is (every? #(= ["section" "image" "context_actions"]
+                                (mapv :type (:blocks %)))
+                            @image-calls)))
+              (testing "rendered PNG bytes are uploaded to Slack files"
+                (is (= 2 (count @image-upload-calls)))
                 (is (every? #(= (vec fake-png-bytes) (vec (:image-bytes %)))
-                            @image-calls))))))))))
+                            @image-upload-calls))))))))))
+
+(deftest app-mention-with-visualizations-updates-visible-reply-test
+  (testing "POST /events with channel visualizations updates a visible reply instead of streaming"
+    (with-slackbot-setup
+      (let [mock-data-parts [{:type "static_viz" :value {:entity_id 101}}]
+            event-body      (update base-mention-event :event merge
+                                    {:text     "<@UBOT123> Show me charts"
+                                     :ts       "1234567890.000099"
+                                     :event_ts "1234567890.000099"})]
+        (with-slackbot-mocks!
+          {:ai-text    "Here are your charts"
+           :data-parts mock-data-parts}
+          (fn [{:keys [post-calls update-calls stream-calls stop-stream-calls image-calls image-upload-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options event-body)
+                                      event-body)]
+              (is (= "ok" response))
+              (u/poll {:thunk      #(and (>= (count @update-calls) 1)
+                                         (>= (count @image-calls) 1))
+                       :done?      true?
+                       :timeout-ms 5000})
+              (testing "a visible placeholder reply is posted"
+                (is (= 1 (count @post-calls)))
+                (is (= "_Thinking..._" (:text (first @post-calls))))
+                (is (= "1234567890.000099" (:thread_ts (first @post-calls)))))
+              (testing "streaming APIs are not used"
+                (is (empty? @stream-calls))
+                (is (empty? @stop-stream-calls)))
+              (testing "final image and feedback are applied via message update"
+                (is (= 1 (count @image-calls)))
+                (is (= "C123" (:channel (first @image-calls))))
+                (is (= "1234567890.000099" (:thread-ts (first @image-calls))))
+                (is (= ["section" "image" "context_actions"]
+                       (mapv :type (:blocks (first @image-calls))))))
+              (testing "Slack file upload is still used for channel image results"
+                (is (= 1 (count @image-upload-calls)))))))))))
 
 (deftest user-not-linked-sends-auth-message-test
   (testing "POST /events with unlinked user sends auth message (DM, no user mention prefix)"
     (with-slackbot-setup
       (let [event-body (assoc-in base-dm-event [:event :user] "U-UNKNOWN-USER")]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text "Should not be called"
            :user-id ::no-user}
           (fn [{:keys [post-calls]}]
@@ -601,7 +790,7 @@
                                             :ts       "1234567890.000002"
                                             :event_ts "1234567890.000002"})
                              thread-ts (assoc-in [:event :thread_ts] thread-ts))]
-            (with-slackbot-mocks
+            (with-slackbot-mocks!
               {:ai-text "Should not be called"
                :user-id ::no-user}
               (fn [{:keys [post-calls]}]
@@ -674,10 +863,10 @@
                                      :ts        "1234567890.000003"
                                      :event_ts  "1234567890.000003"
                                      :thread_ts "1234567890.000000"})]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text    mock-ai-text
            :data-parts mock-data-parts}
-          (fn [{:keys [stop-stream-calls image-calls generate-adhoc-output-calls fake-png-bytes]}]
+          (fn [{:keys [stop-stream-calls image-calls generate-adhoc-output-calls image-upload-calls fake-png-bytes]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (slack-request-options event-body)
                                       event-body)]
@@ -693,12 +882,16 @@
                 (is (= mock-query (:query (first @generate-adhoc-output-calls))))
                 (is (= :bar (:display (first @generate-adhoc-output-calls)))))
 
-              (testing "image posted with adhoc filename"
+              (testing "image posted inline with slack_file"
                 (is (= 1 (count @image-calls)))
                 (is (= "C789" (:channel (first @image-calls))))
                 (is (= "1234567890.000000" (:thread-ts (first @image-calls))))
-                (is (re-matches #"adhoc-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.png" (:filename (first @image-calls))))
-                (is (= (vec fake-png-bytes) (vec (:image-bytes (first @image-calls)))))))))))))
+                (is (re-matches #"FIMG-\d+" (:file-id (first @image-calls))))
+                (is (= ["section" "image" "context_actions"]
+                       (mapv :type (:blocks (first @image-calls))))))
+              (testing "adhoc PNG bytes are uploaded to Slack files"
+                (is (= 1 (count @image-upload-calls)))
+                (is (= (vec fake-png-bytes) (vec (:image-bytes (first @image-upload-calls)))))))))))))
 
 (deftest adhoc-viz-default-display-test
   (testing "POST /events with adhoc_viz uses :table when display not specified"
@@ -710,7 +903,7 @@
                                     {:text     "Show data"
                                      :ts       "1234567890.000004"
                                      :event_ts "1234567890.000004"})]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text    "Here's your table"
            :data-parts mock-data-parts}
           (fn [{:keys [generate-adhoc-output-calls stop-stream-calls]}]
@@ -737,7 +930,7 @@
                                      :ts        "1234567890.000005"
                                      :event_ts  "1234567890.000005"
                                      :thread_ts "1234567890.000000"})]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text    "Here's everything"
            :data-parts mock-data-parts}
           (fn [{:keys [image-calls generate-card-output-calls generate-adhoc-output-calls]}]
@@ -754,9 +947,10 @@
               (is (= :line (:display (first @generate-adhoc-output-calls)))))
             (testing "all images posted"
               (is (= 3 (count @image-calls)))
-              (is (= #{"card_101.png" "card_202.png"}
-                     (set (filter #(str/starts-with? % "card") (map :filename @image-calls)))))
-              (is (= 1 (count (filter #(str/starts-with? % "adhoc-") (map :filename @image-calls))))))))))))
+              (is (every? #(re-matches #"FIMG-\d+" (:file-id %)) @image-calls))
+              (is (every? #(= ["section" "image" "context_actions"]
+                              (mapv :type (:blocks %)))
+                          @image-calls)))))))))
 
 (deftest generate-card-output-display-type-test
   (testing "generate-card-output returns correct type based on card display"
@@ -792,7 +986,7 @@
                                 :ts        "1234567890.000010"
                                 :event_ts  "1234567890.000010"
                                 :thread_ts "1234567890.000000"})]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text    "Here's your chart"
            :data-parts [{:type "static_viz" :value {:entity_id 999999}}]}
           (fn [{:keys [post-calls stop-stream-calls]}]
@@ -818,7 +1012,7 @@
                                 :ts        "1234567890.000011"
                                 :event_ts  "1234567890.000011"
                                 :thread_ts "1234567890.000000"})]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text    "Here are your charts"
            :data-parts [{:type "static_viz" :value {:entity_id 999999}}
                         {:type "static_viz" :value {:entity_id 123}}]}
@@ -875,7 +1069,7 @@
                                      :ts        "1234567890.000020"
                                      :event_ts  "1234567890.000020"
                                      :thread_ts "1234567890.000000"})]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text    "Here's your chart"
            :data-parts mock-data-parts}
           (fn [{:keys [image-calls stop-stream-calls]}]
@@ -887,12 +1081,18 @@
                      :done?      true?
                      :timeout-ms 5000})
             (let [img (first @image-calls)]
-              (testing "filename uses slugified card name"
-                (is (= "card_101.png" (:filename img))))
-              (testing "initial-comment uses card name with link, not AI caption"
-                (is (str/includes? (:initial-comment img) "Card 101"))
-                (is (not (str/includes? (:initial-comment img) "AI-generated caption")))
-                (is (str/includes? (:initial-comment img) "/question/101"))))))))))
+              (testing "image blocks use card name with link, not AI caption"
+                (let [caption-text (get-in img [:blocks 0 :text :text])]
+                  (is (str/includes? caption-text "Card 101"))
+                  (is (not (str/includes? caption-text "AI-generated caption")))
+                  (is (str/includes? caption-text "/question/101"))))
+              (testing "image block references a Slack file ID"
+                (is (re-matches #"FIMG-\d+" (:file-id img))))
+              (testing "image blocks include feedback controls"
+                (is (= ["section" "image" "context_actions"]
+                       (mapv :type (:blocks img))))
+                (is (= "feedback_buttons" (get-in img [:blocks 2 :elements 0 :type])))
+                (is (= 1 (count (get-in img [:blocks 2 :elements]))))))))))))
 
 (deftest table-viz-with-caption-test
   (testing "table viz posts include caption block with link"
@@ -907,10 +1107,10 @@
                                      :ts        "1234567890.000021"
                                      :event_ts  "1234567890.000021"
                                      :thread_ts "1234567890.000000"})]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text    "Here's your table"
            :data-parts mock-data-parts}
-          (fn [{:keys [post-calls stop-stream-calls generate-adhoc-output-calls]}]
+          (fn [{:keys [stop-stream-calls generate-adhoc-output-calls]}]
             (mt/client :post 200 "ee/metabot-v3/slack/events"
                        (slack-request-options event-body)
                        event-body)
@@ -918,14 +1118,18 @@
                                        (>= (count @generate-adhoc-output-calls) 1))
                      :done?      true?
                      :timeout-ms 5000})
-            (let [viz-post (some (fn [p] (when (:blocks p) p)) @post-calls)]
-              (testing "table viz posted as message with blocks"
-                (is (some? viz-post)))
+            (let [viz-blocks (:blocks (first @stop-stream-calls))]
+              (testing "table viz included in stop-stream blocks"
+                (is (seq viz-blocks)))
               (testing "first block is caption with mrkdwn text"
-                (let [caption-block (first (:blocks viz-post))]
+                (let [caption-block (first viz-blocks)]
                   (is (= "section" (:type caption-block)))
                   (is (= "mrkdwn" (get-in caption-block [:text :type])))
-                  (is (str/includes? (get-in caption-block [:text :text]) "Sales Data")))))))))))
+                  (is (str/includes? (get-in caption-block [:text :text]) "Sales Data"))))
+              (testing "table blocks include feedback controls"
+                (is (= "context_actions" (get-in viz-blocks [2 :type])))
+                (is (= "feedback_buttons" (get-in viz-blocks [2 :elements 0 :type])))
+                (is (= 1 (count (get-in viz-blocks [2 :elements]))))))))))))
 
 (deftest generate-card-output-failed-qp-result-test
   (testing "throws when QP returns :status :failed for table card"
@@ -953,6 +1157,40 @@
                                                        :data   {:rows [] :cols []}})]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Table not found"
                             (slackbot.query/generate-adhoc-output {:database 1} :display :table))))))
+
+(deftest ^:parallel generate-adhoc-output-empty-results-test
+  (testing "chart displays with no rows fall back to a no-data table"
+    (mt/with-dynamic-fn-redefs
+      [slackbot.query/execute-adhoc-query (constantly {:data {:cols [{:name "sales" :base_type :type/Integer}]
+                                                              :rows []}})]
+      (is (= {:type    :table
+              :content [{:type            "table"
+                         :rows            [[{:type "raw_text" :text "No data"}]]
+                         :column_settings [{:align "left"}]}]}
+             (slackbot.query/generate-adhoc-output {:database 1} :display :bar)))))
+
+  (testing "table displays with no rows use the same no-data table"
+    (mt/with-dynamic-fn-redefs
+      [slackbot.query/execute-adhoc-query (constantly {:data {:cols [{:name "sales" :base_type :type/Integer}]
+                                                              :rows []}})]
+      (is (= {:type    :table
+              :content [{:type            "table"
+                         :rows            [[{:type "raw_text" :text "No data"}]]
+                         :column_settings [{:align "left"}]}]}
+             (slackbot.query/generate-adhoc-output {:database 1} :display :table))))))
+
+(deftest generate-card-output-empty-results-test
+  (testing "saved-card chart displays with no rows fall back to a no-data table"
+    (mt/with-temp [:model/Card {card-id :id} {:display :bar :name "Empty Card"}]
+      (mt/with-dynamic-fn-redefs
+        [slackbot.query/pulse-card-query-results (constantly {:data {:cols [{:name "sales" :base_type :type/Integer}]
+                                                                     :rows []}})]
+        (is (= {:type      :table
+                :card-name "Empty Card"
+                :content   [{:type            "table"
+                             :rows            [[{:type "raw_text" :text "No data"}]]
+                             :column_settings [{:align "left"}]}]}
+               (#'slackbot.query/generate-card-output card-id)))))))
 
 ;; -------------------------------- CSV Upload Tests --------------------------------
 
@@ -1000,7 +1238,7 @@
         (with-upload-mocks!
           {:uploads-enabled? false}
           (fn [{:keys [upload-calls]}]
-            (with-slackbot-mocks
+            (with-slackbot-mocks!
               {:ai-text "CSV uploads are not enabled on this Metabase instance."}
               (fn [{:keys [stop-stream-calls append-text-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -1028,7 +1266,7 @@
            :can-create-upload? true
            :upload-result {:id 456 :name "Data"}}
           (fn [{:keys [upload-calls download-calls]}]
-            (with-slackbot-mocks
+            (with-slackbot-mocks!
               {:ai-text "Your CSV has been uploaded successfully as a model."}
               (fn [{:keys [stop-stream-calls append-text-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -1063,7 +1301,7 @@
         (with-upload-mocks!
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
-            (with-slackbot-mocks
+            (with-slackbot-mocks!
               {:ai-text "Only CSV files can be uploaded."}
               (fn [{:keys [stop-stream-calls append-text-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -1097,7 +1335,7 @@
         (with-upload-mocks!
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
-            (with-slackbot-mocks
+            (with-slackbot-mocks!
               {:ai-text "This should not be called"}
               (fn [{:keys [post-calls delete-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -1143,7 +1381,7 @@
           {:uploads-enabled? true
            :upload-result {:id 789 :name "Uploaded Data"}}
           (fn [{:keys [upload-calls download-calls]}]
-            (with-slackbot-mocks
+            (with-slackbot-mocks!
               {:ai-text "Uploaded 2 files, skipped 1 non-CSV file."}
               (fn [{:keys [stop-stream-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -1175,7 +1413,7 @@
         (with-upload-mocks!
           {:uploads-enabled? true}
           (fn [{:keys [upload-calls download-calls]}]
-            (with-slackbot-mocks
+            (with-slackbot-mocks!
               {:ai-text "The file exceeds the 1GB size limit."}
               (fn [{:keys [stop-stream-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -1201,7 +1439,7 @@
           {:uploads-enabled? true
            :can-create-upload? false}
           (fn [{:keys [upload-calls]}]
-            (with-slackbot-mocks
+            (with-slackbot-mocks!
               {:ai-text "You don't have permission to upload files."}
               (fn [{:keys [stop-stream-calls append-text-calls]}]
                 (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -1275,7 +1513,7 @@
                                {:text         "Hello everyone!"
                                 :user         "U-UNKNOWN-USER"
                                 :channel_type "channel"})]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text "Should not be called"
            :user-id ::no-user}
           (fn [{:keys [post-calls ephemeral-calls stream-calls ai-request-calls]}]
@@ -1300,7 +1538,7 @@
       (let [event-body (update base-dm-event :event merge
                                {:text         "Hello team!"
                                 :channel_type "channel"})]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text "Should not be called"}
           (fn [{:keys [post-calls ephemeral-calls stream-calls ai-request-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -1325,7 +1563,7 @@
                                 :text         "Here's my data"
                                 :channel_type "channel"
                                 :files        [slack-csv-file]})]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text "Should not be called"}
           (fn [{:keys [post-calls ephemeral-calls stream-calls ai-request-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -1434,7 +1672,118 @@
 
       (testing "non-matching slack_msg_ids return empty map"
         (let [result (slackbot.persistence/message-history conv-id #{"nonexistent-id"})]
-          (is (empty? result)))))))
+          (is (empty? result)))))
+
+    (testing "soft-deleted assistant messages are excluded from history"
+      (let [deleted-msg-id "1709567890.000003"]
+        (t2/insert! :model/MetabotMessage
+                    {:conversation_id conv-id
+                     :slack_msg_id    deleted-msg-id
+                     :role            "assistant"
+                     :profile_id      "test"
+                     :total_tokens    10
+                     :deleted_at      (java.time.OffsetDateTime/now)
+                     :deleted_by_user_id (mt/user->id :rasta)
+                     :data            [{:_type "TOOL_CALL" :role "assistant" :tool_calls [{:id "deleted"}]}
+                                       {:_type "TOOL_RESULT" :role "tool" :tool_call_id "deleted" :content "gone"}]})
+        (is (empty? (slackbot.persistence/message-history conv-id #{deleted-msg-id})))
+        (is (= #{deleted-msg-id}
+               (slackbot.persistence/deleted-message-ids conv-id #{deleted-msg-id})))))))
+
+(deftest response-owner-user-id-test
+  (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (let [shared-msg-id "1709567890.000002"
+          conv-a        (str (random-uuid))
+          conv-b        (str (random-uuid))]
+      (t2/insert! :model/MetabotConversation {:id conv-a :user_id (mt/user->id :rasta)})
+      (t2/insert! :model/MetabotConversation {:id conv-b :user_id (mt/user->id :crowberto)})
+      (t2/insert! :model/MetabotMessage
+                  {:conversation_id conv-a
+                   :channel_id      "C123"
+                   :slack_msg_id    shared-msg-id
+                   :role            "assistant"
+                   :profile_id      "test"
+                   :total_tokens    10
+                   :data            [{:_type "TEXT" :role "assistant" :content "hi"}]})
+      (t2/insert! :model/MetabotMessage
+                  {:conversation_id conv-b
+                   :channel_id      "C456"
+                   :slack_msg_id    shared-msg-id
+                   :role            "assistant"
+                   :profile_id      "test"
+                   :total_tokens    10
+                   :data            [{:_type "TEXT" :role "assistant" :content "hi"}]})
+
+      (is (= (mt/user->id :rasta)
+             (slackbot.persistence/response-owner-user-id "C123" shared-msg-id)))
+      (is (= (mt/user->id :crowberto)
+             (slackbot.persistence/response-owner-user-id "C456" shared-msg-id)))
+      (is (nil? (slackbot.persistence/response-owner-user-id "C789" shared-msg-id))))))
+
+(deftest thread-history-excludes-soft-deleted-bot-messages-test
+  (with-redefs [slackbot.persistence/message-history     (constantly {"1709567890.000002"
+                                                                      [{:role :assistant
+                                                                        :tool_calls [{:id "tool-1"}]}
+                                                                       {:role :tool
+                                                                        :tool_call_id "tool-1"
+                                                                        :content "done"}]})
+                slackbot.persistence/deleted-message-ids (constantly #{"1709567890.000002"})]
+    (let [thread {:messages [{:ts "1709567890.000001"
+                              :text "User question"
+                              :user "U123"}
+                             {:ts "1709567890.000002"
+                              :text "Deleted bot response"
+                              :bot_id "B123"}]}]
+      (is (= [{:role :user :content "User question"}]
+             (#'slackbot.streaming/thread->history thread "UBOT123" (str (random-uuid))))))))
+
+(deftest soft-delete-response-test
+  (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+    (let [conv-id    (str (random-uuid))
+          channel-id "C123"
+          slack-ts   "1709567890.000099"
+          user-id    (mt/user->id :rasta)]
+      (t2/insert! :model/MetabotConversation {:id conv-id :user_id user-id})
+      (t2/insert! :model/MetabotMessage
+                  {:conversation_id conv-id
+                   :channel_id      channel-id
+                   :slack_msg_id    slack-ts
+                   :role            "assistant"
+                   :profile_id      "test"
+                   :total_tokens    10
+                   :data            [{:_type "TEXT" :role "assistant" :content "hi"}]})
+
+      (is (true? (slackbot.persistence/soft-delete-response! channel-id slack-ts user-id)))
+      (let [msg (t2/select-one :model/MetabotMessage :channel_id channel-id :slack_msg_id slack-ts :role "assistant")]
+        (is (some? (:deleted_at msg)))
+        (is (= user-id (:deleted_by_user_id msg)))))))
+
+(deftest channel-callback-status-persists-without-streaming-text-test
+  (testing "channel tool status remains visible and text is accumulated without intermediate updates"
+    (let [update-calls (atom [])]
+      (with-redefs [slackbot.client/update-message (fn [_ msg]
+                                                     (swap! update-calls conj msg)
+                                                     {:ok true})]
+        (let [{:keys [on-tool-start on-tool-end on-text request-flush! slack-writer current-text]}
+              (#'slackbot.channel/make-channel-callbacks {:token "xoxb-test"}
+                                                         {:channel              "C123"
+                                                          :message-ts           "123.456"
+                                                          :thinking-placeholder "_Thinking..._"
+                                                          :tool-name->friendly  #'slackbot.streaming/tool-name->friendly})]
+          (on-tool-start {:id "tool-1" :tool-name "search"})
+          (await slack-writer)
+          (is (= "_Searching..._" (:text (first @update-calls))))
+
+          (on-tool-end {:id "tool-1"})
+          (request-flush! true)
+          (await slack-writer)
+          (is (= 1 (count @update-calls)) "tool end should not clear back to Thinking")
+
+          (on-text "Here is the answer")
+          (request-flush! true)
+          (await slack-writer)
+          (is (= 1 (count @update-calls)) "channel text should not be streamed incrementally")
+          (is (= "Here is the answer" @current-text)))))))
 
 ;; -------------------------------- PUT /slack/settings Tests --------------------------------
 
@@ -1490,7 +1839,7 @@
 ;; -------------------------------- Feedback Tests --------------------------------
 
 (deftest feedback-blocks-test
-  (testing "feedback-blocks generates correct Slack context_actions block with feedback_buttons"
+  (testing "feedback-blocks generates a Slack context_actions block with feedback controls"
     (let [conversation-id "test-conv-123"
           blocks          (#'slackbot.streaming/feedback-blocks conversation-id)]
       (is (= 1 (count blocks)))
@@ -1512,7 +1861,7 @@
   (testing "send-response passes feedback blocks to stop-stream"
     (with-slackbot-setup
       (let [event-body base-dm-event]
-        (with-slackbot-mocks
+        (with-slackbot-mocks!
           {:ai-text "Here is a response"}
           (fn [{:keys [stop-stream-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
@@ -1526,7 +1875,8 @@
                 (let [{:keys [blocks]} (first @stop-stream-calls)]
                   (is (= 1 (count blocks)))
                   (is (= "metabot_feedback" (:block_id (first blocks))))
-                  (is (= "feedback_buttons" (:type (first (:elements (first blocks)))))))))))))))
+                  (is (= "feedback_buttons" (get-in blocks [0 :elements 0 :type])))
+                  (is (= 1 (count (get-in blocks [0 :elements])))))))))))))
 
 (deftest feedback-modal-view-test
   (testing "positive feedback modal has no issue type dropdown"
@@ -1616,6 +1966,181 @@
           (testing "nothing was called"
             (is (= 0 (count @harbormaster-calls)))
             (is (= 0 (count @open-view-calls)))))))))
+
+(deftest handle-delete-action-test
+  (testing "owner user can replace the metabot response message with a removed notice"
+    (let [update-calls      (atom [])
+          soft-delete-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id     (constantly (mt/user->id :rasta))
+                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :rasta))
+                    slackbot.persistence/soft-delete-response! (fn [& args]
+                                                                 (swap! soft-delete-calls conj args)
+                                                                 true)
+                    slackbot.client/update-message (fn [_ msg]
+                                                     (swap! update-calls conj msg)
+                                                     {:ok true})]
+        (let [result (#'slackbot/handle-delete-action
+                      {:slack-user-id "U123"
+                       :channel-id    "C123"
+                       :message-ts    "123.456"})]
+          @result
+          (is (= [["C123" "123.456" (mt/user->id :rasta)]] @soft-delete-calls))
+          (is (= 1 (count @update-calls)))
+          (is (= {:channel "C123"
+                  :ts      "123.456"
+                  :text    "Message has been removed."
+                  :blocks  [{:type "section"
+                             :text {:type "mrkdwn"
+                                    :text "_Message has been removed._"}}]}
+                 (first @update-calls)))))))
+
+  (testing "non-owner user cannot delete the metabot response message"
+    (let [update-calls      (atom [])
+          soft-delete-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id (constantly (mt/user->id :rasta))
+                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :crowberto))
+                    slackbot.persistence/soft-delete-response! (fn [& args]
+                                                                 (swap! soft-delete-calls conj args)
+                                                                 true)
+                    slackbot.client/update-message (fn [_ msg]
+                                                     (swap! update-calls conj msg)
+                                                     {:ok true})]
+        (let [result (#'slackbot/handle-delete-action
+                      {:slack-user-id "U123"
+                       :channel-id    "C123"
+                       :message-ts    "123.456"})]
+          (is (nil? result))
+          (is (empty? @soft-delete-calls))
+          (is (empty? @update-calls))))))
+
+  (testing "unauthenticated user cannot delete the metabot response message"
+    (let [update-calls      (atom [])
+          soft-delete-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id     (constantly nil)
+                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :rasta))
+                    slackbot.persistence/soft-delete-response! (fn [& args]
+                                                                 (swap! soft-delete-calls conj args)
+                                                                 true)
+                    slackbot.client/update-message (fn [_ msg]
+                                                     (swap! update-calls conj msg)
+                                                     {:ok true})]
+        (let [result (#'slackbot/handle-delete-action
+                      {:slack-user-id "U-UNKNOWN"
+                       :channel-id    "C123"
+                       :message-ts    "123.456"})]
+          (is (nil? result))
+          (is (empty? @soft-delete-calls))
+          (is (empty? @update-calls))))))
+
+  (testing "failed Slack update does not soft-delete the response"
+    (let [update-calls      (atom [])
+          soft-delete-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id     (constantly (mt/user->id :rasta))
+                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :rasta))
+                    slackbot.persistence/soft-delete-response! (fn [& args]
+                                                                 (swap! soft-delete-calls conj args)
+                                                                 true)
+                    slackbot.client/update-message (fn [_ msg]
+                                                     (swap! update-calls conj msg)
+                                                     {:ok false :error "internal_error"})]
+        (let [result (#'slackbot/handle-delete-action
+                      {:slack-user-id "U123"
+                       :channel-id    "C123"
+                       :message-ts    "123.456"})]
+          @result
+          (is (= 1 (count @update-calls)))
+          (is (empty? @soft-delete-calls)))))))
+
+(deftest handle-delete-reaction-test
+  (testing "owner reaction replaces the metabot response message with a removed notice"
+    (let [update-calls      (atom [])
+          soft-delete-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id                     (constantly (mt/user->id :rasta))
+                    slackbot.persistence/response-owner-user-id     (constantly (mt/user->id :rasta))
+                    slackbot.persistence/soft-delete-response!      (fn [& args]
+                                                                      (swap! soft-delete-calls conj args)
+                                                                      true)
+                    slackbot.client/update-message                  (fn [_ msg]
+                                                                      (swap! update-calls conj msg)
+                                                                      {:ok true})]
+        (#'slackbot/handle-delete-reaction {:token "xoxb-test"}
+                                           {:type     "reaction_added"
+                                            :user     "U123"
+                                            :reaction "wastebasket"
+                                            :item     {:type    "message"
+                                                       :channel "C123"
+                                                       :ts      "123.456"}})
+        (is (= [["C123" "123.456" (mt/user->id :rasta)]] @soft-delete-calls))
+        (is (= [{:channel "C123"
+                 :ts      "123.456"
+                 :text    "Message has been removed."
+                 :blocks  [{:type "section"
+                            :text {:type "mrkdwn"
+                                   :text "_Message has been removed._"}}]}]
+               @update-calls)))))
+
+  (testing "non-owner reaction is ignored"
+    (let [update-calls      (atom [])
+          soft-delete-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id                 (constantly (mt/user->id :rasta))
+                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :crowberto))
+                    slackbot.persistence/soft-delete-response! (fn [& args]
+                                                                 (swap! soft-delete-calls conj args)
+                                                                 true)
+                    slackbot.client/update-message              (fn [_ msg]
+                                                                  (swap! update-calls conj msg)
+                                                                  {:ok true})]
+        (#'slackbot/handle-delete-reaction {:token "xoxb-test"}
+                                           {:type     "reaction_added"
+                                            :user     "U123"
+                                            :reaction "x"
+                                            :item     {:type    "message"
+                                                       :channel "C123"
+                                                       :ts      "123.456"}})
+        (is (empty? @soft-delete-calls))
+        (is (empty? @update-calls)))))
+
+  (testing "unlinked reaction user is ignored"
+    (let [update-calls      (atom [])
+          soft-delete-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id                 (constantly nil)
+                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :rasta))
+                    slackbot.persistence/soft-delete-response! (fn [& args]
+                                                                 (swap! soft-delete-calls conj args)
+                                                                 true)
+                    slackbot.client/update-message              (fn [_ msg]
+                                                                  (swap! update-calls conj msg)
+                                                                  {:ok true})]
+        (#'slackbot/handle-delete-reaction {:token "xoxb-test"}
+                                           {:type     "reaction_added"
+                                            :user     "U-UNKNOWN"
+                                            :reaction "cancel"
+                                            :item     {:type    "message"
+                                                       :channel "C123"
+                                                       :ts      "123.456"}})
+        (is (empty? @soft-delete-calls))
+        (is (empty? @update-calls)))))
+
+  (testing "failed Slack update does not soft-delete the response"
+    (let [update-calls      (atom [])
+          soft-delete-calls (atom [])]
+      (with-redefs [slackbot/slack-id->user-id                 (constantly (mt/user->id :rasta))
+                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :rasta))
+                    slackbot.persistence/soft-delete-response! (fn [& args]
+                                                                 (swap! soft-delete-calls conj args)
+                                                                 true)
+                    slackbot.client/update-message              (fn [_ msg]
+                                                                  (swap! update-calls conj msg)
+                                                                  {:ok false :error "internal_error"})]
+        (#'slackbot/handle-delete-reaction {:token "xoxb-test"}
+                                           {:type     "reaction_added"
+                                            :user     "U123"
+                                            :reaction "wastebasket"
+                                            :item     {:type    "message"
+                                                       :channel "C123"
+                                                       :ts      "123.456"}})
+        (is (= 1 (count @update-calls)))
+        (is (empty? @soft-delete-calls))))))
 
 (deftest handle-feedback-modal-submission-test
   (testing "modal submission sends feedback to harbormaster and replaces buttons"
