@@ -165,15 +165,16 @@
    :ip-address (throttle/make-throttler :email :attempts-threshold 50)})
 
 (defn- password-reset-disabled?
-  "Disable password reset for all users created with SSO logins, unless those Users were created with Google SSO
-  in which case disable reset for them as long as the Google SSO feature is enabled.
+  "Disable password reset for users whose SSO provider is still active — they should use SSO.
+   When a provider is no longer available (e.g., after license downgrade), allow password reset
+   so users aren't locked out.
 
-  Disable password reset for any support users -- users with a auth-identity of type `support-access-request`."
+   Always disable password reset for support-access users."
   [user-id sso-source]
   (cond
     (t2/exists? :model/AuthIdentity :user_id user-id :provider "support-access-grant") true
-    (and (= sso-source :google) (not (sso/sso-enabled?))) (sso/google-auth-enabled)
-    :else (some? sso-source)))
+    (some? sso-source) (sso/sso-source-enabled? sso-source)
+    :else false))
 
 (defn- forgot-password-impl
   [email]
@@ -184,9 +185,8 @@
                (t2/select-one [:model/User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
+      ;; If user uses any *enabled* SSO method to log in, no need to generate a reset token.
       (if (password-reset-disabled? user-id sso-source)
-        ;; If user uses any SSO method to log in, no need to generate a reset token. Some cases for Google SSO
-        ;; are exempted see `password-reset-allowed?`
         (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (auth-identity/create-password-reset! user-id)
               password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
