@@ -60,25 +60,8 @@ jobs:
           npm install -g @playwright/cli@latest
           playwright-cli install --skills
 
-      - name: Create MCP config
-        run: |
-          UV_PATH="$(which uv)"
-          cat > /tmp/mcp-config.json <<EOF
-          {
-            "mcpServers": {
-              "metabase-repro": {
-                "command": "${UV_PATH}",
-                "args": ["run", "--directory", "mcp", "--with", "fastmcp", "python", "-m", "metabase_repro"]
-              },
-              "linear-server": {
-                "url": "https://mcp.linear.app/mcp",
-                "headers": {
-                  "Authorization": "Bearer ${{ secrets.LINEAR_API_KEY }}"
-                }
-              }
-            }
-          }
-          EOF
+      - name: Resolve UV path
+        run: echo "UV_PATH=$(which uv)" >> $GITHUB_ENV
 
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
@@ -109,7 +92,7 @@ jobs:
             - Docker is available for appdb (Postgres/MySQL/MariaDB) if needed.
             - Java 21 and Python/uv are pre-installed.
           claude_args: |
-            --mcp-config /tmp/mcp-config.json
+            --mcp-config '{"mcpServers":{"metabase-repro":{"command":"${{ env.UV_PATH }}","args":["run","--directory","mcp","--with","fastmcp","python","-m","metabase_repro"]},"linear-server":{"url":"https://mcp.linear.app/mcp","headers":{"Authorization":"Bearer ${{ secrets.LINEAR_API_KEY }}"}}}}'
             --disallowedTools "Bash(git push*),Bash(rm -rf /*)"
 
       - name: Verify repro-bot completed successfully
