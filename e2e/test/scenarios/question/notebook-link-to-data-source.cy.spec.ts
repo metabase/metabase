@@ -7,22 +7,12 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type {
-  NativeQuestionDetails,
-  QuestionDetails,
-} from "e2e/support/helpers";
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { METAKEY } from "metabase/lib/browser";
 
-const {
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS_ID,
-  REVIEWS,
-  REVIEWS_ID,
-  PEOPLE_ID,
-  PRODUCTS,
-} = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS_ID, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > notebook > link to data source", () => {
   beforeEach(() => {
@@ -109,13 +99,13 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the source question from a nested question", () => {
-      H.createQuestion(
-        {
-          name: "Nested question based on a question",
-          query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
+      H.createCardWithTestQuery({
+        name: "Nested question based on a question",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "card", id: ORDERS_COUNT_QUESTION_ID } }],
         },
-        { visitQuestion: true },
-      );
+      }).then(H.visitCard);
 
       H.openNotebook();
       H.getNotebookStep("data")
@@ -150,13 +140,13 @@ describe("scenarios > notebook > link to data source", () => {
       };
 
       H.createNativeQuestion(source).then(({ body: sourceQuestion }) => {
-        H.createQuestion(
-          {
-            name: "Nested question based on a native question",
-            query: { "source-table": `card__${sourceQuestion.id}` },
+        H.createCardWithTestQuery({
+          name: "Nested question based on a native question",
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            stages: [{ source: { type: "card", id: sourceQuestion.id } }],
           },
-          { visitQuestion: true },
-        );
+        }).then(H.visitCard);
 
         H.openNotebook();
         H.getNotebookStep("data").findByText(source.name).click(H.holdMetaKey);
@@ -184,13 +174,13 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the source model from a nested question", () => {
-      H.createQuestion(
-        {
-          name: "Nested question based on a model",
-          query: { "source-table": `card__${ORDERS_MODEL_ID}` },
+      H.createCardWithTestQuery({
+        name: "Nested question based on a model",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "card", id: ORDERS_MODEL_ID } }],
         },
-        { visitQuestion: true },
-      );
+      }).then(H.visitCard);
 
       H.openNotebook();
       H.getNotebookStep("data").findByText("Orders Model").click(H.holdMetaKey);
@@ -222,13 +212,13 @@ describe("scenarios > notebook > link to data source", () => {
       };
 
       H.createNativeQuestion(source).then(({ body: sourceQuestion }) => {
-        H.createQuestion(
-          {
-            name: "Nested question based on a native question",
-            query: { "source-table": `card__${sourceQuestion.id}` },
+        H.createCardWithTestQuery({
+          name: "Nested question based on a native question",
+          dataset_query: {
+            database: SAMPLE_DB_ID,
+            stages: [{ source: { type: "card", id: sourceQuestion.id } }],
           },
-          { visitQuestion: true },
-        );
+        }).then(H.visitCard);
 
         H.openNotebook();
         H.getNotebookStep("data")
@@ -253,10 +243,13 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it('should open the "trash" if the source question has been archived', () => {
-      H.createQuestion({
+      H.createCardWithTestQuery({
         name: "Nested question based on a question",
-        query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
-      }).then(({ body: nestedQuestion }) => {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "card", id: ORDERS_COUNT_QUESTION_ID } }],
+        },
+      }).then((nestedQuestion) => {
         cy.log("Move the source question to the trash");
         cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
           archived: true,
@@ -335,14 +328,17 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the nested model (based on a question) as the data source", () => {
-      H.createQuestion(
-        {
-          name: "Nested model based on a question",
-          query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
-          type: "model",
+      H.createCardWithTestQuery({
+        name: "Nested model based on a question",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "card", id: ORDERS_COUNT_QUESTION_ID } }],
         },
-        { visitQuestion: true, wrapId: true, idAlias: "nestedModelId" },
-      );
+        type: "model",
+      }).then((card) => {
+        cy.wrap(card.id).as("nestedModelId");
+        return H.visitCard(card);
+      });
 
       H.openNotebook();
       H.getNotebookStep("data")
@@ -367,14 +363,17 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the nested model (based on a model) as the data source", () => {
-      H.createQuestion(
-        {
-          name: "Nested model based on a model",
-          query: { "source-table": `card__${ORDERS_MODEL_ID}` },
-          type: "model",
+      H.createCardWithTestQuery({
+        name: "Nested model based on a model",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "card", id: ORDERS_MODEL_ID } }],
         },
-        { visitQuestion: true, wrapId: true, idAlias: "nestedModelId" },
-      );
+        type: "model",
+      }).then((card) => {
+        cy.wrap(card.id).as("nestedModelId");
+        return H.visitCard(card);
+      });
 
       H.openNotebook();
       H.getNotebookStep("data")
@@ -402,10 +401,13 @@ describe("scenarios > notebook > link to data source", () => {
 
   context("permissions", () => {
     it("shouldn't show the source question if it lives in a collection that user can't see", () => {
-      H.createQuestion({
+      H.createCardWithTestQuery({
         name: "Nested question based on a question",
-        query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
-      }).then(({ body: nestedQuestion }) => {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "card", id: ORDERS_COUNT_QUESTION_ID } }],
+        },
+      }).then((nestedQuestion) => {
         cy.log("Move the source question to admin's personal collection");
         cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
           collection_id: ADMIN_PERSONAL_COLLECTION_ID,
@@ -447,10 +449,13 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("user with the curate collection permissions but without write query permissions shouldn't be able to see/open the source question", () => {
-      H.createQuestion({
+      H.createCardWithTestQuery({
         name: "Nested question based on a question",
-        query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
-      }).then(({ body: nestedQuestion }) => {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          stages: [{ source: { type: "card", id: ORDERS_COUNT_QUESTION_ID } }],
+        },
+      }).then((nestedQuestion) => {
         cy.signIn("nodata");
         H.visitQuestion(nestedQuestion.id);
 
@@ -536,88 +541,86 @@ describe("scenarios > notebook > link to data source", () => {
   });
 
   context("joins", () => {
-    const getQuery = (id: number): QuestionDetails => {
-      return {
+    it("rhs joined data sources should open in a new tab on the meta/ctrl click", () => {
+      H.createCardWithTestQuery({
+        name: "People - Saved Question",
         dataset_query: {
           database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": PRODUCTS_ID,
-            joins: [
-              {
-                fields: "all",
-                strategy: "left-join",
-                alias: "Orders Model",
-                condition: [
-                  "=",
-                  ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
-                  [
-                    "field",
-                    "PRODUCT_ID",
+          stages: [{ source: { type: "table", id: PEOPLE_ID } }],
+        },
+      }).then((savedQuestion) => {
+        H.visitAdHocQuestionWithTestQuery(
+          {
+            dataset_query: {
+              database: SAMPLE_DB_ID,
+              stages: [
+                {
+                  source: { type: "table", id: PRODUCTS_ID },
+                  joins: [
                     {
-                      "base-type": "type/Integer",
-                      "join-alias": "Orders Model",
+                      source: { type: "card", id: ORDERS_MODEL_ID },
+                      strategy: "left-join",
+                      conditions: [
+                        {
+                          operator: "=",
+                          left: {
+                            type: "column",
+                            name: "ID",
+                            sourceName: "PRODUCTS",
+                          },
+                          right: {
+                            type: "column",
+                            name: "PRODUCT_ID",
+                            sourceName: "Orders Model",
+                          },
+                        },
+                      ],
+                    },
+                    {
+                      source: { type: "card", id: savedQuestion.id },
+                      strategy: "right-join",
+                      conditions: [
+                        {
+                          operator: "=",
+                          left: {
+                            type: "column",
+                            name: "USER_ID",
+                            sourceName: "Orders Model",
+                          },
+                          right: {
+                            type: "column",
+                            name: "ID",
+                            sourceName: "People - Saved Question",
+                          },
+                        },
+                      ],
+                    },
+                    {
+                      source: { type: "table", id: REVIEWS_ID },
+                      strategy: "inner-join",
+                      conditions: [
+                        {
+                          operator: "=",
+                          left: {
+                            type: "column",
+                            name: "ID",
+                            sourceName: "PRODUCTS",
+                          },
+                          right: {
+                            type: "column",
+                            name: "PRODUCT_ID",
+                            sourceName: "Reviews",
+                          },
+                        },
+                      ],
                     },
                   ],
-                ],
-                "source-table": `card__${ORDERS_MODEL_ID}`,
-              },
-              {
-                fields: "all",
-                strategy: "right-join",
-                alias: "People - User",
-                condition: [
-                  "=",
-                  [
-                    "field",
-                    ORDERS.USER_ID,
-                    {
-                      "base-type": "type/Integer",
-                      "join-alias": "Orders Model",
-                    },
-                  ],
-                  [
-                    "field",
-                    "ID",
-                    {
-                      "base-type": "type/BigInteger",
-                      "join-alias": "People - User",
-                    },
-                  ],
-                ],
-                "source-table": `card__${id}`,
-              },
-              {
-                fields: "all",
-                strategy: "inner-join",
-                alias: "Reviews",
-                condition: [
-                  "=",
-                  ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
-                  [
-                    "field",
-                    REVIEWS.PRODUCT_ID,
-                    { "base-type": "type/Integer", "join-alias": "Reviews" },
-                  ],
-                ],
-                "source-table": REVIEWS_ID,
-              },
-            ],
+                },
+              ],
+            },
           },
-          parameters: [],
-        },
-      };
-    };
-
-    it("rhs joined data sources should open in a new tab on the meta/ctrl click", () => {
-      H.createQuestion({
-        name: "People - Saved Question",
-        query: {
-          "source-table": PEOPLE_ID,
-        },
-      }).then(({ body: savedQuestion }) => {
-        const queryWithMultipleJoins = getQuery(savedQuestion.id);
-        H.visitQuestionAdhoc(queryWithMultipleJoins, { mode: "notebook" });
+          { mode: "notebook" },
+        );
 
         (function testModel() {
           cy.log("Model should open in a new tab");
