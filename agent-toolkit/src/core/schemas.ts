@@ -11,24 +11,38 @@ export const SearchInputSchema = z.object({
     .describe("Filter by entity type: table, dashboard, card, metric, segment"),
 });
 
-export const CreateTransformInputSchema = z.object({
-  name: z.string().min(1).describe("Transform name"),
-  database_id: z.number().int().positive().describe("Source database ID"),
-  sql: z.string().min(1).describe("SQL query for the transform source"),
-  target_table: z.string().min(1).describe("Name for the output table"),
-  target_schema: z.string().optional().describe("Schema for the output table"),
-  target_database_id: z
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .describe("Target database ID (defaults to source database)"),
-  description: z.string().optional().describe("Transform description"),
-  run: z
-    .boolean()
-    .optional()
-    .describe("If true, run the transform immediately after creation"),
-});
+export const CreateTransformInputSchema = z
+  .object({
+    name: z.string().min(1).describe("Transform name"),
+    database_id: z.number().int().positive().describe("Source database ID"),
+    sql: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("SQL query for the transform source (mutually exclusive with 'query')"),
+    query: z
+      .record(z.unknown())
+      .optional()
+      .describe(
+        "MBQL query object from construct-query (mutually exclusive with 'sql')",
+      ),
+    target_table: z.string().min(1).describe("Name for the output table"),
+    target_schema: z.string().optional().describe("Schema for the output table"),
+    target_database_id: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Target database ID (defaults to source database)"),
+    description: z.string().optional().describe("Transform description"),
+    run: z
+      .boolean()
+      .optional()
+      .describe("If true, run the transform immediately after creation"),
+  })
+  .refine((data) => (data.sql != null) !== (data.query != null), {
+    message: "Exactly one of 'sql' or 'query' must be provided",
+  });
 
 const VisualizationSchema = z
   .object({
@@ -93,22 +107,41 @@ export const DISPLAY_TYPES = [
   "boxplot",
 ] as const;
 
-export const CreateQuestionInputSchema = z.object({
-  name: z.string().min(1).describe("Question name"),
-  database_id: z.number().int().positive().describe("Database ID"),
-  sql: z.string().min(1).describe("SQL query"),
-  display: z
-    .enum(DISPLAY_TYPES)
-    .default("table")
-    .describe("Visualization type"),
-  type: z
-    .enum(["question", "model"])
-    .default("question")
-    .describe("Card type (question or model)"),
-  visualization: VisualizationSchema,
-  collection_id: z.number().int().positive().optional().describe("Collection ID"),
-  description: z.string().optional().describe("Question description"),
-});
+export const CreateQuestionInputSchema = z
+  .object({
+    name: z.string().min(1).describe("Question name"),
+    database_id: z.number().int().positive().describe("Database ID"),
+    sql: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("SQL query (for native questions — mutually exclusive with 'query')"),
+    query: z
+      .record(z.unknown())
+      .optional()
+      .describe(
+        "MBQL query object from construct-query (mutually exclusive with 'sql')",
+      ),
+    display: z
+      .enum(DISPLAY_TYPES)
+      .default("table")
+      .describe("Visualization type"),
+    type: z
+      .enum(["question", "model", "metric"])
+      .default("question")
+      .describe("Card type (question, model, or metric)"),
+    visualization: VisualizationSchema,
+    collection_id: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("Collection ID"),
+    description: z.string().optional().describe("Question description"),
+  })
+  .refine((data) => (data.sql != null) !== (data.query != null), {
+    message: "Exactly one of 'sql' or 'query' must be provided",
+  });
 
 const FilterSchema = z.object({
   field: z.string().describe("Field name (resolved to ID automatically)"),
@@ -180,9 +213,32 @@ export const AddCardToDashboardInputSchema = z.object({
     .describe("Wire this card to existing dashboard filters"),
 });
 
-export const ExecuteQueryInputSchema = z.object({
-  database_id: z.number().int().positive().describe("Database ID"),
-  sql: z.string().min(1).describe("SQL query to execute"),
+export const ExecuteQueryInputSchema = z
+  .object({
+    database_id: z.number().int().positive().describe("Database ID"),
+    sql: z
+      .string()
+      .min(1)
+      .optional()
+      .describe("SQL query to execute (mutually exclusive with 'query')"),
+    query: z
+      .record(z.unknown())
+      .optional()
+      .describe(
+        "MBQL query object from construct-query (mutually exclusive with 'sql')",
+      ),
+  })
+  .refine((data) => (data.sql != null) !== (data.query != null), {
+    message: "Exactly one of 'sql' or 'query' must be provided",
+  });
+
+export const CreateMeasureInputSchema = z.object({
+  name: z.string().min(1).describe("Measure name"),
+  table_id: z.number().int().positive().describe("Table ID"),
+  definition: z
+    .record(z.unknown())
+    .describe("MBQL5 query definition with exactly one aggregation"),
+  description: z.string().optional().describe("Measure description"),
 });
 
 // ----- Schema registry for the `schema` command -----
@@ -195,6 +251,7 @@ const schemaRegistry: Record<string, z.ZodType> = {
   "create-dashboard": CreateDashboardInputSchema,
   "add-card-to-dashboard": AddCardToDashboardInputSchema,
   "execute-query": ExecuteQueryInputSchema,
+  "create-measure": CreateMeasureInputSchema,
 };
 
 export function getSchemaForCommand(

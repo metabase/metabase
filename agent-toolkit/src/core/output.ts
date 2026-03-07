@@ -45,6 +45,30 @@ export function truncateRows(
   };
 }
 
+export function formatQueryResult(
+  apiResult: Record<string, unknown>,
+  maxRows: number,
+): Record<string, unknown> {
+  const resultData = apiResult.data as Record<string, unknown>;
+  const cols = (resultData?.cols as Array<Record<string, unknown>>) ?? [];
+  const rows = (resultData?.rows as unknown[][]) ?? [];
+
+  const { rows: truncatedRows, meta } = truncateRows(rows, maxRows);
+
+  return {
+    status: apiResult.status,
+    columns: cols.map((c) => ({
+      name: c.name,
+      display_name: c.display_name,
+      base_type: c.base_type,
+    })),
+    rows: truncatedRows,
+    row_count: apiResult.row_count,
+    running_time: apiResult.running_time,
+    _meta: meta,
+  };
+}
+
 export function formatOutput(data: unknown, opts?: OutputOptions): string {
   if (opts?.fields && typeof data === "object" && data !== null) {
     if (Array.isArray(data)) {

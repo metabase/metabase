@@ -11,6 +11,9 @@ import { registerQuestionCommands } from "./commands/question.js";
 import { registerSegmentCommands } from "./commands/segment.js";
 import { registerDashboardCommands } from "./commands/dashboard.js";
 import { registerQueryCommands } from "./commands/query.js";
+import { registerConstructQueryCommands } from "./commands/construct-query.js";
+import { registerMeasureCommands } from "./commands/measure.js";
+import { registerFieldCommands } from "./commands/field.js";
 import { registerSchemaCommand } from "./commands/schema-cmd.js";
 
 export interface GlobalContext {
@@ -95,6 +98,9 @@ registerQuestionCommands(program, withContext);
 registerSegmentCommands(program, withContext);
 registerDashboardCommands(program, withContext);
 registerQueryCommands(program, withContext);
+registerConstructQueryCommands(program, withContext);
+registerMeasureCommands(program, withContext);
+registerFieldCommands(program, withContext);
 registerSchemaCommand(program);
 
 // Ping command (simple, inline)

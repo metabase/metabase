@@ -63,14 +63,21 @@ export function registerQuestionCommands(
           input.visualization as Record<string, unknown> | undefined,
         );
 
+        const datasetQuery = input.sql
+          ? {
+              type: "native" as const,
+              database: input.database_id,
+              native: { query: input.sql },
+            }
+          : {
+              ...(input.query as Record<string, unknown>),
+              database: input.database_id,
+            };
+
         const apiPayload = {
           name: input.name,
           type: input.type,
-          dataset_query: {
-            type: "native" as const,
-            database: input.database_id,
-            native: { query: input.sql },
-          },
+          dataset_query: datasetQuery,
           display: input.display,
           visualization_settings: vizSettings,
           ...(input.collection_id && { collection_id: input.collection_id }),

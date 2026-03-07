@@ -7,6 +7,7 @@
     "metabase-agent": "./dist/index.js"
   },
   "scripts": {
+    "build:cljs": "cd .. && npx shadow-cljs release agent",
     "build": "tsup",
     "dev": "tsx src/index.ts",
     "test": "vitest run",

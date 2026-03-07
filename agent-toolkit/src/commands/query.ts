@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import type { GlobalContext } from "../index.js";
-import { printResult, truncateRows } from "../core/output.js";
+import { printResult, formatQueryResult } from "../core/output.js";
 import { ExecuteQueryInputSchema } from "../core/schemas.js";
 
 export function registerQueryCommands(
@@ -11,7 +11,7 @@ export function registerQueryCommands(
 ) {
   program
     .command("execute-query")
-    .description("Execute an ad-hoc SQL query")
+    .description("Execute an ad-hoc SQL or MBQL query")
     .requiredOption(
       "--json <payload>",
       "JSON input (see: schema execute-query)",
@@ -23,11 +23,16 @@ export function registerQueryCommands(
           JSON.parse(options.json),
         );
 
-        const apiPayload = {
-          database: input.database_id,
-          type: "native" as const,
-          native: { query: input.sql },
-        };
+        const apiPayload = input.sql
+          ? {
+              database: input.database_id,
+              type: "native" as const,
+              native: { query: input.sql },
+            }
+          : {
+              ...(input.query as Record<string, unknown>),
+              database: input.database_id,
+            };
 
         if (ctx.dryRun) {
           printResult({
@@ -43,26 +48,10 @@ export function registerQueryCommands(
           body: apiPayload as never,
         });
 
-        const result = data as Record<string, unknown>;
-        const resultData = result.data as Record<string, unknown>;
-        const cols = (resultData?.cols as Array<Record<string, unknown>>) ?? [];
-        const rows = (resultData?.rows as unknown[][]) ?? [];
-
         const maxRows = ctx.outputOpts.maxRows ?? 50;
-        const { rows: truncatedRows, meta } = truncateRows(rows, maxRows);
-
-        printResult({
-          status: result.status,
-          columns: cols.map((c) => ({
-            name: c.name,
-            display_name: c.display_name,
-            base_type: c.base_type,
-          })),
-          rows: truncatedRows,
-          row_count: result.row_count,
-          running_time: result.running_time,
-          _meta: meta,
-        });
+        printResult(
+          formatQueryResult(data as Record<string, unknown>, maxRows),
+        );
       }),
     );
 }

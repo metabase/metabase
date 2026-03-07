@@ -12,7 +12,7 @@ export function registerTransformCommands(
 ) {
   program
     .command("create-transform")
-    .description("Create a SQL transform. Use --run to execute immediately.")
+    .description("Create a SQL or MBQL transform. Use --run to execute immediately.")
     .requiredOption("--json <payload>", "JSON input (see: schema create-transform)")
     .action(
       withContext(async (ctx, opts: unknown) => {
@@ -21,16 +21,23 @@ export function registerTransformCommands(
           JSON.parse(options.json),
         );
 
+        const sourceQuery = input.sql
+          ? {
+              database: input.database_id,
+              type: "native" as const,
+              native: { query: input.sql },
+            }
+          : {
+              ...(input.query as Record<string, unknown>),
+              database: input.database_id,
+            };
+
         const apiPayload = {
           name: input.name,
           description: input.description ?? null,
           source: {
             type: "query" as const,
-            query: {
-              database: input.database_id,
-              type: "native" as const,
-              native: { query: input.sql },
-            },
+            query: sourceQuery,
           },
           target: {
             type: "table" as const,
@@ -178,22 +185,28 @@ export function registerTransformCommands(
         if (input.name) apiPayload.name = input.name;
         if (input.description !== undefined)
           apiPayload.description = input.description;
-        if (input.sql) {
+        if (input.sql || input.query) {
           const dbId = input.database_id;
           if (!dbId) {
             throw new CliError("missing_parameter", {
               message:
-                "database_id is required when updating SQL",
+                "database_id is required when updating the source query",
               hint: "Include database_id in the JSON payload",
             });
           }
+          const sourceQuery = input.sql
+            ? {
+                database: dbId,
+                type: "native",
+                native: { query: input.sql },
+              }
+            : {
+                ...input.query,
+                database: dbId,
+              };
           apiPayload.source = {
             type: "query",
-            query: {
-              database: dbId,
-              type: "native",
-              native: { query: input.sql },
-            },
+            query: sourceQuery,
           };
         }
         if (input.target_table) {
