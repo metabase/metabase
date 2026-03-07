@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.transforms.ordering-test
+(ns ^:mb/driver-tests metabase.transforms-base.ordering-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -6,9 +6,9 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.ordering :as ordering]
    [metabase.transforms.execute :as transforms.execute]
-   [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.ordering :as ordering]
    [toucan2.core :as t2]))
 
 (defn- default-schema-or-public [& [fallback-driver]]
@@ -58,7 +58,7 @@
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
-    (#'transforms.i/table-dependencies transform)))
+    (transforms-base.i/table-dependencies transform)))
 
 (deftest not-run-transform-dependency-ordering-test
   (mt/test-driver (mt/normal-driver-select {:+parent :sql-jdbc})

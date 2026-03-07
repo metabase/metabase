@@ -146,12 +146,12 @@
             run-id 102
             logged-messages (atom [])
             run-called? (atom false)]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)
-                      transforms.execute/execute! (fn [_ _]
-                                                    (reset! run-called? true))
-                      transforms.job-run/add-run-activity! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                               (swap! logged-messages conj {:level level :message message}))
+                                    transform-run/running-run-for-transform-id (constantly nil)
+                                    transforms.execute/execute! (fn [_ _]
+                                                                  (reset! run-called? true))
+                                    transforms.job-run/add-run-activity! (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled nil query-transform)
           (is (empty? (filter (comp #{:warn} :level) @logged-messages))
               "Should not log warnings when feature is enabled")
@@ -164,9 +164,9 @@
                              :name "Test Query Transform"}
             run-id 100
             logged-messages (atom [])]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)]
+        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                               (swap! logged-messages conj {:level level :message message}))
+                                    transform-run/running-run-for-transform-id (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled nil query-transform)
           (is (= 1 (count @logged-messages))
               "Should log exactly one warning")
@@ -184,12 +184,12 @@
             run-id 102
             logged-messages (atom [])
             run-called? (atom false)]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)
-                      transforms.execute/execute! (fn [_ _]
-                                                    (reset! run-called? true))
-                      transforms.job-run/add-run-activity! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                               (swap! logged-messages conj {:level level :message message}))
+                                    transform-run/running-run-for-transform-id (constantly nil)
+                                    transforms.execute/execute! (fn [_ _]
+                                                                  (reset! run-called? true))
+                                    transforms.job-run/add-run-activity! (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled nil query-transform)
           (is (empty? (filter (comp #{:warn} :level) @logged-messages))
               "Should not log warnings when feature is enabled")
@@ -231,9 +231,9 @@
                                                                    :tag_id (:id tag)
                                                                    :position 0}]
                   (let [run-id-atom (atom nil)]
-                    (with-redefs [jobs/run-transforms! (fn [run-id & _]
-                                                         (reset! run-id-atom run-id)
-                                                         (throw (ex-info "Uncaught error" {})))]
+                    (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
+                                                                       (reset! run-id-atom run-id)
+                                                                       (throw (ex-info "Uncaught error" {})))]
                       (try
                         (jobs/run-job! (:id job) {:run-method :cron})
                         (catch clojure.lang.ExceptionInfo _))
@@ -280,9 +280,9 @@
                                                                    :tag_id (:id tag)
                                                                    :position 0}]
                   (let [run-id-atom (atom nil)]
-                    (with-redefs [jobs/run-transforms! (fn [run-id & _]
-                                                         (reset! run-id-atom run-id)
-                                                         (throw (ex-info "Uncaught error" {})))]
+                    (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
+                                                                       (reset! run-id-atom run-id)
+                                                                       (throw (ex-info "Uncaught error" {})))]
                       (try
                         (jobs/run-job! (:id job) {:run-method :manual})
                         (catch clojure.lang.ExceptionInfo _))
@@ -434,3 +434,71 @@
                        (catch Exception _))
                      (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
                      (is (mt/received-email-body? :crowberto #"transform0")))))))))))))
+
+(deftest run-transforms!-race-condition-test
+  ;; Previously a race would ensure one transform run got the duplicate key error and aborted.
+  ;; Because it is possible to set up transforms to run on overlapping schedules, such races are inevitable.
+  ;; On duplicate key error we should go back to the waiting loop until the is_active slot is available.
+  (testing "Two concurrent run-transforms! that race on is_active state will both eventually run"
+    (mt/with-premium-features #{:transforms}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (let [mp (mt/metadata-provider)
+                table (t2/select-one :model/Table (mt/id :transforms_products))
+                sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
+                        (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
+                        (lib/limit 10)
+                        qp.compile/compile
+                        :query)]
+            (with-transform-cleanup! [target {:type   :table
+                                              :schema (:schema table)
+                                              :name   "race_test"}]
+              (binding [tu.thread-local/*thread-local* false]
+                (mt/with-temp [:model/TransformTag tag {:name "race-tag"}
+                               :model/TransformJob job {:name "race-job" :schedule "0 0 * * * ? *"}
+                               :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                               :model/Transform transform {:name       "race-transform"
+                                                           :source     {:type  :query
+                                                                        :query (lib/native-query mp sql)}
+                                                           :creator_id (mt/user->id :crowberto)
+                                                           :target     target}
+                               :model/TransformTransformTag _ {:transform_id (:id transform)
+                                                               :tag_id       (:id tag)
+                                                               :position     0}]
+                  (mt/with-model-cleanup [:model/TransformJobRun :model/TransformRun]
+                    (let [barrier-enter   (CyclicBarrier. 2)
+                          barrier-exit    (CyclicBarrier. 2)
+                          tl-tripped      (ThreadLocal.)
+                          await-barrier   (fn [^CyclicBarrier barrier]
+                                            (when-not (.get tl-tripped)
+                                              (.await barrier 5 TimeUnit/SECONDS)))
+                          on-enter        (fn [] (await-barrier barrier-enter))
+                          on-exit         (fn [] (await-barrier barrier-exit) (.set tl-tripped true))
+                          original-insert transforms.u/try-start-unless-already-running]
+                      (mt/with-dynamic-fn-redefs [transforms.u/try-start-unless-already-running
+                                                  (fn [transform-id run-method user-id]
+                                                    (on-enter)
+                                                    (let [[ret ex] (try
+                                                                     [(original-insert transform-id run-method user-id)]
+                                                                     (catch Throwable t [nil t]))]
+                                                      (on-exit)
+                                                      (if ex (throw ex) ret)))]
+                        (let [run1 (transforms.job-run/start-run! (:id job) :manual)
+                              run2 (transforms.job-run/start-run! (:id job) :manual)
+                              fut1 (future
+                                     (try
+                                       {:result (jobs/run-transforms! (:id run1) #{(:id transform)}
+                                                                      {:run-method :manual})}
+                                       (catch Exception e
+                                         {:error e})))
+                              fut2 (future
+                                     (try
+                                       {:result (jobs/run-transforms! (:id run2) #{(:id transform)}
+                                                                      {:run-method :manual})}
+                                       (catch Exception e
+                                         {:error e})))
+                              results [(deref fut1 30000 {:error :timeout})
+                                       (deref fut2 30000 {:error :timeout})]]
+                          (is (every? #(= :succeeded (-> % :result ::jobs/status)) results)
+                              "Both threads should succeed"))))))))))))))
+

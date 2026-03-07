@@ -27,7 +27,7 @@
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.transforms.feature-gating :as transforms.gating]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -487,7 +487,7 @@
 
 (defmethod collection-children-query :transform
   [_model collection {:keys [pinned-state]}]
-  (let [enabled-types (transforms.util/enabled-source-types-for-user)]
+  (let [enabled-types (transforms.u/enabled-source-types-for-user)]
     {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
      :from   [[:transform :transform]]
      :where  [:and
