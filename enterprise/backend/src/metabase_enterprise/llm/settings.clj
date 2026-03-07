@@ -93,6 +93,19 @@
                   (validate-metabot-provider! new-value))
                 (setting/set-value-of-type! :string :ee-ai-metabot-provider new-value)))
 
+(defsetting ee-ai-metabot-provider-lite
+  (deferred-tru "The AI provider and model for lightweight Metabot tasks and internal bookkeeping (e.g. user intent classification snowplow metrics).")
+  :type       :string
+  :encryption :no
+  :default    "openrouter/openai/gpt-oss-20b"
+  :visibility :settings-manager
+  :export?    false
+  :doc        false
+  :setter     (fn [new-value]
+                (when new-value
+                  (validate-metabot-provider! new-value))
+                (setting/set-value-of-type! :string :ee-ai-metabot-provider-lite new-value)))
+
 (defsetting ee-ai-features-enabled
   (deferred-tru "Enable AI features.")
   :type       :boolean

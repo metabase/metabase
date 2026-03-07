@@ -127,16 +127,16 @@
   "Transducer that reports token_usage metrics for :usage parts in the aisdk stream.
 
   Prometheus + Snowplow:
-    - `:profile-name` — the profile name (e.g. `:internal`)
-    - `:model`        — the model (e.g. `anthropic/claude-haiku-4-5`)
-    - `:tag`          — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
+    - `:profile-id` — the profile id (e.g. `:internal`)
+    - `:model`      — the model (e.g. `anthropic/claude-haiku-4-5`)
+    - `:tag`        — the specific purpose for which the tokens were used (e.g. 'agent', 'sql-fixing')
 
    Snowplow only:
-    - `:request-id`   — UUID string for this request
-    - `:session-id`   — conversation UUID string
-    - `:source`       — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
-                        Indicates which API endpoint or workflow initiated the LLM call."
-  [{:keys [model profile-name request-id session-id source tag]}]
+    - `:request-id` — UUID string for this request
+    - `:session-id` — conversation UUID string
+    - `:source`     — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
+                      Indicates which API endpoint or workflow initiated the LLM call."
+  [{:keys [model profile-id request-id session-id source tag]}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
@@ -148,7 +148,7 @@
                 ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
                 {:prometheus          true
                  :snowplow            (some? request-id)
-                 :profile             (some-> profile-name name)
+                 :profile             (some-> profile-id name)
                  :model-id            model
                  :prompt-tokens       prompt
                  :completion-tokens   completion
@@ -165,7 +165,7 @@
 (defn- report-tool-usage-xf
   "Transducer that fires an agent_used_tool :snowplow/ai_service_event per tool call.
   Only fires when :source and :request-id are present in tracking-opts."
-  [{:keys [request-id session-id source profile-name iteration]}]
+  [{:keys [request-id session-id source profile-id iteration]}]
   (map (fn [part]
          (when (and (some? source)
                     (some? request-id)
@@ -177,7 +177,7 @@
                                     :event                         "agent_used_tool"
                                     :user-id                       api/*current-user-id*
                                     :session-id                    session-id
-                                    :profile                       (some-> profile-name name)
+                                    :profile                       (some-> profile-id name)
                                     :duration-ms                   (some-> (:duration-ms part) long)
                                     :result                        (if (:error part) "error" "success")
                                     :event-details                 (cond-> {"tool_name" (:function part)}
