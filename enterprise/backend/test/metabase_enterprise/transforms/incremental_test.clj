@@ -192,7 +192,7 @@
   (case checkpoint-type
     :integer (= (bigint expected) (bigint actual))
     :float (and (number? actual)
-                (< (Math/abs (- expected actual)) 0.01))
+                (< (Math/abs (double (- expected actual))) 0.01))
     :temporal (and (string? actual)
                    (str/starts-with? actual expected))))
 
