@@ -1,0 +1,105 @@
+{
+  "get": {
+    "description": "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`\n   with id `id` defined by query `cell-query`; compared with entity `comparison-entity` with id\n   `comparison-entity-id-or-query.`.",
+    "operationId": "get-api-automagic-dashboards-entity-entity-id-or-query-cell-cell-query-compare-comparison-entity-comparison-entity-id-or-query",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "entity",
+        "required": true,
+        "schema": {
+          "enum": [
+            "adhoc",
+            "field",
+            "model",
+            "question",
+            "segment",
+            "table",
+            "transform"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "path",
+        "name": "entity-id-or-query",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query.json"
+        }
+      },
+      {
+        "in": "path",
+        "name": "cell-query",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json.json"
+        }
+      },
+      {
+        "description": "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"",
+        "in": "path",
+        "name": "comparison-entity",
+        "required": true,
+        "schema": {
+          "enum": [
+            "adhoc",
+            "segment",
+            "table"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "path",
+        "name": "comparison-entity-id-or-query",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query.json"
+        }
+      },
+      {
+        "description": "invalid show value",
+        "in": "query",
+        "name": "show",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "anyOf": [
+                {
+                  "enum": [
+                    "all"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}/compare/{comparison-entity}/{comparison-entity-id-or-query}",
+    "tags": [
+      "/api/automagic-dashboards"
+    ]
+  }
+}

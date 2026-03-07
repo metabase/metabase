@@ -1,0 +1,43 @@
+{
+  "description": "Table metadata.",
+  "properties": {
+    "column_count": {
+      "type": "integer"
+    },
+    "db_id": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "fields": {
+      "items": {
+        "$ref": "./metabase.transforms-inspector.schema.field.json"
+      },
+      "type": "array"
+    },
+    "schema": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "table_id": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "table_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "table_id",
+    "table_name",
+    "db_id",
+    "column_count",
+    "fields"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,77 @@
+{
+  "post": {
+    "description": "Import Metabase content from configured Remote Sync source.\n\n  This endpoint will:\n  - Fetch the latest changes from the configured source\n  - Load the updated content using the serialization/deserialization system\n\n  If `force=false` (default) and there are unsaved changes in the Remote Sync collection,\n  the import returns a 400 response.\n\n  Requires superuser permissions.",
+    "operationId": "post-api-ee-remote-sync-import",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "branch": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "force": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "message": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status": {
+                  "const": "success"
+                },
+                "task_id": {
+                  "oneOf": [
+                    {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "status",
+                "task_id"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/remote-sync/import",
+    "tags": [
+      "/api/ee/remote-sync"
+    ]
+  }
+}

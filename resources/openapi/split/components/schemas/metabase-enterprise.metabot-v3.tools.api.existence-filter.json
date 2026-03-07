@@ -1,0 +1,31 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "field_id": {
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "is-null",
+            "is-not-null",
+            "string-is-empty",
+            "string-is-not-empty",
+            "is-true",
+            "is-false"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "field_id",
+        "operation"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

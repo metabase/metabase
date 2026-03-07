@@ -1,0 +1,88 @@
+{
+  "properties": {
+    "alias": {
+      "type": "string"
+    },
+    "default": {},
+    "dimension": {
+      "anyOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.field.json"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "display-name": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "id": {
+      "$ref": "./metabase.lib.schema.template-tag.id.json"
+    },
+    "name": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "options": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.template-tag..field-filter.options.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "required": {
+      "type": "boolean"
+    },
+    "type": {
+      "const": "dimension"
+    },
+    "widget-type": {
+      "default": "text",
+      "description": "The type of widget to display in the FE UI for the user to use to pick values for this parameter.",
+      "enum": [
+        "none",
+        "number",
+        "text",
+        "date",
+        "boolean",
+        "date/single",
+        "id",
+        "category",
+        "location/city",
+        "location/state",
+        "location/zip_code",
+        "location/country",
+        "date/range",
+        "date/month-year",
+        "date/quarter-year",
+        "date/relative",
+        "date/all-options",
+        "temporal-unit",
+        "number/!=",
+        "number/<=",
+        "number/=",
+        "number/>=",
+        "number/between",
+        "string/!=",
+        "string/=",
+        "string/contains",
+        "string/does-not-contain",
+        "string/ends-with",
+        "string/starts-with",
+        "boolean/="
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "type",
+    "dimension",
+    "widget-type"
+  ],
+  "type": "object"
+}

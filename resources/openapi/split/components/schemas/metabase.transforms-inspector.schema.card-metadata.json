@@ -1,0 +1,37 @@
+{
+  "description": "Common metadata for join-related cards and triggers.",
+  "properties": {
+    "card_type": {
+      "type": "string"
+    },
+    "dedup_key": {
+      "$ref": "./metabase.transforms-inspector.schema.dedup-key.json"
+    },
+    "depends_on_cards": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "group_id": {
+      "type": "string"
+    },
+    "group_order": {
+      "type": "integer"
+    },
+    "group_role": {
+      "$ref": "./metabase.transforms-inspector.schema.group-role.json"
+    },
+    "join_alias": {
+      "type": "string"
+    },
+    "join_step": {
+      "type": "integer"
+    },
+    "join_strategy": {
+      "type": "string"
+    }
+  },
+  "type": "object"
+}

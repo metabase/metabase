@@ -1,0 +1,6 @@
+{
+  "additionalProperties": {
+    "$ref": "./metabase.lib.schema.test-spec.test-template-tag-spec.json"
+  },
+  "type": "object"
+}

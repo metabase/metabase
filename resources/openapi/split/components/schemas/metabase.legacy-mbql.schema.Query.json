@@ -1,0 +1,113 @@
+{
+  "allOf": [
+    {
+      "properties": {},
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.CheckQueryDoesNotHaveSourceMetadata.json"
+    },
+    {
+      "properties": {
+        "constraints": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.constraints.constraints.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "create-row": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.actions.row.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "database": {
+          "$ref": "./metabase.legacy-mbql.schema.DatabaseID.json"
+        },
+        "info": {
+          "description": "Used when recording info about this run in the QueryExecution log; things like context query was\n  ran in and User who ran it.",
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.info.info.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "middleware": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.middleware-options.middleware-options.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "native": {
+          "$ref": "./metabase.legacy-mbql.schema.NativeQuery.json"
+        },
+        "parameters": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.parameter.parameters.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "query": {
+          "$ref": "./metabase.legacy-mbql.schema.MBQLQuery.json"
+        },
+        "settings": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.settings.settings.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "description": "Type of query. `:query` = MBQL; `:native` = native.",
+          "enum": [
+            "query",
+            "native"
+          ],
+          "type": "string"
+        },
+        "update-row": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.actions.row.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.CheckKeysForQueryType.json"
+    },
+    {
+      "allOf": []
+    }
+  ]
+}

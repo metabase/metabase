@@ -1,0 +1,13 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-column-spec.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-literal-expression-spec.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-operator-expression-spec.json"
+    }
+  ]
+}

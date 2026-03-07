@@ -1,0 +1,28 @@
+{
+  "properties": {
+    "conditions": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase.lib.schema.test-spec.test-join-condition-spec.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source": {
+      "$ref": "./metabase.lib.schema.test-spec.test-source-spec.json"
+    },
+    "strategy": {
+      "$ref": "./metabase.lib.schema.join.strategy.json"
+    }
+  },
+  "required": [
+    "source",
+    "strategy"
+  ],
+  "type": "object"
+}

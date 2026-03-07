@@ -1,0 +1,26 @@
+{
+  "description": "The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either\n  `:none`, `:all`, or a sequence of Field clauses.\n\n  * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by breakouts or\n     other clauses). This is the default, and what is used for automatically-generated joins.\n\n  * `:all`: will include all of the Fields from the joined table or query\n\n  * a sequence of Field clauses: include only the Fields specified. Only `:field` clauses are allowed here! References\n    to expressions or aggregations in the thing we're joining should use column literal (string column name) `:field`\n    references. This should be non-empty and all elements should be distinct (ignoring `:lib/uuid`).",
+  "oneOf": [
+    {
+      "enum": [
+        "all",
+        "none"
+      ],
+      "type": "string"
+    },
+    {
+      "allOf": [
+        {
+          "items": {
+            "$ref": "./mbql.clause.field.json"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        {
+          "$ref": "./metabase.lib.schema.util.distinct-mbql-clauses.json"
+        }
+      ]
+    }
+  ]
+}

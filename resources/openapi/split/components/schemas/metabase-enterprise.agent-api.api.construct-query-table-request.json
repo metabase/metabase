@@ -1,0 +1,100 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "aggregations": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.aggregation.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fields": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.field.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "filters": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.filter.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "group_by": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.group-by.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "limit": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order_by": {
+          "description": "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation.",
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.order-by.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "table_id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "table_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ],
+  "description": "Request schema for constructing a query from a table.\n\n   Query components:\n   - filters: Filter conditions to apply\n   - fields: Specific fields to select (omit for all fields)\n   - aggregations: Aggregation functions (sum, count, avg, etc.). Use sort_order on the aggregation to order by it.\n   - group_by: Fields to group by, with optional temporal granularity\n   - order_by: Order by regular fields only. To order by an aggregation result, use sort_order on the aggregation instead.\n   - limit: Maximum rows to return"
+}

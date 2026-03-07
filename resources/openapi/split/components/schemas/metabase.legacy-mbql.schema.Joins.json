@@ -1,0 +1,8 @@
+{
+  "description": "Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique.",
+  "items": {
+    "$ref": "./metabase.legacy-mbql.schema.Join.json"
+  },
+  "minItems": 1,
+  "type": "array"
+}

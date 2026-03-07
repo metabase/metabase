@@ -1,0 +1,143 @@
+{
+  "post": {
+    "description": "Cancels the current task if one is running",
+    "operationId": "post-api-ee-remote-sync-current-task-cancel",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "cancelled": {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "conflicts": {
+                  "oneOf": [
+                    {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ended_at": {
+                  "oneOf": [
+                    {},
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "error_message": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "id": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "initiated_by": {
+                  "oneOf": [
+                    {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "last_progress_report_at": {
+                  "oneOf": [
+                    {},
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "progress": {
+                  "oneOf": [
+                    {
+                      "maximum": 1,
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "started_at": {},
+                "status": {
+                  "enum": [
+                    "running",
+                    "successful",
+                    "errored",
+                    "cancelled",
+                    "timed-out",
+                    "conflict"
+                  ],
+                  "type": "string"
+                },
+                "sync_task_type": {
+                  "enum": [
+                    "import",
+                    "export"
+                  ],
+                  "type": "string"
+                },
+                "version": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "sync_task_type",
+                "progress",
+                "started_at",
+                "status"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/remote-sync/current-task/cancel",
+    "tags": [
+      "/api/ee/remote-sync"
+    ]
+  }
+}

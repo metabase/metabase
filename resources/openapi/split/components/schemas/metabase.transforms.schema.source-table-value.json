@@ -1,0 +1,11 @@
+{
+  "anyOf": [
+    {
+      "type": "integer"
+    },
+    {
+      "$ref": "./metabase.transforms.schema.source-table-ref.json"
+    }
+  ],
+  "description": "Either a table ID (int) or a reference map."
+}

@@ -1,0 +1,10 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./mbql.clause.asc.json"
+    },
+    {
+      "$ref": "./mbql.clause.desc.json"
+    }
+  ]
+}

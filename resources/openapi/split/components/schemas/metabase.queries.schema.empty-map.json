@@ -1,0 +1,4 @@
+{
+  "const": {},
+  "description": "An empty map, allowed for Card.dataset_query for historic purposes."
+}

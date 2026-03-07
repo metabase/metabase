@@ -1,0 +1,13 @@
+{
+  "anyOf": [
+    {
+      "allOf": [],
+      "description": "schema for a valid MBQL 4 :ends-with clause"
+    },
+    {
+      "allOf": [],
+      "description": "schema for a valid MBQL 4 :ends-with clause"
+    }
+  ],
+  "description": "Schema for a valid MBQL 4 :metabase.legacy-mbql.schema/ends-with clause."
+}

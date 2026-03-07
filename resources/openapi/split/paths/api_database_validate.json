@@ -1,0 +1,54 @@
+{
+  "post": {
+    "description": "Validate that we can connect to a database given a set of details.",
+    "operationId": "post-api-database-validate",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "details": {
+                "properties": {
+                  "details": {
+                    "properties": {},
+                    "type": "object"
+                  },
+                  "engine": {
+                    "description": "value must be a valid database engine.",
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "engine",
+                  "details"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "details"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/database/validate",
+    "tags": [
+      "/api/database"
+    ]
+  }
+}

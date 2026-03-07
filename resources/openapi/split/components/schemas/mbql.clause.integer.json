@@ -1,0 +1,21 @@
+{
+  "prefixItems": [
+    {
+      "const": "integer"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "anyOf": [
+        {
+          "$ref": "./metabase.lib.schema.expression.string.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.expression.number.json"
+        }
+      ]
+    }
+  ],
+  "type": "array"
+}

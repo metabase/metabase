@@ -1,0 +1,14 @@
+{
+  "allOf": [
+    {
+      "additionalProperties": {
+        "$ref": "./metabase.legacy-mbql.schema.TemplateTag.json"
+      },
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.lib.schema.template-tag..template-tag-map.validate-names.json"
+    }
+  ],
+  "description": "Schema for the `:template-tags` map passed in as part of a native query.\n\n  Map of template tag name -> template tag definition"
+}

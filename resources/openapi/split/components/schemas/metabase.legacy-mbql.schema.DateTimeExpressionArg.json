@@ -1,0 +1,23 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.Aggregation.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.value.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.DatetimeExpression.json"
+    },
+    {
+      "anyOf": [
+        {
+          "$ref": "./metabase.legacy-mbql.schema.DateOrDatetimeLiteral.json"
+        },
+        {
+          "$ref": "./metabase.legacy-mbql.schema.FieldOrExpressionRef.json"
+        }
+      ]
+    }
+  ]
+}

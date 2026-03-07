@@ -1,0 +1,7 @@
+{
+  "enum": [
+    "static-list",
+    "card"
+  ],
+  "type": "string"
+}

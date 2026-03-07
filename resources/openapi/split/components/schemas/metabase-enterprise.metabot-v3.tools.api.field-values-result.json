@@ -1,0 +1,55 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "structured_output": {
+          "properties": {
+            "field_id": {
+              "type": "string"
+            },
+            "statistics": {
+              "oneOf": [
+                {
+                  "$ref": "./metabase-enterprise.metabot-v3.tools.api.statistics.json"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "values": {
+              "oneOf": [
+                {
+                  "items": {},
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "field_id"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "structured_output"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "output"
+      ],
+      "type": "object"
+    }
+  ]
+}

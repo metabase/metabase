@@ -1,0 +1,32 @@
+{
+  "post": {
+    "description": "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones.",
+    "operationId": "post-api-ee-metabot-v3-metabot-id-prompt-suggestions-regenerate",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/metabot-v3/metabot/{id}/prompt-suggestions/regenerate",
+    "tags": [
+      "/api/ee/metabot-v3/metabot"
+    ]
+  }
+}

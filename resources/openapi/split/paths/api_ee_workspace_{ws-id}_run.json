@@ -1,0 +1,77 @@
+{
+  "post": {
+    "description": "Execute all transforms in the workspace in dependency order.\n   Returns which transforms succeeded, failed, and were not run.",
+    "operationId": "post-api-ee-workspace-ws-id-run",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "stale_only": {
+                "$ref": "../components/schemas/metabase-enterprise.workspaces.types.flag.json"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "failed": {
+                  "items": {
+                    "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+                  },
+                  "type": "array"
+                },
+                "not_run": {
+                  "items": {
+                    "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+                  },
+                  "type": "array"
+                },
+                "succeeded": {
+                  "items": {
+                    "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "succeeded",
+                "failed",
+                "not_run"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/workspace/{ws-id}/run",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

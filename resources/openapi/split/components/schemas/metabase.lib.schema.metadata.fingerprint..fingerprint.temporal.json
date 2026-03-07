@@ -1,0 +1,26 @@
+{
+  "description": "Schema for fingerprint information for Fields deriving from `:type/Temporal`.",
+  "properties": {
+    "earliest": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "latest": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

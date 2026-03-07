@@ -1,0 +1,19 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "database_id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "database_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

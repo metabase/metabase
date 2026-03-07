@@ -1,0 +1,161 @@
+{
+  "description": "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query\n  was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior\n  based on this information, don't do it!\n\n  TODO - this schema is somewhat misleading because if you use a function\n  like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required",
+  "properties": {
+    "action-id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.action.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "card-id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.card.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "card-name": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "context": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.info.context.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dashboard-id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.dashboard.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "executed-by": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.user.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lens-id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lens-params": {
+      "oneOf": [
+        {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "metadata/model-metadata": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase.lib.schema.metadata.lib-or-legacy-column.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pivot/original-query": {
+      "oneOf": [
+        {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pivot/result-metadata": {
+      "oneOf": [
+        {
+          "oneOf": [
+            {
+              "const": "none"
+            },
+            {
+              "items": {
+                "$ref": "./metabase.lib.schema.metadata.column.json"
+              },
+              "type": "array"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pulse-id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.pulse.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "query-hash": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.info.hash.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "transform-id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.transform.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

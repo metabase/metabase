@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "List configured metabot instances",
+    "operationId": "get-api-ee-metabot-v3-metabot",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/metabot-v3/metabot",
+    "tags": [
+      "/api/ee/metabot-v3/metabot"
+    ]
+  }
+}

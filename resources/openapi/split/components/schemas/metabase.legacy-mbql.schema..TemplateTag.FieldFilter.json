@@ -1,0 +1,51 @@
+{
+  "description": "Things required by all template tag types.",
+  "properties": {
+    "alias": {
+      "type": "string"
+    },
+    "default": {},
+    "dimension": {
+      "$ref": "./metabase.legacy-mbql.schema.field.json"
+    },
+    "display-name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "id": {
+      "$ref": "./metabase.lib.schema.template-tag.id.json"
+    },
+    "name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "options": {
+      "description": "optional map to be appended to filter clause",
+      "oneOf": [
+        {
+          "$ref": "./metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "required": {
+      "type": "boolean"
+    },
+    "type": {
+      "const": "dimension"
+    },
+    "widget-type": {
+      "$ref": "./metabase.legacy-mbql.schema.WidgetType.json",
+      "default": "category",
+      "description": "which type of widget the frontend should show for this Field Filter; this also affects which parameter types\n  are allowed to be specified for it."
+    }
+  },
+  "required": [
+    "type",
+    "name",
+    "display-name",
+    "dimension",
+    "widget-type"
+  ],
+  "type": "object"
+}

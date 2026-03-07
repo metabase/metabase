@@ -1,0 +1,199 @@
+{
+  "get": {
+    "description": "Get the transforms of job specified by the job's ID.",
+    "operationId": "get-api-transform-job-job-id-transforms",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "job-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "properties": {
+                  "collection_id": {
+                    "oneOf": [
+                      {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "created_at": {},
+                  "creator": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "common_name": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "date_joined": {},
+                      "email": {
+                        "type": "string"
+                      },
+                      "first_name": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "id": {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "is_data_analyst": {
+                        "type": "boolean"
+                      },
+                      "is_qbnewb": {
+                        "type": "boolean"
+                      },
+                      "is_superuser": {
+                        "type": "boolean"
+                      },
+                      "last_login": {
+                        "oneOf": [
+                          {},
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "last_name": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "tenant_id": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "email",
+                      "first_name",
+                      "last_name"
+                    ],
+                    "type": "object"
+                  },
+                  "creator_id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "dependency_analysis_version": {
+                    "type": "integer"
+                  },
+                  "description": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "entity_id": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "id": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "run_trigger": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source": {},
+                  "source_type": {
+                    "type": "string"
+                  },
+                  "target": {},
+                  "updated_at": {}
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "description",
+                  "source",
+                  "target",
+                  "source_type",
+                  "entity_id",
+                  "created_at",
+                  "updated_at",
+                  "creator_id",
+                  "collection_id",
+                  "dependency_analysis_version",
+                  "creator"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/transform-job/{job-id}/transforms",
+    "tags": [
+      "/api/transform-job"
+    ]
+  }
+}

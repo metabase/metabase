@@ -1,0 +1,56 @@
+{
+  "post": {
+    "description": "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with\n  `collection_id`, or remove them from any Collections by passing a `null` `collection_id`.",
+    "operationId": "post-api-card-collections",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "card_ids": {
+                "items": {
+                  "description": "value must be an integer greater than zero.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "collection_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "card_ids"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/card/collections",
+    "tags": [
+      "/api/card"
+    ]
+  }
+}

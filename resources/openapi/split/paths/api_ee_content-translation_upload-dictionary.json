@@ -1,0 +1,49 @@
+{
+  "post": {
+    "description": "Upload a CSV of content translations",
+    "operationId": "post-api-ee-content-translation-upload-dictionary",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "multipart/form-data": {
+          "schema": {
+            "properties": {
+              "file": {
+                "properties": {
+                  "filename": {
+                    "type": "string"
+                  },
+                  "tempfile": {}
+                },
+                "required": [
+                  "filename",
+                  "tempfile"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "file"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/content-translation/upload-dictionary",
+    "tags": [
+      "/api/ee/content-translation"
+    ]
+  }
+}

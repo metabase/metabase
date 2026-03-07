@@ -1,0 +1,51 @@
+{
+  "post": {
+    "description": "Execute an action with a single input.\n\n   Takes:\n   - `action`            - an identifier or an expression for what we want to execute.\n   - `scope`             - where the action is being invoked from.\n   - `input`             - a single map. currently these are typically a database table row pk, or query result.\n   - `params` (optional) - a map of values for the parameters taken by the action's mapping.\n\n   The `input` and `params` are used by the relevant mapping to calculate a map argument to the underlying action fn.\n   If there is no mapping, `params` are simply used as overrides for `input`.\n\n   Returns the outputs from the performed action.",
+    "operationId": "post-api-ee-action-v2-execute",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "action": {
+                "$ref": "../components/schemas/metabase-enterprise.action-v2.api.api-action-id-or-expression.json"
+              },
+              "input": {
+                "properties": {},
+                "type": "object"
+              },
+              "params": {
+                "properties": {},
+                "type": "object"
+              },
+              "scope": {
+                "$ref": "../components/schemas/metabase.actions.types..scope.raw.json"
+              }
+            },
+            "required": [
+              "action",
+              "scope"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/action-v2/execute",
+    "tags": [
+      "/api/ee/action-v2"
+    ]
+  }
+}

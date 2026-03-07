@@ -1,0 +1,8 @@
+{
+  "properties": {
+    "case-sensitive": {
+      "type": "boolean"
+    }
+  },
+  "type": "object"
+}

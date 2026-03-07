@@ -1,0 +1,8 @@
+{
+  "enum": [
+    "none",
+    "list",
+    "search"
+  ],
+  "type": "string"
+}

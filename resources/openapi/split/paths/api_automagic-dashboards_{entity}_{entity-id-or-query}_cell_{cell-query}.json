@@ -1,0 +1,83 @@
+{
+  "get": {
+    "description": "Return an automagic dashboard analyzing cell in automagic dashboard for entity `entity` defined by query\n  `cell-query`.",
+    "operationId": "get-api-automagic-dashboards-entity-entity-id-or-query-cell-cell-query",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "entity",
+        "required": true,
+        "schema": {
+          "enum": [
+            "adhoc",
+            "field",
+            "model",
+            "question",
+            "segment",
+            "table",
+            "transform"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "path",
+        "name": "entity-id-or-query",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query.json"
+        }
+      },
+      {
+        "in": "path",
+        "name": "cell-query",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json.json"
+        }
+      },
+      {
+        "description": "invalid show value",
+        "in": "query",
+        "name": "show",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "anyOf": [
+                {
+                  "enum": [
+                    "all"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}",
+    "tags": [
+      "/api/automagic-dashboards"
+    ]
+  }
+}

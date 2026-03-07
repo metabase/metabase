@@ -1,0 +1,34 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.segment-filter.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.existence-filter.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.temporal-extraction-filter.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.disjunctive-temporal-extraction-filter.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.temporal-filter.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.disjunctive-temporal-filter.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.string-filter.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.disjunctive-string-date-filter.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.numeric-filter.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.disjunctive-numeric-filter.json"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "$ref": "./metabase.legacy-mbql.schema.aggregation-options.json"
+        },
+        {
+          "$ref": "./metabase.legacy-mbql.schema.UnnamedAggregation.json"
+        }
+      ]
+    },
+    {
+      "description": "Normalization should automatically unwrap :aggregation-options with an empty options map"
+    }
+  ],
+  "description": "Schema for anything that is a valid `:aggregation` clause."
+}

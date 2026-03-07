@@ -1,0 +1,20 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.NumericExpressionArg.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.DateTimeExpressionArg.json"
+    },
+    {
+      "oneOf": [
+        {
+          "$ref": "./metabase.legacy-mbql.schema.interval.json"
+        },
+        {
+          "$ref": "./metabase.legacy-mbql.schema.segment.json"
+        }
+      ]
+    }
+  ]
+}

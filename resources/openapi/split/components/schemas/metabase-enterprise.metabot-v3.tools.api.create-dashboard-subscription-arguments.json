@@ -1,0 +1,27 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "dashboard_id": {
+          "type": "integer"
+        },
+        "email": {
+          "type": "string"
+        },
+        "schedule": {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.subscription-schedule.json"
+        }
+      },
+      "required": [
+        "dashboard_id",
+        "email",
+        "schedule"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

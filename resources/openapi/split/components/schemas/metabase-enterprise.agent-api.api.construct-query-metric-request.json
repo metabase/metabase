@@ -1,0 +1,48 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "filters": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.filter.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "group_by": {
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase-enterprise.metabot-v3.tools.api.group-by.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metric_id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "metric_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ],
+  "description": "Request schema for constructing a query from a metric.\n   Only supports filters and group_by (aggregation is defined by the metric)."
+}

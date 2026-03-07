@@ -1,0 +1,113 @@
+{
+  "get": {
+    "description": "List support access grants with optional filtering and pagination.\n\n  Requires superuser permissions.\n\n  Query parameters:\n  - ticket-number: Filter by ticket number\n  - user-id: Filter by user who created the grant\n  - include-revoked: Include revoked grants (default false)",
+    "operationId": "get-api-ee-support-access-grant",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "ticket-number",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "user-id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "include-revoked",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.support-access-grants.schema.list-grants-response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/support-access-grant",
+    "tags": [
+      "/api/ee/support-access-grant"
+    ]
+  },
+  "post": {
+    "description": "Create a new support access grant.\n\n  Requires superuser permissions. Only one active grant can exist at a time.",
+    "operationId": "post-api-ee-support-access-grant",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase-enterprise.support-access-grants.schema.create-grant-request.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.support-access-grants.schema.grant-response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/support-access-grant",
+    "tags": [
+      "/api/ee/support-access-grant"
+    ]
+  }
+}

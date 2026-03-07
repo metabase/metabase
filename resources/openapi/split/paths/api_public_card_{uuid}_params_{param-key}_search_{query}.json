@@ -1,0 +1,51 @@
+{
+  "get": {
+    "description": "Fetch values for a parameter on a public card containing `query`.",
+    "operationId": "get-api-public-card-uuid-params-param-key-search-query",
+    "parameters": [
+      {
+        "description": "value must be a valid UUID.",
+        "in": "path",
+        "name": "uuid",
+        "required": true,
+        "schema": {
+          "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+          "type": "string"
+        }
+      },
+      {
+        "in": "path",
+        "name": "param-key",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      {
+        "in": "path",
+        "name": "query",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/public/card/{uuid}/params/{param-key}/search/{query}",
+    "tags": [
+      "/api/public"
+    ]
+  }
+}

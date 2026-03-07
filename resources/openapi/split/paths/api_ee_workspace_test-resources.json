@@ -1,0 +1,38 @@
+{
+  "post": {
+    "description": "Create test resources for workspace e2e tests. Only available in dev/test mode.\n\n     Optionally accepts a database_id in the body; if not provided it will try to use the sample database.",
+    "operationId": "post-api-ee-workspace-test-resources",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase-enterprise.workspaces.api.test-resources-request.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.workspaces.api.test-resources-response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/workspace/test-resources",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "post": {
+    "description": "Validate a sandbox which may not have yet been saved. This runs the same validation that is performed when the\n  sandbox is saved, but doesn't actually save the sandbox.",
+    "operationId": "post-api-mt-gtap-validate",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "card_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "table_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "table_id"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/mt/gtap/validate",
+    "tags": [
+      "/api/mt/gtap"
+    ]
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "get": {
+    "description": "Fetch a map describing the group memberships of various users.\n   This map's format is:\n\n    {<user-id> [{:membership_id    <id>\n                 :group_id         <id>\n                 :is_group_manager boolean}]}",
+    "operationId": "get-api-permissions-membership",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/permissions/membership",
+    "tags": [
+      "/api/permissions"
+    ]
+  },
+  "post": {
+    "description": "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group.",
+    "operationId": "post-api-permissions-membership",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "group_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "is_group_manager": {
+                "default": false,
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "user_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "group_id",
+              "user_id",
+              "is_group_manager"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/permissions/membership",
+    "tags": [
+      "/api/permissions"
+    ]
+  }
+}

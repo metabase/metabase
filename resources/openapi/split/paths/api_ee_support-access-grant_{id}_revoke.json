@@ -1,0 +1,40 @@
+{
+  "put": {
+    "description": "Revoke an existing support access grant.\n\n  Requires superuser permissions. Any admin can revoke any grant.",
+    "operationId": "put-api-ee-support-access-grant-id-revoke",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.support-access-grants.schema.grant-response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/ee/support-access-grant/{id}/revoke",
+    "tags": [
+      "/api/ee/support-access-grant"
+    ]
+  }
+}

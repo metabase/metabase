@@ -1,0 +1,37 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "type": {
+          "$ref": "./metabase.lib.schema.template-tag.type.json"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.template-tag.temporal-unit.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.template-tag.field-filter.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.template-tag.snippet.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.template-tag.source-query.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.template-tag.source-table.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.template-tag.raw-value.json"
+        }
+      ]
+    }
+  ]
+}

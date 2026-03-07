@@ -1,0 +1,44 @@
+{
+  "properties": {
+    "id": {
+      "$ref": "./metabase.lib.schema.id.transform.json"
+    },
+    "name": {
+      "type": "string"
+    },
+    "source": {
+      "oneOf": [
+        {
+          "properties": {
+            "query": {
+              "$ref": "./metabase.queries.schema.query.json"
+            },
+            "type": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "target": {
+      "oneOf": [
+        {
+          "description": "Value must be a map.",
+          "properties": {},
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "type": "object"
+}

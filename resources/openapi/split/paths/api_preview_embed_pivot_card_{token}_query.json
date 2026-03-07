@@ -1,0 +1,31 @@
+{
+  "get": {
+    "description": "Fetch the query results for a Card you're considering embedding by passing a JWT `token`.",
+    "operationId": "get-api-preview_embed-pivot-card-token-query",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "token",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/preview_embed/pivot/card/{token}/query",
+    "tags": [
+      "/api/preview_embed"
+    ]
+  }
+}

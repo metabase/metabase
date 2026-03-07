@@ -1,0 +1,123 @@
+{
+  "get": {
+    "description": "Get workspace creation status and recent log entries for polling during async setup",
+    "operationId": "get-api-ee-workspace-ws-id-log",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "last_completed_at": {
+                  "oneOf": [
+                    {},
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "logs": {
+                  "items": {
+                    "properties": {
+                      "completed_at": {
+                        "oneOf": [
+                          {},
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "description": {},
+                      "id": {
+                        "description": "value must be an integer greater than zero.",
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "message": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "started_at": {},
+                      "status": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "task": {
+                        "type": "string"
+                      },
+                      "updated_at": {}
+                    },
+                    "required": [
+                      "id",
+                      "task",
+                      "description",
+                      "started_at",
+                      "updated_at",
+                      "completed_at",
+                      "status",
+                      "message"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.api.status.json"
+                },
+                "updated_at": {},
+                "workspace_id": {
+                  "description": "value must be an integer greater than zero.",
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "workspace_id",
+                "status",
+                "updated_at",
+                "last_completed_at",
+                "logs"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace/{ws-id}/log",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

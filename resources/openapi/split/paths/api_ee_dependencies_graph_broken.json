@@ -1,0 +1,130 @@
+{
+  "get": {
+    "description": "Returns the broken dependents for a specific source entity.\n   These are entities that have validation errors traced back to the specified source.\n\n   Required parameters:\n   - `id`: The ID of the source entity\n   - `type`: The type of the source entity (card, table)\n\n   Optional parameters:\n   - `dependent-types`: Dependency types to filter by. Can be single value or array.\n   - `dependent-card-types`: Card types to filter by when dependent-types includes :card.\n   - `include-personal-collections`: Include items in personal collections (default: false)\n   - `sort-column`: Column to sort by - name, location, or view-count (default: name)\n   - `sort-direction`: Sort direction - asc or desc (default: asc)",
+    "operationId": "get-api-ee-dependencies-graph-broken",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "type",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+        }
+      },
+      {
+        "in": "query",
+        "name": "dependent-types",
+        "required": false,
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "../components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+            },
+            {
+              "items": {
+                "$ref": "../components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+              },
+              "type": "array"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "dependent-card-types",
+        "required": false,
+        "schema": {
+          "anyOf": [
+            {
+              "enum": [
+                "question",
+                "metric",
+                "model"
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "question",
+                  "metric",
+                  "model"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "include-personal-collections",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort-column",
+        "required": false,
+        "schema": {
+          "enum": [
+            "name",
+            "view-count",
+            "location"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort-direction",
+        "required": false,
+        "schema": {
+          "enum": [
+            "desc",
+            "asc"
+          ],
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "$ref": "../components/schemas/metabase-enterprise.dependencies.api.broken-dependent-entity.json"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/dependencies/graph/broken",
+    "tags": [
+      "/api/ee/dependencies"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "enum": [
+    "hour",
+    "millisecond",
+    "minute",
+    "second"
+  ],
+  "type": "string"
+}

@@ -1,0 +1,27 @@
+{
+  "prefixItems": [
+    {
+      "const": "during"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.temporal.json"
+    },
+    {
+      "anyOf": [
+        {
+          "$ref": "./metabase.lib.schema.literal..string.date.json"
+        },
+        {
+          "$ref": "./metabase.lib.schema.literal..string.datetime.json"
+        }
+      ]
+    },
+    {
+      "$ref": "./metabase.lib.schema.temporal-bucketing..unit.date-time.interval.json"
+    }
+  ],
+  "type": "array"
+}

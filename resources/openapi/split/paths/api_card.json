@@ -1,0 +1,245 @@
+{
+  "get": {
+    "description": "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is\n  `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `using_model`, `using_segment`, and\n  `archived`. See corresponding implementation functions above for the specific behavior of each filter\n  option. :card_index:",
+    "operationId": "get-api-card",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "f",
+        "required": true,
+        "schema": {
+          "default": "all",
+          "enum": [
+            "archived",
+            "table",
+            "using_model",
+            "bookmarked",
+            "using_segment",
+            "all",
+            "mine",
+            "database"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "model_id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/card",
+    "tags": [
+      "/api/card"
+    ]
+  },
+  "post": {
+    "description": "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`.",
+    "operationId": "post-api-card",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "cache_ttl": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_id": {
+                "oneOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "description": "value must be an integer greater than zero.",
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      {
+                        "description": "String must be a valid 21-character NanoID string.",
+                        "pattern": "^[A-Za-z0-9_\\-]{21}$",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection_position": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dashboard_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dashboard_tab_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dataset_query": {
+                "description": "Value must be a map.",
+                "properties": {},
+                "type": "object"
+              },
+              "description": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "display": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "entity_id": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "parameter_mappings": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.parameters.schema.parameter-mappings.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parameters": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.parameters.schema.parameters.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "result_metadata": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.analyze.query-results.ResultsMetadata.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.queries.schema.card-type.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "visualization_settings": {
+                "description": "Value must be a map.",
+                "properties": {},
+                "type": "object"
+              }
+            },
+            "required": [
+              "name",
+              "dataset_query",
+              "display",
+              "visualization_settings"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/card",
+    "tags": [
+      "/api/card"
+    ]
+  }
+}

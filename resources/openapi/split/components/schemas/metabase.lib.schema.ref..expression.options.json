@@ -1,0 +1,75 @@
+{
+  "default": {},
+  "properties": {
+    "base-type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.base-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "database-type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "display-name": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "effective-type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.base-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/uuid": {
+      "$ref": "./metabase.lib.schema.common.uuid.json"
+    },
+    "name": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "semantic-type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.semantic-or-relation-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "temporal-unit": {
+      "$ref": "./metabase.lib.schema.temporal-bucketing.unit.json"
+    }
+  },
+  "required": [
+    "lib/uuid"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,10 @@
+{
+  "enum": [
+    "external",
+    "external-downstream",
+    "unused",
+    "internal",
+    "internal-downstream"
+  ],
+  "type": "string"
+}

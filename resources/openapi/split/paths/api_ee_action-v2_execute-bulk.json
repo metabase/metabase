@@ -1,0 +1,56 @@
+{
+  "post": {
+    "description": "Execute an action with multiple inputs.\n\n   This is typically more efficient than calling execute with each input individually, for example by performing batch\n   SQL operations.\n\n   Takes:\n   - `action`            - an identifier or an expression for what we want to execute.\n   - `scope`             - where the action is being invoked from.\n   - `inputs`            - a list of maps. currently these are typically a database table row pk, or query result.\n   - `params` (optional) - a map of values for the parameters taken by the action's mapping.\n\n   The `inputs` and `params` are used by the relevant mapping to calculate a list of args for the underlying action fn.\n   If there is no mapping, `params` are simply used as overrides for each map within `inputs`.\n\n   Returns the outputs from the performed action.",
+    "operationId": "post-api-ee-action-v2-execute-bulk",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "action": {
+                "$ref": "../components/schemas/metabase-enterprise.action-v2.api.api-action-id-or-expression.json"
+              },
+              "inputs": {
+                "items": {
+                  "properties": {},
+                  "type": "object"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              "params": {
+                "additionalProperties": {},
+                "type": "object"
+              },
+              "scope": {
+                "$ref": "../components/schemas/metabase.actions.types..scope.raw.json"
+              }
+            },
+            "required": [
+              "action",
+              "scope",
+              "inputs"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/action-v2/execute-bulk",
+    "tags": [
+      "/api/ee/action-v2"
+    ]
+  }
+}

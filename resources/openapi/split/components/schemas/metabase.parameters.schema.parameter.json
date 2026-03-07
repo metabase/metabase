@@ -1,0 +1,109 @@
+{
+  "description": "parameter must be a map with :id and :type keys",
+  "properties": {
+    "default": {},
+    "filteringParameters": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase.lib.schema.parameter.id.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "$ref": "./metabase.lib.schema.parameter.id.json"
+    },
+    "mappings": {
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "./metabase.parameters.schema.parameter-mapping.json"
+              },
+              "type": "array"
+            },
+            {
+              "items": {
+                "$ref": "./metabase.parameters.schema.parameter-mapping.json"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "sectionId": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "target": {
+      "$ref": "./metabase.lib.schema.parameter.target.json"
+    },
+    "temporal_units": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "./metabase.lib.schema.temporal-bucketing.unit.json"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "$ref": "./metabase.lib.schema.parameter.type.json"
+    },
+    "values_query_type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.parameters.schema.values-query-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "values_source_config": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.parameters.schema.values-source-config.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "values_source_type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.parameters.schema.values-source-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "type"
+  ],
+  "type": "object"
+}

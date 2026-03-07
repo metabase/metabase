@@ -1,0 +1,22 @@
+{
+  "post": {
+    "description": "Enable global setting to allow databases to persist models.",
+    "operationId": "post-api-persist-enable",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/persist/enable",
+    "tags": [
+      "/api/persist"
+    ]
+  }
+}

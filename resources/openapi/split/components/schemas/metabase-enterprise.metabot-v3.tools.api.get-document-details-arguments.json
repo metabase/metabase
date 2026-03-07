@@ -1,0 +1,19 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "document_id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "document_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

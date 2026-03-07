@@ -1,0 +1,29 @@
+{
+  "properties": {
+    "database": {
+      "type": "integer"
+    },
+    "name": {
+      "type": "string"
+    },
+    "schema": {
+      "oneOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "const": "table"
+    }
+  },
+  "required": [
+    "type",
+    "name"
+  ],
+  "type": "object"
+}

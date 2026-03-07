@@ -1,0 +1,11 @@
+{
+  "prefixItems": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.Filter.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.ExpressionArg.json"
+    }
+  ],
+  "type": "array"
+}

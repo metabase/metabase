@@ -1,0 +1,88 @@
+{
+  "get": {
+    "description": "Retrieve one metabot instance",
+    "operationId": "get-api-ee-metabot-v3-metabot-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/metabot-v3/metabot/{id}",
+    "tags": [
+      "/api/ee/metabot-v3/metabot"
+    ]
+  },
+  "put": {
+    "description": "Update a metabot instance",
+    "operationId": "put-api-ee-metabot-v3-metabot-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "additionalProperties": false,
+            "properties": {
+              "collection_id": {
+                "oneOf": [
+                  {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "use_verified_content": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/ee/metabot-v3/metabot/{id}",
+    "tags": [
+      "/api/ee/metabot-v3/metabot"
+    ]
+  }
+}

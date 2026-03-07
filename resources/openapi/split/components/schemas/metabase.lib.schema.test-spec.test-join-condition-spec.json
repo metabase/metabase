@@ -1,0 +1,19 @@
+{
+  "properties": {
+    "left": {
+      "$ref": "./metabase.lib.schema.test-spec.test-join-source-spec.json"
+    },
+    "operator": {
+      "$ref": "./metabase.lib.schema.test-spec.test-operator-spec.json"
+    },
+    "right": {
+      "$ref": "./metabase.lib.schema.test-spec.test-join-source-spec.json"
+    }
+  },
+  "required": [
+    "operator",
+    "left",
+    "right"
+  ],
+  "type": "object"
+}

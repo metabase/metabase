@@ -1,0 +1,31 @@
+{
+  "description": "Schema for `info.context`; used for informational purposes to record how a query was executed.",
+  "enum": [
+    "action",
+    "ad-hoc",
+    "agent",
+    "cache-refresh",
+    "collection",
+    "map-tiles",
+    "pulse",
+    "dashboard-subscription",
+    "dashboard",
+    "question",
+    "csv-download",
+    "xlsx-download",
+    "json-download",
+    "public-dashboard",
+    "public-question",
+    "public-csv-download",
+    "public-xlsx-download",
+    "public-json-download",
+    "embedded-dashboard",
+    "embedded-question",
+    "embedded-csv-download",
+    "embedded-xlsx-download",
+    "embedded-json-download",
+    "table-grid",
+    "transform-inspector"
+  ],
+  "type": "string"
+}

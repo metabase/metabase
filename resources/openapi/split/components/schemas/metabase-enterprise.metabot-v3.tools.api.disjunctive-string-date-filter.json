@@ -1,0 +1,38 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "field_id": {
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "equals",
+            "not-equals",
+            "string-contains",
+            "string-not-contains",
+            "string-starts-with",
+            "string-ends-with"
+          ],
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "field_id",
+        "operation",
+        "values"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

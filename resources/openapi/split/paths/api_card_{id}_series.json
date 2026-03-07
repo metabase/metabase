@@ -1,0 +1,77 @@
+{
+  "get": {
+    "description": "Fetches a list of compatible series with the card with id `card_id`.\n\n  - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.\n  - `query` to search card by name.\n  - `exclude_ids` to filter out a list of card ids",
+    "operationId": "get-api-card-id-series",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "last_cursor",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "query",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "exclude_ids",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {},
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/card/{id}/series",
+    "tags": [
+      "/api/card"
+    ]
+  }
+}

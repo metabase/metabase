@@ -1,0 +1,83 @@
+{
+  "post": {
+    "description": "Enhanced search with term and semantic queries using Reciprocal Rank Fusion. This is identical to /search, but\n  duplicated in order to add a new capability to AI service that indicates that Metabot can search transforms. The\n  /search endpoint is kept around for backward compatibility.",
+    "operationId": "post-api-ee-metabot-tools-search_v2",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+            "properties": {
+              "arguments": {
+                "$ref": "../components/schemas/metabase-enterprise.metabot-v3.tools.api.search-arguments.json"
+              },
+              "conversation_id": {
+                "description": "value must be a valid UUID.",
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                "type": "string"
+              },
+              "profile_id": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "conversation_id"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+              "properties": {
+                "conversation_id": {
+                  "description": "value must be a valid UUID.",
+                  "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                  "type": "string"
+                },
+                "profile_id": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "conversation_id"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/metabot-tools/search_v2",
+    "tags": [
+      "/api/ee/metabot-tools"
+    ]
+  }
+}

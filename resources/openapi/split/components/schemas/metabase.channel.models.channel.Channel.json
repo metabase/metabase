@@ -1,0 +1,34 @@
+{
+  "description": "Channel schema.",
+  "properties": {
+    "active": {
+      "type": "boolean"
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "details": {
+      "properties": {},
+      "type": "object"
+    },
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "details"
+  ],
+  "type": "object"
+}

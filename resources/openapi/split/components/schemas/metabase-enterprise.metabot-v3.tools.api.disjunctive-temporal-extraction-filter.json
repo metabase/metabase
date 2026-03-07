@@ -1,0 +1,46 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "field_id": {
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "year-equals",
+            "year-not-equals",
+            "quarter-equals",
+            "quarter-not-equals",
+            "month-equals",
+            "month-not-equals",
+            "day-of-week-equals",
+            "day-of-week-not-equals",
+            "hour-equals",
+            "hour-not-equals",
+            "minute-equals",
+            "minute-not-equals",
+            "second-equals",
+            "second-not-equals"
+          ],
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "field_id",
+        "operation",
+        "values"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

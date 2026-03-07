@@ -1,0 +1,42 @@
+{
+  "get": {
+    "description": "Get the latest cloud migration, if any.",
+    "operationId": "get-api-cloud-migration",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/cloud-migration",
+    "tags": [
+      "/api/cloud-migration"
+    ]
+  },
+  "post": {
+    "description": "Initiate a new cloud migration.",
+    "operationId": "post-api-cloud-migration",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/cloud-migration",
+    "tags": [
+      "/api/cloud-migration"
+    ]
+  }
+}

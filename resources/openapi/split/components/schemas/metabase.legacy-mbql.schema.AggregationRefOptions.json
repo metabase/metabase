@@ -1,0 +1,31 @@
+{
+  "properties": {
+    "base-type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.base-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "display-name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "effective-type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.base-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    }
+  },
+  "type": "object"
+}

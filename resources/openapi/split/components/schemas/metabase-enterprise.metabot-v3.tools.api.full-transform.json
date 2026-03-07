@@ -1,0 +1,62 @@
+{
+  "properties": {
+    "created_at": {
+      "description": "value must be a valid date string",
+      "type": "string"
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "entity_id": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "type": "integer"
+    },
+    "name": {
+      "type": "string"
+    },
+    "source": {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.transforms.transform-source.json"
+    },
+    "target": {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.transforms.transform-target.json"
+    },
+    "type": {
+      "enum": [
+        "mbql",
+        "native",
+        "python"
+      ],
+      "type": "string"
+    },
+    "updated_at": {
+      "description": "value must be a valid date string",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "type",
+    "source",
+    "created_at",
+    "updated_at",
+    "target"
+  ],
+  "type": "object"
+}

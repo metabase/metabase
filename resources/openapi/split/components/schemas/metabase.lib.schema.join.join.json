@@ -1,0 +1,41 @@
+{
+  "allOf": [
+    {
+      "default": {},
+      "properties": {
+        "alias": {
+          "$ref": "./metabase.lib.schema.join.alias.json"
+        },
+        "conditions": {
+          "$ref": "./metabase.lib.schema.join.conditions.json"
+        },
+        "fields": {
+          "$ref": "./metabase.lib.schema.join.fields.json"
+        },
+        "lib/type": {
+          "const": "mbql/join",
+          "default": "mbql/join"
+        },
+        "stages": {
+          "$ref": "./metabase.lib.schema.stages.json"
+        },
+        "strategy": {
+          "$ref": "./metabase.lib.schema.join.strategy.json"
+        }
+      },
+      "required": [
+        "lib/type",
+        "stages",
+        "conditions",
+        "alias"
+      ],
+      "type": "object"
+    },
+    {
+      "allOf": []
+    },
+    {
+      "$ref": "./metabase.lib.schema.join.validate-field-aliases-match-join-alias.json"
+    }
+  ]
+}

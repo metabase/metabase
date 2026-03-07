@@ -1,0 +1,7 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.transforms.schema.append-config.json"
+    }
+  ]
+}

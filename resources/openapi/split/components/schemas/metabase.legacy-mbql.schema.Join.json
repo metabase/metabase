@@ -1,0 +1,64 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "alias": {
+          "$ref": "./metabase.lib.schema.join.alias.json",
+          "description": "The name used to alias the joined table or query. This is usually generated automatically and generally looks\n  like `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias`\n  in the options.\n\n  Driver implementations: This is guaranteed to be present after pre-processing."
+        },
+        "condition": {
+          "$ref": "./metabase.legacy-mbql.schema.Filter.json",
+          "description": "The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated\n  JOINs this is usually something like\n\n    [:= <source-table-fk-field> [:field <dest-table-pk-field> {:join-alias <join-table-alias>}]]"
+        },
+        "fields": {
+          "$ref": "./metabase.legacy-mbql.schema.JoinFields.json",
+          "description": "The Fields from this join to include in parent-level results. This can be either `:none`, `:all`, or a sequence\n  of `:field` clauses.\n\n  * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by breakouts or\n     other clauses). This is the default, and what is used for automatically-generated joins.\n\n  * `:all`: will include all of the Field from the joined table or query\n\n  * a sequence of Field clauses: include only the Fields specified. Valid clauses are the same as the top-level\n    `:fields` clause. This should be non-empty and all elements should be distinct. The normalizer will automatically\n    remove duplicate fields for you, and replace empty clauses with `:none`.\n\n  Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause with\n  appropriate aliases."
+        },
+        "fk-field-id": {
+          "description": "Mostly used only internally. When a join is implicitly generated via a `:field` clause with\n  `:source-field`, the ID of the foreign key field in the source Table will be recorded here. This information is used\n  to add `fk_field_id` information to the `:cols` in the query results, and also for drill-thru. When generating\n  explicit joins by hand you can usually omit this information, altho it doesn't hurt to include it if you know it.\n\n  Don't set this information yourself. It will have no effect.",
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.id.field.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source-metadata": {
+          "description": "Metadata about the source query being used, if pulled in from a Card via the\n  `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware.",
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase.legacy-mbql.schema.legacy-column-metadata.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source-query": {
+          "$ref": "./metabase.legacy-mbql.schema.SourceQuery.json"
+        },
+        "source-table": {
+          "$ref": "./metabase.legacy-mbql.schema.SourceTable.json",
+          "description": "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where\n  this is specified. YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!"
+        },
+        "strategy": {
+          "$ref": "./metabase.lib.schema.join.strategy.json",
+          "description": "Defaults to `:left-join`; used for all automatically-generated JOINs\n\n  Driver implementations: this is guaranteed to be present after pre-processing."
+        }
+      },
+      "required": [
+        "condition"
+      ],
+      "type": "object"
+    },
+    {
+      "allOf": []
+    }
+  ],
+  "description": "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly\n  specified in the incoming query, or implicitly generated when one uses a `:field` clause with `:source-field`.\n\n  In the top-level query, you can reference Fields from the joined table or nested query by including `:source-field`\n  in the `:field` options (known as implicit joins); for explicit joins, you *must* specify `:join-alias` yourself; in\n  the `:field` options, e.g.\n\n    ;; for joins against other Tables/MBQL source queries\n    [:field 1 {:join-alias \"my_join_alias\"}]\n\n    ;; for joins against native queries\n    [:field \"my_field\" {:base-type :field/Integer, :join-alias \"my_join_alias\"}]"
+}

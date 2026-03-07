@@ -1,0 +1,27 @@
+{
+  "properties": {
+    "database_ids": {
+      "items": {
+        "description": "value must be an integer greater than zero.",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "type": "array"
+    },
+    "schema_ids": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "table_ids": {
+      "items": {
+        "description": "value must be an integer greater than zero.",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "type": "array"
+    }
+  },
+  "type": "object"
+}

@@ -1,0 +1,81 @@
+{
+  "get": {
+    "description": "Get metadata about a `Table` useful for running queries.\n   Returns DB, fields, field FKs, and field values.\n\n   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`\n   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.\n\n   Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's\n   data model, while `false` checks that they have data access perms for the table. Defaults to `false`.\n\n   These options are provided for use in the Admin Edit Metadata page.",
+    "operationId": "get-api-table-id-query_metadata",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_sensitive_fields",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_hidden_fields",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "include_editable_data_model",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/table/{id}/query_metadata",
+    "tags": [
+      "/api/table"
+    ]
+  }
+}

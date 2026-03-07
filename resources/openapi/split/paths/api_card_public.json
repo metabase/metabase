@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled.",
+    "operationId": "get-api-card-public",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/card/public",
+    "tags": [
+      "/api/card"
+    ]
+  }
+}

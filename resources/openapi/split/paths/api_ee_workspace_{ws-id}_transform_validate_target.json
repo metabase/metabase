@@ -1,0 +1,114 @@
+{
+  "post": {
+    "description": "Validate the target table for a workspace transform",
+    "operationId": "post-api-ee-workspace-ws-id-transform-validate-target",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      },
+      {
+        "in": "query",
+        "name": "transform-id",
+        "required": false,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "db_id": {
+                "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+              },
+              "target": {
+                "properties": {
+                  "database": {
+                    "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "schema": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "type",
+                  "schema",
+                  "name"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "target"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "body": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "anyOf": [
+                        {},
+                        {}
+                      ]
+                    }
+                  ]
+                },
+                "status": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "status",
+                "body"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/workspace/{ws-id}/transform/validate/target",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

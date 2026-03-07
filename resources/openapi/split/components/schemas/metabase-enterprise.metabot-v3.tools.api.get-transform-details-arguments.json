@@ -1,0 +1,19 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "transform_id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "transform_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

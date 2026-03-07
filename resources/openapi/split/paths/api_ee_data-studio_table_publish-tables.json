@@ -1,0 +1,38 @@
+{
+  "post": {
+    "description": "Set collection for each of selected tables and all upstream dependencies recursively.",
+    "operationId": "post-api-ee-data-studio-table-publish-tables",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase-enterprise.data-studio.api.table.table-selectors.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.data-studio.api.table.publish-tables-response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/data-studio/table/publish-tables",
+    "tags": [
+      "/api/ee/data-studio/table"
+    ]
+  }
+}

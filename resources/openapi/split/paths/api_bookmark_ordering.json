@@ -1,0 +1,62 @@
+{
+  "put": {
+    "description": "Sets the order of bookmarks for user.",
+    "operationId": "put-api-bookmark-ordering",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "orderings": {
+                "items": {
+                  "properties": {
+                    "item_id": {
+                      "description": "value must be an integer greater than zero.",
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "type": {
+                      "enum": [
+                        "card",
+                        "dashboard",
+                        "collection",
+                        "document"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "item_id"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "orderings"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/bookmark/ordering",
+    "tags": [
+      "/api/bookmark"
+    ]
+  }
+}

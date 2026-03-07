@@ -1,0 +1,103 @@
+{
+  "delete": {
+    "description": "Clear all cloud email related settings. You must be a superuser or have `setting` permission to do this.",
+    "operationId": "delete-api-ee-email-override",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/ee/email/override",
+    "tags": [
+      "/api/ee/email"
+    ]
+  },
+  "put": {
+    "description": "Update multiple cloud email Settings. You must be a superuser or have `setting` permission to do this.\n  Calling this automatically sets `cloud-smtp-enabled` to true if the settings are valid.",
+    "operationId": "put-api-ee-email-override",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "email-smtp-host-override": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "email-smtp-password-override": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "email-smtp-port-override": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "email-smtp-security-override": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "email-smtp-username-override": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/ee/email/override",
+    "tags": [
+      "/api/ee/email"
+    ]
+  }
+}

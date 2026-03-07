@@ -1,0 +1,418 @@
+{
+  "properties": {
+    "lib/binning": {
+      "oneOf": [
+        {
+          "allOf": [
+            {
+              "properties": {
+                "strategy": {
+                  "$ref": "./metabase.lib.schema.binning.strategy.json"
+                }
+              },
+              "required": [
+                "strategy"
+              ],
+              "type": "object"
+            },
+            {
+              "oneOf": [
+                {
+                  "properties": {
+                    "strategy": {
+                      "const": "default"
+                    }
+                  },
+                  "required": [
+                    "strategy"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "bin-width": {
+                      "$ref": "./metabase.lib.schema.binning.bin-width.json"
+                    },
+                    "strategy": {
+                      "const": "bin-width"
+                    }
+                  },
+                  "required": [
+                    "strategy",
+                    "bin-width"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "num-bins": {
+                      "$ref": "./metabase.lib.schema.binning.num-bins.json"
+                    },
+                    "strategy": {
+                      "const": "num-bins"
+                    }
+                  },
+                  "required": [
+                    "strategy",
+                    "num-bins"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          ],
+          "description": "Schema for `:binning` options passed to a `:field` clause."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/breakout?": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/card-id": {
+      "oneOf": [
+        {
+          "description": "Valid Card ID",
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/deduplicated-name": {
+      "description": "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by\n  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated\n  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become\n  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/desired-column-alias": {
+      "oneOf": [
+        {
+          "description": "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/expression-name": {
+      "oneOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/external-remap": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.metadata..column.remapping.external.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/internal-remap": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.metadata..column.remapping.internal.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/join-alias": {
+      "oneOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/original-binning": {
+      "oneOf": [
+        {
+          "allOf": [
+            {
+              "properties": {
+                "strategy": {
+                  "$ref": "./metabase.lib.schema.binning.strategy.json"
+                }
+              },
+              "required": [
+                "strategy"
+              ],
+              "type": "object"
+            },
+            {
+              "oneOf": [
+                {
+                  "properties": {
+                    "strategy": {
+                      "const": "default"
+                    }
+                  },
+                  "required": [
+                    "strategy"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "bin-width": {
+                      "$ref": "./metabase.lib.schema.binning.bin-width.json"
+                    },
+                    "strategy": {
+                      "const": "bin-width"
+                    }
+                  },
+                  "required": [
+                    "strategy",
+                    "bin-width"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "properties": {
+                    "num-bins": {
+                      "$ref": "./metabase.lib.schema.binning.num-bins.json"
+                    },
+                    "strategy": {
+                      "const": "num-bins"
+                    }
+                  },
+                  "required": [
+                    "strategy",
+                    "num-bins"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          ],
+          "description": "Schema for `:binning` options passed to a `:field` clause."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/original-display-name": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/original-effective-type": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/original-expression-name": {
+      "oneOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/original-join-alias": {
+      "oneOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/original-name": {
+      "description": "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the\n  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first\n  usage of the column.\n  Allowed to be blank because some databases like SQL Server allow blank column names.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/ref-display-name": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/ref-name": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/simple-display-name": {
+      "oneOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/source": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.metadata..column.source.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/source-column-alias": {
+      "oneOf": [
+        {
+          "description": "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The\n  left-hand side (LHS) of\n\n    SELECT lhs AS rhs",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/source-uuid": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.uuid.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/temporal-unit": {
+      "oneOf": [
+        {
+          "enum": [
+            "day",
+            "day-of-month",
+            "day-of-week",
+            "day-of-year",
+            "default",
+            "hour",
+            "hour-of-day",
+            "millisecond",
+            "minute",
+            "minute-of-hour",
+            "month",
+            "month-of-year",
+            "quarter",
+            "quarter-of-year",
+            "second",
+            "second-of-minute",
+            "week",
+            "week-of-year",
+            "year",
+            "year-of-era"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/transformation-added-base-type": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lib/type": {
+      "const": "metadata/column",
+      "default": "metadata/column"
+    },
+    "metabase.lib.metadata.result-metadata/field-ref": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.legacy-mbql.schema.Reference.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "metabase.lib.metadata.result-metadata/source": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.metadata..column.legacy-source.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "qp/implicit-field?": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

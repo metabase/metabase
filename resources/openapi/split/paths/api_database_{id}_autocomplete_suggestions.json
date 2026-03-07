@@ -1,0 +1,65 @@
+{
+  "get": {
+    "description": "Return a list of autocomplete suggestions for a given `prefix`, or `substring`. Should only specify one, but\n  `substring` will have priority if both are present.\n\n  This is intended for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`\n  and `Fields` in this `Database`.\n\n  Tables are returned in the format `[table_name \"Table\"]`;\n  When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`\n  When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`",
+    "operationId": "get-api-database-id-autocomplete_suggestions",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "prefix",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "substring",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/database/{id}/autocomplete_suggestions",
+    "tags": [
+      "/api/database"
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "description": "Schema for a valid MBQL `:filter` clause.",
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.DatetimeExpression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.NumericExpression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.StringExpression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.BooleanExpression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.value.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.segment.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.FieldOrExpressionRef.json"
+    }
+  ]
+}

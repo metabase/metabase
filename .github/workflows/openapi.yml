@@ -3,8 +3,8 @@ name: Validate OpenAPI
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - "master"
+      - "release-**"
   pull_request:
 
 concurrency:
@@ -39,6 +39,8 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Generate OpenAPI spec
-        run: bun run generate-openapi
+        run: bun run openapi:generate
       - name: Validate OpenAPI spec
-        run: bun run lint-openapi
+        run: bun run openapi:lint
+      - name: Split OpenAPI spec
+        run: bun run openapi:split

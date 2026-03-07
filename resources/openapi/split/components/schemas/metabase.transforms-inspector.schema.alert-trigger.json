@@ -1,0 +1,32 @@
+{
+  "description": "Definition for conditional alerts.\n   FE evaluates condition against card results and shows alert if triggered.",
+  "properties": {
+    "condition": {
+      "$ref": "./metabase.transforms-inspector.schema.trigger-condition.json"
+    },
+    "id": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "./metabase.transforms-inspector.schema.trigger-metadata.json"
+    },
+    "severity": {
+      "enum": [
+        "info",
+        "warning",
+        "error"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "condition",
+    "severity",
+    "message"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,48 @@
+{
+  "oneOf": [
+    {
+      "properties": {
+        "payload_id": {
+          "type": "null"
+        },
+        "payload_type": {
+          "enum": [
+            "notification/dashboard",
+            "notification/system-event",
+            "notification/testing",
+            "notification/card"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "payload_type"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "creator_id": {
+          "type": "integer"
+        },
+        "payload_id": {
+          "type": "integer"
+        },
+        "payload_type": {
+          "enum": [
+            "notification/dashboard",
+            "notification/system-event",
+            "notification/testing",
+            "notification/card"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "payload_type"
+      ],
+      "type": "object"
+    },
+    {}
+  ]
+}

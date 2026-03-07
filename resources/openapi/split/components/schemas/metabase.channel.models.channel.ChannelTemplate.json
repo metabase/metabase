@@ -1,0 +1,19 @@
+{
+  "description": "Channel Template schema.",
+  "oneOf": [
+    {
+      "properties": {
+        "channel_type": {},
+        "details": {
+          "$ref": "./metabase.channel.models.channel.ChannelTemplateEmailDetails.json"
+        }
+      },
+      "required": [
+        "channel_type",
+        "details"
+      ],
+      "type": "object"
+    },
+    {}
+  ]
+}

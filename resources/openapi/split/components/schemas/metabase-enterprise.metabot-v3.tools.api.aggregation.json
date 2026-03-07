@@ -1,0 +1,14 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.count-aggregation.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.field-aggregation.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.measure-aggregation.json"
+    }
+  ],
+  "description": "Aggregation — count (field optional), field-based (field required), or measure-based."
+}

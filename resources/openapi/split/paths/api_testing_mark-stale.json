@@ -1,0 +1,55 @@
+{
+  "post": {
+    "description": "Mark the card or dashboard as stale",
+    "operationId": "post-api-testing-mark-stale",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "date-str": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "model": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "model"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/testing/mark-stale",
+    "tags": [
+      "/api/testing"
+    ]
+  }
+}

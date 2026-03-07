@@ -1,0 +1,17 @@
+{
+  "prefixItems": [
+    {
+      "const": "sum-where"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.number.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.boolean.json"
+    }
+  ],
+  "type": "array"
+}

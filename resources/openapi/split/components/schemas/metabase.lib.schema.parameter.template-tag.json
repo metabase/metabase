@@ -1,0 +1,12 @@
+{
+  "description": "This is the reference like [:template-tag <whatever>], not the schema for native query template tags -- that lives\n  in [[metabase.lib.schema.template-tag]].",
+  "prefixItems": [
+    {
+      "const": "template-tag"
+    },
+    {
+      "$ref": "./metabase.lib.schema.parameter..template-tag.tag-name.json"
+    }
+  ],
+  "type": "array"
+}

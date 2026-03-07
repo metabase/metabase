@@ -1,0 +1,18 @@
+{
+  "allOf": [
+    {
+      "$ref": "./metabase.cache.api..cache-strategy.base.oss.json"
+    },
+    {
+      "oneOf": [
+        {
+          "$ref": "./metabase.cache.api..cache-strategy.nocache.json"
+        },
+        {
+          "$ref": "./metabase.cache.api..cache-strategy.ttl.json"
+        }
+      ]
+    }
+  ],
+  "description": "Schema for a caching strategy (OSS)"
+}

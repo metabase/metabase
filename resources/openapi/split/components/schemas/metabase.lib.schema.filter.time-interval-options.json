@@ -1,0 +1,9 @@
+{
+  "description": "Options for `:time-interval` operator. Note that `:relative-time-interval` does not support these options.",
+  "properties": {
+    "include-current": {
+      "type": "boolean"
+    }
+  },
+  "type": "object"
+}

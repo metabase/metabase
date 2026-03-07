@@ -1,0 +1,6 @@
+{
+  "additionalProperties": {
+    "$ref": "./metabase.legacy-mbql.schema.FieldOrExpressionDef.json"
+  },
+  "type": "object"
+}

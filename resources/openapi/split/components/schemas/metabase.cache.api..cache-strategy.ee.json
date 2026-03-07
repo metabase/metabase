@@ -1,0 +1,24 @@
+{
+  "allOf": [
+    {
+      "$ref": "./metabase.cache.api..cache-strategy.base.ee.json"
+    },
+    {
+      "oneOf": [
+        {
+          "$ref": "./metabase.cache.api..cache-strategy.nocache.json"
+        },
+        {
+          "$ref": "./metabase.cache.api..cache-strategy.ttl.json"
+        },
+        {
+          "$ref": "./metabase.cache.api..cache-strategy.ee.duration.json"
+        },
+        {
+          "$ref": "./metabase.cache.api..cache-strategy.ee.schedule.json"
+        }
+      ]
+    }
+  ],
+  "description": "Schema for a caching strategy in EE when we have an premium token with `:cache-granular-controls`."
+}

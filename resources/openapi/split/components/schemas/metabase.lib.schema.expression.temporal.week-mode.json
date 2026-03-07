@@ -1,0 +1,8 @@
+{
+  "enum": [
+    "iso",
+    "us",
+    "instance"
+  ],
+  "type": "string"
+}

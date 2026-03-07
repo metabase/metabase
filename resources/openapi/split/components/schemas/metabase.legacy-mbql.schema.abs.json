@@ -1,0 +1,4 @@
+{
+  "allOf": [],
+  "description": "schema for a valid MBQL 4 :abs clause"
+}

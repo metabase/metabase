@@ -1,0 +1,82 @@
+{
+  "get": {
+    "description": "Generates a single tile image for a saved Card.",
+    "operationId": "get-api-tiles-card-id-zoom-x-y",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "card-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.lib.schema.id.card.json"
+        }
+      },
+      {
+        "description": "value must be an integer.",
+        "in": "path",
+        "name": "zoom",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be an integer.",
+        "in": "path",
+        "name": "x",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be an integer.",
+        "in": "path",
+        "name": "y",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "parameters",
+        "required": false,
+        "schema": {
+          "$ref": "../components/schemas/metabase.tiles.api.parameters.json"
+        }
+      },
+      {
+        "in": "query",
+        "name": "latField",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.tiles.api.legacy-ref.json"
+        }
+      },
+      {
+        "in": "query",
+        "name": "lonField",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.tiles.api.legacy-ref.json"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/tiles/{card-id}/{zoom}/{x}/{y}",
+    "tags": [
+      "/api/tiles"
+    ]
+  }
+}

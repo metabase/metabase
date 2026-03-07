@@ -1,0 +1,88 @@
+{
+  "get": {
+    "description": "Get merge history for a transform. Returns all merge events that affected this transform,\n   ordered by created_at descending (newest first).",
+    "operationId": "get-api-transform-id-merge-history",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "properties": {
+                  "commit_message": {
+                    "type": "string"
+                  },
+                  "created_at": {},
+                  "id": {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "merging_user_id": {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "workspace_id": {
+                    "oneOf": [
+                      {
+                        "description": "value must be an integer greater than zero.",
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "workspace_merge_id": {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "workspace_name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "workspace_merge_id",
+                  "commit_message",
+                  "workspace_id",
+                  "workspace_name",
+                  "merging_user_id",
+                  "created_at"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/transform/{id}/merge-history",
+    "tags": [
+      "/api/transform"
+    ]
+  }
+}

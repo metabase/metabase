@@ -1,0 +1,47 @@
+{
+  "description": "Response from query execution. The HTTP status is always 202 because results are streamed —\n   check the `status` field to determine success or failure.",
+  "properties": {
+    "data": {
+      "properties": {
+        "cols": {
+          "items": {
+            "$ref": "./metabase-enterprise.agent-api.api.column-metadata.json"
+          },
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "items": {},
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "cols",
+        "rows"
+      ],
+      "type": "object"
+    },
+    "error": {
+      "type": "string"
+    },
+    "row_count": {
+      "type": "integer"
+    },
+    "running_time": {
+      "type": "integer"
+    },
+    "status": {
+      "enum": [
+        "completed",
+        "failed"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "status"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,22 @@
+{
+  "properties": {
+    "bins": {
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "$ref": "./metabase.lib.schema.binning.num-bins.json"
+            },
+            {
+              "$ref": "./metabase.lib.schema.test-spec.test-auto-bin-spec.json"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

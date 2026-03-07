@@ -1,0 +1,33 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "display-name": {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        "id": {
+          "$ref": "./metabase.lib.schema.template-tag.id.json"
+        },
+        "name": {
+          "$ref": "./metabase.lib.schema.template-tag.name.json"
+        },
+        "table-id": {
+          "$ref": "./metabase.lib.schema.id.table.json"
+        },
+        "type": {
+          "const": "table"
+        }
+      },
+      "required": [
+        "name",
+        "display-name",
+        "type",
+        "table-id"
+      ],
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.lib.schema.template-tag.disallow-dimension.json"
+    }
+  ]
+}

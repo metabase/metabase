@@ -1,0 +1,25 @@
+{
+  "description": "Valid unit for *datetime* bucketing.",
+  "enum": [
+    "quarter",
+    "day",
+    "hour",
+    "week",
+    "second",
+    "default",
+    "day-of-week",
+    "hour-of-day",
+    "month",
+    "month-of-year",
+    "day-of-month",
+    "year",
+    "day-of-year",
+    "millisecond",
+    "year-of-era",
+    "week-of-year",
+    "quarter-of-year",
+    "minute-of-hour",
+    "minute"
+  ],
+  "type": "string"
+}

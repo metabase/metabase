@@ -1,0 +1,14 @@
+{
+  "description": "Valid units for a datetime-diff clause.",
+  "enum": [
+    "second",
+    "minute",
+    "hour",
+    "day",
+    "week",
+    "month",
+    "quarter",
+    "year"
+  ],
+  "type": "string"
+}

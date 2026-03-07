@@ -1,0 +1,35 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "metric_id": {
+          "type": "integer"
+        },
+        "with_default_temporal_breakout": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_field_values": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_queryable_dimensions": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_segments": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "metric_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

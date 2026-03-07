@@ -1,0 +1,15 @@
+{
+  "enum": [
+    "card",
+    "dataset",
+    "metric",
+    "dashboard",
+    "snippet",
+    "collection",
+    "indexed-entity",
+    "indexed-entity",
+    "document",
+    "table"
+  ],
+  "type": "string"
+}

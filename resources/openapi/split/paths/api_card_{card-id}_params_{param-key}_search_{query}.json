@@ -1,0 +1,50 @@
+{
+  "get": {
+    "description": "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.\n\n    ;; fetch values for Card 1 parameter 'abc' that contain 'Orange';\n     GET /api/queries/1/params/abc/search/Orange\n\n  Currently limited to first 1000 results.",
+    "operationId": "get-api-card-card-id-params-param-key-search-query",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "card-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "path",
+        "name": "param-key",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.lib.schema.parameter.id.json"
+        }
+      },
+      {
+        "in": "path",
+        "name": "query",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/card/{card-id}/params/{param-key}/search/{query}",
+    "tags": [
+      "/api/card"
+    ]
+  }
+}

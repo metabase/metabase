@@ -1,0 +1,14 @@
+{
+  "enum": [
+    "day",
+    "hour",
+    "millisecond",
+    "minute",
+    "month",
+    "quarter",
+    "second",
+    "week",
+    "year"
+  ],
+  "type": "string"
+}

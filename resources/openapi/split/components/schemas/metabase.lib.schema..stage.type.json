@@ -1,0 +1,7 @@
+{
+  "enum": [
+    "mbql.stage/native",
+    "mbql.stage/mbql"
+  ],
+  "type": "string"
+}

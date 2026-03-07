@@ -1,0 +1,212 @@
+{
+  "delete": {
+    "description": "Delete cache configurations.",
+    "operationId": "delete-api-cache",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "model": {
+                "enum": [
+                  "root",
+                  "database",
+                  "dashboard",
+                  "question"
+                ],
+                "type": "string"
+              },
+              "model_id": {
+                "items": {
+                  "description": "value must be an integer greater or equal to than zero.",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "model",
+              "model_id"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/cache",
+    "tags": [
+      "/api/cache"
+    ]
+  },
+  "get": {
+    "description": "Return cache configuration. Supports pagination via `limit` and `offset` query parameters,\n   and sorting via `sort_column` and `sort_direction`.",
+    "operationId": "get-api-cache",
+    "parameters": [
+      {
+        "description": "Type of model",
+        "in": "query",
+        "name": "model",
+        "required": true,
+        "schema": {
+          "default": [
+            "root"
+          ],
+          "items": {
+            "enum": [
+              "root",
+              "database",
+              "dashboard",
+              "question"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      {
+        "description": "Collection id to filter results. Returns everything if not supplied.",
+        "in": "query",
+        "name": "collection",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "description": "Model id to get configuration for.",
+        "in": "query",
+        "name": "id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort_column",
+        "required": true,
+        "schema": {
+          "default": "name",
+          "enum": [
+            "name",
+            "policy",
+            "collection"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort_direction",
+        "required": true,
+        "schema": {
+          "default": "asc",
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/cache",
+    "tags": [
+      "/api/cache"
+    ]
+  },
+  "put": {
+    "description": "Store cache configuration.",
+    "operationId": "put-api-cache",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "model": {
+                "enum": [
+                  "root",
+                  "database",
+                  "dashboard",
+                  "question"
+                ],
+                "type": "string"
+              },
+              "model_id": {
+                "description": "value must be an integer greater or equal to than zero.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "strategy": {
+                "$ref": "../components/schemas/metabase.cache.api.cache-strategy.json"
+              }
+            },
+            "required": [
+              "model",
+              "model_id",
+              "strategy"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/cache",
+    "tags": [
+      "/api/cache"
+    ]
+  }
+}

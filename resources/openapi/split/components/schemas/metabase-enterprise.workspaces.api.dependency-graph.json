@@ -1,0 +1,10 @@
+{
+  "additionalProperties": {
+    "items": {
+      "type": "string"
+    },
+    "type": "array"
+  },
+  "description": "Map of shorthand symbols to lists of dependencies. The latter are all strings, and refs need to be detected.",
+  "type": "object"
+}

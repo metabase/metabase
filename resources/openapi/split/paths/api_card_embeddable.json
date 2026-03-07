@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints\n  and a signed JWT.",
+    "operationId": "get-api-card-embeddable",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/card/embeddable",
+    "tags": [
+      "/api/card"
+    ]
+  }
+}

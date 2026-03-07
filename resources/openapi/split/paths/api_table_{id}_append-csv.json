@@ -1,0 +1,60 @@
+{
+  "post": {
+    "description": "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by\n  uploading a CSV file.",
+    "operationId": "post-api-table-id-append-csv",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "multipart/form-data": {
+          "schema": {
+            "properties": {
+              "file": {
+                "properties": {
+                  "filename": {
+                    "type": "string"
+                  },
+                  "tempfile": {}
+                },
+                "required": [
+                  "filename",
+                  "tempfile"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "file"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/table/{id}/append-csv",
+    "tags": [
+      "/api/table"
+    ]
+  }
+}

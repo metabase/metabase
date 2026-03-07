@@ -1,0 +1,82 @@
+{
+  "post": {
+    "description": "Run the query associated with a Card.",
+    "operationId": "post-api-card-card-id-query",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "card-id",
+        "required": true,
+        "schema": {
+          "anyOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "description": "String must be a valid 21-character NanoID string.",
+              "pattern": "^[A-Za-z0-9_\\-]{21}$",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "collection_preview": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dashboard_id": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ignore_cache": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "ignore_cache"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/card/{card-id}/query",
+    "tags": [
+      "/api/card"
+    ]
+  }
+}

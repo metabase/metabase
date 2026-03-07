@@ -1,0 +1,8 @@
+{
+  "enum": [
+    "input-table",
+    "external-transform",
+    "workspace-transform"
+  ],
+  "type": "string"
+}

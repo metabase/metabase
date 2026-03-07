@@ -1,0 +1,41 @@
+{
+  "delete": {
+    "description": "Delete the prompt suggestion with ID `prompt-id` for the metabot instance with `id`.",
+    "operationId": "delete-api-ee-metabot-v3-metabot-id-prompt-suggestions-prompt-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "path",
+        "name": "prompt-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/ee/metabot-v3/metabot/{id}/prompt-suggestions/{prompt-id}",
+    "tags": [
+      "/api/ee/metabot-v3/metabot"
+    ]
+  }
+}

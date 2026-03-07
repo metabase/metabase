@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards\n   in the last 24 hours.",
+    "operationId": "get-api-activity-most_recently_viewed_dashboard",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/activity/most_recently_viewed_dashboard",
+    "tags": [
+      "/api/activity"
+    ]
+  }
+}

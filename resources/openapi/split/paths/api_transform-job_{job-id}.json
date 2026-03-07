@@ -1,0 +1,516 @@
+{
+  "delete": {
+    "description": "Delete a transform job.",
+    "operationId": "delete-api-transform-job-job-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "job-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/transform-job/{job-id}",
+    "tags": [
+      "/api/transform-job"
+    ]
+  },
+  "get": {
+    "description": "Get a transform job by ID.",
+    "operationId": "get-api-transform-job-job-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "job-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "built_in_type": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "created_at": {},
+                "description": {
+                  "oneOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "anyOf": [
+                            {},
+                            {}
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "entity_id": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "id": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "last_run": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "created_at": {},
+                        "end_time": {
+                          "oneOf": [
+                            {},
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "id": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "is_active": {
+                          "oneOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "job_id": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "message": {
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "run_method": {
+                          "type": "string"
+                        },
+                        "start_time": {},
+                        "status": {
+                          "enum": [
+                            "started",
+                            "succeeded",
+                            "failed",
+                            "timeout"
+                          ],
+                          "type": "string"
+                        },
+                        "updated_at": {}
+                      },
+                      "required": [
+                        "id",
+                        "job_id",
+                        "run_method",
+                        "status",
+                        "is_active",
+                        "start_time",
+                        "message",
+                        "created_at",
+                        "updated_at"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "anyOf": [
+                        {},
+                        {}
+                      ]
+                    }
+                  ]
+                },
+                "next_run": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "start_time": {}
+                      },
+                      "required": [
+                        "start_time"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "schedule": {
+                  "type": "string"
+                },
+                "tag_ids": {
+                  "items": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "ui_display_type": {
+                  "enum": [
+                    "cron/raw",
+                    "cron/builder"
+                  ],
+                  "type": "string"
+                },
+                "updated_at": {}
+              },
+              "required": [
+                "id",
+                "name",
+                "description",
+                "schedule",
+                "ui_display_type",
+                "entity_id",
+                "created_at",
+                "updated_at"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/transform-job/{job-id}",
+    "tags": [
+      "/api/transform-job"
+    ]
+  },
+  "put": {
+    "description": "Update a transform job.",
+    "operationId": "put-api-transform-job-job-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "job-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "description": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "schedule": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "tag_ids": {
+                "items": {
+                  "description": "value must be an integer greater than zero.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "ui_display_type": {
+                "enum": [
+                  "cron/raw",
+                  "cron/builder"
+                ],
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "built_in_type": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "created_at": {},
+                "description": {
+                  "oneOf": [
+                    {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "anyOf": [
+                            {},
+                            {}
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "entity_id": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "id": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "last_run": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "created_at": {},
+                        "end_time": {
+                          "oneOf": [
+                            {},
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "id": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "is_active": {
+                          "oneOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "job_id": {
+                          "minimum": 1,
+                          "type": "integer"
+                        },
+                        "message": {
+                          "oneOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "run_method": {
+                          "type": "string"
+                        },
+                        "start_time": {},
+                        "status": {
+                          "enum": [
+                            "started",
+                            "succeeded",
+                            "failed",
+                            "timeout"
+                          ],
+                          "type": "string"
+                        },
+                        "updated_at": {}
+                      },
+                      "required": [
+                        "id",
+                        "job_id",
+                        "run_method",
+                        "status",
+                        "is_active",
+                        "start_time",
+                        "message",
+                        "created_at",
+                        "updated_at"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "anyOf": [
+                        {},
+                        {}
+                      ]
+                    }
+                  ]
+                },
+                "next_run": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": false,
+                      "properties": {
+                        "start_time": {}
+                      },
+                      "required": [
+                        "start_time"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "schedule": {
+                  "type": "string"
+                },
+                "tag_ids": {
+                  "items": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "ui_display_type": {
+                  "enum": [
+                    "cron/raw",
+                    "cron/builder"
+                  ],
+                  "type": "string"
+                },
+                "updated_at": {}
+              },
+              "required": [
+                "id",
+                "name",
+                "description",
+                "schedule",
+                "ui_display_type",
+                "entity_id",
+                "created_at",
+                "updated_at"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/transform-job/{job-id}",
+    "tags": [
+      "/api/transform-job"
+    ]
+  }
+}

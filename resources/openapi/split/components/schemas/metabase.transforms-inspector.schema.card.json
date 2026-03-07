@@ -1,0 +1,37 @@
+{
+  "description": "A visualization card in the inspector output.\n\n   Cards are generic - lens-specific data goes in :metadata.\n   The :metadata map is opaque to the core but interpreted by\n   lens-specific lib utilities on the frontend. ",
+  "properties": {
+    "dataset_query": {
+      "$ref": "./metabase.lib.schema.query.json"
+    },
+    "display": {
+      "$ref": "./metabase.transforms-inspector.schema.display-type.json"
+    },
+    "id": {
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "./metabase.transforms-inspector.schema.card-metadata.json"
+    },
+    "section_id": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "display",
+    "dataset_query"
+  ],
+  "type": "object"
+}

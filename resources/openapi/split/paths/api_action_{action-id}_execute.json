@@ -1,0 +1,42 @@
+{
+  "get": {
+    "description": "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.",
+    "operationId": "get-api-action-action-id-execute",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "action-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be a valid JSON string.",
+        "in": "query",
+        "name": "parameters",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/action/{action-id}/execute",
+    "tags": [
+      "/api/action"
+    ]
+  }
+}

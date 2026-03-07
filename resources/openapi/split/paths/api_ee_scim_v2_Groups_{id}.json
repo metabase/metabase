@@ -1,0 +1,131 @@
+{
+  "delete": {
+    "description": "Delete a group.",
+    "operationId": "delete-api-ee-scim-v2-Groups-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/ee/scim/v2/Groups/{id}",
+    "tags": [
+      "/api/ee/scim/v2"
+    ]
+  },
+  "get": {
+    "description": "Fetch a single group.",
+    "operationId": "get-api-ee-scim-v2-Groups-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/scim/v2/Groups/{id}",
+    "tags": [
+      "/api/ee/scim/v2"
+    ]
+  },
+  "put": {
+    "description": "Update a group.",
+    "operationId": "put-api-ee-scim-v2-Groups-id",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "displayName": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "members": {
+                "items": {
+                  "properties": {
+                    "$ref": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "value": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "schemas": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "schemas",
+              "displayName"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/ee/scim/v2/Groups/{id}",
+    "tags": [
+      "/api/ee/scim/v2"
+    ]
+  }
+}

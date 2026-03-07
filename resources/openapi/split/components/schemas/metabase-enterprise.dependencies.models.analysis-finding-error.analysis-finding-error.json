@@ -1,0 +1,60 @@
+{
+  "description": "Schema for an AnalysisFindingError record.",
+  "properties": {
+    "analyzed_entity_id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "analyzed_entity_type": {
+      "$ref": "./metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+    },
+    "error_detail": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "error_type": {
+      "$ref": "./metabase.lib.schema.validate.validate-error-type.json"
+    },
+    "id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "source_entity_id": {
+      "oneOf": [
+        {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_entity_type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.validate.source-entity-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "analyzed_entity_type",
+    "analyzed_entity_id",
+    "error_type"
+  ],
+  "type": "object"
+}

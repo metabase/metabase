@@ -1,0 +1,56 @@
+{
+  "post": {
+    "description": "Execute an arbitrary SQL query in the workspace's isolated database context.\n   Table references are remapped to isolated workspace tables.\n   Returns the first 2000 rows of query results.",
+    "operationId": "post-api-ee-workspace-ws-id-query",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "sql": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "sql"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.workspaces.types.query-result.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/workspace/{ws-id}/query",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "prefixItems": [
+    {
+      "const": "variable"
+    },
+    {
+      "$ref": "./metabase.lib.schema.parameter..variable.target.json"
+    }
+  ],
+  "type": "array"
+}

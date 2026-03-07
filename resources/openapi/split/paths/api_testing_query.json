@@ -1,0 +1,53 @@
+{
+  "post": {
+    "description": "Creates a query from a test query spec.",
+    "operationId": "post-api-testing-query",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "database": {
+                "$ref": "../components/schemas/metabase.lib.schema.id.database.json"
+              },
+              "stages": {
+                "items": {
+                  "$ref": "../components/schemas/metabase.lib.schema.test-spec.test-stage-spec.json"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "database",
+              "stages"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase.lib.schema.query.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/testing/query",
+    "tags": [
+      "/api/testing"
+    ]
+  }
+}

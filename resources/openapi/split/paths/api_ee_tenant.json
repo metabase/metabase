@@ -1,0 +1,221 @@
+{
+  "get": {
+    "description": "Get all tenants",
+    "operationId": "get-api-ee-tenant",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "status",
+        "required": true,
+        "schema": {
+          "default": "all",
+          "enum": [
+            "all",
+            "deactivated",
+            "active"
+          ],
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "data": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "attributes": {
+                        "oneOf": [
+                          {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "id": {
+                        "description": "value must be an integer greater than zero.",
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "is_active": {
+                        "type": "boolean"
+                      },
+                      "member_count": {
+                        "description": "value must be an integer.",
+                        "type": "integer"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "slug": {
+                        "description": "invalid slug",
+                        "pattern": "^[-_a-z0-9]{1,255}$",
+                        "type": "string"
+                      },
+                      "tenant_collection_id": {
+                        "description": "value must be an integer greater than zero.",
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "slug",
+                      "is_active",
+                      "member_count",
+                      "attributes",
+                      "tenant_collection_id"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "data"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/tenant",
+    "tags": [
+      "/api/ee/tenant"
+    ]
+  },
+  "post": {
+    "description": "Create a new Tenant",
+    "operationId": "post-api-ee-tenant",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "additionalProperties": false,
+            "properties": {
+              "attributes": {
+                "oneOf": [
+                  {
+                    "additionalProperties": {},
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "slug": {
+                "description": "invalid slug",
+                "pattern": "^[-_a-z0-9]{1,255}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "slug"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "attributes": {
+                  "oneOf": [
+                    {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "id": {
+                  "description": "value must be an integer greater than zero.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "is_active": {
+                  "type": "boolean"
+                },
+                "member_count": {
+                  "description": "value must be an integer.",
+                  "type": "integer"
+                },
+                "name": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "slug": {
+                  "description": "invalid slug",
+                  "pattern": "^[-_a-z0-9]{1,255}$",
+                  "type": "string"
+                },
+                "tenant_collection_id": {
+                  "description": "value must be an integer greater than zero.",
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "slug",
+                "is_active",
+                "member_count",
+                "attributes",
+                "tenant_collection_id"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/tenant",
+    "tags": [
+      "/api/ee/tenant"
+    ]
+  }
+}

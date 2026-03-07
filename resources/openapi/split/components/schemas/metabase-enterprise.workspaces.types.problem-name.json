@@ -1,0 +1,12 @@
+{
+  "enum": [
+    "target-conflict",
+    "not-run",
+    "stale",
+    "cycle",
+    "failed",
+    "removed-table",
+    "removed-field"
+  ],
+  "type": "string"
+}

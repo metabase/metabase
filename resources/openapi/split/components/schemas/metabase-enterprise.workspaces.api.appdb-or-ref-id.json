@@ -1,0 +1,10 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase-enterprise.workspaces.types.appdb-id.json"
+    },
+    {
+      "$ref": "./metabase-enterprise.workspaces.types.ref-id.json"
+    }
+  ]
+}

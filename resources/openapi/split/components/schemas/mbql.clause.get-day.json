@@ -1,0 +1,14 @@
+{
+  "prefixItems": [
+    {
+      "const": "get-day"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.temporal.json"
+    }
+  ],
+  "type": "array"
+}

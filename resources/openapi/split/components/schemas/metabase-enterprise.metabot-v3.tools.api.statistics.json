@@ -1,0 +1,165 @@
+{
+  "properties": {
+    "average_length": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "avg": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "distinct_count": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.count.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "earliest": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "latest": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "max": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "min": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "percent_email": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.proportion.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "percent_json": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.proportion.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "percent_null": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.proportion.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "percent_state": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.proportion.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "percent_url": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.proportion.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "q1": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "q3": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sd": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "values": {
+      "oneOf": [
+        {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.field-values.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

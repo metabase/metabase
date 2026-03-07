@@ -1,0 +1,13 @@
+{
+  "description": "Response containing a base64-encoded MBQL query for use with /v1/execute.",
+  "properties": {
+    "query": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "query"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,8 @@
+{
+  "description": "The `:expressions` definition map as found as a top-level key in an MBQL stage.",
+  "items": {
+    "$ref": "./metabase.lib.schema.expression..expression.definition.json"
+  },
+  "minItems": 1,
+  "type": "array"
+}

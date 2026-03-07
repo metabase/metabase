@@ -1,0 +1,4 @@
+{
+  "$ref": "./metabase.lib.schema.common.non-blank-string.json",
+  "description": "The name used to alias the joined table or query. This is usually generated automatically and generally looks like\n  `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias` in\n  the options."
+}

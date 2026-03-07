@@ -1,0 +1,19 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "dashboard_id": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "dashboard_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

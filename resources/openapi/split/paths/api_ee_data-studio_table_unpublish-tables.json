@@ -1,0 +1,38 @@
+{
+  "post": {
+    "description": "Unset collection for each of selected tables and all downstream dependents recursively.",
+    "operationId": "post-api-ee-data-studio-table-unpublish-tables",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase-enterprise.data-studio.api.table.table-selectors.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "null"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/data-studio/table/unpublish-tables",
+    "tags": [
+      "/api/ee/data-studio/table"
+    ]
+  }
+}

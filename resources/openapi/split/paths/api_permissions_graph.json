@@ -1,0 +1,85 @@
+{
+  "get": {
+    "description": "Fetch a graph of all Permissions.",
+    "operationId": "get-api-permissions-graph",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/permissions/graph",
+    "tags": [
+      "/api/permissions"
+    ]
+  },
+  "put": {
+    "description": "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same\n  format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This\n  modified graph must correspond to the `PermissionsGraph` schema. If successful, this endpoint returns the updated\n  permissions graph; use this as a base for any further modifications.\n\n  Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party\n  modifies it before you can submit you revisions, the endpoint will instead make no changes and return a\n  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that.\n\n  The optional `sandboxes` key contains a list of sandboxes that should be created or modified in conjunction with\n  this permissions graph update. Since data sandboxing is an Enterprise Edition-only feature, a 402 (Payment Required)\n  response will be returned if this key is present and the server is not running the Enterprise Edition, and/or the\n  `:sandboxes` feature flag is not present.\n\n  If the skip-graph query param is truthy, then the graph will not be returned.",
+    "operationId": "put-api-permissions-graph",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "skip-graph",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "force",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {},
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/permissions/graph",
+    "tags": [
+      "/api/permissions"
+    ]
+  }
+}

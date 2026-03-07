@@ -1,0 +1,13 @@
+{
+  "enum": [
+    "simple-bytes",
+    "unix-nanoseconds",
+    "simple",
+    "iso",
+    "iso-bytes",
+    "unix-seconds",
+    "unix-milliseconds",
+    "unix-microseconds"
+  ],
+  "type": "string"
+}

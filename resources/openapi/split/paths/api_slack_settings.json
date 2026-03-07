@@ -1,0 +1,54 @@
+{
+  "put": {
+    "description": "Update Slack related settings. You must be a superuser to do this. Also updates the slack-cache.\n  There are 3 cases where we alter the slack channel/user cache:\n  1. falsy token           -> clear\n  2. invalid token         -> clear\n  3. truthy, valid token   -> refresh ",
+    "operationId": "put-api-slack-settings",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "slack-app-token": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "slack-bug-report-channel": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/slack/settings",
+    "tags": [
+      "/api/slack"
+    ]
+  }
+}

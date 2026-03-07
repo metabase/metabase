@@ -1,0 +1,4 @@
+{
+  "description": "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
+  "type": "string"
+}

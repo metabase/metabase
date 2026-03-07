@@ -1,0 +1,262 @@
+{
+  "get": {
+    "description": "Get all transforms in a workspace.",
+    "operationId": "get-api-ee-workspace-ws-id-transform",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "transforms": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "creator_id": {
+                        "oneOf": [
+                          {
+                            "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "global_id": {
+                        "oneOf": [
+                          {
+                            "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "ref_id": {
+                        "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+                      },
+                      "source_type": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "ref_id",
+                      "global_id",
+                      "name",
+                      "source_type",
+                      "creator_id"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "transforms"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/workspace/{ws-id}/transform",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  },
+  "post": {
+    "description": "Add another transform to the Changeset. This could be a fork of an existing global transform, or something new.",
+    "operationId": "post-api-ee-workspace-ws-id-transform",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "description": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "$ref": "../components/schemas/metabase-enterprise.workspaces.api.transform-source.json"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "archived_at": {},
+                "created_at": {},
+                "creator_id": {
+                  "oneOf": [
+                    {
+                      "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "description": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "global_id": {
+                  "oneOf": [
+                    {
+                      "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "last_run_at": {},
+                "last_run_message": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "last_run_status": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "ref_id": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.types.ref-id.json"
+                },
+                "source": {
+                  "properties": {},
+                  "type": "object"
+                },
+                "target": {
+                  "properties": {},
+                  "type": "object"
+                },
+                "target_stale": {
+                  "oneOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "updated_at": {},
+                "workspace_id": {
+                  "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+                }
+              },
+              "required": [
+                "ref_id",
+                "global_id",
+                "name",
+                "description",
+                "source",
+                "target",
+                "target_stale",
+                "workspace_id",
+                "creator_id",
+                "archived_at",
+                "created_at",
+                "updated_at",
+                "last_run_at",
+                "last_run_status",
+                "last_run_message"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/workspace/{ws-id}/transform",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

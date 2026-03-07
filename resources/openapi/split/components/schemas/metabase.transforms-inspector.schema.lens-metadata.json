@@ -1,0 +1,28 @@
+{
+  "properties": {
+    "complexity": {
+      "$ref": "./metabase.transforms-inspector.schema.complexity.json"
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "display_name"
+  ],
+  "type": "object"
+}

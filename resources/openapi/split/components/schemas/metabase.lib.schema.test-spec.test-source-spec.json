@@ -1,0 +1,10 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-table-source-spec.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.test-spec.test-card-source-spec.json"
+    }
+  ]
+}

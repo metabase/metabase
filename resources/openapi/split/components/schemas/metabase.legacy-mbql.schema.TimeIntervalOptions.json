@@ -1,0 +1,8 @@
+{
+  "properties": {
+    "include-current": {
+      "type": "boolean"
+    }
+  },
+  "type": "object"
+}

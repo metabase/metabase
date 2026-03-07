@@ -1,0 +1,74 @@
+{
+  "get": {
+    "description": "Generates a single tile image for an ad-hoc query.",
+    "operationId": "get-api-tiles-zoom-x-y",
+    "parameters": [
+      {
+        "description": "value must be an integer.",
+        "in": "path",
+        "name": "zoom",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be an integer.",
+        "in": "path",
+        "name": "x",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be an integer.",
+        "in": "path",
+        "name": "y",
+        "required": true,
+        "schema": {
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "query",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.tiles.api.query.json"
+        }
+      },
+      {
+        "in": "query",
+        "name": "latField",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.tiles.api.legacy-ref.json"
+        }
+      },
+      {
+        "in": "query",
+        "name": "lonField",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.tiles.api.legacy-ref.json"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/tiles/{zoom}/{x}/{y}",
+    "tags": [
+      "/api/tiles"
+    ]
+  }
+}

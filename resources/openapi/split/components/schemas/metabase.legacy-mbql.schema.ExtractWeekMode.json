@@ -1,0 +1,9 @@
+{
+  "description": "Valid modes to extract weeks.",
+  "enum": [
+    "iso",
+    "us",
+    "instance"
+  ],
+  "type": "string"
+}

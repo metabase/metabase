@@ -1,0 +1,16 @@
+{
+  "oneOf": [
+    {
+      "type": "string"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.StringExpression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.value.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.FieldOrExpressionRef.json"
+    }
+  ]
+}

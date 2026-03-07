@@ -1,0 +1,8 @@
+{
+  "properties": {
+    "mode": {
+      "$ref": "./metabase.legacy-mbql.schema.DatetimeOptionsMode.json"
+    }
+  },
+  "type": "object"
+}

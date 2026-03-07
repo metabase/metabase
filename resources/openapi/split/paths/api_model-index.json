@@ -1,0 +1,76 @@
+{
+  "get": {
+    "description": "Retrieve list of ModelIndex.",
+    "operationId": "get-api-model-index",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "model_id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/model-index",
+    "tags": [
+      "/api/model-index"
+    ]
+  },
+  "post": {
+    "description": "Create ModelIndex.",
+    "operationId": "post-api-model-index",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "model_id": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "pk_ref": {},
+              "value_ref": {}
+            },
+            "required": [
+              "model_id",
+              "pk_ref",
+              "value_ref"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/model-index",
+    "tags": [
+      "/api/model-index"
+    ]
+  }
+}

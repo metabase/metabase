@@ -1,0 +1,22 @@
+{
+  "properties": {
+    "default": {},
+    "display-name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "id": {
+      "$ref": "./metabase.lib.schema.template-tag.id.json"
+    },
+    "name": {
+      "$ref": "./metabase.lib.schema.template-tag.name.json"
+    },
+    "required": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "name",
+    "display-name"
+  ],
+  "type": "object"
+}

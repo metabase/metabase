@@ -1,0 +1,29 @@
+{
+  "description": "A problem detected during workspace validation.",
+  "properties": {
+    "block_merge": {
+      "type": "boolean"
+    },
+    "category": {
+      "$ref": "./metabase-enterprise.workspaces.types.problem-category.json"
+    },
+    "data": {
+      "properties": {},
+      "type": "object"
+    },
+    "problem": {
+      "$ref": "./metabase-enterprise.workspaces.types.problem-name.json"
+    },
+    "severity": {
+      "$ref": "./metabase-enterprise.workspaces.types.severity.json"
+    }
+  },
+  "required": [
+    "category",
+    "problem",
+    "severity",
+    "block_merge",
+    "data"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,140 @@
+{
+  "description": "Schema for :model/NotificationRecipient.",
+  "oneOf": [
+    {
+      "properties": {
+        "details": {},
+        "notification_handler_id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "permissions_group_id": {},
+        "type": {
+          "enum": [
+            "notification-recipient/raw-value",
+            "notification-recipient/user",
+            "notification-recipient/template",
+            "notification-recipient/group"
+          ],
+          "type": "string"
+        },
+        "user_id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "user_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "details": {},
+        "notification_handler_id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "permissions_group_id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "type": {
+          "enum": [
+            "notification-recipient/raw-value",
+            "notification-recipient/user",
+            "notification-recipient/template",
+            "notification-recipient/group"
+          ],
+          "type": "string"
+        },
+        "user_id": {}
+      },
+      "required": [
+        "type",
+        "permissions_group_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "details": {
+          "additionalProperties": false,
+          "properties": {
+            "value": {}
+          },
+          "required": [
+            "value"
+          ],
+          "type": "object"
+        },
+        "notification_handler_id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "permissions_group_id": {},
+        "type": {
+          "enum": [
+            "notification-recipient/raw-value",
+            "notification-recipient/user",
+            "notification-recipient/template",
+            "notification-recipient/group"
+          ],
+          "type": "string"
+        },
+        "user_id": {}
+      },
+      "required": [
+        "type",
+        "details"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "details": {
+          "additionalProperties": false,
+          "properties": {
+            "is_optional": {
+              "type": "boolean"
+            },
+            "pattern": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "pattern"
+          ],
+          "type": "object"
+        },
+        "notification_handler_id": {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "permissions_group_id": {},
+        "type": {
+          "enum": [
+            "notification-recipient/raw-value",
+            "notification-recipient/user",
+            "notification-recipient/template",
+            "notification-recipient/group"
+          ],
+          "type": "string"
+        },
+        "user_id": {}
+      },
+      "required": [
+        "type",
+        "details"
+      ],
+      "type": "object"
+    }
+  ]
+}

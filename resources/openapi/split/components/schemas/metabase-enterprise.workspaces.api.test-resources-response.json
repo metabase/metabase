@@ -1,0 +1,33 @@
+{
+  "description": "Response from creating test resources.",
+  "properties": {
+    "global-map": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "type": "object"
+    },
+    "workspace-id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "workspace-map": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "workspace-id",
+    "global-map",
+    "workspace-map"
+  ],
+  "type": "object"
+}

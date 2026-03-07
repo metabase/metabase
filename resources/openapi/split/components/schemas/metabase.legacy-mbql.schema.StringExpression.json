@@ -1,0 +1,70 @@
+{
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.substring.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.trim.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.ltrim.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.rtrim.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.replace.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.lower.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.upper.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.concat.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.regex-match-first.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.coalesce.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.case.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.if.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.host.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.domain.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.subdomain.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.path.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.month-name.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.quarter-name.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.day-name.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.text.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.split-part.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.collate.json"
+    }
+  ]
+}

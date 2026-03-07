@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "display-name": {
+      "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+    },
+    "name": {
+      "$ref": "./metabase.lib.schema.template-tag.name.json"
+    }
+  },
+  "type": "object"
+}

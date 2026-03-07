@@ -1,0 +1,16 @@
+{
+  "description": "Valid display types for cards.",
+  "enum": [
+    "bar",
+    "row",
+    "line",
+    "area",
+    "pie",
+    "scalar",
+    "gauge",
+    "progress",
+    "table",
+    "hidden"
+  ],
+  "type": "string"
+}

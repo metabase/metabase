@@ -1,0 +1,84 @@
+{
+  "post": {
+    "description": "Construct a query from a model.",
+    "operationId": "post-api-ee-metabot-tools-query-model",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+            "properties": {
+              "arguments": {
+                "$ref": "../components/schemas/metabase-enterprise.metabot-v3.tools.api.query-model-arguments.json"
+              },
+              "conversation_id": {
+                "description": "value must be a valid UUID.",
+                "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                "type": "string"
+              },
+              "profile_id": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "arguments",
+              "conversation_id"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+              "properties": {
+                "conversation_id": {
+                  "description": "value must be a valid UUID.",
+                  "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                  "type": "string"
+                },
+                "profile_id": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "conversation_id"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/metabot-tools/query-model",
+    "tags": [
+      "/api/ee/metabot-tools"
+    ]
+  }
+}

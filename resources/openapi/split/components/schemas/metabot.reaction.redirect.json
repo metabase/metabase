@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "type": {
+      "const": "metabot.reaction/redirect"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "type",
+    "url"
+  ],
+  "type": "object"
+}

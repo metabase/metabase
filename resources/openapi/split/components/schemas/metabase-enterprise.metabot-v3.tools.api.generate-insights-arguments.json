@@ -1,0 +1,57 @@
+{
+  "properties": {
+    "for": {
+      "anyOf": [
+        {
+          "properties": {
+            "metric_id": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "metric_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "table_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "table_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "report_id": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "report_id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "query": {
+              "properties": {},
+              "type": "object"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "required": [
+    "for"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,22 @@
+{
+  "post": {
+    "description": "Manually triggers the cache refresh task, if Enterprise code is available.",
+    "operationId": "post-api-testing-refresh-caches",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/testing/refresh-caches",
+    "tags": [
+      "/api/testing"
+    ]
+  }
+}

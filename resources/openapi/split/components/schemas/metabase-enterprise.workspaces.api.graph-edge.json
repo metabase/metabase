@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "from_entity_id": {
+      "$ref": "./metabase-enterprise.workspaces.api.appdb-or-ref-id.json"
+    },
+    "from_entity_type": {
+      "type": "string"
+    },
+    "to_entity_id": {
+      "$ref": "./metabase-enterprise.workspaces.api.appdb-or-ref-id.json"
+    },
+    "to_entity_type": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "from_entity_id",
+    "from_entity_type",
+    "to_entity_id",
+    "to_entity_type"
+  ],
+  "type": "object"
+}

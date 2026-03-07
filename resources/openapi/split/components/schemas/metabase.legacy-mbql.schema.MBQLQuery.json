@@ -1,0 +1,66 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "aggregation": {
+          "$ref": "./metabase.legacy-mbql.schema.Aggregations.json"
+        },
+        "breakout": {
+          "$ref": "./metabase.legacy-mbql.schema.Breakouts.json"
+        },
+        "expressions": {
+          "$ref": "./metabase.legacy-mbql.schema.Expressions.json"
+        },
+        "fields": {
+          "$ref": "./metabase.legacy-mbql.schema.Fields.json"
+        },
+        "filter": {
+          "$ref": "./metabase.legacy-mbql.schema.Filter.json"
+        },
+        "joins": {
+          "$ref": "./metabase.legacy-mbql.schema.Joins.json"
+        },
+        "limit": {
+          "$ref": "./metabase.lib.schema.common.int-greater-than-or-equal-to-zero.json"
+        },
+        "order-by": {
+          "$ref": "./metabase.legacy-mbql.schema.OrderBys.json"
+        },
+        "page": {
+          "$ref": "./metabase.lib.schema.page.json"
+        },
+        "source-metadata": {
+          "description": "Info about the columns of the source query. Added in automatically by middleware. This metadata is\n  primarily used to let power things like binning when used with Field Literals instead of normal Fields.",
+          "oneOf": [
+            {
+              "items": {
+                "$ref": "./metabase.legacy-mbql.schema.legacy-column-metadata.json"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source-query": {
+          "$ref": "./metabase.legacy-mbql.schema.SourceQuery.json"
+        },
+        "source-table": {
+          "$ref": "./metabase.legacy-mbql.schema.SourceTable.json"
+        }
+      },
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.RemoveFieldRefsFromFieldsAlreadyInBreakout.json"
+    },
+    {
+      "allOf": []
+    }
+  ]
+}

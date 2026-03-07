@@ -1,0 +1,41 @@
+{
+  "properties": {
+    "edges": {
+      "items": {
+        "properties": {
+          "from_entity_id": {
+            "$ref": "./metabase-enterprise.dependencies.dependency-types.entity-id.json"
+          },
+          "from_entity_type": {
+            "$ref": "./metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+          },
+          "to_entity_id": {
+            "$ref": "./metabase-enterprise.dependencies.dependency-types.entity-id.json"
+          },
+          "to_entity_type": {
+            "$ref": "./metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+          }
+        },
+        "required": [
+          "from_entity_type",
+          "from_entity_id",
+          "to_entity_type",
+          "to_entity_id"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "./metabase-enterprise.dependencies.api.entity.json"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "nodes",
+    "edges"
+  ],
+  "type": "object"
+}

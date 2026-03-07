@@ -1,0 +1,56 @@
+{
+  "get": {
+    "description": "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.\n  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which\n  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency.\n\n  Optional :archived parameter controls whether entities in archived collections are included:\n  - false (default): Excludes entities in archived collections\n  - true: Includes entities in archived collections",
+    "operationId": "get-api-ee-dependencies-graph",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "id",
+        "required": false,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "type",
+        "required": false,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+        }
+      },
+      {
+        "in": "query",
+        "name": "archived",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.dependencies.api.graph-response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/dependencies/graph",
+    "tags": [
+      "/api/ee/dependencies"
+    ]
+  }
+}

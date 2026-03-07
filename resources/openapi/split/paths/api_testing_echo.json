@@ -1,0 +1,71 @@
+{
+  "get": {
+    "description": "Simple echo handler. Fails when you GET with `?fail=true`.",
+    "operationId": "get-api-testing-echo",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "fail",
+        "required": true,
+        "schema": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      {
+        "description": "value must be a valid JSON string.",
+        "in": "query",
+        "name": "body",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/testing/echo",
+    "tags": [
+      "/api/testing"
+    ]
+  },
+  "post": {
+    "description": "Simple echo handler. Fails when you POST with `?fail=true`.",
+    "operationId": "post-api-testing-echo",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "fail",
+        "required": true,
+        "schema": {
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/testing/echo",
+    "tags": [
+      "/api/testing"
+    ]
+  }
+}

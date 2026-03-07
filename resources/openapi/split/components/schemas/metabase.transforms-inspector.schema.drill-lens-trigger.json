@@ -1,0 +1,26 @@
+{
+  "description": "Definition for conditional drill lens availability.\n   FE evaluates condition and shows drill lens option if triggered.\n   :params is passed to the drill lens when triggered.",
+  "properties": {
+    "condition": {
+      "$ref": "./metabase.transforms-inspector.schema.trigger-condition.json"
+    },
+    "lens_id": {
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "./metabase.transforms-inspector.schema.trigger-metadata.json"
+    },
+    "params": {
+      "additionalProperties": {},
+      "type": "object"
+    },
+    "reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "lens_id",
+    "condition"
+  ],
+  "type": "object"
+}

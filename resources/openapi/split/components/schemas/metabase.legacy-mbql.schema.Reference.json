@@ -1,0 +1,14 @@
+{
+  "description": "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause.",
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.aggregation.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.expression.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.field.json"
+    }
+  ]
+}

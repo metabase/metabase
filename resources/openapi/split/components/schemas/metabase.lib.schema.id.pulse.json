@@ -1,0 +1,5 @@
+{
+  "description": "Valid Pulse ID",
+  "minimum": 1,
+  "type": "integer"
+}

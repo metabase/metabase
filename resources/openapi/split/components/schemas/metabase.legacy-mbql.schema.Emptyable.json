@@ -1,0 +1,11 @@
+{
+  "anyOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.StringExpressionArg.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.FieldOrExpressionRef.json"
+    }
+  ],
+  "description": "Schema for a valid is-empty or not-empty argument."
+}

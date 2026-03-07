@@ -1,0 +1,4 @@
+{
+  "$ref": "./metabase.legacy-mbql.schema.EqualityComparable.json",
+  "description": "Schema for the first arg to `=`, `!=`, and friends."
+}

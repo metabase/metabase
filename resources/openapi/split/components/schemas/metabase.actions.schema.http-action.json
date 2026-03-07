@@ -1,0 +1,35 @@
+{
+  "properties": {
+    "error_handle": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.actions.schema..http-action.json-query.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "response_handle": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.actions.schema..http-action.json-query.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "template": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.actions.schema..http-action.template.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

@@ -1,0 +1,13 @@
+{
+  "description": "Schema for valid values of template tag `:type`.",
+  "enum": [
+    "snippet",
+    "card",
+    "dimension",
+    "number",
+    "text",
+    "date",
+    "table"
+  ],
+  "type": "string"
+}

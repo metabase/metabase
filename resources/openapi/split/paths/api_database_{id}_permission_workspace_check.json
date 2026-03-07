@@ -1,0 +1,64 @@
+{
+  "post": {
+    "description": "Check if database's connection has the required permissions to manage workspaces.\n  By default it'll return the cached permission check.",
+    "operationId": "post-api-database-id-permission-workspace-check",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "path",
+        "name": "cached",
+        "required": false,
+        "schema": {
+          "default": true,
+          "type": "boolean"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "checked_at": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "status",
+                "checked_at"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/database/{id}/permission/workspace/check",
+    "tags": [
+      "/api/database"
+    ]
+  }
+}

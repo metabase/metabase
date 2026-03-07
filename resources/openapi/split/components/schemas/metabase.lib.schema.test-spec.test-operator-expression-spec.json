@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "args": {
+      "default": [],
+      "items": {
+        "$ref": "./metabase.lib.schema.test-spec.test-expression-spec.json"
+      },
+      "type": "array"
+    },
+    "operator": {
+      "$ref": "./metabase.lib.schema.test-spec.test-operator-spec.json"
+    },
+    "type": {
+      "const": "operator"
+    }
+  },
+  "required": [
+    "type",
+    "operator",
+    "args"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,75 @@
+{
+  "description": "Schema for a Measure entity as returned from the API.",
+  "properties": {
+    "archived": {
+      "type": "boolean"
+    },
+    "created_at": {},
+    "creator": {
+      "oneOf": [
+        {
+          "properties": {},
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "creator_id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "definition": {
+      "properties": {},
+      "type": "object"
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "entity_id": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "name": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "table_id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "updated_at": {}
+  },
+  "required": [
+    "id",
+    "name",
+    "table_id",
+    "definition",
+    "archived",
+    "creator_id",
+    "created_at",
+    "updated_at"
+  ],
+  "type": "object"
+}

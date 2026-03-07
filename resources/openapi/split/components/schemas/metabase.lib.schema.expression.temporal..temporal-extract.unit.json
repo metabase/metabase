@@ -1,0 +1,17 @@
+{
+  "enum": [
+    "year-of-era",
+    "quarter-of-year",
+    "month-of-year",
+    "week-of-year-iso",
+    "week-of-year-us",
+    "week-of-year-instance",
+    "day-of-month",
+    "day-of-week",
+    "day-of-week-iso",
+    "hour-of-day",
+    "minute-of-hour",
+    "second-of-minute"
+  ],
+  "type": "string"
+}

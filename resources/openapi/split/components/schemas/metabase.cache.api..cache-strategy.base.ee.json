@@ -1,0 +1,17 @@
+{
+  "properties": {
+    "type": {
+      "enum": [
+        "nocache",
+        "ttl",
+        "duration",
+        "schedule"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "type": "object"
+}

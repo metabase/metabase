@@ -1,0 +1,97 @@
+{
+  "post": {
+    "description": "Download query results for a Card embedded in a Document.\n\n  Returns query results in the requested format. The user must have read access to the document\n  to download results. If the card's query fails, standard query error responses are returned.\n\n  Route parameters:\n  - document-id: ID of the document containing the card\n  - card-id: ID of the card to download results from\n  - export-format: Output format (csv, xlsx, json)\n\n  Body parameters (snake_case):\n  - parameters: Optional query parameters (array of maps or JSON string)\n  - format_rows: Whether to apply formatting to results (boolean, default false)\n  - pivot_results: Whether to pivot results (boolean, default false)",
+    "operationId": "post-api-document-document-id-card-card-id-query-export-format",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "document-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "card-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "path",
+        "name": "export-format",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "format_rows": {
+                "default": false,
+                "type": "boolean"
+              },
+              "parameters": {
+                "oneOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "description": "Value must be a map.",
+                          "properties": {},
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "description": "value must be a valid JSON string.",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "pivot_results": {
+                "default": false,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "format_rows",
+              "pivot_results"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/document/{document-id}/card/{card-id}/query/{export-format}",
+    "tags": [
+      "/api/document"
+    ]
+  }
+}

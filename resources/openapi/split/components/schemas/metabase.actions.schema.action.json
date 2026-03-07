@@ -1,0 +1,119 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "created_at": {},
+        "creator_id": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.id.user.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "$ref": "./metabase.actions.schema.id.json"
+        },
+        "made_public_by_id": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.id.user.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_id": {
+          "$ref": "./metabase.lib.schema.id.card.json"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parameter_mappings": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.parameters.schema.parameter-mappings.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parameters": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.parameters.schema.parameters.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "public_uuid": {
+          "oneOf": [
+            {
+              "description": "value must be a valid UUID.",
+              "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "$ref": "./metabase.actions.schema.type.json"
+        },
+        "updated_at": {},
+        "visualization_settings": {
+          "oneOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    {
+      "oneOf": [
+        {
+          "$ref": "./metabase.actions.schema.http-action.json"
+        },
+        {
+          "$ref": "./metabase.actions.schema.implicit-action.json"
+        },
+        {
+          "$ref": "./metabase.actions.schema.query-action.json"
+        },
+        {
+          "properties": {},
+          "type": "object"
+        }
+      ]
+    }
+  ],
+  "description": "An Action as it should appear when we `SELECT` it from the app DB."
+}

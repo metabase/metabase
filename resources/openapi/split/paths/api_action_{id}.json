@@ -1,0 +1,40 @@
+{
+  "put": {
+    "description": "Update an Action.",
+    "operationId": "put-api-action-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase.actions.schema.id.json"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase.actions.schema..action.for-update.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/action/{id}",
+    "tags": [
+      "/api/action"
+    ]
+  }
+}

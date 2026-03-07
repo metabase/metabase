@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see\n  what is being phoned home.",
+    "operationId": "get-api-analytics-anonymous-stats",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/analytics/anonymous-stats",
+    "tags": [
+      "/api/analytics"
+    ]
+  }
+}

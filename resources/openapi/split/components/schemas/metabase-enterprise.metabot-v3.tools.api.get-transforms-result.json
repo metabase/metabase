@@ -1,0 +1,29 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "structured_output": {
+          "items": {
+            "$ref": "./metabase-enterprise.metabot-v3.tools.api.basic-transform.json"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "structured_output"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "output"
+      ],
+      "type": "object"
+    }
+  ]
+}

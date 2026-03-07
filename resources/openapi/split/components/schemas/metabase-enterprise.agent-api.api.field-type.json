@@ -1,0 +1,12 @@
+{
+  "description": "A data type for a field derived from Metabase's type hierarchy.",
+  "enum": [
+    "boolean",
+    "date",
+    "datetime",
+    "time",
+    "number",
+    "string"
+  ],
+  "type": "string"
+}

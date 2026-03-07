@@ -1,0 +1,12 @@
+{
+  "description": "Schema for SQL snippet detail results",
+  "properties": {
+    "structured_output": {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.full-snippet.json"
+    }
+  },
+  "required": [
+    "structured_output"
+  ],
+  "type": "object"
+}

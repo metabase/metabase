@@ -1,0 +1,93 @@
+{
+  "properties": {
+    "database_engine": {
+      "type": "string"
+    },
+    "database_id": {
+      "type": "integer"
+    },
+    "database_schema": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "fields": {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.api.columns.json"
+    },
+    "id": {
+      "type": "integer"
+    },
+    "measures": {
+      "items": {
+        "$ref": "./metabase-enterprise.metabot-v3.tools.api.measure.json"
+      },
+      "type": "array"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "./metabase-enterprise.metabot-v3.tools.api.basic-metric.json"
+      },
+      "type": "array"
+    },
+    "name": {
+      "type": "string"
+    },
+    "related_by": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "related_tables": {
+      "items": {
+        "$ref": "./metabase-enterprise.metabot-v3.tools.api.table-result.json"
+      },
+      "type": "array"
+    },
+    "segments": {
+      "items": {
+        "$ref": "./metabase-enterprise.metabot-v3.tools.api.segment.json"
+      },
+      "type": "array"
+    },
+    "type": {
+      "enum": [
+        "model",
+        "table"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "name",
+    "display_name",
+    "database_id",
+    "database_engine",
+    "fields"
+  ],
+  "type": "object"
+}

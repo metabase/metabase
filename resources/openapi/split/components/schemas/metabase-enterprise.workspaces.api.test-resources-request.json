@@ -1,0 +1,29 @@
+{
+  "description": "Request body for creating test resources.",
+  "properties": {
+    "database_id": {
+      "$ref": "./metabase-enterprise.workspaces.types.appdb-id.json"
+    },
+    "global": {
+      "$ref": "./metabase-enterprise.workspaces.api.dependency-graph.json"
+    },
+    "workspace": {
+      "properties": {
+        "checkouts": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "definitions": {
+          "$ref": "./metabase-enterprise.workspaces.api.dependency-graph.json"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "type": "object"
+}

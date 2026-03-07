@@ -1,0 +1,22 @@
+{
+  "get": {
+    "description": "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.\n   Intended for use when creating a value for `embedding-secret-key`.",
+    "operationId": "get-api-util-random_token",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/util/random_token",
+    "tags": [
+      "/api/util"
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "properties": {
+    "data": {
+      "properties": {},
+      "type": "object"
+    },
+    "dependents_count": {
+      "additionalProperties": {
+        "description": "value must be an integer greater than zero.",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "type": "object"
+    },
+    "id": {
+      "$ref": "./metabase-enterprise.workspaces.api.appdb-or-ref-id.json"
+    },
+    "type": {
+      "enum": [
+        "input-table",
+        "external-transform",
+        "workspace-transform"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "dependents_count",
+    "data"
+  ],
+  "type": "object"
+}

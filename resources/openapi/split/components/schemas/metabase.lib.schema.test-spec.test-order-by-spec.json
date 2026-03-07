@@ -1,0 +1,100 @@
+{
+  "properties": {
+    "bin-width": {
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "$ref": "./metabase.lib.schema.binning.bin-width.json"
+            },
+            {
+              "$ref": "./metabase.lib.schema.test-spec.test-auto-bin-spec.json"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "bins": {
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "$ref": "./metabase.lib.schema.binning.num-bins.json"
+            },
+            {
+              "$ref": "./metabase.lib.schema.test-spec.test-auto-bin-spec.json"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "direction": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.order-by.direction.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "display-name": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "index": {
+      "oneOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "source-name": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "const": "column"
+    },
+    "unit": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.temporal-bucketing.unit.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "type",
+    "name"
+  ],
+  "type": "object"
+}

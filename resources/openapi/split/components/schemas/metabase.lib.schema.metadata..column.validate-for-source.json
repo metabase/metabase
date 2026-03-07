@@ -1,0 +1,30 @@
+{
+  "description": "Do additional validation for column metadata based on `:lib/source`.",
+  "oneOf": [
+    {
+      "$ref": "./metabase.lib.schema.metadata..column.validate-for-source-card.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.metadata..column.validate-for-source-native.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.metadata..column.validate-for-source-previous-stage.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.metadata..column.validate-for-source-table-defaults.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.metadata..column.validate-for-source-aggregations.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.metadata..column.validate-for-source-joins.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.metadata..column.validate-for-source-expressions.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.metadata..column.validate-for-source-implicitly-joinable.json"
+    },
+    {}
+  ]
+}

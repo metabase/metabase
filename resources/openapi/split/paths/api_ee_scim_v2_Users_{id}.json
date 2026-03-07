@@ -1,0 +1,252 @@
+{
+  "get": {
+    "description": "Fetch a single user.",
+    "operationId": "get-api-ee-scim-v2-Users-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/scim/v2/Users/{id}",
+    "tags": [
+      "/api/ee/scim/v2"
+    ]
+  },
+  "patch": {
+    "description": "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches.",
+    "operationId": "patch-api-ee-scim-v2-Users-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minLength": 1,
+          "type": "string"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "Operations": {
+                "items": {
+                  "properties": {
+                    "op": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "value": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              {
+                                "type": "boolean"
+                              }
+                            ]
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        {
+                          "type": "boolean"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "op",
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "schemas": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "schemas",
+              "Operations"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PATCH /api/ee/scim/v2/Users/{id}",
+    "tags": [
+      "/api/ee/scim/v2"
+    ]
+  },
+  "put": {
+    "description": "Update a user.",
+    "operationId": "put-api-ee-scim-v2-Users-id",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "emails": {
+                "items": {
+                  "properties": {
+                    "primary": {
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "value": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "groups": {
+                "items": {
+                  "properties": {
+                    "$ref": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "display": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "value": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value",
+                    "display"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "locale": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "name": {
+                "properties": {
+                  "familyName": {
+                    "type": "string"
+                  },
+                  "givenName": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "givenName",
+                  "familyName"
+                ],
+                "type": "object"
+              },
+              "schemas": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "userName": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "schemas",
+              "userName",
+              "name",
+              "emails"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/ee/scim/v2/Users/{id}",
+    "tags": [
+      "/api/ee/scim/v2"
+    ]
+  }
+}

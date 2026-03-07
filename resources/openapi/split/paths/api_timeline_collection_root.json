@@ -1,0 +1,54 @@
+{
+  "get": {
+    "description": "Fetch the root Collection's timelines.",
+    "operationId": "get-api-timeline-collection-root",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "include",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "const": "events"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "archived",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/timeline/collection/root",
+    "tags": [
+      "/api/timeline"
+    ]
+  }
+}

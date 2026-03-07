@@ -1,0 +1,54 @@
+{
+  "description": "Full lens contents and drill lens/alert triggers.",
+  "properties": {
+    "alert_triggers": {
+      "items": {
+        "$ref": "./metabase.transforms-inspector.schema.alert-trigger.json"
+      },
+      "type": "array"
+    },
+    "cards": {
+      "items": {
+        "$ref": "./metabase.transforms-inspector.schema.card.json"
+      },
+      "type": "array"
+    },
+    "complexity": {
+      "$ref": "./metabase.transforms-inspector.schema.complexity.json"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "drill_lens_triggers": {
+      "items": {
+        "$ref": "./metabase.transforms-inspector.schema.drill-lens-trigger.json"
+      },
+      "type": "array"
+    },
+    "drill_lenses": {
+      "items": {
+        "$ref": "./metabase.transforms-inspector.schema.drill-lens.json"
+      },
+      "type": "array"
+    },
+    "id": {
+      "type": "string"
+    },
+    "sections": {
+      "items": {
+        "$ref": "./metabase.transforms-inspector.schema.section.json"
+      },
+      "type": "array"
+    },
+    "summary": {
+      "$ref": "./metabase.transforms-inspector.schema.lens-summary.json"
+    }
+  },
+  "required": [
+    "id",
+    "display_name",
+    "sections",
+    "cards"
+  ],
+  "type": "object"
+}

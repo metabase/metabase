@@ -1,0 +1,7 @@
+{
+  "items": {
+    "$ref": "./metabase.lib.schema.join.join.json"
+  },
+  "minItems": 1,
+  "type": "array"
+}

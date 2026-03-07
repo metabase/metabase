@@ -1,0 +1,25 @@
+{
+  "properties": {
+    "database_id": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.id.database.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dataset_query": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.queries.schema.query.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

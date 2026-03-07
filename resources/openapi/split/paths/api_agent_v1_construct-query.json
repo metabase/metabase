@@ -1,0 +1,38 @@
+{
+  "post": {
+    "description": "Construct an MBQL query from a table or metric.\n\n  Returns a base64-encoded MBQL query that can be used with the query API.\n\n  For tables, supports: filters, fields, aggregations, group_by, order_by, limit.\n  For metrics, supports: filters, group_by (aggregation is defined by the metric).",
+    "operationId": "post-api-agent-v1-construct-query",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase-enterprise.agent-api.api.construct-query-request.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase-enterprise.agent-api.api.construct-query-response.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/agent/v1/construct-query",
+    "tags": [
+      "/api/agent"
+    ]
+  }
+}

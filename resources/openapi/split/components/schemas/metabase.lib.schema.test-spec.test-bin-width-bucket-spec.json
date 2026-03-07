@@ -1,0 +1,22 @@
+{
+  "properties": {
+    "bin-width": {
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "$ref": "./metabase.lib.schema.binning.bin-width.json"
+            },
+            {
+              "$ref": "./metabase.lib.schema.test-spec.test-auto-bin-spec.json"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "type": "object"
+}

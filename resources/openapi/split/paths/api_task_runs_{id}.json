@@ -1,0 +1,40 @@
+{
+  "get": {
+    "description": "Get a single task run with all its child tasks.",
+    "operationId": "get-api-task-runs-id",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../components/schemas/metabase.task-history.api.TaskRunWithTasks.json"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/task/runs/{id}",
+    "tags": [
+      "/api/task"
+    ]
+  }
+}

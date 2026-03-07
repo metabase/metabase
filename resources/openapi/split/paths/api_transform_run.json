@@ -1,0 +1,355 @@
+{
+  "get": {
+    "description": "Get transform runs based on a set of filter params.",
+    "operationId": "get-api-transform-run",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "sort-column",
+        "required": false,
+        "schema": {
+          "enum": [
+            "transform-name",
+            "start-time",
+            "end-time",
+            "status",
+            "run-method",
+            "transform-tags"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort-direction",
+        "required": false,
+        "schema": {
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "transform-ids",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "description": "value must be an integer greater or equal to than zero.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "statuses",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "enum": [
+                  "started",
+                  "succeeded",
+                  "failed",
+                  "timeout"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "transform-tag-ids",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "description": "value must be an integer greater or equal to than zero.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "start-time",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "end-time",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "run-methods",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "enum": [
+                  "manual",
+                  "cron"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "additionalProperties": false,
+              "properties": {
+                "data": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "end_time": {
+                        "oneOf": [
+                          {},
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "id": {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "is_active": {
+                        "oneOf": [
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "message": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "run_method": {
+                        "type": "string"
+                      },
+                      "start_time": {},
+                      "status": {
+                        "enum": [
+                          "started",
+                          "succeeded",
+                          "failed",
+                          "timeout",
+                          "canceled",
+                          "canceling"
+                        ],
+                        "type": "string"
+                      },
+                      "transform": {
+                        "oneOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "collection": {
+                                "oneOf": [
+                                  {
+                                    "properties": {},
+                                    "type": "object"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "collection_id": {
+                                "oneOf": [
+                                  {
+                                    "minimum": 1,
+                                    "type": "integer"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "deleted": {
+                                "type": "boolean"
+                              },
+                              "id": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "tag_ids": {
+                                "items": {
+                                  "minimum": 1,
+                                  "type": "integer"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "transform_entity_id": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "transform_id": {
+                        "oneOf": [
+                          {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "transform_name": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "user_id": {
+                        "oneOf": [
+                          {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "transform_id",
+                      "run_method",
+                      "status",
+                      "is_active",
+                      "start_time",
+                      "message",
+                      "user_id"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "limit": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "offset": {
+                  "type": "integer"
+                },
+                "total": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "data",
+                "limit",
+                "offset",
+                "total"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/transform/run",
+    "tags": [
+      "/api/transform"
+    ]
+  }
+}

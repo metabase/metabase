@@ -1,0 +1,7 @@
+{
+  "items": {
+    "$ref": "./metabase.legacy-mbql.schema.Aggregation.json"
+  },
+  "minItems": 1,
+  "type": "array"
+}

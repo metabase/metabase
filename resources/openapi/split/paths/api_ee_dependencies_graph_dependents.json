@@ -1,0 +1,154 @@
+{
+  "get": {
+    "description": "Returns a list of dependents for the specified entity.\n\n   Required parameters:\n   - `id`: The ID of the entity\n   - `type`: The type of the entity (card, table, dashboard, etc.)\n\n   Optional parameters:\n   - `dependent-types`: Dependency types to filter by. Can be single value or array.\n     If not provided, returns all types. Example: ?dependent-types=card&dependent-types=dashboard\n   - `dependent-card-types`: Card types to filter by when dependent-types includes :card.\n     Ignored if dependent-types doesn't include :card. Example: ?dependent-card-types=question&dependent-card-types=model\n   - `archived`: Include entities in archived collections (default: false)\n   - `broken`: Return only broken entities (default: false)\n   - `query`: Search string to filter results by name or location (case-insensitive)\n   - `include-personal-collections`: Include items in personal collections (default: false)\n   - `sort-column`: Column to sort by - name, location, or view-count (default: name)\n   - `sort-direction`: Sort direction - asc or desc (default: asc)",
+    "operationId": "get-api-ee-dependencies-graph-dependents",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "query",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      {
+        "in": "query",
+        "name": "type",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+        }
+      },
+      {
+        "in": "query",
+        "name": "dependent-types",
+        "required": false,
+        "schema": {
+          "anyOf": [
+            {
+              "$ref": "../components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+            },
+            {
+              "items": {
+                "$ref": "../components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types.json"
+              },
+              "type": "array"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "dependent-card-types",
+        "required": false,
+        "schema": {
+          "anyOf": [
+            {
+              "enum": [
+                "question",
+                "metric",
+                "model"
+              ],
+              "type": "string"
+            },
+            {
+              "items": {
+                "enum": [
+                  "question",
+                  "metric",
+                  "model"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "archived",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "broken",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "query",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "include-personal-collections",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort-column",
+        "required": false,
+        "schema": {
+          "enum": [
+            "name",
+            "view-count",
+            "location"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort-direction",
+        "required": false,
+        "schema": {
+          "enum": [
+            "desc",
+            "asc"
+          ],
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "$ref": "../components/schemas/metabase-enterprise.dependencies.api.entity.json"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/dependencies/graph/dependents",
+    "tags": [
+      "/api/ee/dependencies"
+    ]
+  }
+}

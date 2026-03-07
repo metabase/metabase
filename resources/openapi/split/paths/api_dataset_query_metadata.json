@@ -1,0 +1,56 @@
+{
+  "post": {
+    "description": "Get all of the required query metadata for an ad-hoc query.\n\n  You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with\n  visibility_type :sensitive in the response.",
+    "operationId": "post-api-dataset-query_metadata",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "database": {
+                "description": "value must be an integer greater than zero.",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "settings": {
+                "oneOf": [
+                  {
+                    "properties": {
+                      "include_sensitive_fields": {
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "database"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/dataset/query_metadata",
+    "tags": [
+      "/api/dataset"
+    ]
+  }
+}

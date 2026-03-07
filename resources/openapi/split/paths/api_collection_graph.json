@@ -1,0 +1,132 @@
+{
+  "get": {
+    "description": "Fetch a graph of all Collection Permissions.",
+    "operationId": "get-api-collection-graph",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "namespace",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/collection/graph",
+    "tags": [
+      "/api/collection"
+    ]
+  },
+  "put": {
+    "description": "Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that\n  are present in the request, and leave the rest unchanged.\n\n  If the `force` query parameter is `true`, a `revision` number is not required. The provided graph will be persisted\n  as-is, and has the potential to clobber other writes that happened since the last read.\n\n  If the `skip_graph` query parameter is `true`, it will only return the current revision, not the entire permissions\n  graph.",
+    "operationId": "put-api-collection-graph",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "force",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "skip-graph",
+        "required": true,
+        "schema": {
+          "default": false,
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "groups": {
+                "properties": {},
+                "type": "object"
+              },
+              "namespace": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "revision": {
+                "oneOf": [
+                  {
+                    "description": "value must be an integer.",
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "groups"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/collection/graph",
+    "tags": [
+      "/api/collection"
+    ]
+  }
+}

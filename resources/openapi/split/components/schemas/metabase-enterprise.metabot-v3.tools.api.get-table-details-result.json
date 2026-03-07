@@ -1,0 +1,26 @@
+{
+  "anyOf": [
+    {
+      "properties": {
+        "structured_output": {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.table-result.json"
+        }
+      },
+      "required": [
+        "structured_output"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "output"
+      ],
+      "type": "object"
+    }
+  ]
+}

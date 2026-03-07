@@ -1,0 +1,151 @@
+{
+  "post": {
+    "description": "Grant read access to input tables by table coordinates. Superuser only.\n   Idempotent - returns which tables were already granted vs newly granted.",
+    "operationId": "post-api-ee-workspace-ws-id-input-grant",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "ws-id",
+        "required": true,
+        "schema": {
+          "$ref": "../components/schemas/metabase-enterprise.workspaces.types.appdb-id.json"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "tables": {
+                "items": {
+                  "properties": {
+                    "db_id": {
+                      "description": "value must be an integer greater than zero.",
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "schema": {
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "table": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "db_id",
+                    "schema",
+                    "table"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "tables"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "already_granted": {
+                  "items": {
+                    "properties": {
+                      "db_id": {
+                        "description": "value must be an integer greater than zero.",
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "schema": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "table": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "db_id",
+                      "schema",
+                      "table"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "newly_granted": {
+                  "items": {
+                    "properties": {
+                      "db_id": {
+                        "description": "value must be an integer greater than zero.",
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "schema": {
+                        "oneOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "table": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "db_id",
+                      "schema",
+                      "table"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "already_granted",
+                "newly_granted"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/workspace/{ws-id}/input/grant",
+    "tags": [
+      "/api/ee/workspace"
+    ]
+  }
+}

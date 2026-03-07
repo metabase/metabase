@@ -1,0 +1,51 @@
+{
+  "description": "Field metadata for inspector.",
+  "properties": {
+    "base_type": {
+      "$ref": "./metabase.lib.schema.common.base-type.json"
+    },
+    "display_name": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "name": {
+      "type": "string"
+    },
+    "semantic_type": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.lib.schema.common.semantic-or-relation-type.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "stats": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.transforms-inspector.schema.field-stats.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "base_type"
+  ],
+  "type": "object"
+}

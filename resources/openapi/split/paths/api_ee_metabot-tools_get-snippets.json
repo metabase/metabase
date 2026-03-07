@@ -1,0 +1,66 @@
+{
+  "post": {
+    "description": "Get a list of all known SQL snippets.",
+    "operationId": "post-api-ee-metabot-tools-get-snippets",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "$ref": "../components/schemas/metabase-enterprise.metabot-v3.tools.deftool.tool-request.json"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+              "properties": {
+                "conversation_id": {
+                  "description": "value must be a valid UUID.",
+                  "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                  "type": "string"
+                },
+                "profile_id": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "structured_output": {
+                  "items": {
+                    "$ref": "../components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-snippet.json"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "structured_output",
+                "conversation_id"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/ee/metabot-tools/get-snippets",
+    "tags": [
+      "/api/ee/metabot-tools"
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "$ref": "./metabase.legacy-mbql.schema.legacy-column-metadata.json",
+  "description": "A single result metadata column as returned by the Query Processor."
+}

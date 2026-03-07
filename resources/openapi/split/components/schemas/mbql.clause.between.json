@@ -1,0 +1,20 @@
+{
+  "prefixItems": [
+    {
+      "const": "between"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.options.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.orderable.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.orderable.json"
+    },
+    {
+      "$ref": "./metabase.lib.schema.expression.orderable.json"
+    }
+  ],
+  "type": "array"
+}

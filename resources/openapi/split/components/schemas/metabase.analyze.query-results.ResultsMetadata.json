@@ -1,0 +1,14 @@
+{
+  "description": "value must be an array of valid results column metadata maps.",
+  "oneOf": [
+    {
+      "items": {
+        "$ref": "./metabase.query-processor.schema..result-metadata.column.json"
+      },
+      "type": "array"
+    },
+    {
+      "type": "null"
+    }
+  ]
+}

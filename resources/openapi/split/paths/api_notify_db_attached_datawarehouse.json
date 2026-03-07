@@ -1,0 +1,68 @@
+{
+  "post": {
+    "description": "Sync the attached datawarehouse. Can provide in the body:\n  - table_name and schema_name: both strings. Will look for an existing table and sync it, otherwise will try to find a\n  new table with that name and sync it. If it cannot find a table it will throw an error. If table_name is empty or\n  blank, will sync the entire database.\n  - synchronous?: is a boolean value to indicate if this should block on the result.",
+    "operationId": "post-api-notify-db-attached_datawarehouse",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "schema_name": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "synchronous?": {
+                "default": false,
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "table_name": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "synchronous?"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/notify/db/attached_datawarehouse",
+    "tags": [
+      "/api/notify"
+    ]
+  }
+}

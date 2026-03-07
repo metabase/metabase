@@ -1,0 +1,48 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "bucket": {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.bucket.json"
+        },
+        "field_id": {
+          "type": "string"
+        },
+        "function": {
+          "enum": [
+            "avg",
+            "count-distinct",
+            "max",
+            "min",
+            "sum"
+          ],
+          "type": "string"
+        },
+        "sort_order": {
+          "oneOf": [
+            {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "field_id",
+        "function"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ],
+  "description": "Aggregation using a field and function. field_id is required.\n   Use sort_order to order results by this aggregation ('asc' or 'desc')."
+}

@@ -1,0 +1,45 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "bucket": {
+          "$ref": "./metabase-enterprise.metabot-v3.tools.api.bucket.json"
+        },
+        "field_id": {
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "equals",
+            "not-equals",
+            "greater-than",
+            "greater-than-or-equal",
+            "less-than",
+            "less-than-or-equal"
+          ],
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            }
+          ]
+        }
+      },
+      "required": [
+        "field_id",
+        "operation",
+        "value"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

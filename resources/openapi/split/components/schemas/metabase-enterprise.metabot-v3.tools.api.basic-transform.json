@@ -1,0 +1,48 @@
+{
+  "properties": {
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "entity_id": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "id": {
+      "type": "integer"
+    },
+    "name": {
+      "type": "string"
+    },
+    "source": {
+      "$ref": "./metabase-enterprise.metabot-v3.tools.transforms.transform-source.json"
+    },
+    "type": {
+      "enum": [
+        "mbql",
+        "native",
+        "python"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "type",
+    "source"
+  ],
+  "type": "object"
+}

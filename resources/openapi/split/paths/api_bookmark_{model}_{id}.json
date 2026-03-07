@@ -1,0 +1,92 @@
+{
+  "delete": {
+    "description": "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id.",
+    "operationId": "delete-api-bookmark-model-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "model",
+        "required": true,
+        "schema": {
+          "enum": [
+            "card",
+            "dashboard",
+            "collection",
+            "document"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/bookmark/{model}/{id}",
+    "tags": [
+      "/api/bookmark"
+    ]
+  },
+  "post": {
+    "description": "Create a new bookmark for user.",
+    "operationId": "post-api-bookmark-model-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "model",
+        "required": true,
+        "schema": {
+          "enum": [
+            "card",
+            "dashboard",
+            "collection",
+            "document"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/bookmark/{model}/{id}",
+    "tags": [
+      "/api/bookmark"
+    ]
+  }
+}

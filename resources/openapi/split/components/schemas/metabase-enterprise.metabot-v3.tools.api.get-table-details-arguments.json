@@ -1,0 +1,54 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "model_id": {
+          "type": "integer"
+        },
+        "table_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "with_field_values": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_fields": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_measures": {
+          "default": false,
+          "type": "boolean"
+        },
+        "with_metric_default_temporal_breakout": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_metrics": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_related_tables": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_segments": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

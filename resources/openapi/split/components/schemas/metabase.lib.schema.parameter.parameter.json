@@ -1,0 +1,36 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "default": {},
+        "id": {
+          "$ref": "./metabase.lib.schema.parameter.id.json"
+        },
+        "name": {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        "required": {},
+        "slug": {
+          "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+        },
+        "target": {
+          "$ref": "./metabase.lib.schema.parameter.target.json"
+        },
+        "type": {
+          "$ref": "./metabase.lib.schema.parameter.type.json"
+        },
+        "value": {
+          "$ref": "./metabase.lib.schema.parameter..parameter.value.json"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.lib.schema.common.kebab-cased-map.json"
+    }
+  ],
+  "description": "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as\n  part of the `:parameters` list in a query.\n\n  Note that this is different from the parameter declarations that are saved as part of Dashboards and Cards; for THAT\n  schema refer to `:metabase.parameters.schema/parameter`."
+}

@@ -1,0 +1,306 @@
+{
+  "get": {
+    "description": "Get all `Tables`.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can execute queries against\n  - `can-write=true` - filter to only tables the user can edit metadata for",
+    "operationId": "get-api-table",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "term",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "visibility-type",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "data-layer",
+        "required": false,
+        "schema": {
+          "$ref": "../components/schemas/metabase.warehouse-schema-rest.api.table.data-layers.json"
+        }
+      },
+      {
+        "in": "query",
+        "name": "data-source",
+        "required": false,
+        "schema": {
+          "$ref": "../components/schemas/metabase.warehouse-schema-rest.api.table.data-sources.json"
+        }
+      },
+      {
+        "in": "query",
+        "name": "owner-user-id",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "owner-email",
+        "required": false,
+        "schema": {
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "orphan-only",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "unused-only",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "can-query",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "can-write",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/table",
+    "tags": [
+      "/api/table"
+    ]
+  },
+  "put": {
+    "description": "Update all `Table` in `ids`.\n\n  Deprecated, should use PUT /table/edit from now on.",
+    "operationId": "put-api-table",
+    "parameters": [],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "caveats": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "data_authority": {
+                "oneOf": [
+                  {
+                    "$ref": "../components/schemas/metabase.warehouse-schema-rest.api.table.data-authority-write.json"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "data_layer": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "data_source": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "description": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "display_name": {
+                "oneOf": [
+                  {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "entity_type": {
+                "oneOf": [
+                  {
+                    "description": "value must be a valid entity type (keyword or string)."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ids": {
+                "items": {
+                  "description": "value must be an integer greater than zero.",
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              "owner_email": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "owner_user_id": {
+                "oneOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "points_of_interest": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "show_in_getting_started": {
+                "oneOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "visibility_type": {
+                "oneOf": [
+                  {
+                    "enum": [
+                      "technical",
+                      "hidden",
+                      "cruft"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "ids"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/table",
+    "tags": [
+      "/api/table"
+    ]
+  }
+}

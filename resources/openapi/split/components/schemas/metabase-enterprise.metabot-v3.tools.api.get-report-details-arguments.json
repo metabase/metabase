@@ -1,0 +1,27 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "report_id": {
+          "type": "integer"
+        },
+        "with_field_values": {
+          "default": true,
+          "type": "boolean"
+        },
+        "with_fields": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "report_id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {},
+      "type": "object"
+    }
+  ]
+}

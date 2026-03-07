@@ -1,0 +1,68 @@
+{
+  "get": {
+    "description": "Return the current weights being used to rank the search results",
+    "operationId": "get-api-search-weights",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "context",
+        "required": true,
+        "schema": {
+          "default": "default",
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/search/weights",
+    "tags": [
+      "/api/search"
+    ]
+  },
+  "put": {
+    "description": "Update the current weights being used to rank the search results",
+    "operationId": "put-api-search-weights",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "context",
+        "required": true,
+        "schema": {
+          "default": "default",
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "search_engine",
+        "required": false,
+        "schema": {}
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/search/weights",
+    "tags": [
+      "/api/search"
+    ]
+  }
+}

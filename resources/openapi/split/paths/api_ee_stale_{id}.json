@@ -1,0 +1,90 @@
+{
+  "get": {
+    "description": "A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:\n  - `before_date` - only return entities that were last edited before this date (default: 6 months ago)\n  - `is_recursive` - if true, return entities from all children of the collection, not just the direct children (default: false)\n  - `sort_column` - the column to sort by (default: name)\n  - `sort_direction` - the direction to sort by (default: asc)",
+    "operationId": "get-api-ee-stale-id",
+    "parameters": [
+      {
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "anyOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "const": "root"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "before_date",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "in": "query",
+        "name": "is_recursive",
+        "required": true,
+        "schema": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort_column",
+        "required": true,
+        "schema": {
+          "default": "name",
+          "enum": [
+            "name",
+            "last_used_at"
+          ],
+          "type": "string"
+        }
+      },
+      {
+        "in": "query",
+        "name": "sort_direction",
+        "required": true,
+        "schema": {
+          "default": "asc",
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "type": "string"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/stale/{id}",
+    "tags": [
+      "/api/ee/stale"
+    ]
+  }
+}

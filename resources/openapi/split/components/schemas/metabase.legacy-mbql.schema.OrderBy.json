@@ -1,0 +1,11 @@
+{
+  "description": "Schema for an `order-by` clause subclause.",
+  "oneOf": [
+    {
+      "$ref": "./metabase.legacy-mbql.schema.asc.json"
+    },
+    {
+      "$ref": "./metabase.legacy-mbql.schema.desc.json"
+    }
+  ]
+}

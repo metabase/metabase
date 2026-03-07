@@ -1,0 +1,30 @@
+{
+  "allOf": [
+    {
+      "properties": {
+        "collection": {
+          "oneOf": [
+            {
+              "$ref": "./metabase.lib.schema.common.non-blank-string.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "query": {},
+        "template-tags": {
+          "$ref": "./metabase.legacy-mbql.schema.TemplateTagMap.json"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    },
+    {
+      "allOf": []
+    }
+  ],
+  "description": "Schema for a valid, normalized native [inner] query."
+}

@@ -1,0 +1,102 @@
+{
+  "post": {
+    "description": "Invalidate cache entries.\n\n  Use it like `/api/cache/invalidate?database=1&dashboard=15` (any number of database/dashboard/question can be\n  supplied).\n\n  `&include=overrides` controls whenever you want to invalidate cache for a specific cache configuration without\n  touching all nested configurations, or you want your invalidation to trickle down to every card.",
+    "operationId": "post-api-cache-invalidate",
+    "parameters": [
+      {
+        "description": "All cache configuration overrides should invalidate cache too",
+        "in": "query",
+        "name": "include",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "const": "overrides"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "description": "A list of database ids",
+        "in": "query",
+        "name": "database",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "description": "value must be an integer greater or equal to than zero.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "description": "A list of dashboard ids",
+        "in": "query",
+        "name": "dashboard",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "description": "value must be an integer greater or equal to than zero.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "description": "A list of question ids",
+        "in": "query",
+        "name": "question",
+        "required": false,
+        "schema": {
+          "oneOf": [
+            {
+              "items": {
+                "description": "value must be an integer greater or equal to than zero.",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/cache/invalidate",
+    "tags": [
+      "/api/cache"
+    ]
+  }
+}

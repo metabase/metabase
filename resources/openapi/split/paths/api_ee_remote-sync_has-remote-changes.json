@@ -1,0 +1,72 @@
+{
+  "get": {
+    "description": "Check if there are new changes on the remote branch that can be pulled.\n   Uses in-memory caching (configurable TTL via remote-sync-check-changes-cache-ttl-seconds setting).\n\n   Returns:\n   - has_changes: true if remote version differs from last imported version, or if never imported\n   - remote_version: current Git SHA on remote branch\n   - local_version: Git SHA of last successful import (nil if never imported)\n   - cached: true if result was served from cache",
+    "operationId": "get-api-ee-remote-sync-has-remote-changes",
+    "parameters": [
+      {
+        "in": "query",
+        "name": "force-refresh",
+        "required": false,
+        "schema": {
+          "type": "boolean"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "properties": {
+                "cached": {
+                  "type": "boolean"
+                },
+                "has_changes": {
+                  "type": "boolean"
+                },
+                "local_version": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "remote_version": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "has_changes",
+                "remote_version",
+                "local_version",
+                "cached"
+              ],
+              "type": "object"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/ee/remote-sync/has-remote-changes",
+    "tags": [
+      "/api/ee/remote-sync"
+    ]
+  }
+}

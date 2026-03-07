@@ -1,0 +1,9 @@
+{
+  "enum": [
+    "system",
+    "user",
+    "assistant",
+    "tool"
+  ],
+  "type": "string"
+}

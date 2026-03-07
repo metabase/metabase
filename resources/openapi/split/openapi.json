@@ -1,0 +1,1549 @@
+{
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "description": "Session token obtained from /api/session endpoint",
+        "in": "header",
+        "name": "X-Metabase-Session",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "license": {
+      "name": "AGPL-3.0",
+      "url": "https://www.gnu.org/licenses/agpl-3.0.html"
+    },
+    "title": "Metabase API",
+    "version": "v1.58.0-SNAPSHOT"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/action": {
+      "$ref": "paths/api_action.json"
+    },
+    "/api/action/public": {
+      "$ref": "paths/api_action_public.json"
+    },
+    "/api/action/{action-id}": {
+      "$ref": "paths/api_action_{action-id}.json"
+    },
+    "/api/action/{action-id}/execute": {
+      "$ref": "paths/api_action_{action-id}_execute.json"
+    },
+    "/api/action/{id}": {
+      "$ref": "paths/api_action_{id}.json"
+    },
+    "/api/action/{id}/execute": {
+      "$ref": "paths/api_action_{id}_execute.json"
+    },
+    "/api/action/{id}/public_link": {
+      "$ref": "paths/api_action_{id}_public_link.json"
+    },
+    "/api/activity/most_recently_viewed_dashboard": {
+      "$ref": "paths/api_activity_most_recently_viewed_dashboard.json"
+    },
+    "/api/activity/popular_items": {
+      "$ref": "paths/api_activity_popular_items.json"
+    },
+    "/api/activity/recent_views": {
+      "$ref": "paths/api_activity_recent_views.json"
+    },
+    "/api/activity/recents": {
+      "$ref": "paths/api_activity_recents.json"
+    },
+    "/api/agent/v1/construct-query": {
+      "$ref": "paths/api_agent_v1_construct-query.json"
+    },
+    "/api/agent/v1/execute": {
+      "$ref": "paths/api_agent_v1_execute.json"
+    },
+    "/api/agent/v1/metric/{id}": {
+      "$ref": "paths/api_agent_v1_metric_{id}.json"
+    },
+    "/api/agent/v1/metric/{id}/field/{field-id}/values": {
+      "$ref": "paths/api_agent_v1_metric_{id}_field_{field-id}_values.json"
+    },
+    "/api/agent/v1/ping": {
+      "$ref": "paths/api_agent_v1_ping.json"
+    },
+    "/api/agent/v1/search": {
+      "$ref": "paths/api_agent_v1_search.json"
+    },
+    "/api/agent/v1/table/{id}": {
+      "$ref": "paths/api_agent_v1_table_{id}.json"
+    },
+    "/api/agent/v1/table/{id}/field/{field-id}/values": {
+      "$ref": "paths/api_agent_v1_table_{id}_field_{field-id}_values.json"
+    },
+    "/api/alert": {
+      "$ref": "paths/api_alert.json"
+    },
+    "/api/alert/{id}": {
+      "$ref": "paths/api_alert_{id}.json"
+    },
+    "/api/alert/{id}/subscription": {
+      "$ref": "paths/api_alert_{id}_subscription.json"
+    },
+    "/api/analytics/anonymous-stats": {
+      "$ref": "paths/api_analytics_anonymous-stats.json"
+    },
+    "/api/api-key": {
+      "$ref": "paths/api_api-key.json"
+    },
+    "/api/api-key/count": {
+      "$ref": "paths/api_api-key_count.json"
+    },
+    "/api/api-key/{id}": {
+      "$ref": "paths/api_api-key_{id}.json"
+    },
+    "/api/api-key/{id}/regenerate": {
+      "$ref": "paths/api_api-key_{id}_regenerate.json"
+    },
+    "/api/automagic-dashboards/database/{id}/candidates": {
+      "$ref": "paths/api_automagic-dashboards_database_{id}_candidates.json"
+    },
+    "/api/automagic-dashboards/model_index/{model-index-id}/primary_key/{pk-id}": {
+      "$ref": "paths/api_automagic-dashboards_model_index_{model-index-id}_primary_key_{pk-id}.json"
+    },
+    "/api/automagic-dashboards/{entity}/{entity-id-or-query}": {
+      "$ref": "paths/api_automagic-dashboards_{entity}_{entity-id-or-query}.json"
+    },
+    "/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}": {
+      "$ref": "paths/api_automagic-dashboards_{entity}_{entity-id-or-query}_cell_{cell-query}.json"
+    },
+    "/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}/compare/{comparison-entity}/{comparison-entity-id-or-query}": {
+      "$ref": "paths/api_automagic-dashboards_{entity}_{entity-id-or-query}_cell_{cell-query}_compare_{comparison-entity}_{comparison-entity-id-or-query}.json"
+    },
+    "/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}/rule/{prefix}/{dashboard-template}": {
+      "$ref": "paths/api_automagic-dashboards_{entity}_{entity-id-or-query}_cell_{cell-query}_rule_{prefix}_{dashboard-template}.json"
+    },
+    "/api/automagic-dashboards/{entity}/{entity-id-or-query}/cell/{cell-query}/rule/{prefix}/{dashboard-template}/compare/{comparison-entity}/{comparison-entity-id-or-query}": {
+      "$ref": "paths/api_automagic-dashboards_{entity}_{entity-id-or-query}_cell_{cell-query}_rule_{prefix}_{dashboard-template}_compare_{comparison-entity}_{comparison-entity-id-or-query}.json"
+    },
+    "/api/automagic-dashboards/{entity}/{entity-id-or-query}/compare/{comparison-entity}/{comparison-entity-id-or-query}": {
+      "$ref": "paths/api_automagic-dashboards_{entity}_{entity-id-or-query}_compare_{comparison-entity}_{comparison-entity-id-or-query}.json"
+    },
+    "/api/automagic-dashboards/{entity}/{entity-id-or-query}/query_metadata": {
+      "$ref": "paths/api_automagic-dashboards_{entity}_{entity-id-or-query}_query_metadata.json"
+    },
+    "/api/automagic-dashboards/{entity}/{entity-id-or-query}/rule/{prefix}/{dashboard-template}": {
+      "$ref": "paths/api_automagic-dashboards_{entity}_{entity-id-or-query}_rule_{prefix}_{dashboard-template}.json"
+    },
+    "/api/automagic-dashboards/{entity}/{entity-id-or-query}/rule/{prefix}/{dashboard-template}/compare/{comparison-entity}/{comparison-entity-id-or-query}": {
+      "$ref": "paths/api_automagic-dashboards_{entity}_{entity-id-or-query}_rule_{prefix}_{dashboard-template}_compare_{comparison-entity}_{comparison-entity-id-or-query}.json"
+    },
+    "/api/bookmark": {
+      "$ref": "paths/api_bookmark.json"
+    },
+    "/api/bookmark/ordering": {
+      "$ref": "paths/api_bookmark_ordering.json"
+    },
+    "/api/bookmark/{model}/{id}": {
+      "$ref": "paths/api_bookmark_{model}_{id}.json"
+    },
+    "/api/bug-reporting/connection-pool-details": {
+      "$ref": "paths/api_bug-reporting_connection-pool-details.json"
+    },
+    "/api/bug-reporting/details": {
+      "$ref": "paths/api_bug-reporting_details.json"
+    },
+    "/api/cache": {
+      "$ref": "paths/api_cache.json"
+    },
+    "/api/cache/invalidate": {
+      "$ref": "paths/api_cache_invalidate.json"
+    },
+    "/api/card": {
+      "$ref": "paths/api_card.json"
+    },
+    "/api/card/collections": {
+      "$ref": "paths/api_card_collections.json"
+    },
+    "/api/card/embeddable": {
+      "$ref": "paths/api_card_embeddable.json"
+    },
+    "/api/card/pivot/{card-id}/query": {
+      "$ref": "paths/api_card_pivot_{card-id}_query.json"
+    },
+    "/api/card/public": {
+      "$ref": "paths/api_card_public.json"
+    },
+    "/api/card/{card-id}/params/{param-key}/search/{query}": {
+      "$ref": "paths/api_card_{card-id}_params_{param-key}_search_{query}.json"
+    },
+    "/api/card/{card-id}/params/{param-key}/values": {
+      "$ref": "paths/api_card_{card-id}_params_{param-key}_values.json"
+    },
+    "/api/card/{card-id}/public_link": {
+      "$ref": "paths/api_card_{card-id}_public_link.json"
+    },
+    "/api/card/{card-id}/query": {
+      "$ref": "paths/api_card_{card-id}_query.json"
+    },
+    "/api/card/{card-id}/query/{export-format}": {
+      "$ref": "paths/api_card_{card-id}_query_{export-format}.json"
+    },
+    "/api/card/{id}": {
+      "$ref": "paths/api_card_{id}.json"
+    },
+    "/api/card/{id}/copy": {
+      "$ref": "paths/api_card_{id}_copy.json"
+    },
+    "/api/card/{id}/dashboards": {
+      "$ref": "paths/api_card_{id}_dashboards.json"
+    },
+    "/api/card/{id}/params/{param-key}/remapping": {
+      "$ref": "paths/api_card_{id}_params_{param-key}_remapping.json"
+    },
+    "/api/card/{id}/query_metadata": {
+      "$ref": "paths/api_card_{id}_query_metadata.json"
+    },
+    "/api/card/{id}/series": {
+      "$ref": "paths/api_card_{id}_series.json"
+    },
+    "/api/cards/dashboards": {
+      "$ref": "paths/api_cards_dashboards.json"
+    },
+    "/api/cards/move": {
+      "$ref": "paths/api_cards_move.json"
+    },
+    "/api/channel": {
+      "$ref": "paths/api_channel.json"
+    },
+    "/api/channel/test": {
+      "$ref": "paths/api_channel_test.json"
+    },
+    "/api/channel/{id}": {
+      "$ref": "paths/api_channel_{id}.json"
+    },
+    "/api/cloud-migration": {
+      "$ref": "paths/api_cloud-migration.json"
+    },
+    "/api/cloud-migration/cancel": {
+      "$ref": "paths/api_cloud-migration_cancel.json"
+    },
+    "/api/collection": {
+      "$ref": "paths/api_collection.json"
+    },
+    "/api/collection/graph": {
+      "$ref": "paths/api_collection_graph.json"
+    },
+    "/api/collection/root": {
+      "$ref": "paths/api_collection_root.json"
+    },
+    "/api/collection/root/dashboard-question-candidates": {
+      "$ref": "paths/api_collection_root_dashboard-question-candidates.json"
+    },
+    "/api/collection/root/items": {
+      "$ref": "paths/api_collection_root_items.json"
+    },
+    "/api/collection/root/move-dashboard-question-candidates": {
+      "$ref": "paths/api_collection_root_move-dashboard-question-candidates.json"
+    },
+    "/api/collection/trash": {
+      "$ref": "paths/api_collection_trash.json"
+    },
+    "/api/collection/tree": {
+      "$ref": "paths/api_collection_tree.json"
+    },
+    "/api/collection/{id}": {
+      "$ref": "paths/api_collection_{id}.json"
+    },
+    "/api/collection/{id}/dashboard-question-candidates": {
+      "$ref": "paths/api_collection_{id}_dashboard-question-candidates.json"
+    },
+    "/api/collection/{id}/items": {
+      "$ref": "paths/api_collection_{id}_items.json"
+    },
+    "/api/collection/{id}/move-dashboard-question-candidates": {
+      "$ref": "paths/api_collection_{id}_move-dashboard-question-candidates.json"
+    },
+    "/api/comment": {
+      "$ref": "paths/api_comment.json"
+    },
+    "/api/comment/mentions": {
+      "$ref": "paths/api_comment_mentions.json"
+    },
+    "/api/comment/{comment-id}": {
+      "$ref": "paths/api_comment_{comment-id}.json"
+    },
+    "/api/comment/{comment-id}/reaction": {
+      "$ref": "paths/api_comment_{comment-id}_reaction.json"
+    },
+    "/api/dashboard": {
+      "$ref": "paths/api_dashboard.json"
+    },
+    "/api/dashboard/embeddable": {
+      "$ref": "paths/api_dashboard_embeddable.json"
+    },
+    "/api/dashboard/params/valid-filter-fields": {
+      "$ref": "paths/api_dashboard_params_valid-filter-fields.json"
+    },
+    "/api/dashboard/pivot/{dashboard-id}/dashcard/{dashcard-id}/card/{card-id}/query": {
+      "$ref": "paths/api_dashboard_pivot_{dashboard-id}_dashcard_{dashcard-id}_card_{card-id}_query.json"
+    },
+    "/api/dashboard/public": {
+      "$ref": "paths/api_dashboard_public.json"
+    },
+    "/api/dashboard/save": {
+      "$ref": "paths/api_dashboard_save.json"
+    },
+    "/api/dashboard/save/collection/{parent-collection-id}": {
+      "$ref": "paths/api_dashboard_save_collection_{parent-collection-id}.json"
+    },
+    "/api/dashboard/{dashboard-id}/dashcard/{dashcard-id}/card/{card-id}/query": {
+      "$ref": "paths/api_dashboard_{dashboard-id}_dashcard_{dashcard-id}_card_{card-id}_query.json"
+    },
+    "/api/dashboard/{dashboard-id}/dashcard/{dashcard-id}/card/{card-id}/query/{export-format}": {
+      "$ref": "paths/api_dashboard_{dashboard-id}_dashcard_{dashcard-id}_card_{card-id}_query_{export-format}.json"
+    },
+    "/api/dashboard/{dashboard-id}/dashcard/{dashcard-id}/execute": {
+      "$ref": "paths/api_dashboard_{dashboard-id}_dashcard_{dashcard-id}_execute.json"
+    },
+    "/api/dashboard/{dashboard-id}/public_link": {
+      "$ref": "paths/api_dashboard_{dashboard-id}_public_link.json"
+    },
+    "/api/dashboard/{from-dashboard-id}/copy": {
+      "$ref": "paths/api_dashboard_{from-dashboard-id}_copy.json"
+    },
+    "/api/dashboard/{id}": {
+      "$ref": "paths/api_dashboard_{id}.json"
+    },
+    "/api/dashboard/{id}/cards": {
+      "$ref": "paths/api_dashboard_{id}_cards.json"
+    },
+    "/api/dashboard/{id}/items": {
+      "$ref": "paths/api_dashboard_{id}_items.json"
+    },
+    "/api/dashboard/{id}/params/{param-key}/remapping": {
+      "$ref": "paths/api_dashboard_{id}_params_{param-key}_remapping.json"
+    },
+    "/api/dashboard/{id}/params/{param-key}/search/{query}": {
+      "$ref": "paths/api_dashboard_{id}_params_{param-key}_search_{query}.json"
+    },
+    "/api/dashboard/{id}/params/{param-key}/values": {
+      "$ref": "paths/api_dashboard_{id}_params_{param-key}_values.json"
+    },
+    "/api/dashboard/{id}/query_metadata": {
+      "$ref": "paths/api_dashboard_{id}_query_metadata.json"
+    },
+    "/api/dashboard/{id}/related": {
+      "$ref": "paths/api_dashboard_{id}_related.json"
+    },
+    "/api/data-studio/table/discard-values": {
+      "$ref": "paths/api_data-studio_table_discard-values.json"
+    },
+    "/api/data-studio/table/edit": {
+      "$ref": "paths/api_data-studio_table_edit.json"
+    },
+    "/api/data-studio/table/rescan-values": {
+      "$ref": "paths/api_data-studio_table_rescan-values.json"
+    },
+    "/api/data-studio/table/selection": {
+      "$ref": "paths/api_data-studio_table_selection.json"
+    },
+    "/api/data-studio/table/sync-schema": {
+      "$ref": "paths/api_data-studio_table_sync-schema.json"
+    },
+    "/api/database": {
+      "$ref": "paths/api_database.json"
+    },
+    "/api/database/sample_database": {
+      "$ref": "paths/api_database_sample_database.json"
+    },
+    "/api/database/validate": {
+      "$ref": "paths/api_database_validate.json"
+    },
+    "/api/database/{id}": {
+      "$ref": "paths/api_database_{id}.json"
+    },
+    "/api/database/{id}/autocomplete_suggestions": {
+      "$ref": "paths/api_database_{id}_autocomplete_suggestions.json"
+    },
+    "/api/database/{id}/card_autocomplete_suggestions": {
+      "$ref": "paths/api_database_{id}_card_autocomplete_suggestions.json"
+    },
+    "/api/database/{id}/discard_values": {
+      "$ref": "paths/api_database_{id}_discard_values.json"
+    },
+    "/api/database/{id}/dismiss_spinner": {
+      "$ref": "paths/api_database_{id}_dismiss_spinner.json"
+    },
+    "/api/database/{id}/fields": {
+      "$ref": "paths/api_database_{id}_fields.json"
+    },
+    "/api/database/{id}/healthcheck": {
+      "$ref": "paths/api_database_{id}_healthcheck.json"
+    },
+    "/api/database/{id}/idfields": {
+      "$ref": "paths/api_database_{id}_idfields.json"
+    },
+    "/api/database/{id}/metadata": {
+      "$ref": "paths/api_database_{id}_metadata.json"
+    },
+    "/api/database/{id}/permission/workspace/check": {
+      "$ref": "paths/api_database_{id}_permission_workspace_check.json"
+    },
+    "/api/database/{id}/rescan_values": {
+      "$ref": "paths/api_database_{id}_rescan_values.json"
+    },
+    "/api/database/{id}/schema": {
+      "$ref": "paths/api_database_{id}_schema.json"
+    },
+    "/api/database/{id}/schema/{schema}": {
+      "$ref": "paths/api_database_{id}_schema_{schema}.json"
+    },
+    "/api/database/{id}/schemas": {
+      "$ref": "paths/api_database_{id}_schemas.json"
+    },
+    "/api/database/{id}/settings-available": {
+      "$ref": "paths/api_database_{id}_settings-available.json"
+    },
+    "/api/database/{id}/sync_schema": {
+      "$ref": "paths/api_database_{id}_sync_schema.json"
+    },
+    "/api/database/{id}/syncable_schemas": {
+      "$ref": "paths/api_database_{id}_syncable_schemas.json"
+    },
+    "/api/database/{id}/usage_info": {
+      "$ref": "paths/api_database_{id}_usage_info.json"
+    },
+    "/api/database/{virtual-db}/datasets": {
+      "$ref": "paths/api_database_{virtual-db}_datasets.json"
+    },
+    "/api/database/{virtual-db}/datasets/{schema}": {
+      "$ref": "paths/api_database_{virtual-db}_datasets_{schema}.json"
+    },
+    "/api/database/{virtual-db}/metadata": {
+      "$ref": "paths/api_database_{virtual-db}_metadata.json"
+    },
+    "/api/database/{virtual-db}/schema/{schema}": {
+      "$ref": "paths/api_database_{virtual-db}_schema_{schema}.json"
+    },
+    "/api/database/{virtual-db}/schemas": {
+      "$ref": "paths/api_database_{virtual-db}_schemas.json"
+    },
+    "/api/dataset": {
+      "$ref": "paths/api_dataset.json"
+    },
+    "/api/dataset/native": {
+      "$ref": "paths/api_dataset_native.json"
+    },
+    "/api/dataset/parameter/remapping": {
+      "$ref": "paths/api_dataset_parameter_remapping.json"
+    },
+    "/api/dataset/parameter/search/{query}": {
+      "$ref": "paths/api_dataset_parameter_search_{query}.json"
+    },
+    "/api/dataset/parameter/values": {
+      "$ref": "paths/api_dataset_parameter_values.json"
+    },
+    "/api/dataset/pivot": {
+      "$ref": "paths/api_dataset_pivot.json"
+    },
+    "/api/dataset/query_metadata": {
+      "$ref": "paths/api_dataset_query_metadata.json"
+    },
+    "/api/dataset/{export-format}": {
+      "$ref": "paths/api_dataset_{export-format}.json"
+    },
+    "/api/document": {
+      "$ref": "paths/api_document.json"
+    },
+    "/api/document/public": {
+      "$ref": "paths/api_document_public.json"
+    },
+    "/api/document/{document-id}": {
+      "$ref": "paths/api_document_{document-id}.json"
+    },
+    "/api/document/{document-id}/card/{card-id}/query/{export-format}": {
+      "$ref": "paths/api_document_{document-id}_card_{card-id}_query_{export-format}.json"
+    },
+    "/api/document/{document-id}/public-link": {
+      "$ref": "paths/api_document_{document-id}_public-link.json"
+    },
+    "/api/document/{from-document-id}/copy": {
+      "$ref": "paths/api_document_{from-document-id}_copy.json"
+    },
+    "/api/ee/action-v2/execute": {
+      "$ref": "paths/api_ee_action-v2_execute.json"
+    },
+    "/api/ee/action-v2/execute-bulk": {
+      "$ref": "paths/api_ee_action-v2_execute-bulk.json"
+    },
+    "/api/ee/action-v2/execute-form": {
+      "$ref": "paths/api_ee_action-v2_execute-form.json"
+    },
+    "/api/ee/advanced-permissions/application/graph": {
+      "$ref": "paths/api_ee_advanced-permissions_application_graph.json"
+    },
+    "/api/ee/advanced-permissions/impersonation": {
+      "$ref": "paths/api_ee_advanced-permissions_impersonation.json"
+    },
+    "/api/ee/advanced-permissions/impersonation/{id}": {
+      "$ref": "paths/api_ee_advanced-permissions_impersonation_{id}.json"
+    },
+    "/api/ee/ai-entity-analysis/analyze-chart": {
+      "$ref": "paths/api_ee_ai-entity-analysis_analyze-chart.json"
+    },
+    "/api/ee/ai-sql-fixer/fix": {
+      "$ref": "paths/api_ee_ai-sql-fixer_fix.json"
+    },
+    "/api/ee/ai-sql-generation/generate": {
+      "$ref": "paths/api_ee_ai-sql-generation_generate.json"
+    },
+    "/api/ee/audit-app/analytics-dev/export": {
+      "$ref": "paths/api_ee_audit-app_analytics-dev_export.json"
+    },
+    "/api/ee/audit-app/user/audit-info": {
+      "$ref": "paths/api_ee_audit-app_user_audit-info.json"
+    },
+    "/api/ee/audit-app/user/{id}/subscriptions": {
+      "$ref": "paths/api_ee_audit-app_user_{id}_subscriptions.json"
+    },
+    "/api/ee/autodescribe/card/summarize": {
+      "$ref": "paths/api_ee_autodescribe_card_summarize.json"
+    },
+    "/api/ee/autodescribe/dashboard/summarize/{id}": {
+      "$ref": "paths/api_ee_autodescribe_dashboard_summarize_{id}.json"
+    },
+    "/api/ee/billing": {
+      "$ref": "paths/api_ee_billing.json"
+    },
+    "/api/ee/cloud-add-ons/addons": {
+      "$ref": "paths/api_ee_cloud-add-ons_addons.json"
+    },
+    "/api/ee/cloud-add-ons/plans": {
+      "$ref": "paths/api_ee_cloud-add-ons_plans.json"
+    },
+    "/api/ee/cloud-add-ons/{product-type}": {
+      "$ref": "paths/api_ee_cloud-add-ons_{product-type}.json"
+    },
+    "/api/ee/cloud-proxy/{operation-id}": {
+      "$ref": "paths/api_ee_cloud-proxy_{operation-id}.json"
+    },
+    "/api/ee/content-translation/csv": {
+      "$ref": "paths/api_ee_content-translation_csv.json"
+    },
+    "/api/ee/content-translation/dictionary": {
+      "$ref": "paths/api_ee_content-translation_dictionary.json"
+    },
+    "/api/ee/content-translation/dictionary/{token}": {
+      "$ref": "paths/api_ee_content-translation_dictionary_{token}.json"
+    },
+    "/api/ee/content-translation/upload-dictionary": {
+      "$ref": "paths/api_ee_content-translation_upload-dictionary.json"
+    },
+    "/api/ee/data-studio/table/publish-tables": {
+      "$ref": "paths/api_ee_data-studio_table_publish-tables.json"
+    },
+    "/api/ee/data-studio/table/unpublish-tables": {
+      "$ref": "paths/api_ee_data-studio_table_unpublish-tables.json"
+    },
+    "/api/ee/database-replication/connection/{database-id}": {
+      "$ref": "paths/api_ee_database-replication_connection_{database-id}.json"
+    },
+    "/api/ee/database-replication/connection/{database-id}/preview": {
+      "$ref": "paths/api_ee_database-replication_connection_{database-id}_preview.json"
+    },
+    "/api/ee/database-routing/destination-database": {
+      "$ref": "paths/api_ee_database-routing_destination-database.json"
+    },
+    "/api/ee/database-routing/router-database/{id}": {
+      "$ref": "paths/api_ee_database-routing_router-database_{id}.json"
+    },
+    "/api/ee/dependencies/check-card": {
+      "$ref": "paths/api_ee_dependencies_check-card.json"
+    },
+    "/api/ee/dependencies/check-snippet": {
+      "$ref": "paths/api_ee_dependencies_check-snippet.json"
+    },
+    "/api/ee/dependencies/check-transform": {
+      "$ref": "paths/api_ee_dependencies_check-transform.json"
+    },
+    "/api/ee/dependencies/graph": {
+      "$ref": "paths/api_ee_dependencies_graph.json"
+    },
+    "/api/ee/dependencies/graph/breaking": {
+      "$ref": "paths/api_ee_dependencies_graph_breaking.json"
+    },
+    "/api/ee/dependencies/graph/broken": {
+      "$ref": "paths/api_ee_dependencies_graph_broken.json"
+    },
+    "/api/ee/dependencies/graph/dependents": {
+      "$ref": "paths/api_ee_dependencies_graph_dependents.json"
+    },
+    "/api/ee/dependencies/graph/unreferenced": {
+      "$ref": "paths/api_ee_dependencies_graph_unreferenced.json"
+    },
+    "/api/ee/email/override": {
+      "$ref": "paths/api_ee_email_override.json"
+    },
+    "/api/ee/embedding-hub/checklist": {
+      "$ref": "paths/api_ee_embedding-hub_checklist.json"
+    },
+    "/api/ee/gsheets/connection": {
+      "$ref": "paths/api_ee_gsheets_connection.json"
+    },
+    "/api/ee/gsheets/connection/sync": {
+      "$ref": "paths/api_ee_gsheets_connection_sync.json"
+    },
+    "/api/ee/gsheets/service-account": {
+      "$ref": "paths/api_ee_gsheets_service-account.json"
+    },
+    "/api/ee/library": {
+      "$ref": "paths/api_ee_library.json"
+    },
+    "/api/ee/library/tree": {
+      "$ref": "paths/api_ee_library_tree.json"
+    },
+    "/api/ee/logs/query_execution/{yyyy-mm}": {
+      "$ref": "paths/api_ee_logs_query_execution_{yyyy-mm}.json"
+    },
+    "/api/ee/metabot-tools/answer-sources": {
+      "$ref": "paths/api_ee_metabot-tools_answer-sources.json"
+    },
+    "/api/ee/metabot-tools/check-transform-dependencies": {
+      "$ref": "paths/api_ee_metabot-tools_check-transform-dependencies.json"
+    },
+    "/api/ee/metabot-tools/create-dashboard-subscription": {
+      "$ref": "paths/api_ee_metabot-tools_create-dashboard-subscription.json"
+    },
+    "/api/ee/metabot-tools/field-values": {
+      "$ref": "paths/api_ee_metabot-tools_field-values.json"
+    },
+    "/api/ee/metabot-tools/filter-records": {
+      "$ref": "paths/api_ee_metabot-tools_filter-records.json"
+    },
+    "/api/ee/metabot-tools/find-outliers": {
+      "$ref": "paths/api_ee_metabot-tools_find-outliers.json"
+    },
+    "/api/ee/metabot-tools/generate-insights": {
+      "$ref": "paths/api_ee_metabot-tools_generate-insights.json"
+    },
+    "/api/ee/metabot-tools/get-current-user": {
+      "$ref": "paths/api_ee_metabot-tools_get-current-user.json"
+    },
+    "/api/ee/metabot-tools/get-dashboard-details": {
+      "$ref": "paths/api_ee_metabot-tools_get-dashboard-details.json"
+    },
+    "/api/ee/metabot-tools/get-document-details": {
+      "$ref": "paths/api_ee_metabot-tools_get-document-details.json"
+    },
+    "/api/ee/metabot-tools/get-metric-details": {
+      "$ref": "paths/api_ee_metabot-tools_get-metric-details.json"
+    },
+    "/api/ee/metabot-tools/get-query-details": {
+      "$ref": "paths/api_ee_metabot-tools_get-query-details.json"
+    },
+    "/api/ee/metabot-tools/get-report-details": {
+      "$ref": "paths/api_ee_metabot-tools_get-report-details.json"
+    },
+    "/api/ee/metabot-tools/get-snippet-details": {
+      "$ref": "paths/api_ee_metabot-tools_get-snippet-details.json"
+    },
+    "/api/ee/metabot-tools/get-snippets": {
+      "$ref": "paths/api_ee_metabot-tools_get-snippets.json"
+    },
+    "/api/ee/metabot-tools/get-table-details": {
+      "$ref": "paths/api_ee_metabot-tools_get-table-details.json"
+    },
+    "/api/ee/metabot-tools/get-tables": {
+      "$ref": "paths/api_ee_metabot-tools_get-tables.json"
+    },
+    "/api/ee/metabot-tools/get-transform-details": {
+      "$ref": "paths/api_ee_metabot-tools_get-transform-details.json"
+    },
+    "/api/ee/metabot-tools/get-transform-python-library-details": {
+      "$ref": "paths/api_ee_metabot-tools_get-transform-python-library-details.json"
+    },
+    "/api/ee/metabot-tools/get-transforms": {
+      "$ref": "paths/api_ee_metabot-tools_get-transforms.json"
+    },
+    "/api/ee/metabot-tools/query-datasource": {
+      "$ref": "paths/api_ee_metabot-tools_query-datasource.json"
+    },
+    "/api/ee/metabot-tools/query-metric": {
+      "$ref": "paths/api_ee_metabot-tools_query-metric.json"
+    },
+    "/api/ee/metabot-tools/query-model": {
+      "$ref": "paths/api_ee_metabot-tools_query-model.json"
+    },
+    "/api/ee/metabot-tools/search": {
+      "$ref": "paths/api_ee_metabot-tools_search.json"
+    },
+    "/api/ee/metabot-tools/search_v2": {
+      "$ref": "paths/api_ee_metabot-tools_search_v2.json"
+    },
+    "/api/ee/metabot-v3/agent-streaming": {
+      "$ref": "paths/api_ee_metabot-v3_agent-streaming.json"
+    },
+    "/api/ee/metabot-v3/document/generate-content": {
+      "$ref": "paths/api_ee_metabot-v3_document_generate-content.json"
+    },
+    "/api/ee/metabot-v3/feedback": {
+      "$ref": "paths/api_ee_metabot-v3_feedback.json"
+    },
+    "/api/ee/metabot-v3/metabot": {
+      "$ref": "paths/api_ee_metabot-v3_metabot.json"
+    },
+    "/api/ee/metabot-v3/metabot/{id}": {
+      "$ref": "paths/api_ee_metabot-v3_metabot_{id}.json"
+    },
+    "/api/ee/metabot-v3/metabot/{id}/prompt-suggestions": {
+      "$ref": "paths/api_ee_metabot-v3_metabot_{id}_prompt-suggestions.json"
+    },
+    "/api/ee/metabot-v3/metabot/{id}/prompt-suggestions/regenerate": {
+      "$ref": "paths/api_ee_metabot-v3_metabot_{id}_prompt-suggestions_regenerate.json"
+    },
+    "/api/ee/metabot-v3/metabot/{id}/prompt-suggestions/{prompt-id}": {
+      "$ref": "paths/api_ee_metabot-v3_metabot_{id}_prompt-suggestions_{prompt-id}.json"
+    },
+    "/api/ee/permission_debug": {
+      "$ref": "paths/api_ee_permission_debug.json"
+    },
+    "/api/ee/remote-sync/branches": {
+      "$ref": "paths/api_ee_remote-sync_branches.json"
+    },
+    "/api/ee/remote-sync/create-branch": {
+      "$ref": "paths/api_ee_remote-sync_create-branch.json"
+    },
+    "/api/ee/remote-sync/current-task": {
+      "$ref": "paths/api_ee_remote-sync_current-task.json"
+    },
+    "/api/ee/remote-sync/current-task/cancel": {
+      "$ref": "paths/api_ee_remote-sync_current-task_cancel.json"
+    },
+    "/api/ee/remote-sync/dirty": {
+      "$ref": "paths/api_ee_remote-sync_dirty.json"
+    },
+    "/api/ee/remote-sync/export": {
+      "$ref": "paths/api_ee_remote-sync_export.json"
+    },
+    "/api/ee/remote-sync/has-remote-changes": {
+      "$ref": "paths/api_ee_remote-sync_has-remote-changes.json"
+    },
+    "/api/ee/remote-sync/import": {
+      "$ref": "paths/api_ee_remote-sync_import.json"
+    },
+    "/api/ee/remote-sync/is-dirty": {
+      "$ref": "paths/api_ee_remote-sync_is-dirty.json"
+    },
+    "/api/ee/remote-sync/settings": {
+      "$ref": "paths/api_ee_remote-sync_settings.json"
+    },
+    "/api/ee/remote-sync/stash": {
+      "$ref": "paths/api_ee_remote-sync_stash.json"
+    },
+    "/api/ee/scim/api_key": {
+      "$ref": "paths/api_ee_scim_api_key.json"
+    },
+    "/api/ee/scim/v2/Groups": {
+      "$ref": "paths/api_ee_scim_v2_Groups.json"
+    },
+    "/api/ee/scim/v2/Groups/{id}": {
+      "$ref": "paths/api_ee_scim_v2_Groups_{id}.json"
+    },
+    "/api/ee/scim/v2/Users": {
+      "$ref": "paths/api_ee_scim_v2_Users.json"
+    },
+    "/api/ee/scim/v2/Users/{id}": {
+      "$ref": "paths/api_ee_scim_v2_Users_{id}.json"
+    },
+    "/api/ee/semantic-search/status": {
+      "$ref": "paths/api_ee_semantic-search_status.json"
+    },
+    "/api/ee/serialization/export": {
+      "$ref": "paths/api_ee_serialization_export.json"
+    },
+    "/api/ee/serialization/import": {
+      "$ref": "paths/api_ee_serialization_import.json"
+    },
+    "/api/ee/stale/{id}": {
+      "$ref": "paths/api_ee_stale_{id}.json"
+    },
+    "/api/ee/support-access-grant": {
+      "$ref": "paths/api_ee_support-access-grant.json"
+    },
+    "/api/ee/support-access-grant/current": {
+      "$ref": "paths/api_ee_support-access-grant_current.json"
+    },
+    "/api/ee/support-access-grant/{id}/revoke": {
+      "$ref": "paths/api_ee_support-access-grant_{id}_revoke.json"
+    },
+    "/api/ee/tenant": {
+      "$ref": "paths/api_ee_tenant.json"
+    },
+    "/api/ee/tenant/{id}": {
+      "$ref": "paths/api_ee_tenant_{id}.json"
+    },
+    "/api/ee/transforms-python/library/{path}": {
+      "$ref": "paths/api_ee_transforms-python_library_{path}.json"
+    },
+    "/api/ee/transforms-python/test-run": {
+      "$ref": "paths/api_ee_transforms-python_test-run.json"
+    },
+    "/api/ee/upload-management/tables": {
+      "$ref": "paths/api_ee_upload-management_tables.json"
+    },
+    "/api/ee/upload-management/tables/{id}": {
+      "$ref": "paths/api_ee_upload-management_tables_{id}.json"
+    },
+    "/api/ee/workspace": {
+      "$ref": "paths/api_ee_workspace.json"
+    },
+    "/api/ee/workspace/checkout": {
+      "$ref": "paths/api_ee_workspace_checkout.json"
+    },
+    "/api/ee/workspace/database": {
+      "$ref": "paths/api_ee_workspace_database.json"
+    },
+    "/api/ee/workspace/enabled": {
+      "$ref": "paths/api_ee_workspace_enabled.json"
+    },
+    "/api/ee/workspace/test-resources": {
+      "$ref": "paths/api_ee_workspace_test-resources.json"
+    },
+    "/api/ee/workspace/{ws-id}": {
+      "$ref": "paths/api_ee_workspace_{ws-id}.json"
+    },
+    "/api/ee/workspace/{ws-id}/archive": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_archive.json"
+    },
+    "/api/ee/workspace/{ws-id}/external/transform": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_external_transform.json"
+    },
+    "/api/ee/workspace/{ws-id}/graph": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_graph.json"
+    },
+    "/api/ee/workspace/{ws-id}/input/grant": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_input_grant.json"
+    },
+    "/api/ee/workspace/{ws-id}/input/pending": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_input_pending.json"
+    },
+    "/api/ee/workspace/{ws-id}/log": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_log.json"
+    },
+    "/api/ee/workspace/{ws-id}/merge": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_merge.json"
+    },
+    "/api/ee/workspace/{ws-id}/problem": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_problem.json"
+    },
+    "/api/ee/workspace/{ws-id}/query": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_query.json"
+    },
+    "/api/ee/workspace/{ws-id}/run": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_run.json"
+    },
+    "/api/ee/workspace/{ws-id}/table": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_table.json"
+    },
+    "/api/ee/workspace/{ws-id}/transform": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_transform.json"
+    },
+    "/api/ee/workspace/{ws-id}/transform/validate/target": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_transform_validate_target.json"
+    },
+    "/api/ee/workspace/{ws-id}/transform/{tx-id}": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_transform_{tx-id}.json"
+    },
+    "/api/ee/workspace/{ws-id}/transform/{tx-id}/archive": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_transform_{tx-id}_archive.json"
+    },
+    "/api/ee/workspace/{ws-id}/transform/{tx-id}/dry-run": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_transform_{tx-id}_dry-run.json"
+    },
+    "/api/ee/workspace/{ws-id}/transform/{tx-id}/merge": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_transform_{tx-id}_merge.json"
+    },
+    "/api/ee/workspace/{ws-id}/transform/{tx-id}/run": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_transform_{tx-id}_run.json"
+    },
+    "/api/ee/workspace/{ws-id}/transform/{tx-id}/unarchive": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_transform_{tx-id}_unarchive.json"
+    },
+    "/api/ee/workspace/{ws-id}/unarchive": {
+      "$ref": "paths/api_ee_workspace_{ws-id}_unarchive.json"
+    },
+    "/api/eid-translation/translate": {
+      "$ref": "paths/api_eid-translation_translate.json"
+    },
+    "/api/email": {
+      "$ref": "paths/api_email.json"
+    },
+    "/api/email/test": {
+      "$ref": "paths/api_email_test.json"
+    },
+    "/api/embed/card/{token}": {
+      "$ref": "paths/api_embed_card_{token}.json"
+    },
+    "/api/embed/card/{token}/params/{param-key}/remapping": {
+      "$ref": "paths/api_embed_card_{token}_params_{param-key}_remapping.json"
+    },
+    "/api/embed/card/{token}/params/{param-key}/search/{prefix}": {
+      "$ref": "paths/api_embed_card_{token}_params_{param-key}_search_{prefix}.json"
+    },
+    "/api/embed/card/{token}/params/{param-key}/values": {
+      "$ref": "paths/api_embed_card_{token}_params_{param-key}_values.json"
+    },
+    "/api/embed/card/{token}/query": {
+      "$ref": "paths/api_embed_card_{token}_query.json"
+    },
+    "/api/embed/card/{token}/query/{export-format}": {
+      "$ref": "paths/api_embed_card_{token}_query_{export-format}.json"
+    },
+    "/api/embed/dashboard/{token}": {
+      "$ref": "paths/api_embed_dashboard_{token}.json"
+    },
+    "/api/embed/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}": {
+      "$ref": "paths/api_embed_dashboard_{token}_dashcard_{dashcard-id}_card_{card-id}.json"
+    },
+    "/api/embed/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{export-format}": {
+      "$ref": "paths/api_embed_dashboard_{token}_dashcard_{dashcard-id}_card_{card-id}_{export-format}.json"
+    },
+    "/api/embed/dashboard/{token}/params/{param-key}/remapping": {
+      "$ref": "paths/api_embed_dashboard_{token}_params_{param-key}_remapping.json"
+    },
+    "/api/embed/dashboard/{token}/params/{param-key}/search/{prefix}": {
+      "$ref": "paths/api_embed_dashboard_{token}_params_{param-key}_search_{prefix}.json"
+    },
+    "/api/embed/dashboard/{token}/params/{param-key}/values": {
+      "$ref": "paths/api_embed_dashboard_{token}_params_{param-key}_values.json"
+    },
+    "/api/embed/pivot/card/{token}/query": {
+      "$ref": "paths/api_embed_pivot_card_{token}_query.json"
+    },
+    "/api/embed/pivot/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}": {
+      "$ref": "paths/api_embed_pivot_dashboard_{token}_dashcard_{dashcard-id}_card_{card-id}.json"
+    },
+    "/api/embed/tiles/card/{token}/{zoom}/{x}/{y}": {
+      "$ref": "paths/api_embed_tiles_card_{token}_{zoom}_{x}_{y}.json"
+    },
+    "/api/embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}": {
+      "$ref": "paths/api_embed_tiles_dashboard_{token}_dashcard_{dashcard-id}_card_{card-id}_{zoom}_{x}_{y}.json"
+    },
+    "/api/field/{id}": {
+      "$ref": "paths/api_field_{id}.json"
+    },
+    "/api/field/{id}/dimension": {
+      "$ref": "paths/api_field_{id}_dimension.json"
+    },
+    "/api/field/{id}/discard_values": {
+      "$ref": "paths/api_field_{id}_discard_values.json"
+    },
+    "/api/field/{id}/related": {
+      "$ref": "paths/api_field_{id}_related.json"
+    },
+    "/api/field/{id}/remapping/{remapped-id}": {
+      "$ref": "paths/api_field_{id}_remapping_{remapped-id}.json"
+    },
+    "/api/field/{id}/rescan_values": {
+      "$ref": "paths/api_field_{id}_rescan_values.json"
+    },
+    "/api/field/{id}/search/{search-id}": {
+      "$ref": "paths/api_field_{id}_search_{search-id}.json"
+    },
+    "/api/field/{id}/summary": {
+      "$ref": "paths/api_field_{id}_summary.json"
+    },
+    "/api/field/{id}/values": {
+      "$ref": "paths/api_field_{id}_values.json"
+    },
+    "/api/geojson": {
+      "$ref": "paths/api_geojson.json"
+    },
+    "/api/geojson/{key}": {
+      "$ref": "paths/api_geojson_{key}.json"
+    },
+    "/api/glossary": {
+      "$ref": "paths/api_glossary.json"
+    },
+    "/api/glossary/{id}": {
+      "$ref": "paths/api_glossary_{id}.json"
+    },
+    "/api/google/settings": {
+      "$ref": "paths/api_google_settings.json"
+    },
+    "/api/ldap/settings": {
+      "$ref": "paths/api_ldap_settings.json"
+    },
+    "/api/llm/extract-tables": {
+      "$ref": "paths/api_llm_extract-tables.json"
+    },
+    "/api/llm/generate-sql": {
+      "$ref": "paths/api_llm_generate-sql.json"
+    },
+    "/api/llm/list-models": {
+      "$ref": "paths/api_llm_list-models.json"
+    },
+    "/api/logger/adjustment": {
+      "$ref": "paths/api_logger_adjustment.json"
+    },
+    "/api/logger/logs": {
+      "$ref": "paths/api_logger_logs.json"
+    },
+    "/api/logger/presets": {
+      "$ref": "paths/api_logger_presets.json"
+    },
+    "/api/login-history/current": {
+      "$ref": "paths/api_login-history_current.json"
+    },
+    "/api/measure": {
+      "$ref": "paths/api_measure.json"
+    },
+    "/api/measure/{id}": {
+      "$ref": "paths/api_measure_{id}.json"
+    },
+    "/api/model-index": {
+      "$ref": "paths/api_model-index.json"
+    },
+    "/api/model-index/{id}": {
+      "$ref": "paths/api_model-index_{id}.json"
+    },
+    "/api/moderation-review": {
+      "$ref": "paths/api_moderation-review.json"
+    },
+    "/api/mt/gtap": {
+      "$ref": "paths/api_mt_gtap.json"
+    },
+    "/api/mt/gtap/validate": {
+      "$ref": "paths/api_mt_gtap_validate.json"
+    },
+    "/api/mt/gtap/{id}": {
+      "$ref": "paths/api_mt_gtap_{id}.json"
+    },
+    "/api/mt/user/attributes": {
+      "$ref": "paths/api_mt_user_attributes.json"
+    },
+    "/api/mt/user/{id}/attributes": {
+      "$ref": "paths/api_mt_user_{id}_attributes.json"
+    },
+    "/api/native-query-snippet": {
+      "$ref": "paths/api_native-query-snippet.json"
+    },
+    "/api/native-query-snippet/{id}": {
+      "$ref": "paths/api_native-query-snippet_{id}.json"
+    },
+    "/api/notification": {
+      "$ref": "paths/api_notification.json"
+    },
+    "/api/notification/send": {
+      "$ref": "paths/api_notification_send.json"
+    },
+    "/api/notification/unsubscribe": {
+      "$ref": "paths/api_notification_unsubscribe.json"
+    },
+    "/api/notification/unsubscribe/undo": {
+      "$ref": "paths/api_notification_unsubscribe_undo.json"
+    },
+    "/api/notification/{id}": {
+      "$ref": "paths/api_notification_{id}.json"
+    },
+    "/api/notification/{id}/send": {
+      "$ref": "paths/api_notification_{id}_send.json"
+    },
+    "/api/notification/{id}/unsubscribe": {
+      "$ref": "paths/api_notification_{id}_unsubscribe.json"
+    },
+    "/api/notify/db/attached_datawarehouse": {
+      "$ref": "paths/api_notify_db_attached_datawarehouse.json"
+    },
+    "/api/notify/db/{id}": {
+      "$ref": "paths/api_notify_db_{id}.json"
+    },
+    "/api/notify/db/{id}/new-table": {
+      "$ref": "paths/api_notify_db_{id}_new-table.json"
+    },
+    "/api/permissions/graph": {
+      "$ref": "paths/api_permissions_graph.json"
+    },
+    "/api/permissions/graph/db/{db-id}": {
+      "$ref": "paths/api_permissions_graph_db_{db-id}.json"
+    },
+    "/api/permissions/graph/group/{group-id}": {
+      "$ref": "paths/api_permissions_graph_group_{group-id}.json"
+    },
+    "/api/permissions/group": {
+      "$ref": "paths/api_permissions_group.json"
+    },
+    "/api/permissions/group/{group-id}": {
+      "$ref": "paths/api_permissions_group_{group-id}.json"
+    },
+    "/api/permissions/group/{id}": {
+      "$ref": "paths/api_permissions_group_{id}.json"
+    },
+    "/api/permissions/membership": {
+      "$ref": "paths/api_permissions_membership.json"
+    },
+    "/api/permissions/membership/{group-id}/clear": {
+      "$ref": "paths/api_permissions_membership_{group-id}_clear.json"
+    },
+    "/api/permissions/membership/{id}": {
+      "$ref": "paths/api_permissions_membership_{id}.json"
+    },
+    "/api/persist": {
+      "$ref": "paths/api_persist.json"
+    },
+    "/api/persist/card/{card-id}": {
+      "$ref": "paths/api_persist_card_{card-id}.json"
+    },
+    "/api/persist/card/{card-id}/persist": {
+      "$ref": "paths/api_persist_card_{card-id}_persist.json"
+    },
+    "/api/persist/card/{card-id}/refresh": {
+      "$ref": "paths/api_persist_card_{card-id}_refresh.json"
+    },
+    "/api/persist/card/{card-id}/unpersist": {
+      "$ref": "paths/api_persist_card_{card-id}_unpersist.json"
+    },
+    "/api/persist/database/{id}/persist": {
+      "$ref": "paths/api_persist_database_{id}_persist.json"
+    },
+    "/api/persist/database/{id}/unpersist": {
+      "$ref": "paths/api_persist_database_{id}_unpersist.json"
+    },
+    "/api/persist/disable": {
+      "$ref": "paths/api_persist_disable.json"
+    },
+    "/api/persist/enable": {
+      "$ref": "paths/api_persist_enable.json"
+    },
+    "/api/persist/set-refresh-schedule": {
+      "$ref": "paths/api_persist_set-refresh-schedule.json"
+    },
+    "/api/persist/{persisted-info-id}": {
+      "$ref": "paths/api_persist_{persisted-info-id}.json"
+    },
+    "/api/premium-features/token/refresh": {
+      "$ref": "paths/api_premium-features_token_refresh.json"
+    },
+    "/api/premium-features/token/status": {
+      "$ref": "paths/api_premium-features_token_status.json"
+    },
+    "/api/preview_embed/card/{token}": {
+      "$ref": "paths/api_preview_embed_card_{token}.json"
+    },
+    "/api/preview_embed/card/{token}/params/{param-key}/remapping": {
+      "$ref": "paths/api_preview_embed_card_{token}_params_{param-key}_remapping.json"
+    },
+    "/api/preview_embed/card/{token}/params/{param-key}/values": {
+      "$ref": "paths/api_preview_embed_card_{token}_params_{param-key}_values.json"
+    },
+    "/api/preview_embed/card/{token}/query": {
+      "$ref": "paths/api_preview_embed_card_{token}_query.json"
+    },
+    "/api/preview_embed/dashboard/{token}": {
+      "$ref": "paths/api_preview_embed_dashboard_{token}.json"
+    },
+    "/api/preview_embed/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}": {
+      "$ref": "paths/api_preview_embed_dashboard_{token}_dashcard_{dashcard-id}_card_{card-id}.json"
+    },
+    "/api/preview_embed/dashboard/{token}/params/{param-key}/remapping": {
+      "$ref": "paths/api_preview_embed_dashboard_{token}_params_{param-key}_remapping.json"
+    },
+    "/api/preview_embed/dashboard/{token}/params/{param-key}/search/{prefix}": {
+      "$ref": "paths/api_preview_embed_dashboard_{token}_params_{param-key}_search_{prefix}.json"
+    },
+    "/api/preview_embed/dashboard/{token}/params/{param-key}/values": {
+      "$ref": "paths/api_preview_embed_dashboard_{token}_params_{param-key}_values.json"
+    },
+    "/api/preview_embed/pivot/card/{token}/query": {
+      "$ref": "paths/api_preview_embed_pivot_card_{token}_query.json"
+    },
+    "/api/preview_embed/pivot/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}": {
+      "$ref": "paths/api_preview_embed_pivot_dashboard_{token}_dashcard_{dashcard-id}_card_{card-id}.json"
+    },
+    "/api/preview_embed/tiles/card/{token}/{zoom}/{x}/{y}": {
+      "$ref": "paths/api_preview_embed_tiles_card_{token}_{zoom}_{x}_{y}.json"
+    },
+    "/api/preview_embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}": {
+      "$ref": "paths/api_preview_embed_tiles_dashboard_{token}_dashcard_{dashcard-id}_card_{card-id}_{zoom}_{x}_{y}.json"
+    },
+    "/api/product-feedback": {
+      "$ref": "paths/api_product-feedback.json"
+    },
+    "/api/public/action/{uuid}": {
+      "$ref": "paths/api_public_action_{uuid}.json"
+    },
+    "/api/public/action/{uuid}/execute": {
+      "$ref": "paths/api_public_action_{uuid}_execute.json"
+    },
+    "/api/public/card/{uuid}": {
+      "$ref": "paths/api_public_card_{uuid}.json"
+    },
+    "/api/public/card/{uuid}/params/{param-key}/remapping": {
+      "$ref": "paths/api_public_card_{uuid}_params_{param-key}_remapping.json"
+    },
+    "/api/public/card/{uuid}/params/{param-key}/search/{query}": {
+      "$ref": "paths/api_public_card_{uuid}_params_{param-key}_search_{query}.json"
+    },
+    "/api/public/card/{uuid}/params/{param-key}/values": {
+      "$ref": "paths/api_public_card_{uuid}_params_{param-key}_values.json"
+    },
+    "/api/public/card/{uuid}/query": {
+      "$ref": "paths/api_public_card_{uuid}_query.json"
+    },
+    "/api/public/card/{uuid}/query/{export-format}": {
+      "$ref": "paths/api_public_card_{uuid}_query_{export-format}.json"
+    },
+    "/api/public/dashboard/{uuid}": {
+      "$ref": "paths/api_public_dashboard_{uuid}.json"
+    },
+    "/api/public/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}": {
+      "$ref": "paths/api_public_dashboard_{uuid}_dashcard_{dashcard-id}_card_{card-id}.json"
+    },
+    "/api/public/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/{export-format}": {
+      "$ref": "paths/api_public_dashboard_{uuid}_dashcard_{dashcard-id}_card_{card-id}_{export-format}.json"
+    },
+    "/api/public/dashboard/{uuid}/dashcard/{dashcard-id}/execute": {
+      "$ref": "paths/api_public_dashboard_{uuid}_dashcard_{dashcard-id}_execute.json"
+    },
+    "/api/public/dashboard/{uuid}/params/{param-key}/remapping": {
+      "$ref": "paths/api_public_dashboard_{uuid}_params_{param-key}_remapping.json"
+    },
+    "/api/public/dashboard/{uuid}/params/{param-key}/search/{query}": {
+      "$ref": "paths/api_public_dashboard_{uuid}_params_{param-key}_search_{query}.json"
+    },
+    "/api/public/dashboard/{uuid}/params/{param-key}/values": {
+      "$ref": "paths/api_public_dashboard_{uuid}_params_{param-key}_values.json"
+    },
+    "/api/public/document/{uuid}": {
+      "$ref": "paths/api_public_document_{uuid}.json"
+    },
+    "/api/public/document/{uuid}/card/{card-id}": {
+      "$ref": "paths/api_public_document_{uuid}_card_{card-id}.json"
+    },
+    "/api/public/document/{uuid}/card/{card-id}/{export-format}": {
+      "$ref": "paths/api_public_document_{uuid}_card_{card-id}_{export-format}.json"
+    },
+    "/api/public/oembed": {
+      "$ref": "paths/api_public_oembed.json"
+    },
+    "/api/public/pivot/card/{uuid}/query": {
+      "$ref": "paths/api_public_pivot_card_{uuid}_query.json"
+    },
+    "/api/public/pivot/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}": {
+      "$ref": "paths/api_public_pivot_dashboard_{uuid}_dashcard_{dashcard-id}_card_{card-id}.json"
+    },
+    "/api/public/tiles/card/{uuid}/{zoom}/{x}/{y}": {
+      "$ref": "paths/api_public_tiles_card_{uuid}_{zoom}_{x}_{y}.json"
+    },
+    "/api/public/tiles/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}": {
+      "$ref": "paths/api_public_tiles_dashboard_{uuid}_dashcard_{dashcard-id}_card_{card-id}_{zoom}_{x}_{y}.json"
+    },
+    "/api/pulse": {
+      "$ref": "paths/api_pulse.json"
+    },
+    "/api/pulse/form_input": {
+      "$ref": "paths/api_pulse_form_input.json"
+    },
+    "/api/pulse/test": {
+      "$ref": "paths/api_pulse_test.json"
+    },
+    "/api/pulse/unsubscribe": {
+      "$ref": "paths/api_pulse_unsubscribe.json"
+    },
+    "/api/pulse/unsubscribe/undo": {
+      "$ref": "paths/api_pulse_unsubscribe_undo.json"
+    },
+    "/api/pulse/{id}": {
+      "$ref": "paths/api_pulse_{id}.json"
+    },
+    "/api/pulse/{id}/subscription": {
+      "$ref": "paths/api_pulse_{id}_subscription.json"
+    },
+    "/api/revision": {
+      "$ref": "paths/api_revision.json"
+    },
+    "/api/revision/revert": {
+      "$ref": "paths/api_revision_revert.json"
+    },
+    "/api/revision/{entity}/{id}": {
+      "$ref": "paths/api_revision_{entity}_{id}.json"
+    },
+    "/api/search": {
+      "$ref": "paths/api_search.json"
+    },
+    "/api/search/force-reindex": {
+      "$ref": "paths/api_search_force-reindex.json"
+    },
+    "/api/search/re-init": {
+      "$ref": "paths/api_search_re-init.json"
+    },
+    "/api/search/weights": {
+      "$ref": "paths/api_search_weights.json"
+    },
+    "/api/segment": {
+      "$ref": "paths/api_segment.json"
+    },
+    "/api/segment/{id}": {
+      "$ref": "paths/api_segment_{id}.json"
+    },
+    "/api/segment/{id}/related": {
+      "$ref": "paths/api_segment_{id}_related.json"
+    },
+    "/api/session": {
+      "$ref": "paths/api_session.json"
+    },
+    "/api/session/forgot_password": {
+      "$ref": "paths/api_session_forgot_password.json"
+    },
+    "/api/session/google_auth": {
+      "$ref": "paths/api_session_google_auth.json"
+    },
+    "/api/session/password-check": {
+      "$ref": "paths/api_session_password-check.json"
+    },
+    "/api/session/password_reset_token_valid": {
+      "$ref": "paths/api_session_password_reset_token_valid.json"
+    },
+    "/api/session/properties": {
+      "$ref": "paths/api_session_properties.json"
+    },
+    "/api/session/reset_password": {
+      "$ref": "paths/api_session_reset_password.json"
+    },
+    "/api/setting": {
+      "$ref": "paths/api_setting.json"
+    },
+    "/api/setting/{key}": {
+      "$ref": "paths/api_setting_{key}.json"
+    },
+    "/api/setup": {
+      "$ref": "paths/api_setup.json"
+    },
+    "/api/slack/bug-report": {
+      "$ref": "paths/api_slack_bug-report.json"
+    },
+    "/api/slack/manifest": {
+      "$ref": "paths/api_slack_manifest.json"
+    },
+    "/api/slack/settings": {
+      "$ref": "paths/api_slack_settings.json"
+    },
+    "/api/table": {
+      "$ref": "paths/api_table.json"
+    },
+    "/api/table/card__:id/fks": {
+      "$ref": "paths/api_table_card__:id_fks.json"
+    },
+    "/api/table/card__:id/query_metadata": {
+      "$ref": "paths/api_table_card__:id_query_metadata.json"
+    },
+    "/api/table/{id}": {
+      "$ref": "paths/api_table_{id}.json"
+    },
+    "/api/table/{id}/append-csv": {
+      "$ref": "paths/api_table_{id}_append-csv.json"
+    },
+    "/api/table/{id}/discard_values": {
+      "$ref": "paths/api_table_{id}_discard_values.json"
+    },
+    "/api/table/{id}/fields/order": {
+      "$ref": "paths/api_table_{id}_fields_order.json"
+    },
+    "/api/table/{id}/fks": {
+      "$ref": "paths/api_table_{id}_fks.json"
+    },
+    "/api/table/{id}/query_metadata": {
+      "$ref": "paths/api_table_{id}_query_metadata.json"
+    },
+    "/api/table/{id}/related": {
+      "$ref": "paths/api_table_{id}_related.json"
+    },
+    "/api/table/{id}/replace-csv": {
+      "$ref": "paths/api_table_{id}_replace-csv.json"
+    },
+    "/api/table/{id}/rescan_values": {
+      "$ref": "paths/api_table_{id}_rescan_values.json"
+    },
+    "/api/table/{id}/sync_schema": {
+      "$ref": "paths/api_table_{id}_sync_schema.json"
+    },
+    "/api/table/{table-id}/data": {
+      "$ref": "paths/api_table_{table-id}_data.json"
+    },
+    "/api/task": {
+      "$ref": "paths/api_task.json"
+    },
+    "/api/task/info": {
+      "$ref": "paths/api_task_info.json"
+    },
+    "/api/task/runs": {
+      "$ref": "paths/api_task_runs.json"
+    },
+    "/api/task/runs/entities": {
+      "$ref": "paths/api_task_runs_entities.json"
+    },
+    "/api/task/runs/{id}": {
+      "$ref": "paths/api_task_runs_{id}.json"
+    },
+    "/api/task/unique-tasks": {
+      "$ref": "paths/api_task_unique-tasks.json"
+    },
+    "/api/task/{id}": {
+      "$ref": "paths/api_task_{id}.json"
+    },
+    "/api/testing/echo": {
+      "$ref": "paths/api_testing_echo.json"
+    },
+    "/api/testing/mark-stale": {
+      "$ref": "paths/api_testing_mark-stale.json"
+    },
+    "/api/testing/native-query": {
+      "$ref": "paths/api_testing_native-query.json"
+    },
+    "/api/testing/query": {
+      "$ref": "paths/api_testing_query.json"
+    },
+    "/api/testing/refresh-caches": {
+      "$ref": "paths/api_testing_refresh-caches.json"
+    },
+    "/api/testing/restore/{name}": {
+      "$ref": "paths/api_testing_restore_{name}.json"
+    },
+    "/api/testing/set-time": {
+      "$ref": "paths/api_testing_set-time.json"
+    },
+    "/api/testing/snapshot/{name}": {
+      "$ref": "paths/api_testing_snapshot_{name}.json"
+    },
+    "/api/testing/stats": {
+      "$ref": "paths/api_testing_stats.json"
+    },
+    "/api/tiles/{card-id}/{zoom}/{x}/{y}": {
+      "$ref": "paths/api_tiles_{card-id}_{zoom}_{x}_{y}.json"
+    },
+    "/api/tiles/{dashboard-id}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}": {
+      "$ref": "paths/api_tiles_{dashboard-id}_dashcard_{dashcard-id}_card_{card-id}_{zoom}_{x}_{y}.json"
+    },
+    "/api/tiles/{zoom}/{x}/{y}": {
+      "$ref": "paths/api_tiles_{zoom}_{x}_{y}.json"
+    },
+    "/api/timeline": {
+      "$ref": "paths/api_timeline.json"
+    },
+    "/api/timeline-event": {
+      "$ref": "paths/api_timeline-event.json"
+    },
+    "/api/timeline-event/{id}": {
+      "$ref": "paths/api_timeline-event_{id}.json"
+    },
+    "/api/timeline/collection/root": {
+      "$ref": "paths/api_timeline_collection_root.json"
+    },
+    "/api/timeline/collection/{id}": {
+      "$ref": "paths/api_timeline_collection_{id}.json"
+    },
+    "/api/timeline/{id}": {
+      "$ref": "paths/api_timeline_{id}.json"
+    },
+    "/api/transform": {
+      "$ref": "paths/api_transform.json"
+    },
+    "/api/transform-job": {
+      "$ref": "paths/api_transform-job.json"
+    },
+    "/api/transform-job/{job-id}": {
+      "$ref": "paths/api_transform-job_{job-id}.json"
+    },
+    "/api/transform-job/{job-id}/run": {
+      "$ref": "paths/api_transform-job_{job-id}_run.json"
+    },
+    "/api/transform-job/{job-id}/transforms": {
+      "$ref": "paths/api_transform-job_{job-id}_transforms.json"
+    },
+    "/api/transform-tag": {
+      "$ref": "paths/api_transform-tag.json"
+    },
+    "/api/transform-tag/{tag-id}": {
+      "$ref": "paths/api_transform-tag_{tag-id}.json"
+    },
+    "/api/transform/extract-columns": {
+      "$ref": "paths/api_transform_extract-columns.json"
+    },
+    "/api/transform/is-simple-query": {
+      "$ref": "paths/api_transform_is-simple-query.json"
+    },
+    "/api/transform/run": {
+      "$ref": "paths/api_transform_run.json"
+    },
+    "/api/transform/run/{run-id}": {
+      "$ref": "paths/api_transform_run_{run-id}.json"
+    },
+    "/api/transform/{id}": {
+      "$ref": "paths/api_transform_{id}.json"
+    },
+    "/api/transform/{id}/cancel": {
+      "$ref": "paths/api_transform_{id}_cancel.json"
+    },
+    "/api/transform/{id}/dependencies": {
+      "$ref": "paths/api_transform_{id}_dependencies.json"
+    },
+    "/api/transform/{id}/inspect": {
+      "$ref": "paths/api_transform_{id}_inspect.json"
+    },
+    "/api/transform/{id}/inspect/{lens-id}": {
+      "$ref": "paths/api_transform_{id}_inspect_{lens-id}.json"
+    },
+    "/api/transform/{id}/inspect/{lens-id}/query": {
+      "$ref": "paths/api_transform_{id}_inspect_{lens-id}_query.json"
+    },
+    "/api/transform/{id}/merge-history": {
+      "$ref": "paths/api_transform_{id}_merge-history.json"
+    },
+    "/api/transform/{id}/run": {
+      "$ref": "paths/api_transform_{id}_run.json"
+    },
+    "/api/transform/{id}/table": {
+      "$ref": "paths/api_transform_{id}_table.json"
+    },
+    "/api/upload/csv": {
+      "$ref": "paths/api_upload_csv.json"
+    },
+    "/api/user": {
+      "$ref": "paths/api_user.json"
+    },
+    "/api/user-key-value/namespace/{namespace}": {
+      "$ref": "paths/api_user-key-value_namespace_{namespace}.json"
+    },
+    "/api/user-key-value/namespace/{namespace}/key/{key}": {
+      "$ref": "paths/api_user-key-value_namespace_{namespace}_key_{key}.json"
+    },
+    "/api/user/current": {
+      "$ref": "paths/api_user_current.json"
+    },
+    "/api/user/recipients": {
+      "$ref": "paths/api_user_recipients.json"
+    },
+    "/api/user/{id}": {
+      "$ref": "paths/api_user_{id}.json"
+    },
+    "/api/user/{id}/modal/{modal}": {
+      "$ref": "paths/api_user_{id}_modal_{modal}.json"
+    },
+    "/api/user/{id}/password": {
+      "$ref": "paths/api_user_{id}_password.json"
+    },
+    "/api/user/{id}/reactivate": {
+      "$ref": "paths/api_user_{id}_reactivate.json"
+    },
+    "/api/util/random_token": {
+      "$ref": "paths/api_util_random_token.json"
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "description": "Metabase API",
+      "url": ""
+    }
+  ]
+}

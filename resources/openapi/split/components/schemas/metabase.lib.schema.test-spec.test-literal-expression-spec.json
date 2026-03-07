@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "type": {
+      "const": "literal"
+    },
+    "value": {
+      "$ref": "./metabase.lib.schema.literal.literal.json"
+    }
+  },
+  "required": [
+    "type",
+    "value"
+  ],
+  "type": "object"
+}

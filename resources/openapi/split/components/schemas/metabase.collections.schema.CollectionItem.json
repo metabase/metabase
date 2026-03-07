@@ -1,0 +1,214 @@
+{
+  "properties": {
+    "archived": {
+      "type": "boolean"
+    },
+    "authority_level": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "based_on_upload": {
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "below": {
+      "items": {
+        "$ref": "./metabase.collections.schema.CollectionItemModel.json"
+      },
+      "type": "array"
+    },
+    "can_delete": {
+      "type": "boolean"
+    },
+    "can_restore": {
+      "type": "boolean"
+    },
+    "can_write": {
+      "type": "boolean"
+    },
+    "collection": {
+      "oneOf": [
+        {
+          "$ref": "./metabase.collections.schema.Collection.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "collection_id": {
+      "oneOf": [
+        {
+          "anyOf": [
+            {
+              "description": "value must be an integer greater than zero.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "collection_position": {
+      "oneOf": [
+        {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "collection_preview": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "copy": {
+      "type": "boolean"
+    },
+    "dashboard_count": {
+      "oneOf": [
+        {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "database_id": {
+      "oneOf": [
+        {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "description": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "display": {
+      "type": "string"
+    },
+    "effective_location": {
+      "type": "string"
+    },
+    "entity_id": {
+      "type": "string"
+    },
+    "fully_parameterized": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "here": {
+      "items": {
+        "$ref": "./metabase.collections.schema.CollectionItemModel.json"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "last-edit-info": {
+      "$ref": "./metabase.collections.schema.LastEditInfo.json"
+    },
+    "location": {
+      "type": "string"
+    },
+    "model": {
+      "$ref": "./metabase.collections.schema.CollectionItemModel.json"
+    },
+    "moderated_status": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "personal_owner_id": {
+      "oneOf": [
+        {
+          "description": "value must be an integer greater than zero.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "anyOf": [
+        {
+          "$ref": "./metabase.collections.schema.CollectionType.json"
+        },
+        {
+          "$ref": "./metabase.collections.schema.CardType.json"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "description",
+    "archived"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,64 @@
+{
+  "delete": {
+    "description": "Delete the publicly-accessible link to this Dashboard.",
+    "operationId": "delete-api-dashboard-dashboard-id-public_link",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "dashboard-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "DELETE /api/dashboard/{dashboard-id}/public_link",
+    "tags": [
+      "/api/dashboard"
+    ]
+  },
+  "post": {
+    "description": "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this\n  Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public\n  sharing must be enabled.",
+    "operationId": "post-api-dashboard-dashboard-id-public_link",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "dashboard-id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/dashboard/{dashboard-id}/public_link",
+    "tags": [
+      "/api/dashboard"
+    ]
+  }
+}

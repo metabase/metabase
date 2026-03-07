@@ -1,0 +1,52 @@
+{
+  "get": {
+    "description": "List all Documents that have public links.\n\n  Returns a sequence of Documents that have been publicly shared. Each Document includes its `:id`, `:name`,\n  and `:public_uuid`. Documents are only actually accessible via the public endpoint if public sharing is\n  currently enabled. Archived Documents are excluded from the results.\n\n  This endpoint is used to populate the public links listing in the Admin settings UI.\n\n  Requires superuser permissions. Public sharing must be enabled via the `enable-public-sharing` setting.",
+    "operationId": "get-api-document-public",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "description": "value must be an integer greater than zero.",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "public_uuid": {
+                    "description": "value must be a valid UUID.",
+                    "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "id",
+                  "public_uuid"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          }
+        },
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "GET /api/document/public",
+    "tags": [
+      "/api/document"
+    ]
+  }
+}

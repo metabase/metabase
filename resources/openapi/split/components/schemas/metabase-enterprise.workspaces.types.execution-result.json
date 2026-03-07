@@ -1,0 +1,66 @@
+{
+  "properties": {
+    "ancestors": {
+      "$ref": "./metabase-enterprise.workspaces.types.ancestors-result.json"
+    },
+    "end_time": {
+      "oneOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "message": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "start_time": {
+      "oneOf": [
+        {},
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "status": {
+      "enum": [
+        "succeeded",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "table": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "schema": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "status",
+    "table"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,24 @@
+{
+  "description": "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
+  "properties": {
+    "conversation_id": {
+      "description": "value must be a valid UUID.",
+      "pattern": "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}",
+      "type": "string"
+    },
+    "profile_id": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "conversation_id"
+  ],
+  "type": "object"
+}

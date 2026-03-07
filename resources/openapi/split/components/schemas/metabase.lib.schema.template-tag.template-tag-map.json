@@ -1,0 +1,13 @@
+{
+  "allOf": [
+    {
+      "additionalProperties": {
+        "$ref": "./metabase.lib.schema.template-tag.template-tag.json"
+      },
+      "type": "object"
+    },
+    {
+      "$ref": "./metabase.lib.schema.template-tag..template-tag-map.validate-names.json"
+    }
+  ]
+}

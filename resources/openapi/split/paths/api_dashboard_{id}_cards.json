@@ -1,0 +1,151 @@
+{
+  "put": {
+    "description": "(DEPRECATED -- Use the `PUT /api/dashboard/:id` endpoint instead.)\n   Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:\n\n    {:cards        [{:id                 ... ; DashboardCard ID\n                     :size_x             ...\n                     :size_y             ...\n                     :row                ...\n                     :col                ...\n                     :parameter_mappings ...\n                     :series             [{:id 123\n                                           ...}]}\n                     ...]\n     :tabs [{:id       ... ; DashboardTab ID\n                     :name     ...}]}",
+    "operationId": "put-api-dashboard-id-cards",
+    "parameters": [
+      {
+        "description": "value must be an integer greater than zero.",
+        "in": "path",
+        "name": "id",
+        "required": true,
+        "schema": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      }
+    ],
+    "requestBody": {
+      "content": {
+        "application/json": {
+          "schema": {
+            "properties": {
+              "cards": {
+                "description": "value must be seq of maps in which ids are unique",
+                "items": {
+                  "properties": {
+                    "col": {
+                      "description": "value must be an integer greater or equal to than zero.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "id": {
+                      "type": "integer"
+                    },
+                    "inline_parameters": {
+                      "oneOf": [
+                        {
+                          "items": {
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "parameter_mappings": {
+                      "oneOf": [
+                        {
+                          "$ref": "../components/schemas/metabase.parameters.schema.parameter-mappings.json"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "row": {
+                      "description": "value must be an integer greater or equal to than zero.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "series": {
+                      "oneOf": [
+                        {
+                          "items": {
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "size_x": {
+                      "description": "value must be an integer greater than zero.",
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "size_y": {
+                      "description": "value must be an integer greater than zero.",
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "size_x",
+                    "size_y",
+                    "row",
+                    "col"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "tabs": {
+                "oneOf": [
+                  {
+                    "description": "value must be seq of maps in which ids are unique",
+                    "items": {
+                      "properties": {
+                        "id": {
+                          "description": "value must be an integer.",
+                          "type": "integer"
+                        },
+                        "name": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "cards"
+            ],
+            "type": "object"
+          }
+        }
+      }
+    },
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "PUT /api/dashboard/{id}/cards",
+    "tags": [
+      "/api/dashboard"
+    ]
+  }
+}

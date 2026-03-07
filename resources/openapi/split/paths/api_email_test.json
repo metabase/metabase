@@ -1,0 +1,22 @@
+{
+  "post": {
+    "description": "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.\n  Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response.",
+    "operationId": "post-api-email-test",
+    "parameters": [],
+    "responses": {
+      "2XX": {
+        "description": "Successful response"
+      },
+      "4XX": {
+        "description": "Client error response"
+      },
+      "5XX": {
+        "description": "Server error response"
+      }
+    },
+    "summary": "POST /api/email/test",
+    "tags": [
+      "/api/email"
+    ]
+  }
+}

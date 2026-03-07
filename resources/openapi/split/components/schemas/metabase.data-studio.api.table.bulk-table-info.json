@@ -1,0 +1,43 @@
+{
+  "description": "Schema for table info in bulk operations. Matches frontend BulkTableInfo type.",
+  "properties": {
+    "db_id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "id": {
+      "description": "value must be an integer greater than zero.",
+      "minimum": 1,
+      "type": "integer"
+    },
+    "is_published": {
+      "type": "boolean"
+    },
+    "name": {
+      "type": "string"
+    },
+    "schema": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "db_id",
+    "name",
+    "display_name",
+    "schema",
+    "is_published"
+  ],
+  "type": "object"
+}

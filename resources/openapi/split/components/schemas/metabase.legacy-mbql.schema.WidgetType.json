@@ -1,0 +1,4 @@
+{
+  "$ref": "./metabase.lib.schema.parameter.widget-type.json",
+  "description": "Schema for valid values of `:widget-type` for a `::TemplateTag.FieldFilter`."
+}
