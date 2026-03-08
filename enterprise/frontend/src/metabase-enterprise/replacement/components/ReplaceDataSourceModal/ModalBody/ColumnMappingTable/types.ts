@@ -5,7 +5,7 @@ import type {
 
 export type ColumnMappingItem = {
   id: number;
-  source: ReplaceSourceColumnInfo | null;
-  target: ReplaceSourceColumnInfo | null;
+  source?: ReplaceSourceColumnInfo;
+  target?: ReplaceSourceColumnInfo;
   errors?: ReplaceSourceColumnErrorType[];
 };
