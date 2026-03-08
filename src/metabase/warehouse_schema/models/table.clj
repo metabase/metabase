@@ -11,8 +11,10 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
+   [metabase.models.transforms.transform :as transform]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.workspaces.core :as workspaces]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -423,6 +425,41 @@
         :transform_target    true
         :data_source         :transform
         :initial_sync_status "complete"}))))
+
+(defn- remove-referenced-candidates
+  "Short-circuiting reduce: removes matched triples from candidate-lookup."
+  [candidate-lookup target-triples]
+  (reduce (fn [remaining triple]
+            (if (empty? remaining)
+              (reduced remaining)
+              (dissoc remaining triple)))
+          candidate-lookup
+          target-triples))
+
+(defn gc-transform-target-tables!
+  "Deletes provisional table rows (created by [[upsert-transform-target-table!]]) that are no longer
+   referenced by any Transform or WorkspaceTransform. Safe because these rows were never active,
+   so they have no child records.
+
+   Future optimizations:
+   - Add target_table_id FKs to avoid scanning transform rows.
+   - Pre-filter via workspace_input/workspace_output table references."
+  []
+  (let [candidates (t2/select [:model/Table :id :db_id :schema :name]
+                              :active false :transform_target true :deactivated_at nil)]
+    (when (seq candidates)
+      (let [candidate-db-ids (into #{} (map :db_id) candidates)
+            candidate-lookup (into {} (map (juxt (juxt :db_id :schema :name) identity)) candidates)
+            remaining (remove-referenced-candidates
+                       candidate-lookup
+                       (transform/reducible-target-triples candidate-db-ids))
+            remaining (when (seq remaining)
+                        (remove-referenced-candidates
+                         remaining
+                         (workspaces/reducible-target-triples candidate-db-ids)))]
+        (when-let [dead-ids (seq (mapv :id (vals remaining)))]
+          (log/infof "Deleting %d orphaned transform target table(s)" (count dead-ids))
+          (t2/delete! :model/Table :id [:in dead-ids]))))))
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
