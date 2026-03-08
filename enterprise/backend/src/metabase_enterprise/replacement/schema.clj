@@ -27,7 +27,7 @@
    [:source_entity_id ::source-entity-id]
    [:target_entity_type ::source-entity-type]
    [:target_entity_id ::source-entity-id]
-   [:progress [:maybe :double]]
+   [:progress [:maybe number?]]
    [:message [:maybe :string]]
    [:user_id [:maybe ::lib.schema.id/user]]
    [:start_time ms/TemporalInstant]

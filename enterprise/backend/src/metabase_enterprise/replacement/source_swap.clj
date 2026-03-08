@@ -32,13 +32,15 @@
   [transform old-source new-source]
   (when-let [query (get-in transform [:source :query])]
     (when (replacement.util/valid-query? query)
-      (models.dependency/swap-dependency! :transform (:id transform) old-source new-source)
-      (let [new-query (update-query query old-source new-source {})]
-        (when (not= query new-query)
-          (let [transform' {:source (assoc (:source transform) :query new-query)}]
-            (t2/update! :model/Transform (:id transform) transform')
-            (events/publish-event! :event/transform-update
-                                   {:object transform' :user-id api/*current-user-id*})))))))
+      (let [query'  (update-query query old-source new-source {})
+            changes (cond-> {}
+                      (not= query query')
+                      (assoc-in [:source :query] query'))]
+        (models.dependency/swap-dependency! :transform (:id transform) old-source new-source)
+        (when (seq changes)
+          (t2/update! :model/Transform (:id transform) changes)
+          (events/publish-event! :event/transform-update
+                                 {:object (merge transform changes) :user-id api/*current-user-id*}))))))
 
 (defn- card-swap-source!
   [card old-source new-source]
