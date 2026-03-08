@@ -60,7 +60,10 @@ jobs:
           npm install -g @playwright/cli@latest
           playwright-cli install --skills
 
-      - name: Create project MCP config
+      - name: Pre-warm uv environment
+        run: cd mcp && uv sync --with fastmcp
+
+      - name: Register MCP servers
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         run: |
@@ -81,7 +84,7 @@ jobs:
                   }
                 }
               }
-            }' > .mcp.json
+            }' > ~/.claude.json
 
       - name: Generate GitHub App Token
         uses: actions/create-github-app-token@v1
