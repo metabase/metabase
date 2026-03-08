@@ -60,9 +60,6 @@ jobs:
           npm install -g @playwright/cli@latest
           playwright-cli install --skills
 
-      - name: Pre-warm uv environment
-        run: cd mcp && uv sync && uv pip install fastmcp
-
       - name: Register MCP servers
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
