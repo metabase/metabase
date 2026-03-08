@@ -1041,7 +1041,7 @@
 (defmethod driver/destroy-workspace-isolation! :snowflake
   [_driver database workspace]
   (let [details     (driver.conn/effective-details database)
-        schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        schema-name (or (:schema workspace) (driver.u/workspace-isolation-namespace-name workspace))
         db-name     (:db details)
         role-name   (isolation-role-name workspace)
         username    (driver.u/workspace-isolation-user-name workspace)
