@@ -105,7 +105,7 @@
          child-map {}]
     (let [new-children (children-of graph to-traverse)
           new-traverse (into #{}
-                             (comp (remove child-map) cat)
+                             (comp cat (remove child-map))
                              (vals new-children))
           new-child-map (into child-map new-children)]
       (if (seq new-traverse)
