@@ -76,6 +76,7 @@ jobs:
                 },
                 "linear-server": {
                   url: "https://mcp.linear.app/mcp",
+                  type: "http",
                   headers: {
                     Authorization: ("Bearer " + $key)
                   }
