@@ -892,8 +892,8 @@
     (let [query    (lib/query meta/metadata-provider (meta/table-metadata :products))
           category (m/find-first #(= (:name %) "CATEGORY")
                                  (lib/orderable-columns query))
-          ref      (lib.ref/ref category)
-          query'   (lib/order-by query ref)
-          ref-no-types (lib.options/update-options ref dissoc :base-type :effective-type)
+          a-ref    (lib.ref/ref category)
+          query'   (lib/order-by query a-ref)
+          ref-no-types (lib.options/update-options a-ref dissoc :base-type :effective-type)
           query''  (lib/order-by query' ref-no-types)]
       (is (= 1 (count (lib/order-bys query'')))))))

@@ -33,7 +33,8 @@
     id-or-name))
 
 (mu/defn with-field-ref-id :- :mbql.clause/field
-  [[tag opts id-or-name, :as _field-ref] :- :mbql.clause/field
+  "Return a new field ref with `field-id` as the identifier."
+  [[tag opts _id-or-name, :as _field-ref] :- :mbql.clause/field
    field-id :- ::lib.schema.id/field]
   [tag opts field-id])
 
@@ -44,7 +45,8 @@
     id-or-name))
 
 (mu/defn with-field-ref-name :- :mbql.clause/field
-  [[tag opts id-or-name, :as _field-ref] :- :mbql.clause/field
+  "Return a new field ref with `field-name` as the identifier."
+  [[tag opts _id-or-name, :as _field-ref] :- :mbql.clause/field
    field-name :- :string]
   [tag opts field-name])
 

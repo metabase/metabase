@@ -133,13 +133,13 @@
                         :semantic-type :type/FK :fk-target-field-id 11}
                        {:name "ID"
                         :lib/desired-column-alias "T2__ID"
-                        :base-type :type/BigInteger :effective-type :type/BigInteger}]}]})]
-    (let [mappings (lib-be/check-column-mappings mp [:card 1] [:table 300])]
-      (is (=? [{:source {:name "ID"}, :target {:name "ID"}}
-               {:source {:name "FK"}, :target {:name "FK"}}
-               {:source {:name "ID"}, :target {:name "T2__ID"}}]
-              mappings))
-      (is (every? (complement :errors) mappings)))))
+                        :base-type :type/BigInteger :effective-type :type/BigInteger}]}]})
+        mappings (lib-be/check-column-mappings mp [:card 1] [:table 300])]
+    (is (=? [{:source {:name "ID"}, :target {:name "ID"}}
+             {:source {:name "FK"}, :target {:name "FK"}}
+             {:source {:name "ID"}, :target {:name "T2__ID"}}]
+            mappings))
+    (is (every? (complement :errors) mappings))))
 
 (deftest ^:parallel swap-source-in-query-table->table-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

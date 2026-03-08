@@ -271,9 +271,9 @@
         metric-ids (into #{} (mapcat all-metric-ids) queries)
         measure-ids (into #{} (mapcat all-measure-ids) queries)
         segment-ids (into #{} (mapcat all-segment-ids) queries)
-        all-field-ids (set/union implicitly-joined-field-ids template-tag-field-ids)
+        all-field-ids* (set/union implicitly-joined-field-ids template-tag-field-ids)
         all-field-table-ids (when (seq queries)
-                              (->> (lib.metadata/bulk-metadata (first queries) :metadata/column all-field-ids)
+                              (->> (lib.metadata/bulk-metadata (first queries) :metadata/column all-field-ids*)
                                    (into #{} (keep :table-id))))]
     {:table (set/union source-table-ids all-field-table-ids template-tag-table-ids)
      :card (set/union source-card-ids template-tag-card-ids)

@@ -449,7 +449,7 @@
                             :default  "fallback"}}
           {:keys [template-tags]} (#'source-swap.native/update-table-tags-for-card-swap sql tags 1 2 "New Card")]
       ;; :required and :default should be preserved
-      (is (= true (get-in template-tags ["#2-new-card" :required])))
+      (is (true? (get-in template-tags ["#2-new-card" :required])))
       (is (= "fallback" (get-in template-tags ["#2-new-card" :default]))))))
 
 ;;; ------------------------------------------------ Dimension Tag Tests ------------------------------------------------

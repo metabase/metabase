@@ -1,8 +1,6 @@
 (ns metabase-enterprise.replacement.source-swap.native
   (:require
    [clojure.string :as str]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -74,7 +72,7 @@
 
    Returns {:sql \"...\" :placeholders {\"__MB_0__\" \"{{x}}\" ...}}"
   [sql]
-  (let [parsed (lib.params.parse/parse sql)
+  (let [parsed (lib.lib.params.parse/parse sql)
         {:keys [sql placeholders]} (process-tokens parsed 0)]
     {:sql sql :placeholders placeholders}))
 
@@ -129,10 +127,10 @@
              (string? token)
              token
 
-             (params/Param? token)
+             (lib.params.parse.types/param? token)
              (str "{{" (if (= (:k token) old-tag-name) new-tag-name (:k token)) "}}")
 
-             (params/Optional? token)
+             (lib.params.parse.types/optional? token)
              (str "[[" (replace-tag-in-sql (:args token) old-tag-name new-tag-name) "]]")
 
              :else
@@ -188,7 +186,7 @@
       ;; Replace each table tag with a card tag
       (let [;; Replace all matching tag names in SQL
             new-sql (reduce (fn [s [old-tag-name _]]
-                              (replace-tag-in-sql (params.parse/parse s) old-tag-name card-tag-key))
+                              (replace-tag-in-sql (lib.params.parse/parse s) old-tag-name card-tag-key))
                             sql
                             table-tags)
             ;; Get first old tag to preserve its optional fields (:required, :default)
@@ -348,14 +346,14 @@
                (string? token)
                token
 
-               (params/Param? token)
+               (lib.params.parse.types/param? token)
                (let [k (:k token)]
                  (if (or (= k old-tag)
                          (str/starts-with? k (str old-tag "-")))
                    table-name
                    (str "{{" k "}}")))
 
-               (params/Optional? token)
+               (lib.params.parse.types/optional? token)
                (str "[[" (replace-card-refs-with-table (:args token) old-card-id table-name) "]]")
 
                :else
@@ -379,7 +377,7 @@
                 table-ref (if (:schema new-table)
                             (sql.u/quote-name driver :table (:schema new-table) (:name new-table))
                             (sql.u/quote-name driver :table (:name new-table)))
-                parsed    (params.parse/parse sql)
+                parsed    (lib.params.parse/parse sql)
                 new-sql   (replace-card-refs-with-table parsed old-card-id table-ref)]
             ;; with-native-query re-extracts template tags from the SQL;
             ;; since the card ref is gone, its tag is automatically removed.
@@ -425,7 +423,7 @@
                (string? token)
                token
 
-               (params/Param? token)
+               (lib.params.parse.types/param? token)
                (let [k (:k token)]
                  (cond
                    ;; Match exact tag (no slug) -> replace with plain format
@@ -441,7 +439,7 @@
                    :else
                    (str "{{" k "}}")))
 
-               (params/Optional? token)
+               (lib.params.parse.types/optional? token)
                (str "[[" (replace-card-refs-in-parsed (:args token) old-card-id new-card-id new-card-name) "]]")
 
                :else
@@ -460,7 +458,7 @@
   (or (when-let [new-card (lib.metadata/card query new-card-id)]
         (let [sql           (lib/raw-native-query query)
               new-card-name (:name new-card)
-              parsed        (params.parse/parse sql)
+              parsed        (lib.params.parse/parse sql)
               new-sql       (replace-card-refs-in-parsed parsed old-card-id new-card-id new-card-name)
               new-tags      (replace-template-tags (lib/template-tags query) old-card-id new-card-id new-card-name)]
           (-> query

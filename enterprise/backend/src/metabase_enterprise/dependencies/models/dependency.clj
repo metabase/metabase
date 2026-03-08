@@ -76,6 +76,7 @@
      :source-filter-fn      source-filter-fn})))
 
 (defn direct-dependents
+  "Returns the direct dependents for the given entity key sequence."
   [key-seq]
   (key-dependents key-seq))
 

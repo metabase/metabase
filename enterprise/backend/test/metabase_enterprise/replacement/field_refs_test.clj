@@ -1,11 +1,11 @@
 (ns metabase-enterprise.replacement.field-refs-test
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

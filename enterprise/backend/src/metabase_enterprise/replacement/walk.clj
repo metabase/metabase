@@ -32,6 +32,8 @@
    ref-fn       :- fn?]
   (letfn [(update-legacy-ref [legacy-ref card-id]
             (if-some [ref (try (lib/->pMBQL legacy-ref) (catch Exception _ nil))]
+              ;; `value_field` and `label_field` are legacy refs
+              #_{:clj-kondo/ignore [:discouraged-var]}
               (-> ref (ref-fn card-id) lib/->legacy-MBQL)
               legacy-ref))]
     (mapv (fn [parameter]
@@ -63,18 +65,15 @@
 (mu/defn walk-viz-settings-refs :- :map
   "Walk the viz settings and update the refs using the provided function.
 
-  `ref-fn` will be called with a ref and should return either a string or a new ref."
+  `ref-fn` will be called with a ref and should return either a string to be used as a column name."
   [viz-settings :- :map
    ref-fn       :- fn?]
   (letfn [(update-legacy-ref-or-name [ref-or-name]
             (or (when (vector? ref-or-name)
                   (when-some [ref (try (lib/->pMBQL ref-or-name) (catch Exception _ nil))]
                     (when-some [ref-or-name' (ref-fn ref)]
-                      (cond
-                        (string? ref-or-name')
-                        ref-or-name'
-                        (lib.util/clause? ref-or-name')
-                        (lib/->legacy-MBQL ref-or-name')))))
+                      (when (string? ref-or-name')
+                        ref-or-name'))))
                 ref-or-name))
           (update-legacy-refs-or-names [refs-or-names]
             (into [] (keep update-legacy-ref-or-name) refs-or-names))
@@ -105,6 +104,7 @@
         (m/update-existing-in [:pivot_table.collapsed_rows :rows] update-legacy-refs-or-names))))
 
 (mu/defn click-behavior-card-id :- [:maybe ::lib.schema.id/card]
+  "Returns the card ID from a click behavior if it links to a card."
   [click-behavior :- :map]
   (when (= ::vs/card (::vs/link-type click-behavior))
     (::vs/link-target-id click-behavior)))

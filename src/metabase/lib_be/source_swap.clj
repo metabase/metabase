@@ -79,7 +79,7 @@
                  (let [old-column (get old-by-name column-name)
                        new-column (get new-by-name column-name)
                        errors     (when (and old-column new-column)
-                                    (not-empty (column-errors old-column new-column old-source-type new-source-type)))]
+                                    (perf/not-empty (column-errors old-column new-column old-source-type new-source-type)))]
                    (cond-> {}
                      old-column (assoc :source old-column)
                      new-column (assoc :target new-column)

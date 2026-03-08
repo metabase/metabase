@@ -5,5 +5,6 @@
 (set! *warn-on-reflection* true)
 
 (defn swap-mbql-stages
+  "Swap field references in MBQL stages from old-source to new-source."
   [query old-source new-source]
   (lib-be/swap-source-in-query query old-source new-source))

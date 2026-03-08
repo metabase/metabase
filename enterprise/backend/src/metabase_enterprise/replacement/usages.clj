@@ -26,6 +26,7 @@
      [entity-type entity-id])))
 
 (defn direct-usages
+  "Returns the direct usages (dependents) for the given entity key."
   [entity]
   (-> (deps/direct-dependents [entity] #_{source-type [{:id source-id}]})
       (get entity)))
