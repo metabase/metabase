@@ -18,6 +18,7 @@
    | external-downstream | not-run       | Output hasn't been created, external transforms need it        |
    | external-downstream | removed-field | Field was removed that external transforms reference           |"
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.workspaces.types :as ws.t]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -81,13 +82,15 @@
    Joins with metabase_table to get the active status of each isolated table."
   [workspace-id]
   ;; TODO (Chris 2026-02-02) -- rather fetch all this as an input to graph analysis, and save it in [[graph]].
-  (let [ws-outputs  (t2/query {:select [:wo.id :wo.ref_id :wo.db_id
-                                        :wo.global_schema :wo.global_table :wo.global_table_id
-                                        :wo.isolated_schema :wo.isolated_table :wo.isolated_table_id
-                                        [:t.active :isolated_active]]
-                               :from   [[:workspace_output :wo]]
-                               :left-join [[:metabase_table :t] [:= :wo.isolated_table_id :t.id]]
-                               :where  [:= :wo.workspace_id workspace-id]})
+  ;; t2/query bypasses model transforms, so we trim ref_id manually (char(36) pads with spaces).
+  (let [ws-outputs  (map #(update % :ref_id str/trim)
+                         (t2/query {:select [:wo.id :wo.ref_id :wo.db_id
+                                             :wo.global_schema :wo.global_table :wo.global_table_id
+                                             :wo.isolated_schema :wo.isolated_table :wo.isolated_table_id
+                                             [:t.active :isolated_active]]
+                                    :from   [[:workspace_output :wo]]
+                                    :left-join [[:metabase_table :t] [:= :wo.isolated_table_id :t.id]]
+                                    :where  [:= :wo.workspace_id workspace-id]}))
         ;; External outputs use transform_id (int) instead of ref_id (string)
         ;; Map transform_id to ref_id for compatibility with the rest of the validation code
         ext-outputs (map #(assoc % :ref_id (:transform_id %) :external? true)
