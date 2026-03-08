@@ -361,7 +361,7 @@
                        :from_entity_id table-id,
                        :to_entity_type :transform,
                        :to_entity_id transform-id}]
-                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform)))))))))))
+                     (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
 
 (deftest ^:sequential python-transform-update-handles-downstream-dependencies-test
   (testing "python transform update events handles downstream dependencies"
