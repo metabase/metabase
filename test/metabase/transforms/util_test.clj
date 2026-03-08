@@ -210,10 +210,10 @@
               result (transforms-base.u/normalize-source-tables source-tables)]
           (is (= 999 (:table_id (first result))))))
 
-      (testing "leaves table_id nil for non-existent table ref"
+      (testing "creates provisional table for non-existent table ref"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]
               result (transforms-base.u/normalize-source-tables source-tables)]
-          (is (nil? (:table_id (first result))))))
+          (is (int? (:table_id (first result))))))
 
       (testing "handles entries needing different kinds of enrichment"
         (let [source-tables [{:alias "t1" :table_id (:id t1)}

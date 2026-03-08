@@ -77,22 +77,27 @@
 
 (defn- workspace-outputs
   "Get all workspace outputs with their global and isolated table info.
-   Includes both workspace transform outputs and enclosed external transform outputs."
+   Includes both workspace transform outputs and enclosed external transform outputs.
+   Joins with metabase_table to get the active/provisional status of each isolated table."
   [workspace-id]
   ;; TODO (Chris 2026-02-02) -- rather fetch all this as an input to graph analysis, and save it in [[graph]].
-  (let [ws-outputs  (t2/select [:model/WorkspaceOutput
-                                :id :ref_id :db_id
-                                :global_schema :global_table :global_table_id
-                                :isolated_schema :isolated_table :isolated_table_id]
-                               :workspace_id workspace-id)
+  (let [ws-outputs  (t2/query {:select [:wo.id :wo.ref_id :wo.db_id
+                                        :wo.global_schema :wo.global_table :wo.global_table_id
+                                        :wo.isolated_schema :wo.isolated_table :wo.isolated_table_id
+                                        [:t.active :isolated_active] [:t.provisional :isolated_provisional]]
+                               :from   [[:workspace_output :wo]]
+                               :left-join [[:metabase_table :t] [:= :wo.isolated_table_id :t.id]]
+                               :where  [:= :wo.workspace_id workspace-id]})
         ;; External outputs use transform_id (int) instead of ref_id (string)
         ;; Map transform_id to ref_id for compatibility with the rest of the validation code
         ext-outputs (map #(assoc % :ref_id (:transform_id %) :external? true)
-                         (t2/select [:model/WorkspaceOutputExternal
-                                     :id :transform_id :db_id
-                                     :global_schema :global_table :global_table_id
-                                     :isolated_schema :isolated_table :isolated_table_id]
-                                    :workspace_id workspace-id))]
+                         (t2/query {:select [:woe.id :woe.transform_id :woe.db_id
+                                             :woe.global_schema :woe.global_table :woe.global_table_id
+                                             :woe.isolated_schema :woe.isolated_table :woe.isolated_table_id
+                                             [:t.active :isolated_active] [:t.provisional :isolated_provisional]]
+                                    :from   [[:workspace_output_external :woe]]
+                                    :left-join [[:metabase_table :t] [:= :woe.isolated_table_id :t.id]]
+                                    :where  [:= :woe.workspace_id workspace-id]}))]
     (concat ws-outputs ext-outputs)))
 
 (defn- ids-for-type [entities desired-node-type]
@@ -192,18 +197,21 @@
    Returns a sequence of problem maps."
   [output checked-out-ids enclosed-ids internal-dependents-map]
   (let [{:keys [ref_id db_id global_schema global_table global_table_id
-                isolated_table_id external?]} output
+                isolated_table_id isolated_active isolated_provisional external?]} output
         ;; For external outputs, ref_id is actually the transform_id (an int)
         transform-type           (if external? :external-transform :workspace-transform)
         external-transforms      (external-transform-dependents global_table_id checked-out-ids enclosed-ids)
         has-external-dependents? (seq external-transforms)
         internal-dependents      (get internal-dependents-map ref_id)
         has-internal-dependents? (seq internal-dependents)
-        table-coord              {:db_id db_id :schema global_schema :table global_table}]
+        table-coord              {:db_id db_id :schema global_schema :table global_table}
+        ;; A table hasn't been physically created if there's no table_id, or if it's a provisional placeholder
+        not-yet-created?         (or (nil? isolated_table_id)
+                                     (and (not isolated_active) isolated_provisional))]
 
     (cond
-      ;; Case 1: Isolated table doesn't exist yet
-      (nil? isolated_table_id)
+      ;; Case 1: Isolated table doesn't exist yet (nil or provisional)
+      not-yet-created?
       (cond
         ;; External transforms depend on this output that doesn't exist
         has-external-dependents?
