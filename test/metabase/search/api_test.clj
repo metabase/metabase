@@ -11,7 +11,6 @@
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
-   [metabase.mq.test-util :as mq.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
    [metabase.revisions.models.revision :as revision]
@@ -1889,12 +1888,12 @@
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
 
 (deftest ^:synchronized multiple-limits-test
-  (mq.tu/with-sync-mq
+  (search.tu/with-sync-search-indexing
     (when (search/supports-index?)
-      (search/queue-reindex!))
+      (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
     (testing "Multiple `limit` query args should be handled correctly (#45345)"
-      (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product") ;; using real request to support the double limit query params
-                            :data count)
+      (let [total-count  (-> (mt/user-real-request :crowberto :get 200 "search?q=product") ;; using real request to support the double limit query params
+                             :data count)
             result-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product&limit=1&limit=3")
                              :data count)]
         (is (>= total-count result-count))
