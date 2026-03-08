@@ -26,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -230,6 +231,10 @@
           ;; Check for internal target conflict AFTER adding database to target
           _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
+          ;; Eagerly create global target table row so it's immediately visible
+          {:keys [database schema name]} (:target body)
+          _         (when (and database name)
+                      (table/upsert-transform-target-table! database schema name))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body
                                                  :ref-id ref-id)]
       (-> (select-malli-keys WorkspaceTransform workspace-transform-alias transform)
@@ -674,7 +679,11 @@
           ;; If target is changing, check for conflicts with other transforms (excluding this one)
           (when (:target body)
             (api/check-400 (not (internal-target-conflict? ws-id (:target merged-body) tx-id))
-                           (deferred-tru "Another transform in this workspace already targets that table")))
+                           (deferred-tru "Another transform in this workspace already targets that table"))
+            ;; Eagerly create global target table row so it's immediately visible
+            (let [{:keys [database schema name]} (:target merged-body)]
+              (when (and database name)
+                (table/upsert-transform-target-table! database schema name))))
           (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
           ;; If source or target changed, increment versions for re-analysis
           (when source-or-target-changed?
