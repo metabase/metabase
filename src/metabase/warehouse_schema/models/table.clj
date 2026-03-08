@@ -11,7 +11,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
-   [metabase.models.transforms.transform :as transform]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.workspaces.core :as workspaces]
@@ -452,7 +451,12 @@
             candidate-lookup (into {} (map (juxt (juxt :db_id :schema :name) identity)) candidates)
             remaining (remove-referenced-candidates
                        candidate-lookup
-                       (transform/reducible-target-triples candidate-db-ids))
+                       (eduction
+                        (map (fn [{:keys [target target_db_id]}]
+                               (-> target
+                                   (update :database #(or % target_db_id))
+                                   workspaces/target->triple)))
+                        (t2/reducible-select [:model/Transform :target :target_db_id] :target_db_id [:in candidate-db-ids])))
             remaining (when (seq remaining)
                         (remove-referenced-candidates
                          remaining

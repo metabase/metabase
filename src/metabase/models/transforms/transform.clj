@@ -396,25 +396,6 @@
           (t2/select :model/Transform :id [:in transform-ids])))
       []))
 
-;;; ----------------------------------------- Target Table Lookups ----------------------------------------------
-
-(defn target->triple
-  "Extracts `[db_id schema name]` from a target map."
-  [{:keys [database schema name]}]
-  [database schema name])
-
-(defn reducible-target-triples
-  "Reducible of `[db_id schema name]` triples for transforms targeting any of the given `db-ids`.
-   Used by [[metabase.warehouse-schema.models.table/gc-transform-target-tables!]]."
-  [db-ids]
-  (eduction
-   (map (fn [{:keys [target target_db_id]}]
-          (-> target
-              (update :database #(or % target_db_id))
-              target->triple)))
-   (t2/reducible-select [:model/Transform :target :target_db_id]
-                        :target_db_id [:in db-ids])))
-
 ;;; ------------------------------------------------- Search ---------------------------------------------------
 
 (search.spec/define-spec "transform"

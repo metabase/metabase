@@ -4,9 +4,13 @@
    data can exist from a previous period when it was enabled, and we need to maintain invariants
    on that data so it isn't corrupt when the feature is re-enabled."
   (:require
-   [metabase.models.transforms.transform :as transform]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
+
+(defn target->triple
+  "Extracts `[db_id schema name]` from a target map."
+  [{:keys [database schema name]}]
+  [database schema name])
 
 (defn- parse-target
   "Parses target JSON — raw query bypasses Toucan2 model transforms."
@@ -24,7 +28,7 @@
    (map (fn [{:keys [target database_id]}]
           (-> (parse-target target)
               (update :database #(or % database_id))
-              transform/target->triple)))
+              target->triple)))
    (t2/reducible-query {:select [[:wt.target :target], [:w.database_id :database_id]]
                          :from   [[:workspace_transform :wt]]
                          :join   [[:workspace :w] [:= :wt.workspace_id :w.id]]
