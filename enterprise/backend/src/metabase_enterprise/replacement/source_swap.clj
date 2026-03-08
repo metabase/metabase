@@ -35,7 +35,7 @@
       (let [query'  (update-query query old-source new-source {})
             changes (cond-> {}
                       (not= query query')
-                      (assoc-in [:source :query] query'))]
+                      (assoc :source (assoc (:source transform) :query query')))]
         (models.dependency/swap-dependency! :transform (:id transform) old-source new-source)
         (when (seq changes)
           (t2/update! :model/Transform (:id transform) changes)
