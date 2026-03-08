@@ -351,8 +351,8 @@
                                                 :data_source :metabase-transform
                                                 :is_writable false)
                                 {:create? true})]
-    (when (or (not (:active table)) (:provisional table))
-      (t2/update! :model/Table (:id table) {:active true :provisional false}))
+    (when (not (:active table))
+      (t2/update! :model/Table (:id table) {:active true}))
     table))
 
 (defn sync-target!
@@ -553,11 +553,11 @@
               (and (:table_id entry) (not (:table entry)))
               (merge (int-id->metadata (:table_id entry)) entry)
 
-              ;; Has table metadata but no table_id — look it up, upsert provisional if not found
+              ;; Has table metadata but no table_id — look it up, upsert transform target if not found
               (missing-table-id? entry)
               (assoc entry :table_id (or (ref-lookup (source-table-ref->key entry))
                                          (when (and (:database_id entry) (:table entry))
-                                           (table/upsert-provisional-table!
+                                           (table/upsert-transform-target-table!
                                             (:database_id entry) (:schema entry) (:table entry)))))
 
               ;; Already fully populated

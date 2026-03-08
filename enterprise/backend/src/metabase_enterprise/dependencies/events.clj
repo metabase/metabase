@@ -128,11 +128,11 @@
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Transform (:id object) {:dependency_analysis_version models.dependency/current-dependency-analysis-version}))
       (drop-outdated-target-dep! object)
-      ;; Ensure a provisional table row exists for the transform's target
+      ;; Ensure a transform target table row exists for the transform's target
       (let [target (:target object)
             db-id  (transforms-base.i/target-db-id object)]
         (when (and db-id (:name target))
-          (table/upsert-provisional-table! db-id (:schema target) (:name target)))))))
+          (table/upsert-transform-target-table! db-id (:schema target) (:name target)))))))
 
 (derive ::transform-delete :metabase/event)
 (derive :event/delete-transform ::transform-delete)

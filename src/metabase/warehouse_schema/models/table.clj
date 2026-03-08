@@ -399,13 +399,19 @@
   [_table]
   [:schema :name (serdes/hydrated-hash :db :db_id)])
 
-;;; ------------------------------------------- Provisional Tables ------------------------------------------------
+;;; ----------------------------------------- Transform Target Tables -----------------------------------------------
 
-(defn upsert-provisional-table!
+(defn upsert-transform-target-table!
   "Ensure a metabase_table row exists for the given (db_id, schema, name) triple.
-   If the table doesn't exist, creates it as provisional (inactive, not yet physically materialized).
+   If the table doesn't exist, creates it as a transform target (inactive, not yet physically materialized).
    If it already exists (active or inactive), returns its id without modification.
-   Returns the table id."
+   Returns the table id.
+
+   The `transform_target` column is **conservative**: it is set eagerly to `true` when a transform is
+   configured to target this table (synchronous, never stale), and cleared asynchronously when no
+   transforms reference it anymore. This means the column may have false positives (a table marked as
+   a target when no transform actually targets it) but **never false negatives** (a targeted table
+   will always have `transform_target = true`)."
   [db-id schema table-name]
   (app-db/update-or-insert!
    :model/Table
@@ -414,7 +420,7 @@
      (when-not existing
        {:display_name        (humanization/name->human-readable-name table-name)
         :active              false
-        :provisional         true
+        :transform_target    true
         :data_source         :transform
         :initial_sync_status "complete"}))))
 

@@ -1804,7 +1804,7 @@
             (testing "fallback populates global table_id from metabase_table"
               (is (= (:id table)
                      (-> result :outputs first :global :table_id))))
-            (testing "isolated table_id is populated with provisional table"
+            (testing "isolated table_id is populated with transform target table"
               (is (int? (-> result :outputs first :isolated :table_id))))))))))
 
 (deftest ^:parallel tables-endpoint-fallback-isolated-table-id-test

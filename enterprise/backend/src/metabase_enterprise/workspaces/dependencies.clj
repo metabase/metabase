@@ -55,9 +55,6 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
-   ;; TODO (Chris 2025-12-17) -- I solemnly declare that we will clean up this coupling nightmare for table normalization
-   ^{:clj-kondo/ignore [:metabase/modules]}
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.util :as u]
@@ -227,12 +224,12 @@
    Stores both global (original) and isolated (workspace-specific) table identifiers.
    With epochal versioning, we always insert new rows - cleanup of old versions happens separately.
    Silently ignores constraint violations from concurrent inserts."
-  [workspace-id ref-id isolated-schema {:keys [db_id schema table]} normalize-sql transform-version]
-  ;; 5 queries here: 2 × upsert-provisional-table! (2 queries each) + 1 insert.
+  [workspace-id ref-id isolated-schema {:keys [db_id schema table]} transform-version]
+  ;; 5 queries here: 2 × upsert-transform-target-table! (2 queries each) + 1 insert.
   ;; Worst case 9 on concurrent upsert conflicts.
   (let [isolated-table    (ws.u/isolated-table-name schema table)
-        global-table-id   (table/upsert-provisional-table! db_id schema table)
-        isolated-table-id (table/upsert-provisional-table! db_id isolated-schema isolated-table)]
+        global-table-id   (table/upsert-transform-target-table! db_id schema table)
+        isolated-table-id (table/upsert-transform-target-table! db_id isolated-schema isolated-table)]
     (ws.u/ignore-constraint-violation
      (t2/insert! :model/WorkspaceOutput
                  {:workspace_id      workspace-id
@@ -256,19 +253,22 @@
   "Ensure a workspace_input row exists for the given table coordinate.
    Returns the workspace_input id (existing or newly created)."
   [workspace-id {:keys [db_id schema table table_id]}]
-  (app-db/update-or-insert!
-   :model/WorkspaceInput
-   {:workspace_id workspace-id
-    :db_id        db_id
-    :schema       schema
-    :table        table}
-   (fn [existing]
-     (cond-> {:workspace_id workspace-id
-              :db_id        db_id
-              :schema       schema
-              :table        table
-              :table_id     (:table_id existing)}
-       table_id (assoc :table_id table_id)))))
+  (let [table_id (or table_id
+                     (t2/select-one-fn :id [:model/Table :id]
+                                       :db_id db_id :schema schema :name table))]
+    (app-db/update-or-insert!
+     :model/WorkspaceInput
+     {:workspace_id workspace-id
+      :db_id        db_id
+      :schema       schema
+      :table        table}
+     (fn [existing]
+       (cond-> {:workspace_id workspace-id
+                :db_id        db_id
+                :schema       schema
+                :table        table
+                :table_id     (:table_id existing)}
+         table_id (assoc :table_id table_id))))))
 
 (defn- insert-workspace-inputs!
   "Insert a single workspace_input record per table, with a join entry per transform that uses that table."
@@ -322,11 +322,10 @@
                                                 :id [:in {:select [:database_id]
                                                           :from   [:workspace]
                                                           :where  [:= :id workspace-id]}])
-            normalize         (partial sql.normalize/normalize-name driver)
             default-schema    (driver.sql/default-schema driver)
             ;; Normalize external inputs so schemas are consistent
             normalized-inputs (map (partial normalize-input-schema default-schema) inputs)]
         ;; Insert inputs first, then output - output row acts as "commit marker" for version check
         (insert-workspace-inputs! workspace-id ref-id normalized-inputs transform-version)
-        (insert-workspace-output! workspace-id ref-id isolated-schema output normalize transform-version)
+        (insert-workspace-output! workspace-id ref-id isolated-schema output transform-version)
         nil))))

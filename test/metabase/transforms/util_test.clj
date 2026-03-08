@@ -210,7 +210,7 @@
               result (transforms-base.u/normalize-source-tables source-tables)]
           (is (= 999 (:table_id (first result))))))
 
-      (testing "creates provisional table for non-existent table ref"
+      (testing "creates transform target table for non-existent table ref"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]
               result (transforms-base.u/normalize-source-tables source-tables)]
           (is (int? (:table_id (first result))))))

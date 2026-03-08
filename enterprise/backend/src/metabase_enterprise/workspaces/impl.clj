@@ -571,14 +571,14 @@
         ;; There are 4N + 3 queries for N transforms, we may want to optimize...
         ;;    1 exists
         ;;  + 1 select
-        ;;  + N × 2 upsert-provisional-table! (2 queries each)
+        ;;  + N × 2 upsert-transform-target-table! (2 queries each)
         ;;  + 1 batch insert
         ;; Worst case 8N + 3 on concurrent upsert conflicts.
         (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])
               rows       (for [{tx-id :id, {:keys [database schema name]} :target} transforms]
                            (let [isolated-table    (ws.u/isolated-table-name schema name)
-                                 global-table-id   (table/upsert-provisional-table! database schema name)
-                                 isolated-table-id (table/upsert-provisional-table! database isolated-schema isolated-table)]
+                                 global-table-id   (table/upsert-transform-target-table! database schema name)
+                                 isolated-table-id (table/upsert-transform-target-table! database isolated-schema isolated-table)]
                              {:workspace_id      workspace-id
                               :transform_id      tx-id
                               :graph_version     graph-version
