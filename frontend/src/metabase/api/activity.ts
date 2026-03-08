@@ -10,7 +10,13 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { invalidateTags, listTag, provideActivityItemListTags } from "./tags";
+import {
+  TAG_TYPE_MAPPING,
+  idTag,
+  invalidateTags,
+  listTag,
+  provideActivityItemListTags,
+} from "./tags";
 
 export const activityApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -63,8 +69,11 @@ export const activityApi = Api.injectEndpoints({
             context: "selection",
           },
         }),
-        invalidatesTags: (_, error) =>
-          invalidateTags(error, [listTag("activity-item")]),
+        invalidatesTags: (_, error, item) =>
+          invalidateTags(error, [
+            listTag(TAG_TYPE_MAPPING[item.model]),
+            idTag(TAG_TYPE_MAPPING[item.model], item.model_id),
+          ]),
       },
     ),
   }),
