@@ -1341,10 +1341,7 @@
                                                                        :source {:type :query
                                                                                 :query (lib/query mp products)}
                                                                        :target {:schema "PUBLIC"
-                                                                                :name "referenced_transform_table"}}
-                       :model/Table _ {:name "referenced_transform_table"
-                                       :db_id (mt/id)
-                                       :schema "PUBLIC"}]
+                                                                                :name "referenced_transform_table"}}]
           (events/publish-event! :event/transform-run-complete
                                  {:object {:db-id (mt/id)
                                            :output-schema "PUBLIC"
