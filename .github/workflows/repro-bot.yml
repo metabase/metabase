@@ -61,7 +61,7 @@ jobs:
           playwright-cli install --skills
 
       - name: Pre-warm uv environment
-        run: cd mcp && uv sync --with fastmcp
+        run: cd mcp && uv sync && uv pip install fastmcp
 
       - name: Register MCP servers
         env:
