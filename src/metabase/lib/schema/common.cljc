@@ -158,10 +158,10 @@
 (defn- base-type? [x]
   (isa? x :type/*))
 
-;;; Support fixing really broken types like `:type/creationtime` to `:type/CreationTime`.
-;;; See [[metabase.lib.schema.common-test/normalize-base-type-test]] for more info.
+;;; only support fixing really broken types like `:type/creationtime` to `:type/CreationTime` in prod... Malli checks
+;;; will throw in dev. See [[metabase.lib.schema.common-test/normalize-base-type-test]] for more info
 
-(defn- normalize-base-type*
+(mu/defn- normalize-base-type* :- [:maybe [:ref ::base-type]]
   [x]
   (normalize-keyword x))
 
