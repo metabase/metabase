@@ -72,7 +72,7 @@
 
    Returns {:sql \"...\" :placeholders {\"__MB_0__\" \"{{x}}\" ...}}"
   [sql]
-  (let [parsed (lib.lib.params.parse/parse sql)
+  (let [parsed (lib.params.parse/parse sql)
         {:keys [sql placeholders]} (process-tokens parsed 0)]
     {:sql sql :placeholders placeholders}))
 
