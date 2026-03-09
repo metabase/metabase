@@ -1,56 +1,27 @@
 import { DndContext, pointerWithin } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { type Row, flexRender } from "@tanstack/react-table";
-import type { VirtualItem } from "@tanstack/react-virtual";
 import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
-import { hasModifierKeys } from "metabase/common/utils/keyboard";
-import { AddColumnButton } from "metabase/data-grid/components/AddColumnButton/AddColumnButton";
-import { SortableHeader } from "metabase/data-grid/components/SortableHeader/SortableHeader";
+import { getScrollBarSize } from "metabase/lib/dom";
+
 import {
   ADD_COLUMN_BUTTON_WIDTH,
   DEFAULT_FONT_SIZE,
-  HEADER_BORDER_SIZE,
-  HEADER_HEIGHT,
-  PINNED_BORDER_SEPARATOR_WIDTH,
-  PINNED_COLUMN_Z_INDEX,
-  PINNED_ROW_Z_INDEX,
   ROW_ID_COLUMN_ID,
-} from "metabase/data-grid/constants";
-import { isVirtualRow } from "metabase/data-grid/guards";
-import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme";
-import type { DataGridInstance, DataGridTheme } from "metabase/data-grid/types";
-import { getScrollBarSize } from "metabase/lib/dom";
-
+} from "../../constants";
+import { DataGridThemeProvider } from "../../hooks";
+import type { DataGridInstance, DataGridTheme } from "../../types";
+import { AddColumnButton } from "../AddColumnButton/AddColumnButton";
+import { DataGridHeader } from "../DataGridHeader/DataGridHeader";
+import { DataGridRow } from "../DataGridRow/DataGridRow";
 import { Footer } from "../Footer/Footer";
 
 import S from "./DataGrid.module.css";
-
-// Component supports Mantine-like Styles API
-// Technically this is not the 1:1 mapping of the Mantine API, but it's close enough
-// https://mantine.dev/styles/styles-api/
-export type DataGridStylesNames =
-  | "root"
-  | "tableGrid"
-  | "row"
-  | "headerContainer"
-  | "headerCell"
-  | "bodyContainer"
-  | "bodyCell"
-  | "footer";
-
-export type DataGridStylesProps = {
-  classNames?: { [key in DataGridStylesNames]?: string };
-  styles?: { [key in DataGridStylesNames]?: React.CSSProperties };
-};
+import type { DataGridStylesProps } from "./types";
 
 export interface DataGridProps<TData>
   extends DataGridInstance<TData>,
@@ -158,34 +129,7 @@ export const DataGrid = function DataGrid<TData>({
 
   const lastPinnedColumn = table.getLeftVisibleLeafColumns().at(-1);
   const isLastPinnedColumnRowId = lastPinnedColumn?.id === ROW_ID_COLUMN_ID;
-
-  const lastTopPinnedRow = table.getTopRows().at(-1);
-
-  const getRowPositionStyles = (
-    row: Row<TData>,
-    virtualRow?: VirtualItem,
-  ): React.CSSProperties => {
-    if (!virtualRow) {
-      return {};
-    }
-    const pinnedPosition = row.getIsPinned();
-    /**
-     * It supports only top for now.
-     */
-    if (pinnedPosition === "top") {
-      return {
-        position: "sticky",
-        top: `${HEADER_HEIGHT + virtualRow.start + HEADER_BORDER_SIZE}px`,
-        zIndex: PINNED_ROW_Z_INDEX,
-        backgroundColor: stickyElementsBackgroundColor,
-      };
-    }
-    return {
-      position: "absolute",
-      minHeight: `${virtualRow.size}px`,
-      transform: `translateY(${virtualRow.start}px)`,
-    };
-  };
+  const lastTopPinnedRowId = table.getTopRows().at(-1)?.id;
 
   return (
     <DataGridThemeProvider theme={theme}>
@@ -214,100 +158,22 @@ export const DataGrid = function DataGrid<TData>({
             }}
             onWheel={onWheel}
           >
-            <div
-              data-testid="table-header"
-              className={cx(S.headerContainer, classNames?.headerContainer)}
-              style={{
-                backgroundColor: stickyElementsBackgroundColor,
-                ...styles?.headerContainer,
-              }}
-            >
-              {table.getHeaderGroups().map((headerGroup) => (
-                <div
-                  key={headerGroup.id}
-                  className={cx(S.row, classNames?.row)}
-                  style={{
-                    height: `${HEADER_HEIGHT}px`,
-                    backgroundColor,
-                    ...styles?.row,
-                  }}
-                >
-                  {virtualPaddingLeft ? (
-                    <div style={{ width: virtualPaddingLeft }} />
-                  ) : null}
-                  <SortableContext
-                    items={table.getState().columnOrder}
-                    strategy={horizontalListSortingStrategy}
-                  >
-                    {virtualColumns.map((virtualColumn) => {
-                      const header = headerGroup.headers[virtualColumn.index];
-                      const headerCell = flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      );
-                      const width = header.column.getSize();
-                      const isPinned = header.column.getIsPinned();
-                      const isLastPinned =
-                        header.column.id === lastPinnedColumn?.id;
-                      const hasSeparator =
-                        isLastPinned && !isLastPinnedColumnRowId;
-                      const isRowIdColumn =
-                        header.column.id === ROW_ID_COLUMN_ID;
-                      const totalWidth = hasSeparator
-                        ? width + PINNED_BORDER_SEPARATOR_WIDTH
-                        : width;
-                      const style: React.CSSProperties = isPinned
-                        ? {
-                            width: totalWidth,
-                            position: "sticky",
-                            left: `${virtualColumn.start}px`,
-                            zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor: stickyElementsBackgroundColor,
-                          }
-                        : {
-                            width: totalWidth,
-                          };
-
-                      const headerContent = isRowIdColumn ? (
-                        headerCell
-                      ) : (
-                        <SortableHeader
-                          className={cx(S.headerCell, classNames?.headerCell)}
-                          style={{
-                            backgroundColor: stickyElementsBackgroundColor,
-                            ...styles?.headerCell,
-                          }}
-                          isColumnReorderingDisabled={
-                            isColumnReorderingDisabled || isRowIdColumn
-                          }
-                          header={header}
-                          onClick={onHeaderCellClick}
-                        >
-                          {headerCell}
-                        </SortableHeader>
-                      );
-
-                      return (
-                        <div
-                          key={header.id}
-                          style={style}
-                          className={cx({
-                            [S.cellWithRightSeparator]: hasSeparator,
-                          })}
-                          data-header-id={header.id}
-                        >
-                          {headerContent}
-                        </div>
-                      );
-                    })}
-                  </SortableContext>
-                  {!isAddColumnButtonSticky ? addColumnButton : null}
-                  {virtualPaddingRight ? (
-                    <div style={{ width: virtualPaddingRight }} />
-                  ) : null}
-                </div>
-              ))}
-            </div>
+            <DataGridHeader
+              table={table}
+              virtualColumns={virtualColumns}
+              virtualPaddingLeft={virtualPaddingLeft}
+              virtualPaddingRight={virtualPaddingRight}
+              lastPinnedColumn={lastPinnedColumn}
+              isLastPinnedColumnRowId={isLastPinnedColumnRowId}
+              stickyElementsBackgroundColor={stickyElementsBackgroundColor}
+              backgroundColor={backgroundColor}
+              isAddColumnButtonSticky={isAddColumnButtonSticky}
+              addColumnButton={addColumnButton}
+              isColumnReorderingDisabled={isColumnReorderingDisabled}
+              onHeaderCellClick={onHeaderCellClick}
+              classNames={classNames}
+              styles={styles}
+            />
 
             {rowsCount === 0 && emptyState}
 
@@ -326,129 +192,25 @@ export const DataGrid = function DataGrid<TData>({
                 ...styles?.bodyContainer,
               }}
             >
-              {getVisibleRows().map((maybeVirtualRow) => {
-                const { row, virtualRow } = isVirtualRow(maybeVirtualRow)
-                  ? maybeVirtualRow
-                  : { row: maybeVirtualRow, virtualRow: undefined };
-
-                const rowPositionStyles = getRowPositionStyles(row, virtualRow);
-
-                const dataIndex =
-                  virtualRow != null ? virtualRow.index : row.index;
-                const active = zoomedRowIndex === dataIndex;
-
-                return (
-                  <div
-                    role="row"
-                    key={row.id}
-                    ref={rowMeasureRef}
-                    data-dataset-index={row.index}
-                    data-index={dataIndex}
-                    data-allow-page-break-after="true"
-                    data-row-selected={row.getIsSelected()}
-                    className={cx(S.row, classNames?.row, {
-                      [S.active]: active,
-                      [S.rowWithBottomSeparator]:
-                        row.id === lastTopPinnedRow?.id,
-                    })}
-                    style={{
-                      ...rowPositionStyles,
-                      ...styles?.row,
-                    }}
-                  >
-                    {virtualPaddingLeft ? (
-                      <div
-                        className={cx(S.bodyCell, classNames?.bodyCell)}
-                        style={{
-                          width: virtualPaddingLeft,
-                          ...styles?.bodyCell,
-                        }}
-                      />
-                    ) : null}
-
-                    {virtualColumns.map((virtualColumn) => {
-                      const cell = row.getVisibleCells()[virtualColumn.index];
-                      const isPinned = cell.column.getIsPinned();
-                      const isLastPinned =
-                        cell.column.id === lastPinnedColumn?.id;
-                      const width = cell.column.getSize();
-                      const hasSeparator =
-                        isLastPinned && !isLastPinnedColumnRowId;
-                      const totalWidth = hasSeparator
-                        ? width + PINNED_BORDER_SEPARATOR_WIDTH
-                        : width;
-                      const columnDef = cell.column.columnDef;
-                      const isSelectable =
-                        selection.isEnabled && columnDef?.meta?.enableSelection;
-
-                      const style: React.CSSProperties = isPinned
-                        ? {
-                            width: totalWidth,
-                            position: "sticky",
-                            left: `${virtualColumn.start}px`,
-                            zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor: active
-                              ? undefined
-                              : stickyElementsBackgroundColor,
-                            ...styles?.bodyCell,
-                          }
-                        : {
-                            width: totalWidth,
-                            ...styles?.bodyCell,
-                          };
-                      return (
-                        <div
-                          key={cell.id}
-                          aria-selected={selection.isCellSelected(cell)}
-                          data-column-id={cell.column.id}
-                          data-selectable-cell={isSelectable ? "" : undefined}
-                          className={cx(S.bodyCell, classNames?.bodyCell, {
-                            [S.focusedCell]: selection.isCellFocused(cell),
-                            [S.cellWithRightSeparator]: hasSeparator,
-                          })}
-                          onClick={(e) => {
-                            if (hasModifierKeys(e)) {
-                              return;
-                            }
-                            onBodyCellClick?.(
-                              e,
-                              cell.row.index,
-                              cell.column.id,
-                            );
-                          }}
-                          onDoubleClick={() =>
-                            selection.handlers.handleCellDoubleClick(cell)
-                          }
-                          onMouseDown={(e) =>
-                            selection.handlers.handleCellMouseDown(e, cell)
-                          }
-                          onMouseUp={(e) =>
-                            selection.handlers.handleCellMouseUp(e, cell)
-                          }
-                          onMouseOver={(e) =>
-                            selection.handlers.handleCellMouseOver(e, cell)
-                          }
-                          style={style}
-                        >
-                          {flexRender(cell.column.columnDef.cell, {
-                            ...cell.getContext(),
-                            isSelected: selection.isCellSelected(cell),
-                          })}
-                        </div>
-                      );
-                    })}
-                    {virtualPaddingRight ? (
-                      <div
-                        className={cx(S.bodyCell, classNames?.bodyCell)}
-                        style={{
-                          width: virtualPaddingRight,
-                          ...styles?.bodyCell,
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                );
-              })}
+              {getVisibleRows().map((maybeVirtualRow, index) => (
+                <DataGridRow
+                  key={index}
+                  maybeVirtualRow={maybeVirtualRow}
+                  rowMeasureRef={rowMeasureRef}
+                  virtualColumns={virtualColumns}
+                  virtualPaddingLeft={virtualPaddingLeft}
+                  virtualPaddingRight={virtualPaddingRight}
+                  lastPinnedColumn={lastPinnedColumn}
+                  isLastPinnedColumnRowId={isLastPinnedColumnRowId}
+                  lastTopPinnedRowId={lastTopPinnedRowId}
+                  stickyElementsBackgroundColor={stickyElementsBackgroundColor}
+                  zoomedRowIndex={zoomedRowIndex}
+                  selection={selection}
+                  onBodyCellClick={onBodyCellClick}
+                  classNames={classNames}
+                  styles={styles}
+                />
+              ))}
             </div>
           </div>
           {isAddColumnButtonSticky ? addColumnButton : null}
