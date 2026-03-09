@@ -316,7 +316,7 @@ At the top of the screen, you'll see a branch dropdown:
 ![Choose branches from the dropdown](./images/branch-dropdown.png)
 
 1. Click the branch dropdown to see available branches.
-2. Select a different branch to switch to it.
+2. Select a different branch. This will change the branch for everyone on your Metabase (see [limitations](#branching-limitations)).
 
 If the branch doesn't appear, ensure it exists in your Git repository and that the name matches exactly (branch names are case-sensitive).
 
