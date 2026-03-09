@@ -109,6 +109,7 @@
       (with-open [_ (open-python-message-update-future! run-id message-log)]
         (driver.conn/with-write-connection
           (let [source-range-params (transforms-base.u/get-source-range-params transform)
+                _                 (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
                 conn-spec         (driver/connection-spec driver db)
                 transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
                 run-fn            (fn [cancel-chan]

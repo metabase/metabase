@@ -158,6 +158,17 @@
               transform-id
               {:last_checkpoint_value (some-> source-range-params :hi :value str)}))
 
+(defn save-run-checkpoint-range!
+  "Persist the checkpoint range (lo/hi) on a transform run record.
+  This is called early in execution so the range is recorded even if the run fails."
+  [run-id source-range-params]
+  (when (and run-id source-range-params)
+    (let [{:keys [checkpoint-filter-field-id lo hi]} source-range-params]
+      (t2/update! :model/TransformRun run-id
+                  (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
+                    lo (assoc :checkpoint_lo_value (str (:value lo)))
+                    hi (assoc :checkpoint_hi_value (str (:value hi))))))))
+
 (defn- parse-checkpoint-value
   "Parse a serialized checkpoint value string according to its base-type keyword."
   [base-type ^String s]
@@ -525,14 +536,7 @@
         database (t2/select-one :model/Database db-id)]
     ;; Save watermark if source-range-params available
     (when source-range-params
-      (save-watermark! (:id transform) source-range-params)
-      ;; Write checkpoint range to the run for bookkeeping
-      (when run-id
-        (let [{:keys [checkpoint-filter-field-id lo hi]} source-range-params]
-          (t2/update! :model/TransformRun run-id
-                      (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
-                        lo (assoc :checkpoint_lo_value (str (:value lo)))
-                        hi (assoc :checkpoint_hi_value (str (:value hi))))))))
+      (save-watermark! (:id transform) source-range-params))
     ;; Sync target table
     (sync-target! target database)
     ;; Mark the table as owned by this transform
