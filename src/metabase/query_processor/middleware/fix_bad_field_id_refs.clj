@@ -23,7 +23,7 @@
                              (join :guard (every-pred map? #(= (:lib/type %) :mbql/join)))
                              (update join :conditions update-fields)
 
-                             [:field (_opts :guard (complement :join-alias)) (id :guard pos-int?)]
+                             [:field (opts :guard (complement :join-alias)) (id :guard pos-int?)]
                              (or (when-let [col (lib.metadata/field query id)]
                                    (when-not (= (:table-id col) source-table)
                                      (when-let [resolved (lib.walk/apply-f-for-stage-at-path
