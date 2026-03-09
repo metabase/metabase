@@ -441,7 +441,6 @@ describe("scenarios > metrics > explorer", () => {
         "Category",
       ]);
 
-      //TODO - Add a second metric, and assert that both shared and not shared dimensions are visible
       cy.log("assert that both feedback and order dimensions are available");
       H.MetricsViewer.getAddDimensionButton().click();
       H.popover().within(() => {
@@ -526,6 +525,22 @@ describe("scenarios > metrics > explorer", () => {
         "Title",
         "Category",
       ]);
+
+      cy.log("navigating back should undo changes");
+
+      cy.go("back");
+      H.MetricsViewer.tabsShouldBe([
+        "Created At",
+        "State",
+        "Title",
+        "Category",
+        "Source",
+      ]);
+      cy.go("back");
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findByText("Created At").should("exist");
+        cy.findByText("Account → Created At").should("exist");
+      });
     });
   });
 
@@ -644,6 +659,38 @@ describe("scenarios > metrics > explorer", () => {
         .eq(0)
         .findByRole("button", { name: "Remove" })
         .click();
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 4);
+
+      cy.log("navigating back should undo changes");
+      cy.go("back");
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 2);
+      cy.go("back");
+      H.MetricsViewer.getTab("Category").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+      cy.go("back");
+      H.MetricsViewer.getMetricVisualization().should(
+        "contain.text",
+        "Doohickey",
+      );
+
+      cy.log("navigating forward should re-apply changes");
+      cy.go("forward");
+
+      H.MetricsViewer.getMetricVisualization().should(
+        "not.contain.text",
+        "Doohickey",
+      );
+      cy.go("forward");
+      H.MetricsViewer.getTab("State").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
+      H.MetricsViewer.getAllMetricVisualizations().should("have.length", 2);
+      cy.go("forward");
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 4);
     });
 
