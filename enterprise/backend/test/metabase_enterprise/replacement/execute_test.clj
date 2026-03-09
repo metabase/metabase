@@ -104,15 +104,15 @@
   (testing "when work-fn throws, the run is marked as failed with the exception message"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/ReplacementRun]
-        (let [done? (promise)]
-          (let [record   (replacement-run/create-run! :card 1 :card 2 (mt/user->id :rasta))
-                progress (replacement-run/run-row->progress record done?)]
-            (replacement.execute/execute-async!
-             (fn [_progress]
-               (throw (ex-info "1 of 5 entities failed\n  [:card 42]: boom"
-                               {:failures [{:entity [:card 42] :error "boom"}]})))
-             progress)
-            (is (= :run/fail (u/deref-with-timeout done? 500)))
-            (let [run (t2/select-one :model/ReplacementRun :id (:id record))]
-              (is (= :failed (:status run)))
-              (is (str/starts-with? (:message run) "1 of 5 entities failed")))))))))
+        (let [done? (promise)
+              record   (replacement-run/create-run! :card 1 :card 2 (mt/user->id :rasta))
+              progress (replacement-run/run-row->progress record done?)]
+          (replacement.execute/execute-async!
+           (fn [_progress]
+             (throw (ex-info "1 of 5 entities failed\n  [:card 42]: boom"
+                             {:failures [{:entity [:card 42] :error "boom"}]})))
+           progress)
+          (is (= :run/fail (u/deref-with-timeout done? 500)))
+          (let [run (t2/select-one :model/ReplacementRun :id (:id record))]
+            (is (= :failed (:status run)))
+            (is (str/starts-with? (:message run) "1 of 5 entities failed"))))))))
