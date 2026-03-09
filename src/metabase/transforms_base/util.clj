@@ -231,12 +231,12 @@
             _                   (when (or (nil? column) (not (:active column)))
                                   (throw (ex-info "Checkpoint field does not exist or is not active"
                                                   {:checkpoint-filter-field-id checkpoint-filter-field-id})))
-            lo                (when last_checkpoint_type (parse-checkpoint-value last_checkpoint_type last_checkpoint_value))
-
             _ (when-not (supported-incremental-filter-type? (:base-type column))
                 (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type " (pr-str (:base-type column)) ". "
                                      "Only numeric and temporal columns are supported for incremental filtering.")
                                 {:column column})))
+            lo                (when last_checkpoint_type (parse-checkpoint-value last_checkpoint_type last_checkpoint_value))
+
             max-value
             (let [table-id          (:table-id column)
                   table-metadata    (lib.metadata/table metadata-provider table-id)
