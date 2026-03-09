@@ -1,7 +1,6 @@
 (ns metabase-enterprise.replacement.runner
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.dependencies.events :as deps.events]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
@@ -123,26 +122,24 @@
             (replacement.protocols/advance! progress)))))
 
     ;; phase 2: Swap sources for ALL transitive dependents (with batched metadata warming)
-    ;; Suppress dependency event handlers — source replacement manages deps itself via swap-dependency!
-    (binding [deps.events/*suppress-dependency-events?* true]
-      (let [failures (atom [])]
-        (doseq [batch (partition-all batch-size all-transitive-dependents)]
-          (lib-be/with-metadata-provider-cache
-            (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
-                  loaded            (bulk-load-metadata-for-entities! metadata-provider batch)]
+    (let [failures (atom [])]
+      (doseq [batch (partition-all batch-size all-transitive-dependents)]
+        (lib-be/with-metadata-provider-cache
+          (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+                loaded            (bulk-load-metadata-for-entities! metadata-provider batch)]
 
-              (doseq [entity batch
-                      :let   [object (get loaded entity)]]
-                (try
-                  (replacement.source-swap/swap-source! entity object old-source new-source)
-                  (catch Exception e
-                    (log/warnf e "Failed to swap %s, continuing with next entity" entity)
-                    (swap! failures conj {:entity entity :error (ex-message e)})))
-                (replacement.protocols/advance! progress)))))
+            (doseq [entity batch
+                    :let   [object (get loaded entity)]]
+              (try
+                (replacement.source-swap/swap-source! entity object old-source new-source)
+                (catch Exception e
+                  (log/warnf e "Failed to swap %s, continuing with next entity" entity)
+                  (swap! failures conj {:entity entity :error (ex-message e)})))
+              (replacement.protocols/advance! progress)))))
 
-        (when-let [fs (seq @failures)]
-          (throw (ex-info (failure-message fs (count all-transitive-dependents))
-                          {:failures fs})))))))
+      (when-let [fs (seq @failures)]
+        (throw (ex-info (failure-message fs (count all-transitive-dependents))
+                        {:failures fs}))))))
 
 (defn run-swap
   "Replace all usages of `old-source` with `new-source` across all dependent entities.

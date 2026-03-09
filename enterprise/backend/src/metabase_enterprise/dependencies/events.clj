@@ -17,11 +17,6 @@
 ;; dependency graph up to date. Transform *runs* are also a trigger, since the transform's output table may be created
 ;; or changed at that point.
 
-(def ^:dynamic *suppress-dependency-events?*
-  "When true, dependency event handlers (graph recalculation, stale-marking, metadata propagation)
-  are no-ops. Bound during source replacement, which manages dependencies itself."
-  false)
-
 (defmacro ignore-errors
   "Ignore errors.
 
@@ -49,8 +44,7 @@
 
 (methodical/defmethod events/publish-event! ::card-deps
   [_ {:keys [object]}]
-  (when (and (not *suppress-dependency-events?*)
-             (premium-features/has-feature? :dependencies))
+  (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :card (:id object)
                                                (ignore-errors :card (:id object)
@@ -123,8 +117,7 @@
 
 (methodical/defmethod events/publish-event! ::transform-deps
   [_ {:keys [object]}]
-  (when (and (not *suppress-dependency-events?*)
-             (premium-features/has-feature? :dependencies))
+  (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :transform (:id object)
                                                (ignore-errors :transform (:id object)
@@ -168,8 +161,7 @@
 
 (methodical/defmethod events/publish-event! ::dashboard-deps
   [_ {:keys [object]}]
-  (when (and (not *suppress-dependency-events?*)
-             (premium-features/has-feature? :dependencies))
+  (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (let [dashboard-id (:id object)
             dashcards (t2/select :model/DashboardCard :dashboard_id dashboard-id)
@@ -246,8 +238,7 @@
 
 (methodical/defmethod events/publish-event! ::segment-deps
   [_ {:keys [object]}]
-  (when (and (not *suppress-dependency-events?*)
-             (premium-features/has-feature? :dependencies))
+  (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :segment (:id object)
                                                (ignore-errors :segment (:id object)
@@ -270,8 +261,7 @@
 
 (methodical/defmethod events/publish-event! ::measure-deps
   [_ {:keys [object]}]
-  (when (and (not *suppress-dependency-events?*)
-             (premium-features/has-feature? :dependencies))
+  (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
       (models.dependency/replace-dependencies! :measure (:id object)
                                                (ignore-errors :measure (:id object)
@@ -295,8 +285,7 @@
 
 (methodical/defmethod events/publish-event! ::check-card-dependents
   [_ {:keys [object]}]
-  (when (and (not *suppress-dependency-events?*)
-             (premium-features/has-feature? :dependencies))
+  (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
       (let [has-stale-dependents? (t2/with-transaction [_conn]
                                     (deps.findings/upsert-analysis! object)
@@ -322,8 +311,7 @@
 
 (methodical/defmethod events/publish-event! ::check-segment-dependents
   [_ {:keys [object]}]
-  (when (and (not *suppress-dependency-events?*)
-             (premium-features/has-feature? :dependencies))
+  (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
       (let [has-stale-dependents? (t2/with-transaction [_conn]
                                     (deps.findings/upsert-analysis! object)

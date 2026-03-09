@@ -195,7 +195,6 @@
 
 (methodical/defmethod events/publish-event! ::update-card-dependents-metadata
   [_ {{:keys [id dataset_query]} :object :keys [previous-object]}]
-  (when (and (not metabase-enterprise.dependencies.events/*suppress-dependency-events?*)
-             (premium-features/has-feature? :dependencies)
+  (when (and (premium-features/has-feature? :dependencies)
              (not (lib/any-native-stage? dataset_query)))
     (update-dependent-mbql-cards-metadata! dataset_query :card id previous-object :metadata/card)))
