@@ -1,4 +1,3 @@
-
 import {
   CollectionBrowser,
   InteractiveQuestion,
