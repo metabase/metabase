@@ -19,6 +19,7 @@ type AlertListModalProps = {
   onEdit: (notification: Notification) => void;
   onDelete: (notification: Notification) => void;
   onUnsubscribe: (notification: Notification) => void;
+  onDuplicate: (notification: Notification) => void;
   onClose: () => void;
 };
 
@@ -29,6 +30,7 @@ export const AlertListModal = ({
   onEdit,
   onDelete,
   onUnsubscribe,
+  onDuplicate,
   onClose,
 }: AlertListModalProps) => {
   const user = useSelector(getUser);
@@ -78,6 +80,7 @@ export const AlertListModal = ({
               onEdit={onEdit}
               onDelete={onDelete}
               onUnsubscribe={onUnsubscribe}
+              onDuplicate={onDuplicate}
             />
           );
         })}

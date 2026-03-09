@@ -206,3 +206,41 @@
                  {:type    :notification-recipient/user
                   :user_id (mt/user->id :lucky)}]
                 (email-recipients noti)))))))))
+
+(deftest duplicate-alert-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel]
+      (notification.tu/with-card-notification
+        [original-notification {:notification-card {:send_condition :goal_above
+                                                    :send_once      true}
+                                :card              (basic-alert-query)
+                                :subscriptions     [{:type :notification-subscription/cron
+                                                     :cron_schedule "0 0 14 ? * 4 *"}]
+                                :handlers          [{:channel_type :channel/email
+                                                     :recipients   [{:type :notification-recipient/user
+                                                                     :user_id (mt/user->id :rasta)}
+                                                                    {:type :notification-recipient/raw-value
+                                                                     :details {:value "test@metabase.com"}}]}
+                                                    {:channel_type :channel/slack
+                                                     :recipients   [{:type :notification-recipient/raw-value
+                                                                     :details {:value "#general"}}]}
+                                                    {:channel_type :channel/http
+                                                     :channel_id   chn-id}]}]
+        (testing "duplicate alert creates a new alert with same configuration"
+          (let [duplicated-alert (mt/user-http-request :rasta :post 200
+                                                       (format "alert/%d/duplicate" (:id original-notification)))]
+            (is (not= (:id original-notification) (:id duplicated-alert)))
+            (is (= "goal" (:alert_condition duplicated-alert)))
+            (is (true? (:alert_above_goal duplicated-alert)))
+            (is (true? (:alert_first_only duplicated-alert)))
+            (is (= 3 (count (:channels duplicated-alert))))
+            (is (= #{"email" "slack" "http"}
+                   (set (map :channel_type (:channels duplicated-alert)))))))
+
+        (testing "duplicate alert requires read permission"
+          (mt/user-http-request :lucky :post 403
+                                (format "alert/%d/duplicate" (:id original-notification))))
+
+        (testing "duplicate non-existent alert returns 404"
+          (mt/user-http-request :rasta :post 404
+                                (format "alert/%d/duplicate" Integer/MAX_VALUE)))))))

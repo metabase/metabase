@@ -3,6 +3,7 @@ import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
 import {
+  useDuplicateAlertMutation,
   useListNotificationsQuery,
   useUnsubscribeFromNotificationMutation,
   useUpdateNotificationMutation,
@@ -42,6 +43,7 @@ export const QuestionAlertListModal = ({
 
   const [updateNotification] = useUpdateNotificationMutation();
   const [unsubscribe] = useUnsubscribeFromNotificationMutation();
+  const [duplicateAlert] = useDuplicateAlertMutation();
 
   const [activeModal, setActiveModal] = useState<AlertModalMode | null>(
     questionNotifications ? getDefaultActiveModal(questionNotifications) : null,
@@ -118,6 +120,21 @@ export const QuestionAlertListModal = ({
     }
   };
 
+  const handleDuplicate = async (alert: Notification) => {
+    const result = await duplicateAlert(alert.id);
+
+    if (result.error) {
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: t`Failed to duplicate alert`,
+      });
+      return;
+    }
+
+    sendToast({ message: t`Alert duplicated successfully` });
+  };
+
   if (!question.isSaved()) {
     return null;
   }
@@ -142,6 +159,7 @@ export const QuestionAlertListModal = ({
             setEditingItem(notification);
             setActiveModal("unsubscribe-confirm-modal");
           }}
+          onDuplicate={handleDuplicate}
         />
       )}
 
