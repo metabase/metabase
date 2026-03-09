@@ -30,6 +30,6 @@
               (update :database #(or % database_id))
               target->triple)))
    (t2/reducible-query {:select [[:wt.target :target], [:w.database_id :database_id]]
-                         :from   [[:workspace_transform :wt]]
-                         :join   [[:workspace :w] [:= :wt.workspace_id :w.id]]
-                         :where  [:in :w.database_id db-ids]})))
+                        :from   [[:workspace_transform :wt]]
+                        :join   [[:workspace :w] [:= :wt.workspace_id :w.id]]
+                        :where  [:in :w.database_id db-ids]})))

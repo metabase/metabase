@@ -13,8 +13,8 @@
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.workspaces.core :as workspaces]
    [metabase.util.malli :as mu]
+   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

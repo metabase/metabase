@@ -1848,7 +1848,8 @@
            remote-sync
            search
            util
-           warehouses}}
+           warehouses
+           workspaces}}
 
   warehouse-schema-rest
   {:team "UX West"
@@ -1872,6 +1873,11 @@
            util
            warehouse-schema
            xrays}}
+
+  workspaces
+  {:team "Metabot"
+   :api  #{metabase.workspaces.core}
+   :uses #{util}}
 
   warehouses
   {:team "UX West"
