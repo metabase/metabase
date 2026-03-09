@@ -16,9 +16,7 @@
    [metabase.transforms.jobs :as jobs]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [with-transform-cleanup!]]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent CyclicBarrier TimeUnit)))
+   [toucan2.core :as t2]))
 
 (deftest basic-deps-test
   (let [ordering {1 #{2 3}
