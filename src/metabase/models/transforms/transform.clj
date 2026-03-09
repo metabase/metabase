@@ -18,6 +18,7 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.util :as transforms.u]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -219,11 +220,19 @@
                  (:owner_email transform)
                  {:email (:owner_email transform)}))))))
 
+(defn- upsert-target-table-if-needed! [transform]
+  (let [target (:target transform)
+        db-id  (transforms-base.i/target-db-id transform)]
+    (when (and db-id (:name target))
+      (table/upsert-transform-target-table! db-id (:schema target) (:name target)))))
+
 (t2/define-after-insert :model/Transform [transform]
+  (upsert-target-table-if-needed! transform)
   (events/publish-event! :event/create-transform {:object transform})
   transform)
 
 (t2/define-after-update :model/Transform [transform]
+  (upsert-target-table-if-needed! transform)
   (events/publish-event! :event/update-transform {:object transform})
   transform)
 

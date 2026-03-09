@@ -351,7 +351,7 @@
                                                 :data_source :metabase-transform
                                                 :is_writable false)
                                 {:create? true})]
-    (when (not (:active table))
+    (when-not (:active table)
       (t2/update! :model/Table (:id table) {:active true}))
     table))
 
