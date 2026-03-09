@@ -163,7 +163,6 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
     }
 
     tileLayerInstance.createTile = function (
-      this: TileLayerWithInternals,
       coords: L.Coords,
       done?: L.DoneCallback,
     ): HTMLElement {
