@@ -79,20 +79,6 @@
   (testing "Can parse mariadb version strings"
     (is (= {:major 12 :minor 2 :patch 2} (#'mdb.setup/parse-db-version "12.2.2-MariaDB-ubu2404")))))
 
-(comment
-
-  [(mdb.connection/db-type)
-
-   (.. (mdb.connection/data-source)
-       (getConnection)
-       (getMetaData)
-       (getDatabaseProductName))
-
-   (.. (mdb.connection/data-source)
-       (getConnection)
-       (getMetaData)
-       (getDatabaseProductVersion))])
-
 (deftest setup-db-test
   (testing "Should be able to set up an arbitrary application DB"
     (letfn [(test* [data-source]
