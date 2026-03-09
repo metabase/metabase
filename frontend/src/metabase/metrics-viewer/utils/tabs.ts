@@ -63,11 +63,12 @@ function getDimensionType(
   return null;
 }
 
-type ClassifiedDimension = {
+export type ClassifiedDimension = {
   dimension: DimensionMetadata;
   id: string;
-  name?: string;
+  name: string;
   displayName: string;
+  icon: IconName;
   type: MetricsViewerTabType;
   group?: DimensionGroup;
   isDefault?: boolean;
@@ -110,8 +111,9 @@ export function getDimensionsByType(
     result.set(valuesInfo.id, {
       dimension,
       id: valuesInfo.id,
-      name: displayInfo.name,
+      name: displayInfo.name ?? displayInfo.displayName,
       displayName: displayInfo.displayName,
+      icon: getDimensionIcon(dimension),
       type,
       group: displayInfo.group,
       isDefault: defaultDimensionIds.has(valuesInfo.id),
@@ -266,7 +268,7 @@ function findSourceMatch(
   reference: ClassifiedDimension,
 ): ClassifiedDimension | null {
   let nameMatch: ClassifiedDimension | null = null;
-  const referenceName = reference.name ?? null;
+  const referenceName = reference.name;
 
   for (const [, info] of dimensions) {
     if (info.type !== type) {
@@ -615,8 +617,7 @@ function findDimensionBySourceMatch(
     }
     if (
       !nameMatch &&
-      reference.name &&
-      info.name?.toLowerCase() === reference.name.toLowerCase()
+      info.name.toLowerCase() === reference.name.toLowerCase()
     ) {
       if (
         !getSubtype ||

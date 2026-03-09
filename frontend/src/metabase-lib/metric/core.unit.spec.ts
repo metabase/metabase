@@ -157,6 +157,14 @@ describe("metabase-lib/metric/core", () => {
     });
   });
 
+  describe("sourceMeasureTableId", () => {
+    it("should return null for a metric-based definition", () => {
+      const { definition } = setupDefinition();
+      const tableId = LibMetric.sourceMeasureTableId(definition);
+      expect(tableId).toBeNull();
+    });
+  });
+
   describe("filters", () => {
     it("should return filters for a new definition (empty by default)", () => {
       const { definition } = setupDefinition();

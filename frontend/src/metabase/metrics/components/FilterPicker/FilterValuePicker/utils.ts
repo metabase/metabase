@@ -33,3 +33,21 @@ export function getSearchPlaceholder(
 export function getNothingFoundMessage(searchColumnName: string) {
   return t`No matching ${searchColumnName} found.`;
 }
+
+export function canListAllFilterDimensions(
+  definition: LibMetric.MetricDefinition,
+  dimension: LibMetric.DimensionMetadata,
+  allFilterDimensions: LibMetric.DimensionMetadata[] | undefined,
+): boolean {
+  const ownInfo = LibMetric.dimensionValuesInfo(definition, dimension);
+  if (!ownInfo.canListValues) {
+    return false;
+  }
+  if (!allFilterDimensions || allFilterDimensions.length <= 1) {
+    return true;
+  }
+  const first = allFilterDimensions[0];
+  return allFilterDimensions.every((other) =>
+    LibMetric.isSameSource(first, other),
+  );
+}

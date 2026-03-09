@@ -23,7 +23,7 @@ import type { ComboboxProps } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 
-import { getStaticPlaceholder } from "./utils";
+import { canListAllFilterDimensions, getStaticPlaceholder } from "./utils";
 
 type FilterValuePickerProps<T> = {
   definition: LibMetric.MetricDefinition;
@@ -45,24 +45,6 @@ type FilterValuePickerOwnProps = {
   parseValue?: (rawValue: string) => string | null;
   onChange: (newValues: string[]) => void;
 };
-
-function canListAllFilterDimensions(
-  definition: LibMetric.MetricDefinition,
-  dimension: LibMetric.DimensionMetadata,
-  allFilterDimensions: LibMetric.DimensionMetadata[] | undefined,
-): boolean {
-  const ownInfo = LibMetric.dimensionValuesInfo(definition, dimension);
-  if (!ownInfo.canListValues) {
-    return false;
-  }
-  if (!allFilterDimensions || allFilterDimensions.length <= 1) {
-    return true;
-  }
-  const first = allFilterDimensions[0];
-  return allFilterDimensions.every((other) =>
-    LibMetric.isSameSource(first, other),
-  );
-}
 
 function FilterValuePicker({
   definition,

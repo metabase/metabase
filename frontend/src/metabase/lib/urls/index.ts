@@ -9,7 +9,7 @@ export * from "./dashboards";
 export * from "./dependencies";
 export * from "./documents";
 export * from "./indexed-entities";
-export * from "./metrics-viewer";
+export * from "./metrics";
 export * from "./modelToUrl";
 export * from "./permissions";
 export * from "./misc";

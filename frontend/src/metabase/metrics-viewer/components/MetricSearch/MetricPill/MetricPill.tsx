@@ -5,11 +5,11 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import { canAccessDataStudio } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import {
   dataStudioMetric,
   dataStudioPublishedTableMeasure,
 } from "metabase/lib/urls/data-studio";
-import { metricQuestionUrl } from "metabase/lib/urls/models";
 import { Box, Flex, Icon, Menu, Pill, Popover, Skeleton } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -247,7 +247,7 @@ export function MetricPill({
               leftSection={<Icon name="info" />}
               rightSection={<Icon name="external" />}
               component={ForwardRefLink}
-              to={metricQuestionUrl({
+              to={Urls.metricQuestionUrl({
                 id: metric.id,
                 name: metric.name ?? undefined,
               })}

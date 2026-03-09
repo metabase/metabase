@@ -2,7 +2,6 @@ import slugg from "slugg";
 
 import type { Card } from "metabase-types/api";
 
-import { exploreMetric } from "./metrics-viewer";
 import type { QuestionUrlBuilderParams } from "./questions";
 import { question } from "./questions";
 import { appendSlug } from "./utils";
@@ -18,19 +17,6 @@ export function model(
   opts?: QuestionUrlBuilderParams,
 ) {
   return question(card, opts);
-}
-
-export function metric(card: CardOrSearchResult): string {
-  const id = card.card_id ?? card.id;
-  const numericId = typeof id === "number" ? id : parseInt(String(id), 10);
-  if (!isNaN(numericId)) {
-    return exploreMetric(numericId);
-  }
-  return question(card);
-}
-
-export function metricQuestionUrl(card: CardOrSearchResult): string {
-  return question({ ...card, type: "metric" });
 }
 
 export function modelDetail(card: CardOrSearchResult, tab = "") {

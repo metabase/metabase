@@ -66,6 +66,10 @@ export function CoordinateFilterPicker({
     const filter = getFilterClause(operator, secondDimension, values);
     if (filter) {
       onSelect(filter);
+    } else {
+      console.warn(
+        `Missing filter clause for operator: ${operator} and values: ${values}`,
+      );
     }
   };
 

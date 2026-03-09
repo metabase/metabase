@@ -5,32 +5,20 @@ import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
-import { groupIntoSections } from "metabase/common/components/DimensionPill";
+import {
+  type DimensionOption,
+  groupIntoSections,
+} from "metabase/common/components/DimensionPill";
 import { HoverParent } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
-import type { IconName } from "metabase/ui";
 import { Flex, Icon } from "metabase/ui";
-import type {
-  DimensionGroup,
-  DimensionMetadata,
-  MetricDefinition,
-  ProjectionClause,
-} from "metabase-lib/metric";
+import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import { getDimensionIcon, getDimensionsByType } from "../../utils/tabs";
+import { getDimensionsByType } from "../../utils/tabs";
 import { DimensionBinningPicker } from "../DimensionBinningPicker";
 import { DimensionTemporalUnitPicker } from "../DimensionTemporalUnitPicker";
 
 import S from "./BreakoutDimensionPicker.module.css";
-
-type DimensionItem = {
-  name: string;
-  displayName: string;
-  dimension: DimensionMetadata;
-  icon: IconName;
-  group?: DimensionGroup;
-  selected?: boolean;
-};
 
 interface BreakoutDimensionPickerProps {
   definition: MetricDefinition;
@@ -52,13 +40,9 @@ export function BreakoutDimensionPicker({
     [definition],
   );
 
-  const sections: Section<DimensionItem>[] = useMemo(() => {
-    const items: DimensionItem[] = [...dimensions.values()].map((dim) => ({
-      name: dim.name ?? dim.displayName,
-      displayName: dim.displayName,
-      dimension: dim.dimension,
-      icon: getDimensionIcon(dim.dimension),
-      group: dim.group,
+  const sections: Section<DimensionOption>[] = useMemo(() => {
+    const items: DimensionOption[] = [...dimensions.values()].map((dim) => ({
+      ...dim,
       selected: currentBreakoutDimensionName === dim.name,
     }));
 
@@ -74,29 +58,29 @@ export function BreakoutDimensionPicker({
   );
 
   const handleChange = useCallback(
-    (item: DimensionItem) => {
+    (item: DimensionOption) => {
       handleSelect(LibMetric.dimensionReference(item.dimension));
     },
     [handleSelect],
   );
 
   const renderItemName = useCallback(
-    (item: DimensionItem) => item.displayName,
+    (item: DimensionOption) => item.displayName,
     [],
   );
 
   const renderItemIcon = useCallback(
-    (item: DimensionItem) => <Icon name={item.icon} />,
+    (item: DimensionOption) => <Icon name={item.icon} />,
     [],
   );
 
   const itemIsSelected = useCallback(
-    (item: DimensionItem) => item.selected ?? false,
+    (item: DimensionOption) => item.selected ?? false,
     [],
   );
 
   const renderItemExtra = useCallback(
-    (item: DimensionItem, isSelected: boolean) => {
+    (item: DimensionOption, isSelected: boolean) => {
       const isBinnable = LibMetric.isBinnable(definition, item.dimension);
       const isTemporalBucketable = LibMetric.isTemporalBucketable(
         definition,

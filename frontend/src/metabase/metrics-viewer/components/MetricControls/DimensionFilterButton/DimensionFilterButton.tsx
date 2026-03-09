@@ -1,12 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
-import { getDatePickerValue } from "metabase/metrics/utils/dates";
-import { getDateFilterDisplayName } from "metabase/querying/common/utils/dates";
 import { Button, Icon, Popover } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import type {
   DimensionMetadata,
   FilterClause,
@@ -20,51 +16,7 @@ import {
   parseFilter,
 } from "../../../utils/dimension-filters";
 
-function getFilterDisplayName(
-  definition: MetricDefinition,
-  filterClause: FilterClause,
-  dimensionFilter: DimensionFilterValue,
-): string {
-  const datePickerValue = getDatePickerValue(definition, filterClause);
-  if (datePickerValue) {
-    return getDateFilterDisplayName(datePickerValue);
-  }
-
-  return match(dimensionFilter)
-    .with({ type: "boolean" }, (filter) => {
-      if (filter.operator === "=" && filter.values.length > 0) {
-        return filter.values[0] ? t`True` : t`False`;
-      }
-      return Lib.describeFilterOperator(filter.operator).toLowerCase();
-    })
-    .with({ type: "time" }, (filter) => {
-      const operator = Lib.describeFilterOperator(
-        filter.operator,
-      ).toLowerCase();
-      const formattedValues = filter.values
-        .map((date) => date.toLocaleTimeString())
-        .join(", ");
-      return `${operator} ${formattedValues}`;
-    })
-    .with(
-      { type: "string" },
-      { type: "number" },
-      { type: "coordinate" },
-      (filter) => {
-        const operator = Lib.describeFilterOperator(
-          filter.operator,
-        ).toLowerCase();
-        if (filter.values.length === 0) {
-          return operator;
-        }
-        return `${operator} ${filter.values.join(", ")}`;
-      },
-    )
-    .with({ type: "default" }, (filter) =>
-      Lib.describeFilterOperator(filter.operator).toLowerCase(),
-    )
-    .exhaustive();
-}
+import { getFilterDisplayName } from "./utils";
 
 type DimensionFilterButtonProps = {
   definition: MetricDefinition;
@@ -98,18 +50,14 @@ export function DimensionFilterButton({
   const isDateDimension = LibMetric.isDateOrDateTime(filterDimension);
 
   const filterName = useMemo(() => {
-    if (reconstructedFilter && dimensionFilter) {
-      return getFilterDisplayName(
-        definition,
-        reconstructedFilter,
-        dimensionFilter,
-      );
+    if (dimensionFilter) {
+      return getFilterDisplayName(dimensionFilter);
     }
     if (isDateDimension) {
       return t`All time`;
     }
     return t`All values`;
-  }, [reconstructedFilter, dimensionFilter, definition, isDateDimension]);
+  }, [dimensionFilter, isDateDimension]);
 
   const handleSelect = useCallback(
     (filterClause: FilterClause) => {

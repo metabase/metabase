@@ -18,6 +18,7 @@
   {:lib/type           :metadata/measure
    :id                 99
    :name               "Average Order Value"
+   :table-id           7
    :dimensions         []
    :dimension-mappings []
    :definition         {:database 1 :type :query :query {:source-table 2}}})
@@ -476,6 +477,18 @@
                                          [:metric {:lib/uuid "a"} 1]
                                          [:metric {:lib/uuid "b"} 2]])]
       (is (nil? (lib-metric.js/sourceMeasureId definition))))))
+
+;;; -------------------------------------------------- sourceMeasureTableId --------------------------------------------------
+
+(deftest ^:parallel sourceMeasureTableId-returns-table-id-for-measure-test
+  (testing "sourceMeasureTableId returns the table-id for a measure-based definition"
+    (let [definition (assoc sample-definition
+                            :expression [:measure {:lib/uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"} 99])]
+      (is (= 7 (lib-metric.js/sourceMeasureTableId definition))))))
+
+(deftest ^:parallel sourceMeasureTableId-returns-nil-for-metric-test
+  (testing "sourceMeasureTableId returns nil for a metric-based definition"
+    (is (nil? (lib-metric.js/sourceMeasureTableId sample-definition)))))
 
 ;;; -------------------------------------------------- projections multi-arity --------------------------------------------------
 
