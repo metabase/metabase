@@ -32,11 +32,7 @@ import {
   isNumeric,
   isState,
 } from "metabase-lib/v1/types/utils/isa";
-import type {
-  DatasetData,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { DatasetData, Series } from "metabase-types/api";
 
 import {
   ChoroplethMap,
@@ -149,10 +145,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
           { name: "Grid map", value: "grid" },
         ],
       },
-      getDefault: (
-        [{ card, data }]: Series,
-        settings: VisualizationSettings,
-      ) => {
+      getDefault: ([{ card, data }], settings) => {
         const display = card.display as string;
         switch (display) {
           case "state":
@@ -268,7 +261,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         return t`Region map`;
       },
       widget: "select",
-      getDefault: ([{ card, data }]: Series) => {
+      getDefault: ([{ card, data }]) => {
         const display = card.display as string;
         if (display === "state" || _.any(data.cols, isState)) {
           return "us_states";
