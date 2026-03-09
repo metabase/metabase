@@ -3088,8 +3088,8 @@
                :is_upload false} unrelated)))))))
 
 (deftest backfill-transform-target-tables-test
-  (testing "v59.2026-03-07T00:00:04 : backfill transform target tables and workspace FK columns"
-    (impl/test-migrations ["v59.2026-03-07T00:00:04"] [migrate!]
+  (testing "v60.2026-03-07T00:00:04 : backfill transform target tables and workspace FK columns"
+    (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
       (let [user-id   (:id (new-instance-with-default :core_user))
             db-id     (:id (new-instance-with-default :metabase_database))
             ws-id     (:id (t2/insert-returning-instance!
