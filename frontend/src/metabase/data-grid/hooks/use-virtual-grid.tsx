@@ -11,6 +11,7 @@ import { useCallback, useMemo } from "react";
 
 interface VirtualGridOptions<TData> {
   gridRef: React.RefObject<HTMLDivElement>;
+  scrollRef: React.RefObject<HTMLDivElement>;
   table: ReactTable<TData>;
   measureRowHeight: (rowIndex: number) => number;
   defaultRowHeight: number;
@@ -29,40 +30,24 @@ export interface VirtualGrid {
 
 export const useVirtualGrid = <TData,>({
   gridRef,
+  scrollRef,
   table,
   measureRowHeight,
   defaultRowHeight,
   enableRowVirtualization,
 }: VirtualGridOptions<TData>): VirtualGrid => {
   const { rows: tableRows } = table.getRowModel();
-  const visibleColumns = table.getVisibleLeafColumns();
-
-  const columnPinning = table.getState().columnPinning;
-  const pinnedColumnsIndices = useMemo(
-    () => table.getLeftVisibleLeafColumns().map((c) => c.getPinnedIndex()),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `columnPinning` affects pinnedColumnsIndices
-    [table, columnPinning],
-  );
+  const centralColumns = table.getCenterLeafColumns();
 
   const columnVirtualizer = useVirtualizer({
-    count: visibleColumns.length,
-    getScrollElement: () => gridRef.current,
+    count: centralColumns.length,
+    getScrollElement: () => scrollRef.current,
     estimateSize: (index) => {
-      const column = visibleColumns[index];
-      const size = visibleColumns[index].getSize();
+      const column = centralColumns[index];
+      const size = centralColumns[index].getSize();
       const actualSize = table.getState().columnSizing[column.id];
       return actualSize ?? size;
     },
-    rangeExtractor: useCallback(
-      (range: Range) => {
-        const columnIndices = defaultRangeExtractor(range);
-        if (pinnedColumnsIndices.length === 0) {
-          return columnIndices;
-        }
-        return Array.from(new Set([...pinnedColumnsIndices, ...columnIndices]));
-      },
-      [pinnedColumnsIndices],
-    ),
     horizontal: true,
     overscan: 3,
   });
@@ -75,7 +60,7 @@ export const useVirtualGrid = <TData,>({
         .getTopRows()
         .concat(table.getBottomRows())
         .map((row) => row.getPinnedIndex()),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `rowPinning` affects pinnedRowIndices
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [table, rowPinning],
   );
 
@@ -126,14 +111,8 @@ export const useVirtualGrid = <TData,>({
     let virtualPaddingLeft: number | undefined;
     let virtualPaddingRight: number | undefined;
 
-    const pinnedCount = pinnedColumnsIndices.length;
-
     if (columnVirtualizer && virtualColumns?.length) {
-      const leftNonPinnedStart = virtualColumns[pinnedCount]?.start ?? 0;
-      const leftNonPinnedEnd =
-        virtualColumns[pinnedColumnsIndices.length - 1]?.end ?? 0;
-
-      virtualPaddingLeft = leftNonPinnedStart - leftNonPinnedEnd;
+      virtualPaddingLeft = virtualColumns[0]?.start ?? 0;
 
       virtualPaddingRight =
         columnVirtualizer.getTotalSize() -
@@ -154,7 +133,6 @@ export const useVirtualGrid = <TData,>({
     virtualRows,
     rowVirtualizer,
     columnVirtualizer,
-    pinnedColumnsIndices.length,
     measureGrid,
   ]);
 };

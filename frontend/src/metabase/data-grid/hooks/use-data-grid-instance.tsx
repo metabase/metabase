@@ -100,6 +100,7 @@ export const useDataGridInstance = <TData, TValue>({
   getRowId = defaultGetRowId,
 }: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const hasRowIdColumn = rowId != null;
   const hasColumnRowSelectColumn = columnRowSelectOptions != null;
 
@@ -332,6 +333,7 @@ export const useDataGridInstance = <TData, TValue>({
   const enableRowVirtualization = !enablePagination;
   const virtualGrid = useVirtualGrid({
     gridRef,
+    scrollRef,
     table,
     defaultRowHeight,
     measureRowHeight,
@@ -451,6 +453,7 @@ export const useDataGridInstance = <TData, TValue>({
   );
 
   // Scroll to a specific row/column in the virtualized grid
+  const { pinnedColumnsCount } = virtualGrid;
   const scrollTo = useCallback(
     ({
       rowIndex,
@@ -463,10 +466,13 @@ export const useDataGridInstance = <TData, TValue>({
         rowVirtualizer.scrollToIndex(rowIndex);
       }
       if (columnIndex != null) {
-        columnVirtualizer.scrollToIndex(columnIndex);
+        const adjustedIndex = columnIndex - pinnedColumnsCount;
+        if (adjustedIndex >= 0) {
+          columnVirtualizer.scrollToIndex(adjustedIndex);
+        }
       }
     },
-    [rowVirtualizer, columnVirtualizer],
+    [rowVirtualizer, columnVirtualizer, pinnedColumnsCount],
   );
 
   // Setup cell selection functionality
@@ -572,6 +578,7 @@ export const useDataGridInstance = <TData, TValue>({
     table,
     theme,
     gridRef,
+    scrollRef,
     virtualGrid,
     measureRoot,
     columnsReordering,

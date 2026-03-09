@@ -6,18 +6,15 @@ import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
-import { getScrollBarSize } from "metabase/lib/dom";
+import { DataGridRow } from "metabase/data-grid/components/DataGridRow/DataGridRow";
 
 import {
-  ADD_COLUMN_BUTTON_WIDTH,
   DEFAULT_FONT_SIZE,
+  PINNED_BORDER_SEPARATOR_WIDTH,
   ROW_ID_COLUMN_ID,
 } from "../../constants";
 import { DataGridThemeProvider } from "../../hooks";
 import type { DataGridInstance, DataGridTheme } from "../../types";
-import { AddColumnButton } from "../AddColumnButton/AddColumnButton";
-import { DataGridHeader } from "../DataGridHeader/DataGridHeader";
-import { DataGridRow } from "../DataGridRow/DataGridRow";
 import { Footer } from "../Footer/Footer";
 
 import S from "./DataGrid.module.css";
@@ -38,24 +35,19 @@ export interface DataGridProps<TData>
 export const DataGrid = function DataGrid<TData>({
   table,
   gridRef,
+  scrollRef,
   virtualGrid,
   measureRoot,
   columnsReordering,
   selection,
-  emptyState,
   theme,
   classNames,
   styles,
   enablePagination,
   showRowsCount,
-  getTotalHeight,
   getVisibleRows,
-  isColumnReorderingDisabled,
   zoomedRowIndex,
   onBodyCellClick,
-  onHeaderCellClick,
-  onAddColumnClick,
-  onWheel,
   tableFooterExtraButtons,
   rowsTruncated,
   sorting,
@@ -80,7 +72,7 @@ export const DataGrid = function DataGrid<TData>({
     (element: HTMLElement | null) => {
       rowVirtualizer.measureElement(element);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `sorting` triggers re-measurement when sorting changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [rowVirtualizer, sorting],
   );
 
@@ -91,32 +83,34 @@ export const DataGrid = function DataGrid<TData>({
     return () => window.removeEventListener("resize", handleResize);
   }, [forceUpdate]);
 
-  const isAddColumnButtonSticky =
-    table.getTotalSize() >=
-    (gridRef.current?.offsetWidth ?? Infinity) - ADD_COLUMN_BUTTON_WIDTH;
+  // const isAddColumnButtonSticky =
+  //   table.getTotalSize() >=
+  //   (gridRef.current?.offsetWidth ?? Infinity) - ADD_COLUMN_BUTTON_WIDTH;
 
+  /*
   const addColumnMarginRight =
     getTotalHeight() >= (gridRef.current?.offsetHeight ?? Infinity)
       ? getScrollBarSize()
       : 0;
+*/
 
-  const hasAddColumnButton = onAddColumnClick != null;
-  const addColumnButton = useMemo(
-    () =>
-      hasAddColumnButton ? (
-        <AddColumnButton
-          marginRight={addColumnMarginRight}
-          isSticky={isAddColumnButtonSticky}
-          onClick={onAddColumnClick}
-        />
-      ) : null,
-    [
-      hasAddColumnButton,
-      isAddColumnButtonSticky,
-      onAddColumnClick,
-      addColumnMarginRight,
-    ],
-  );
+  // const hasAddColumnButton = onAddColumnClick != null;
+  // const addColumnButton = useMemo(
+  //   () =>
+  //     hasAddColumnButton ? (
+  //       <AddColumnButton
+  //         marginRight={addColumnMarginRight}
+  //         isSticky={isAddColumnButtonSticky}
+  //         onClick={onAddColumnClick}
+  //       />
+  //     ) : null,
+  //   [
+  //     hasAddColumnButton,
+  //     isAddColumnButtonSticky,
+  //     onAddColumnClick,
+  //     addColumnMarginRight,
+  //   ],
+  // );
 
   const rowsCount = table.getRowModel().rows.length;
   const backgroundColor =
@@ -127,9 +121,19 @@ export const DataGrid = function DataGrid<TData>({
       ? "var(--mb-color-background-primary)"
       : backgroundColor);
 
-  const lastPinnedColumn = table.getLeftVisibleLeafColumns().at(-1);
+  const pinnedColumns = table.getLeftVisibleLeafColumns();
+  const lastPinnedColumn = pinnedColumns.at(-1);
   const isLastPinnedColumnRowId = lastPinnedColumn?.id === ROW_ID_COLUMN_ID;
-  const lastTopPinnedRowId = table.getTopRows().at(-1)?.id;
+
+  const hasSeparator = lastPinnedColumn != null && !isLastPinnedColumnRowId;
+
+  const pinnedColumnsWidth = table.getLeftTotalSize();
+  const pinnedPanelWidth = hasSeparator
+    ? pinnedColumnsWidth + PINNED_BORDER_SEPARATOR_WIDTH
+    : pinnedColumnsWidth;
+
+  const hasPinnedColumns = pinnedColumns.length > 0;
+  const totalHeight = rowVirtualizer.getTotalSize();
 
   return (
     <DataGridThemeProvider theme={theme}>
@@ -145,75 +149,77 @@ export const DataGrid = function DataGrid<TData>({
           }}
         >
           <div
-            data-testid="table-scroll-container"
-            className={cx(S.tableGrid, classNames?.tableGrid)}
-            role="grid"
             ref={gridRef}
+            data-testid="table-body"
+            className={cx(S.bodyContainer, classNames?.bodyContainer, {
+              [S.selectableBody]: selection.isEnabled,
+            })}
             style={{
-              paddingRight:
-                hasAddColumnButton && isAddColumnButtonSticky
-                  ? `${ADD_COLUMN_BUTTON_WIDTH}px`
-                  : 0,
-              ...styles?.tableGrid,
+              backgroundColor: theme?.cell?.backgroundColor,
+              color: theme?.cell?.textColor,
+              ...styles?.bodyContainer,
             }}
-            onWheel={onWheel}
           >
-            <DataGridHeader
-              table={table}
-              virtualColumns={virtualColumns}
-              virtualPaddingLeft={virtualPaddingLeft}
-              virtualPaddingRight={virtualPaddingRight}
-              lastPinnedColumn={lastPinnedColumn}
-              isLastPinnedColumnRowId={isLastPinnedColumnRowId}
-              stickyElementsBackgroundColor={stickyElementsBackgroundColor}
-              backgroundColor={backgroundColor}
-              isAddColumnButtonSticky={isAddColumnButtonSticky}
-              addColumnButton={addColumnButton}
-              isColumnReorderingDisabled={isColumnReorderingDisabled}
-              onHeaderCellClick={onHeaderCellClick}
-              classNames={classNames}
-              styles={styles}
-            />
+            {hasPinnedColumns && (
+              <div
+                className={S.pinnedSection}
+                style={{ width: pinnedPanelWidth }}
+              >
+                <div
+                  style={{
+                    position: "relative",
+                    height: `${totalHeight}px`,
+                  }}
+                >
+                  {getVisibleRows().map((maybeVirtualRow, index) => (
+                    <DataGridRow
+                      key={`pinned-${index}`}
+                      maybeVirtualRow={maybeVirtualRow}
+                      columns={pinnedColumns}
+                      stickyElementsBackgroundColor={
+                        stickyElementsBackgroundColor
+                      }
+                      zoomedRowIndex={zoomedRowIndex}
+                      selection={selection}
+                      onBodyCellClick={onBodyCellClick}
+                      classNames={classNames}
+                      styles={styles}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {rowsCount === 0 && emptyState}
-
-            <div
-              data-testid="table-body"
-              className={cx(S.bodyContainer, classNames?.bodyContainer, {
-                [S.selectableBody]: selection.isEnabled,
-              })}
-              style={{
-                display: "grid",
-                alignContent: "start",
-                position: "relative",
-                height: `${getTotalHeight()}px`,
-                backgroundColor: theme?.cell?.backgroundColor,
-                color: theme?.cell?.textColor,
-                ...styles?.bodyContainer,
-              }}
-            >
-              {getVisibleRows().map((maybeVirtualRow, index) => (
-                <DataGridRow
-                  key={index}
-                  maybeVirtualRow={maybeVirtualRow}
-                  rowMeasureRef={rowMeasureRef}
-                  virtualColumns={virtualColumns}
-                  virtualPaddingLeft={virtualPaddingLeft}
-                  virtualPaddingRight={virtualPaddingRight}
-                  lastPinnedColumn={lastPinnedColumn}
-                  isLastPinnedColumnRowId={isLastPinnedColumnRowId}
-                  lastTopPinnedRowId={lastTopPinnedRowId}
-                  stickyElementsBackgroundColor={stickyElementsBackgroundColor}
-                  zoomedRowIndex={zoomedRowIndex}
-                  selection={selection}
-                  onBodyCellClick={onBodyCellClick}
-                  classNames={classNames}
-                  styles={styles}
-                />
-              ))}
+            <div ref={scrollRef} className={S.scrollableSection}>
+              <div
+                style={{
+                  position: "relative",
+                  height: `${totalHeight}px`,
+                  width: `${table.getCenterTotalSize()}px`,
+                }}
+              >
+                {getVisibleRows().map((maybeVirtualRow, index) => (
+                  <DataGridRow
+                    key={`scroll-${index}`}
+                    maybeVirtualRow={maybeVirtualRow}
+                    rowMeasureRef={rowMeasureRef}
+                    columns={virtualColumns}
+                    virtualPaddingLeft={virtualPaddingLeft}
+                    virtualPaddingRight={virtualPaddingRight}
+                    stickyElementsBackgroundColor={
+                      stickyElementsBackgroundColor
+                    }
+                    zoomedRowIndex={zoomedRowIndex}
+                    selection={selection}
+                    onBodyCellClick={onBodyCellClick}
+                    classNames={classNames}
+                    styles={styles}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-          {isAddColumnButtonSticky ? addColumnButton : null}
+
           <Footer
             table={table}
             enablePagination={enablePagination}

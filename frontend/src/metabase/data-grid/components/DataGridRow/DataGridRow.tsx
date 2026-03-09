@@ -9,24 +9,19 @@ import { hasModifierKeys } from "metabase/common/utils/keyboard";
 import {
   HEADER_BORDER_SIZE,
   HEADER_HEIGHT,
-  PINNED_BORDER_SEPARATOR_WIDTH,
-  PINNED_COLUMN_Z_INDEX,
   PINNED_ROW_Z_INDEX,
 } from "../../constants";
-import { isVirtualRow } from "../../guards";
+import { isVirtualColumn, isVirtualRow } from "../../guards";
 import type { DataGridSelection, MaybeVirtualRow } from "../../types";
 import S from "../DataGrid/DataGrid.module.css";
 import type { DataGridStylesProps } from "../DataGrid/types";
 
 export interface DataGridRowProps<TData> extends DataGridStylesProps {
   maybeVirtualRow: MaybeVirtualRow<TData>;
-  rowMeasureRef: (element: HTMLElement | null) => void;
-  virtualColumns: VirtualItem[];
-  virtualPaddingLeft: number | undefined;
-  virtualPaddingRight: number | undefined;
-  lastPinnedColumn: Column<TData> | undefined;
-  isLastPinnedColumnRowId: boolean;
-  lastTopPinnedRowId: string | undefined;
+  columns: Column<TData>[] | VirtualItem[];
+  rowMeasureRef?: ((element: HTMLElement | null) => void) | undefined;
+  virtualPaddingLeft?: number | undefined;
+  virtualPaddingRight?: number | undefined;
   stickyElementsBackgroundColor: string;
   zoomedRowIndex: number | undefined;
   selection: DataGridSelection;
@@ -64,12 +59,9 @@ const getRowPositionStyles = <TData,>(
 export const DataGridRow = <TData,>({
   maybeVirtualRow,
   rowMeasureRef,
-  virtualColumns,
+  columns,
   virtualPaddingLeft,
   virtualPaddingRight,
-  lastPinnedColumn,
-  isLastPinnedColumnRowId,
-  lastTopPinnedRowId,
   stickyElementsBackgroundColor,
   zoomedRowIndex,
   selection,
@@ -101,7 +93,6 @@ export const DataGridRow = <TData,>({
       data-row-selected={row.getIsSelected()}
       className={cx(S.row, classNames?.row, {
         [S.active]: active,
-        [S.rowWithBottomSeparator]: row.id === lastTopPinnedRowId,
       })}
       style={{
         ...rowPositionStyles,
@@ -118,34 +109,20 @@ export const DataGridRow = <TData,>({
         />
       ) : null}
 
-      {virtualColumns.map((virtualColumn) => {
-        const cell = row.getVisibleCells()[virtualColumn.index];
-        const isPinned = cell.column.getIsPinned();
-        const isLastPinned = cell.column.id === lastPinnedColumn?.id;
-        const width = cell.column.getSize();
-        const hasSeparator = isLastPinned && !isLastPinnedColumnRowId;
-        const totalWidth = hasSeparator
-          ? width + PINNED_BORDER_SEPARATOR_WIDTH
-          : width;
+      {columns.map((column) => {
+        const cell = isVirtualColumn(column)
+          ? row.getCenterVisibleCells()[column.index]
+          : row.getLeftVisibleCells()[column.getIndex("left")];
+
         const columnDef = cell.column.columnDef;
         const isSelectable =
           selection.isEnabled && columnDef?.meta?.enableSelection;
 
-        const style: React.CSSProperties = isPinned
-          ? {
-              width: totalWidth,
-              position: "sticky",
-              left: `${virtualColumn.start}px`,
-              zIndex: PINNED_COLUMN_Z_INDEX,
-              backgroundColor: active
-                ? undefined
-                : stickyElementsBackgroundColor,
-              ...styles?.bodyCell,
-            }
-          : {
-              width: totalWidth,
-              ...styles?.bodyCell,
-            };
+        const style: React.CSSProperties = {
+          width: cell.column.getSize(),
+          ...styles?.bodyCell,
+        };
+
         return (
           <div
             key={cell.id}
@@ -154,7 +131,6 @@ export const DataGridRow = <TData,>({
             data-selectable-cell={isSelectable ? "" : undefined}
             className={cx(S.bodyCell, classNames?.bodyCell, {
               [S.focusedCell]: selection.isCellFocused(cell),
-              [S.cellWithRightSeparator]: hasSeparator,
             })}
             onClick={(e) => {
               if (hasModifierKeys(e)) {
