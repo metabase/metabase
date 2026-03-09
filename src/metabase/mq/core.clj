@@ -12,14 +12,14 @@
 
   Listeners for both types are registered with `def-listener`
 
-      (mq/def-listener :queue/simple-task [msg]
+      (mq/def-listener! :queue/simple-task [msg]
         (process msg))
 
-      (mq/def-listener :topic/my-events [msg]
+      (mq/def-listener! :topic/my-events [msg]
         (handle-event msg))
 
   For queues, a config map enables batching:
-       (mq/def-listener :queue/my-task
+       (mq/def-listener! :queue/my-task
          {:max-batch-messages 10 :max-next-ms 100}
          [messages]
          (process messages))
@@ -57,7 +57,7 @@
 (p/import-vars
  [mq.impl
   put
-  def-listener
+  def-listener!
   listen!
   register-listeners!
   unlisten!]

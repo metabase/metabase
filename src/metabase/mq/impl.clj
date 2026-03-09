@@ -104,22 +104,22 @@
   {:arglists '([channel-name])}
   identity)
 
-(defmacro def-listener
+(defmacro def-listener!
   "Defines a listener for a queue or topic, detected from the keyword namespace.
 
    **Topic listener** — receives a single message:
 
-       (mq/def-listener :topic/settings-cache-invalidated [msg]
+       (mq/def-listener! :topic/settings-cache-invalidated [msg]
          (restore-cache!))
 
    **Queue listener** — receives a single message, with optional config:
 
-       (mq/def-listener :queue/simple-task {:exclusive true} [msg]
+       (mq/def-listener! :queue/simple-task {:exclusive true} [msg]
          (process msg))
 
    **Queue batch listener** — receives a vec of messages (config must include :max-batch-messages):
 
-       (mq/def-listener :queue/search-reindex
+       (mq/def-listener! :queue/search-reindex
          {:max-batch-messages 50 :max-next-ms 100 :exclusive true}
          [messages]
          (process-batch messages))"

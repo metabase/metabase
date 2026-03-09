@@ -88,6 +88,6 @@
   (log/debug "Refreshing Settings cache...")
   (reset! (cache*) (t2/select-fn->fn :key :value :model/Setting)))
 
-(mq/def-listener :topic/settings-cache-invalidated [_msg]
+(mq/def-listener! :topic/settings-cache-invalidated [_msg]
   (log/debug "Received settings cache invalidation signal")
   (restore-cache!))

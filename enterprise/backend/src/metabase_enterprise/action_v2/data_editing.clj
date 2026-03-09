@@ -24,7 +24,7 @@
   (->> (t2/select :model/Field :id [:in (into #{} cat field-batches)])
        (run! field-values/create-or-update-full-field-values!)))
 
-(mq/def-listener :queue/field-value-invalidation
+(mq/def-listener! :queue/field-value-invalidation
   {:max-batch-messages 10 :max-next-ms 10}
   [messages]
   (batch-invalidate-field-values! (into [] cat messages)))

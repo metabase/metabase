@@ -80,7 +80,7 @@
                                       (map :name))]
               (search.engine/delete! e search-model (:ids msg)))))
 
-(mq/def-listener :queue/search-reindex
+(mq/def-listener! :queue/search-reindex
   {:max-batch-messages 50 :max-next-ms 100 :exclusive true}
   [messages]
   (try
