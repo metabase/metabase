@@ -26,7 +26,7 @@
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner UpdateSummaryOutputEnum)
    (liquibase.change.custom CustomChangeWrapper)
    (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
-   (liquibase.changelog.filter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
+   (liquibase.changelog.filter AlreadyRanChangeSetFilter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.command.core AbstractRollbackCommandStep)
    (liquibase.database Database DatabaseFactory)
@@ -540,6 +540,7 @@
            latest-available (latest-available-major-version liquibase)
            latest-applied   (latest-applied-major-version conn (.getDatabase liquibase))
            lb-db (.getDatabase liquibase)
+           ran-changesets (.getRanChangeSetList lb-db)
            changelog (.getDatabaseChangeLog liquibase)
            changeset-filter (proxy [ChangeSetFilter] []
                               (accepts [^ChangeSet changeSet]
@@ -583,19 +584,32 @@
                                                      changelog
                                                      change-listener))
            (let [remaining-query (-> (sql.helpers/select :id)
-                                     (sql.helpers/from (keyword (changelog-table-name liquibase)))
-                                     (sql.helpers/where [:in :id ids-to-drop]))
-                 formatted-sql (sql/format remaining-query)
-                 remaining-ids   (map :id (t2/query conn formatted-sql))]
-             (when (seq remaining-ids)
-               (if (seq @error-ids)
-                 (log/warnf "The following changesets were not rolled back due to errors (%s): %s"
-                            (str/join ", " @error-ids)
-                            (str/join ", " remaining-ids))
-                 ;; Rollback SQL ran (tables dropped), but removeRanStatus also matches by
-                 ;; (id, author, filepath) — mismatched filenames leave orphaned entries.
-                 (do
-                   (log/infof "Cleaning up %d changelog entries with mismatched filenames" (count remaining-ids))
-                   (let [delete-query (-> (sql.helpers/delete-from (keyword (changelog-table-name liquibase)))
-                                         (sql.helpers/where [:in :id (vec remaining-ids)]))]
-                     (jdbc/execute! {:connection conn} (sql/format delete-query)))))))))))))
+                                    (sql.helpers/from (keyword (changelog-table-name liquibase)))
+                                    (sql.helpers/where [:in :id ids-to-drop]))
+                formatted-sql (sql/format remaining-query)
+                remaining-ids (map :id (t2/query conn formatted-sql))]
+            (when (seq remaining-ids)
+              (if (seq @error-ids)
+                (log/warnf "The following changesets were not rolled back due to errors (%s): %s"
+                           (str/join ", " @error-ids)
+                           (str/join ", " remaining-ids))
+                ;; Rollback SQL ran (tables dropped), but removeRanStatus also matches by
+                ;; (id, author, filepath) — mismatched filenames leave orphaned entries.
+                ;; Use AlreadyRanChangeSetFilter to confirm which are truly filepath mismatches
+                ;; before deleting.
+                (let [already-ran-filter (AlreadyRanChangeSetFilter. ran-changesets)
+                      remaining-set     (set remaining-ids)
+                      remaining-cs      (filter #(contains? remaining-set (.getId ^ChangeSet %))
+                                                (.getChangeSets changelog))
+                      mismatched-ids    (->> remaining-cs
+                                             (remove #(.isAccepted (.accepts already-ran-filter %)))
+                                             (mapv #(.getId ^ChangeSet %)))]
+                  (when (seq mismatched-ids)
+                    (log/infof "Cleaning up %d changelog entries with mismatched filenames" (count mismatched-ids))
+                    (let [delete-query (-> (sql.helpers/delete-from (keyword (changelog-table-name liquibase)))
+                                          (sql.helpers/where [:in :id mismatched-ids]))]
+                      (jdbc/execute! {:connection conn} (sql/format delete-query))))
+                  (let [unexpected (remove (set mismatched-ids) remaining-ids)]
+                    (when (seq unexpected)
+                      (log/warnf "Unexpected: %d changesets remain after rollback with matching filenames: %s"
+                                 (count unexpected) (str/join ", " unexpected))))))))))))))
