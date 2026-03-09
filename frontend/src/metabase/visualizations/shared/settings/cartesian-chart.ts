@@ -545,18 +545,21 @@ export function getDefaultBoxplotDimensions(
     return dimensions;
   }
   const { cols, rows } = series[0].data;
-  let lowestDimension: string | null = null;
+  let lowestDimension: string | undefined;
   let lowestCardinality = Infinity;
   for (const dimension of dimensions) {
-    if (dimension == null) {
+    const index = cols.findIndex((col) => col.name === dimension);
+    if (index === -1) {
       continue;
     }
-    const index = cols.findIndex((col) => col.name === dimension);
     const cardinality = getColumnCardinality(cols, rows, index);
     if (cardinality < lowestCardinality) {
       lowestDimension = dimension;
       lowestCardinality = cardinality;
     }
+  }
+  if (lowestDimension === undefined) {
+    return [];
   }
   return [lowestDimension];
 }
