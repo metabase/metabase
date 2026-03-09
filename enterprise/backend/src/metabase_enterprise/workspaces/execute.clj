@@ -7,54 +7,47 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.query-processor :as qp]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.core :as transforms-base]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn- remap-python-source
-  "Remap source-tables in a Python transform source to point to isolated tables.
-   Handles both legacy integer format and new map format (from PR #66934)."
-  [table-mapping source]
-  (letfn [(remap [{:keys [database_id schema table table_id] :as table-ref}]
-            (if-let [{:keys [id db-id schema table]} (or (table-mapping table-ref)
-                                                         (some-> table_id table-mapping)
-                                                         (when table
-                                                           (table-mapping [database_id schema table])))]
-              ;; Prefer table ID when available; map format won't work until PR #66934 is merged:
-              ;; https://github.com/metabase/metabase/pull/66934
-              (or id {:database_id db-id, :schema schema, :table table})
-              ;; Leave it un-mapped if we don't have an override.
-              table-ref))]
-    (update source :source-tables update-vals remap)))
+(mu/defn- remap-python-source
+  "Remap source-tables in a Python transform source to point to isolated tables."
+  [table-mapping source :- [:map [:source-tables [:sequential ::transforms-base.u/source-table-entry]]]]
+  (letfn [(remap [{:keys [database_id schema table table_id] :as entry}]
+            (if-let [{:keys [id db-id] target-schema :schema target-table :table}
+                     (or (table-mapping entry)
+                         (some-> table_id table-mapping)
+                         (when table
+                           (table-mapping [database_id schema table])))]
+              (cond-> entry
+                id            (assoc :table_id id)
+                db-id         (assoc :database_id db-id)
+                target-schema (assoc :schema target-schema)
+                target-table  (assoc :table target-table))
+              entry))]
+    (update source :source-tables (fn [entries] (mapv remap entries)))))
 
-(defn- remap-sql-source [table-mapping source]
-  (let [remapping (reduce
-                   (fn [remapping [[_ source-schema source-table] {target-schema :schema, target-table :table}]]
-                     (assoc-in remapping [:tables {:schema source-schema
-                                                   :table  source-table}]
-                               {:schema target-schema
-                                :table  target-table}))
-                   {:schemas {}
-                    :tables  {}}
-                   ;; Strip out the numeric keys (table ids)
-                   (filter (comp vector? key) table-mapping))
-        database-id (get-in source [:query :database])
-        driver      (some->> database-id (t2/select-one-fn :engine :model/Database))]
-    (update-in source [:query :stages 0 :native]
-               #(sql-tools/replace-names driver % remapping {:allow-unused? true}))))
+(defn- attach-table-remapping [table-mapping source]
+  (let [tables (into {}
+                     (keep (fn [[[_ src-schema src-table] {tgt-schema :schema tgt-table :table}]]
+                             [{:schema src-schema :table src-table}
+                              {:schema tgt-schema :table tgt-table}]))
+                     ;; Keep only the named reference tuples that we will destructure, the table-id keys are irrelevant.
+                     (filter (comp vector? key) table-mapping))]
+    (cond-> source
+      (seq tables) (assoc-in [:query :middleware :workspace-remapping] {:tables tables}))))
 
-(defn- remap-mbql-source [_table-mapping _field-map source]
+(defn- attach-table-field-remapping [_table-mapping _field-map source]
   (throw (ex-info "Remapping MBQL queries is not supported yet" {:source source})))
 
 (defn- remap-source [table-map field-map source-type source]
   (case source-type
-    :mbql (remap-mbql-source table-map field-map source)
-    ;; TODO (Chris 2025-12-12) -- make sure it's actually a SQL dialect though..
-    :native (remap-sql-source table-map source)
+    :mbql (attach-table-field-remapping table-map field-map source)
+    :native (attach-table-remapping table-map source)
     :python (remap-python-source table-map source)))
 
 ;; You might prefer a multi-method? I certainly would.

@@ -8,12 +8,7 @@ import { CollectionPermissionsHelp } from "metabase/admin/permissions/components
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { connect, useSelector } from "metabase/lib/redux";
-import type {
-  Collection,
-  CollectionId,
-  CollectionPermissions,
-  GroupId,
-} from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
@@ -23,6 +18,7 @@ import {
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout";
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 import {
+  type UpdateCollectionPermissionParams,
   initializeCollectionPermissions,
   loadCollectionPermissions,
   saveCollectionPermissions,
@@ -30,7 +26,6 @@ import {
 } from "../../permissions";
 import type {
   CollectionIdProps,
-  CollectionPermissionEditorType,
   CollectionSidebarType,
 } from "../../selectors/collection-permissions";
 import {
@@ -40,6 +35,8 @@ import {
   getCollectionsSidebar,
   getIsDirty,
 } from "../../selectors/collection-permissions";
+import type { PermissionEditorEntity, PermissionEditorType } from "../../types";
+import { assertNumericId } from "../../types";
 
 const mapDispatchToProps = {
   initialize: initializeCollectionPermissions,
@@ -59,18 +56,10 @@ const mapStateToProps = (state: State, props: CollectionIdProps) => {
   };
 };
 
-type UpdateCollectionPermissionParams = {
-  groupId: GroupId;
-  collection: Collection;
-  value: unknown;
-  shouldPropagateToChildren: boolean | null;
-  originalPermissionsState: CollectionPermissions;
-};
-
 type CollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
   sidebar: CollectionSidebarType;
-  permissionEditor: CollectionPermissionEditorType;
+  permissionEditor: PermissionEditorType | null;
   collection: Collection;
   navigateToItem: (item: any) => void;
   updateCollectionPermission: ({
@@ -108,13 +97,13 @@ function CollectionsPermissionsPageView({
 
   const handlePermissionChange = useCallback(
     (
-      item: { id: GroupId },
+      item: PermissionEditorEntity,
       _permission: unknown,
       value: unknown,
       toggleState: boolean | null,
     ) => {
       updateCollectionPermission({
-        groupId: item.id,
+        groupId: assertNumericId(item.id),
         collection,
         value,
         shouldPropagateToChildren: toggleState,

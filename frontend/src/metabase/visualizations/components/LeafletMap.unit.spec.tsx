@@ -10,7 +10,11 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import { LeafletMap, type LeafletMapProps } from "./LeafletMap";
+import {
+  LeafletMap,
+  type LeafletMapProps,
+  isOpenStreetMapHost,
+} from "./LeafletMap";
 
 describe("LeafletMap", () => {
   const createProps = (
@@ -100,5 +104,35 @@ describe("LeafletMap", () => {
       expect(setZoomSpy).toHaveBeenCalled();
       expect(setViewSpy).toHaveBeenCalled();
     });
+  });
+});
+
+describe("isOpenStreetMapHost", () => {
+  it("should return true for openstreetmap.org", () => {
+    expect(isOpenStreetMapHost("openstreetmap.org")).toBe(true);
+  });
+
+  it("should return true for valid subdomains", () => {
+    expect(isOpenStreetMapHost("tile.openstreetmap.org")).toBe(true);
+    expect(isOpenStreetMapHost("a.tile.openstreetmap.org")).toBe(true);
+    expect(isOpenStreetMapHost("b.tile.openstreetmap.org")).toBe(true);
+    expect(isOpenStreetMapHost("c.tile.openstreetmap.org")).toBe(true);
+  });
+
+  it("should return false for domains that contain openstreetmap.org as a substring", () => {
+    expect(isOpenStreetMapHost("fakeopenstreetmap.org")).toBe(false);
+    expect(isOpenStreetMapHost("not-openstreetmap.org")).toBe(false);
+    expect(isOpenStreetMapHost("myopenstreetmap.org")).toBe(false);
+  });
+
+  it("should return false for domains where openstreetmap.org is a subdomain", () => {
+    expect(isOpenStreetMapHost("openstreetmap.org.evil.com")).toBe(false);
+    expect(isOpenStreetMapHost("tile.openstreetmap.org.evil.com")).toBe(false);
+  });
+
+  it("should return false for unrelated domains", () => {
+    expect(isOpenStreetMapHost("example.com")).toBe(false);
+    expect(isOpenStreetMapHost("google.com")).toBe(false);
+    expect(isOpenStreetMapHost("")).toBe(false);
   });
 });

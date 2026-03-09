@@ -13,7 +13,7 @@
 
 (deftest get-library-path-test
   (testing "GET /api/ee/transforms-python/library/:path"
-    (mt/with-premium-features #{:transforms-python :transforms}
+    (mt/with-premium-features #{:transforms-python :transforms-basic}
       (testing "requires transform permissions"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 "ee/transforms-python/library/common"))))
@@ -36,7 +36,7 @@
 
 (deftest put-library-path-test
   (testing "PUT /api/ee/transforms-python/library/:path"
-    (mt/with-premium-features #{:transforms-python :transforms}
+    (mt/with-premium-features #{:transforms-python :transforms-basic}
       (testing "requires transform permissions"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 "ee/transforms-python/library/common"
@@ -88,7 +88,7 @@
                                                    {:source "def test(): pass"}))))))))))
 
 (deftest test-run-test
-  (mt/with-premium-features #{:transforms :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (let [program ["import pandas as pd"
                    "import sys"
                    "def transform():"
@@ -107,7 +107,7 @@
                     :or   {program       ["import pandas as pd" "def transform():" "  return pd.DataFrame()"]
                            user          :crowberto
                            source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id) :active true)}
-                           features      #{:transforms :transforms-python}}}]
+                           features      #{:transforms-basic :transforms-python}}}]
   (let [body (merge {:source_tables source-tables, :code (str/join "\n" program)} extra-opts)]
     (mt/with-premium-features features
       (mt/user-http-request-full-response user :post "ee/transforms-python/test-run" body))))
@@ -142,8 +142,8 @@
 (deftest test-run-feature-test
   (is (=? {:status 402} (test-run :features #{})))
   (testing "transforms alone is not enough"
-    (is (=? {:status 402} (test-run :features #{:transforms}))))
-  (is (=? {:status 200} (test-run :features #{:transforms :transforms-python}))))
+    (is (=? {:status 402} (test-run :features #{:transforms-basic}))))
+  (is (=? {:status 200} (test-run :features #{:transforms-basic :transforms-python}))))
 
 (deftest test-run-permissions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)

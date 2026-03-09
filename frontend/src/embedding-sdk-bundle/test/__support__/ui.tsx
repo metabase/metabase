@@ -1,5 +1,4 @@
 import { render } from "@testing-library/react";
-import type * as React from "react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
