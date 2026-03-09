@@ -649,7 +649,7 @@
                            source-tables)
         unresolved   (filter #(nil? (:table_id %)) resolved)]
     (when (seq unresolved)
-      (throw (ex-info (str "Tables not found: " (str/join ", " (map (fn [{:keys [alias schema table]}]
+      (throw (ex-info (str "Tables not found: " (str/join ", " (map (fn [{:keys [schema table]}]
                                                                       (if schema
                                                                         (str schema "." table)
                                                                         table))
