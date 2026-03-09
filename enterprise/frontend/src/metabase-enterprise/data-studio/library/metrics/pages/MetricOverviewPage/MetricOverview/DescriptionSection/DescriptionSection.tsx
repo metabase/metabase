@@ -7,6 +7,7 @@ import {
 } from "metabase/api";
 import { EditableText } from "metabase/common/components/EditableText";
 import { Markdown } from "metabase/common/components/Markdown";
+import { getUserName } from "metabase/lib/user";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Box, Card, Flex, Group, Icon, Stack, Text, rem } from "metabase/ui";
@@ -79,7 +80,9 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
             </Text>
           </Group>
           <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Last update`}
+            {card["last-edit-info"]
+              ? t`Last edited by ${getUserName(card["last-edit-info"])}`
+              : t`Last edited at`}
           </Text>
         </Card.Section>
         <Card.Section withBorder p="md">
@@ -97,7 +100,7 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
           <Group gap="sm" mb={4}>
             <Icon name="table" c={table ? "brand" : "icon-secondary"} />
             <Text size="md" fw={600} lh="1rem">
-              {table?.name || "—"}
+              {table?.display_name || table?.name || "—"}
             </Text>
           </Group>
           <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">

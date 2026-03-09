@@ -182,13 +182,13 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
       <Card mx="lg" bg="background-secondary" shadow="none" radius="1rem">
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
-            <Icon name="refresh" c="brand" />
+            <Icon name="pencil" c="brand" />
             <Text size="md" fw={600} lh="1rem">
               {formattedDate}
             </Text>
           </Group>
           <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
-            {t`Last update`}
+            {t`Last edited at`}
           </Text>
         </Card.Section>
         <Card.Section withBorder p="md">
