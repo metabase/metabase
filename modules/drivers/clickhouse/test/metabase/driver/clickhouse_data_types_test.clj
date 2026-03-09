@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]))
 
@@ -369,16 +368,16 @@
                            [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]]))
         (testing "can filter nullable uuids with contains"
           (are [filter-str case-sensitive exp-rows]
-               (= exp-rows (filter-rows (-> (lib/contains uuid-field filter-str)
-                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+               (= exp-rows (filter-rows (cond-> (lib/contains uuid-field filter-str)
+                                          (not case-sensitive) lib/ignore-case)))
             "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
             "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
             "AAA" true  []
             "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
         (testing "can filter nullable uuids with does not contain"
           (are [filter-str case-sensitive exp-rows]
-               (= exp-rows (filter-rows (-> (lib/does-not-contain uuid-field filter-str)
-                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+               (= exp-rows (filter-rows (cond-> (lib/does-not-contain uuid-field filter-str)
+                                          (not case-sensitive) lib/ignore-case)))
             "aaa" true  [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
                          [3 nil]]
             "aaa" false [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
@@ -390,16 +389,16 @@
                          [3 nil]]))
         (testing "can filter nullable uuids with starts with"
           (are [filter-str case-sensitive exp-rows]
-               (= exp-rows (filter-rows (-> (lib/starts-with uuid-field filter-str)
-                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+               (= exp-rows (filter-rows (cond-> (lib/starts-with uuid-field filter-str)
+                                          (not case-sensitive) lib/ignore-case)))
             "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
             "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
             "AAA" true  []
             "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
         (testing "can filter nullable uuids with ends with"
           (are [filter-str case-sensitive exp-rows]
-               (= exp-rows (filter-rows (-> (lib/ends-with uuid-field filter-str)
-                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+               (= exp-rows (filter-rows (cond-> (lib/ends-with uuid-field filter-str)
+                                          (not case-sensitive) lib/ignore-case)))
             "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
             "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
             "AAA" true  []
