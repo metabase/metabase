@@ -342,3 +342,32 @@
   (testing "POST /runs/:id/cancel — returns 404 for non-existent run"
     (mt/with-premium-features #{:dependencies}
       (mt/user-http-request :crowberto :post 404 "ee/replacement/runs/999999/cancel"))))
+
+(deftest all-endpoints-require-superuser-test
+  (testing "All /ee/replacement/ endpoints return 403 for non-admin users"
+    (mt/with-premium-features #{:dependencies}
+      (let [body {:source_entity_id   1
+                  :source_entity_type :table
+                  :target_entity_id   2
+                  :target_entity_type :table}]
+        (doseq [[method url params] [[:post "ee/replacement/check-replace-source" body]
+                                     [:post "ee/replacement/replace-source" body]
+                                     [:get  "ee/replacement/runs/1" nil]
+                                     [:post "ee/replacement/runs/1/cancel" nil]]]
+          (testing (str (name method) " " url)
+            (is (= "You don't have permissions to do that."
+                   (if params
+                     (mt/user-http-request :rasta method 403 url params)
+                     (mt/user-http-request :rasta method 403 url))))))))))
+
+(deftest all-endpoints-require-dependencies-feature-test
+  (testing "All /ee/replacement/ endpoints return 402 without the :dependencies feature flag"
+    (mt/with-premium-features #{}
+      (doseq [[method url] [[:post "ee/replacement/check-replace-source"]
+                            [:post "ee/replacement/replace-source"]
+                            [:get  "ee/replacement/runs/1"]
+                            [:post "ee/replacement/runs/1/cancel"]]]
+        (testing (str (name method) " " url)
+          (mt/assert-has-premium-feature-error
+           "Dependency Tracking"
+           (mt/user-http-request :crowberto method 402 url)))))))

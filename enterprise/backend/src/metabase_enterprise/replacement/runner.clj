@@ -1,5 +1,6 @@
 (ns metabase-enterprise.replacement.runner
   (:require
+   [clojure.string :as str]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
@@ -83,6 +84,21 @@
           (lib-be/bulk-load-query-metadata! metadata-provider referenced-ids)))
       (merge {} cards tables dashboards transforms segments measures))))
 
+(defn- failure-message
+  "Build a human-readable message summarizing swap failures, showing at most 10 individual errors."
+  [failures total]
+  (let [n         (count failures)
+        max-shown 10
+        lines     (into []
+                        (comp (take max-shown)
+                              (map (fn [{:keys [entity error]}]
+                                     (str "  " entity ": " error))))
+                        failures)]
+    (str n " of " total " entities failed\n"
+         (str/join "\n" lines)
+         (when (> n max-shown)
+           (str "\n  ... and " (- n max-shown) " more")))))
+
 (defn- run-swap* [{:keys [all-transitive-dependents]}
                   old-source new-source progress]
   (replacement.protocols/set-total! progress
@@ -121,8 +137,9 @@
                   (swap! failures conj {:entity entity :error (ex-message e)})))
               (replacement.protocols/advance! progress)))))
 
-      (when (seq @failures)
-        {:failures @failures}))))
+      (when-let [fs (seq @failures)]
+        (throw (ex-info (failure-message fs (count all-transitive-dependents))
+                        {:failures fs}))))))
 
 (defn run-swap
   "Replace all usages of `old-source` with `new-source` across all dependent entities.
