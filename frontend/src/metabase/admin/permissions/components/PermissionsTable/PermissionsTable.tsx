@@ -39,7 +39,7 @@ export type PermissionsTableProps = Pick<
     value: DataPermissionValue,
     toggleState: boolean | null,
   ) => void;
-  scrollElement: HTMLDivElement | null;
+  scrollElement?: HTMLDivElement | null;
   emptyState?: React.ReactNode;
 };
 
