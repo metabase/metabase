@@ -56,6 +56,49 @@ export const REVENUE_METRIC = createMockNormalizedMetric({
   ],
 });
 
+export const GEO_METRIC = createMockNormalizedMetric({
+  id: 2,
+  name: "Geo Revenue",
+  dimensions: [
+    createMockMetricDimension({
+      id: "dim-state",
+      display_name: "State",
+      effective_type: "type/Text",
+      semantic_type: "type/State",
+    }),
+    createMockMetricDimension({
+      id: "dim-country",
+      display_name: "Country",
+      effective_type: "type/Text",
+      semantic_type: "type/Country",
+    }),
+    createMockMetricDimension({
+      id: "dim-city",
+      display_name: "City",
+      effective_type: "type/Text",
+      semantic_type: "type/City",
+    }),
+    createMockMetricDimension({
+      id: "dim-latitude",
+      display_name: "Latitude",
+      effective_type: "type/Float",
+      semantic_type: "type/Latitude",
+    }),
+    createMockMetricDimension({
+      id: "dim-longitude",
+      display_name: "Longitude",
+      effective_type: "type/Float",
+      semantic_type: "type/Longitude",
+    }),
+    createMockMetricDimension({
+      id: "dim-created-at",
+      display_name: "Created At",
+      effective_type: "type/DateTime",
+      semantic_type: "type/CreationTimestamp",
+    }),
+  ],
+});
+
 export function createMetricMetadata(metrics: NormalizedMetric[]): Metadata {
   const metadata = new Metadata();
   metadata.metrics = {};

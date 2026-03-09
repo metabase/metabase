@@ -1,8 +1,19 @@
 import type { RowValues } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import { createMockSingleSeries } from "metabase-types/api/mocks/series";
 
-import { splitByBreakout } from "./series";
+import type { MetricSourceId } from "../types/viewer-state";
+
+import {
+  REVENUE_METRIC,
+  TOTAL_MEASURE,
+  createMetricMetadata,
+  measureMetadata,
+  setupDefinition,
+  setupMeasureDefinition,
+} from "./__tests__/test-helpers";
+import { getSelectedMetricsInfo, splitByBreakout } from "./series";
 
 const dimensionCol = createMockColumn({
   name: "CREATED_AT",
@@ -170,5 +181,128 @@ describe("splitByBreakout", () => {
     const result = splitByBreakout(series, 1);
 
     expect(result[0].data.cols).toBe(result[1].data.cols);
+  });
+});
+
+describe("getSelectedMetricsInfo", () => {
+  const metricMetadata = createMetricMetadata([REVENUE_METRIC]);
+  const metricDefinition = setupDefinition(metricMetadata, REVENUE_METRIC.id);
+  const measureDefinition = setupMeasureDefinition(
+    measureMetadata,
+    TOTAL_MEASURE.id,
+  );
+
+  describe("metric definition", () => {
+    it("extracts metric id, name, and sourceType", () => {
+      const sourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
+      const result = getSelectedMetricsInfo(
+        [{ id: sourceId, definition: metricDefinition }],
+        new Set(),
+      );
+
+      expect(result).toEqual([
+        {
+          id: REVENUE_METRIC.id,
+          sourceType: "metric",
+          name: "Revenue",
+          isLoading: false,
+        },
+      ]);
+    });
+
+    it("marks entry as loading when id is in loadingIds", () => {
+      const sourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
+      const result = getSelectedMetricsInfo(
+        [{ id: sourceId, definition: metricDefinition }],
+        new Set([sourceId]),
+      );
+
+      expect(result).toEqual([
+        {
+          id: REVENUE_METRIC.id,
+          sourceType: "metric",
+          name: "Revenue",
+          isLoading: true,
+        },
+      ]);
+    });
+  });
+
+  describe("measure definition", () => {
+    it("extracts measure id, name, tableId, and sourceType", () => {
+      const sourceId: MetricSourceId = `measure:${TOTAL_MEASURE.id}`;
+      const result = getSelectedMetricsInfo(
+        [{ id: sourceId, definition: measureDefinition }],
+        new Set(),
+      );
+
+      expect(result).toEqual([
+        {
+          id: TOTAL_MEASURE.id,
+          sourceType: "measure",
+          name: "Total Revenue",
+          isLoading: false,
+          tableId: ORDERS_ID,
+        },
+      ]);
+    });
+  });
+
+  it("handles multiple entries in order", () => {
+    const metricSourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
+    const measureSourceId: MetricSourceId = `measure:${TOTAL_MEASURE.id}`;
+
+    const result = getSelectedMetricsInfo(
+      [
+        { id: metricSourceId, definition: metricDefinition },
+        { id: measureSourceId, definition: measureDefinition },
+      ],
+      new Set(),
+    );
+
+    expect(result).toEqual([
+      {
+        id: REVENUE_METRIC.id,
+        sourceType: "metric",
+        name: "Revenue",
+        isLoading: false,
+      },
+      {
+        id: TOTAL_MEASURE.id,
+        sourceType: "measure",
+        name: "Total Revenue",
+        isLoading: false,
+        tableId: ORDERS_ID,
+      },
+    ]);
+  });
+
+  it("sets isLoading per entry based on loadingIds", () => {
+    const metricSourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
+    const measureSourceId: MetricSourceId = `measure:${TOTAL_MEASURE.id}`;
+
+    const result = getSelectedMetricsInfo(
+      [
+        { id: metricSourceId, definition: metricDefinition },
+        { id: measureSourceId, definition: measureDefinition },
+      ],
+      new Set([measureSourceId]),
+    );
+
+    expect(result).toEqual([
+      {
+        id: REVENUE_METRIC.id,
+        sourceType: "metric",
+        name: "Revenue",
+        isLoading: false,
+      },
+      {
+        id: TOTAL_MEASURE.id,
+        sourceType: "measure",
+        name: "Total Revenue",
+        isLoading: true,
+        tableId: ORDERS_ID,
+      },
+    ]);
   });
 });

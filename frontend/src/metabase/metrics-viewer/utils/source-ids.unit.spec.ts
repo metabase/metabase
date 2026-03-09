@@ -3,6 +3,7 @@ import {
   createMetricSourceId,
   createSourceId,
   getSourceIcon,
+  nextSyntheticCardId,
   parseSourceId,
 } from "./source-ids";
 
@@ -49,5 +50,12 @@ describe("getSourceIcon", () => {
   it('returns "ruler" icon for measure source IDs', () => {
     expect(getSourceIcon("measure:5")).toBe("ruler");
     expect(getSourceIcon("measure:42")).toBe("ruler");
+  });
+});
+
+describe("nextSyntheticCardId", () => {
+  it("returns sequential negative IDs starting from -2", () => {
+    expect(nextSyntheticCardId()).toBe(-2);
+    expect(nextSyntheticCardId()).toBe(-3);
   });
 });
