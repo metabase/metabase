@@ -504,4 +504,4 @@
                               results [(deref fut1 30000 {:error :timeout})
                                        (deref fut2 30000 {:error :timeout})]]
                           (is (every? #(= :succeeded (-> % :result ::jobs/status)) results)
-                              "Both threads should succeed")))))))))))))
+                              "Both threads should succeed"))))))))))))))
