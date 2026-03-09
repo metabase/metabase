@@ -3568,8 +3568,25 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
+
   - changeSet:
-      id: v59.2026-02-18T12:00:00
+      id: v59.2026-03-03T12:00:00
+      author: qnkhuat
+      comment: Unify source-tables format from map to ordered array
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.UnifySourceTablesFormat"
+
+  - changeSet:
+      id: v59.2026-03-04T00:00:00
+      author: rileythompson
+      comment: Fix ClickHouse upload DB schema name and models
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
+
+  - changeSet:
+      id: v59.2026-03-08T12:00:00
       author: wotbrew
       comment: Add last_checkpoint_value to transform table
       preConditions:
@@ -3647,6 +3664,33 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.app_db.custom_migrations.RemoveLegacyIncrementalStrategies"
+
+  - changeSet:
+      id: v59.2026-03-09T00:00:01
+      author: bronsa
+      comment: Add checkpoint range columns to transform_run
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: checkpoint_filter_field_id
+                  type: int
+                  remarks: The field ID used for incremental checkpoint filtering
+                  constraints:
+                    nullable: true
+              - column:
+                  name: checkpoint_lo_value
+                  type: text
+                  remarks: The low checkpoint value for this run (exclusive lower bound)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: checkpoint_hi_value
+                  type: text
+                  remarks: The high checkpoint value for this run (inclusive upper bound)
+                  constraints:
+                    nullable: true
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

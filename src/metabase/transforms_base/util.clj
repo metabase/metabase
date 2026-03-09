@@ -156,8 +156,7 @@
   [transform-id source-range-params]
   (t2/update! :model/Transform
               transform-id
-              {:last_checkpoint_type  (some-> source-range-params :hi :type u/qualified-name)
-               :last_checkpoint_value (some-> source-range-params :hi :value str)}))
+              {:last_checkpoint_value (some-> source-range-params :hi :value str)}))
 
 (defn- parse-checkpoint-value
   "Parse a serialized checkpoint value string according to its base-type keyword."
@@ -170,9 +169,9 @@
                           {:base-type base-type}))))
 
 (defn- tag-checkpoint-value
-  "Wrap a raw checkpoint value from the QP into a tagged map `{:type base-type :value parsed}`."
+  "Wrap a raw checkpoint value from the QP into a map `{:value parsed}`."
   [base-type raw-value]
-  {:type base-type, :value (parse-checkpoint-value base-type (str raw-value))})
+  {:value (parse-checkpoint-value base-type (str raw-value))})
 
 (defn- inject-filters-into-table-tag
   "Inject `:source-filters` into the table template tag matching the checkpoint field's table.
@@ -212,7 +211,7 @@
   (let [{:keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
     (when checkpoint-filter-field-id
-      (let [{:keys [last_checkpoint_type last_checkpoint_value]} transform
+      (let [{:keys [last_checkpoint_value]} transform
             db-id             (transforms-base.i/target-db-id transform)
             metadata-provider (lib-be/application-database-metadata-provider db-id)
             column            (lib.metadata/field metadata-provider checkpoint-filter-field-id)
@@ -223,7 +222,8 @@
                 (throw (ex-info (str "Checkpoint column '" (:name column) "' has unsupported type " (pr-str (:base-type column)) ". "
                                      "Only numeric and temporal columns are supported for incremental filtering.")
                                 {:column column})))
-            lo                (when last_checkpoint_type (parse-checkpoint-value last_checkpoint_type last_checkpoint_value))
+            base-type         (:base-type column)
+            lo                (when last_checkpoint_value (parse-checkpoint-value base-type last_checkpoint_value))
 
             max-value
             (let [table-id          (:table-id column)
@@ -235,9 +235,9 @@
               (ffirst (get-in query-result [:data :rows])))]
         {:column                     column
          :checkpoint-filter-field-id checkpoint-filter-field-id
-         :lo                         (when last_checkpoint_type {:type last_checkpoint_type, :value lo})
-         :hi                         (cond (some? max-value) (tag-checkpoint-value (:base-type column) max-value)
-                                           last_checkpoint_type {:type last_checkpoint_type, :value lo})}))))
+         :lo                         (when lo {:value lo})
+         :hi                         (cond (some? max-value) (tag-checkpoint-value base-type max-value)
+                                           lo {:value lo})}))))
 
 (defn preprocess-incremental-query
   "Add checkpoint filtering to a query for incremental execution.
@@ -525,7 +525,14 @@
         database (t2/select-one :model/Database db-id)]
     ;; Save watermark if source-range-params available
     (when source-range-params
-      (save-watermark! (:id transform) source-range-params))
+      (save-watermark! (:id transform) source-range-params)
+      ;; Write checkpoint range to the run for bookkeeping
+      (when run-id
+        (let [{:keys [checkpoint-filter-field-id lo hi]} source-range-params]
+          (t2/update! :model/TransformRun run-id
+                      (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
+                        lo (assoc :checkpoint_lo_value (str (:value lo)))
+                        hi (assoc :checkpoint_hi_value (str (:value hi))))))))
     ;; Sync target table
     (sync-target! target database)
     ;; Mark the table as owned by this transform

@@ -91,8 +91,7 @@
   {:source_type          mi/transform-keyword
    :source               {:out transform-source-out, :in transform-source-in}
    :target               mi/transform-json
-   :run_trigger          mi/transform-keyword
-   :last_checkpoint_type mi/transform-keyword})
+   :run_trigger          mi/transform-keyword})
 
 (defmethod collection/allowed-namespaces :model/Transform
   [_]
@@ -324,7 +323,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:dependency_analysis_version :source_type :target_db_id :last_checkpoint_value :last_checkpoint_type]
+   :skip      [:dependency_analysis_version :source_type :target_db_id :last_checkpoint_value]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)

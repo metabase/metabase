@@ -92,7 +92,7 @@
           ;; First incremental run (no checkpoint) should behave like non-incremental
           ;; to drop and recreate the table rather than appending to existing data.
           effective-transform-type (if (and (= :table-incremental (keyword (:type target)))
-                                            (nil? (:last_checkpoint_type transform)))
+                                            (nil? (:last_checkpoint_value transform)))
                                      :table
                                      (keyword (:type target)))
           transform-details {:db-id db
