@@ -540,7 +540,7 @@
                     (is (some? bot-msg))
                     (is (= "stream123" (:slack_msg_id bot-msg)))
                     (is (= "C123" (:channel_id bot-msg)))
-                    (is (= (mt/user->id :rasta) (:user_id bot-msg))))))))))))))
+                    (is (= (mt/user->id :rasta) (:user_id bot-msg)))))))))))))
 
 (deftest ^:parallel slack-thread-conversation-id-test
   (testing "Same thread produces same conversation ID"
