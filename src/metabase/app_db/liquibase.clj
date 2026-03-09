@@ -25,7 +25,7 @@
    (javax.sql DataSource)
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner UpdateSummaryOutputEnum)
    (liquibase.change.custom CustomChangeWrapper)
-   (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType DatabaseChangeLog)
+   (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
    (liquibase.changelog.filter AlreadyRanChangeSetFilter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.command.core AbstractRollbackCommandStep)
