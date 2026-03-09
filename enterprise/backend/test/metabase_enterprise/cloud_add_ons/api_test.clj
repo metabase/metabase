@@ -113,7 +113,7 @@
         (is (=? "Can only access Store API for Metabase Cloud instances."
                 (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/transforms" {})))))
     (testing "not eligible if already has 'transforms'"
-      (mt/with-premium-features #{:hosting :transforms}
+      (mt/with-premium-features #{:hosting :transforms-basic}
         (is (=? "Can only purchase add-ons for eligible subscriptions."
                 (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/transforms" {})))))
     (testing "requires current user being a store user"
@@ -140,7 +140,7 @@
         (is (=? "Can only access Store API for Metabase Cloud instances."
                 (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/transforms-basic" {})))))
     (testing "not eligible if already has 'transforms'"
-      (mt/with-premium-features #{:hosting :transforms}
+      (mt/with-premium-features #{:hosting :transforms-basic}
         (is (=? "Can only purchase add-ons for eligible subscriptions."
                 (mt/user-http-request :crowberto :post 400 "ee/cloud-add-ons/transforms-basic" {})))))
     (testing "requires current user being a store user"
