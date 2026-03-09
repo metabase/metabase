@@ -25,16 +25,6 @@ import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 
-type CardLinkProps =
-  | {
-      buttonLink: string;
-      internalLink?: never;
-    }
-  | {
-      internalLink: string;
-      buttonLink?: never;
-    };
-
 type UpsellBannerPropsBase = {
   title: string;
   buttonText: string;
@@ -44,11 +34,12 @@ type UpsellBannerPropsBase = {
   children: React.ReactNode;
   style?: React.CSSProperties;
   onClick?: () => void;
+  buttonLink?: string;
+  internalLink?: string;
 };
 
-export type UpsellBannerProps =
-  | (UpsellBannerPropsBase & CardLinkProps)
-  | (UpsellBannerPropsBase & CardLinkProps & DismissibleProps);
+export type UpsellBannerProps = UpsellBannerPropsBase &
+  Partial<DismissibleProps>;
 
 export const UpsellBannerInner: React.FC<UpsellBannerProps> = ({
   title,

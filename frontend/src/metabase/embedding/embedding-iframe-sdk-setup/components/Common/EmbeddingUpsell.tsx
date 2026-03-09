@@ -4,6 +4,7 @@ import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
 import { UTM_LOCATION } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 
 type Props = {
@@ -17,6 +18,11 @@ export const EmbeddingUpsell = ({ campaign }: Props) => {
     getUpgradeUrl(state, { utm_content: "embedding-page" }),
   );
 
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign: "enterprise",
+    location: "embedding-page",
+  });
+
   if (isSimpleEmbedFeatureAvailable) {
     return null;
   }
@@ -25,6 +31,7 @@ export const EmbeddingUpsell = ({ campaign }: Props) => {
     <UpsellCard
       title={t`Get more powerful embedding`}
       buttonLink={upgradeUrl}
+      onClick={triggerUpsellFlow}
       campaign={campaign}
       location={UTM_LOCATION}
       /* eslint-disable-next-line metabase/no-literal-metabase-strings -- Button text */
