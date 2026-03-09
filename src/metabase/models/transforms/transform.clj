@@ -117,7 +117,8 @@
       (log/warnf "Invalid target database id (%s) ignored for new transform (%s)" target-db-id (:name transform)))
     (-> transform
         (assoc-in [:target :database] target-db-id)
-        (cond-> table-id (assoc-in [:target :table_id] table-id))
+        (cond-> table-id (-> (assoc-in [:target :table_id] table-id)
+                             (assoc :target_table_id table-id)))
         (assoc
          :source_type (transforms-base.u/transform-source-type source)
          :target_db_id (when valid-db-id? target-db-id)
@@ -148,7 +149,8 @@
       (assoc :target_db_id target-db-id)
 
       table-id
-      (assoc-in [:target :table_id] table-id)
+      (-> (assoc-in [:target :table_id] table-id)
+          (assoc :target_table_id table-id))
 
       ;; Reset checkpoint when the incremental filter field changes
       (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
@@ -331,27 +333,41 @@
   :table-with-db-and-fields
   "Fetch tables with their fields. The tables show up under the `:table` property."
   [transforms]
-  (let [table-key-fn (fn [{:keys [target] :as transform}]
+  (let [;; Split into transforms with and without target_table_id
+        with-id    (filter :target_table_id transforms)
+        without-id (remove :target_table_id transforms)
+        ;; Direct lookup by target_table_id
+        id->table  (when (seq with-id)
+                     (let [table-ids (into #{} (map :target_table_id) with-id)]
+                       (m/index-by :id (-> (t2/select :model/Table :id [:in table-ids])
+                                           (t2/hydrate :db :fields)))))
+        ;; Fall back to composite key lookup for transforms without target_table_id
+        table-key-fn (fn [{:keys [target] :as transform}]
                        [(transforms-base.i/target-db-id transform) (:schema target) (:name target)])
-        table-keys (into #{} (map table-key-fn) transforms)
-        table-keys-with-schema (filter second table-keys)
-        table-keys-without-schema (keep (fn [[db-id schema table-name]]
-                                          (when-not schema
-                                            [db-id table-name]))
-                                        table-keys)
-        tables (when (or (seq table-keys-with-schema) (seq table-keys-without-schema))
-                 (-> (t2/select :model/Table
-                                {:where [:or
-                                         (when (seq table-keys-with-schema)
-                                           [:in [:composite :db_id :schema :name] table-keys-with-schema])
-                                         (when (seq table-keys-without-schema)
-                                           [:and
-                                            [:= :schema nil]
-                                            [:in [:composite :db_id :name] table-keys-without-schema]])]})
-                     (t2/hydrate :db :fields)))
-        table-keys->table (m/index-by (juxt :db_id :schema :name) tables)]
+        table-keys->table
+        (when (seq without-id)
+          (let [table-keys (into #{} (map table-key-fn) without-id)
+                table-keys-with-schema (filter second table-keys)
+                table-keys-without-schema (keep (fn [[db-id schema table-name]]
+                                                  (when-not schema
+                                                    [db-id table-name]))
+                                                table-keys)
+                tables (when (or (seq table-keys-with-schema) (seq table-keys-without-schema))
+                         (-> (t2/select :model/Table
+                                        {:where [:or
+                                                 (when (seq table-keys-with-schema)
+                                                   [:in [:composite :db_id :schema :name] table-keys-with-schema])
+                                                 (when (seq table-keys-without-schema)
+                                                   [:and
+                                                    [:= :schema nil]
+                                                    [:in [:composite :db_id :name] table-keys-without-schema]])]})
+                             (t2/hydrate :db :fields)))]
+            (m/index-by (juxt :db_id :schema :name) tables)))]
     (for [transform transforms]
-      (assoc transform :table (get table-keys->table (table-key-fn transform))))))
+      (assoc transform :table
+             (if-let [tid (:target_table_id transform)]
+               (get id->table tid)
+               (get table-keys->table (table-key-fn transform)))))))
 
 (defmethod serdes/hash-fields :model/Transform
   [_transform]
@@ -360,7 +376,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy      [:name :description :entity_id :owner_email]
-   :skip      [:dependency_analysis_version :source_type :target_db_id :last_checkpoint_value]
+   :skip      [:dependency_analysis_version :source_type :target_db_id :target_table_id :last_checkpoint_value]
    :transform {:created_at         (serdes/date)
                :creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)

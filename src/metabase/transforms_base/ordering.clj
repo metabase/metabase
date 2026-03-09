@@ -71,34 +71,52 @@
 
 (mu/defn- output-table-map
   [mp :- ::lib.schema.metadata/metadata-provider transforms]
-  (let [table-map (into {}
-                        (map (fn [{:keys [schema name id]}]
-                               [[schema name] id]))
-                        (lib.metadata/tables mp))]
-    (into {}
-          (keep (fn [transform]
-                  (when-let [output-table (table-map [(get-in transform [:target :schema])
-                                                      (get-in transform [:target :name])])]
-                    [output-table (:id transform)])))
-          transforms)))
+  (let [;; Direct mapping for transforms with target_table_id
+        direct-map (into {}
+                         (keep (fn [{:keys [target_table_id id]}]
+                                 (when target_table_id
+                                   [target_table_id id])))
+                         transforms)
+        ;; Fall back to metadata provider for transforms without target_table_id
+        transforms-without-id (remove :target_table_id transforms)]
+    (if (seq transforms-without-id)
+      (let [table-map (into {}
+                            (map (fn [{:keys [schema name id]}]
+                                   [[schema name] id]))
+                            (lib.metadata/tables mp))]
+        (into direct-map
+              (keep (fn [transform]
+                      (when-let [output-table (table-map [(get-in transform [:target :schema])
+                                                          (get-in transform [:target :name])])]
+                        [output-table (:id transform)])))
+              transforms-without-id))
+      direct-map)))
 
 (defn- target-ref-map
-  "Build a map from [database_id schema table_name] -> transform_id for all transforms."
+  "Build maps for resolving dependencies to transform ids.
+   Returns {:by-triple {[database_id schema table_name] -> transform_id}
+            :by-table-id {table_id -> transform_id}}"
   [transforms]
-  (into {}
-        (map (fn [{:keys [id target]}]
-               [[(:database target) (:schema target) (:name target)] id]))
-        transforms))
+  {:by-triple   (into {}
+                      (map (fn [{:keys [id target]}]
+                             [[(:database target) (:schema target) (:name target)] id]))
+                      transforms)
+   :by-table-id (into {}
+                      (keep (fn [{:keys [id target_table_id]}]
+                              (when target_table_id
+                                [target_table_id id])))
+                      transforms)})
 
 (defn- resolve-dependency
   "Resolve a single dependency to a transform id, or nil if not resolvable.
   Used to map table/transform/table-ref dependencies to actual transform ids."
-  [{:keys [table transform table-ref]} output-tables transform-ids target-refs]
-  (or (output-tables table)
-      (transform-ids transform)
+  [{dep-table :table dep-transform :transform :keys [table-ref]} output-tables transform-ids target-refs]
+  (or (output-tables dep-table)
+      ((:by-table-id target-refs) dep-table)
+      (transform-ids dep-transform)
       (when table-ref
         (let [{:keys [database_id schema table]} table-ref]
-          (target-refs [database_id schema table])))))
+          ((:by-triple target-refs) [database_id schema table])))))
 
 (defn transform-ordering
   "Computes an 'ordering' of a given list of transforms.

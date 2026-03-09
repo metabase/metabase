@@ -2187,3 +2187,31 @@
         (t2/query {:update from-table
                    :set    {:table_id table-id}
                    :where  [:= :id id]})))))
+
+(define-migration BackfillTransformTargetTableId
+  ;; For each transform with a non-null target_db_id, extract the table_id from the target JSON column.
+  ;; If table_id is present in the JSON, use it directly.
+  ;; If table_id is missing but name is present, look up the table by (db_id, schema, name).
+  (let [find-table-id (fn [db-id schema table-name]
+                        (:id (first (t2/query {:select [:id]
+                                               :from   [:metabase_table]
+                                               :where  [:and
+                                                        [:= :db_id db-id]
+                                                        (if (some? schema)
+                                                          [:= :schema schema]
+                                                          [:is :schema nil])
+                                                        [:= :name table-name]]
+                                               :limit  1}))))]
+    (doseq [{:keys [id target target_db_id]} (t2/query {:select [:id :target :target_db_id]
+                                                         :from   [:transform]
+                                                         :where  [:and
+                                                                  [:not= :target_db_id nil]
+                                                                  [:= :target_table_id nil]]})]
+      (let [target-map (json-out target false)
+            table-id   (or (get target-map "table_id")
+                           (when-let [table-name (get target-map "name")]
+                             (find-table-id target_db_id (get target-map "schema") table-name)))]
+        (when table-id
+          (t2/query {:update :transform
+                     :set    {:target_table_id table-id}
+                     :where  [:= :id id]}))))))

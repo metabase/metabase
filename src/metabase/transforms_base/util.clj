@@ -476,11 +476,13 @@
     ;; Sync target table
     (sync-target! target database)
     ;; Mark the table as owned by this transform
-    (when-let [table (t2/select-one :model/Table
-                                    :db_id db-id
-                                    :schema (:schema target)
-                                    :name (:name target))]
-      (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
+    (let [table-id (or (:target_table_id transform)
+                       (:id (t2/select-one [:model/Table :id]
+                                           :db_id db-id
+                                           :schema (:schema target)
+                                           :name (:name target))))]
+      (when table-id
+        (t2/update! :model/Table table-id {:transform_id (:id transform)})))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
       (events/publish-event! :event/transform-run-complete
