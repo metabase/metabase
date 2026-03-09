@@ -1,3 +1,5 @@
+import { P, match } from "ts-pattern";
+
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import type {
   DatasetError,
@@ -19,27 +21,16 @@ type AnyTransform =
 
 const getTransformErrorMessage = (
   error: DatasetError | undefined,
-): string | undefined => {
-  if (!error) {
-    return undefined;
-  }
-
-  if (typeof error === "string") {
-    return error;
-  }
-
-  if (typeof error === "object") {
-    const data = error.data;
-
-    if (typeof data === "string") {
-      return data;
-    }
-
-    return JSON.stringify(error);
-  }
-
-  return String(error);
-};
+): string | undefined =>
+  match(error)
+    .with(P.nullish, () => undefined)
+    .with(P.string, (message) => message)
+    .with({ data: P.string }, ({ data }) => data)
+    .with(
+      P.when((value) => typeof value === "object" && value !== null),
+      (datasetError) => JSON.stringify(datasetError),
+    )
+    .otherwise((value) => String(value));
 
 export const registerTransformMetabotContextFn = ({
   transform,
