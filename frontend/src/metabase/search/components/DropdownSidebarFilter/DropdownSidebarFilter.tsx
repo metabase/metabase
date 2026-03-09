@@ -167,7 +167,7 @@ export const DropdownSidebarFilter = ({
         </Box>
       </Popover.Target>
 
-      <Popover.Dropdown>
+      <Popover.Dropdown data-testid="popover">
         <SearchEventSandbox>
           {popoverWidth && (
             <Stack mah="50vh">
