@@ -594,11 +594,11 @@
                 db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
                 table-id (mt/id :transforms_products)
                 checkpoint-field-id (t2/select-one-pk :model/Field :name "id" :table_id table-id)
-                make-source (fn [select-clause]
+                make-source (fn [query-sql]
                               {:type "query"
                                :query {:database db-id
                                        :type :native
-                                       :native {:query (str select-clause " FROM {{source_table}} AS s")
+                                       :native {:query query-sql
                                                 :template-tags {"source_table" {:id "source_table"
                                                                                 :name "source_table"
                                                                                 :display-name "Source Table"
@@ -607,7 +607,7 @@
                                                                                 :required true}}}}
                                :source-incremental-strategy {:type "checkpoint"
                                                              :checkpoint-filter-field-id checkpoint-field-id}})
-                source  (make-source "SELECT id")
+                source  (make-source "SELECT id FROM {{source_table}} AS s")
                 target  {:type                        "table-incremental"
                          :schema                      "public"
                          :name                        target-table
@@ -622,7 +622,7 @@
                 (is (= 16 (count (pg-table-rows db-spec target-table)))))
               (t2/update! :model/Transform
                           (:id transform)
-                          {:source (make-source "SELECT id, id * 2 AS doubled_id")})
+                          {:source (make-source "SELECT id FROM {{source_table}} AS s ORDER BY id DESC")})
               (testing "run after query change with no new data keeps same row count"
                 (transforms.execute/execute! (t2/select-one :model/Transform (:id transform)) {:run-method :manual})
                 (is (= 16 (count (pg-table-rows db-spec target-table)))
