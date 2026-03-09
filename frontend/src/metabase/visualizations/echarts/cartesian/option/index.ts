@@ -19,8 +19,8 @@ import type {
 } from "metabase/visualizations/types";
 import type { TimelineEventId } from "metabase-types/api";
 
-import type { ChartMeasurements } from "../chart-measurements/types";
 import { CHART_STYLE } from "../constants/style";
+import type { ChartLayout } from "../layout/types";
 import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
@@ -53,7 +53,7 @@ const isNonCategoryYAxisOption = (
 export const ensureRoomForLabels = (
   axes: Axes,
   { leftAxisModel, rightAxisModel }: CartesianChartModel,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   seriesOption: EChartsSeriesOption[],
 ): Axes => ({
   ...axes,
@@ -70,7 +70,7 @@ export const ensureRoomForLabels = (
     }
     const [min] = axisModel.extent;
     if (min < 0) {
-      const { bounds } = chartMeasurements;
+      const { bounds } = chartLayout;
       const innerHeight = Math.abs(bounds.bottom - bounds.top);
       const labelPct = CHART_STYLE.seriesLabels.size / innerHeight;
       const lowerBoundaryGap = labelPct / 2; // `/ 2` because it's okay if the bar label overlaps the axis *line*, we just don't want it to overlap the axis *labels*
@@ -88,7 +88,7 @@ export const ensureRoomForLabels = (
 
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
@@ -109,7 +109,7 @@ export const getCartesianChartOption = (
     chartModel,
     settings,
     chartWidth,
-    chartMeasurements,
+    chartLayout,
     renderingContext,
   );
   const goalSeriesOption = getGoalLineSeriesOption(
@@ -166,7 +166,7 @@ export const getCartesianChartOption = (
   return {
     ...getSharedEChartsOptions(isAnimated),
     grid: {
-      ...chartMeasurements.padding,
+      ...chartLayout.padding,
       outerBoundsMode: "none",
     },
     dataset: echartsDataset,
@@ -175,13 +175,13 @@ export const getCartesianChartOption = (
       buildAxes(
         chartModel,
         chartWidth,
-        chartMeasurements,
+        chartLayout,
         settings,
         hasTimelineEvents,
         renderingContext,
       ),
       chartModel,
-      chartMeasurements,
+      chartLayout,
       dataSeriesOptions,
     ),
   };

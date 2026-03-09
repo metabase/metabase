@@ -20,7 +20,7 @@ export interface ChartBoundsCoords {
 
 export type TicksRotation = "horizontal" | "vertical";
 
-export interface ChartMeasurements {
+export interface ChartLayout {
   padding: Padding;
   ticksDimensions: TicksDimensions;
   bounds: ChartBoundsCoords;

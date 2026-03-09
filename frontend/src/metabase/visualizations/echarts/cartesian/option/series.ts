@@ -43,10 +43,7 @@ import type {
 } from "metabase/visualizations/types";
 import type { RowValue, SeriesSettings, XAxisScale } from "metabase-types/api";
 
-import type {
-  ChartMeasurements,
-  TicksRotation,
-} from "../chart-measurements/types";
+import type { ChartLayout, TicksRotation } from "../layout/types";
 import {
   isCategoryAxis,
   isNumericAxis,
@@ -468,7 +465,7 @@ const buildEChartsBarSeries = (
   originalDataset: ChartDataset,
   xAxisModel: XAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   seriesModel: SeriesModel,
   stackName: string | undefined,
   settings: ComputedVisualizationSettings,
@@ -505,7 +502,7 @@ const buildEChartsBarSeries = (
     stack,
     barWidth: computeBarWidth(
       xAxisModel,
-      chartMeasurements.boundaryWidth,
+      chartLayout.boundaryWidth,
       barSeriesCount,
       isStacked,
       settings["graph.x_axis.scale"],
@@ -536,7 +533,7 @@ const buildEChartsBarSeries = (
           dataset,
           settings,
           seriesModel.dataKey,
-          chartMeasurements.stackedBarTicksRotation,
+          chartLayout.stackedBarTicksRotation,
         )
       : getBarLabelLayout({
           settings,
@@ -907,7 +904,7 @@ export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
   chartWidth: number,
-  chartMeasurements: ChartMeasurements,
+  chartLayout: ChartLayout,
   renderingContext: RenderingContext,
 ): EChartsSeriesOption[] => {
   const seriesSettingsByDataKey = getDisplaySeriesSettingsByDataKey(
@@ -967,7 +964,7 @@ export const buildEChartsSeries = (
             chartModel.dataset,
             chartModel.xAxisModel,
             chartModel.yAxisScaleTransforms,
-            chartMeasurements,
+            chartLayout,
             seriesModel,
             stackName,
             settings,
