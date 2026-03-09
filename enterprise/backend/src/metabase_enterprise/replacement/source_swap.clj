@@ -67,7 +67,7 @@
         (t2/update! :model/Card (:id card) changes)
         (events/publish-event! :event/card-update
                                {:object (merge card changes)
-                                :user-id (:id @api/*current-user*)
+                                :user-id api/*current-user-id*
                                 :previous-object card})
         ;; todo: we still want to publish the card changed event here, but we should suppress the depdency analysis
         ;; and do it ourselves. This probably should be moved higher up so it's a bit more generic than this
@@ -90,7 +90,7 @@
       (when (seq changes)
         (t2/update! :model/Segment (:id segment) changes)
         (events/publish-event! :event/segment-update
-                               {:object (merge segment changes) :user-id (:id @api/*current-user*)})))))
+                               {:object (merge segment changes) :user-id api/*current-user-id*})))))
 
 (defn- measure-swap-source!
   [measure old-source new-source]
@@ -108,7 +108,7 @@
       (when (seq changes)
         (t2/update! :model/Measure (:id measure) changes)
         (events/publish-event! :event/measure-update
-                               {:object (merge measure changes) :user-id (:id @api/*current-user*)})))))
+                               {:object (merge measure changes) :user-id api/*current-user-id*})))))
 
 (defn- swap-parameter-target
   "Swap field refs in a parameter target to reference the new source."
@@ -171,7 +171,7 @@
       (dashcard-swap-source! dashcard card-id->card old-source new-source))
     (events/publish-event! :event/dashboard-update {:object  (t2/select-one :model/Dashboard
                                                                             :id (:id dashboard))
-                                                    :user-id (:id @api/*current-user*)})))
+                                                    :user-id api/*current-user-id*})))
 
 (defn swap-source!
   "Swap old-source to new-source in an entity.

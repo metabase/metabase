@@ -52,15 +52,14 @@
     (when-not (:success result)
       (throw (ex-info "Sources are not replaceable" {:status-code 400
                                                      :errors      (:errors result)}))))
-  (let [user-id  api/*current-user-id*
-        work-fn  (fn [progress]
+  (let [work-fn  (fn [progress]
                    (replacement.runner/run-swap
                     [source_entity_type source_entity_id]
                     [target_entity_type target_entity_id]
                     progress))
         job-row  (replacement-run/create-run!
                   source_entity_type source_entity_id
-                  target_entity_type target_entity_id user-id)
+                  target_entity_type target_entity_id api/*current-user-id*)
         progress (replacement-run/run-row->progress job-row)]
     (replacement.execute/execute-async! work-fn progress)
     (-> (response/response {:run_id (:id job-row)})
