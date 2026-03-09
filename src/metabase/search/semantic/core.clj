@@ -87,6 +87,7 @@
 (defmethod search.engine/init! :search.engine/semantic
   [_ opts]
   (try
+    (log/debug "Initializing semantic search engine")
     (init! (search.ingestion/searchable-documents) opts)
     (catch Exception e
       (log/error e "Error initializing semantic search engine")
@@ -94,7 +95,9 @@
 
 (defmethod search.engine/reindex! :search.engine/semantic
   [_ _opts]
+  (log/debug "reindex! is not supported for semantic search engine")
   nil)
 
 (defmethod search.engine/reset-tracking! :search.engine/semantic [_]
+  (log/debug "reset-tracking! is not supported for semantic search engine")
   nil)
