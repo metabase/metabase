@@ -29,7 +29,7 @@
 
 (def data-sources
   "Valid values for data source"
-  #{:unknown :ingested :metabase-transform :transform :source-data :upload})
+  #{:unknown :ingested :metabase-transform :source-data :upload})
 
 (def data-layers
   "Valid values for `Table.data_layer`.
@@ -422,18 +422,18 @@
        {:display_name        (humanization/name->human-readable-name table-name)
         :active              false
         :transform_target    true
-        :data_source         :transform
+        :data_source         :metabase-transform
         :data_authority      :computed
         :initial_sync_status "complete"}))))
 
 (defn- remove-referenced-candidates
-  "Short-circuiting reduce: removes matched triples from candidate-lookup."
-  [candidate-lookup target-triples]
+  "Short-circuiting reduce: removes matched triples from triple->table."
+  [triple->table target-triples]
   (reduce (fn [remaining triple]
             (if (empty? remaining)
               (reduced remaining)
               (dissoc remaining triple)))
-          candidate-lookup
+          triple->table
           target-triples))
 
 (defn gc-transform-target-tables!
@@ -446,22 +446,23 @@
    - Pre-filter via workspace_input/workspace_output table references."
   []
   (let [candidates (t2/select [:model/Table :id :db_id :schema :name]
-                              :active false :transform_target true :deactivated_at nil)]
+                              :active false :transform_target true :deactivated_at nil
+                              :data_source :metabase-transform)]
     (when (seq candidates)
-      (let [candidate-db-ids (into #{} (map :db_id) candidates)
-            candidate-lookup (into {} (map (juxt (juxt :db_id :schema :name) identity)) candidates)
-            remaining (remove-referenced-candidates
-                       candidate-lookup
-                       (eduction
-                        (map (fn [{:keys [target target_db_id]}]
-                               (-> target
-                                   (update :database #(or % target_db_id))
-                                   workspaces/target->triple)))
-                        (t2/reducible-select [:model/Transform :target :target_db_id] :target_db_id [:in candidate-db-ids])))
-            remaining (when (seq remaining)
-                        (remove-referenced-candidates
-                         remaining
-                         (workspaces/reducible-target-triples candidate-db-ids)))]
+      (let [db-ids        (into #{} (map :db_id) candidates)
+            triple->table (into {} (map (juxt (juxt :db_id :schema :name) identity)) candidates)
+            remaining     (remove-referenced-candidates
+                           triple->table
+                           (eduction
+                            (map (fn [{:keys [target target_db_id]}]
+                                   (-> target
+                                       (update :database #(or % target_db_id))
+                                       workspaces/target->triple)))
+                            (t2/reducible-select [:model/Transform :target :target_db_id] :target_db_id [:in db-ids])))
+            remaining     (when (seq remaining)
+                            (remove-referenced-candidates
+                             remaining
+                             (workspaces/reducible-target-triples db-ids)))]
         (when-let [dead-ids (seq (mapv :id (vals remaining)))]
           (log/infof "Deleting %d orphaned transform target table(s)" (count dead-ids))
           (t2/delete! :model/Table :id [:in dead-ids]))))))

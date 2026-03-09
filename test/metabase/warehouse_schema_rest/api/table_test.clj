@@ -418,7 +418,7 @@
       (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
                             {:display_name     "Userz"
                              :description      "What a nice table!"
-                             :data_source      "transform"
+                             :data_source      "ingested"
                              :data_layer       "hidden"
                              :owner_email      "bob@org.com"
                              :owner_user_id    (mt/user->id :crowberto)})
@@ -434,7 +434,7 @@
                :visibility_type "hidden"
                :display_name    "Userz"
                :is_writable     nil
-               :data_source      "transform"
+               :data_source      "ingested"
                :data_layer       "hidden"
                ;; exclusive later (not now)
                :owner_email      "bob@org.com"

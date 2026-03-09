@@ -498,7 +498,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
-             (t2/update! :model/Table table-id {:data_source :transform}))))
+             (t2/update! :model/Table table-id {:data_source :ingested}))))
       (testing "to nil"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
