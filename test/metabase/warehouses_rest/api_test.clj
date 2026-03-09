@@ -2545,11 +2545,12 @@
         (t2/update! :model/Database (mt/id) {:workspace_permissions_status nil})
         (let [response (mt/user-http-request :crowberto :post 200
                                              (format "database/%d/permission/workspace/check" (mt/id)))]
-          (is (= "ok" (:status response)))
+          (is (= "ok" (:status response)) (str "response: " (pr-str response)))
           (is (some? (:checked_at response)))
           ;; Verify it was cached
           (let [db (t2/select-one :model/Database (mt/id))]
-            (is (= "ok" (:status (:workspace_permissions_status db)))))))
+            (is (= "ok" (:status (:workspace_permissions_status db)))
+                (str "cached: " (pr-str (:workspace_permissions_status db)))))))
 
       (testing "cached=false forces permission check"
         ;; Set a stale cache value
