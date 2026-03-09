@@ -130,6 +130,9 @@ run_migrate_down() {
 
   log "Running 'migrate down' with image: $image"
 
+  local output
+  local exit_code=0
+
   # The HEAD Docker image has version "vUNKNOWN" in its version.properties,
   # which causes `migrate down` to fail with a NullPointerException when trying
   # to determine the current major version. To work around this, we extract the
@@ -166,11 +169,25 @@ run_migrate_down() {
 
     log "JAR patched successfully"
 
-    METABASE_IMAGE="$image" docker compose run --rm \
+    output=$(METABASE_IMAGE="$image" docker compose run --rm \
       -v "$modified_jar:/app/metabase.jar:ro" \
-      metabase "migrate down"
+      metabase "migrate down" 2>&1) || exit_code=$?
   else
-    METABASE_IMAGE="$image" docker compose run --rm metabase "migrate down"
+    output=$(METABASE_IMAGE="$image" docker compose run --rm metabase "migrate down" 2>&1) || exit_code=$?
+  fi
+
+  # Always print output for visibility
+  echo "$output"
+
+  # Check for errors - Metabase returns 0 even on partial rollback failures
+  if [[ $exit_code -ne 0 ]]; then
+    error "migrate down failed with exit code $exit_code"
+    return 1
+  fi
+
+  if echo "$output" | grep -q "ERROR.*liquibase\|RollbackFailedException\|Command failed with exception"; then
+    error "migrate down encountered errors (check logs above)"
+    return 1
   fi
 }
 
