@@ -1,4 +1,4 @@
-(ns metabase-enterprise.replacement.source-swap.native
+(ns metabase.lib-be.source-swap.native
   (:require
    [clojure.string :as str]
    [metabase.driver.sql.util :as sql.u]
@@ -466,7 +466,7 @@
               (lib/with-template-tags new-tags))))
       query))
 
-(defn update-native-stages
+(defn swap-source-in-native-stages
   "Dispatch native query updates based on old/new source types.
    Handles all four combinations: card→card, table→table, table→card, card→table."
   [query [old-source-type old-source-id] [new-source-type new-source-id]]
