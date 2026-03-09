@@ -179,6 +179,14 @@
                  :timeout-ms (if config/is-dev? 10000 60000)})
         (throw (ex-info "Timeout waiting for workspace to finish initializing" {:workspace-id ws-id})))))
 
+(defn ws-ready!
+  "Like [[ws-done!]], but throws if the workspace does not reach :ready status."
+  [ws-or-id]
+  (u/prog1 (ws-done! ws-or-id)
+    (when (not= :ready (:db_status <>))
+      (throw (ex-info "Workspace failed to become ready"
+                      {:db_status (:db_status <>) :workspace-id (:id <>)})))))
+
 (defn analyze-workspace!
   "Trigger the reconstruction and persistence of the workspace graph."
   [id]
@@ -403,11 +411,7 @@
   "Create a simple workspace and wait for it to finish initializing database resources.
    Throws if workspace does not become ready."
   [name]
-  (let [ws (initialize-ws! name)]
-    (if (= :ready (:db_status ws))
-      ws
-      (throw (ex-info "Workspace failed to become ready"
-                      {:name name :db_status (:db_status ws) :workspace-id (:id ws)})))))
+  (ws-ready! (initialize-ws! name)))
 
 (defn do-with-workspaces!
   "Function that sets up workspaces for testing and cleans up afterwards.
