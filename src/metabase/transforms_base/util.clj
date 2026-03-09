@@ -156,35 +156,23 @@
   [transform-id source-range-params]
   (t2/update! :model/Transform
               transform-id
-              {:last_checkpoint_type  (:type (:hi source-range-params))
+              {:last_checkpoint_type  (some-> source-range-params :hi :type u/qualified-name)
                :last_checkpoint_value (some-> source-range-params :hi :value str)}))
 
-(defn- checkpoint-type-label
-  "Return the serialization label for a base-type keyword, e.g. :type/Integer -> \"Integer\"."
-  [base-type]
-  (cond
-    (isa? base-type :type/Integer)  "Integer"
-    (isa? base-type :type/Float)    "Float"
-    (isa? base-type :type/Temporal) "Temporal"
-    :else
-    (throw (ex-info (str "Unsupported checkpoint type: " (pr-str base-type))
-                    {:base-type base-type}))))
-
 (defn- parse-checkpoint-value
-  "Parse a serialized checkpoint value string according to its type label."
-  [type-label ^String s]
-  (case type-label
-    "Integer"  (biginteger s)
-    ("Float"
-     "Decimal") (bigdec s)
-    ("Temporal"
-     "DateTime") (u.date/parse s)))
+  "Parse a serialized checkpoint value string according to its base-type keyword."
+  [base-type ^String s]
+  (cond
+    (isa? base-type :type/Float)    (bigdec s)
+    (isa? base-type :type/Number)   (biginteger s)
+    (isa? base-type :type/Temporal) (u.date/parse s)
+    :else (throw (ex-info (str "Unsupported checkpoint type: " (pr-str base-type))
+                          {:base-type base-type}))))
 
 (defn- tag-checkpoint-value
-  "Wrap a raw checkpoint value from the QP into a tagged map `{:type label :value parsed}`."
+  "Wrap a raw checkpoint value from the QP into a tagged map `{:type base-type :value parsed}`."
   [base-type raw-value]
-  (let [label (checkpoint-type-label base-type)]
-    {:type label, :value (parse-checkpoint-value label (str raw-value))}))
+  {:type base-type, :value (parse-checkpoint-value base-type (str raw-value))})
 
 (defn- inject-filters-into-table-tag
   "Inject `:source-filters` into the table template tag matching the checkpoint field's table.

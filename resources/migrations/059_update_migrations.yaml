@@ -3636,7 +3636,7 @@ databaseChangeLog:
               - column:
                   name: last_checkpoint_type
                   type: varchar(32)
-                  remarks: Type of the persisted checkpoint value (integer, decimal, date, temporal)
+                  remarks: Base type of the persisted checkpoint value, e.g. type/Integer, type/Float, type/DateTimeWithLocalTZ
                   constraints:
                     nullable: true
 

@@ -1663,6 +1663,7 @@
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
            events
+           lib
            models
            query-processor
            request
