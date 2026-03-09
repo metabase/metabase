@@ -1,7 +1,6 @@
 (ns metabase-enterprise.replacement.api
   "`/api/ee/replacement/` routes"
   (:require
-   [environ.core :as env]
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.runner :as replacement.runner]
@@ -14,15 +13,6 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;; We want to merge this without enabling it in prod
-;; we still want tests to run in ci
-;; we will remove these two functions when it's ready
-(defn- enable? []
-  (not= "prod" (or (env/env :mb-run-mode) "prod")))
-
-(defn- guard-endpoint []
-  (api/check-404 (enable?)))
 
 (api.macros/defendpoint :post "/check-replace-source" :- ::replacement.schema/check-replace-source-response
   "Check whether a source entity can be replaced by a target entity. Returns compatibility
