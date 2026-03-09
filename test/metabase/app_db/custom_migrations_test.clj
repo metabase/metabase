@@ -2734,7 +2734,7 @@
       ;; new upload tables are in a good state, but existing upload tables are in a bad state)
       (doseq [uploads-schema-name [nil "db_foo"]]
         (impl/test-migrations
-         ["v59.2026-03-04T00:00:00"] [migrate!]
+         ["v58.2026-03-04T00:00:00"] [migrate!]
           (let [db-id (t2/insert-returning-pk! :metabase_database
                                                {:name "clickhouse cloud upload db"
                                                 :engine "clickhouse"
