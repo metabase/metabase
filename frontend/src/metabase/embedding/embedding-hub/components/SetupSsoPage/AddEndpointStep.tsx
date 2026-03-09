@@ -1,4 +1,4 @@
-/* eslint-disable metabase/no-unconditional-metabase-links-render, metabase/no-literal-metabase-strings -- Admin-only page */
+/* eslint-disable metabase/no-unconditional-metabase-links-render, metabase/no-literal-metabase-strings, i18next/no-literal-string -- admin-only page */
 
 import { jt, t } from "ttag";
 
@@ -38,21 +38,16 @@ export const AddEndpointStep = ({ onDone }: { onDone: () => void }) => {
         <Text>{t`You'll need to add a library to your backend to sign your JSON Web Tokens.`}</Text>
         <Text>{t`For Node.js, we recommend jsonwebtoken:`}</Text>
 
-        {/* eslint-disable-next-line i18next/no-literal-string -- code snippet */}
         <Code className={S.codeSnippet} p="md" block>
           npm install jsonwebtoken --save
         </Code>
 
         <Text>
-          {jt`Next, set up an endpoint on your backend (e.g., ${
-            (
-              // eslint-disable-next-line i18next/no-literal-string
-              <Code key="endpoint">/sso/metabase</Code>
-            )
-          }) that uses your Metabase JWT shared secret to generate a JWT for the authenticated user. `}
+          {jt`Next, set up an endpoint on your backend (e.g., ${(
+            <Code key="endpoint">/sso/metabase</Code>
+          )}) that uses your Metabase JWT shared secret to generate a JWT for the authenticated user. `}
           <strong>
             {t`This endpoint must return a JSON object with a `}
-            {/* eslint-disable-next-line i18next/no-literal-string */}
             <Code>jwt</Code>
             {t` property containing the signed JWT.`}
           </strong>
