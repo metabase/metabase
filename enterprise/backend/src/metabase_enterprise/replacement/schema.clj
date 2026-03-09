@@ -1,5 +1,6 @@
 (ns metabase-enterprise.replacement.schema
   (:require
+   [metabase.lib-be.schema.source-swap :as lib-be.schema.source-swap]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -42,9 +43,6 @@
    [:effective_type [:maybe :string]]
    [:semantic_type  [:maybe :string]]])
 
-(mr/def ::column-error-type
-  [:enum :column-type-mismatch :missing-primary-key :missing-foreign-key :foreign-key-mismatch])
-
 (mr/def ::error-type
   [:enum :cycle-detected :database-mismatch :incompatible-implicit-joins])
 
@@ -52,7 +50,7 @@
   [:map
    [:source {:optional true} [:maybe ::column]]
    [:target {:optional true} [:maybe ::column]]
-   [:errors {:optional true} [:sequential ::column-error-type]]])
+   [:errors {:optional true} [:sequential ::lib-be.schema.source-swap/column-error]]])
 
 (mr/def ::check-replace-source-response
   [:map

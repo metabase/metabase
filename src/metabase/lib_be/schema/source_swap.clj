@@ -16,7 +16,8 @@
   [:tuple ::source-type ::source-id])
 
 (mr/def ::column-error
-  [:enum :column-type-mismatch
+  [:enum
+   :column-type-mismatch
    :missing-primary-key
    :missing-foreign-key
    :foreign-key-mismatch])
