@@ -11,7 +11,7 @@ const sharedModules = ["common", "querying", "visualizations"];
 
 const featureModules = ["dashboard", "query_builder", "admin", "reference"];
 
-const appModules = ["app", "home", "nav"];
+const _appModules = ["app", "home", "nav"];
 
 const elements = [
   { type: "lib/types", pattern: "frontend/src/metabase-types/*/**" },
@@ -20,7 +20,7 @@ const elements = [
   ...basicModules.map((name) => createElement({ type: "basic", name })),
   ...sharedModules.map((name) => createElement({ type: "shared", name })),
   ...featureModules.map((name) => createElement({ type: "feature", name })),
-  { type: "app/misc", pattern: "frontend/src/metabase/*.js*" },
+  { type: "app/misc", pattern: "frontend/src/metabase/*.*" },
   { type: "other", pattern: "frontend/src/*/**" },
 ];
 
@@ -78,7 +78,7 @@ const rules = [
 const shouldEnforce = true; // FIXME
 // process.env.CHECK_MODULE_BOUNDARIES === "true";
 
-module.exports = shouldEnforce
+module.exports = shouldEnforce // eslint-disable-line import/no-commonjs
   ? {
       elements,
       rules,
