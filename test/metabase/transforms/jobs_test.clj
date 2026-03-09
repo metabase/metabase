@@ -12,12 +12,10 @@
    [metabase.notification.seed :as notification.seed]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.jobs :as jobs]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [with-transform-cleanup!]]
-   [metabase.transforms.util :as transforms.u]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent CyclicBarrier TimeUnit)))
