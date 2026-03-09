@@ -82,8 +82,17 @@ const getVersionParts = (versionString: string) => {
   };
 };
 
-export const getMajorVersion = (versionString: string) =>
-  getVersionParts(versionString).major;
+export const getMajorVersion = (versionString: string) => {
+  // HEAD is the next major version (CURRENT_VERSION + 1)
+  if (versionString === "HEAD") {
+    const currentVersion = process.env.CURRENT_VERSION;
+    if (!currentVersion) {
+      throw new Error("CURRENT_VERSION env var must be set when using HEAD");
+    }
+    return String(Number(currentVersion) + 1);
+  }
+  return getVersionParts(versionString).major;
+};
 
 export const getMinorVersion = (versionString: string) =>
   getVersionParts(versionString).minor;

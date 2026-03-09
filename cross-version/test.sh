@@ -109,10 +109,25 @@ stop_metabase() {
   docker compose rm -f metabase
 }
 
+# Get edition prefix from version (0 for OSS, 1 for EE)
+get_edition_prefix() {
+  local version="$1"
+  if [[ "$version" == "HEAD" ]]; then
+    echo "1"  # HEAD is EE
+  elif [[ "$version" =~ ^v([01])\. ]]; then
+    echo "${BASH_REMATCH[1]}"
+  else
+    error "Cannot determine edition from version: $version"
+    return 1
+  fi
+}
+
 # https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#using-the-migrate-down-command
+# Run a single migrate down step (rolls back exactly one major version)
 run_migrate_down() {
   local image="$1"
-  local version="$2"
+  local is_head="$2"  # "true" if this is HEAD image
+
   log "Running 'migrate down' with image: $image"
 
   # The HEAD Docker image has version "vUNKNOWN" in its version.properties,
@@ -124,7 +139,7 @@ run_migrate_down() {
   # HEAD is the next major version (CURRENT_VERSION + 1).
   #
   # See DEV-1636 for a potential backend fix that would make this unnecessary.
-  if [[ "$version" == "HEAD" ]]; then
+  if [[ "$is_head" == "true" ]]; then
     if [[ -z "$CURRENT_VERSION" ]]; then
       error "CURRENT_VERSION must be set when testing HEAD downgrades"
       return 1
@@ -157,6 +172,51 @@ run_migrate_down() {
   else
     METABASE_IMAGE="$image" docker compose run --rm metabase "migrate down"
   fi
+}
+
+# Cascading migrate down: rolls back multiple major versions one at a time
+# Metabase only supports rolling back one major version per `migrate down` call,
+# so we need to iterate through intermediate versions.
+cascading_migrate_down() {
+  local source_version="$1"
+  local target_version="$2"
+
+  local source_major target_major edition_prefix
+  source_major=$(cli major "$source_version") || return 1
+  target_major=$(cli major "$target_version") || return 1
+  edition_prefix=$(get_edition_prefix "$source_version") || return 1
+
+  local steps=$((source_major - target_major))
+  log "Cascading migrate down: v$source_major → v$target_major ($steps step(s))"
+
+  local current_major=$source_major
+  local step=1
+
+  while (( current_major > target_major )); do
+    local next_major=$((current_major - 1))
+    local image is_head="false"
+
+    if (( step == 1 )); then
+      # First step uses the source image
+      image=$(cli image "$source_version") || return 1
+      [[ "$source_version" == "HEAD" ]] && is_head="true"
+    else
+      # Subsequent steps use intermediate version images (rolling .x tag)
+      local intermediate_version="v${edition_prefix}.${current_major}.x"
+      image=$(cli image "$intermediate_version") || return 1
+    fi
+
+    log "  Step $step/$steps: v$current_major → v$next_major (using $image)"
+    if ! run_migrate_down "$image" "$is_head"; then
+      error "Migrate down failed at step $step"
+      return 1
+    fi
+
+    current_major=$next_major
+    ((step++))
+  done
+
+  log "Cascading migrate down complete"
 }
 
 # Check if Metabase refuses to start (downgrade detection)
@@ -275,10 +335,9 @@ main() {
     # Stop the failed container
     stop_metabase
 
-    # Run migrate down (must use SOURCE image - the newer version)
     log ""
-    log "Step 4: Running migrate down with SOURCE version..."
-    if ! run_migrate_down "$source_image" "$SOURCE_VERSION"; then
+    log "Step 4: Rolling back database..."
+    if ! cascading_migrate_down "$SOURCE_VERSION" "$TARGET_VERSION"; then
       error "❌ migrate down failed"
       exit 1
     fi

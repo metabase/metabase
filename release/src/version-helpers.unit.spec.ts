@@ -900,6 +900,31 @@ describe("version-helpers", () => {
     ])("%s -> %s", (input, expected) => {
       expect(getMajorVersion(input)).toBe(expected);
     });
+
+    it("should return CURRENT_VERSION + 1 for HEAD", () => {
+      const originalEnv = process.env.CURRENT_VERSION;
+      try {
+        process.env.CURRENT_VERSION = "59";
+        expect(getMajorVersion("HEAD")).toBe("60");
+
+        process.env.CURRENT_VERSION = "52";
+        expect(getMajorVersion("HEAD")).toBe("53");
+      } finally {
+        process.env.CURRENT_VERSION = originalEnv;
+      }
+    });
+
+    it("should throw for HEAD when CURRENT_VERSION is not set", () => {
+      const originalEnv = process.env.CURRENT_VERSION;
+      try {
+        delete process.env.CURRENT_VERSION;
+        expect(() => getMajorVersion("HEAD")).toThrow(
+          "CURRENT_VERSION env var must be set when using HEAD",
+        );
+      } finally {
+        process.env.CURRENT_VERSION = originalEnv;
+      }
+    });
   });
 
   describe("getMinorVersion", () => {
