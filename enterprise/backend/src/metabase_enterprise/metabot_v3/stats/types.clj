@@ -205,28 +205,25 @@
 (mr/def ::distribution-stats
   "Distribution statistics for histogram data."
   [:map
-   [:percentiles [:map
-                  [:p25 number?]
-                  [:p50 number?]
-                  [:p75 number?]
-                  [:p90 number?]
-                  [:p95 number?]
-                  [:p99 number?]]]
+   [:percentiles [:map-of :int number?]]
    [:quartiles [:map
                 [:q1 number?]
                 [:median number?]
                 [:q3 number?]
                 [:iqr number?]]]
-   [:skewness number?]
-   [:kurtosis number?]])
+   [:skewness {:optional true} [:maybe number?]]
+   [:kurtosis {:optional true} [:maybe number?]]])
 
 (mr/def ::histogram-stats
   "Statistics for histogram charts."
   [:map
    [:chart_type [:= :histogram]]
-   [:summary ::series-summary]
-   [:data_points :int]
-   [:distribution ::distribution-stats]])
+   [:series_count :int]
+   [:series [:map-of :string
+             [:map
+              [:summary ::series-summary]
+              [:data_points :int]
+              [:distribution ::distribution-stats]]]]])
 
 (mr/def ::chart-type
   "Detected chart type."

@@ -272,6 +272,62 @@
     (str/join "\n\n"
               (remove str/blank? [header series-sections events-section]))))
 
+;;; ----------------------------------------- Histogram Representation -----------------------------------------------
+
+(defn- skewness-description [skewness]
+  (cond
+    (> skewness 0.5)  "right-skewed (tail extends toward higher values)"
+    (< skewness -0.5) "left-skewed (tail extends toward lower values)"
+    :else             "approximately symmetric"))
+
+(defn- kurtosis-description [kurtosis]
+  (cond
+    (> kurtosis 1)  "heavy tails (more extreme values than normal)"
+    (< kurtosis -1) "light tails (fewer extreme values than normal)"
+    :else           nil))
+
+(defn- render-histogram-series
+  "Render stats for a single histogram series."
+  [series-name {:keys [summary data_points distribution]}]
+  (let [{:keys [skewness kurtosis percentiles quartiles]} distribution
+        p-str (when (seq percentiles)
+                (str "**Percentiles**: "
+                     "P25=" (format-number (get percentiles 25))
+                     ", P50=" (format-number (get percentiles 50))
+                     ", P75=" (format-number (get percentiles 75))
+                     ", P90=" (format-number (get percentiles 90))))
+        iqr-str (when quartiles
+                  (str "**IQR**: " (format-number (:iqr quartiles))
+                       " (Q1=" (format-number (:q1 quartiles))
+                       " to Q3=" (format-number (:q3 quartiles)) ")"))
+        shape-str (when skewness
+                    (let [k-desc (when kurtosis (kurtosis-description kurtosis))]
+                      (str "**Distribution Shape**: " (skewness-description skewness)
+                           (when k-desc (str ", " k-desc)))))
+        sections [(str "## Series: " series-name)
+                  (str "**Data Points**: " data_points)
+                  (when summary
+                    (str "**Value Range**: " (format-number (:min summary))
+                         " to " (format-number (:max summary))
+                         " (median: " (format-number (:median summary)) ")"))
+                  p-str iqr-str shape-str]]
+    (str/join "\n" (remove nil? sections))))
+
+(defn generate-histogram-representation
+  "Generate markdown representation for histogram stats."
+  [{:keys [title stats timeline-events]}]
+  (let [{:keys [series_count series]} stats
+        header (str "# Chart Analysis\n"
+                    (when title (str "## Chart: " title "\n"))
+                    "**Type**: Histogram\n"
+                    "**Series Count**: " series_count)
+        series-sections (str/join "\n\n"
+                                  (for [[series-name s] series]
+                                    (render-histogram-series series-name s)))
+        events-section (render-timeline-events timeline-events)]
+    (str/join "\n\n"
+              (remove str/blank? [header series-sections events-section]))))
+
 ;;; ----------------------------------------- Main Representation ----------------------------------------------------
 
 (defn generate-time-series-representation
@@ -304,6 +360,7 @@
     :time-series  (generate-time-series-representation context)
     :categorical  (generate-categorical-representation context)
     :scatter      (generate-scatter-representation context)
+    :histogram    (generate-histogram-representation context)
     (str "# Chart Analysis\n"
          "**Type**: " (name (:chart_type stats)) "\n"
          "Statistics computation for this chart type is not yet implemented.")))
