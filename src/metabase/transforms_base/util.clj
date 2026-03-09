@@ -555,6 +555,11 @@
 
 ;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
 
+(mu/defn source-tables-vec->alias-id-map :- [:map-of :string [:maybe :int]]
+  "Convert source-table entries to `{alias -> table_id}` map."
+  [entries :- [:sequential ::source-table-entry]]
+  (into {} (map (juxt :alias :table_id)) entries))
+
 ;;; ------------------------------------------------- Source Table Resolution -------------------------------------------------
 
 (def ^:private ^:const batch-lookup-chunk-size
@@ -595,8 +600,8 @@
   "A source table entry in the array format. Combines alias with table reference."
   [:map
    [:alias :string]
-   [:database_id :int]
-   [:schema [:maybe :string]]
+   [:database_id {:optional true} :int]
+   [:schema {:optional true} [:maybe :string]]
    [:table {:optional true} :string]
    [:table_id {:optional true} [:maybe :int]]])
 
@@ -606,7 +611,7 @@
   For entries with only :database_id/:schema/:table, looks up :table_id.
   Throws if an integer table ID references a non-existent table.
   Map refs with non-existent tables get nil table_id (resolved later at execute time)."
-  [source-tables :- [:sequential [:map [:alias :string]]]]
+  [source-tables :- [:sequential ::source-table-entry]]
   (let [;; Entries that have table_id but lack table metadata need lookup
         needs-metadata   (filter (fn [e] (and (:table_id e) (not (:table e)))) source-tables)
         int-id->metadata (when (seq needs-metadata)
@@ -637,23 +642,24 @@
               :else entry))
           source-tables)))
 
-(mu/defn resolve-source-tables :- [:sequential ::source-table-entry]
-  "Resolve source-table entries to entries with :table_id filled in. Throws if any table not found.
+(mu/defn resolve-source-tables :- [:map-of :string :int]
+  "Resolve source-table entries to `{alias -> table_id}`. Throws if any table not found.
   For execute time — all entries must resolve to valid table IDs."
   [source-tables :- [:sequential ::source-table-entry]]
   (let [needs-lookup (filter missing-table-id? source-tables)
         lookup       (or (batch-lookup-table-ids needs-lookup) {})
-        resolved     (mapv (fn [entry]
-                             (let [table-id (or (:table_id entry) (lookup (source-table-ref->key entry)))]
-                               (assoc entry :table_id table-id)))
-                           source-tables)
-        unresolved   (filter #(nil? (:table_id %)) resolved)]
+        resolved     (u/for-map [entry source-tables]
+                       [(:alias entry) (or (:table_id entry) (lookup (source-table-ref->key entry)))])
+        unresolved   (for [entry source-tables
+                           :let [table-id (or (:table_id entry) (lookup (source-table-ref->key entry)))]
+                           :when (nil? table-id)]
+                       {:alias (:alias entry)
+                        :table (if-let [schema (:schema entry)]
+                                 (str schema "." (:table entry))
+                                 (:table entry))
+                        :ref   entry})]
     (when (seq unresolved)
-      (throw (ex-info (str "Tables not found: " (str/join ", " (map (fn [{:keys [alias schema table]}]
-                                                                      (if schema
-                                                                        (str schema "." table)
-                                                                        table))
-                                                                    unresolved)))
+      (throw (ex-info (str "Tables not found: " (str/join ", " (map :table unresolved)))
                       {:unresolved unresolved
                        :transform-message "Input table not found"})))
     resolved))
