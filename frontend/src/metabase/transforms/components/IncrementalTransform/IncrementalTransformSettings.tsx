@@ -14,7 +14,6 @@ import {
 } from "metabase/transforms/constants";
 import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
 import {
-  Alert,
   Anchor,
   Box,
   Divider,
@@ -32,7 +31,6 @@ import {
   NativeQueryTableTagFieldSelect,
   PythonKeysetColumnSelect,
 } from "./KeysetColumnSelect";
-import { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";
 import type { IncrementalSettingsFormValues } from "./form";
 
 type IncrementalTransformSettingsProps = {
@@ -235,28 +233,6 @@ function SourceStrategyFields({
 }: SourceStrategyFieldsProps) {
   const { values } = useFormikContext<IncrementalSettingsFormValues>();
 
-  // Check if native query has table template tags
-  const hasTableTags =
-    type === "native" && query
-      ? Object.values(Lib.templateTags(query)).some(
-          (tag) => tag.type === "table" && tag["table-id"] != null,
-        )
-      : false;
-
-  // For native queries:
-  // - If query has table tags -> use new NativeQueryTableTagFieldSelect (field ID based)
-  // - Otherwise -> use legacy NativeQueryColumnSelect (column name based)
-  const shouldUseLegacyNativeSelect = type === "native" && !hasTableTags;
-
-  // Show warning for legacy configurations that have checkpoint-filter but should migrate
-  const isLegacyNativeCheckpoint =
-    source.type === "query" &&
-    type === "native" &&
-    hasTableTags &&
-    source["source-incremental-strategy"]?.type === "checkpoint" &&
-    source["source-incremental-strategy"]["checkpoint-filter"] != null &&
-    source["source-incremental-strategy"]["checkpoint-filter-field-id"] == null;
-
   return (
     <>
       {SOURCE_STRATEGY_OPTIONS.length > 1 && (
@@ -270,11 +246,6 @@ function SourceStrategyFields({
       )}
       {values.sourceStrategy === "checkpoint" && (
         <>
-          {isLegacyNativeCheckpoint && (
-            <Alert variant="warning" mb="md">
-              {t`This transform uses a legacy configuration. Please update the checkpoint field selection to ensure compatibility with future versions.`}
-            </Alert>
-          )}
           {type === "query" && query && (
             <MBQLKeysetColumnSelect
               name="checkpointFilterFieldId"
@@ -287,29 +258,17 @@ function SourceStrategyFields({
               disabled={readOnly}
             />
           )}
-          {type === "native" &&
-            query &&
-            (shouldUseLegacyNativeSelect ? (
-              <NativeQueryColumnSelect
-                name="checkpointFilter"
-                label={t`Column to check for new values`}
-                placeholder={t`Pick a column`}
-                description={t`Pick the column that we should scan to determine which records are new or changed`}
-                descriptionProps={{ lh: "1rem" }}
-                query={query}
-                disabled={readOnly}
-              />
-            ) : (
-              <NativeQueryTableTagFieldSelect
-                name="checkpointFilterFieldId"
-                label={t`Field to check for new values`}
-                placeholder={t`Pick a field`}
-                description={t`Pick the field that we should scan to determine which records are new or changed`}
-                descriptionProps={{ lh: "1rem" }}
-                query={query}
-                disabled={readOnly}
-              />
-            ))}
+          {type === "native" && query && (
+            <NativeQueryTableTagFieldSelect
+              name="checkpointFilterFieldId"
+              label={t`Field to check for new values`}
+              placeholder={t`Pick a field`}
+              description={t`Pick the field that we should scan to determine which records are new or changed`}
+              descriptionProps={{ lh: "1rem" }}
+              query={query}
+              disabled={readOnly}
+            />
+          )}
           {type === "python" && "source-tables" in source && (
             <PythonKeysetColumnSelect
               name="checkpointFilterFieldId"

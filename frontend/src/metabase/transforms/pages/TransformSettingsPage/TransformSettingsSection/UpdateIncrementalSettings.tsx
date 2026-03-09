@@ -9,7 +9,6 @@ import {
   IncrementalTransformSettings,
   useUpdateIncrementalSettings,
 } from "metabase/transforms/components/IncrementalTransform";
-import { useQueryComplexityChecks } from "metabase/transforms/components/QueryComplexityWarning";
 import type { Transform } from "metabase-types/api";
 
 type UpdateIncrementalSettingsProps = {
@@ -23,29 +22,19 @@ const IncrementalTransformSettingsWrapper = ({
 }: UpdateIncrementalSettingsProps) => {
   const { values, setFieldValue } =
     useFormikContext<IncrementalSettingsFormValues>();
-  const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
 
-  const handleIncrementalChange = async (value: boolean) => {
-    if (value) {
-      const confirmed = await confirmIfQueryIsComplex(transform.source);
-      if (!confirmed) {
-        return;
-      }
-    }
+  const handleIncrementalChange = (value: boolean) => {
     setFieldValue("incremental", value);
   };
 
   return (
-    <>
-      <IncrementalTransformSettings
-        source={transform.source}
-        incremental={values.incremental}
-        onIncrementalChange={handleIncrementalChange}
-        variant="standalone"
-        readOnly={readOnly}
-      />
-      {modal}
-    </>
+    <IncrementalTransformSettings
+      source={transform.source}
+      incremental={values.incremental}
+      onIncrementalChange={handleIncrementalChange}
+      variant="standalone"
+      readOnly={readOnly}
+    />
   );
 };
 

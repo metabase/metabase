@@ -1,17 +1,13 @@
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
-  CheckQueryComplexityRequest,
   CreateTransformRequest,
   Dataset,
-  ExtractColumnsFromQueryRequest,
-  ExtractColumnsFromQueryResponse,
   GetInspectorLensRequest,
   InspectorDiscoveryResponse,
   InspectorLens,
   ListTransformRunsRequest,
   ListTransformRunsResponse,
   ListTransformsRequest,
-  QueryComplexity,
   RunInspectorQueryRequest,
   RunTransformResponse,
   Transform,
@@ -202,26 +198,6 @@ export const transformApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform"), listTag("table")]),
     }),
-    extractColumnsFromQuery: builder.mutation<
-      ExtractColumnsFromQueryResponse,
-      ExtractColumnsFromQueryRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/transform/extract-columns",
-        body,
-      }),
-    }),
-    checkQueryComplexity: builder.query<
-      QueryComplexity,
-      CheckQueryComplexityRequest
-    >({
-      query: (queryString) => ({
-        method: "POST",
-        url: "/api/transform/is-simple-query",
-        body: { query: queryString },
-      }),
-    }),
     getInspectorDiscovery: builder.query<
       InspectorDiscoveryResponse,
       TransformId
@@ -264,7 +240,5 @@ export const {
   useUpdateTransformMutation,
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
-  useExtractColumnsFromQueryMutation,
-  useLazyCheckQueryComplexityQuery,
   useRunInspectorQueryQuery,
 } = transformApi;

@@ -61,12 +61,7 @@ export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
 
 export type TransformSourceCheckpointStrategy = {
   type: "checkpoint";
-  // For native queries
-  "checkpoint-filter"?: string;
-  // For MBQL/Python (legacy)
-  "checkpoint-filter-unique-key"?: string;
-  // For MBQL/Python (new)
-  "checkpoint-filter-field-id"?: number;
+  "checkpoint-filter-field-id": number;
 };
 
 export type SourceIncrementalStrategy = TransformSourceCheckpointStrategy;
@@ -293,21 +288,6 @@ export type GetPythonLibraryRequest = {
 export type UpdatePythonLibraryRequest = {
   path: string;
   source: string;
-};
-
-export type ExtractColumnsFromQueryRequest = {
-  query: DatasetQuery;
-};
-
-export type ExtractColumnsFromQueryResponse = {
-  columns: string[];
-};
-
-export type CheckQueryComplexityRequest = string;
-
-export type QueryComplexity = {
-  is_simple: boolean;
-  reason: string;
 };
 
 export type InspectorFieldStats = {

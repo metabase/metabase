@@ -10,8 +10,6 @@ import type {
 export type IncrementalSettingsFormValues = {
   incremental: boolean;
   sourceStrategy: "checkpoint";
-  checkpointFilter: string | null;
-  checkpointFilterUniqueKey: string | null;
   checkpointFilterFieldId: string | null; // String because Mantine Select requires string values
   targetStrategy: "append";
 };
@@ -19,11 +17,6 @@ export type IncrementalSettingsFormValues = {
 export const VALIDATION_SCHEMA = Yup.object({
   incremental: Yup.boolean().required(),
   sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
-  // For native queries, use checkpointFilter (plain string)
-  checkpointFilter: Yup.string().nullable().defined(),
-  // For MBQL/Python queries (legacy), use checkpointFilterUniqueKey (prefixed format)
-  checkpointFilterUniqueKey: Yup.string().nullable().defined(),
-  // For MBQL/Python queries (new), use checkpointFilterFieldId (string because Mantine Select requires strings)
   checkpointFilterFieldId: Yup.string().nullable().defined(),
   targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
 });
@@ -33,8 +26,6 @@ export const getInitialValues = (
 ): IncrementalSettingsFormValues => ({
   incremental: false,
   sourceStrategy: "checkpoint",
-  checkpointFilter: null,
-  checkpointFilterUniqueKey: null,
   checkpointFilterFieldId: null,
   targetStrategy: "append",
   ...defaults,
@@ -46,17 +37,6 @@ export const getIncrementalSettingsFromTransform = (
   const isIncremental = transform.target.type === "table-incremental";
   const strategy = transform.source["source-incremental-strategy"];
 
-  // Read all fields from the strategy, whichever is present
-  const checkpointFilter =
-    strategy?.type === "checkpoint"
-      ? (strategy["checkpoint-filter"] ?? null)
-      : null;
-
-  const checkpointFilterUniqueKey =
-    strategy?.type === "checkpoint"
-      ? (strategy["checkpoint-filter-unique-key"] ?? null)
-      : null;
-
   const checkpointFilterFieldId =
     strategy?.type === "checkpoint"
       ? (strategy["checkpoint-filter-field-id"] ?? null)
@@ -65,8 +45,6 @@ export const getIncrementalSettingsFromTransform = (
   return {
     incremental: isIncremental,
     sourceStrategy: "checkpoint",
-    checkpointFilter: isIncremental ? checkpointFilter : null,
-    checkpointFilterUniqueKey: isIncremental ? checkpointFilterUniqueKey : null,
     // Convert number to string for Mantine Select
     checkpointFilterFieldId:
       isIncremental && checkpointFilterFieldId != null
@@ -101,8 +79,6 @@ export const buildIncrementalSource = (
     };
   }
 
-  // Build strategy fields based on which checkpoint field is present
-  // Priority: checkpoint-filter-field-id (MBQL/Python/Native with table tags) > checkpoint-filter (legacy native) > checkpoint-filter-unique-key (legacy)
   const strategyFields =
     formValues.checkpointFilterFieldId != null
       ? {
@@ -111,14 +87,7 @@ export const buildIncrementalSource = (
             formValues.checkpointFilterFieldId,
           ),
         }
-      : formValues.checkpointFilter
-        ? { "checkpoint-filter": formValues.checkpointFilter }
-        : formValues.checkpointFilterUniqueKey
-          ? {
-              "checkpoint-filter-unique-key":
-                formValues.checkpointFilterUniqueKey,
-            }
-          : {};
+      : {};
 
   return {
     ...source,

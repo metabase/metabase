@@ -12,7 +12,6 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.core :as server]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-inspector.core :as inspector]
    [metabase.transforms-inspector.schema :as inspector.schema]
@@ -329,22 +328,6 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (run-transform! (api/write-check :model/Transform id)))
-
-(defn- simple-native-query?
-  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion.
-  Delegates to sql-tools which dispatches to the configured parser backend (macaw or sqlglot)."
-  [sql-string]
-  (sql-tools/simple-query? sql-string))
-
-(api.macros/defendpoint :post "/is-simple-query" :- [:map
-                                                     [:is_simple :boolean]
-                                                     [:reason {:optional true} :string]]
-  "Checks if a native SQL query string is simple enough for automatic checkpoint insertion"
-  [_route-params
-   _query-params
-   {:keys [query]} :- [:map [:query string?]]]
-  (api/check-superuser)
-  (simple-native-query? query))
 
 ;;; -------------------------------------------------- Inspector API --------------------------------------------------
 
