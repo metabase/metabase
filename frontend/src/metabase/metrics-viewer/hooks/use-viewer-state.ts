@@ -22,7 +22,7 @@ import type {
   StoredMetricsViewerTab,
 } from "../types/viewer-state";
 import { getInitialMetricsViewerPageState } from "../types/viewer-state";
-import { buildBinnedBreakoutDef } from "../utils/definition-builder";
+import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
 import {
   createMeasureSourceId,
   createMetricSourceId,
@@ -425,7 +425,10 @@ export function useViewerState(): UseViewerStateResult {
           }
 
           if (dimension) {
-            newDefinition = buildBinnedBreakoutDef(newDefinition, dimension);
+            newDefinition = buildBinnedBreakoutDefinition(
+              newDefinition,
+              dimension,
+            );
           }
 
           return { ...entry, definition: newDefinition };

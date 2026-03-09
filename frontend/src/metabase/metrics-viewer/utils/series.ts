@@ -99,11 +99,11 @@ export function computeSourceColors(
 
   const allKeys = entries.flatMap((entry) => entry.keys);
 
-  const firstDef = definitions.find(
+  const firstDefinition = definitions.find(
     (definition) => definition.id === entries[0].sourceId,
   )?.definition;
-  if (firstDef) {
-    const columnName = getDefinitionColumnName(firstDef);
+  if (firstDefinition) {
+    const columnName = getDefinitionColumnName(firstDefinition);
     if (columnName) {
       allKeys[0] = columnName;
     }

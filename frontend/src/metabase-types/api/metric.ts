@@ -1,7 +1,14 @@
 import type { Collection, CollectionId } from "./collection";
 import type { DatasetColumn, RowValue } from "./dataset";
 import type { FieldValue } from "./field";
-import type { DimensionId } from "./measure";
+import type { DimensionId, DimensionMapping, MetricDimension } from "./measure";
+
+export type {
+  DimensionMapping,
+  MetricDimension,
+  MetricDimensionGroup,
+  MetricDimensionSource,
+} from "./measure";
 
 export type MetricId = number;
 
@@ -10,23 +17,10 @@ export type Metric = {
   name: string;
   description: string | null;
   dimensions: MetricDimension[];
+  dimension_mappings?: DimensionMapping[];
   collection_id: CollectionId | null;
   collection: Collection | null;
   result_column_name?: string;
-};
-
-export type MetricDimensionGroup = {
-  id: string;
-  type: "main" | "connection";
-  display_name: string;
-};
-
-export type MetricDimension = {
-  id: DimensionId;
-  display_name: string;
-  effective_type: string;
-  semantic_type: string | null;
-  group?: MetricDimensionGroup;
 };
 
 export type ExpressionRef =

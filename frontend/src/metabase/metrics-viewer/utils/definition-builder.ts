@@ -94,7 +94,7 @@ function applyTemporalUnit(
 
 // ── Breakout application ──
 
-export function buildBinnedBreakoutDef(
+export function buildBinnedBreakoutDefinition(
   baseDef: MetricDefinition,
   breakoutDimension: ProjectionClause,
 ): MetricDefinition {
@@ -146,7 +146,7 @@ export function applyBreakoutDimension(
     return LibMetric.project(execDef, breakoutDimension);
   }
 
-  const binnedDefinition = buildBinnedBreakoutDef(
+  const binnedDefinition = buildBinnedBreakoutDefinition(
     baseDefinition,
     breakoutDimension,
   );
@@ -238,19 +238,21 @@ export type ProjectionInfo = {
   hasBinning: boolean;
 };
 
-export function getProjectionInfo(def: MetricDefinition): ProjectionInfo {
-  const allProjections = LibMetric.projections(def);
+export function getProjectionInfo(
+  definition: MetricDefinition,
+): ProjectionInfo {
+  const allProjections = LibMetric.projections(definition);
   const firstProjection = allProjections[0];
 
   const projectionDimension = firstProjection
-    ? (LibMetric.projectionDimension(def, firstProjection) ?? undefined)
+    ? (LibMetric.projectionDimension(definition, firstProjection) ?? undefined)
     : undefined;
 
   const isTemporalBucketable = projectionDimension
-    ? LibMetric.isTemporalBucketable(def, projectionDimension)
+    ? LibMetric.isTemporalBucketable(definition, projectionDimension)
     : false;
   const isBinnable = projectionDimension
-    ? LibMetric.isBinnable(def, projectionDimension)
+    ? LibMetric.isBinnable(definition, projectionDimension)
     : false;
   const hasBinning = firstProjection
     ? LibMetric.binning(firstProjection) !== null
@@ -260,20 +262,23 @@ export function getProjectionInfo(def: MetricDefinition): ProjectionInfo {
   let filterClause: FilterClause | undefined;
 
   if (projectionDimension) {
-    const dimensionInfo = LibMetric.displayInfo(def, projectionDimension);
-    const filterableDims = LibMetric.filterableDimensions(def);
+    const dimensionInfo = LibMetric.displayInfo(
+      definition,
+      projectionDimension,
+    );
+    const filterableDims = LibMetric.filterableDimensions(definition);
     filterDimension = filterableDims.find((candidate) => {
-      const info = LibMetric.displayInfo(def, candidate);
+      const info = LibMetric.displayInfo(definition, candidate);
       return info.name === dimensionInfo.name;
     });
 
     if (filterDimension) {
-      const existingFilters = LibMetric.filters(def);
+      const existingFilters = LibMetric.filters(definition);
       for (const existingFilter of existingFilters) {
-        const parts = LibMetric.filterParts(def, existingFilter);
+        const parts = LibMetric.filterParts(definition, existingFilter);
         if (parts) {
           const filterDimensionInfo = LibMetric.displayInfo(
-            def,
+            definition,
             parts.dimension,
           );
           if (filterDimensionInfo.name === dimensionInfo.name) {

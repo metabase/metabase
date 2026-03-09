@@ -1,4 +1,8 @@
-import type { Metric, MetricDimension } from "metabase-types/api";
+import type {
+  Metric,
+  MetricDimension,
+  NormalizedMetric,
+} from "metabase-types/api";
 
 export const createMockMetricDimension = (
   opts?: Partial<MetricDimension>,
@@ -17,5 +21,16 @@ export const createMockMetric = (opts?: Partial<Metric>): Metric => ({
   dimensions: [createMockMetricDimension()],
   collection_id: null,
   collection: null,
+  ...opts,
+});
+
+export const createMockNormalizedMetric = (
+  opts?: Partial<NormalizedMetric>,
+): NormalizedMetric => ({
+  id: 1,
+  name: "Metric",
+  description: null,
+  dimensions: [createMockMetricDimension()],
+  collection_id: null,
   ...opts,
 });

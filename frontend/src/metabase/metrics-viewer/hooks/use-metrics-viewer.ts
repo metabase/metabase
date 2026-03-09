@@ -19,7 +19,7 @@ import type {
 } from "../types/viewer-state";
 import {
   applyProjection,
-  buildBinnedBreakoutDef,
+  buildBinnedBreakoutDefinition,
   getDefinitionName,
 } from "../utils/definition-builder";
 import { applyDimensionFilter } from "../utils/dimension-filters";
@@ -132,7 +132,7 @@ function buildUrlRestoreTransform(
 
         result = modifiedRef
           ? applyProjection(result, modifiedRef)
-          : buildBinnedBreakoutDef(result, dimensionRef);
+          : buildBinnedBreakoutDefinition(result, dimensionRef);
       }
     }
 

@@ -6,6 +6,34 @@ import type { UserInfo } from "./user";
 export type MeasureId = number;
 export type DimensionId = string;
 
+export type MetricDimensionGroup = {
+  id: string;
+  type: "main" | "connection";
+  display_name: string;
+};
+
+export type MetricDimensionSource = {
+  type: string;
+  "field-id": number;
+};
+
+export type MetricDimension = {
+  id: DimensionId;
+  display_name: string;
+  effective_type: string;
+  semantic_type: string | null;
+  group?: MetricDimensionGroup;
+  sources?: MetricDimensionSource[];
+};
+
+export type DimensionMappingTarget = ["field", Record<string, unknown>, number];
+
+export type DimensionMapping = {
+  dimension_id: DimensionId;
+  table_id: number;
+  target: DimensionMappingTarget;
+};
+
 export interface Measure {
   id: MeasureId;
   name: string;
@@ -21,6 +49,8 @@ export interface Measure {
   creator?: UserInfo;
   updated_at: string;
   result_column_name?: string;
+  dimensions?: MetricDimension[];
+  dimension_mappings?: DimensionMapping[];
 }
 
 export interface CreateMeasureRequest {

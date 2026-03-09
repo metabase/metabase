@@ -22,6 +22,7 @@ import type {
   GetState,
   SelectedTabId,
   StoreDashboard,
+  StoreDashcard,
   TabDeletionId,
 } from "metabase-types/store";
 
@@ -367,7 +368,7 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
-          if (isVirtualDashCard(sourceDashCard)) {
+          if (isVirtualDashCard(sourceDashCard as StoreDashcard)) {
             return;
           }
 
