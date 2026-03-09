@@ -1342,6 +1342,9 @@
                                                                                 :query (lib/query mp products)}
                                                                        :target {:schema "PUBLIC"
                                                                                 :name "referenced_transform_table"}}]
+          ;; Simulate the referenced transform having been run: activate its provisional target table
+          ;; so the table→transform dep is visible in the dependency graph (which filters active=true).
+          (t2/update! :model/Table {:db_id (mt/id) :schema "PUBLIC" :name "referenced_transform_table"} {:active true})
           (events/publish-event! :event/transform-run-complete
                                  {:object {:db-id (mt/id)
                                            :output-schema "PUBLIC"
