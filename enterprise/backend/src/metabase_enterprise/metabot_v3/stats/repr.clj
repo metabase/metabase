@@ -232,6 +232,46 @@
               (remove str/blank?
                       [header series-sections correlation-section events-section]))))
 
+;;; ------------------------------------------ Scatter Representation ------------------------------------------------
+
+(defn- correlation-label [{:keys [strength direction]}]
+  (str (name strength) " " (name direction)))
+
+(defn- render-scatter-series
+  "Render stats for a single scatter series."
+  [series-name {:keys [x_summary y_summary data_points correlation regression]}]
+  (let [sections [(str "## Series: " series-name)
+                  (str "**Data Points**: " data_points)
+                  (when x_summary
+                    (str "**X-axis Range**: " (format-number (:min x_summary))
+                         " to " (format-number (:max x_summary))))
+                  (when y_summary
+                    (str "**Y-axis Range**: " (format-number (:min y_summary))
+                         " to " (format-number (:max y_summary))))
+                  (when correlation
+                    (str "**Relationship**: " (correlation-label correlation)
+                         " (r = " (format "%.2f" (double (:coefficient correlation))) ")"))
+                  (when regression
+                    (str "**Trend Line**: y = "
+                         (format "%.3f" (double (:slope regression))) "x + "
+                         (format "%.3f" (double (:intercept regression)))))]]
+    (str/join "\n" (remove nil? sections))))
+
+(defn generate-scatter-representation
+  "Generate markdown representation for scatter plot stats."
+  [{:keys [title stats timeline-events]}]
+  (let [{:keys [series_count series]} stats
+        header (str "# Chart Analysis\n"
+                    (when title (str "## Chart: " title "\n"))
+                    "**Type**: Scatter\n"
+                    "**Series Count**: " series_count)
+        series-sections (str/join "\n\n"
+                                  (for [[series-name s] series]
+                                    (render-scatter-series series-name s)))
+        events-section (render-timeline-events timeline-events)]
+    (str/join "\n\n"
+              (remove str/blank? [header series-sections events-section]))))
+
 ;;; ----------------------------------------- Main Representation ----------------------------------------------------
 
 (defn generate-time-series-representation
@@ -263,6 +303,7 @@
   (case (:chart_type stats)
     :time-series  (generate-time-series-representation context)
     :categorical  (generate-categorical-representation context)
+    :scatter      (generate-scatter-representation context)
     (str "# Chart Analysis\n"
          "**Type**: " (name (:chart_type stats)) "\n"
          "Statistics computation for this chart type is not yet implemented.")))

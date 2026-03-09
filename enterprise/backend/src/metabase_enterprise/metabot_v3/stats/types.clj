@@ -190,14 +190,17 @@
   "Statistics for scatter plots."
   [:map
    [:chart_type [:= :scatter]]
-   [:x_summary ::series-summary]
-   [:y_summary ::series-summary]
-   [:data_points :int]
-   [:correlation [:map
-                  [:coefficient number?]
-                  [:strength ::correlation-strength]
-                  [:direction ::correlation-direction]]]
-   [:regression ::regression-stats]])
+   [:series_count :int]
+   [:series [:map-of :string
+             [:map
+              [:x_summary [:maybe ::series-summary]]
+              [:y_summary [:maybe ::series-summary]]
+              [:data_points :int]
+              [:correlation {:optional true} [:maybe [:map
+                                                      [:coefficient number?]
+                                                      [:strength ::correlation-strength]
+                                                      [:direction ::correlation-direction]]]]
+              [:regression {:optional true} [:maybe ::regression-stats]]]]]])
 
 (mr/def ::distribution-stats
   "Distribution statistics for histogram data."

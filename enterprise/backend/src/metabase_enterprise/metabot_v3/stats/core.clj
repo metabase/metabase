@@ -2,6 +2,7 @@
   "Chart type detection and statistics routing."
   (:require
    [metabase-enterprise.metabot-v3.stats.categorical :as categorical]
+   [metabase-enterprise.metabot-v3.stats.scatter :as scatter]
    [metabase-enterprise.metabot-v3.stats.time-series :as time-series]))
 
 (set! *warn-on-reflection* true)
@@ -87,6 +88,7 @@
     (case chart-type
       :time-series  (time-series/compute-time-series-stats (:series chart-config) opts)
       :categorical  (categorical/compute-categorical-stats (:series chart-config) opts)
+      :scatter      (scatter/compute-scatter-stats (:series chart-config) opts)
       {:chart_type   chart-type
        :series_count (count (:series chart-config))
        :message      (str "Statistics for " (name chart-type) " charts not yet implemented")})))
