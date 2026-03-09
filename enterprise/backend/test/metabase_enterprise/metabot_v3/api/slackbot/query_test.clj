@@ -180,11 +180,8 @@
     (let [results {:data {:rows []
                           :cols [{:name "count" :display_name "Count" :base_type :type/Integer}]}}
           blocks  (slackbot.query/format-results-as-table-blocks results)]
-      (testing "returns a table with only header row"
-        (let [table-block (first blocks)
-              rows        (:rows table-block)]
-          (is (= 1 (count rows))) ; header only
-          (is (= "Count" (get-in rows [0 0 :text])))))))
+      (testing "returns no-data block"
+        (is (= "No data" (get-in blocks [0 :rows 0 0 :text]))))))
 
   (testing "format-results-as-table-blocks truncates long cell values"
     (binding [slackbot.query/*slack-table-max-cell-length* 20]
