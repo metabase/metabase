@@ -2281,7 +2281,6 @@
   enterprise/metabot-v3
   {:team    "Metabot"
    :api     #{metabase-enterprise.metabot-v3.api
-              metabase-enterprise.metabot-v3.client
               metabase-enterprise.metabot-v3.core
               metabase-enterprise.metabot-v3.init
               metabase-enterprise.metabot-v3.tools.api
@@ -2441,8 +2440,7 @@
            settings
            task
            util
-           enterprise/llm
-           enterprise/metabot-v3}}
+           enterprise/llm}}
 
   enterprise/serialization
   {:team "Querying"
