@@ -18,7 +18,7 @@ import type {
   MetricsViewerDefinitionEntry,
   SelectedMetric,
 } from "../../../types/viewer-state";
-import { getEntryBreakout } from "../../../utils/series";
+import { getEntryBreakout } from "../../../utils/definition-entries";
 import { getDimensionsByType } from "../../../utils/tabs";
 import { BreakoutDimensionPicker } from "../../BreakoutDimensionPicker";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
@@ -170,7 +170,7 @@ export function MetricPill({
                   <SourceColorIndicator
                     colors={colors}
                     fallbackIcon={
-                      metric.sourceType === "measure" ? "sum" : "metric"
+                      metric.sourceType === "measure" ? "ruler" : "metric"
                     }
                   />
                   <span>{metric.name}</span>

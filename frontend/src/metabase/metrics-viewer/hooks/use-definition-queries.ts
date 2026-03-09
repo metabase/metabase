@@ -16,7 +16,7 @@ import {
   getModifiedDefinition,
   toJsDefinition,
 } from "../utils/definition-cache";
-import { entryHasBreakout } from "../utils/series";
+import { entryHasBreakout } from "../utils/definition-entries";
 
 export interface UseDefinitionQueriesResult {
   resultsByDefinitionId: Map<MetricSourceId, Dataset>;

@@ -10,8 +10,8 @@ import type {
   SourceColorMap,
 } from "../types/viewer-state";
 
-import { getDefinitionName } from "./metrics";
-import { entryHasBreakout, getEntryBreakout } from "./series";
+import { getDefinitionName } from "./definition-builder";
+import { entryHasBreakout, getEntryBreakout } from "./definition-entries";
 
 export interface LegendItem {
   label: string;
@@ -72,7 +72,8 @@ export function buildLegendGroups(
         color: colors[index] ?? colors[colors.length - 1],
       }));
 
-      const header = dimensionInfo?.longDisplayName ?? dimensionInfo?.displayName;
+      const header =
+        dimensionInfo?.longDisplayName ?? dimensionInfo?.displayName;
       if (!header) {
         continue;
       }

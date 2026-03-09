@@ -22,7 +22,7 @@ import type {
   StoredMetricsViewerTab,
 } from "../types/viewer-state";
 import { getInitialMetricsViewerPageState } from "../types/viewer-state";
-import { buildBinnedBreakoutDef } from "../utils/metrics";
+import { buildBinnedBreakoutDef } from "../utils/definition-builder";
 import {
   createMeasureSourceId,
   createMetricSourceId,

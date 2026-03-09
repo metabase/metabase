@@ -8,8 +8,8 @@ import type {
   MetricsViewerDisplayType,
   MetricsViewerTabType,
 } from "../../types/viewer-state";
-import type { DimensionFilterValue } from "../../utils/metrics";
-import { getProjectionInfo } from "../../utils/metrics";
+import { getProjectionInfo } from "../../utils/definition-builder";
+import type { DimensionFilterValue } from "../../utils/dimension-filters";
 import { getTabConfig } from "../../utils/tab-config";
 
 import { BinningButton } from "./BinningButton";

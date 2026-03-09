@@ -12,7 +12,7 @@ import type {
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import { applyProjection } from "../../utils/metrics";
+import { applyProjection } from "../../utils/definition-builder";
 
 interface DimensionBinningPickerProps {
   definition: MetricDefinition;

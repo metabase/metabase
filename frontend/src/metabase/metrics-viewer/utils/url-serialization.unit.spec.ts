@@ -1,4 +1,4 @@
-import type { DimensionFilterValue } from "./metrics";
+import type { DimensionFilterValue } from "./dimension-filters";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,

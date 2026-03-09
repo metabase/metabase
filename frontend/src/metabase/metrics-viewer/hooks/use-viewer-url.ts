@@ -12,7 +12,7 @@ import type {
   MetricsViewerPageState,
   MetricsViewerTabState,
 } from "../types/viewer-state";
-import type { SourceFilter } from "../utils/metrics";
+import type { SourceFilter } from "../utils/dimension-filters";
 import { createSourceId } from "../utils/source-ids";
 import {
   type SerializedMetricsViewerPageState,

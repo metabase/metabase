@@ -14,7 +14,8 @@ import type {
   MetricsViewerTabState,
 } from "../types/viewer-state";
 
-import { type DimensionFilterValue, findDimensionById } from "./metrics";
+import type { DimensionFilterValue } from "./dimension-filters";
+import { findDimensionById } from "./dimension-lookup";
 
 type MetricsViewerClickActionParams = {
   definitions: MetricsViewerDefinitionEntry[];

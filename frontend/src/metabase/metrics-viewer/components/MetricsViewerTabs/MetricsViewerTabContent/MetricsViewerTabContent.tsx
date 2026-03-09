@@ -16,8 +16,8 @@ import type {
   MetricsViewerTabState,
   SourceColorMap,
 } from "../../../types/viewer-state";
-import type { DimensionFilterValue } from "../../../utils/metrics";
-import { getProjectionInfo } from "../../../utils/metrics";
+import { getProjectionInfo } from "../../../utils/definition-builder";
+import type { DimensionFilterValue } from "../../../utils/dimension-filters";
 import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,

@@ -10,7 +10,7 @@ import type {
 import type {
   AvailableDimensionsResult,
   SourceDisplayInfo,
-} from "../../utils/tabs";
+} from "../../utils/dimension-picker";
 
 import { AddDimensionPopover } from "./AddDimensionPopover";
 import S from "./MetricsViewerTabs.module.css";

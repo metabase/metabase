@@ -13,9 +13,9 @@ import type {
 } from "../types/viewer-state";
 
 import { defineCompactSchema } from "./compact-schema";
-import type { DimensionFilterValue } from "./metrics";
-import { extractDefinitionFilters } from "./metrics";
-import { getEntryBreakout } from "./series";
+import { getEntryBreakout } from "./definition-entries";
+import type { DimensionFilterValue } from "./dimension-filters";
+import { extractDefinitionFilters } from "./dimension-filters";
 
 function reviveFilter(filter: DimensionFilterValue): DimensionFilterValue {
   if (filter.type === "specific-date" || filter.type === "time") {

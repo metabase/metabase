@@ -14,11 +14,11 @@ import type {
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type { DimensionFilterValue } from "../../../utils/metrics";
+import type { DimensionFilterValue } from "../../../utils/dimension-filters";
 import {
   buildDimensionFilterClause,
   parseFilter,
-} from "../../../utils/metrics";
+} from "../../../utils/dimension-filters";
 
 function getFilterDisplayName(
   definition: MetricDefinition,

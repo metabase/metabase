@@ -18,15 +18,22 @@ import type {
   SourceColorMap,
 } from "../types/viewer-state";
 import {
-  applyDimensionFilter,
   applyProjection,
   buildBinnedBreakoutDef,
+  getDefinitionName,
+} from "../utils/definition-builder";
+import { applyDimensionFilter } from "../utils/dimension-filters";
+import {
   findBinningStrategy,
   findDimensionById,
   findFilterDimensionById,
   findTemporalBucket,
-  getDefinitionName,
-} from "../utils/metrics";
+} from "../utils/dimension-lookup";
+import type {
+  AvailableDimensionsResult,
+  SourceDisplayInfo,
+} from "../utils/dimension-picker";
+import { getAvailableDimensionsForPicker } from "../utils/dimension-picker";
 import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
 import {
   createMeasureSourceId,
@@ -34,10 +41,7 @@ import {
   createSourceId,
 } from "../utils/source-ids";
 import {
-  type AvailableDimensionsResult,
-  type SourceDisplayInfo,
   createTabFromDimension,
-  getAvailableDimensionsForPicker,
   getDimensionsByType,
   resolveCommonTabLabel,
 } from "../utils/tabs";

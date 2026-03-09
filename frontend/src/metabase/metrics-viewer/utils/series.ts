@@ -31,27 +31,14 @@ import type {
 } from "../types/viewer-state";
 
 import {
-  findDimensionById,
   getDefinitionColumnName,
   getDefinitionName,
-} from "./metrics";
+} from "./definition-builder";
+import { entryHasBreakout, getEntryBreakout } from "./definition-entries";
+import { findDimensionById } from "./dimension-lookup";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
-
-export function getEntryBreakout(
-  entry: MetricsViewerDefinitionEntry,
-): LibMetric.ProjectionClause | undefined {
-  if (!entry.definition) {
-    return undefined;
-  }
-  const projections = LibMetric.projections(entry.definition);
-  return projections[0];
-}
-
-export function entryHasBreakout(entry: MetricsViewerDefinitionEntry): boolean {
-  return getEntryBreakout(entry) !== undefined;
-}
 
 function getDefinitionCardId(def: MetricDefinition): number | null {
   const metricId = LibMetric.sourceMetricId(def);

@@ -1,5 +1,9 @@
-import type { AvailableDimension, AvailableDimensionsResult } from "./tabs";
-import { buildDimensionPickerSections, resolveCommonTabLabel } from "./tabs";
+import type {
+  AvailableDimension,
+  AvailableDimensionsResult,
+} from "./dimension-picker";
+import { buildDimensionPickerSections } from "./dimension-picker";
+import { resolveCommonTabLabel } from "./tabs";
 
 describe("resolveCommonTabLabel", () => {
   it("returns fallback for empty array", () => {
@@ -53,8 +57,14 @@ describe("buildDimensionPickerSections", () => {
       shared: [],
       bySource: {
         "metric:1": [
-          createMockAvailableDimension({ dimensionId: "category", label: "Category" }),
-          createMockAvailableDimension({ dimensionId: "state", label: "State" }),
+          createMockAvailableDimension({
+            dimensionId: "category",
+            label: "Category",
+          }),
+          createMockAvailableDimension({
+            dimensionId: "state",
+            label: "State",
+          }),
         ],
       },
     };
@@ -72,7 +82,10 @@ describe("buildDimensionPickerSections", () => {
       {
         name: undefined,
         items: [
-          expect.objectContaining({ name: "Category", dimensionId: "category" }),
+          expect.objectContaining({
+            name: "Category",
+            dimensionId: "category",
+          }),
           expect.objectContaining({ name: "State", dimensionId: "state" }),
         ],
       },
@@ -90,10 +103,16 @@ describe("buildDimensionPickerSections", () => {
       shared: [sharedDimension],
       bySource: {
         "metric:1": [
-          createMockAvailableDimension({ dimensionId: "category", label: "Category" }),
+          createMockAvailableDimension({
+            dimensionId: "category",
+            label: "Category",
+          }),
         ],
         "metric:2": [
-          createMockAvailableDimension({ dimensionId: "status", label: "Status" }),
+          createMockAvailableDimension({
+            dimensionId: "status",
+            label: "Status",
+          }),
         ],
       },
     };
@@ -112,13 +131,19 @@ describe("buildDimensionPickerSections", () => {
       {
         name: "Shared",
         items: [
-          expect.objectContaining({ name: "Created At", dimensionId: "created_at" }),
+          expect.objectContaining({
+            name: "Created At",
+            dimensionId: "created_at",
+          }),
         ],
       },
       {
         name: "Revenue",
         items: [
-          expect.objectContaining({ name: "Category", dimensionId: "category" }),
+          expect.objectContaining({
+            name: "Category",
+            dimensionId: "category",
+          }),
         ],
       },
       {

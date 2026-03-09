@@ -9,8 +9,8 @@ import type {
   AvailableDimensionsResult,
   DimensionPickerItem,
   SourceDisplayInfo,
-} from "../../../utils/tabs";
-import { buildDimensionPickerSections } from "../../../utils/tabs";
+} from "../../../utils/dimension-picker";
+import { buildDimensionPickerSections } from "../../../utils/dimension-picker";
 
 import S from "./AddDimensionPopover.module.css";
 

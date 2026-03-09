@@ -6,7 +6,7 @@ import type {
   TemporalUnit,
 } from "metabase-types/api";
 
-import type { DimensionFilterValue } from "../utils/metrics";
+import type { DimensionFilterValue } from "../utils/dimension-filters";
 
 // ── Core types ──
 

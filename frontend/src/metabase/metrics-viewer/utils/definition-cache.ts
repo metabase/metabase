@@ -8,8 +8,8 @@ import type { MetricsViewerTabProjectionConfig } from "../types/viewer-state";
 import {
   applyBreakoutDimension,
   buildExecutableDefinition,
-  findDimensionById,
-} from "./metrics";
+} from "./definition-builder";
+import { findDimensionById } from "./dimension-lookup";
 
 export const getModifiedDefinition = createSelector(
   (

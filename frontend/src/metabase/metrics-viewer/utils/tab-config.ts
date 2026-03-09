@@ -12,7 +12,7 @@ import {
   getGeoSubtype,
   getMapRegionForDimension,
   isGeoDimension,
-} from "./metrics";
+} from "./geo-dimensions";
 
 // ── Shared types ──
 
