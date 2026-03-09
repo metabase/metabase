@@ -45,6 +45,8 @@ jobs:
 
             const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 
+            const driversList = drivers.map(d => `:red_circle: \`${d}\``).join('\n');
+
             await slack.chat.postMessage({
               channel: 'bot-testing', // TEMPORARY: change back to 'engineering-ci' after testing
               text: 'CI Disabled Drivers Report',
@@ -61,28 +63,50 @@ jobs:
                   type: 'section',
                   text: {
                     type: 'mrkdwn',
-                    text: `*${drivers.length} driver(s) currently disabled in CI:*\n\`${drivers.join(', ')}\``
+                    text: `*${drivers.length} driver(s) currently disabled in CI:*`
                   }
-                },
-                {
-                  type: 'section',
-                  fields: [
-                    {
-                      type: 'mrkdwn',
-                      text: `*Last Updated:*\n${lastUpdated}`
-                    },
-                    {
-                      type: 'mrkdwn',
-                      text: `*Reason:*\n${reason}`
-                    }
-                  ]
                 },
                 {
                   type: 'section',
                   text: {
                     type: 'mrkdwn',
-                    text: '<https://github.com/metabase/ci-test-config/blob/master/ci-test-config.json|View config>'
+                    text: driversList
                   }
+                },
+                {
+                  type: 'divider'
+                },
+                {
+                  type: 'context',
+                  elements: [
+                    {
+                      type: 'mrkdwn',
+                      text: `:calendar: *Last Updated:* ${lastUpdated}`
+                    }
+                  ]
+                },
+                {
+                  type: 'context',
+                  elements: [
+                    {
+                      type: 'mrkdwn',
+                      text: `:memo: *Reason:* ${reason}`
+                    }
+                  ]
+                },
+                {
+                  type: 'actions',
+                  elements: [
+                    {
+                      type: 'button',
+                      text: {
+                        type: 'plain_text',
+                        text: ':gear: View Config',
+                        emoji: true
+                      },
+                      url: 'https://github.com/metabase/ci-test-config/blob/master/ci-test-config.json'
+                    }
+                  ]
                 }
               ]
             });
