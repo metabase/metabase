@@ -20,7 +20,7 @@ export function SourceColorIndicator({
     const capped = colors.slice(0, limit);
     const overlap = Math.round(size / 2.5);
     return (
-      <Flex align="center">
+      <Flex align="center" data-testid="color-indicator-container">
         {capped.map((color, index) => (
           <Box
             key={index}

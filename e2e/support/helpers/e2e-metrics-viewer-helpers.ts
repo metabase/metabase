@@ -6,6 +6,8 @@ export const MetricsViewer = {
   breakoutLegend: () => cy.findByTestId("metrics-viewer-breakout-legend"),
   getFilterButton: () => cy.findByRole("button", { name: /Filter/ }),
   getAllFilterPills: () => cy.findAllByTestId("metrics-viewer-filter-pill"),
+  getDimensionPillContainer: () =>
+    cy.findByTestId("metrics-viewer-dimension-pill-container"),
   tablist: () => cy.findByRole("tablist"),
   getTab: (tab: string) =>
     MetricsViewer.tablist().findByRole("tab", { name: tab }),
@@ -15,6 +17,10 @@ export const MetricsViewer = {
     );
   },
   getMetricVisualization: () => cy.findByTestId("visualization-root"),
+  getMetricVisualizationDataPoints: () =>
+    MetricsViewer.getMetricVisualization().get(
+      "path[fill='hsla(0, 0%, 100%, 1.00)']",
+    ),
   getAllMetricVisualizations: () => cy.findAllByTestId("visualization-root"),
 
   assertVizType: (displayType: string) =>

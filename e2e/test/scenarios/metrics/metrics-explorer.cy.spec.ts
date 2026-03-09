@@ -1,5 +1,5 @@
 const { H } = cy;
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -7,13 +7,14 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, ACCOUNTS_ID, FEEDBACK_ID } =
+  SAMPLE_DATABASE;
 
 type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
   name: string;
 };
 
-export const ORDERS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
+const ORDERS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   name: "Count of orders",
   type: "metric",
   description: "A metric",
@@ -24,7 +25,29 @@ export const ORDERS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   display: "scalar",
 };
 
-export const ORDERS_SCALAR_MODEL_METRIC: StructuredQuestionDetailsWithName = {
+const ACCOUNTS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
+  name: "Count of accounts",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": ACCOUNTS_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
+const FEEDBACK_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
+  name: "Count of feedback",
+  type: "metric",
+  description: "A metric",
+  query: {
+    "source-table": FEEDBACK_ID,
+    aggregation: [["count"]],
+  },
+  display: "scalar",
+};
+
+const ORDERS_SCALAR_MODEL_METRIC: StructuredQuestionDetailsWithName = {
   name: "Orders model metric",
   type: "metric",
   description: "A metric",
@@ -36,7 +59,7 @@ export const ORDERS_SCALAR_MODEL_METRIC: StructuredQuestionDetailsWithName = {
   collection_id: FIRST_COLLECTION_ID as number,
 };
 
-export const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
+const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
   name: "Count of orders over time",
   type: "metric",
   description: "A metric",
@@ -54,7 +77,7 @@ export const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
   display: "line",
 };
 
-export const PRODUCTS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
+const PRODUCTS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   name: "Count of products",
   type: "metric",
   description: "A metric",
@@ -65,7 +88,7 @@ export const PRODUCTS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   display: "scalar",
 };
 
-export const NON_NUMERIC_METRIC: StructuredQuestionDetailsWithName = {
+const NON_NUMERIC_METRIC: StructuredQuestionDetailsWithName = {
   name: "Max of product category",
   type: "metric",
   description: "A metric",
@@ -77,6 +100,8 @@ export const NON_NUMERIC_METRIC: StructuredQuestionDetailsWithName = {
 };
 
 const ALL_MODELS = [
+  ACCOUNTS_SCALAR_METRIC,
+  FEEDBACK_SCALAR_METRIC,
   NON_NUMERIC_METRIC,
   ORDERS_SCALAR_METRIC,
   ORDERS_SCALAR_MODEL_METRIC,
@@ -91,6 +116,7 @@ describe("scenarios > metrics > explorer", () => {
     H.restore();
     cy.signInAsAdmin();
     createMetrics(ALL_MODELS);
+    createTestMeasure();
     H.snapshot(SNAPSHOT_NAME);
   });
   beforeEach(() => {
@@ -106,7 +132,7 @@ describe("scenarios > metrics > explorer", () => {
    * Add a metric or measure to the explorer via the search panel
    */
   const addMetric = (name: string) => {
-    H.MetricsViewer.searchInput().type(name);
+    H.MetricsViewer.searchInput().clear().type(name);
     H.MetricsViewer.searchResults().findByText(name).click();
   };
 
@@ -172,6 +198,31 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.reload();
       verifyMetricCount(1);
+
+      cy.log("should navigate to data studio via right-click context menu");
+      cy.window().then((win) => {
+        cy.stub(win, "open").as("windowOpen");
+      });
+
+      H.MetricsViewer.searchBarPills()
+        .contains("Count of products")
+        .rightclick();
+      H.popover().findByText("Edit in Data Studio").click();
+
+      cy.get("@windowOpen").should(
+        "have.been.calledWith",
+        Cypress.sinon.match(/\/data-studio\/library\/metrics\/\d+/),
+        "_blank",
+      );
+    });
+
+    it("should not show Edit in Data Studio for users without data studio access", () => {
+      cy.signInAsNormalUser();
+      H.MetricsViewer.goToViewer();
+      addMetric("Count of orders");
+
+      H.MetricsViewer.searchBarPills().contains("Count of orders").rightclick();
+      H.popover().should("not.contain", "Edit in Data Studio");
     });
 
     it("should handle breakout with no results gracefully", () => {
@@ -202,10 +253,10 @@ describe("scenarios > metrics > explorer", () => {
   describe("Adding metrics and measures", () => {
     beforeEach(() => {
       intercedptDatasetQuery();
-      H.MetricsViewer.goToViewer();
     });
 
     it("should add multiple metrics", () => {
+      H.MetricsViewer.goToViewer();
       addMetric("Count of products");
       cy.wait("@dataset");
       addMetric("Count of orders");
@@ -225,6 +276,41 @@ describe("scenarios > metrics > explorer", () => {
         "contain.text",
         "No results found",
       );
+
+      cy.log("Should allow me to add measures");
+      H.MetricsViewer.searchInput().clear();
+      addMetric("Test Measure");
+    });
+
+    it("Should not show me metrics that live in collections I do not have permissions to see", () => {
+      cy.signIn("nocollection");
+      H.MetricsViewer.goToViewer();
+      H.MetricsViewer.searchInput().type("Count of");
+      H.MetricsViewer.searchResults().should(
+        "contain.text",
+        "No results found",
+      );
+
+      H.MetricsViewer.searchInput().clear().type("Test Measure");
+      H.MetricsViewer.searchResults().should("contain.text", "Test Measure");
+    });
+
+    it("Should not show me measures that live in tables I do not have permissions to see", () => {
+      cy.signIn("nodata");
+      H.MetricsViewer.goToViewer();
+      H.MetricsViewer.searchInput().type("Test Measure");
+      H.MetricsViewer.searchResults().should(
+        "contain.text",
+        "No results found",
+      );
+
+      addMetric("Count of orders");
+      cy.log(
+        "even though we can see the metric, we don't have permissions to run the query",
+      );
+      cy.findByRole("heading", {
+        name: /You do not have permissions to run this query/i,
+      }).should("be.visible");
     });
   });
 
@@ -243,9 +329,32 @@ describe("scenarios > metrics > explorer", () => {
     it("should add a temporal breakout dimension", () => {
       selectBreakout("Count of orders", "Created At", 0, "Year");
       cy.wait("@dataset");
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByRole("heading", { name: "Created At" }).should("be.visible");
+        cy.findByText("2022").should("be.visible");
+        cy.findByText("2023").should("be.visible");
+        cy.findByText("2024").should("be.visible");
+        cy.findByText("2025").should("be.visible");
+        cy.findByText("2026").should("be.visible");
+      });
+
+      H.MetricsViewer.searchBarPills()
+        .contains("[data-testid=metrics-viewer-search-pill]", "Count of orders")
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 5);
+
+      H.MetricsViewer.searchBarPills().contains("Count of orders").rightclick();
+      H.popover().findByText("Change breakout").click();
+      H.popover().findByText("Category").click();
+
       H.MetricsViewer.breakoutLegend()
-        .findByRole("heading", { name: "Created At" })
+        .findByRole("heading", { name: /Category/ })
         .should("be.visible");
+
+      H.MetricsViewer.searchBarPills().contains("Count of orders").rightclick();
+      H.popover().findByText("Remove breakout").click();
+      H.MetricsViewer.breakoutLegend().should("not.exist");
     });
 
     it("should add a categorical breakout dimension", () => {
@@ -254,14 +363,40 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.breakoutLegend()
         .findByRole("heading", { name: /Source/ })
         .should("be.visible");
+
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByRole("heading", { name: /Source/ }).should("be.visible");
+        cy.findByText("Twitter").should("be.visible");
+        cy.findByText("Facebook").should("be.visible");
+        cy.findByText("Organic").should("be.visible");
+        cy.findByText("Google").should("be.visible");
+        cy.findByText("Affiliate").should("be.visible");
+      });
     });
 
     it("should add a numeric breakout dimension with default binning", () => {
       selectBreakout("Count of orders", "Total");
       cy.wait("@dataset");
-      H.MetricsViewer.breakoutLegend()
-        .findByRole("heading", { name: "Total" })
-        .should("be.visible");
+      H.MetricsViewer.breakoutLegend().within(() => {
+        cy.findByRole("heading", { name: "Total" }).should("be.visible");
+
+        cy.findByText("-60 – -40").should("be.visible");
+        cy.findByText("0 – 20").should("be.visible");
+        cy.findByText("20 – 40").should("be.visible");
+        cy.findByText("40 – 60").should("be.visible");
+        cy.findByText("60 – 80").should("be.visible");
+        cy.findByText("80 – 100").should("be.visible");
+        cy.findByText("100 – 120").should("be.visible");
+        cy.findByText("120 – 140").should("be.visible");
+        cy.findByText("140 – 160").should("be.visible");
+      });
+
+      cy.log("Search pill should cap at 6 color indicators");
+      H.MetricsViewer.searchBarPills()
+        .contains("[data-testid=metrics-viewer-search-pill]", "Count of orders")
+        .findByTestId("color-indicator-container")
+        .children()
+        .should("have.length", 6);
     });
   });
 
@@ -298,6 +433,7 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should add a dimension tab and remove it", () => {
+      addMetric("Count of feedback");
       H.MetricsViewer.tabsShouldBe([
         "Created At",
         "State",
@@ -305,10 +441,17 @@ describe("scenarios > metrics > explorer", () => {
         "Category",
       ]);
 
-      cy.log("add a new dimension tab");
+      //TODO - Add a second metric, and assert that both shared and not shared dimensions are visible
+      cy.log("assert that both feedback and order dimensions are available");
       H.MetricsViewer.getAddDimensionButton().click();
-      H.popover().findByPlaceholderText(/Find/).should("be.visible");
-      H.popover().findByText("Source").click();
+      H.popover().within(() => {
+        cy.findAllByText(/count of orders/i).should("have.length", 3);
+        cy.findAllByText(/count of feedback/i).should("have.length", 2);
+        cy.log("add a new dimension tab");
+
+        cy.findByPlaceholderText(/Find/).should("be.visible");
+        cy.findAllByText("Source").should("have.length", 2).eq(0).click();
+      });
       cy.wait("@dataset");
 
       H.MetricsViewer.tabsShouldBe([
@@ -324,6 +467,48 @@ describe("scenarios > metrics > explorer", () => {
         .findByRole("tab", { name: "Source" })
         .should("have.attr", "aria-selected", "true");
       H.MetricsViewer.assertVizType("Bar");
+
+      cy.log("should only show me metrics that share the dimension of the tab");
+      H.MetricsViewer.getMetricVisualization().within(() => {
+        cy.findByText("Affiliate").should("exist");
+        cy.findByText("Facebook").should("exist");
+        cy.findByText("Google").should("exist");
+        cy.findByText("Organic").should("exist");
+        cy.findByText("Twitter").should("exist");
+        cy.findByText("Basic").should("not.exist");
+        cy.findByText("Business").should("not.exist");
+        cy.findByText("Premium").should("not.exist");
+      });
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findByText("User → Source").should("exist");
+        cy.findByText("Select a dimension").click();
+      });
+
+      H.popover().findByText("Plan").click();
+
+      H.MetricsViewer.getMetricVisualization().within(() => {
+        cy.findByText("Affiliate").should("exist");
+        cy.findByText("Facebook").should("exist");
+        cy.findByText("Google").should("exist");
+        cy.findByText("Organic").should("exist");
+        cy.findByText("Twitter").should("exist");
+        cy.findByText("Basic").should("exist");
+        cy.findByText("Business").should("exist");
+        cy.findByText("Premium").should("exist");
+      });
+
+      cy.log("shared dimensions should automatically be added to tabs");
+      switchToTab("Created At");
+
+      H.MetricsViewer.getDimensionPillContainer().within(() => {
+        cy.findByText("Created At").should("exist");
+        cy.findByText("Account → Created At").click();
+      });
+
+      H.popover().findByText("Canceled At").click();
+      H.MetricsViewer.getDimensionPillContainer()
+        .findByText("Account → Canceled At")
+        .should("exist");
 
       cy.log("remove the added tab");
 
@@ -403,10 +588,10 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.goToViewer();
       addMetric("Count of orders");
       cy.wait("@dataset");
-      selectBreakout("Count of orders", "Category");
     });
 
     it("should apply a categorical filter to a metric", () => {
+      selectBreakout("Count of orders", "Category");
       H.MetricsViewer.breakoutLegend()
         .should("contain.text", "Doohickey")
         .should("contain.text", "Gadget")
@@ -461,6 +646,86 @@ describe("scenarios > metrics > explorer", () => {
         .click();
       H.MetricsViewer.getAllMetricVisualizations().should("have.length", 4);
     });
+
+    it("Should allow me to apply filters to each metric individually", () => {
+      addMetric("Count of products");
+      switchToTab("Category");
+      H.MetricsViewer.changeVizType("line");
+      H.MetricsViewer.getMetricVisualizationDataPoints().should(
+        "have.length",
+        8,
+      );
+
+      H.MetricsViewer.getFilterButton().click();
+      H.popover().within(() => {
+        cy.button(/count of orders/i).should("be.visible");
+        cy.button(/count of products/i).click();
+        cy.findByText("Category").click();
+      });
+      H.popover().within(() => {
+        cy.findByText("Doohickey").click();
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+
+      H.MetricsViewer.getMetricVisualizationDataPoints().should(
+        "have.length",
+        6,
+      );
+
+      cy.log(
+        "Should allow me to change time granularity and range on time based tabs",
+      );
+      switchToTab("Created At");
+
+      H.MetricsViewer.getMetricVisualizationDataPoints().should(
+        "have.length",
+        85,
+      );
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /by month/i })
+        .click();
+      H.popover().findByText("Year").click();
+      H.MetricsViewer.getMetricVisualizationDataPoints().should(
+        "have.length",
+        9,
+      );
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /by year/i })
+        .click();
+      H.popover().findByText("Month").click();
+
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /All time/i })
+        .click();
+
+      H.popover()
+        .findByText(/Fixed date/)
+        .click();
+      H.popover().within(() => {
+        cy.findByRole("textbox", { name: "Start date" })
+          .clear()
+          .type("February 7, 2024");
+        cy.findByRole("textbox", { name: "End date" })
+          .clear()
+          .type("July 7, 2024");
+        cy.button("Add filter").click();
+      });
+
+      H.MetricsViewer.getMetricVisualizationDataPoints().should(
+        "have.length",
+        10,
+      );
+
+      H.MetricsViewer.getMerticControls()
+        .findByRole("button", { name: /February/i })
+        .click();
+      H.popover().findByRole("button", { name: "Clear" }).click();
+      H.MetricsViewer.getMetricVisualizationDataPoints().should(
+        "have.length",
+        85,
+      );
+    });
   });
 
   // ============================================================================
@@ -479,18 +744,29 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getMerticControls()
         .findByRole("button", { name: /by month/ })
         .should("exist");
-      H.MetricsViewer.getMetricVisualization()
-        .get("path[fill='hsla(0, 0%, 100%, 1.00)']")
-        .eq(4)
-        .click();
+      H.MetricsViewer.getMetricVisualizationDataPoints().eq(4).click();
       H.popover().findByText("See this month by week").click();
 
       H.MetricsViewer.getMerticControls()
         .findByRole("button", { name: /by week/ })
         .should("exist");
-      H.MetricsViewer.getMetricVisualization()
-        .get("path[fill='hsla(0, 0%, 100%, 1.00)']")
-        .should("have.length", 5);
+      H.MetricsViewer.getMetricVisualizationDataPoints().should(
+        "have.length",
+        5,
+      );
+    });
+
+    it("should allow me to do brush style time range filtering", () => {
+      H.applyBrush(100, 250);
+      H.MetricsViewer.getMetricVisualization().within(() => {
+        cy.findByText(/June/).should("be.visible");
+        cy.findByText(/July/).should("be.visible");
+        cy.findByText(/August/).should("be.visible");
+        cy.findByText(/September/).should("be.visible");
+        cy.findByText(/October/).should("be.visible");
+        cy.findByText(/November/).should("be.visible");
+        cy.findByText(/December/).should("be.visible");
+      });
     });
   });
 });
@@ -537,4 +813,36 @@ describe("scenarios > metrics > explorer > BigInt filters", () => {
 
 function createMetrics(metrics: StructuredQuestionDetailsWithName[]) {
   metrics.forEach((metric) => H.createQuestion(metric));
+}
+
+function createTestMeasure(
+  opts: {
+    name?: string;
+    description?: string;
+    tableId?: number;
+    aggregation?: unknown[];
+  } = {},
+) {
+  const {
+    name = "Test Measure",
+    description,
+    tableId = ORDERS_ID,
+    aggregation = ["sum", ["field", ORDERS.TOTAL, null]],
+  } = opts;
+
+  H.createMeasure({
+    name,
+    description,
+    table_id: tableId,
+    definition: {
+      type: "query",
+      database: SAMPLE_DB_ID,
+      query: {
+        "source-table": tableId,
+        aggregation: [aggregation],
+      },
+    },
+  }).then(({ body }) => {
+    cy.wrap(body.id).as("measureId");
+  });
 }

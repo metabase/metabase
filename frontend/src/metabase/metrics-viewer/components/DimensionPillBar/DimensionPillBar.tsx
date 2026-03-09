@@ -44,6 +44,7 @@ export function DimensionPillBar({
       justify="center"
       gap="sm"
       wrap="wrap"
+      data-testid="metrics-viewer-dimension-pill-container"
     >
       {items.map((item) => (
         <DimensionPill
