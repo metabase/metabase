@@ -3,6 +3,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import * as LibMetric from "cljs/metabase.lib_metric.js";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
+  ConcreteTableId,
   JsMetricDefinition,
   MeasureId,
   MetricId,
@@ -117,6 +118,12 @@ export function sourceMeasureId(
   definition: MetricDefinition,
 ): MeasureId | null {
   return LibMetric.sourceMeasureId(definition) as MeasureId | null;
+}
+
+export function sourceMeasureTableId(
+  definition: MetricDefinition,
+): ConcreteTableId | null {
+  return LibMetric.sourceMeasureTableId(definition) as ConcreteTableId | null;
 }
 
 export function sourceMeasureMetadata(

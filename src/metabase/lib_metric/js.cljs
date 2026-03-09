@@ -206,6 +206,14 @@
   [definition]
   (lib-metric.definition/source-measure-id definition))
 
+(defn ^:export sourceMeasureTableId
+  "Get the table ID of the source measure, or null if not measure-based."
+  [definition]
+  (when-let [measure-id (lib-metric.definition/source-measure-id definition)]
+    (:table-id (first (lib.metadata.protocols/metadatas
+                       (->metadata-provider definition)
+                       {:lib/type :metadata/measure, :id #{measure-id}})))))
+
 (defn ^:export sourceInstances
   "Get expression leaf instances as JS arrays.
    Returns a JS array of ['metric'|'measure', {'lib/uuid': '...'}, id] arrays."
