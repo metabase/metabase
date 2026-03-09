@@ -9,8 +9,10 @@
    [metabase.lib.schema.common :as schema.common]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -53,7 +55,7 @@
 
 ;;; ------------------------------------------------- Base Execution -------------------------------------------------
 
-(defn run-query-transform!
+(mu/defn run-query-transform! :- ::transforms-base.schema/execute-base-result
   "Execute query transform (MBQL/native). Returns result map.
 
    Does:
@@ -76,8 +78,8 @@
    {:status :succeeded | :failed | :cancelled
     :result <driver result>
     :error <exception if failed>}"
-  [{:keys [id source target] :as transform}
-   {:keys [cancelled?] :as _opts}]
+  [{:keys [id source target] :as transform} :- ::transforms-base.schema/transform
+   {:keys [cancelled?] :as _opts} :- [:maybe ::transforms-base.schema/execute-base-options]]
   (try
     ;; Check cancellation before starting
     (when (and cancelled? (cancelled?))
