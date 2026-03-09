@@ -7234,6 +7234,13 @@
       "metabase.legacy-mbql.schema..legacy-column-metadata.qualified-keys" : {
         "type" : "object",
         "properties" : {
+          "qp.pivot/pivot-grouping?" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "lib/external-remap" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.external"
@@ -7923,6 +7930,13 @@
           "default" : { },
           "type" : "object",
           "properties" : {
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "binning" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
             },
@@ -7999,6 +8013,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "original-temporal-unit" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
             }
           }
         }, {
@@ -8891,6 +8908,13 @@
         "allOf" : [ {
           "type" : "object",
           "properties" : {
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "field_ref" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -10681,6 +10705,13 @@
                 "type" : "null"
               } ]
             },
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "lib/external-remap" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.remapping.external"
@@ -11172,6 +11203,13 @@
               "fk-join-alias" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "qp.pivot/pivot-grouping?" : {
+                "oneOf" : [ {
+                  "type" : "boolean"
                 }, {
                   "type" : "null"
                 } ]
@@ -11849,6 +11887,13 @@
         "default" : { },
         "type" : "object",
         "properties" : {
+          "qp.pivot/pivot-grouping?" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "binning" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
           },
@@ -11919,6 +11964,9 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "original-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
           }
         },
         "required" : [ "lib/uuid", "base-type" ]
@@ -11927,6 +11975,13 @@
         "default" : { },
         "type" : "object",
         "properties" : {
+          "qp.pivot/pivot-grouping?" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "binning" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
           },
@@ -12001,6 +12056,9 @@
             }, {
               "type" : "null"
             } ]
+          },
+          "original-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
           }
         },
         "required" : [ "lib/uuid" ]
