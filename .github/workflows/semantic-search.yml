@@ -223,9 +223,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: Postgres 12.x with pgvector pg17
-            junit-name: semantic-search-tests-postgres-12
-            postgres-image: postgres:12-alpine
+          - name: Postgres 14.x with pgvector pg17
+            junit-name: semantic-search-tests-postgres-14
+            postgres-image: postgres:14-alpine
             pgvector-image: pgvector/pgvector:pg17
           - name: Postgres Latest with pgvector pg17
             junit-name: semantic-search-tests-postgres-latest
