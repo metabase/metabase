@@ -46,7 +46,7 @@
                 (is (= advanced-before      (:transform-advanced-runs stats)))))))
 
         (testing "with advanced add-on, all runs go to advanced-runs"
-          (mt/with-premium-features #{:transforms :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python}
             ;; run a python transform
             (let [{run-id :id} (transform-run/start-run! python-id {:run_method "manual"})]
               (transform-run/succeed-started-run! run-id)

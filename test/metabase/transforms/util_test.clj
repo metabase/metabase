@@ -253,7 +253,7 @@
 
 (deftest source-tables-readable?-test
   (testing "source-tables-readable? function"
-    (mt/with-premium-features #{:transforms :transforms-python}
+    (mt/with-premium-features #{:transforms-basic :transforms-python}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}
                        :model/Table {table-id :id} {:db_id db-id :name "test_table"}]
@@ -276,7 +276,7 @@
 
 (deftest source-tables-readable-permissions-test
   (testing "source-tables-readable? with various permission levels"
-    (mt/with-premium-features #{:transforms :transforms-python}
+    (mt/with-premium-features #{:transforms-basic :transforms-python}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}
                        :model/Table {table1-id :id} {:db_id db-id :name "test_table_1"}
@@ -322,7 +322,7 @@
 
 (deftest handle-transform-complete-sets-transform-id-test
   (testing "handle-transform-complete! sets transform_id on the target table"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (let [target {:type "table" :schema nil :name "test_output_table"}]
         (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}
                        :model/Transform {transform-id :id :as transform} {:target target}
@@ -339,7 +339,7 @@
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (let [target {:type "table" :schema nil :name "hydration_test_table"}]
         (mt/with-temp [:model/Transform {transform-id :id} {:target target :name "Test Hydration Transform"}
                        :model/Table table {:transform_id transform-id}]
@@ -348,7 +348,7 @@
             (is (= transform-id (-> hydrated :transform :id))))))))
 
   (testing "hydrating :transform returns nil when transform_id is nil"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Table table {:transform_id nil}]
         (let [hydrated (t2/hydrate table :transform)]
           (is (nil? (:transform hydrated))))))))
@@ -363,7 +363,7 @@
 (deftest compile-source-no-limit-test
   (testing "compile-source produces SQL without a LIMIT clause"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (let [transform {:source {:type  "query"
                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
               {:keys [query]} (transforms.util/compile-source transform)]
