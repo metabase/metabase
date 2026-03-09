@@ -64,7 +64,7 @@
                  (pr-str (get-in res [:response_metadata :messages]))))
     res))
 
-(defn make-channel-callbacks
+(defn- make-channel-callbacks
   "Create callback functions that update a single visible threaded reply in channels.
    Channel replies only surface tool-status updates progressively; text is accumulated
    and sent once in the final message update."
@@ -161,24 +161,13 @@
                                         "I wasn't able to generate a response. Please try again.")
               final-blocks            (into (into (final-text-blocks final-text) blocks)
                                             (feedback-blocks conversation-id))]
-          (if (and message-ts (not @update-failed?))
-            (let [update-result (update-channel-message! client
-                                                         channel
-                                                         message-ts
-                                                         "channel update-message"
-                                                         final-text
-                                                         final-blocks)]
-              (when-not (:ok update-result)
-                (let [fallback-result (slackbot.client/post-thread-reply client
-                                                                         message-ctx
-                                                                         "I generated a response, but Slack could not render it. Please try again.")]
-                  (when-not (:ok fallback-result)
-                    (log/errorf "[slackbot] channel fallback post-message failed after update error: %s" (:error fallback-result))))))
-            (let [fallback-result (slackbot.client/post-thread-reply client
-                                                                     message-ctx
-                                                                     "I generated a response, but Slack could not render it. Please try again.")]
-              (when-not (:ok fallback-result)
-                (log/errorf "[slackbot] channel fallback post-message failed: %s" (:error fallback-result)))))
+          (when (or (nil? message-ts)
+                    @update-failed?
+                    (not (:ok (update-channel-message! client channel message-ts "channel update-message" final-text final-blocks))))
+            (let [res (slackbot.client/post-thread-reply client message-ctx
+                                                         "I generated a response, but Slack could not render it. Please try again.")]
+              (when-not (:ok res)
+                (log/errorf "[slackbot] channel fallback post-message failed: %s" (:error res)))))
           (doseq [e errors]
             (post-viz-error! client channel thread-ts e))))
       (catch Exception e
@@ -187,18 +176,11 @@
         (set-status! nil)
         (await slack-writer)
         (let [error-text "Something went wrong. Please try again."]
-          (if (and message-ts (not @update-failed?))
-            (let [update-result (slackbot.client/update-message client {:channel channel
-                                                                        :ts      message-ts
-                                                                        :text    error-text})]
-              (when-not (:ok update-result)
-                (let [fallback-result (slackbot.client/post-thread-reply client
-                                                                         message-ctx
-                                                                         error-text)]
-                  (when-not (:ok fallback-result)
-                    (log/errorf "[slackbot] channel cleanup fallback post-message failed: %s" (:error fallback-result))))))
-            (let [fallback-result (slackbot.client/post-thread-reply client
-                                                                     message-ctx
-                                                                     error-text)]
-              (when-not (:ok fallback-result)
-                (log/errorf "[slackbot] channel cleanup fallback post-message failed: %s" (:error fallback-result))))))))))
+          (when (or (nil? message-ts)
+                    @update-failed?
+                    (not (:ok (slackbot.client/update-message client {:channel channel
+                                                                      :ts      message-ts
+                                                                      :text    error-text}))))
+            (let [res (slackbot.client/post-thread-reply client message-ctx error-text)]
+              (when-not (:ok res)
+                (log/errorf "[slackbot] channel cleanup fallback post-message failed: %s" (:error res))))))))))
