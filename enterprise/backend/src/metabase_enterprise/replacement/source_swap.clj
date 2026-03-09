@@ -136,17 +136,24 @@
         all-card-ids   (into #{}
                              (mapcat (fn [dashcard]
                                        (concat
-                                        (replacement.walk/parameter-mapping-card-ids (:parameter_mappings dashcard))
-                                        (replacement.walk/viz-settings-click-behavior-card-ids (-> dashcard :visualization_settings vs/db->norm)))))
+                                        (replacement.walk/parameter-mapping-card-ids
+                                         (:parameter_mappings dashcard))
+                                        (replacement.walk/viz-settings-click-behavior-card-ids
+                                         (-> dashcard :visualization_settings vs/db->norm)))))
                              dashcards)
         card-id->card (if (seq all-card-ids)
                         (t2/select-pk->fn identity :model/Card :id [:in all-card-ids])
-                        {})]
-    (doseq [dashcard dashcards]
-      (dashcard-swap-source! dashcard card-id->card old-source new-source))
-    (events/publish-event! :event/dashboard-update {:object  (t2/select-one :model/Dashboard
-                                                                            :id (:id dashboard))
-                                                    :user-id api/*current-user-id*})))
+                        {})
+        any-changed? (reduce (fn [changed? dashcard]
+                               (or
+                                (dashcard-swap-source! dashcard card-id->card old-source new-source)
+                                changed?))
+                             false
+                             dashcards)]
+    (when any-changed?
+      (events/publish-event!
+       :event/dashboard-update {:object  (t2/select-one :model/Dashboard :id (:id dashboard))
+                                :user-id api/*current-user-id*}))))
 
 (defn swap-source!
   "Swap old-source to new-source in an entity.
