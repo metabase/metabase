@@ -53,7 +53,7 @@ jobs:
                   type: 'section',
                   text: {
                     type: 'mrkdwn',
-                    text: `:information_source: *CI Disabled Drivers*\n${drivers.map(d => `\`${d}\``).join('  ')}`
+                    text: `:no_entry: *CI Disabled Drivers*\n${drivers.map(d => `\`${d}\``).join('  ')}`
                   },
                   accessory: {
                     type: 'button',
@@ -70,7 +70,7 @@ jobs:
                   elements: [
                     {
                       type: 'mrkdwn',
-                      text: `${reason} · Updated ${lastUpdated}`
+                      text: `${reason} · :clock1: *${lastUpdated}*`
                     }
                   ]
                 }
