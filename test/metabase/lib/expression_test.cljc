@@ -645,6 +645,7 @@
       [:get-day 1] "Types are incompatible: get-day expects a temporal value."
       [:not 1]     "Types are incompatible: not expects a boolean."
       [:> 1 true]  "Types are incompatible."
+      [:> [:field 1 {:base-type :type/JSON}] 1] "Types are incompatible: > expects an orderable type (e.g. number, string, temporal)."
       ;; function with multiple args of different types
       [:substring 1 1 1]        "Types are incompatible: substring expects a string."
       [:substring "str" 1 true] "Types are incompatible: substring expects an integer."
