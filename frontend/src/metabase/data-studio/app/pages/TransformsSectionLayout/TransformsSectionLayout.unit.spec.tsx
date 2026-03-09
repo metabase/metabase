@@ -30,7 +30,7 @@ const setup = ({
 } = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
-      transforms: hasTransformFeature,
+      "transforms-basic": hasTransformFeature,
       hosting: isHosted,
     }),
     "transforms-enabled": transformsEnabled,
