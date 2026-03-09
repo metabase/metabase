@@ -633,7 +633,7 @@
      (some #(invalid-nesting % (conj path-tags (first expr))) (nnext expr)))))
 
 (defn- find-type-error
-  "Given a malli explanation, return the first error with an `:error/expected-type`."
+  "Given a malli explanation, return the first error with an `:error/type-description`."
   [explanation]
   (some (fn [error]
           (let [schema (:schema error)
@@ -641,7 +641,7 @@
                           (mc/type-properties schema))
                 type-desc (:error/type-description props)]
             (when type-desc
-              [error type-desc])))
+              [type-desc (:in error)])))
         (:errors explanation)))
 
 (defn- parent-operator-name
@@ -667,8 +667,8 @@
 
 (defn- type-error-message
   [explanation expr]
-  (let [[type-error type-desc] (find-type-error explanation)
-        op-name (parent-operator-name expr (:in type-error))]
+  (let [[type-desc in-path] (find-type-error explanation)
+        op-name (parent-operator-name expr in-path)]
     (if (and op-name type-desc)
       (i18n/tru "Types are incompatible: {0} expects {1}." op-name type-desc)
       (i18n/tru "Types are incompatible."))))

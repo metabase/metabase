@@ -642,8 +642,9 @@
       [:/ "str" 1] "Types are incompatible: / expects a number."
       ;; functions that expect different types
       [:upper 1]   "Types are incompatible: upper expects a string."
-      [:get-day 1] "Types are incompatible: get-day expects a date or time."
+      [:get-day 1] "Types are incompatible: get-day expects a temporal value."
       [:not 1]     "Types are incompatible: not expects a boolean."
+      [:> 1 true]  "Types are incompatible."
       ;; function with multiple args of different types
       [:substring 1 1 1]        "Types are incompatible: substring expects a string."
       [:substring "str" 1 true] "Types are incompatible: substring expects an integer."

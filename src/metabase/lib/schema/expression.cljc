@@ -125,7 +125,9 @@
   1b. expression is an registered MBQL clause and matches the schema registered
       with [[metabase.lib.schema.mbql-clause]], AND
 
-  2. expression's [[type-of]] isa? `base-type`"
+  2. expression's [[type-of]] isa? `base-type`
+
+   Returns a user-facing type description if the expression does not match the schema."
   [base-type type-desc]
   [:and
    ;; vector = MBQL clause, anything else = not an MBQL clause
@@ -172,7 +174,7 @@
   #{:type/Text :type/Number :type/Temporal :type/Boolean :type/MongoBSONID})
 
 (mr/def ::orderable
-  (expression-schema orderable-types (i18n/tru "an orderable type (e.g. number, text, temporal)")))
+  (expression-schema orderable-types (i18n/tru "an orderable type (e.g. number, string, temporal)")))
 
 (defn comparable-expressions?
   "Returns whether expressions `x` and `y` can be compared.
@@ -194,7 +196,7 @@
 (derive :type/MongoBSONID ::emptyable)
 
 (mr/def ::emptyable
-  (expression-schema ::emptyable (i18n/tru "an emptyable type (e.g. a string or BSON ID))")))
+  (expression-schema ::emptyable (i18n/tru "an emptyable type (e.g. string, BSON ID))")))
 
 (def equality-comparable-types
   "Set of base types that can be compared with equality."
@@ -208,7 +210,7 @@
 
 (mr/def ::equality-comparable
   [:maybe
-   (expression-schema equality-comparable-types (i18n/tru "an equality comparable type (e.g. number, text, boolean)"))])
+   (expression-schema equality-comparable-types (i18n/tru "an equality comparable type (e.g. number, string, boolean)"))])
 
 ;;; any type of expression.
 (mr/def ::expression
