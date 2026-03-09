@@ -157,7 +157,7 @@ export class LeafletMap<
 
     const { bounds, settings, zoomControl, zoom, lat, lng } = this.props;
 
-    if (prevProps && prevProps.zoomControl !== zoomControl) {
+    if (prevProps?.zoomControl !== zoomControl) {
       if (zoomControl === false) {
         this.map.zoomControl?.remove();
       } else if (this.map.zoomControl) {
