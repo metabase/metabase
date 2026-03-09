@@ -2111,11 +2111,13 @@
       (backfill-table-fk! :workspace_output :isolated_schema :isolated_table :isolated_table_id)
       (backfill-table-fk! :workspace_output_external :global_schema :global_table :global_table_id)
       (backfill-table-fk! :workspace_output_external :isolated_schema :isolated_table :isolated_table_id))
-    ;; 6. Backfill workspace_input rows missing table_id
-    (doseq [{:keys [id db_id schema table]} (t2/query {:select [:id :db_id :schema :table]
-                                                       :from   [:workspace_input]
-                                                       :where  [:= :table_id nil]})]
+    ;; 6-7. Backfill workspace_input and workspace_input_external rows missing table_id
+    (doseq [from-table [:workspace_input :workspace_input_external]
+            :let [rows (t2/query {:select [:id :db_id :schema :table]
+                                  :from   [from-table]
+                                  :where  [:= :table_id nil]})]
+            {:keys [id db_id schema table]} rows]
       (when-let [table-id (find-table-id db_id schema table)]
-        (t2/query {:update :workspace_input
+        (t2/query {:update from-table
                    :set    {:table_id table-id}
                    :where  [:= :id id]})))))
