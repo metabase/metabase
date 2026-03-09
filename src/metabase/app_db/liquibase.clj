@@ -26,7 +26,7 @@
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment Scope Scope$Attr Scope$ScopedRunner UpdateSummaryOutputEnum)
    (liquibase.change.custom CustomChangeWrapper)
    (liquibase.changelog ChangeLogIterator ChangeSet ChangeSet$ExecType)
-   (liquibase.changelog.filter AlreadyRanChangeSetFilter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
+   (liquibase.changelog.filter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.command.core AbstractRollbackCommandStep)
    (liquibase.database Database DatabaseFactory)
@@ -540,7 +540,6 @@
            latest-available (latest-available-major-version liquibase)
            latest-applied   (latest-applied-major-version conn (.getDatabase liquibase))
            lb-db (.getDatabase liquibase)
-           ran-changesets   (.getRanChangeSetList lb-db)
            changelog (.getDatabaseChangeLog liquibase)
            changeset-filter (proxy [ChangeSetFilter] []
                               (accepts [^ChangeSet changeSet]
@@ -551,11 +550,16 @@
                                                                      (log/infof "Going to roll back changeset %s" id)
                                                                      (str "Changeset ID '" id "' is in target list"))
                                                                    (str "Changeset ID '" id "' is not in target list")) nil))))
-           changelog-iterator (ChangeLogIterator. ran-changesets changelog
+           ;; Use the simple ChangeLogIterator constructor to avoid the (ranChangeSets, changelog)
+           ;; constructor which silently drops changesets when the FILENAME column in
+           ;; databasechangelog doesn't match the current changelog filepath. This happens when
+           ;; migrations are moved between files (e.g., 058 -> 059). Our changeset-filter already
+           ;; limits rollback to IDs present in databasechangelog, making AlreadyRanChangeSetFilter
+           ;; redundant.
+           changelog-iterator (ChangeLogIterator. changelog
                                                   (doto (ArrayList.)
                                                     (.addAll
-                                                     [(AlreadyRanChangeSetFilter. ran-changesets)
-                                                      (IgnoreChangeSetFilter.)
+                                                     [(IgnoreChangeSetFilter.)
                                                       (DbmsChangeSetFilter. lb-db)
                                                       changeset-filter])))
            error-ids (atom [])]
@@ -587,8 +591,15 @@
                  formatted-sql (sql/format remaining-query)
                  remaining-ids   (map :id (t2/query conn formatted-sql))]
              (when (seq remaining-ids)
-               (log/warnf "The following changesets were not rolled back. Likely because %s: %s"
-                          (if (seq @error-ids)
-                            (format "there were errors in rollback (%s)" (str/join ", " @error-ids))
-                            "they are not in the changelog file")
-                          (str/join ", " remaining-ids))))))))))
+               (if (seq @error-ids)
+                 (log/warnf "The following changesets were not rolled back due to errors (%s): %s"
+                            (str/join ", " @error-ids)
+                            (str/join ", " remaining-ids))
+                 ;; Remaining entries are likely due to FILENAME mismatch in databasechangelog
+                 ;; (e.g., migrations moved between files). The rollback SQL already executed
+                 ;; via the changelog; clean up the stale databasechangelog entries.
+                 (do
+                   (log/infof "Cleaning up %d changelog entries with mismatched filenames" (count remaining-ids))
+                   (let [delete-query (-> (sql.helpers/delete-from (keyword (changelog-table-name liquibase)))
+                                         (sql.helpers/where [:in :id (vec remaining-ids)]))]
+                     (jdbc/execute! {:connection conn} (sql/format delete-query)))))))))))))
