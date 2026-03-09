@@ -2069,9 +2069,9 @@
                                                :where  [:and
                                                         [:= :db_id db-id]
                                                         (if (some? schema)
-                                                          [:= :schema schema]
+                                                          [:= [:lower :schema] (lower-case-en schema)]
                                                           [:is :schema nil])
-                                                        [:= :name table-name]]
+                                                        [:= [:lower :name] (lower-case-en table-name)]]
                                                :limit  1}))))
         upsert-table! (fn [db-id schema table-name]
                         (or (find-table-id db-id schema table-name)
@@ -2083,7 +2083,7 @@
                                                         :display_name        (humanize table-name)
                                                         :active              false
                                                         :transform_target    true
-                                                        :data_source         "transform"
+                                                        :data_source         "metabase-transform"
                                                         :initial_sync_status "complete"}]})
                               (find-table-id db-id schema table-name)
                               (catch Exception _
@@ -2097,38 +2097,20 @@
           (let [schema (get target-map "schema")
                 db-id  target_db_id]
             (upsert-table! db-id schema table-name)))))
-    ;; 2. Backfill workspace_output rows missing global_table_id
-    (doseq [{:keys [id db_id global_schema global_table]} (t2/query {:select [:id :db_id :global_schema :global_table]
-                                                                     :from   [:workspace_output]
-                                                                     :where  [:= :global_table_id nil]})]
-      (when-let [table-id (upsert-table! db_id global_schema global_table)]
-        (t2/query {:update :workspace_output
-                   :set    {:global_table_id table-id}
-                   :where  [:= :id id]})))
-    ;; 3. Backfill workspace_output rows missing isolated_table_id
-    (doseq [{:keys [id db_id isolated_schema isolated_table]} (t2/query {:select [:id :db_id :isolated_schema :isolated_table]
-                                                                         :from   [:workspace_output]
-                                                                         :where  [:= :isolated_table_id nil]})]
-      (when-let [table-id (upsert-table! db_id isolated_schema isolated_table)]
-        (t2/query {:update :workspace_output
-                   :set    {:isolated_table_id table-id}
-                   :where  [:= :id id]})))
-    ;; 4. Backfill workspace_output_external rows missing global_table_id
-    (doseq [{:keys [id db_id global_schema global_table]} (t2/query {:select [:id :db_id :global_schema :global_table]
-                                                                     :from   [:workspace_output_external]
-                                                                     :where  [:= :global_table_id nil]})]
-      (when-let [table-id (upsert-table! db_id global_schema global_table)]
-        (t2/query {:update :workspace_output_external
-                   :set    {:global_table_id table-id}
-                   :where  [:= :id id]})))
-    ;; 5. Backfill workspace_output_external rows missing isolated_table_id
-    (doseq [{:keys [id db_id isolated_schema isolated_table]} (t2/query {:select [:id :db_id :isolated_schema :isolated_table]
-                                                                         :from   [:workspace_output_external]
-                                                                         :where  [:= :isolated_table_id nil]})]
-      (when-let [table-id (upsert-table! db_id isolated_schema isolated_table)]
-        (t2/query {:update :workspace_output_external
-                   :set    {:isolated_table_id table-id}
-                   :where  [:= :id id]})))
+    ;; 2-5. Backfill workspace_output and workspace_output_external rows missing table FKs
+    (let [backfill-table-fk! (fn [from-table schema-col table-col fk-col]
+                               (doseq [{:keys [id db_id] :as row}
+                                       (t2/query {:select [:id :db_id schema-col table-col]
+                                                  :from   [from-table]
+                                                  :where  [:= fk-col nil]})]
+                                 (when-let [table-id (upsert-table! db_id (get row schema-col) (get row table-col))]
+                                   (t2/query {:update from-table
+                                              :set    {fk-col table-id}
+                                              :where  [:= :id id]}))))]
+      (backfill-table-fk! :workspace_output :global_schema :global_table :global_table_id)
+      (backfill-table-fk! :workspace_output :isolated_schema :isolated_table :isolated_table_id)
+      (backfill-table-fk! :workspace_output_external :global_schema :global_table :global_table_id)
+      (backfill-table-fk! :workspace_output_external :isolated_schema :isolated_table :isolated_table_id))
     ;; 6. Backfill workspace_input rows missing table_id
     (doseq [{:keys [id db_id schema table]} (t2/query {:select [:id :db_id :schema :table]
                                                        :from   [:workspace_input]
