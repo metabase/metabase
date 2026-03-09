@@ -40,4 +40,15 @@
    :output-to        "target/node-tests.js"
    :ns-regexp        "-test$"
    :compiler-options {:reader-features #{:cljs-test}
-                      :warnings        {:fn-deprecated false}}}}}
+                      :warnings        {:fn-deprecated false}}}
+
+  :agent
+  {:target     :esm
+   :output-dir "agent-toolkit/lib/cljs"
+   :modules
+   {:agent
+    {:exports
+     {evaluate metabase.agent.sci/evaluate}}}
+   :compiler-options {:source-map true
+                      :warnings  {:fn-deprecated false}}
+   :closure-defines {goog.debug.LOGGING_ENABLED false}}}}

@@ -9,6 +9,7 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 - **[clojure-eval](.claude/skills/clojure-eval/SKILL.md)** - Always use this to evaluate Clojure code, **run tests**, and verify edits/compile. Prefer this over `clojure -X:...` shell commands.
 - **[clojure-write](.claude/skills/clojure-write/SKILL.md)** - Clojure/ClojureScript development with REPL-driven workflow and coding conventions
 - **[clojure-review](.claude/skills/clojure-review/SKILL.md)** - Clojure/ClojureScript code review guidelines and style enforcement
+- **[clojure-eval](.claude/skills/clojure-eval/SKILL.md)** - Clojure code evaluation against running nREPL
 
 ## TypeScript
 

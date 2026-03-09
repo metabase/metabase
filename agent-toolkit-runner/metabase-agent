@@ -1,0 +1,2 @@
+#!/usr/bin/env node --import tsx
+import "../agent-toolkit/src/index.ts";

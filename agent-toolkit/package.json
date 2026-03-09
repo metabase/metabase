@@ -1,0 +1,39 @@
+{
+  "name": "@metabase/agent-toolkit",
+  "version": "0.1.0",
+  "description": "Agent-friendly CLI for Metabase — intent-oriented commands for discovering data, creating transforms, building dashboards",
+  "type": "module",
+  "bin": {
+    "metabase-agent": "./dist/index.js"
+  },
+  "scripts": {
+    "build:cljs": "cd .. && npx shadow-cljs release agent",
+    "build": "tsup",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "generate-types": "node scripts/fix-openapi.mjs && openapi-typescript openapi_fixed.json -o src/core/api-types.ts && rm openapi_fixed.json"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "openapi-fetch": "^0.13.0",
+    "zod": "^3.24.0",
+    "zod-to-json-schema": "^3.24.0"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.6.0",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "SKILL.md"
+  ]
+}

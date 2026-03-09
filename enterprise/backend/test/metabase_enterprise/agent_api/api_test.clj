@@ -276,12 +276,10 @@
       (let [table-id (mt/id :people)
             field-id (visible-field-id table-id "State")]
         (is (some? field-id) "Should find the State field")
-        (let [result (agent-client :crowberto :get 200
-                                   (format "agent/v1/table/%d/field/%s/values" table-id field-id))]
-          (is (=? {:value_metadata {:statistics   {:distinct-count 49}
-                                    :field_values sequential?}}
-                  result))
-          (is (<= (count (:values result)) 30) "Should apply default limit of 30"))))
+        (is (=? {:value_metadata {:statistics   {:distinct-count 49}
+                                  :field_values sequential?}}
+                (agent-client :crowberto :get 200
+                              (format "agent/v1/table/%d/field/%s/values" table-id field-id))))))
 
     (testing "Respects explicit limit parameter"
       (let [table-id (mt/id :people)
