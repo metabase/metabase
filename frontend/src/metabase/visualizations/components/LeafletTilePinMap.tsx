@@ -5,7 +5,7 @@ import { EmbeddingEntityContext } from "metabase/embedding/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { GET } from "metabase/lib/api";
 import { isWithinIframe } from "metabase/lib/dom";
-import type { DashboardId, Dataset } from "metabase-types/api";
+import type { DashboardId } from "metabase-types/api";
 
 import { getTileUrl } from "../lib/map";
 
@@ -137,7 +137,7 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
       datasetQuery: card?.dataset_query,
       uuid: uuid ?? undefined,
       token: token ?? undefined,
-      datasetResult: datasetResult as unknown as Dataset,
+      parameters: datasetResult.json_query?.parameters ?? [],
     });
   };
 
