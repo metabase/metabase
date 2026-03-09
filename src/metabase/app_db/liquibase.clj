@@ -457,6 +457,10 @@
   liquibase was checking the jar signature for each file. This function is required to correct the liquibase tables to
   reflect that these migrations were grouped into 2 files.
 
+  NOTE: we are going back to more granular changelog files in v60, but should not as many as before.
+  If we do end up seeing a performance issue similar to what caused a need for this file, we can do a similar
+  (but different) consolidation function for the v60+ changelogs.
+
   See https://github.com/metabase/metabase/issues/3715
   Also see https://github.com/metabase/metabase/pull/34400"
   [conn :- (ms/InstanceOfClass Connection)
