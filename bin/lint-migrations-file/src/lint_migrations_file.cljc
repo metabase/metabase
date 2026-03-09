@@ -37,11 +37,11 @@
     (throw (validation-error "Missing `databaseChangeLog` key."))))
 
 (defn- change-set-ids
-  "Returns all the change set ids given a change-log. IDs are always returned as strings."
+  "Returns all the change set ids given a change-log."
   [change-log]
   (for [{{id :id} :changeSet} change-log
         :when id]
-    (str id)))
+    id))
 
 (defn- require-distinct-change-set-ids [change-log]
   (let [ids (change-set-ids change-log)
@@ -158,18 +158,20 @@
              {:invalid-ids using-types?
               :target-types target-types})))))
 
-(defn- require-no-bare-blob-or-text-types
+(defn require-no-bare-blob-or-text-types
   "Ensures that no \"text\" or \"blob\" type columns are added in any changesets."
   [change-log]
   (require-no-types-in-change-log! #{"blob" "text"} change-log))
 
-(defn- require-no-bare-boolean-types
-  "Ensures that no \"boolean\" type columns are added in changesets at or after v49.00-032."
+(defn require-no-bare-boolean-types
+  "Ensures that no \"boolean\" type columns are added in changesets with id later than v49.00-032. From that point on,
+  \"${boolean.type}\" should be used instead, so that we can consistently use `BIT(1)` for Boolean columns on MySQL."
   [change-log file]
   (require-no-types-in-change-log! #{"boolean"} change-log file 49 "00-032"))
 
-(defn- require-no-datetime-type
-  "Ensures that no \"datetime\" or \"timestamp without time zone\" types are used at or after v49.00-000."
+(defn require-no-datetime-type
+  "Ensures that no \"datetime\" or \"timestamp without time zone\".
+  From that point on, \"${timestamp_type}\" should be used instead, so that all of our time related columns are tz-aware."
   [change-log file]
   (require-no-types-in-change-log!
    #{"datetime" "timestamp" "timestamp without time zone"}

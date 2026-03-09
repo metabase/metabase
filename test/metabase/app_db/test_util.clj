@@ -71,16 +71,6 @@
   [timezone-id & body]
   `(do-with-app-db-timezone-id! ~timezone-id (fn [] ~@body)))
 
-(defn- maybe-prepend-version
-  "For directory-based migration paths (e.g. migrations/060/...), prepend v{version}. to
-   the changeset ID, matching what liquibase/prepend-version-to-directory-changeset-ids! does."
-  [file-path id-str]
-  (if-let [[_ version-str] (re-find #"migrations/(\d{3})/" file-path)]
-    (if (str/starts-with? id-str "v")
-      id-str
-      (str "v" (parse-long version-str) "." id-str))
-    id-str))
-
 (defn liquibase-file->included-ids
   "Read a liquibase migration file and returns all the migration id that is applied to `db-type`.
   Ids are orderer in the order it's defined in migration file."
@@ -96,8 +86,7 @@
       ;; remove ignored changeSets
          (remove #(get-in % [:changeSet :ignore]))
          (map #(str (get-in % [:changeSet :id])))
-         (remove str/blank?)
-         (map #(maybe-prepend-version file-path %)))))
+         (remove str/blank?))))
 
 (defn all-migration-files
   "Returns a list of existing migration files."
