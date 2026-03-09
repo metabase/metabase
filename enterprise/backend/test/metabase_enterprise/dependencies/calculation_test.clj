@@ -126,7 +126,7 @@
              (calculation/upstream-deps:card card))))))
 
 (deftest ^:parallel upstream-deps-transform-implicit-join-fields-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (let [mp (mt/metadata-provider)
           checkins-id (mt/id :checkins)
           venues-id (mt/id :venues)
@@ -149,7 +149,7 @@
                (calculation/upstream-deps:transform transform)))))))
 
 (deftest ^:parallel upstream-deps-transform-implicit-join-breakout-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (let [mp (mt/metadata-provider)
           checkins-id (mt/id :checkins)
           venues-id (mt/id :venues)
@@ -172,7 +172,7 @@
                (calculation/upstream-deps:transform transform)))))))
 
 (deftest ^:parallel upstream-deps-transform-implicit-join-aggregation-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (let [mp (mt/metadata-provider)
           checkins-id (mt/id :checkins)
           venues-id (mt/id :venues)
@@ -194,13 +194,13 @@
                (calculation/upstream-deps:transform transform)))))))
 
 (deftest ^:parallel upstream-deps-python-transform-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (let [products-id (mt/id :products)
           orders-id (mt/id :orders)]
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :python
-                                                          :source-tables {"PRODUCTS" products-id
-                                                                          "ORDERS" orders-id}
+                                                          :source-tables [{:alias "PRODUCTS" :table_id products-id}
+                                                                          {:alias "ORDERS" :table_id orders-id}]
                                                           ;; A problematic field, hopefully removed again.
                                                           :source-database (mt/id)
                                                           :body "..."}

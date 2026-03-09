@@ -107,7 +107,7 @@
 
 (deftest transform-tags-ordering-test
   (testing "Transform tags maintain specified order through updates"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform transform {}
                      :model/TransformTag tag1 {:name "tag1"}
                      :model/TransformTag tag2 {:name "tag2"}
@@ -144,7 +144,7 @@
 
 (deftest job-tags-ordering-test
   (testing "Job tags maintain specified order through updates"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/TransformJob job {:name "test job" :schedule "0 0 * * *"}
                      :model/TransformTag tag1 {:name "tag1"}
                      :model/TransformTag tag2 {:name "tag2"}
@@ -288,7 +288,7 @@
 
 (deftest deleted-transform-preserves-runs-test
   (testing "Deleting a transform sets transform_id to NULL but preserves the run"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform {transform-id :id
                                        transform-name :name
                                        entity-id :entity_id} {}
@@ -307,7 +307,7 @@
 
 (deftest orphaned-run-hydration-test
   (testing "Hydrating :transform on orphaned runs returns {:name ... :deleted true}"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/TransformRun run {:transform_id nil
                                               :transform_name "Deleted Transform"
                                               :transform_entity_id "test-entity-id-123"
@@ -318,7 +318,7 @@
 
 (deftest start-run-captures-transform-info-test
   (testing "start-run! captures transform_name and transform_entity_id"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform {transform-id :id
                                        transform-name :name
                                        entity-id :entity_id} {}]

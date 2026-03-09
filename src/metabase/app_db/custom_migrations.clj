@@ -1855,6 +1855,72 @@
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))
 
+(define-reversible-migration UnifySourceTablesFormat
+  (let [tables [{:table :transform           :pks [:id]                  :where [:= :source_type "python"]}
+                {:table :workspace_transform :pks [:workspace_id :ref_id]}]
+        python? (fn [source]
+                  (= "python" (get (json-out source false) "type")))
+        all-rows (into []
+                       (mapcat (fn [{:keys [table pks] w :where}]
+                                 (->> (t2/query (cond-> {:select (into [:source] pks)
+                                                         :from   [table]}
+                                                  w (assoc :where w)))
+                                      (filter #(or w (python? (:source %))))
+                                      (map #(assoc % ::table table ::pks pks)))))
+                       tables)
+        all-ids  (into #{}
+                       (mapcat (fn [{:keys [source]}]
+                                 (let [st (get (json-out source false) "source-tables")]
+                                   (when (map? st)
+                                     (filter int? (vals st))))))
+                       all-rows)
+        metadata (when (seq all-ids)
+                   (into {}
+                         (map (fn [{:keys [id db_id schema name]}]
+                                [id {"database_id" db_id "schema" schema "table" name}]))
+                         (t2/query {:select [:id :db_id :schema :name]
+                                    :from   [:metabase_table]
+                                    :where  [:in :id all-ids]})))]
+    (doseq [{:keys [source] :as row} all-rows]
+      (let [parsed (json-out source false)
+            st     (get parsed "source-tables")]
+        (when (map? st)
+          (let [entries (mapv (fn [[alias v]]
+                                (if (int? v)
+                                  ;; Integer value: backfill all metadata (database_id, schema, table) from DB.
+                                  (merge {"alias" alias "table_id" v}
+                                         (get metadata v))
+                                  ;; Ref-map value: already has database_id/schema/table; table_id is
+                                  ;; resolved lazily by normalize-source-tables when the transform is saved via the API.
+                                  (assoc v "alias" alias)))
+                              st)
+                pks     (::pks row)]
+            (t2/query {:update (::table row)
+                       :set    {:source (json-in (assoc parsed "source-tables" entries))}
+                       :where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
+  (let [convert-back
+        (fn [source-json]
+          (let [parsed (json-out source-json false)]
+            (when-let [st (get parsed "source-tables")]
+              (when (sequential? st)
+                (let [m (into {} (map (fn [entry]
+                                        [(get entry "alias")
+                                         (or (get entry "table_id") entry)]))
+                              st)]
+                  (json-in (assoc parsed "source-tables" m)))))))
+        tables  [{:table :transform           :pks [:id]                  :where [:= :source_type "python"]}
+                 {:table :workspace_transform :pks [:workspace_id :ref_id]}]
+        python? (fn [source]
+                  (= "python" (get (json-out source false) "type")))]
+    (doseq [{:keys [table pks] w :where} tables]
+      (doseq [row (cond->> (t2/query (cond-> {:select (into [:source] pks)
+                                              :from   [table]}
+                                       w (assoc :where w)))
+                    (not w) (filter #(python? (:source %))))]
+        (when-let [new-source (convert-back (:source row))]
+          (t2/query {:update table
+                     :set    {:source new-source}
+                     :where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
 (define-migration FixClickHouseUploadDBSchemaNames
   "This data migration is meant to fix the issues seen in #69667, #68298 and #65945.
    We made the driver feature `schemas` conditional on the `enable-multiple-db` DB connection setting.

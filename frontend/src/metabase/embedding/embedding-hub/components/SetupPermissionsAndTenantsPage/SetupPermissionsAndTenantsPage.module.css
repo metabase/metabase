@@ -1,0 +1,12 @@
+.backLink {
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.illustration {
+  width: 100%;
+  border-radius: 0.375rem;
+}

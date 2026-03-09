@@ -1750,7 +1750,7 @@
                             :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
               python-source {:type            "python"
                              :body            "print('hello world')"
-                             :source-tables   {}
+                             :source-tables   []
                              :source-database (mt/id)}]
           (mt/with-temp [:model/Transform {query-id :id} {:name query-name
                                                           :source query-source

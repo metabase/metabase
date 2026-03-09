@@ -58,7 +58,11 @@ export const SdkIframeEmbedSetupContent = () => {
 
   function handleEmbedDone() {
     // Embedding Hub: track step completion
-    const settingKey: SettingKey = settings.useExistingUserSession
+    // Test embed = guest or existing user session (for quick testing)
+    // Production embed = full SSO setup
+    const isTestEmbed = settings.isGuest || settings.useExistingUserSession;
+
+    const settingKey: SettingKey = isTestEmbed
       ? "embedding-hub-test-embed-snippet-created"
       : "embedding-hub-production-embed-snippet-created";
 

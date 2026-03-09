@@ -130,12 +130,12 @@
   "Stats for Transforms"
   metabase-enterprise.transforms.core
   []
-  {:transform-native-runs         0
-   :transform-python-runs         0
-   :transform-usage-date          (yesterday)
-   :transform-rolling-native-runs 0
-   :transform-rolling-python-runs 0
-   :transform-rolling-usage-date  (today)})
+  {:transform-basic-runs                   0
+   :transform-advanced-runs                0
+   :transform-usage-date         (yesterday)
+   :transform-rolling-basic-runs           0
+   :transform-rolling-advanced-runs        0
+   :transform-rolling-usage-date (today)})
 
 (defn metering-stats
   "Collect metering statistics for billing purposes. Used by both token check and metering task. "

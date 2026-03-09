@@ -5,6 +5,8 @@
    [metabase.classloader.core :as classloader]
    [metabase.task.bootstrap]))
 
+(set! *warn-on-reflection* true)
+
 (defn- set-jdbc-backend-properties! []
   (metabase.task.bootstrap/set-jdbc-backend-properties! (mdb.connection/db-type)))
 
@@ -27,7 +29,19 @@
   (when *allow-temp-scheduling*
     (classloader/the-classloader)
     (set-jdbc-backend-properties!)
+    ;; quartz.properties sets acquireTriggersWithinLock=true to prevent duplicate trigger firing in
+    ;; multi-pod clusters (GDGT-1790). However, the temp migration scheduler is single-instance and
+    ;; doesn't need that lock. We must disable it here because on a fresh DB, Quartz's
+    ;; StdRowLockSemaphore lazily INSERTs into QRTZ_LOCKS, and if the row already exists (e.g. from a
+    ;; prior migration step), the INSERT fails. On Postgres, a failed INSERT poisons the entire
+    ;; transaction, causing subsequent operations to fail with
+    ;; "current transaction is aborted, commands ignored until end of transaction block".
+    ;; We use a System property override because StdSchedulerFactory merges system props on top of
+    ;; quartz.properties during initialize(), and we clear it immediately after so the main scheduler
+    ;; later picks up the correct `true` value from quartz.properties.
+    (System/setProperty "org.quartz.jobStore.acquireTriggersWithinLock" "false")
     (let [scheduler (qs/initialize)]
+      (System/clearProperty "org.quartz.jobStore.acquireTriggersWithinLock")
       (when (qs/started? scheduler)
         (throw (ex-info "Scheduler is already started, cannot start temporary one" {})))
 

@@ -717,3 +717,20 @@
         (let [descendants (serdes/descendants "Table" table-id {})]
           (is (contains? descendants ["Segment" active-seg-id]))
           (is (contains? descendants ["Segment" archived-seg-id])))))))
+
+(deftest data-layer-legacy-serdes-round-trip-test
+  (testing "Importing a v58 serialization export with legacy medallion data_layer values maps them to current values"
+    (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
+                   :model/Table {table-id :id} {:db_id db-id}]
+      (let [table      (t2/select-one :model/Table :id table-id)
+            extracted  (serdes/extract-one "Table" {} table)]
+        (doseq [[legacy-value expected] {"copper" "hidden"
+                                         "bronze" "final"
+                                         "silver" "final"
+                                         "gold"   "final"}]
+          (testing (format "legacy data_layer %s -> %s" legacy-value expected)
+            ;; simulate a v58 export by substituting the legacy value
+            (let [ingested (assoc extracted :data_layer legacy-value)]
+              (serdes/load-one! ingested table)
+              (is (= (keyword expected)
+                     (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))

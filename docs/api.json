@@ -5556,9 +5556,19 @@
               "type" : "integer"
             },
             "source-tables" : {
-              "type" : "object",
-              "additionalProperties" : {
-                "type" : "integer"
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "alias" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "table_id" : {
+                    "type" : "integer"
+                  }
+                },
+                "required" : [ "alias", "table_id" ]
               }
             },
             "type" : {
@@ -6421,6 +6431,38 @@
           "required" : [ "type", "subject", "body" ]
         } ]
       },
+      "metabase.channel.models.channel.ChannelTemplateEmailDetailsUserProvided" : {
+        "description" : "Email template details schema for API-provided templates. Only handlebars-text is allowed;\n  handlebars-resource is restricted to internal use only.",
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string"
+          },
+          "recipient-type" : {
+            "enum" : [ "cc", "bcc", "cc", "bcc" ]
+          },
+          "subject" : {
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "email/handlebars-text", "email/handlebars-text" ]
+          }
+        },
+        "required" : [ "type", "subject", "body" ]
+      },
+      "metabase.channel.models.channel.ChannelTemplateUserProvided" : {
+        "description" : "Channel Template schema for API-provided templates. Does not allow handlebars-resource.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "channel_type" : { },
+            "details" : {
+              "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateEmailDetailsUserProvided"
+            }
+          },
+          "required" : [ "channel_type", "details" ]
+        }, { } ]
+      },
       "metabase.collections-rest.api.DashboardQuestionCandidate" : {
         "type" : "object",
         "properties" : {
@@ -7202,6 +7244,13 @@
       "metabase.legacy-mbql.schema..legacy-column-metadata.qualified-keys" : {
         "type" : "object",
         "properties" : {
+          "qp.pivot/pivot-grouping?" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "metabase.lib.metadata.result-metadata/field-ref" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -7921,6 +7970,13 @@
             "default" : { },
             "type" : "object",
             "properties" : {
+              "qp.pivot/pivot-grouping?" : {
+                "oneOf" : [ {
+                  "type" : "boolean"
+                }, {
+                  "type" : "null"
+                } ]
+              },
               "binning" : {
                 "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
               },
@@ -8892,6 +8948,13 @@
         "allOf" : [ {
           "type" : "object",
           "properties" : {
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "metabase.lib.metadata.result-metadata/field-ref" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -10733,6 +10796,13 @@
                 "type" : "null"
               } ]
             },
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "metabase.lib.metadata.result-metadata/field-ref" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -11233,6 +11303,13 @@
               "fk-join-alias" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "qp.pivot/pivot-grouping?" : {
+                "oneOf" : [ {
+                  "type" : "boolean"
                 }, {
                   "type" : "null"
                 } ]
@@ -11920,6 +11997,13 @@
           "default" : { },
           "type" : "object",
           "properties" : {
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "binning" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
             },
@@ -12002,6 +12086,13 @@
           "default" : { },
           "type" : "object",
           "properties" : {
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "binning" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
             },
@@ -12546,6 +12637,532 @@
           }
         },
         "required" : [ "id", "name", "table_id", "definition", "archived", "creator_id", "created_at", "updated_at" ]
+      },
+      "metabase.notification.api.notification.NotificationApiInput" : {
+        "description" : "Notification schema for API input. Like FullyHydratedNotification but restricts templates\n  to user-provided types only (no handlebars-resource).",
+        "oneOf" : [ {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationCard"
+              },
+              "payload_id" : {
+                "type" : "null"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type", "payload" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload_id" : {
+                "type" : "null"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type" ]
+          } ]
+        }, {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "creator_id" : {
+                "type" : "integer"
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationCard"
+              },
+              "payload_id" : {
+                "type" : "integer"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type", "payload" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "creator_id" : {
+                "type" : "integer"
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload_id" : {
+                "type" : "integer"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type" ]
+          } ]
+        }, {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationCard"
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            }
+          } ]
+        } ]
       },
       "metabase.notification.models.FullyHydratedNotification" : {
         "description" : "Fully hydrated notification.",
@@ -14035,6 +14652,36 @@
         "type" : "string",
         "enum" : [ "events" ]
       },
+      "metabase.transforms-base.util.source-table-entry" : {
+        "description" : "A source table entry in the array format. Combines alias with table reference.",
+        "type" : "object",
+        "properties" : {
+          "alias" : {
+            "type" : "string"
+          },
+          "database_id" : {
+            "type" : "integer"
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "alias" ]
+      },
       "metabase.transforms-inspector.schema.alert-trigger" : {
         "description" : "Definition for conditional alerts.\n   FE evaluates condition against card results and shows alert if triggered.",
         "type" : "object",
@@ -14576,41 +15223,6 @@
           "$ref" : "#/components/schemas/metabase.transforms.schema.checkpoint-strategy"
         } ]
       },
-      "metabase.transforms.schema.source-table-ref" : {
-        "description" : "A reference to a source table by name, for cases where table_id may not exist yet.\n  Also saves querying metadata in situations where we'll need the name.",
-        "type" : "object",
-        "properties" : {
-          "database_id" : {
-            "type" : "integer"
-          },
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "table" : {
-            "type" : "string"
-          },
-          "table_id" : {
-            "oneOf" : [ {
-              "type" : "integer"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "database_id", "table" ]
-      },
-      "metabase.transforms.schema.source-table-value" : {
-        "description" : "Either a table ID (int) or a reference map.",
-        "anyOf" : [ {
-          "type" : "integer"
-        }, {
-          "$ref" : "#/components/schemas/metabase.transforms.schema.source-table-ref"
-        } ]
-      },
       "metabase.transforms.schema.table-incremental-target" : {
         "type" : "object",
         "properties" : {
@@ -14718,9 +15330,9 @@
               "$ref" : "#/components/schemas/metabase.transforms.schema.source-incremental-strategy"
             },
             "source-tables" : {
-              "type" : "object",
-              "additionalProperties" : {
-                "$ref" : "#/components/schemas/metabase.transforms.schema.source-table-value"
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
               }
             },
             "type" : {
@@ -36313,7 +36925,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.FullyHydratedNotification"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
               }
             }
           }
@@ -36342,7 +36954,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.FullyHydratedNotification"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
               }
             }
           }
@@ -36493,7 +37105,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.FullyHydratedNotification"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
               }
             }
           }

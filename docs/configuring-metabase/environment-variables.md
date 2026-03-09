@@ -2301,7 +2301,7 @@ Since: v51.3
 
 If `true`, log a stack trace for any connections killed due to exceeding the timeout specified in [MB_DB_QUERY_TIMEOUT_MINUTES](#mb_db_query_timeout_minutes).
 
-In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom Log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
+In order to see the stack traces in the logs, you'll also need to update the com.mchange log level to "INFO" or higher via a custom log4j configuration. For configuring log levels, see [Metabase log configuration](./log-configuration.md).
 
 ### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
@@ -2534,3 +2534,4 @@ Type: string<br>
 Default: `null`
 
 Base-64 encoded public key for this sites SSL certificate. Specify this to enable HTTP Public Key Pinning. Using HPKP is no longer recommended. See http://mzl.la/1EnfqBf for more information.
+

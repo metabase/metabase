@@ -37,7 +37,7 @@
   "Whether any transforms are enabled."
   []
   (or (not (premium-features/is-hosted?))
-      (premium-features/has-feature? :transforms)))
+      (premium-features/has-feature? :transforms-basic)))
 
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."

@@ -323,10 +323,11 @@
      (fn [_]
        (let [source {:type :python,
                      :source-database (mt/id),
-                     :source-tables {"orders" {:database_id (mt/id),
-                                               :schema "public",
-                                               :table "orders",
-                                               :table_id (mt/id :orders)}},
+                     :source-tables [{:alias "orders"
+                                      :database_id (mt/id)
+                                      :schema "public"
+                                      :table "orders"
+                                      :table_id (mt/id :orders)}],
                      :body
                      "import pandas as pd\n\ndef transform(orders):\n    return orders"}]
          (mt/with-temp [:model/Transform {transform-id :id :as transform} {:source source}]
@@ -366,10 +367,11 @@
      (fn [_]
        (let [source {:type :python,
                      :source-database (mt/id),
-                     :source-tables {"orders" {:database_id (mt/id),
-                                               :schema "public",
-                                               :table "orders",
-                                               :table_id (mt/id :orders)}},
+                     :source-tables [{:alias "orders"
+                                      :database_id (mt/id)
+                                      :schema "public"
+                                      :table "orders"
+                                      :table_id (mt/id :orders)}],
                      :body
                      "import pandas as pd\n\ndef transform(orders):\n    return orders"}
              target {:type "table", :schema "Other", :name "test_table", :database (mt/id)}]

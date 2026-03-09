@@ -57,7 +57,6 @@ export const MetabotQueryBuilder = () => {
   const dispatch = useDispatch();
   const {
     setVisible,
-    setProfileOverride,
     resetConversation,
     metabotId,
     isDoingScience,
@@ -82,14 +81,16 @@ export const MetabotQueryBuilder = () => {
   const handleSubmitPrompt = async (prompt: string) => {
     // start new nlq convo
     resetConversation();
-    setProfileOverride("nlq");
     setHasError(false);
 
     // work around to show prompt during loading state - this is due to
     // normally we want the prompt to be cleared in a conversation
     // but in this case we want to show it in the input while responding
     // so it looks like we're processing the prompt / suggested prompt
-    const req = submitInput(prompt, { preventOpenSidebar: true });
+    const req = submitInput(prompt, {
+      profile: "nlq",
+      preventOpenSidebar: true,
+    });
     setPrompt(prompt);
     const action = await req;
     setPrompt("");

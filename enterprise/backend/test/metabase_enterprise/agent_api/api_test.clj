@@ -492,6 +492,55 @@
                       :name "Total Revenue"}]
                     (:measures table)))))))))
 
+(deftest agent-api-scope-enforcement-test
+  (with-agent-api-setup!
+    (let [table-id (mt/id :orders)]
+      (testing "No scope claim — unscoped JWT can access all endpoints (backwards compat)"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"}))}]
+          (is (= {:message "pong"}
+                 (client/client :get 200 "agent/v1/ping"
+                                {:request-options {:headers headers}})))
+          (is (=? {:type "table" :id table-id}
+                  (client/client :get 200 (str "agent/v1/table/" table-id)
+                                 {:request-options {:headers headers}})))))
+
+      (testing "Matching scope — agent:table:read can access /v1/table/:id"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                                 :scope "agent:table:read"}))}]
+          (is (=? {:type "table" :id table-id}
+                  (client/client :get 200 (str "agent/v1/table/" table-id)
+                                 {:request-options {:headers headers}})))))
+
+      (testing "Wildcard scope — agent:* can access any scoped endpoint"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                                 :scope "agent:*"}))}]
+          (is (=? {:type "table" :id table-id}
+                  (client/client :get 200 (str "agent/v1/table/" table-id)
+                                 {:request-options {:headers headers}})))))
+
+      (testing "Wrong scope — agent:search gets 403 on /v1/table/:id"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                                 :scope "agent:search"}))}]
+          (is (= {:error   "unsupported_scope"
+                  :message "Token does not have required scope: agent:table:read"}
+                 (client/client :get 403 (str "agent/v1/table/" table-id)
+                                {:request-options {:headers headers}})))))
+
+      (testing "Scoped JWT on unchecked endpoint — agent:table:read can access /v1/ping"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                                 :scope "agent:table:read"}))}]
+          (is (= {:message "pong"}
+                 (client/client :get 200 "agent/v1/ping"
+                                {:request-options {:headers headers}})))))
+
+      (testing "Empty scope string — gets 403 on scoped endpoints"
+        (let [headers {"authorization" (str "Bearer " (sign-jwt {:email "rasta@metabase.com"
+                                                                 :scope ""}))}]
+          (is (= {:error   "unsupported_scope"
+                  :message "Token does not have required scope: agent:table:read"}
+                 (client/client :get 403 (str "agent/v1/table/" table-id)
+                                {:request-options {:headers headers}}))))))))
+
 (deftest search-finds-metrics-test
   (with-agent-api-setup!
     (binding [search.ingestion/*force-sync* true]

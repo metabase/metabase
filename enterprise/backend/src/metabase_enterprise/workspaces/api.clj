@@ -27,6 +27,7 @@
    [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.util :as transforms.u]
@@ -79,7 +80,12 @@
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
-     [:source-tables   [:map-of [:string {:min 1}] [:or :int :map]]]
+     ;; TODO (Ngoc 2026-03-04) -- remove decode/normalize when FE sends array format for source-tables
+     [:source-tables   [:sequential {:decode/normalize (fn [st]
+                                                         (if (map? st)
+                                                           (transforms-base.u/source-tables-map->vec st)
+                                                           st))}
+                        [:map [:alias [:string {:min 1}]] [:table_id :int]]]]
      [:type [:= "python"]]
      [:body :string]]]])
 
@@ -828,7 +834,10 @@
                                    (deferred-tru "Another transform in this workspace already targets that table"))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body
                                                  :ref-id ref-id)]
-      (attach-isolated-target (select-malli-keys WorkspaceTransform workspace-transform-alias transform)))))
+      (-> (select-malli-keys WorkspaceTransform workspace-transform-alias transform)
+          attach-isolated-target
+          ;; TODO (Ngoc 2026-03-04) -- remove when FE sends/expects array format for source-tables
+          transforms/source-tables-vec->map-for-fe))))
 
 (api.macros/defendpoint :post "/:ws-id/transform"
   :- WorkspaceTransform
@@ -876,7 +885,9 @@
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
       (t2/select-one :workspace_id ws-id :ref_id tx-id)
       api/check-404
-      attach-isolated-target))
+      attach-isolated-target
+      ;; TODO (Ngoc 2026-03-04) -- remove when FE sends/expects array format for source-tables
+      transforms/source-tables-vec->map-for-fe))
 
 (api.macros/defendpoint :get "/:ws-id/transform/:tx-id" :- WorkspaceTransform
   "Get a specific transform in a workspace."

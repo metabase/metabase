@@ -42,7 +42,9 @@ export const dashboardApi = Api.injectEndpoints({
   endpoints: (builder) => {
     const updateDashboardPropertiesMutation = <
       Key extends keyof UpdateDashboardRequest,
-    >() =>
+    >(
+      additionalTags: ReturnType<typeof listTag>[] = [],
+    ) =>
       builder.mutation<Dashboard, UpdateDashboardPropertyRequest<Key>>({
         query: ({ id, ...body }) => ({
           method: "PUT",
@@ -50,7 +52,11 @@ export const dashboardApi = Api.injectEndpoints({
           body,
         }),
         invalidatesTags: (_, error, { id }) =>
-          invalidateTags(error, [listTag("dashboard"), idTag("dashboard", id)]),
+          invalidateTags(error, [
+            listTag("dashboard"),
+            idTag("dashboard", id),
+            ...additionalTags,
+          ]),
       });
 
     return {
@@ -203,7 +209,7 @@ export const dashboardApi = Api.injectEndpoints({
       }),
       updateDashboardEnableEmbedding: updateDashboardPropertiesMutation<
         "enable_embedding" | "embedding_type"
-      >(),
+      >([listTag("embedding-hub-checklist")]),
       updateDashboardEmbeddingParams: updateDashboardPropertiesMutation<
         "embedding_params" | "embedding_type"
       >(),

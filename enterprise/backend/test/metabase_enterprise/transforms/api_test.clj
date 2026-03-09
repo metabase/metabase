@@ -30,7 +30,7 @@
   {:name   "Python Transform"
    :source {:type            "python"
             :body            "print('hello world')"
-            :source-tables   {}
+            :source-tables   []
             :source-database (mt/id)}
    :target {:type     "table"
             :schema   (get-test-schema)
@@ -88,7 +88,7 @@
 
 (deftest list-transforms-excludes-python-without-python-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {query-id :id} {}
                        :model/Transform {python-id :id} (python-transform-map (str "python_transform_" (u/generate-nano-id)))]
@@ -99,14 +99,14 @@
 
 (deftest get-python-transform-403-without-python-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {python-id :id} (python-transform-map (str "python_transform_" (u/generate-nano-id)))]
           (mt/user-http-request :crowberto :get 403 (format "transform/%d" python-id)))))))
 
 (deftest get-python-transform-200-with-python-feature-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms :transforms-python}
+    (mt/with-premium-features #{:transforms-basic :transforms-python}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-temp [:model/Transform {python-id :id} (python-transform-map (str "python_transform_" (u/generate-nano-id)))]
           (let [response (mt/user-http-request :crowberto :get 200 (format "transform/%d" python-id))]
@@ -114,7 +114,7 @@
 
 (deftest create-transform-with-routing-fails-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms :database-routing}
+    (mt/with-premium-features #{:transforms-basic :database-routing}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/with-data-analyst-role! (mt/user->id :lucky)
@@ -130,7 +130,7 @@
 
 (deftest update-transform-with-routing-fails-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms :database-routing}
+    (mt/with-premium-features #{:transforms-basic :database-routing}
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
           (mt/with-temp [:model/Database _destination {:engine driver/*driver*
@@ -161,10 +161,10 @@
               (mt/with-premium-features #{:hosting}
                 (is (empty? (search-transform-ids search-term)))))
             (testing "transforms only"
-              (mt/with-premium-features #{:transforms :hosting}
+              (mt/with-premium-features #{:transforms-basic :hosting}
                 (is (= #{query-id} (search-transform-ids search-term)))))
             (testing "transforms and transforms-python"
-              (mt/with-premium-features #{:transforms :transforms-python :hosting}
+              (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
                 (is (= #{query-id python-id} (search-transform-ids search-term)))))))))))
 
 (deftest search-filtering-updates-with-feature-flips-without-reindex-test
@@ -178,9 +178,9 @@
                        :model/Transform {python-id :id} (assoc (python-transform-map (str "target_" (u/generate-nano-id)))
                                                                :name python-name)]
           (search.tu/with-new-search-and-legacy-search
-            (mt/with-premium-features #{:transforms :transforms-python :hosting}
+            (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
               (is (= #{query-id python-id} (search-transform-ids search-term))))
-            (mt/with-premium-features #{:transforms :hosting}
+            (mt/with-premium-features #{:transforms-basic :hosting}
               (is (= #{query-id} (search-transform-ids search-term))))
             (mt/with-premium-features #{:hosting}
               (is (empty? (search-transform-ids search-term))))
@@ -206,7 +206,7 @@
 
 (deftest get-runs-sort-by-transform-name-test
   (testing "GET /api/transform/run - sort by transform-name"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-b-id :id} {:name "Transform B"}
                      :model/Transform    {transform-a-id :id} {:name "Transform A"}
                      :model/TransformRun {run-b-id :id}       {:transform_id transform-b-id}
@@ -223,7 +223,7 @@
 
 (deftest get-runs-sort-stable-test
   (testing "GET /api/transform/run - sorting is stable when values are equal (tiebreaker by :id)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-1-id :id} {:name "Same Name"}
                      :model/Transform    {transform-2-id :id} {:name "Same Name"}
                      :model/TransformRun {run-1-id :id}       {:transform_id transform-1-id}
@@ -240,7 +240,7 @@
 
 (deftest get-runs-sort-by-start-time-test
   (testing "GET /api/transform/run - sort by start-time"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-id :id} {}
                      :model/TransformRun {earlier-run-id :id} {:transform_id transform-id
                                                                :start_time   (parse-instant "2025-01-01T00:00:00")}
@@ -258,7 +258,7 @@
 
 (deftest get-runs-sort-by-end-time-test
   (testing "GET /api/transform/run - sort by end-time"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-id :id} {}
                      :model/TransformRun {earlier-run-id :id} {:transform_id transform-id
                                                                :end_time     (parse-instant "2025-01-01T00:00:00")}
@@ -276,7 +276,7 @@
 
 (deftest get-runs-sort-by-run-method-test
   (testing "GET /api/transform/run - sort by run-method (translated names)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-id :id}   {}
                      ;; "Manual" < "Schedule"
                      :model/TransformRun {manual-run-id :id}   {:transform_id transform-id :run_method "manual"}
@@ -293,7 +293,7 @@
 
 (deftest get-runs-sort-by-status-test
   (testing "GET /api/transform/run - sort by status (translated names)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-id :id}        {}
                      ;; Sorted by translated name: "Canceled" < "Canceling" < "Failed" < "In progress" < "Success" < "Timeout"
                      :model/TransformRun {canceled-run-id :id}     {:transform_id transform-id :status "canceled"}
@@ -316,7 +316,7 @@
 
 (deftest get-runs-sort-by-transform-tags-test
   (testing "GET /api/transform/run - sort by transform-tags (first tag name)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/TransformTag          {tag-a-id :id}       {:name "Tag A"}
                      :model/TransformTag          {tag-b-id :id}       {:name "Tag B"}
                      :model/TransformTag          {tag-ignored-id :id} {:name "Tag Ignored"}
@@ -341,7 +341,7 @@
 
 (deftest get-runs-sort-by-built-in-transform-tags-test
   (testing "GET /api/transform/run - sort by built-in transform-tags (translated names)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       ;; Translated names alphabetically: "daily" < "hourly" < "monthly" < "weekly"
       (mt/with-temp [:model/TransformTag {tag-daily-id :id}
                      {:name "daily" :built_in_type "daily"}
@@ -399,7 +399,7 @@
 
 (deftest get-runs-hydrate-collection-test
   (testing "GET /api/transform/run - hydrates collection on transform"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Collection {collection-id :id} {:name "Subfolder" :namespace :transforms}
                      :model/Transform {transform-in-collection-id :id} {:collection_id collection-id}
                      :model/Transform {transform-in-root-id :id} {:collection_id nil}

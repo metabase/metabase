@@ -176,9 +176,9 @@
       (is (contains? table-ids (mt/id :products))))))
 
 (deftest extract-sources-python-test
-  (testing "Python: extracts source tables from source-tables map"
+  (testing "Python: extracts source tables from source-tables vec"
     (let [transform {:source {:type           :python
-                              :source-tables  {"orders" (mt/id :orders)}
+                              :source-tables  [{:alias "orders" :table_id (mt/id :orders)}]
                               :source-database (mt/id)}
                      :name   "test"}
           sources   (context/extract-sources transform)]
@@ -189,8 +189,8 @@
 (deftest extract-sources-python-multiple-tables-test
   (testing "Python: extracts multiple source tables"
     (let [transform {:source {:type           :python
-                              :source-tables  {"orders"   (mt/id :orders)
-                                               "products" (mt/id :products)}
+                              :source-tables  [{:alias "orders"   :table_id (mt/id :orders)}
+                                               {:alias "products" :table_id (mt/id :products)}]
                               :source-database (mt/id)}
                      :name   "test"}
           sources   (context/extract-sources transform)

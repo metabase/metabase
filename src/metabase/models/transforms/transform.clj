@@ -68,29 +68,22 @@
          (perms/has-db-transforms-permission? api/*current-user-id* source-db-id)
          (remote-sync/transforms-editable?))))
 
-(defn- keywordize-source-table-refs
-  "Keywordize keys in source-tables map values (refs are maps, ints pass through)."
-  [source-tables]
-  (update-vals source-tables #(if (map? %) (update-keys % keyword) %)))
-
 (defn transform-source-out
   "Deserialize a transform source map from JSON storage format.
-  Normalizes queries, keywordizes types and source-table refs."
+  Normalizes queries and keywordizes type fields."
   [m]
   (-> m
       mi/json-out-without-keywordization
       (update-keys keyword)
-      (m/update-existing :source-tables keywordize-source-table-refs)
       (m/update-existing :query lib-be/normalize-query)
-      (m/update-existing :type keyword)
-      (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
+      (m/update-existing :source-incremental-strategy #(update-keys % keyword))
+      (m/update-existing :source-tables (fn [st] (mapv #(update-keys % keyword) st)))
+      (m/update-existing :type keyword)))
 
 (defn transform-source-in
-  "Serialize a transform source map for JSON storage.
-  Normalizes source-tables and prepares queries for serialization."
+  "Serialize a transform source map for JSON storage."
   [m]
   (-> m
-      (m/update-existing :source-tables transforms-base.u/normalize-source-tables)
       (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
       mi/json-in))
 
@@ -337,7 +330,14 @@
                :collection_id      (serdes/fk :model/Collection)
                :source_database_id (serdes/fk :model/Database :name)
                :source             {:export #(update % :query serdes/export-mbql)
-                                    :import #(update % :query serdes/import-mbql)}
+                                    :import (fn [source]
+                                              (-> source
+                                                  (m/update-existing :source-tables
+                                                                     (fn [st]
+                                                                       (if (map? st)
+                                                                         (transforms-base.u/source-tables-map->vec st)
+                                                                         st)))
+                                                  (m/update-existing :query serdes/import-mbql)))}
                :target             {:export serdes/export-mbql :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 

@@ -311,3 +311,12 @@
   :visibility :admin
   :can-read-from-env? false
   :doc false)
+
+(defsetting embedding-hub-sso-auth-manual-tested
+  (deferred-tru "Indicates if the user has manually confirmed that SSO authentication is working correctly")
+  :type       :boolean
+  :default    false
+  :export?    true
+  :visibility :admin
+  :can-read-from-env? false
+  :doc false)

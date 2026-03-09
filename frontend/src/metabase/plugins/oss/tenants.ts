@@ -4,6 +4,7 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "metabase/common/components/Pickers";
+import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
 import type { CollectionTreeItem } from "metabase/entities/collections/utils";
 import type {
   Collection,
@@ -15,6 +16,12 @@ import type {
 } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
+
+export type CreatedTenantData = {
+  name: string;
+  slug: string;
+  dataIsolationFieldValue: string;
+};
 
 export type TenantCollectionPathItem = {
   id: CollectionId;
@@ -30,6 +37,18 @@ const getDefaultPluginTenants = () => ({
   isEnabled: false,
   userStrategyRoute: null as React.ReactElement | null,
   tenantsRoutes: null as React.ReactElement | null,
+  CreateTenantsOnboardingStep: PluginPlaceholder as React.ComponentType<{
+    onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+    selectedFieldIds?: number[];
+    strategy?: DataSegregationStrategy | null;
+    rlsColumnName?: string | null;
+  }>,
+  TenantsSummaryOnboardingStep: PluginPlaceholder as React.ComponentType<{
+    tenants: CreatedTenantData[];
+    strategy?: DataSegregationStrategy | null;
+    rlsTableNames?: string[];
+    rlsColumnName?: string | null;
+  }>,
   EditUserStrategySettingsButton: PluginPlaceholder,
   FormTenantWidget: (_props: any) => null as React.ReactElement | null,
   TenantDisplayName: (_props: any) => null as React.ReactElement | null,
@@ -92,6 +111,18 @@ export const PLUGIN_TENANTS: {
     sharedTenantCollections: Collection[] | undefined;
   };
   tenantsRoutes: React.ReactElement | null;
+  CreateTenantsOnboardingStep: React.ComponentType<{
+    onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+    selectedFieldIds?: number[];
+    strategy?: DataSegregationStrategy | null;
+    rlsColumnName?: string | null;
+  }>;
+  TenantsSummaryOnboardingStep: React.ComponentType<{
+    tenants: CreatedTenantData[];
+    strategy?: DataSegregationStrategy | null;
+    rlsTableNames?: string[];
+    rlsColumnName?: string | null;
+  }>;
   EditUserStrategySettingsButton: (props: {
     page: "people" | "tenants";
   }) => React.ReactElement | null;

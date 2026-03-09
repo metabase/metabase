@@ -20,6 +20,7 @@ disable-cors-on-localhost: null
 email-max-recipients-per-second: null
 embedding-homepage: null
 embedding-hub-production-embed-snippet-created: null
+embedding-hub-sso-auth-manual-tested: null
 embedding-hub-test-embed-snippet-created: null
 enable-embedding: null
 enable-nested-queries: null

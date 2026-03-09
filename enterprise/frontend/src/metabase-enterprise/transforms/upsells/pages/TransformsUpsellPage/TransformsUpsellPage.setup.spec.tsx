@@ -45,7 +45,7 @@ export const setup = ({
       trial: isOnTrial,
     },
     "token-features": createMockTokenFeatures({
-      transforms: !!hasBasicTransforms,
+      "transforms-basic": !!hasBasicTransforms,
     }),
   });
   const state = createMockState({

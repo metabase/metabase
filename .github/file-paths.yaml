@@ -30,7 +30,7 @@ frontend_configs: &frontend_configs
   - "**/tsconfig*.json"
   - "package.json"
   - "babel.config.json"
-  - ".eslintrc.js"
+  - "eslint.config.mjs"
   - "postcss.config.js"
   - "rspack.config.js"
   - "rspack.main.config.js"

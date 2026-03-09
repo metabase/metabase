@@ -462,6 +462,25 @@ const configs = [
     },
   },
   {
+    files: ["e2e/test-component/**/*.ts", "e2e/test-component/**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "warn",
+        {
+          patterns: [
+            {
+              // There might be things that we might benefit from importing, like `defer`, in those cases we can change the regex here to allow them
+              regex: "^metabase/(?!lib/promise$|embedding-sdk/test/).*",
+              allowTypeImports: true,
+              message:
+                "We should avoid importing `metabase/` code in the component tests, we might accidentally include CLJS in the dependencies and that can create issues. Component tests should only use the code it needs to test, which is in the package.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["frontend/test/**/*"],
     languageOptions: {
       globals: {

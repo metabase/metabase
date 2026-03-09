@@ -175,25 +175,20 @@
     (inputs-from-native-query query db-id)
     (inputs-from-mbql-query query)))
 
-(defn- source-table-ref->table-ref
-  "Paper over a small unfortunate difference in shape"
-  [table-ref]
-  (-> (select-keys table-ref [:schema :table :table_id])
-      (assoc :db_id (:database_id table-ref))))
-
 (defn- inputs-from-python-transform
-  "Extract table refs from a python transform's source-tables.
-   Uses metadata from map refs directly; only looks up the database for bare integer IDs."
+  "Extract table refs from a python transform's source-tables vec.
+   Entries with :database_id/:schema/:table just need a key rename;
+   entries with only :table_id fall back to a batch lookup."
   [source-tables]
-  (let [{maps true ints false} (group-by (comp map? val) source-tables)
-        ;; Maps already have schema/table metadata
-        map-refs  (map (comp source-table-ref->table-ref val) maps)
-        ;; Integers need a batch lookup
-        int-ids   (map val ints)
-        int-refs  (when (seq int-ids)
-                    (let [lookup (batch-table-refs-from-ids int-ids)]
-                      (keep lookup int-ids)))]
-    (into (vec map-refs) int-refs)))
+  (let [{full true, partial false} (group-by (fn [e] (boolean (:table e))) source-tables)
+        renamed  (mapv (fn [{:keys [database_id schema table]}]
+                         {:db_id database_id :schema schema :table table})
+                       full)
+        looked   (when (seq partial)
+                   (let [ids    (into #{} (keep :table_id) partial)
+                         lookup (batch-table-refs-from-ids ids)]
+                     (u/keepv lookup (map :table_id partial))))]
+    (into renamed looked)))
 
 (mu/defn analyze-entity :- ::analysis
   "Analyze a workspace entity to find its dependencies.
