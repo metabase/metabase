@@ -20,7 +20,6 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.models.table :as table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -224,7 +223,7 @@
   (let [target (:target transform)
         db-id  (transforms-base.i/target-db-id transform)]
     (when (and db-id (:name target))
-      (table/upsert-transform-target-table! db-id (:schema target) (:name target)))))
+      (transforms-base.u/upsert-target-table! db-id (:schema target) (:name target)))))
 
 (t2/define-after-insert :model/Transform [transform]
   (upsert-target-table-if-needed! transform)

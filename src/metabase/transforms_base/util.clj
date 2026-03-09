@@ -673,6 +673,12 @@
 
 ;;; ------------------------------------------------- Misc -------------------------------------------------
 
+(defn upsert-target-table!
+  "Upsert a provisional table entry for a transform's target, creating it if it doesn't exist.
+  Returns the table ID."
+  [db-id schema table-name]
+  (table/upsert-transform-target-table! db-id schema table-name))
+
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern."
   [table]

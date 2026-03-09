@@ -2084,7 +2084,9 @@
                                                         :active              false
                                                         :transform_target    true
                                                         :data_source         "metabase-transform"
-                                                        :initial_sync_status "complete"}]})
+                                                        :initial_sync_status "complete"
+                                                        :created_at          :%now
+                                                        :updated_at          :%now}]})
                               (find-table-id db-id schema table-name)
                               (catch Exception _
                                 (find-table-id db-id schema table-name)))))]

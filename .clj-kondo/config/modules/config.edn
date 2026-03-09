@@ -923,8 +923,7 @@
            settings
            transforms
            transforms-base
-           util
-           warehouse-schema}
+           util}
    :friends #{transforms}}
 
   native-query-snippets
@@ -2231,8 +2230,7 @@
            task
            transforms
            transforms-base
-           util
-           warehouse-schema}}
+           util}}
 
   enterprise/email
   {:team "UX West"
