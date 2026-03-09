@@ -295,7 +295,6 @@ export type CellId = {
 export interface DataGridInstance<TData> {
   table: Table<TData>;
   gridRef: RefObject<HTMLDivElement>;
-  scrollRef: RefObject<HTMLDivElement>;
   virtualGrid: VirtualGrid;
   measureRoot: React.ReactNode;
   columnsReordering: ColumnsReordering;

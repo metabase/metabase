@@ -11,8 +11,7 @@
 
 .bodyContainer {
   outline: none;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: auto;
   display: flex;
   flex-direction: row;
   align-items: flex-start;
@@ -20,13 +19,19 @@
 
 .pinnedSection {
   flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  z-index: 1;
 }
 
-.scrollableSection {
-  flex: 1 1 auto;
+.pinnedSection.withSeparator {
+  border-right: 3px solid var(--mb-color-border-subtle);
+}
+
+.centralSection {
+  position: relative;
+  flex: 0 0 auto;
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
 }
 
 .tableGrid {

@@ -35,7 +35,6 @@ export interface DataGridProps<TData>
 export const DataGrid = function DataGrid<TData>({
   table,
   gridRef,
-  scrollRef,
   virtualGrid,
   measureRoot,
   columnsReordering,
@@ -124,7 +123,6 @@ export const DataGrid = function DataGrid<TData>({
   const pinnedColumns = table.getLeftVisibleLeafColumns();
   const lastPinnedColumn = pinnedColumns.at(-1);
   const isLastPinnedColumnRowId = lastPinnedColumn?.id === ROW_ID_COLUMN_ID;
-
   const hasSeparator = lastPinnedColumn != null && !isLastPinnedColumnRowId;
 
   const pinnedColumnsWidth = table.getLeftTotalSize();
@@ -162,50 +160,20 @@ export const DataGrid = function DataGrid<TData>({
           >
             {hasPinnedColumns && (
               <div
-                className={S.pinnedSection}
-                style={{ width: pinnedPanelWidth }}
-              >
-                <div
-                  style={{
-                    position: "relative",
-                    height: `${totalHeight}px`,
-                  }}
-                >
-                  {getVisibleRows().map((maybeVirtualRow, index) => (
-                    <DataGridRow
-                      key={`pinned-${index}`}
-                      maybeVirtualRow={maybeVirtualRow}
-                      columns={pinnedColumns}
-                      stickyElementsBackgroundColor={
-                        stickyElementsBackgroundColor
-                      }
-                      zoomedRowIndex={zoomedRowIndex}
-                      selection={selection}
-                      onBodyCellClick={onBodyCellClick}
-                      classNames={classNames}
-                      styles={styles}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div ref={scrollRef} className={S.scrollableSection}>
-              <div
+                className={cx(S.pinnedSection, {
+                  [S.withSeparator]: hasSeparator,
+                })}
                 style={{
-                  position: "relative",
+                  width: pinnedPanelWidth,
                   height: `${totalHeight}px`,
-                  width: `${table.getCenterTotalSize()}px`,
+                  backgroundColor: stickyElementsBackgroundColor,
                 }}
               >
                 {getVisibleRows().map((maybeVirtualRow, index) => (
                   <DataGridRow
-                    key={`scroll-${index}`}
+                    key={`pinned-${index}`}
                     maybeVirtualRow={maybeVirtualRow}
-                    rowMeasureRef={rowMeasureRef}
-                    columns={virtualColumns}
-                    virtualPaddingLeft={virtualPaddingLeft}
-                    virtualPaddingRight={virtualPaddingRight}
+                    columns={pinnedColumns}
                     stickyElementsBackgroundColor={
                       stickyElementsBackgroundColor
                     }
@@ -217,6 +185,31 @@ export const DataGrid = function DataGrid<TData>({
                   />
                 ))}
               </div>
+            )}
+
+            <div
+              className={S.centralSection}
+              style={{
+                height: `${totalHeight}px`,
+                width: `${table.getCenterTotalSize()}px`,
+              }}
+            >
+              {getVisibleRows().map((maybeVirtualRow, index) => (
+                <DataGridRow
+                  key={`scroll-${index}`}
+                  maybeVirtualRow={maybeVirtualRow}
+                  rowMeasureRef={rowMeasureRef}
+                  columns={virtualColumns}
+                  virtualPaddingLeft={virtualPaddingLeft}
+                  virtualPaddingRight={virtualPaddingRight}
+                  stickyElementsBackgroundColor={stickyElementsBackgroundColor}
+                  zoomedRowIndex={zoomedRowIndex}
+                  selection={selection}
+                  onBodyCellClick={onBodyCellClick}
+                  classNames={classNames}
+                  styles={styles}
+                />
+              ))}
             </div>
           </div>
 

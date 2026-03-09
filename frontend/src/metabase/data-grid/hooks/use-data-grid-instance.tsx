@@ -100,7 +100,6 @@ export const useDataGridInstance = <TData, TValue>({
   getRowId = defaultGetRowId,
 }: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const hasRowIdColumn = rowId != null;
   const hasColumnRowSelectColumn = columnRowSelectOptions != null;
 
@@ -333,7 +332,6 @@ export const useDataGridInstance = <TData, TValue>({
   const enableRowVirtualization = !enablePagination;
   const virtualGrid = useVirtualGrid({
     gridRef,
-    scrollRef,
     table,
     defaultRowHeight,
     measureRowHeight,
@@ -578,7 +576,6 @@ export const useDataGridInstance = <TData, TValue>({
     table,
     theme,
     gridRef,
-    scrollRef,
     virtualGrid,
     measureRoot,
     columnsReordering,

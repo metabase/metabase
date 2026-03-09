@@ -11,7 +11,6 @@ import { useCallback, useMemo } from "react";
 
 interface VirtualGridOptions<TData> {
   gridRef: React.RefObject<HTMLDivElement>;
-  scrollRef: React.RefObject<HTMLDivElement>;
   table: ReactTable<TData>;
   measureRowHeight: (rowIndex: number) => number;
   defaultRowHeight: number;
@@ -30,7 +29,6 @@ export interface VirtualGrid {
 
 export const useVirtualGrid = <TData,>({
   gridRef,
-  scrollRef,
   table,
   measureRowHeight,
   defaultRowHeight,
@@ -41,7 +39,7 @@ export const useVirtualGrid = <TData,>({
 
   const columnVirtualizer = useVirtualizer({
     count: centralColumns.length,
-    getScrollElement: () => scrollRef.current,
+    getScrollElement: () => gridRef.current,
     estimateSize: (index) => {
       const column = centralColumns[index];
       const size = centralColumns[index].getSize();
