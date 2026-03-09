@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.stats.core
   "Chart type detection and statistics routing."
   (:require
+   [metabase-enterprise.metabot-v3.stats.categorical :as categorical]
    [metabase-enterprise.metabot-v3.stats.time-series :as time-series]))
 
 (set! *warn-on-reflection* true)
@@ -84,8 +85,8 @@
   [chart-config opts]
   (let [chart-type (detect-chart-type chart-config)]
     (case chart-type
-      :time-series (time-series/compute-time-series-stats (:series chart-config) opts)
-      ;; For MVP, other types return minimal info
-      {:chart_type chart-type
+      :time-series  (time-series/compute-time-series-stats (:series chart-config) opts)
+      :categorical  (categorical/compute-categorical-stats (:series chart-config) opts)
+      {:chart_type   chart-type
        :series_count (count (:series chart-config))
-       :message (str "Statistics for " (name chart-type) " charts not yet implemented")})))
+       :message      (str "Statistics for " (name chart-type) " charts not yet implemented")})))

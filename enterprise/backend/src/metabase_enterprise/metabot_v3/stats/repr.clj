@@ -189,6 +189,49 @@
                      (str "- **" timestamp "**: " name
                           (when description (str " - " description))))))))
 
+;;; ----------------------------------------- Categorical Representation ---------------------------------------------
+
+(defn- render-category-list
+  "Render a list of categories with values and percentages."
+  [categories]
+  (str/join "\n"
+            (for [{:keys [name value percentage]} categories]
+              (str "  - " name ": " (format-number value)
+                   " (" (format "%.1f" (double percentage)) "%)"))))
+
+(defn- render-categorical-series
+  "Render stats for a single categorical series."
+  [series-name {:keys [summary category_count top_categories bottom_categories outliers]}]
+  (let [sections [(str "## Series: " series-name)
+                  (str "**Categories**: " category_count)
+                  (when summary
+                    (str "**Value Range**: " (format-number (:min summary))
+                         " to " (format-number (:max summary))
+                         " (median: " (format-number (:median summary)) ")"))
+                  (when (seq top_categories)
+                    (str "**Top Categories**:\n" (render-category-list top_categories)))
+                  (when (seq bottom_categories)
+                    (str "**Bottom Categories**:\n" (render-category-list bottom_categories)))
+                  (render-outliers outliers)]]
+    (str/join "\n" (remove nil? sections))))
+
+(defn generate-categorical-representation
+  "Generate markdown representation for categorical (bar, pie, funnel, etc.) stats."
+  [{:keys [title stats timeline-events]}]
+  (let [{:keys [series_count series correlations]} stats
+        header (str "# Chart Analysis\n"
+                    (when title (str "## Chart: " title "\n"))
+                    "**Type**: Categorical\n"
+                    "**Series Count**: " series_count)
+        series-sections (str/join "\n\n"
+                                  (for [[series-name s] series]
+                                    (render-categorical-series series-name s)))
+        correlation-section (render-correlations correlations)
+        events-section      (render-timeline-events timeline-events)]
+    (str/join "\n\n"
+              (remove str/blank?
+                      [header series-sections correlation-section events-section]))))
+
 ;;; ----------------------------------------- Main Representation ----------------------------------------------------
 
 (defn generate-time-series-representation
@@ -218,8 +261,8 @@
   Dispatches based on chart type."
   [{:keys [stats] :as context}]
   (case (:chart_type stats)
-    :time-series (generate-time-series-representation context)
-    ;; Fallback for unimplemented types
+    :time-series  (generate-time-series-representation context)
+    :categorical  (generate-categorical-representation context)
     (str "# Chart Analysis\n"
          "**Type**: " (name (:chart_type stats)) "\n"
          "Statistics computation for this chart type is not yet implemented.")))

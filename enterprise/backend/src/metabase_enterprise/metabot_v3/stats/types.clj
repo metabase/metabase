@@ -166,16 +166,18 @@
    [:percentage number?]])
 
 (mr/def ::categorical-stats
-  "Statistics for categorical charts."
+  "Statistics for categorical charts (bar, pie, etc.)."
   [:map
    [:chart_type [:= :categorical]]
    [:series_count :int]
    [:series [:map-of :string
              [:map
-              [:summary ::series-summary]
+              [:summary [:maybe ::series-summary]]
               [:category_count :int]
               [:top_categories [:sequential ::category-stat]]
-              [:bottom_categories {:optional true} [:maybe [:sequential ::category-stat]]]]]]])
+              [:bottom_categories {:optional true} [:maybe [:sequential ::category-stat]]]
+              [:outliers {:optional true} [:maybe [:sequential ::outlier]]]]]]
+   [:correlations {:optional true} [:maybe [:sequential ::correlation]]]])
 
 (mr/def ::regression-stats
   "Linear regression statistics."
