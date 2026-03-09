@@ -49,7 +49,7 @@ function useRegisterCodeEditorMetabotContext(
         },
       ],
     }),
-    [buffer],
+    [buffer, databaseId, bufferId],
   );
 }
 
