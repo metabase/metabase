@@ -14,6 +14,16 @@ type Props = {
 export const EmbeddingUpsell = ({ campaign }: Props) => {
   const { isSimpleEmbedFeatureAvailable } = useSdkIframeEmbedSetupContext();
 
+  if (isSimpleEmbedFeatureAvailable) {
+    return null;
+  }
+
+  return <EmbeddingUpsellInner campaign={campaign} />;
+};
+
+// useUpsellFlow hook sets window.name = "metabase-instance" in a useEffect
+// which means we don't want to call useUpsellFlow unless necessary (as in, in Cypress for instance, where it breaks AUT).
+const EmbeddingUpsellInner = ({ campaign }: Props) => {
   const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, { utm_content: "embedding-page" }),
   );
@@ -22,10 +32,6 @@ export const EmbeddingUpsell = ({ campaign }: Props) => {
     campaign: "enterprise",
     location: "embedding-page",
   });
-
-  if (isSimpleEmbedFeatureAvailable) {
-    return null;
-  }
 
   return (
     <UpsellCard
