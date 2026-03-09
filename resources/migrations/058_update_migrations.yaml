@@ -1198,14 +1198,6 @@ databaseChangeLog:
             path: instance_analytics_views/tables/v1/h2-tables.sql
             relativeToChangelogFile: true
 
-  - changeSet:
-      id: v58.2026-03-04T00:00:00
-      author: rileythompson
-      comment: Fix ClickHouse upload DB schema name and models
-      changes:
-        - customChange:
-            class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
   - changeSet:
@@ -1227,6 +1219,14 @@ databaseChangeLog:
         - dropColumn:
             tableName: pulse
             columnName: disable_links
+
+  - changeSet:
+      id: v58.2026-03-04T00:00:00
+      author: rileythompson
+      comment: Fix ClickHouse upload DB schema name and models
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
