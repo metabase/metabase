@@ -1,7 +1,6 @@
 name: Disabled Drivers Slack Notification
 
 on:
-  push: # TEMPORARY: for testing, remove after verified
   workflow_dispatch:
   schedule:
     - cron: "0 9 * * 1" # every Monday at 9:00 UTC
@@ -46,7 +45,7 @@ jobs:
             const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 
             await slack.chat.postMessage({
-              channel: 'bot-testing', // TEMPORARY: change back to 'engineering-ci' after testing
+              channel: 'engineering-ci',
               text: 'CI Disabled Drivers Report',
               blocks: [
                 {
