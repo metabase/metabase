@@ -3,7 +3,7 @@ import {
   compareVersions,
   getDockerImage,
   getMajorVersion,
-} from "../release/src/version-helpers";
+} from "../release/src/cross-version-helpers";
 
 const [cmd, ...args] = process.argv.slice(2);
 
