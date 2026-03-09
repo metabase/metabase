@@ -223,17 +223,19 @@
           (is (= (:id t1) (:table_id (second result)))))))))
 
 (deftest resolve-source-tables-test
-  (testing "resolve-source-tables returns {alias -> table_id} map from vec input"
+  (testing "resolve-source-tables returns entries with :table_id filled in"
     (mt/with-temp [:model/Database db {}
                    :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema nil}]
       (testing "resolves entry with table_id"
-        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}]]
-          (is (= {"t" (:id t1)} (transforms-base.u/resolve-source-tables source-tables)))))
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))))
 
       (testing "looks up table_id for entry without it"
-        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one"}]]
-          (is (= {"t" (:id t1)} (transforms-base.u/resolve-source-tables source-tables)))))
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one"}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))))
 
       (testing "throws for non-existent table"
         (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]]
@@ -246,10 +248,11 @@
                                 (transforms-base.u/resolve-source-tables source-tables)))))
 
       (testing "handles multiple entries"
-        (let [source-tables [{:alias "t1" :table_id (:id t1)}
-                             {:alias "t2" :database_id (:id db) :schema nil :table "table_two"}]]
-          (is (= {"t1" (:id t1) "t2" (:id t2)}
-                 (transforms-base.u/resolve-source-tables source-tables))))))))
+        (let [source-tables [{:alias "t1" :table_id (:id t1) :database_id (:id db) :schema nil}
+                             {:alias "t2" :database_id (:id db) :schema nil :table "table_two"}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))
+          (is (= (:id t2) (:table_id (second result)))))))))
 
 (deftest source-tables-readable?-test
   (testing "source-tables-readable? function"
