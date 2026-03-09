@@ -3,7 +3,7 @@ import L from "leaflet";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import type { ClickObject } from "metabase/visualizations/types";
+import type { ClickObject, HoveredObject } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isMetric, isNumeric } from "metabase-lib/v1/types/utils/isa";
@@ -23,7 +23,7 @@ type LeafletGridHeatMapProps = LeafletMapProps<GridHeatPoint> & {
   min?: number;
   max?: number;
   onVisualizationClick?: ((clickObject: ClickObject | null) => void) | null;
-  onHoverChange?: ((hoverObject: ClickObject | null) => void) | null;
+  onHoverChange?: ((hoverObject: HoveredObject | null) => void) | null;
 };
 
 const isValidCoordinatesColumn = (column: DatasetColumn | undefined) =>
@@ -172,7 +172,7 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
     return gridSquare;
   };
 
-  _clickForPoint(index: number, e: L.LeafletMouseEvent): ClickObject {
+  _clickForPoint(index: number, e: L.LeafletMouseEvent) {
     const { settings, series } = this.props;
     const points = this.props.points ?? [];
     const point = points[index];
@@ -198,7 +198,7 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
       event: e.originalEvent,
       origin,
       settings,
-    };
+    } satisfies ClickObject;
   }
 
   _onVisualizationClick(index: number, e: L.LeafletMouseEvent) {
@@ -208,13 +208,17 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
     }
   }
 
-  _onHoverChange(index: number | null, e: L.LeafletMouseEvent) {
+  _onHoverChange(index: number | null, event: L.LeafletMouseEvent) {
     const { onHoverChange } = this.props;
     if (onHoverChange) {
       if (index == null) {
         onHoverChange(null);
       } else {
-        onHoverChange(this._clickForPoint(index, e));
+        const hoveredObject = this._clickForPoint(
+          index,
+          event,
+        ) satisfies HoveredObject;
+        onHoverChange(hoveredObject);
       }
     }
   }
