@@ -4,9 +4,6 @@ export const createMockAdminState = (
   opts?: Partial<AdminState>,
 ): AdminState => ({
   app: createMockAdminAppState(),
-  people: {
-    temporaryPasswords: {},
-  },
   permissions: createMockPermissionsState(),
   databases: {
     deletionError: null,
