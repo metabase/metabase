@@ -75,7 +75,7 @@ describe("BrowseMetrics (OSS)", () => {
     ).toHaveLength(3);
   });
 
-  it("should render links that point directly to /metric/{id}-{slug} (metabase#55166)", async () => {
+  it("should render links that point directly to metrics viewer /explore route (metabase#55166)", async () => {
     const { history } = setup({ metricCount: 5 });
     const table = await screen.findByRole("table", {
       name: /Table of metrics/,
@@ -90,6 +90,8 @@ describe("BrowseMetrics (OSS)", () => {
     expect(screen.queryByTestId("metric-detail-page")).not.toBeInTheDocument();
     await userEvent.click(within(table).getByText("Metric 1"));
     expect(screen.getByTestId("metric-detail-page")).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe("/explore");
+    const location = history?.getCurrentLocation();
+    expect(location?.pathname).toBe("/explore");
+    expect(location?.query).toEqual({ metricId: "1" });
   });
 });

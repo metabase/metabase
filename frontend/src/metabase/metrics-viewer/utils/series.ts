@@ -122,58 +122,55 @@ export function computeSourceColors(
   return result;
 }
 
+// Column layout with breakout:
+// - 3 cols when dimension != breakout: [dimension, breakout, metric] → output: [dimension, metric]
+// - 2 cols when dimension == breakout: [breakout, metric] → output: [breakout, metric]
 function splitByBreakout(
   series: SingleSeriesWithDimensionId,
   seriesCount: number,
-  projectionCount: number,
-  keepSeriesColumn = false,
   sourceColors?: string[],
 ): SingleSeriesWithDimensionId[] {
   const { card, data } = series;
-  const { cols, rows } = data;
+  const { cols } = data;
 
-  const seriesColumnIndex = projectionCount - 1;
-  const dimensionColumnIndexes = Array.from(
-    { length: seriesColumnIndex },
-    (_, i) => i,
-  );
-  const metricColumnIndexes = Array.from(
-    { length: cols.length - projectionCount },
-    (_, i) => projectionCount + i,
-  );
-  const rowColumnIndexes = keepSeriesColumn
-    ? [...dimensionColumnIndexes, seriesColumnIndex, ...metricColumnIndexes]
-    : [...dimensionColumnIndexes, ...metricColumnIndexes];
+  const hasSeparateDimension = cols.length === 3;
+  const breakoutColumnIndex = hasSeparateDimension ? 1 : 0;
+  const metricColumnIndex = hasSeparateDimension ? 2 : 1;
+  const breakoutCol = cols[breakoutColumnIndex];
+  const metricCol = cols[metricColumnIndex];
+  const outputCols = hasSeparateDimension
+    ? [cols[0], metricCol]
+    : [breakoutCol, metricCol];
 
   const breakoutValues: RowValue[] = [];
-  const breakoutRowsByValue = new Map<RowValue, RowValues[]>();
+  const rowsByBreakoutValue = new Map<RowValue, RowValues[]>();
 
-  for (const row of rows) {
-    const seriesValue = row[seriesColumnIndex];
-    let seriesRows = breakoutRowsByValue.get(seriesValue);
-    if (!seriesRows) {
-      seriesRows = [];
-      breakoutRowsByValue.set(seriesValue, seriesRows);
-      breakoutValues.push(seriesValue);
+  for (const row of data.rows) {
+    const breakoutValue = row[breakoutColumnIndex];
+    let groupedRows = rowsByBreakoutValue.get(breakoutValue);
+    if (!groupedRows) {
+      groupedRows = [];
+      rowsByBreakoutValue.set(breakoutValue, groupedRows);
+      breakoutValues.push(breakoutValue);
       if (breakoutValues.length > MAX_SERIES) {
         return [series];
       }
     }
-    seriesRows.push(rowColumnIndexes.map((i) => row[i]) as RowValues);
+    groupedRows.push([row[0], row[metricColumnIndex]] as RowValues);
   }
 
   return breakoutValues.map((breakoutValue, i) => {
     const name = [
       seriesCount > 1 && card.name,
       formatValue(isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue, {
-        column: cols[seriesColumnIndex],
+        column: breakoutCol,
       }),
     ]
       .filter(Boolean)
       .join(": ");
 
     const seriesKey = getSeriesVizSettingsKey(
-      cols[metricColumnIndexes[0] || 0], // first metric column after projections
+      metricCol,
       false,
       true,
       1,
@@ -197,8 +194,8 @@ function splitByBreakout(
       },
       data: {
         ...data,
-        rows: breakoutRowsByValue.get(breakoutValue)!,
-        cols: rowColumnIndexes.map((i) => cols[i]),
+        rows: rowsByBreakoutValue.get(breakoutValue)!,
+        cols: outputCols,
       },
     };
   });
@@ -310,23 +307,9 @@ export function buildRawSeriesFromDefinitions(
       return [singleSeries];
     }
 
-    const projCount = LibMetric.projections(modDef).length;
-
-    if (projCount > 1) {
-      return splitByBreakout(
-        singleSeries,
-        definitions.length,
-        projCount,
-        false,
-        sourceColors[entry.id],
-      );
-    }
-
     return splitByBreakout(
       singleSeries,
       definitions.length,
-      projCount,
-      true,
       sourceColors[entry.id],
     );
   });
