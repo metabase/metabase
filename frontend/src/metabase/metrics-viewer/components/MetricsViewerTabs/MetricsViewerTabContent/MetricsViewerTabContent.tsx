@@ -21,7 +21,6 @@ import type { DimensionFilterValue } from "../../../utils/dimension-filters";
 import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
-  getCardIdToDimensionId,
 } from "../../../utils/series";
 import { getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
@@ -71,7 +70,7 @@ export function MetricsViewerTabContent({
 
   const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
 
-  const rawSeries = useMemo(
+  const { series: rawSeries, cardIdToDimensionId } = useMemo(
     () =>
       buildRawSeriesFromDefinitions(
         definitions,
@@ -90,9 +89,6 @@ export function MetricsViewerTabContent({
       sourceColors,
     ],
   );
-  const cardIdToDimensionId = useMemo(() => {
-    return getCardIdToDimensionId(rawSeries);
-  }, [rawSeries]);
 
   const dimensionItems = useMemo(
     () =>

@@ -125,11 +125,11 @@ export function computeSourceColors(
 // Column layout with breakout:
 // - 3 cols when dimension != breakout: [dimension, breakout, metric] → output: [dimension, metric]
 // - 2 cols when dimension == breakout: [breakout, metric] → output: [breakout, metric]
-function splitByBreakout(
-  series: SingleSeriesWithDimensionId,
+export function splitByBreakout(
+  series: SingleSeries,
   seriesCount: number,
   sourceColors?: string[],
-): SingleSeriesWithDimensionId[] {
+): SingleSeries[] {
   const { card, data } = series;
   const { cols } = data;
 
@@ -138,11 +138,8 @@ function splitByBreakout(
   const metricColumnIndex = hasSeparateDimension ? 2 : 1;
   const breakoutCol = cols[breakoutColumnIndex];
   const metricCol = cols[metricColumnIndex];
-  const outputCols = hasSeparateDimension
-    ? [cols[0], metricCol]
-    : [breakoutCol, metricCol];
+  const outputCols = [cols[0], metricCol];
 
-  const breakoutValues: RowValue[] = [];
   const rowsByBreakoutValue = new Map<RowValue, RowValues[]>();
 
   for (const row of data.rows) {
@@ -151,15 +148,14 @@ function splitByBreakout(
     if (!groupedRows) {
       groupedRows = [];
       rowsByBreakoutValue.set(breakoutValue, groupedRows);
-      breakoutValues.push(breakoutValue);
-      if (breakoutValues.length > MAX_SERIES) {
+      if (rowsByBreakoutValue.size > MAX_SERIES) {
         return [series];
       }
     }
     groupedRows.push([row[0], row[metricColumnIndex]] as RowValues);
   }
 
-  return breakoutValues.map((breakoutValue, i) => {
+  return Array.from(rowsByBreakoutValue.keys()).map((breakoutValue, i) => {
     const name = [
       seriesCount > 1 && card.name,
       formatValue(isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue, {
@@ -215,10 +211,6 @@ function createSeriesCard(
   } as Card;
 }
 
-type SingleSeriesWithDimensionId = SingleSeries & {
-  dimensionId: MetricSourceId;
-};
-
 export function buildRawSeriesFromDefinitions(
   definitions: MetricsViewerDefinitionEntry[],
   dimensionMapping: Record<MetricSourceId, DimensionId | null>,
@@ -226,7 +218,10 @@ export function buildRawSeriesFromDefinitions(
   resultsByDefinitionId: Map<MetricSourceId, Dataset>,
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
   sourceColors: SourceColorMap,
-): SingleSeriesWithDimensionId[] {
+): {
+  series: SingleSeries[];
+  cardIdToDimensionId: Record<CardId, MetricSourceId>;
+} {
   const firstSettingsEntry = definitions.reduce<{
     def: MetricDefinition;
     dimension: DimensionMetadata;
@@ -250,7 +245,7 @@ export function buildRawSeriesFromDefinitions(
   }, null);
 
   if (!firstSettingsEntry) {
-    return [];
+    return { series: [], cardIdToDimensionId: {} };
   }
 
   const vizSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
@@ -258,7 +253,9 @@ export function buildRawSeriesFromDefinitions(
     firstSettingsEntry.dimension,
   );
 
-  return definitions.flatMap((entry) => {
+  const cardIdToDimensionId: Record<CardId, MetricSourceId> = {};
+
+  const series = definitions.flatMap((entry) => {
     const dimensionId = dimensionMapping[entry.id];
     if (!dimensionId || !entry.definition) {
       return [];
@@ -290,7 +287,7 @@ export function buildRawSeriesFromDefinitions(
       name ?? undefined,
     );
 
-    const singleSeries: SingleSeriesWithDimensionId = {
+    const singleSeries: SingleSeries = {
       card: createSeriesCard(cardId, name, display, {
         ...vizSettings,
         ...computeColorVizSettings({
@@ -300,19 +297,27 @@ export function buildRawSeriesFromDefinitions(
         }),
       }),
       data: result.data,
-      dimensionId: entry.id,
     };
 
+    let entrySeries: SingleSeries[];
     if (!entryHasBreakout(entry)) {
-      return [singleSeries];
+      entrySeries = [singleSeries];
+    } else {
+      entrySeries = splitByBreakout(
+        singleSeries,
+        definitions.length,
+        sourceColors[entry.id],
+      );
     }
 
-    return splitByBreakout(
-      singleSeries,
-      definitions.length,
-      sourceColors[entry.id],
-    );
+    for (const s of entrySeries) {
+      cardIdToDimensionId[s.card.id] = entry.id;
+    }
+
+    return entrySeries;
   });
+
+  return { series, cardIdToDimensionId };
 }
 
 function computeColorVizSettings({
@@ -499,13 +504,4 @@ export function getSelectedMetricsInfo(
 
     return [];
   });
-}
-
-export function getCardIdToDimensionId(
-  series: SingleSeriesWithDimensionId[],
-): Record<CardId, MetricSourceId> {
-  return series.reduce<Record<CardId, MetricSourceId>>((acc, item) => {
-    acc[item.card.id] = item.dimensionId;
-    return acc;
-  }, {});
 }

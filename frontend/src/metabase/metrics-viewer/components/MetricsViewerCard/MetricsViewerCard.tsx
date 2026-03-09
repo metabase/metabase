@@ -15,7 +15,6 @@ import {
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
   computeSourceColors,
-  getCardIdToDimensionId,
 } from "../../utils/series";
 import { getTabConfig } from "../../utils/tab-config";
 import { MetricsViewerVisualization } from "../MetricsViewerVisualization";
@@ -49,7 +48,7 @@ export function MetricsViewerCard({
     tab,
   );
 
-  const rawSeries = useMemo(
+  const { series: rawSeries, cardIdToDimensionId } = useMemo(
     () =>
       buildRawSeriesFromDefinitions(
         definitions,
@@ -68,9 +67,6 @@ export function MetricsViewerCard({
       sourceColors,
     ],
   );
-  const cardIdToDimensionId = useMemo(() => {
-    return getCardIdToDimensionId(rawSeries);
-  }, [rawSeries]);
 
   const cardColors = useMemo(
     () => computeSourceColors(definitions),
