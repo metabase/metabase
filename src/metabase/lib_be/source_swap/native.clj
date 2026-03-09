@@ -9,7 +9,8 @@
    [metabase.sql-tools.core :as sql-tools]
    ;; sql-tools.init registers multimethod implementations for :macaw parser backend
    [metabase.sql-tools.init]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.performance :as perf]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,7 +38,7 @@
          sql ""
          placeholders {}
          idx initial-idx]
-    (if (empty? tokens)
+    (if (perf/empty? tokens)
       {:sql sql :placeholders placeholders :idx idx}
       (let [[token & rest-tokens] tokens]
         (if (string? token)
@@ -166,7 +167,7 @@
        (assoc acc k
               (or (when (#{:dimension :temporal-unit} (:type tag))
                     (when-some [field (lib/find-matching-column (:dimension tag) old-fields)]
-                      (when-some [new-field (some #(when (= (:name %) (:name field)) %) new-fields)]
+                      (when-some [new-field (perf/some #(when (= (:name %) (:name field)) %) new-fields)]
                         (assoc tag :dimension (lib/ref new-field)))))
                   tag)))
      {}
@@ -181,7 +182,7 @@
   (let [table-tags   (find-table-tags template-tags old-table-id)
         slug         (card-slug new-card-name)
         card-tag-key (str "#" new-card-id "-" slug)]
-    (if (empty? table-tags)
+    (if (perf/empty? table-tags)
       {:sql sql :template-tags template-tags}
       ;; Replace each table tag with a card tag
       (let [;; Replace all matching tag names in SQL
@@ -192,7 +193,7 @@
             ;; Get first old tag to preserve its optional fields (:required, :default)
             ;; Note: :id is NOT preserved - new tag gets a new UUID
             [_ first-old-tag] (first table-tags)
-            preserved-fields (select-keys first-old-tag [:required :default])
+            preserved-fields (perf/select-keys first-old-tag [:required :default])
             ;; Update template-tags: remove old table tags, add new card tag
             new-tags (as-> template-tags tags
                        ;; Remove old table tags
