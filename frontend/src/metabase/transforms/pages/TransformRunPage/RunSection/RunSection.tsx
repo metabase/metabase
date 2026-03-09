@@ -101,7 +101,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
     <Stack gap={0}>
       <RunStatus
         run={last_run ?? null}
-        neverRunMessage={t`This transform hasn’t been run before.`}
+        neverRunMessage={t`This transform hasn't been run before.`}
         runInfo={
           <Anchor
             key="link"
@@ -113,6 +113,11 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
         }
       />
       {runExtra}
+      {transform.last_checkpoint_value != null && (
+        <Box c="text-secondary" fz="sm">
+          {t`Current checkpoint`}: {transform.last_checkpoint_value}
+        </Box>
+      )}
     </Stack>
   );
 }

@@ -37,6 +37,16 @@ export function InfoSection({ run }: InfoSectionProps) {
       <InfoSectionItem label={t`Trigger`}>
         {formatRunMethod(run.run_method)}
       </InfoSectionItem>
+      {run.checkpoint_lo_value != null && (
+        <InfoSectionItem label={t`Checkpoint from`}>
+          {run.checkpoint_lo_value}
+        </InfoSectionItem>
+      )}
+      {run.checkpoint_hi_value != null && (
+        <InfoSectionItem label={t`Checkpoint to`}>
+          {run.checkpoint_hi_value}
+        </InfoSectionItem>
+      )}
     </Card>
   );
 }
