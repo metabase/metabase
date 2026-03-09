@@ -125,7 +125,12 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
       />
       {runExtra}
       {transform.last_checkpoint_value != null && (
-        <Box c="text-secondary" fz="sm" mt="xs" ml="calc(1rem + var(--mantine-spacing-sm))">
+        <Box
+          c="text-secondary"
+          fz="sm"
+          mt="xs"
+          ml="calc(1rem + var(--mantine-spacing-sm))"
+        >
           {t`Current checkpoint`}:{" "}
           <Box component="span" fw="bold" c="text-primary">
             <CheckpointValue
