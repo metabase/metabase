@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "integration-embedding-onboarding-improvements",
-    "hash": "5a37ec1ae0f92b7e7fbb4a6d63be5ba25cf73649"
+    "hash": "b9c95f2be9efe596e4612a1e25d7031f53ae824b"
   },
   "upstream": {
     "branch": "emb-1382-update-in-app-jwt-onboarding-to-use-snippets-instead-of"
