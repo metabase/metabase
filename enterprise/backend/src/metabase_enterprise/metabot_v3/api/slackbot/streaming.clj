@@ -566,11 +566,11 @@
                                                event
                                                extra-history
                                                ctx
-                                               {:thinking-placeholder      thinking-placeholder
-                                                :tool-name->friendly       tool-friendly-names
-                                                :make-streaming-ai-request make-streaming-ai-request
-                                                :collect-viz-blocks        collect-viz-blocks
-                                                :feedback-blocks           feedback-blocks
-                                                :post-viz-error!           post-viz-error!
+                                               {:thinking-placeholder       thinking-placeholder
+                                                :tool-name->friendly        tool-friendly-names
+                                                :make-streaming-ai-request  make-streaming-ai-request
+                                                :collect-viz-blocks         collect-viz-blocks
+                                                :feedback-blocks            feedback-blocks
+                                                :post-viz-error!            post-viz-error!
                                                 :make-viz-prefetch-callback make-viz-prefetch-callback
-                                                :cancel-prefetched-viz!    cancel-prefetched-viz!})))))
+                                                :cancel-prefetched-viz!     cancel-prefetched-viz!})))))
