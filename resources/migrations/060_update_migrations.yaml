@@ -71,9 +71,6 @@ databaseChangeLog:
                   remarks: "User who initiated the replacement"
                   constraints:
                     nullable: true
-                    referencedTableName: core_user
-                    referencedColumnNames: id
-                    foreignKeyName: fk_source_replacement_run_user_id
               - column:
                   name: start_time
                   type: ${timestamp_type}
@@ -101,7 +98,7 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-03-06T12:00:02
       author: bcm
-      comment: Add index on source_replacement_run.user_id for FK lookups
+      comment: Add index on source_replacement_run.user_id
       changes:
         - createIndex:
             tableName: source_replacement_run
@@ -109,6 +106,18 @@ databaseChangeLog:
             columns:
               - column:
                   name: user_id
+
+  - changeSet:
+      id: v60.2026-03-06T12:00:03
+      author: bcm
+      comment: Add foreign key on source_replacement_run(user_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: source_replacement_run
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_source_replacement_run_user_id
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
