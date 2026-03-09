@@ -188,7 +188,7 @@
   (let [transform (t2/select-one :model/Transform transform-id)
         {:keys [last_checkpoint_type last_checkpoint_value]} transform]
     (when last_checkpoint_type
-      (#'transforms-base.u/deserialize-checkpoint-value last_checkpoint_type last_checkpoint_value))))
+      (#'transforms-base.u/parse-checkpoint-value last_checkpoint_type last_checkpoint_value))))
 
 (defn- compare-checkpoint-values
   "Compare two checkpoint values with type-appropriate logic. "
