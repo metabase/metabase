@@ -7,7 +7,7 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
 
 type DashboardActionMenuProps = {
@@ -68,6 +68,9 @@ const DashboardActionMenuInner = ({
     return null;
   }
 
+  const canConfigureCaching =
+    dashboard.can_set_cache_policy && PLUGIN_CACHING.isGranularCachingEnabled();
+
   return (
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
@@ -98,18 +101,16 @@ const DashboardActionMenuInner = ({
           {t`Enter fullscreen`}
         </Menu.Item>
 
-        {canEdit && (
-          <>
-            <Menu.Item
-              leftSection={<Icon name="gear" />}
-              onClick={openSettingsSidebar}
-            >
-              {t`Edit settings`}
-            </Menu.Item>
-
-            {moderationItems}
-          </>
+        {(canEdit || canConfigureCaching) && (
+          <Menu.Item
+            leftSection={<Icon name="gear" />}
+            onClick={openSettingsSidebar}
+          >
+            {t`Edit settings`}
+          </Menu.Item>
         )}
+
+        {canEdit && moderationItems}
 
         {canEdit && (
           <>
