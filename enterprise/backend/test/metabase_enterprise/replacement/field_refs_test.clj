@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
-   [metabase.lib-be.source-swap :as lib-be.source-swap]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -357,16 +356,11 @@
       (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
                                                       :name       "test measure"
                                                       :definition query}]
-        ;; Measure schema requires :source-table (no :source-card), so no real field ref upgrade
-        ;; can happen. We mock upgrade-field-refs-in-query to simulate an upgrade that produces
-        ;; a valid measure definition, verifying the full update path works.
-        (let [upgraded-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                 (lib/aggregate (lib/count)))]
-          (with-redefs [lib-be.source-swap/upgrade-field-refs-in-query (constantly upgraded-query)]
-            (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
-            (is (=? {:definition {:stages [{:source-table (mt/id :orders)
-                                            :aggregation  [[:count {}]]}]}}
-                    (t2/select-one :model/Measure measure-id)))))))))
+        ;; Measure schema requires :source-table (no :source-card), so no real field ref upgrade can happen.
+        (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
+        (is (=? {:definition {:stages [{:source-table (mt/id :orders)
+                                        :aggregation  [[:sum {} [:field {} (mt/id :orders :total)]]]}]}}
+                (t2/select-one :model/Measure measure-id)))))))
 
 (deftest measure-upgrade-field-refs!-broken-query-test
   (testing "should not crash or update a measure with a broken definition"
