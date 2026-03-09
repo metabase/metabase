@@ -1993,3 +1993,11 @@
                                                                  :schema uploads_schema_name}
                                                            :where [:= :id id]}))]
           (run! retire-and-revive-upload-table! inactive-upload-tables))))))
+
+(define-migration RemoveLegacyIncrementalStrategies
+  (doseq [{:keys [id source]} (t2/select [:transform :id :source])]
+    (let [parsed (json-out source true)]
+      (when (:source-incremental-strategy parsed)
+        (t2/query {:update :transform
+                   :set    {:source (json-in (dissoc parsed :source-incremental-strategy))}
+                   :where  [:= :id id]})))))

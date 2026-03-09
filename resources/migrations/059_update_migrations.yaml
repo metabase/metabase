@@ -3590,27 +3590,6 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v59.2026-02-18T12:00:01
-      author: wotbrew
-      comment: Add last_checkpoint_type columns transform table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: transform
-                columnName: last_checkpoint_type
-      changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: last_checkpoint_type
-                  type: varchar(32)
-                  remarks: Type of the persisted checkpoint value (integer, decimal, date, temporal)
-                  constraints:
-                    nullable: true
-
-  - changeSet:
       id: v59.2026-03-03T12:00:00
       author: qnkhuat
       comment: Unify source-tables format from map to ordered array
@@ -3639,6 +3618,36 @@ databaseChangeLog:
                 AND data_source = 'metabase-transform'
                 AND is_writable = TRUE;
       rollback: # rolling back still leaves the fix in place
+
+  - changeSet:
+      id: v59.2026-02-18T12:00:01
+      author: wotbrew
+      comment: Add last_checkpoint_type columns transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform
+                columnName: last_checkpoint_type
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: last_checkpoint_type
+                  type: varchar(32)
+                  remarks: Type of the persisted checkpoint value (integer, decimal, date, temporal)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-03-09T00:00:00
+      author: bronsa
+      comment: Remove legacy incremental transform strategies that use checkpoint-filter instead of checkpoint-filter-field-id
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.RemoveLegacyIncrementalStrategies"
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
