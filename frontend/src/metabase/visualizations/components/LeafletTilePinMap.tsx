@@ -109,7 +109,7 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
     }
 
     const { card, data } = datasetResult;
-    const cardId = card?.id;
+    const cardId = card.id;
 
     const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
     const latitudeField = data.cols[latitudeIndex];
