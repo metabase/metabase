@@ -124,11 +124,16 @@ get_edition_prefix() {
 
 # https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#using-the-migrate-down-command
 # Run a single migrate down step (rolls back exactly one major version)
-run_migrate_down() {
-  local image="$1"
-  local is_head="$2"  # "true" if this is HEAD image
+# This function is idempotent - it takes a version string and handles everything internally.
+migrate_down_step() {
+  local version="$1"
+  local image is_head="false"
 
-  log "Running 'migrate down' with image: $image"
+  # Resolve image from version
+  image=$(cli image "$version") || return 1
+  [[ "$version" == "HEAD" ]] && is_head="true"
+
+  log "Running 'migrate down' for version: $version (image: $image)"
 
   local output
   local exit_code=0
@@ -206,30 +211,22 @@ cascading_migrate_down() {
   local steps=$((source_major - target_major))
   log "Cascading migrate down: v$source_major → v$target_major ($steps step(s))"
 
-  local current_major=$source_major
+  # Build version sequence: source version first, then intermediate rolling versions
+  local versions=("$source_version")
+  local current=$((source_major - 1))
+  while (( current > target_major )); do
+    versions+=("v${edition_prefix}.${current}.x")
+    ((current--))
+  done
+
+  # Simple loop - each step handles its own image resolution
   local step=1
-
-  while (( current_major > target_major )); do
-    local next_major=$((current_major - 1))
-    local image is_head="false"
-
-    if (( step == 1 )); then
-      # First step uses the source image
-      image=$(cli image "$source_version") || return 1
-      [[ "$source_version" == "HEAD" ]] && is_head="true"
-    else
-      # Subsequent steps use intermediate version images (rolling .x tag)
-      local intermediate_version="v${edition_prefix}.${current_major}.x"
-      image=$(cli image "$intermediate_version") || return 1
-    fi
-
-    log "  Step $step/$steps: v$current_major → v$next_major (using $image)"
-    if ! run_migrate_down "$image" "$is_head"; then
+  for version in "${versions[@]}"; do
+    log "  Step $step/$steps: $version"
+    if ! migrate_down_step "$version"; then
       error "Migrate down failed at step $step"
       return 1
     fi
-
-    current_major=$next_major
     ((step++))
   done
 
