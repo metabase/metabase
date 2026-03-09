@@ -29,7 +29,7 @@
 
 (def data-sources
   "Valid values for data source"
-  #{:unknown :ingested :metabase-transform :source-data :upload})
+  #{:unknown :ingested :metabase-transform :transform :source-data :upload})
 
 (def data-layers
   "Valid values for `Table.data_layer`.
