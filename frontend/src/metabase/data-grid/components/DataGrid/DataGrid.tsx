@@ -1,5 +1,7 @@
 import { DndContext, pointerWithin } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+import type { Column } from "@tanstack/react-table";
+import type { VirtualItem } from "@tanstack/react-virtual";
 import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
@@ -14,7 +16,11 @@ import {
   ROW_ID_COLUMN_ID,
 } from "../../constants";
 import { DataGridThemeProvider } from "../../hooks";
-import type { DataGridInstance, DataGridTheme } from "../../types";
+import type {
+  DataGridInstance,
+  DataGridTheme,
+  MaybeVirtualRow,
+} from "../../types";
 import { Footer } from "../Footer/Footer";
 
 import S from "./DataGrid.module.css";
@@ -56,6 +62,7 @@ export const DataGrid = function DataGrid<TData>({
     virtualPaddingLeft,
     virtualPaddingRight,
     rowVirtualizer,
+    columnVirtualizer,
   } = virtualGrid;
 
   const dndContextProps = useMemo(
@@ -121,6 +128,7 @@ export const DataGrid = function DataGrid<TData>({
       : backgroundColor);
 
   const pinnedColumns = table.getLeftVisibleLeafColumns();
+  const hasPinnedColumns = pinnedColumns.length > 0;
   const lastPinnedColumn = pinnedColumns.at(-1);
   const isLastPinnedColumnRowId = lastPinnedColumn?.id === ROW_ID_COLUMN_ID;
   const hasSeparator = lastPinnedColumn != null && !isLastPinnedColumnRowId;
@@ -130,8 +138,29 @@ export const DataGrid = function DataGrid<TData>({
     ? pinnedColumnsWidth + PINNED_BORDER_SEPARATOR_WIDTH
     : pinnedColumnsWidth;
 
-  const hasPinnedColumns = pinnedColumns.length > 0;
   const totalHeight = rowVirtualizer.getTotalSize();
+
+  const renderRow = (
+    maybeVirtualRow: MaybeVirtualRow<TData>,
+    columns: Column<TData>[] | VirtualItem[],
+    key: string,
+    isPinned: boolean,
+  ) => (
+    <DataGridRow
+      key={key}
+      maybeVirtualRow={maybeVirtualRow}
+      rowMeasureRef={rowMeasureRef}
+      columns={columns}
+      stickyElementsBackgroundColor={stickyElementsBackgroundColor}
+      zoomedRowIndex={zoomedRowIndex}
+      selection={selection}
+      onBodyCellClick={onBodyCellClick}
+      virtualPaddingRight={isPinned ? undefined : virtualPaddingRight}
+      virtualPaddingLeft={isPinned ? undefined : virtualPaddingLeft}
+      classNames={classNames}
+      styles={styles}
+    />
+  );
 
   return (
     <DataGridThemeProvider theme={theme}>
@@ -169,47 +198,31 @@ export const DataGrid = function DataGrid<TData>({
                   backgroundColor: stickyElementsBackgroundColor,
                 }}
               >
-                {getVisibleRows().map((maybeVirtualRow, index) => (
-                  <DataGridRow
-                    key={`pinned-${index}`}
-                    maybeVirtualRow={maybeVirtualRow}
-                    columns={pinnedColumns}
-                    stickyElementsBackgroundColor={
-                      stickyElementsBackgroundColor
-                    }
-                    zoomedRowIndex={zoomedRowIndex}
-                    selection={selection}
-                    onBodyCellClick={onBodyCellClick}
-                    classNames={classNames}
-                    styles={styles}
-                  />
-                ))}
+                {getVisibleRows().map((maybeVirtualRow, index) =>
+                  renderRow(
+                    maybeVirtualRow,
+                    pinnedColumns,
+                    `pinned-${index}`,
+                    true,
+                  ),
+                )}
               </div>
             )}
-
             <div
               className={S.centralSection}
               style={{
                 height: `${totalHeight}px`,
-                width: `${table.getCenterTotalSize()}px`,
+                width: `${columnVirtualizer.getTotalSize()}px`,
               }}
             >
-              {getVisibleRows().map((maybeVirtualRow, index) => (
-                <DataGridRow
-                  key={`scroll-${index}`}
-                  maybeVirtualRow={maybeVirtualRow}
-                  rowMeasureRef={rowMeasureRef}
-                  columns={virtualColumns}
-                  virtualPaddingLeft={virtualPaddingLeft}
-                  virtualPaddingRight={virtualPaddingRight}
-                  stickyElementsBackgroundColor={stickyElementsBackgroundColor}
-                  zoomedRowIndex={zoomedRowIndex}
-                  selection={selection}
-                  onBodyCellClick={onBodyCellClick}
-                  classNames={classNames}
-                  styles={styles}
-                />
-              ))}
+              {getVisibleRows().map((maybeVirtualRow, index) =>
+                renderRow(
+                  maybeVirtualRow,
+                  virtualColumns,
+                  `center-${index}`,
+                  false,
+                ),
+              )}
             </div>
           </div>
 
