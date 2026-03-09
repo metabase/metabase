@@ -3,12 +3,15 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -167,3 +170,55 @@
 
         (testing "documents are not fetched (no-op entities)"
           (is (not (contains? loaded [:document 123]))))))))
+
+(deftest run-swap-updates-dependent-cards-test
+  (testing "run-swap upgrades field refs and swaps source for all transitive dependents"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-test-user :rasta
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {old-id :id :as old-card}
+                         {:database_id   (mt/id)
+                          :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          :type          :model
+                          :name          "Old Model"}
+
+                         :model/Card {new-id :id}
+                         {:database_id   (mt/id)
+                          :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          :type          :model
+                          :name          "New Model"}
+
+                         :model/Card {child-id :id :as child-card}
+                         {:database_id   (mt/id)
+                          :dataset_query (lib/query mp (lib.metadata/card mp old-id))
+                          :type          :question
+                          :name          "Child Card"}]
+            (mt/with-model-cleanup [:model/Dependency]
+              ;; populate dependencies
+              (events/publish-event! :event/card-create {:object old-card :user-id (mt/user->id :rasta)})
+              (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :rasta)})
+
+              (testing "child card initially points to old model"
+                (is (= old-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
+                                      [:stages 0 :source-card]))))
+
+              (let [progress-log (atom [])
+                    progress     (reify replacement.protocols/IRunnerProgress
+                                   (set-total! [_ total] (swap! progress-log conj [:set-total total]))
+                                   (advance! [_] (swap! progress-log conj [:advance 1]))
+                                   (advance! [_ n] (swap! progress-log conj [:advance n]))
+                                   (canceled? [_] false)
+                                   (start-run! [_])
+                                   (succeed-run! [_])
+                                   (fail-run! [_ _]))]
+                (replacement.runner/run-swap [:card old-id] [:card new-id] progress)
+
+                (testing "child card's source-card is updated to new model"
+                  (is (= new-id (get-in (t2/select-one-fn :dataset_query :model/Card :id child-id)
+                                        [:stages 0 :source-card]))))
+
+                (testing "progress was tracked"
+                  (is (some #(= :set-total (first %)) @progress-log)
+                      "set-total! should have been called")
+                  (is (seq (filter #(= :advance (first %)) @progress-log))
+                      "advance! should have been called"))))))))))
