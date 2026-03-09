@@ -495,6 +495,10 @@ export type VisualizationSettingsDefinitions<
   "line.missing"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.size"?: SingleSeriesSettingDefinition<Value, Props>;
   "line.style"?: SingleSeriesSettingDefinition<Value, Props>;
+  "map.pin_type"?: SeriesSettingDefinition<Value, Props>;
+  "map.type"?: SeriesSettingDefinition<Value, Props>;
+  "map.region"?: SeriesSettingDefinition<Value, Props>;
+  "map.color"?: SeriesSettingDefinition<Value, Props>;
   markdown_template?: DatasetColumnSettingDefinition<Value, Props>;
   number_separators?: DatasetColumnSettingDefinition<Value, Props>;
   number_style?: DatasetColumnSettingDefinition<Value, Props>;

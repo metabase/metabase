@@ -21,7 +21,6 @@ import type {
   ComputedVisualizationSettings,
   VisualizationDefinition,
   VisualizationProps,
-  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import {
   hasLatitudeAndLongitudeColumns,
@@ -213,7 +212,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
           { name: "Grid", value: "grid" },
         ],
       },
-      getDefault: ([{ data }]: Series, vizSettings: VisualizationSettings) =>
+      getDefault: ([{ data }], vizSettings) =>
         vizSettings["map.type"] === "heat"
           ? "heat"
           : vizSettings["map.type"] === "grid"
@@ -380,7 +379,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
         vizSettings["map.type"] !== "heat",
     },
-  } as VisualizationSettingsDefinitions,
+  },
   checkRenderable,
 };
 
