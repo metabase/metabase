@@ -550,12 +550,9 @@
                                                                      (log/infof "Going to roll back changeset %s" id)
                                                                      (str "Changeset ID '" id "' is in target list"))
                                                                    (str "Changeset ID '" id "' is not in target list")) nil))))
-           ;; Use the simple ChangeLogIterator constructor to avoid the (ranChangeSets, changelog)
-           ;; constructor which silently drops changesets when the FILENAME column in
-           ;; databasechangelog doesn't match the current changelog filepath. This happens when
-           ;; migrations are moved between files (e.g., 058 -> 059). Our changeset-filter already
-           ;; limits rollback to IDs present in databasechangelog, making AlreadyRanChangeSetFilter
-           ;; redundant.
+           ;; Use the simple (changelog, filters) constructor — NOT the (ranChangeSets, changelog, filters)
+           ;; overload, which silently excludes changesets whose FILENAME in databasechangelog doesn't
+           ;; match the current YAML filepath. Our changeset-filter selects by ID alone, avoiding this.
            changelog-iterator (ChangeLogIterator. changelog
                                                   (doto (ArrayList.)
                                                     (.addAll
@@ -595,9 +592,8 @@
                  (log/warnf "The following changesets were not rolled back due to errors (%s): %s"
                             (str/join ", " @error-ids)
                             (str/join ", " remaining-ids))
-                 ;; Remaining entries are likely due to FILENAME mismatch in databasechangelog
-                 ;; (e.g., migrations moved between files). The rollback SQL already executed
-                 ;; via the changelog; clean up the stale databasechangelog entries.
+                 ;; Rollback SQL ran (tables dropped), but removeRanStatus also matches by
+                 ;; (id, author, filepath) — mismatched filenames leave orphaned entries.
                  (do
                    (log/infof "Cleaning up %d changelog entries with mismatched filenames" (count remaining-ids))
                    (let [delete-query (-> (sql.helpers/delete-from (keyword (changelog-table-name liquibase)))
