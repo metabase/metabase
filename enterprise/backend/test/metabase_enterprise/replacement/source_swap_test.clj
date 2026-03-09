@@ -210,27 +210,6 @@
 
 ;;; ------------------------------------------------ Dashboard --------------------------------------------------------
 
-(deftest dashboard-swap-source!-parameter-card-id-test
-  (testing "swap-source! should update card_id in dashboard parameter values_source_config"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-test-user :rasta
-        (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Card      {old-card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
-                         :model/Card      {new-card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :reviews)))}
-                         :model/Dashboard {dashboard-id :id}
-                         {:parameters [{:id                   "test-param"
-                                        :name                 "category"
-                                        :type                 :string/=
-                                        :values_source_type   "card"
-                                        :values_source_config {:card_id     old-card-id
-                                                               :value_field [:field "ID" {:base-type :type/Integer}]}}]}]
-            (replacement.source-swap/swap-source! [:dashboard dashboard-id]
-                                                  [:card old-card-id]
-                                                  [:card new-card-id])
-            (is (= new-card-id
-                   (-> (t2/select-one :model/Dashboard dashboard-id)
-                       :parameters first :values_source_config :card_id)))))))))
-
 (deftest dashboard-swap-source!-parameter-mappings-card-to-card-test
   (testing "swap-source! should walk parameter mapping targets without corruption during card-to-card swap"
     (mt/with-premium-features #{:dependencies}

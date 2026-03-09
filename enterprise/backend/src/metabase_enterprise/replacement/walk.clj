@@ -15,14 +15,6 @@
   [parameters :- [:sequential :map]]
   (into #{} (keep #(-> % :values_source_config :card_id)) parameters))
 
-(mu/defn walk-parameter-source-card-ids :- [:sequential :map]
-  "Walk the parameters and update the card IDs in `:values_source_config` using the provided function.
-
-  `card-id-fn` will be called with a card ID and should return a new card ID."
-  [parameters :- [:sequential :map]
-   card-id-fn :- fn?]
-  (mapv #(m/update-existing-in % [:values_source_config :card_id] card-id-fn) parameters))
-
 (mu/defn walk-parameter-source-card-refs :- [:sequential :map]
   "Walk the parameters and update the refs in `:value_field` and `:label_field`
   in the `:values_source_config` using the provided function.
