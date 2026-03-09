@@ -429,10 +429,10 @@
 (defn- remove-referenced-candidates
   "Short-circuiting reduce: removes matched triples from triple->table."
   [triple->table target-triples]
-  (reduce (fn [remaining triple]
-            (if (empty? remaining)
-              (reduced remaining)
-              (dissoc remaining triple)))
+  (reduce (fn [triple->table triple]
+            (if (empty? triple->table)
+              (reduced triple->table)
+              (dissoc triple->table triple)))
           triple->table
           target-triples))
 
