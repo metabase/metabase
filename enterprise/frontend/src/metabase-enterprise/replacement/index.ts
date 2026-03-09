@@ -7,7 +7,7 @@ import { ReplaceDataSourceModal } from "./components/ReplaceDataSourceModal";
 export function initializePlugin() {
   if (hasPremiumFeature("dependencies")) {
     PLUGIN_REPLACEMENT.isEnabled = true;
-    PLUGIN_REPLACEMENT.canUserReplaceSource = getUserIsAdmin;
+    PLUGIN_REPLACEMENT.canUserReplaceSources = getUserIsAdmin;
     PLUGIN_REPLACEMENT.ReplaceDataSourceModal = ReplaceDataSourceModal;
   }
 }

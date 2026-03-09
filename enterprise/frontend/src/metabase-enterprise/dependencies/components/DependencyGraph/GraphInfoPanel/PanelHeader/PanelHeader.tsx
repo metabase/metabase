@@ -16,11 +16,12 @@ import {
 import type { DependencyNode } from "metabase-types/api";
 
 import {
+  getNodeDataSourceEntry,
   getNodeIcon,
   getNodeLabel,
   getNodeLink,
   getNodeLocationInfo,
-  getNodeReplaceSourceEntry,
+  isNodeUsedAsDataSource,
 } from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
@@ -35,9 +36,10 @@ type PanelHeaderProps = {
 export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
   const location = getNodeLocationInfo(node);
-  const replaceSource = getNodeReplaceSourceEntry(node);
-  const canUserReplaceSource = useSelector(
-    PLUGIN_REPLACEMENT.canUserReplaceSource,
+  const sourceEntry = getNodeDataSourceEntry(node);
+  const isUsedAsDataSource = isNodeUsedAsDataSource(node);
+  const canUserReplaceSources = useSelector(
+    PLUGIN_REPLACEMENT.canUserReplaceSources,
   );
   const [
     isReplaceModalOpened,
@@ -60,25 +62,27 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
           {link != null && (
             <GraphExternalLink label={link.label} url={link.url} />
           )}
-          {canUserReplaceSource && replaceSource != null && (
-            <Tooltip label={t`Find and replace`}>
-              <ActionIcon
-                aria-label={t`Replace data source`}
-                onClick={openReplaceModal}
-              >
-                <FixedSizeIcon name="find_replace" />
-              </ActionIcon>
-            </Tooltip>
-          )}
+          {sourceEntry != null &&
+            isUsedAsDataSource &&
+            canUserReplaceSources && (
+              <Tooltip label={t`Find and replace`}>
+                <ActionIcon
+                  aria-label={t`Replace data source`}
+                  onClick={openReplaceModal}
+                >
+                  <FixedSizeIcon name="find_replace" />
+                </ActionIcon>
+              </Tooltip>
+            )}
           <ActionIcon aria-label={t`Close`} onClick={onClose}>
             <FixedSizeIcon name="close" />
           </ActionIcon>
         </Group>
       </Group>
-      {replaceSource != null && (
+      {sourceEntry != null && (
         <PLUGIN_REPLACEMENT.ReplaceDataSourceModal
           isOpened={isReplaceModalOpened}
-          initialSource={replaceSource}
+          initialSource={sourceEntry}
           onClose={closeReplaceModal}
         />
       )}

@@ -14,13 +14,13 @@ export type ReplaceDataSourceModalProps = {
 
 type ReplacementPlugin = {
   isEnabled: boolean;
-  canUserReplaceSource: (state: State) => boolean;
+  canUserReplaceSources: (state: State) => boolean;
   ReplaceDataSourceModal: ComponentType<ReplaceDataSourceModalProps>;
 };
 
 const getDefaultReplacementPlugin = (): ReplacementPlugin => ({
   isEnabled: false,
-  canUserReplaceSource: () => false,
+  canUserReplaceSources: () => false,
   ReplaceDataSourceModal: PluginPlaceholder,
 });
 

@@ -83,7 +83,7 @@ const TableSectionBase = ({
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
   const isReplacementEnabled = useSelector(
-    PLUGIN_REPLACEMENT.canUserReplaceSource,
+    PLUGIN_REPLACEMENT.canUserReplaceSources,
   );
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
   const remoteSyncReadOnly = useSelector(

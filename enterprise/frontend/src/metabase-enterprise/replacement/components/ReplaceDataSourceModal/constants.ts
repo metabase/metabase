@@ -2,7 +2,6 @@ import type { TagType } from "metabase/api/tags";
 import type { DependencyType } from "metabase-types/api";
 
 export const DEPENDENT_TYPES: DependencyType[] = [
-  "table",
   "card",
   "segment",
   "measure",

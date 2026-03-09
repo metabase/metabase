@@ -57,6 +57,7 @@ import {
   getErrorTypeLabelWithCount,
   getNodeCreatedAt,
   getNodeCreatedBy,
+  getNodeDataSourceEntry,
   getNodeDescription,
   getNodeIcon,
   getNodeId,
@@ -68,6 +69,7 @@ import {
   getNodeTypeInfo,
   getNodeViewCount,
   getSearchQuery,
+  isNodeUsedAsDataSource,
   isSameNode,
 } from "./utils";
 
@@ -896,5 +898,153 @@ describe("getDependentErrorNodesLabel", () => {
 
   it("should default to plural form when called without arguments", () => {
     expect(getDependentErrorNodesLabel()).toBe("Broken dependents");
+  });
+});
+
+describe("getNodeDataSourceEntry", () => {
+  it.each<{
+    description: string;
+    node: DependencyNode;
+    expected: { id: number; type: string } | null;
+  }>([
+    {
+      description: "table node",
+      node: createMockTableDependencyNode({ id: 1 }),
+      expected: { id: 1, type: "table" },
+    },
+    {
+      description: "question card node",
+      node: createMockCardDependencyNode({
+        id: 2,
+        data: createMockCardDependencyNodeData({ type: "question" }),
+      }),
+      expected: { id: 2, type: "card" },
+    },
+    {
+      description: "model card node",
+      node: createMockCardDependencyNode({
+        id: 3,
+        data: createMockCardDependencyNodeData({ type: "model" }),
+      }),
+      expected: { id: 3, type: "card" },
+    },
+    {
+      description: "metric card node",
+      node: createMockCardDependencyNode({
+        id: 4,
+        data: createMockCardDependencyNodeData({ type: "metric" }),
+      }),
+      expected: null,
+    },
+    {
+      description: "dashboard node",
+      node: createMockDashboardDependencyNode({ id: 5 }),
+      expected: null,
+    },
+    {
+      description: "transform node",
+      node: createMockTransformDependencyNode({ id: 6 }),
+      expected: null,
+    },
+    {
+      description: "snippet node",
+      node: createMockSnippetDependencyNode({ id: 7 }),
+      expected: null,
+    },
+    {
+      description: "sandbox node",
+      node: createMockSandboxDependencyNode({ id: 8 }),
+      expected: null,
+    },
+  ])("should return $expected for $description", ({ node, expected }) => {
+    expect(getNodeDataSourceEntry(node)).toEqual(expected);
+  });
+});
+
+describe("isNodeUsedAsDataSource", () => {
+  it.each<{
+    description: string;
+    node: DependencyNode;
+    expected: boolean;
+  }>([
+    {
+      description: "table with question dependents",
+      node: createMockTableDependencyNode({
+        dependents_count: { question: 2 },
+      }),
+      expected: true,
+    },
+    {
+      description: "table with model dependents",
+      node: createMockTableDependencyNode({
+        dependents_count: { model: 1 },
+      }),
+      expected: true,
+    },
+    {
+      description: "card with metric dependents",
+      node: createMockCardDependencyNode({
+        dependents_count: { metric: 1 },
+      }),
+      expected: true,
+    },
+    {
+      description: "card with segment dependents",
+      node: createMockCardDependencyNode({
+        dependents_count: { segment: 3 },
+      }),
+      expected: true,
+    },
+    {
+      description: "card with measure dependents",
+      node: createMockCardDependencyNode({
+        dependents_count: { measure: 1 },
+      }),
+      expected: true,
+    },
+    {
+      description: "table with only dashboard dependents",
+      node: createMockTableDependencyNode({
+        dependents_count: { dashboard: 5 },
+      }),
+      expected: false,
+    },
+    {
+      description: "table with no dependents",
+      node: createMockTableDependencyNode({
+        dependents_count: {},
+      }),
+      expected: false,
+    },
+    {
+      description: "table with null dependents_count",
+      node: createMockTableDependencyNode({
+        dependents_count: undefined,
+      }),
+      expected: false,
+    },
+    {
+      description: "table with zero question dependents",
+      node: createMockTableDependencyNode({
+        dependents_count: { question: 0 },
+      }),
+      expected: false,
+    },
+    {
+      description: "dashboard node (not a data source type)",
+      node: createMockDashboardDependencyNode({
+        dependents_count: { question: 5 },
+      }),
+      expected: false,
+    },
+    {
+      description: "transform node (not a data source type)",
+      node: createMockTransformDependencyNode({
+        dependents_count: { question: 5 },
+      }),
+      expected: false,
+    },
+  ])("should return $expected for $description", ({ node, expected }) => {
+    expect(isNodeUsedAsDataSource(node)).toBe(expected);
   });
 });
