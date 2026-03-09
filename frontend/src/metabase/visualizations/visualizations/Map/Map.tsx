@@ -220,7 +220,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
             : data.rows.length >= 1000
               ? "tiles"
               : "markers",
-      getHidden: (_series: Series, vizSettings: VisualizationSettings) => {
+      getHidden: (_series, vizSettings) => {
         const type: PIN_MAP_VALUES_TYPE = vizSettings["map.type"];
 
         return !PIN_MAP_TYPES.has(type);
@@ -290,8 +290,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         footer: <CustomMapFooter />,
         hiddenIcons: true,
       }),
-      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
-        vizSettings["map.type"] !== "region",
+      getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
     },
     ...metricSetting("map.metric", {
       get title() {
@@ -337,8 +336,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         isQuantile: true,
       },
       default: getColorplethColorScale(getAccentColors()[0]),
-      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
-        vizSettings["map.type"] !== "region",
+      getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
     },
     "map.zoom": {},
     "map.center_latitude": {},
@@ -349,8 +347,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       },
       widget: "number",
       default: 30,
-      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
-        vizSettings["map.type"] !== "heat",
+      getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.blur": {
       get title() {
@@ -358,8 +355,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       },
       widget: "number",
       default: 60,
-      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
-        vizSettings["map.type"] !== "heat",
+      getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.min-opacity": {
       get title() {
@@ -367,8 +363,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       },
       widget: "number",
       default: 0,
-      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
-        vizSettings["map.type"] !== "heat",
+      getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
     "map.heat.max-zoom": {
       get title() {
@@ -376,8 +371,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       },
       widget: "number",
       default: 1,
-      getHidden: (_series: Series, vizSettings: VisualizationSettings) =>
-        vizSettings["map.type"] !== "heat",
+      getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "heat",
     },
   },
   checkRenderable,
