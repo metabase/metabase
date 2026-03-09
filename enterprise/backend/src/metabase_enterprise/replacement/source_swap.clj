@@ -58,11 +58,7 @@
         (events/publish-event! :event/card-update
                                {:object (merge card changes)
                                 :user-id api/*current-user-id*
-                                :previous-object card})
-        ;; todo: we still want to publish the card changed event here, but we should suppress the depdency analysis
-        ;; and do it ourselves. This probably should be moved higher up so it's a bit more generic than this
-        ;; paritcular spot
-        ))))
+                                :previous-object card})))))
 
 (defn- segment-swap-source!
   [segment old-source new-source]
