@@ -141,6 +141,11 @@
    :thread_ts (or (:thread_ts event)
                   (:ts event))})
 
+(defn reaction-added?
+  "Check if event is a reaction_added event."
+  [event]
+  (= "reaction_added" (:type event)))
+
 (defn strip-bot-mention
   "Remove bot mention prefix from text (e.g., '<@U123> hello' -> 'hello')"
   [text bot-user-id]

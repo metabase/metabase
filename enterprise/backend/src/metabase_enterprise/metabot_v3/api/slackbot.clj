@@ -309,7 +309,7 @@
 (defn- delete-reaction-event?
   "True when this event is a delete reaction added to a message."
   [event]
-  (and (= "reaction_added" (:type event))
+  (and (slackbot.events/reaction-added? event)
        (= "message" (get-in event [:item :type]))
        (contains? delete-reaction-names (:reaction event))))
 
@@ -374,7 +374,7 @@
         (delete-reaction-event? event)
         (future (handle-delete-reaction client event))
 
-        (= "reaction_added" (:type event))
+        (slackbot.events/reaction-added? event)
         (log/debugf "[slackbot] Ignoring reaction_added for non-delete emoji reaction=%s item_type=%s channel=%s ts=%s"
                     (:reaction event) (get-in event [:item :type]) (get-in event [:item :channel]) (get-in event [:item :ts]))
 
