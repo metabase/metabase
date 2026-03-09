@@ -168,7 +168,7 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
       done?: L.DoneCallback,
     ): HTMLElement {
       const tileUrl = this.getTileUrl(coords);
-      const tile = document.createElement("img") as TileImage;
+      const tile: TileImage = document.createElement("img");
       tile.alt = "";
 
       if (!tileUrl) {
