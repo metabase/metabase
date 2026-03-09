@@ -170,9 +170,7 @@
    metadata temp-file]
   ;; First incremental run: no checkpoint exists yet, behave like non-incremental
   ;; to drop and recreate the table rather than appending to existing data.
-  ;; Only applies to Python transforms - MBQL transforms handle this in query.clj.
-  (if (and (transforms-base.u/python-transform? transform)
-           (nil? (:last_checkpoint_type transform)))
+  (if (nil? (:last_checkpoint_type transform))
     ((get-method transfer-file-to-db :table) driver db transform metadata temp-file)
     ;; Normal incremental: append if table exists, create if it doesn't
     (let [table-name (transforms-base.u/qualified-table-name driver target)
