@@ -37,8 +37,8 @@
 
 (deftest python-transform-basic-dependencies-test
   (testing "Python transforms with source-tables dependencies are extracted correctly"
-    (mt/with-temp [:model/Transform {t1 :id} (make-python-transform {"orders"   (mt/id :orders)
-                                                                     "products" (mt/id :products)})]
+    (mt/with-temp [:model/Transform {t1 :id} (make-python-transform [{:alias "orders"   :table_id (mt/id :orders)}
+                                                                     {:alias "products" :table_id (mt/id :products)}])]
       (is (= #{{:table (mt/id :orders)}
                {:table (mt/id :products)}}
              (transform-deps-for-db (t2/select-one :model/Transform :id t1)))))))
@@ -51,8 +51,8 @@
                                                   :name   "output_1"}
                        :model/Field _ {:table_id table1
                                        :name     "foo"}
-                       :model/Transform {t1 :id} (make-python-transform {"orders" (mt/id :orders)} "output_1")
-                       :model/Transform {t2 :id} (make-python-transform {"output_1" table1} "output_2")]
+                       :model/Transform {t1 :id} (make-python-transform [{:alias "orders" :table_id (mt/id :orders)}] "output_1")
+                       :model/Transform {t2 :id} (make-python-transform [{:alias "output_1" :table_id table1}] "output_2")]
           (is (= {t1 #{}
                   t2 #{t1}}
                  (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2]])))))))))
@@ -69,10 +69,10 @@
                                                   :name "output_2"}
                        :model/Field _ {:table_id table2
                                        :name "bar"}
-                       :model/Transform {t1 :id} (make-python-transform {"orders" (mt/id :orders)} "output_1")
-                       :model/Transform {t2 :id} (make-python-transform {"products" (mt/id :products)} "output_2")
-                       :model/Transform {t3 :id} (make-python-transform {"output_1" table1
-                                                                         "output_2" table2} "final_output")]
+                       :model/Transform {t1 :id} (make-python-transform [{:alias "orders" :table_id (mt/id :orders)}] "output_1")
+                       :model/Transform {t2 :id} (make-python-transform [{:alias "products" :table_id (mt/id :products)}] "output_2")
+                       :model/Transform {t3 :id} (make-python-transform [{:alias "output_1" :table_id table1}
+                                                                         {:alias "output_2" :table_id table2}] "final_output")]
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
@@ -97,7 +97,7 @@
                                                    :query {:source-table (mt/id :orders)}}
                                                   "sql_output")
                        ;; Python transform that depends on the SQL transform's output
-                       :model/Transform {t2 :id} (make-python-transform {"sql_output" table1} "python_output")
+                       :model/Transform {t2 :id} (make-python-transform [{:alias "sql_output" :table_id table1}] "python_output")
                        ;; Another SQL transform that depends on the Python transform's output
                        :model/Transform {t3 :id} (make-transform
                                                   {:database (mt/id)
