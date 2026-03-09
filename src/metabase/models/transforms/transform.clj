@@ -362,7 +362,8 @@
                                                                          (transforms-base.u/source-tables-map->vec st)
                                                                          st)))
                                                   (m/update-existing :query serdes/import-mbql)))}
-               :target             {:export serdes/export-mbql :import serdes/import-mbql}
+               :target             {:export #(serdes/export-mbql (dissoc % :table_id))
+                                    :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
