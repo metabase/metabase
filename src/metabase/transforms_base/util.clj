@@ -675,7 +675,11 @@
 
 (defn upsert-target-table!
   "Upsert a provisional table entry for a transform's target, creating it if it doesn't exist.
-  Returns the table ID."
+  Returns the table ID.
+
+  Thin wrapper around [[metabase.warehouse-schema.models.table/upsert-transform-target-table!]] —
+  exists because the `models` module cannot depend on `warehouse-schema` directly, but can
+  depend on `transforms-base` (which is allowed to use `warehouse-schema`)."
   [db-id schema table-name]
   (table/upsert-transform-target-table! db-id schema table-name))
 
