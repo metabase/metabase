@@ -379,8 +379,7 @@
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_non_incr_to_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
-                      {:keys [expected-initial-checkpoint
-                              expected-second-checkpoint]} checkpoint-config
+                      {:keys [expected-initial-checkpoint]} checkpoint-config
                       incremental-payload (make-incremental-transform-payload "Switch Transform" target-table transform-type checkpoint-config)
                       initial-payload (-> incremental-payload
                                           (update :source dissoc :source-incremental-strategy)
@@ -645,7 +644,7 @@
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "native_table_tag")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
-                      {:keys [field-name expected-initial-checkpoint expected-second-checkpoint]} checkpoint-config
+                      {:keys [field-name expected-initial-checkpoint]} checkpoint-config
                       checkpoint-filter-field-id (t2/select-one-pk :model/Field :name field-name :table_id (mt/id :transforms_products))
                       transform-payload {:name "Native With Table Tag"
                                          :source {:type "query"

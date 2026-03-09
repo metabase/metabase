@@ -79,22 +79,18 @@ export const buildIncrementalSource = (
     };
   }
 
-  const strategyFields =
-    formValues.checkpointFilterFieldId != null
-      ? {
-          // Convert string back to number for API
-          "checkpoint-filter-field-id": Number(
-            formValues.checkpointFilterFieldId,
-          ),
-        }
-      : {};
-
   return {
     ...source,
-    "source-incremental-strategy": {
-      type: formValues.sourceStrategy,
-      ...strategyFields,
-    },
+    "source-incremental-strategy":
+      formValues.checkpointFilterFieldId != null
+        ? {
+            type: formValues.sourceStrategy,
+            // Convert string back to number for API
+            "checkpoint-filter-field-id": Number(
+              formValues.checkpointFilterFieldId,
+            ),
+          }
+        : undefined,
   };
 };
 

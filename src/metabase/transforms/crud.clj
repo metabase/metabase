@@ -15,9 +15,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
-)
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
