@@ -215,7 +215,12 @@ const configs = [
 
       // React Hooks rules
       ...reactHooksPlugin.configs.recommended.rules,
-      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/exhaustive-deps": [
+        "warn",
+        {
+          additionalHooks: "(useRegisterMetabotContextProvider)",
+        },
+      ],
 
       "no-only-tests/no-only-tests": [
         "error",

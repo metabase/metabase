@@ -146,24 +146,22 @@ describe("metabot > context", () => {
     });
 
     const SqlFixContextRegistration = () => {
-      useRegisterMetabotContextProvider(
-        () =>
-          Promise.resolve({
-            user_is_viewing: [
-              {
-                type: "adhoc",
-                query: {
-                  type: "native",
-                  database: 1,
-                  native: {
-                    query: rawSql,
-                  },
+      useRegisterMetabotContextProvider(() =>
+        Promise.resolve({
+          user_is_viewing: [
+            {
+              type: "adhoc",
+              query: {
+                type: "native",
+                database: 1,
+                native: {
+                  query: rawSql,
                 },
-                error: queryError,
               },
-            ],
-          }),
-        [rawSql, queryError],
+              error: queryError,
+            },
+          ],
+        }),
       );
 
       return null;
