@@ -423,6 +423,7 @@
         :active              false
         :transform_target    true
         :data_source         :transform
+        :data_authority      :computed
         :initial_sync_status "complete"}))))
 
 (defn- remove-referenced-candidates
