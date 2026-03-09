@@ -1351,11 +1351,15 @@
                                            :output-table "referenced_transform_table"
                                            :transform-id referenced-transform-id}})
           (while (#'dependencies.backfill/backfill-dependencies!))
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
-            (is (=? {:data [{:id unreffed-transform-id
-                             :type "transform"
-                             :data {:name "Unreferenced Transform - unreftest"}}]}
-                    response))))))))
+          (try
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
+              (is (=? {:data [{:id unreffed-transform-id
+                               :type "transform"
+                               :data {:name "Unreferenced Transform - unreftest"}}]}
+                      response)))
+            (finally
+              ;; Clean up provisional table rows created by define-after-insert
+              (t2/delete! :model/Table :db_id (mt/id) :name [:in ["referenced_transform_table" "unreferenced_transform_table"]]))))))))
 
 (deftest ^:sequential unreferenced-snippets-test
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced snippets are returned"
