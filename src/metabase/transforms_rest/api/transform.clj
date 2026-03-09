@@ -346,33 +346,6 @@
   (api/check-superuser)
   (simple-native-query? query))
 
-(api.macros/defendpoint :post "/extract-columns"
-  :- [:map [:columns [:maybe [:sequential :string]]]]
-  "Extract column names suitable for incremental transform checkpoint filtering.
-
-  This endpoint is specifically for populating the checkpoint column dropdown in
-  incremental transforms. It only returns columns with types supported for checkpoint
-  filtering: temporal (timestamp/tz) and numeric (int/float) types.
-
-  Text, boolean, and other unsupported column types are filtered out.
-
-  The query is compiled to native SQL using [[qp.compile/compile-with-inline-parameters]],
-  which handles parameterized queries with template tags. Then extracts column names
-  and types using PreparedStatement metadata.
-
-  Returns a map with a :columns key containing a vector of column names (strings).
-  If extraction fails, returns nil for :columns."
-  [_route-params
-   _query-params
-   {:keys [query]} :- [:map
-                       [:query ::qp.schema/any-query]]]
-  (api/check-superuser)
-  (let [database-id (:database query)
-        database    (api/check-404 (t2/select-one :model/Database :id database-id))
-        driver-name (driver/the-initialized-driver (:engine database))
-        columns     (transforms.core/extract-incremental-filter-columns-from-query driver-name database-id query)]
-    {:columns columns}))
-
 ;;; -------------------------------------------------- Inspector API --------------------------------------------------
 
 (api.macros/defendpoint :get "/:id/inspect"

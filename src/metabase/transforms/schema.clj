@@ -1,6 +1,5 @@
 (ns metabase.transforms.schema
   (:require
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.queries.schema :as queries.schema]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -10,13 +9,7 @@
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
-   ;; for native
-   [:checkpoint-filter {:optional true} :string]
-   ;; for mbql and python (legacy - keep for native compatibility)
-   [:checkpoint-filter-unique-key {:optional true}
-    ::lib.schema/column-unique-key]
-   ;; for mbql and python (new approach)
-   [:checkpoint-filter-field-id {:optional true} :int]])
+   [:checkpoint-filter-field-id :int]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}
