@@ -2,5 +2,11 @@
   "base": {
     "name": "integration-embedding-onboarding-improvements",
     "hash": "b9c95f2be9efe596e4612a1e25d7031f53ae824b"
-  }
+  },
+  "merged": [
+    {
+      "number": 69456,
+      "gqlID": "PR_kwDOAczgH87C_UnL"
+    }
+  ]
 }
