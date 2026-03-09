@@ -3664,7 +3664,10 @@ databaseChangeLog:
                   name: channel_id
               - column:
                   name: slack_msg_id
-      rollback: # will be dropped with table
+      rollback:
+        - dropIndex:
+            tableName: metabot_message
+            indexName: idx_metabot_message_channel_id_slack_msg_id
 
   - changeSet:
       id: v59.2026-03-06T22:30:00
