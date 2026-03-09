@@ -492,7 +492,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   describe('"median" aggregation function', { tags: "@external" }, () => {
     beforeEach(() => {
-      H.restore("postgres-14");
+      H.restore("postgres-12");
       cy.signInAsAdmin();
 
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
