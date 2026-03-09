@@ -141,6 +141,33 @@
             mappings))
     (is (every? (complement :errors) mappings))))
 
+(deftest ^:parallel check-column-mappings-table->card-test
+  (let [mp (lib.tu/mock-metadata-provider
+            {:database {:id 1 :name "db" :engine :h2}
+             :tables [{:id 100 :name "old_t" :db-id 1}]
+             :fields [;; old table columns
+                      {:id 1 :table-id 100 :name "MATCH"
+                       :base-type :type/Integer :effective-type :type/Integer}
+                      {:id 2 :table-id 100 :name "PK_COL"
+                       :base-type :type/Integer :effective-type :type/Integer
+                       :semantic-type :type/PK}
+                      {:id 3 :table-id 100 :name "SOURCE_ONLY"
+                       :base-type :type/Text :effective-type :type/Text}]
+             :cards [{:id 1 :name "new_card" :database-id 1
+                      :result-metadata
+                      [{:name "MATCH"
+                        :base-type :type/Integer :effective-type :type/Integer}
+                       {:name "PK_COL"
+                        :base-type :type/Integer :effective-type :type/Integer}
+                       {:name "TARGET_ONLY"
+                        :base-type :type/Text :effective-type :type/Text}]}]})]
+    (testing "table->card: PK check should not fire since target is a card"
+      (is (=? [{:source {:name "MATCH"},      :target {:name "MATCH"}}
+               {:source {:name "PK_COL"},     :target {:name "PK_COL"}}
+               {:source {:name "SOURCE_ONLY"}}
+               {:target {:name "TARGET_ONLY"}}]
+              (lib-be/check-column-mappings mp [:table 100] [:card 1]))))))
+
 (deftest ^:parallel swap-source-in-query-table->table-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/with-fields [(meta/field-metadata :orders :id)
