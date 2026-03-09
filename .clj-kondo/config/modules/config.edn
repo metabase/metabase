@@ -808,7 +808,6 @@
            lib
            lib-be
            models
-           premium-features
            request
            settings
            sql-tools
