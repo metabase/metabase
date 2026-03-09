@@ -271,7 +271,7 @@ const getYAxisSplit = (
   const auto: DataKey[] = [];
 
   seriesModels.forEach((seriesModel) => {
-    const seriesSettings = settings.series(
+    const seriesSettings = settings.series?.(
       seriesModel.legacySeriesSettingsObjectKey,
     );
     const axis = seriesSettings?.axis;

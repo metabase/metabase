@@ -5,7 +5,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
@@ -100,12 +99,12 @@
   Expects MBQL 5 queries."
   [{database-id :database, :as query} :- ::queries.schema/query]
   (when (seq query)
-    (if-let [source-card-id (lib.util/source-card-id query)]
+    (if-let [source-card-id (lib/primary-source-card-id query)]
       (let [card (or (lib.metadata/card query source-card-id)
                      ;; Card may belong to a different Database; fetch from the app DB
                      (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id source-card-id))]
         (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
-      (let [table-id (lib.util/source-table-id query)]
+      (let [table-id (lib/primary-source-table-id query)]
         {:database-id database-id
          :table-id    table-id}))))
 

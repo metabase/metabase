@@ -69,6 +69,7 @@ const ORDERS_MULTI_STAGE_QUESTION = {
 describe("scenarios > metrics > editing", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsNormalUser();
   });
 
@@ -120,11 +121,24 @@ describe("scenarios > metrics > editing", () => {
         .should("be.visible")
         .click();
 
+      cy.log("Verify metric_create_started event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_create_started",
+        triggered_from: "browse_metrics",
+      });
+
       H.miniPicker().within(() => {
         cy.findByText("Sample Database").click();
         cy.findByText("Orders").click();
       });
       saveMetric();
+
+      cy.log("Verify metric_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_created",
+        triggered_from: "main_app",
+        result: "success",
+      });
 
       cy.log("Go to the collection this metric was saved in");
       cy.findByTestId("head-crumbs-container")

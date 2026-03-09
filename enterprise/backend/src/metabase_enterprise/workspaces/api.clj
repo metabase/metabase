@@ -28,9 +28,8 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.transforms.core :as transforms]
-   [metabase.transforms.crud :as transforms.crud]
    [metabase.transforms.feature-gating :as transforms.gating]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
@@ -80,7 +79,7 @@
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]
-     [:source-tables   [:sequential [:map [:alias :string] [:table :int]]]]
+     [:source-tables   [:sequential [:map [:alias [:string {:min 1}]] [:table_id :int]]]]
      [:type [:= "python"]]
      [:body :string]]]])
 
@@ -802,7 +801,7 @@
   (doseq [field [:name :source :target]]
     (api/check-400 (get body field) (str (name field) " is required when creating a new transform")))
   ;; Check premium feature requirements
-  (api/check (transforms.util/check-feature-enabled body)
+  (api/check (transforms.u/check-feature-enabled body)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
   (t2/with-transaction [_tx]
     (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))
@@ -830,8 +829,7 @@
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body
                                                  :ref-id ref-id)]
       (-> (select-malli-keys WorkspaceTransform workspace-transform-alias transform)
-          attach-isolated-target
-          transforms.crud/python-source-table-ref->table-id))))
+          attach-isolated-target))))
 
 (api.macros/defendpoint :post "/:ws-id/transform"
   :- WorkspaceTransform
@@ -879,8 +877,7 @@
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
       (t2/select-one :workspace_id ws-id :ref_id tx-id)
       api/check-404
-      attach-isolated-target
-      transforms.crud/python-source-table-ref->table-id))
+      attach-isolated-target))
 
 (api.macros/defendpoint :get "/:ws-id/transform/:tx-id" :- WorkspaceTransform
   "Get a specific transform in a workspace."

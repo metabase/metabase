@@ -38,6 +38,16 @@ Pairing Official badges with [verified items](./content-verification.md) can hel
 
 To add an Official badge to a collection, an admin can visit the collection and click on the three-dot menu (**...**) and select **Make collection official**. Admins can also remove an Official badge in the same menu. Admins can also mark a collection as Official or not when they first create the collection.
 
+### Library
+
+{% include plans-blockquote.html feature="Library" %}
+
+![Library](./images/library.png)
+
+The Library is a special collection that helps you create a source of truth for analytics by providing a centrally managed set of curated content. Use the Library to separate authoritative, reusable components from ad-hoc analyses.
+
+See [Library](../data-studio/library.md).
+
 ## Collection permissions
 
 [Administrators can give you different kinds of access](../permissions/collections.md) to each collection:

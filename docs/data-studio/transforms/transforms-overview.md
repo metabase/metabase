@@ -11,6 +11,8 @@ Transforms can be used to, well, transform your data - do stuff like preprocessi
 
 You'll write a query or a Python script in Metabase, a transform will run this query or script, create a table in your target database containing the results, and sync that table to Metabase, so it can be used as a data source for questions or other transforms.
 
+![Transforms](../images/transforms.png)
+
 ## Transforms overview
 
 - **Transforms** are queries (created either with SQL or the query builder) or Python scripts that write back to your database and create a new, persistent table. Use transforms to clean, join, or pre-aggregate data.
@@ -62,6 +64,8 @@ You can see all your Metabase's transforms:
 2. Click the **grid** icon on top right and go to **Data Studio**.
 3. In the left sidebar, select **Transforms**.
 
+![Transforms](../images/transforms.png)
+
 ## Create a transform
 
 _Data Studio > Transforms_
@@ -75,9 +79,13 @@ To create a transform:
 3. In the left sidebar, select **Transforms**.
 4. Click **+ New** and select a source for your transform.
 
+   ![New transform](../images/new_transform.png)
+
    You can create your transform using Metabase's [graphical query builder](../../questions/query-builder/editor.md), SQL, or Python.
 
    For more information on transforms built with the query builder or SQL, see [query-based transforms](query-transforms.md). For more information on Python transforms, see [Python transforms](python-transforms.md).
+
+   ![Query transform](../images/sql-transform.png)
 
    If you select **Copy of a saved question** for the transform's source, you can copy the query of an existing Metabase question (either a SQL question or a query builder question) into your transform query. Metabase will only _copy_ the question's query. Later edits to that original question won't affect the transform's query.
 
@@ -97,6 +105,8 @@ To create a transform:
    - **Folder** (optional): The folder where the transform should live. Click on the field to pick a different folder or create a new one.
    - **Incremental transformation** (optional): see [Incremental query-based transforms](query-transforms.md#incremental-query-transforms) or [Incremental Python transforms](python-transforms.md)
 
+     ![Transform settings](../images/transform-settings.png)
+
 7. Optionally, once the transform is saved, assign tags to your transform. Tags are used by [jobs](./jobs-and-runs.md) to run transforms on schedule.
 
 ## Use Metabot to generate code for transforms
@@ -105,13 +115,19 @@ To create a transform:
 
 You can ask Metabot to generate a new SQL or Python-based transform, or edit an existing transform.
 
-1. Go to **Data studio > Transforms**.
+1. Go to **Data studio > Transforms**. If you want Metabot to edit an existing transform, navigate to the transform.
 2. While in Transforms view, click on the Metabot icon in top right.
 3. Describe the transform that you'd like Metabot to write.
 
    You can specify which kind of transform you want (Python or SQL) and @-mention specific data sources to help Metabot understand your request.
 
-Metabot will create a to-do list for itself that will show its thinking process, and then work through the list.
+   ![Create a new transform with codegen](../images/transform-codegen.png)
+
+4. Metabot will create a to-do list for itself that will show its thinking process, and then work through the list.
+
+5. If you asked Metabot to create a new transform, review the code that Metabot offers in the chat window and click on "Create" under the code snippet.
+
+   ![Create snippet](../images/create-transform.png)
 
 You can continue working with Metabot to refine your code. Metabot will suggest code changes, and give you the option of accepting or rejecting the changes.
 
@@ -122,6 +138,8 @@ _Data Studio > Transforms_
 You can edit the transform's name and description, query/script, target table, and incremental settings. You can edit the transform even if it already ran or is scheduled to run.
 
 If you're using remote sync, you won't be able to edit transforms if your instance is in ["read-only" sync mode](../../installation-and-operation/remote-sync.md).
+
+![Edit transform settings](../images/transform-edit-settings.png)
 
 ### Edit transform's query or script
 
@@ -162,9 +180,11 @@ For Python transforms, you'll also see the transform's execution logs.
 
 ## Transform dependencies
 
-> Transform dependency graph is only available on Pro and Enterprise plans (both self-hosted and Metabase Cloud)
+{% include plans-blockquote.html feature="Transform dependencies" is_plural=true%}
 
 _Data Studio > Transforms > Dependencies_
+
+![Transforms dependencies](../images/transform-dependencies.png)
 
 Transform queries can use the data from other transforms, and query-based transforms can also reference Metabase questions and models. For example, you can have a transform that uses data from a `raw_events` table and writes to a `stg_events` table, and then create another transform that uses data from the `stg_events` table and writes to an `events` table.
 

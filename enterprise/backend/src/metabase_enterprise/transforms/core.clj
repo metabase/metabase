@@ -7,7 +7,7 @@
   But we need a 'real' module, because all tests must belong to a module."
   (:require
    [java-time.api :as t]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [toucan2.core :as t2]))
 
 (defenterprise transform-stats
@@ -15,20 +15,22 @@
   Rolling stats are included under :transform-rolling (up to date totals for today)"
   :feature :none
   []
-  (let [today-utc     (t/offset-date-time (t/zone-offset "+00"))
-        yesterday-utc (t/minus today-utc (t/days 1))
-        count-runs    (fn [source-types date]
-                        (or (:cnt (t2/query-one {:select [[[:count :r.id] :cnt]]
-                                                 :from   [[:transform_run :r]]
-                                                 :join   [[:transform :t] [:= :t.id :r.transform_id]]
-                                                 :where  [:and
-                                                          [:= :r.status "succeeded"]
-                                                          [:in :t.source_type source-types]
-                                                          [:= [:cast :r.end_time :date] [:cast date :date]]]}))
-                            0))]
-    {:transform-native-runs         (count-runs ["native" "mbql"] yesterday-utc)
-     :transform-python-runs         (count-runs ["python"] yesterday-utc)
-     :transform-usage-date          (str (t/local-date yesterday-utc))
-     :transform-rolling-native-runs (count-runs ["native" "mbql"] today-utc)
-     :transform-rolling-python-runs (count-runs ["python"] today-utc)
-     :transform-rolling-usage-date  (str (t/local-date today-utc))}))
+  (let [today-utc      (t/offset-date-time (t/zone-offset "+00"))
+        yesterday-utc  (t/minus today-utc (t/days 1))
+        count-all-runs (fn [date]
+                         (or (:cnt (t2/query-one {:select [[[:count :r.id] :cnt]]
+                                                  :from   [[:transform_run :r]]
+                                                  :where  [:and
+                                                           [:= :r.status "succeeded"]
+                                                           [:= [:cast :r.end_time :date] [:cast date :date]]]}))
+                             0))
+        advanced?      (and (premium-features/has-feature? :transforms)
+                            (premium-features/has-feature? :transforms-python))
+        yesterday-runs (count-all-runs yesterday-utc)
+        today-runs     (count-all-runs today-utc)]
+    {:transform-basic-runs                   (if advanced? 0 yesterday-runs)
+     :transform-advanced-runs                (if advanced? yesterday-runs 0)
+     :transform-usage-date         (str (t/local-date yesterday-utc))
+     :transform-rolling-basic-runs           (if advanced? 0 today-runs)
+     :transform-rolling-advanced-runs        (if advanced? today-runs 0)
+     :transform-rolling-usage-date (str (t/local-date today-utc))}))

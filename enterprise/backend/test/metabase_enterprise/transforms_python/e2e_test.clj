@@ -71,7 +71,7 @@
               (let [original           {:name   "Gadget Products"
                                         :source {:type  "python"
                                                  :source-database (mt/id)
-                                                 :source-tables [{:alias "transforms_customers" :table (mt/id :transforms_customers)}]
+                                                 :source-tables [{:alias "transforms_customers" :table_id (mt/id :transforms_customers)}]
                                                  :body  (str "import pandas as pd\n"
                                                              "\n"
                                                              "def transform():\n"

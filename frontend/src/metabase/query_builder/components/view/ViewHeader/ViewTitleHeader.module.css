@@ -25,6 +25,21 @@
   }
 }
 
+@container query-builder (max-width: 50em) {
+  .ActionButtonRoot[data-variant="default"] {
+    flex-shrink: 0;
+    padding: 11px;
+  }
+
+  .ActionButtonLabel {
+    display: none;
+  }
+
+  .ActionButtonSection[data-position="left"] {
+    margin-right: 0;
+  }
+}
+
 .FilterButtonAttachment {
   &[data-variant="default"] {
     padding: 0.5rem;
@@ -140,6 +155,10 @@
   }
 }
 
+.Divider {
+  flex-grow: 1;
+}
+
 .ViewHeaderActionPanel {
   display: flex;
   align-items: center;
@@ -147,13 +166,17 @@
   gap: 0.5rem;
   position: relative;
 
-  @media screen and (max-width: 40em) {
+  @container query-builder (max-width: 70em) {
     margin-left: 0;
     width: 100%;
-    justify-content: space-between;
+    justify-content: start;
     border-top: 1px solid var(--mb-color-border);
     margin-top: 1rem;
-    padding: 0.5rem 2.5rem 0 2rem;
+    padding: 0.5rem 1.325rem 0 1.325rem;
+  }
+
+  @media screen and (max-width: 40em) {
+    padding-inline: 1.325rem;
   }
 
   /* increase specificity */
@@ -183,14 +206,23 @@
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 
-  @media screen and (max-width: 40em) {
+  @media screen and (max-width: 70em) {
+    &.isNavBarOpen {
+      gap: 0.25rem;
+
+      .ViewHeaderActionPanel {
+        margin-left: 0;
+      }
+
+      flex-direction: column;
+      align-items: start;
+    }
+  }
+
+  @container query-builder (max-width: 70em) {
     flex-direction: column;
     align-items: start;
     padding: 0.5rem 0;
-
-    &.isNavBarOpen {
-      margin-top: var(--app-subheader-height);
-    }
   }
 }
 
@@ -213,6 +245,18 @@
 
   &.isModelOrMetric {
     right: 0;
+  }
+}
+
+.ViewHeaderLeftSideWrapper {
+  flex-grow: 1;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 0.5rem;
+
+  @container query-builder (max-width: 70em) {
+    padding-left: 1.325rem;
   }
 }
 
@@ -252,9 +296,7 @@
     }
   }
 
-  @media screen and (max-width: 40em) {
-    padding: 0 1.25rem;
-
+  @container query-builder (max-width: 70em) {
     .SavedQuestionHeaderButtonContainer {
       top: 0;
     }
@@ -269,9 +311,16 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  column-gap: 1rem;
+  row-gap: 0.25rem;
+}
+
+.FilterPanel:not([data-css-specificity-hack]) {
+  @container query-builder (max-width: 70em) {
+    padding-inline: 1.325rem;
+  }
 
   @media screen and (max-width: 40em) {
-    flex-direction: column;
-    align-items: start;
+    padding-inline: 1.325rem;
   }
 }

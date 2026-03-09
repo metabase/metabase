@@ -219,7 +219,11 @@ export function getPrevDashAndTabs({
   filterRemovedTabs?: boolean;
 }) {
   const dashId = state.dashboardId;
-  const prevDash = dashId ? state.dashboards[dashId] : null;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore - possibly infinite type error
+  const prevDash: StoreDashboard | null = dashId
+    ? state.dashboards[dashId]
+    : null;
   const prevTabs =
     prevDash?.tabs?.filter((t) => !filterRemovedTabs || !t.isRemoved) ?? [];
 

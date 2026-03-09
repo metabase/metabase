@@ -10,7 +10,7 @@ What kind of problem are you having with your [model][model-docs]?
 
 If you don't see [the model button][model-button-image] (three squares):
 
-1. Check if you're using a Metabase version that's 0.42.0 or greater by clicking the **grid** icon in the top right, selecting **Help**, then choosing **About Metabase.**
+1. Check if you're using a Metabase version that's 0.42.0 or greater by clicking the **profile or grid icon** in the top right, selecting **Help**, then choosing **About Metabase.**
 2. Clear your browser cache.
 3. Ask your Metabase admin to clear the proxy cache (if you're using one).
 

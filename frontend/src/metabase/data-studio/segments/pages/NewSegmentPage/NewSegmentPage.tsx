@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import { useCreateSegmentMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { trackSegmentCreated } from "metabase/data-studio/analytics";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -78,8 +79,10 @@ export function NewSegmentPage({
     });
 
     if (error) {
+      trackSegmentCreated("failure", "data_studio_segments");
       sendErrorToast(t`Failed to create segment`);
     } else if (segment) {
+      trackSegmentCreated("success", "data_studio_segments", segment.id);
       setSavedSegment(segment);
       sendSuccessToast(t`Segment created`);
     }

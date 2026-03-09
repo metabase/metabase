@@ -1,11 +1,23 @@
 const { H } = cy;
 
+import {
+  MetabaseProvider,
+  StaticQuestion,
+  type StaticQuestionProps,
+} from "@metabase/embedding-sdk-react";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion, modal, popover } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { mountStaticQuestion } from "e2e/support/helpers/embedding-sdk-component-testing";
+import {
+  DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
+  mountSdk,
+  mountStaticQuestion,
+} from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+//eslint-disable-next-line @typescript-eslint/no-restricted-imports
+import { ThemeProvider } from "metabase/ui";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -40,6 +52,76 @@ describe("scenarios > embedding-sdk > static-question", () => {
 
       cy.log("should not show question title by default");
       cy.findByText("47563").should("not.exist");
+    });
+  });
+
+  it("should not render the top bar when it has no visible children, and restore it when children appear", () => {
+    cy.intercept("GET", "/api/card/*").as("getCard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("GET", "/api/user/current").as("getUser");
+
+    cy.get<number>("@questionId").then((questionId) => {
+      const consoleErrorSpy = cy.spy(console, "error").as("consoleError");
+
+      const renderQuestion = (props: Partial<StaticQuestionProps>) => (
+        <ThemeProvider>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <StaticQuestion questionId={questionId} {...props} />
+          </MetabaseProvider>
+        </ThemeProvider>
+      );
+
+      mountSdk(
+        renderQuestion({ title: false, withChartTypeSelector: false }),
+      ).then(({ rerender }) => {
+        cy.wait("@getUser");
+        cy.wait("@getCard");
+
+        getSdkRoot().within(() => {
+          cy.findByText("Product ID").should("be.visible");
+          cy.findByTestId("static-question-top-bar").should("not.exist");
+        });
+
+        rerender(renderQuestion({ title: true, withChartTypeSelector: false }));
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("static-question-top-bar")
+            .should("exist")
+            .and("be.visible");
+        });
+
+        rerender(
+          renderQuestion({ title: false, withChartTypeSelector: false }),
+        );
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("static-question-top-bar").should("not.exist");
+        });
+
+        rerender(renderQuestion({ title: false, withDownloads: true }));
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("static-question-top-bar")
+            .should("exist")
+            .and("be.visible");
+        });
+
+        rerender(renderQuestion({ title: false, withDownloads: false }));
+
+        getSdkRoot().within(() => {
+          cy.findByTestId("static-question-top-bar").should("not.exist");
+        });
+
+        cy.then(() => {
+          const refWarningCalls = consoleErrorSpy
+            .getCalls()
+            .filter((call: sinon.SinonSpyCall) =>
+              String(call.args[0]).includes("cannot be given refs"),
+            );
+
+          expect(refWarningCalls).to.have.length(0);
+        });
+      });
     });
   });
 

@@ -32,7 +32,7 @@ export interface SortableItem {
   hideSettings?: boolean;
 }
 
-interface ChartSettingSeriesOrderProps {
+export type ChartSettingSeriesOrderProps = {
   onChange: (rows: SortableItem[]) => void;
   value: SortableItem[];
   onShowWidget: (
@@ -52,7 +52,7 @@ interface ChartSettingSeriesOrderProps {
   otherSettingWidgetId?: string;
   onOtherColorChange?: (newColor: string) => void;
   truncateAfter?: number;
-}
+};
 
 export const ChartSettingSeriesOrder = ({
   onChange,

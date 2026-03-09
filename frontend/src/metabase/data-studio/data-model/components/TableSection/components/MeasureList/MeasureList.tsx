@@ -2,11 +2,12 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackMeasureCreateStarted } from "metabase/data-studio/analytics";
 import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Button, Group, Icon, Stack } from "metabase/ui";
-import type { Table } from "metabase-types/api";
+import type { ConcreteTableId, Table } from "metabase-types/api";
 
 import S from "../../TableSection.module.css";
 import { MeasureItem } from "../MeasureItem";
@@ -27,6 +28,14 @@ export function MeasureList({ table }: MeasureListProps) {
   const canWriteMeasures = useSelector((state) =>
     getUserCanWriteMeasures(state, table.is_published),
   );
+  const onNewMeasureClick = () => {
+    trackMeasureCreateStarted(table.id as ConcreteTableId);
+  };
+  const newMeasureUrl = Urls.newDataStudioDataModelMeasure({
+    databaseId: table.db_id,
+    schemaName: table.schema,
+    tableId: table.id,
+  });
 
   return (
     <Stack gap="md" data-testid="table-measures-page">
@@ -34,17 +43,17 @@ export function MeasureList({ table }: MeasureListProps) {
         <Group gap="md" justify="flex-start" wrap="nowrap">
           <Button
             component={ForwardRefLink}
-            to={Urls.newDataStudioDataModelMeasure({
-              databaseId: table.db_id,
-              schemaName: table.schema,
-              tableId: table.id,
-            })}
             h={32}
+            leftSection={<Icon name="add" />}
+            onAuxClick={onNewMeasureClick}
+            onClickCapture={onNewMeasureClick}
             px="sm"
             py="xs"
             size="xs"
-            leftSection={<Icon name="add" />}
-          >{t`New measure`}</Button>
+            to={newMeasureUrl}
+          >
+            {t`New measure`}
+          </Button>
         </Group>
       )}
 

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type * as React from "react";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";

@@ -44,9 +44,27 @@ export type ComparisonResult = {
   comparisonValue: RowValue | undefined;
   display: {
     percentChange: string;
-    comparisonValue: string | number | JSX.Element | null;
+    comparisonValue: SmartScalarDisplayValue;
   };
   percentChange: number | undefined;
+};
+
+export type SmartScalarDisplayValue = string | number | JSX.Element | null;
+
+export type Trend = {
+  value: RowValue;
+  clicked: ClickObject;
+  formatOptions: ColumnSettings;
+  display: {
+    value: SmartScalarDisplayValue;
+    date: SmartScalarDisplayValue;
+  };
+  comparisons: ComparisonResult[];
+};
+
+export type ComputeTrendResult = {
+  trend?: Trend;
+  error?: Error;
 };
 
 interface DateUnitSettings {
@@ -74,7 +92,7 @@ export function computeTrend(
   insights: Insight[] | null | undefined,
   settings: VisualizationSettings,
   { getColor }: { getColor: ColorGetter },
-) {
+): ComputeTrendResult {
   try {
     const comparisons = settings["scalar.comparisons"] || [];
     const currentMetricData = getCurrentMetricData({
