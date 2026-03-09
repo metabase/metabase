@@ -412,19 +412,29 @@
    configured to target this table (synchronous, never stale), and cleared asynchronously when no
    transforms reference it anymore. This means the column may have false positives (a table marked as
    a target when no transform actually targets it) but **never false negatives** (a targeted table
-   will always have `transform_target = true`)."
+   will always have `transform_target = true`).
+
+   Uses a savepoint-wrapped INSERT so that a conflict inside an existing transaction
+   (e.g. from `define-after-insert`) does not poison the outer PostgreSQL transaction.
+   See docs/with-conflict-retry-postgres-investigation.md for background."
   [db-id schema table-name]
-  (app-db/update-or-insert!
-   :model/Table
-   {:db_id db-id :schema schema :name table-name}
-   (fn [existing]
-     (when-not existing
-       {:display_name        (humanization/name->human-readable-name table-name)
-        :active              false
-        :transform_target    true
-        :data_source         :metabase-transform
-        :data_authority      :computed
-        :initial_sync_status "complete"}))))
+  (or (t2/select-one-pk :model/Table :db_id db-id :schema schema :name table-name)
+      (try
+        (t2/with-transaction [_conn]
+          (t2/insert-returning-pk! :model/Table
+                                   {:db_id               db-id
+                                    :schema              schema
+                                    :name                table-name
+                                    :display_name        (humanization/name->human-readable-name table-name)
+                                    :active              false
+                                    :transform_target    true
+                                    :data_source         :metabase-transform
+                                    :data_authority      :computed
+                                    :initial_sync_status "complete"}))
+        (catch Exception _e
+          ;; INSERT conflicted (concurrent insert or leaked row) — the row exists, just find it.
+          (or (t2/select-one-pk :model/Table :db_id db-id :schema schema :name table-name)
+              (throw _e))))))
 
 (defn- remove-referenced-candidates
   "Short-circuiting reduce: removes matched triples from triple->table."
