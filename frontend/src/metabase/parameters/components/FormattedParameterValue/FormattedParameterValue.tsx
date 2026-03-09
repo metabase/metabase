@@ -7,7 +7,6 @@ import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   getFields,
-  hasFields,
   isFieldFilterUiParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
@@ -61,7 +60,6 @@ function FormattedParameterValue({
   const renderContent = () => {
     if (
       isFieldFilterUiParameter(parameter) &&
-      hasFields(parameter) &&
       !isDateParameter(parameter) &&
       !isTemporalUnitParameter(parameter)
     ) {
