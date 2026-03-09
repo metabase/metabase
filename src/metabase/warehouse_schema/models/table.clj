@@ -444,6 +444,11 @@
    referenced by any Transform or WorkspaceTransform. Safe because these rows were never active,
    so they have no child records.
 
+   Note: this only handles *inactive* provisional tables. Active tables that were previously
+   targeted by a transform retain `transform_target = true` even after the transform is deleted.
+   A separate process to reset `transform_target` on active, unreferenced tables is not yet
+   implemented.
+
    Future optimizations:
    - Add target_table_id FKs to avoid scanning transform rows.
    - Pre-filter via workspace_input/workspace_output table references."

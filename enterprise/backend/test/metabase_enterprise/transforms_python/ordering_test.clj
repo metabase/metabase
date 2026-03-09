@@ -5,6 +5,7 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as ordering]
    [metabase.transforms.test-util :as transforms.tu]
+   [metabase.warehouse-schema.models.table :as ws.table]
    [toucan2.core :as t2]))
 
 (defn- make-transform [query & [name schema]]
@@ -47,49 +48,67 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (testing "Python transforms are ordered correctly based on source-tables dependencies"
       (let [schema (transforms.tu/default-schema-or-public)]
-        ;; t1's after-insert creates a provisional table for "output_1"; look it up for t2's source-tables
-        (mt/with-temp [:model/Transform {t1 :id} (make-python-transform [{:alias "orders" :table_id (mt/id :orders)}] "output_1")]
-          (let [table1 (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name "output_1")]
-            (mt/with-temp [:model/Transform {t2 :id} (make-python-transform [{:alias "output_1" :table_id table1}] "output_2")]
-              (is (= {t1 #{}
-                      t2 #{t1}}
-                     (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2]])))))))))))
+        (ws.table/gc-transform-target-tables!)
+        (mt/with-temp [:model/Table {table1 :id} {:schema schema
+                                                  :name   "output_1"}
+                       :model/Field _ {:table_id table1
+                                       :name     "foo"}
+                       :model/Transform {t1 :id} (make-python-transform [{:alias "orders" :table_id (mt/id :orders)}] "output_1")
+                       :model/Transform {t2 :id} (make-python-transform [{:alias "output_1" :table_id table1}] "output_2")]
+          (is (= {t1 #{}
+                  t2 #{t1}}
+                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2]])))))))))
 
 (deftest python-transform-multiple-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (testing "Python transforms with multiple table dependencies"
       (let [schema (transforms.tu/default-schema-or-public)]
-        ;; t1 and t2's after-insert hooks create provisional tables; look them up for t3's source-tables
-        (mt/with-temp [:model/Transform {t1 :id} (make-python-transform [{:alias "orders" :table_id (mt/id :orders)}] "output_1")
-                       :model/Transform {t2 :id} (make-python-transform [{:alias "products" :table_id (mt/id :products)}] "output_2")]
-          (let [table1 (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name "output_1")
-                table2 (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name "output_2")]
-            (mt/with-temp [:model/Transform {t3 :id} (make-python-transform [{:alias "output_1" :table_id table1}
-                                                                             {:alias "output_2" :table_id table2}] "final_output")]
-              (is (= {t1 #{}
-                      t2 #{}
-                      t3 #{t1 t2}}
-                     (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))))
+        (ws.table/gc-transform-target-tables!)
+        (mt/with-temp [:model/Table {table1 :id} {:schema schema
+                                                  :name "output_1"}
+                       :model/Field _ {:table_id table1
+                                       :name "foo"}
+                       :model/Table {table2 :id} {:schema schema
+                                                  :name "output_2"}
+                       :model/Field _ {:table_id table2
+                                       :name "bar"}
+                       :model/Transform {t1 :id} (make-python-transform [{:alias "orders" :table_id (mt/id :orders)}] "output_1")
+                       :model/Transform {t2 :id} (make-python-transform [{:alias "products" :table_id (mt/id :products)}] "output_2")
+                       :model/Transform {t3 :id} (make-python-transform [{:alias "output_1" :table_id table1}
+                                                                         {:alias "output_2" :table_id table2}] "final_output")]
+          (is (= {t1 #{}
+                  t2 #{}
+                  t3 #{t1 t2}}
+                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))
 
 (deftest mixed-transform-ordering-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :transforms/table)
     (testing "Python and query transforms are ordered together correctly"
       (let [schema (transforms.tu/default-schema-or-public)]
-        ;; Each transform's after-insert creates a provisional table for its target
-        (mt/with-temp [:model/Transform {t1 :id} (make-transform
-                                                   {:database (mt/id),
-                                                    :type "query",
-                                                    :query {:source-table (mt/id :orders)}}
-                                                   "sql_output")]
-          (let [table1 (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name "sql_output")]
-            (mt/with-temp [:model/Transform {t2 :id} (make-python-transform [{:alias "sql_output" :table_id table1}] "python_output")]
-              (let [table2 (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name "python_output")]
-                (mt/with-temp [:model/Transform {t3 :id} (make-transform
-                                                           {:database (mt/id)
-                                                            :type "query"
-                                                            :query {:source-table table2}}
-                                                           "final_output")]
-                  (is (= {t1 #{}
-                          t2 #{t1}
-                          t3 #{t2}}
-                         (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))))))
+        (ws.table/gc-transform-target-tables!)
+        (mt/with-temp [:model/Table {table1 :id} {:schema schema
+                                                  :name "sql_output"}
+                       :model/Field _ {:table_id table1
+                                       :name "foo"}
+                       :model/Table {table2 :id} {:schema schema
+                                                  :name "python_output"}
+                       :model/Field _ {:table_id table2
+                                       :name "bar"}
+                       ;; SQL transform that depends on orders table
+                       :model/Transform {t1 :id} (make-transform
+                                                  {:database (mt/id),
+                                                   :type "query",
+                                                   :query {:source-table (mt/id :orders)}}
+                                                  "sql_output")
+                       ;; Python transform that depends on the SQL transform's output
+                       :model/Transform {t2 :id} (make-python-transform [{:alias "sql_output" :table_id table1}] "python_output")
+                       ;; Another SQL transform that depends on the Python transform's output
+                       :model/Transform {t3 :id} (make-transform
+                                                  {:database (mt/id)
+                                                   :type "query"
+                                                   :query {:source-table table2}}
+                                                  "final_output")]
+          (is (= {t1 #{}
+                  t2 #{t1}
+                  t3 #{t2}}
+                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))
