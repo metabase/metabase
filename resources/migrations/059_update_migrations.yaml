@@ -3668,7 +3668,7 @@ databaseChangeLog:
   - changeSet:
       id: v59.2026-03-09T00:00:01
       author: bronsa
-      comment: Add checkpoint range columns to transform_run
+      comment: Add checkpoint_filter_field_id column to transform_run
       changes:
         - addColumn:
             tableName: transform_run
@@ -3679,15 +3679,33 @@ databaseChangeLog:
                   remarks: The field ID used for incremental checkpoint filtering
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v59.2026-03-09T00:00:02
+      author: bronsa
+      comment: Add checkpoint_lo_value column to transform_run
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
               - column:
                   name: checkpoint_lo_value
-                  type: text
+                  type: ${text.type}
                   remarks: The low checkpoint value for this run (exclusive lower bound)
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v59.2026-03-09T00:00:03
+      author: bronsa
+      comment: Add checkpoint_hi_value column to transform_run
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
               - column:
                   name: checkpoint_hi_value
-                  type: text
+                  type: ${text.type}
                   remarks: The high checkpoint value for this run (inclusive upper bound)
                   constraints:
                     nullable: true
