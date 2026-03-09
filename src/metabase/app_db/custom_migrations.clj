@@ -2203,10 +2203,10 @@
                                                         [:= :name table-name]]
                                                :limit  1}))))]
     (doseq [{:keys [id target target_db_id]} (t2/query {:select [:id :target :target_db_id]
-                                                         :from   [:transform]
-                                                         :where  [:and
-                                                                  [:not= :target_db_id nil]
-                                                                  [:= :target_table_id nil]]})]
+                                                        :from   [:transform]
+                                                        :where  [:and
+                                                                 [:not= :target_db_id nil]
+                                                                 [:= :target_table_id nil]]})]
       (let [target-map (json-out target false)
             table-id   (or (get target-map "table_id")
                            (when-let [table-name (get target-map "name")]
