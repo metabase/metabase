@@ -639,9 +639,9 @@
           (let [schema (:schema error)
                 props (or (mc/properties schema)
                           (mc/type-properties schema))
-                expected-type (:error/expected-type props)]
-            (when expected-type
-              [error expected-type])))
+                type-desc (:error/type-description props)]
+            (when type-desc
+              [error type-desc])))
         (:errors explanation)))
 
 (defn- parent-operator-name
@@ -649,22 +649,9 @@
   [expr in-path]
   (when (and (seq in-path) (every? integer? in-path))
     (let [parent-path (pop (vec in-path))
-          parent (if (empty? parent-path)
-                   expr
-                   (get-in expr parent-path))]
+          parent (get-in expr parent-path)]
       (when (and (vector? parent) (first parent))
         (name (first parent))))))
-
-(defn- expected-type-description
-  "Return a user-facing description of a type."
-  [expected-type]
-  (condp = expected-type
-    :type/Boolean (i18n/tru "a boolean")
-    :type/Text (i18n/tru "a string")
-    :type/Integer (i18n/tru "an integer")
-    :type/Number (i18n/tru "a number")
-    :type/Temporal (i18n/tru "a date or time")
-    nil))
 
 (defn- friendly-error-message
   [explanation]
@@ -680,9 +667,8 @@
 
 (defn- type-error-message
   [explanation expr]
-  (let [[type-error expected-type] (find-type-error explanation)
-        op-name (parent-operator-name expr (:in type-error))
-        type-desc (expected-type-description expected-type)]
+  (let [[type-error type-desc] (find-type-error explanation)
+        op-name (parent-operator-name expr (:in type-error))]
     (if (and op-name type-desc)
       (i18n/tru "Types are incompatible: {0} expects {1}." op-name type-desc)
       (i18n/tru "Types are incompatible."))))
