@@ -54,9 +54,9 @@
       (throw (validation-error "Change set IDs are not distinct." {:duplicates duplicates})))))
 
 (defn- directory-based-migration-file?
-  "Returns true if the file is a directory-based migration file (e.g., `060/20260106_125531.yaml`)."
+  "Returns true if the file is a directory-based migration file (e.g., `060/20260905-mq-indexes.yaml`)."
   [file]
-  (boolean (re-matches #".*\d{3}/\d{8}_\d{6}\.yaml$" (str file))))
+  (boolean (re-matches #".*\d{3}/\d{8}-[a-z0-9\-]+\.yaml$" (str file))))
 
 (defn- file-version
   "Extracts the migration version number from a file.
@@ -69,15 +69,11 @@
 
 (defn- changeset-version+id
   "Returns [version local-id] for a changeset.
-  For per-release IDs like 'v49.00-032', parses from the ID itself.
-  For directory-based files, uses the directory for version and filename (without .yaml) for local-id."
-  [file changeset-id]
+  Parses from the ID itself, which should be of the form 'v{version}.{local-id}'."
+  [_file changeset-id]
   (let [id-str (str changeset-id)]
-    (if (directory-based-migration-file? file)
-      [(file-version file)
-       (str/replace (.getName ^java.io.File file) #"\.yaml$" "")]
-      (when-let [[_ version local-id] (re-matches #"^v(\d+)\.(.+)$" id-str)]
-        [(parse-long version) local-id]))))
+    (when-let [[_ version local-id] (re-matches #"^v(\d+)\.(.+)$" id-str)]
+      [(parse-long version) local-id])))
 
 (defn- changeset-at-or-after?
   "Returns true if the changeset (identified by file context and changeset ID) is at or after
@@ -102,18 +98,13 @@
 (defn- require-change-set-ids-in-correct-file [change-log file]
   (let [fv  (file-version file)
         ids (change-set-ids change-log)
-        dir-based? (directory-based-migration-file? file)
         wrong-file-ids
-        (if dir-based?
-          ;; For directory-based files, IDs don't encode version,
-          ;; so there's nothing to cross-check against the file version.
-          []
-          (->> ids
-               (filter (fn [id]
-                         (let [id-version (parse-long (re-find #"\d+" id))]
-                           (if (= fv 1)
-                             (> id-version 55)
-                             (not= fv id-version)))))))]
+        (->> ids
+             (filter (fn [id]
+                       (let [id-version (parse-long (re-find #"\d+" id))]
+                         (if (= fv 1)
+                           (> id-version 55)
+                           (not= fv id-version))))))]
     (when (seq wrong-file-ids)
       (throw (validation-error "Change set IDs are in the wrong file"
                                {:wrong-file-ids wrong-file-ids})))))
@@ -184,14 +175,28 @@
    #{"datetime" "timestamp" "timestamp without time zone"}
    change-log file 49 "00-000"))
 
+(def ^:private directory-based-id-format-re
+  "For directory-based migration files (v60+), IDs must be prefixed with the correct version.
+  E.g., `v60.my-migration-name` or `v60.1`"
+  #"^v\d{2,}\..+$")
+
 (defn- require-change-set-ids-match-file-format
   "Enforces that changeset IDs use the correct format for the file type:
-  - Directory-based files (v60+): any string ID is allowed
+  - Directory-based files (v60+): IDs must be prefixed with v{version}. (e.g., v60.anything)
   - 001_update_migrations.yaml: any string ID is allowed (legacy file)
   - Other per-release files: IDs must match the timestamp format"
   [change-log file]
-  (when-not (or (directory-based-migration-file? file)
-                (= (file-version file) 1))
+  (cond
+    (directory-based-migration-file? file)
+    (let [ids     (change-set-ids change-log)
+          bad-ids (remove #(re-matches directory-based-id-format-re %) ids)]
+      (when (seq bad-ids)
+        (throw (validation-error
+                (format "Directory-based migration file contains IDs without v{version}. prefix: %s"
+                        (str/join ", " bad-ids))
+                {:invalid-ids (vec bad-ids)}))))
+
+    (not= (file-version file) 1)
     (let [ids     (change-set-ids change-log)
           bad-ids (remove #(re-matches change-set.strict/id-timestamp-format-re %) ids)]
       (when (seq bad-ids)

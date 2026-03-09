@@ -165,8 +165,10 @@
   new-migration
   {:doc "Create a new directory-based migration file (v60+)"
    :requires [[mage.new-migration :as new-migration]]
-   :examples [["./bin/mage new-migration 60" "Create a timestamped migration file in resources/migrations/060/"]]
-   :arg-schema [:tuple [:int {:name "version" :description "Major version number (e.g., 60)"}]]
+   :examples [["./bin/mage new-migration 60 mq-indexes" "Create resources/migrations/060/20260905-mq-indexes.yaml"]]
+   :arg-schema [:tuple
+                [:int {:name "version" :description "Major version number (e.g., 60)"}]
+                [:string {:name "description" :description "Lowercase alphanumeric/hyphen name (e.g., mq-indexes)"}]]
    :task (task! (new-migration/new-migration parsed))}
 
   jar-download
@@ -258,7 +260,7 @@
   {:doc "Generate XML configuration for Cursive's symbol resolution based on the current clj-kondo lint-as configuration."
    :examples [["./bin/mage generate-cursive-resolve-as" "Generate resolve-as XML configuration"]
               ["./bin/mage generate-cursive-resolve-as > /Users/bgrabow/Library/Application\\ Support/JetBrains/IntelliJIdea2025.3/options/ClojureResolveSettings.xml"
-              "Generate resolve-as XML configuration and install it in your global editor configuration"]]
+               "Generate resolve-as XML configuration and install it in your global editor configuration"]]
    :requires [[mage.cursive-resolve-as :as cursive-resolve-as]]
    :task (task! (cursive-resolve-as/do-it))}
 

@@ -1,16 +1,21 @@
 (ns mage.new-migration
   "Mage task for creating new directory-based migration files (v60+).
 
-  Each migration file is a timestamped YAML file inside a version directory,
-  e.g., `resources/migrations/060/20260106_125531.yaml`."
+  Each migration file is a YAML file inside a version directory,
+  e.g., `resources/migrations/060/20260905-mq-indexes.yaml`."
   (:require
    [clojure.java.io :as io]
    [mage.util :as u])
   (:import
+   (java.security SecureRandom)
    (java.time ZoneOffset ZonedDateTime)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private valid-description-re
+  "Descriptions must be lowercase alphanumeric or hyphens."
+  #"[a-z0-9][a-z0-9\-]*[a-z0-9]|[a-z0-9]")
 
 (defn- git-user-name []
   (try
@@ -18,37 +23,53 @@
     (catch Exception _
       "author")))
 
-(defn- utc-timestamp []
-  (.format (DateTimeFormatter/ofPattern "yyyyMMdd_HHmmss")
+(defn- utc-date []
+  (.format (DateTimeFormatter/ofPattern "yyyyMMdd")
            (ZonedDateTime/now ZoneOffset/UTC)))
 
-(defn- migration-template [author]
-  (str "## TODO: quick description of what feature/bug this migration is for\n"
-       "\n"
-       "databaseChangeLog:\n"
-       "  - changeSet:\n"
-       "      id: 1\n"
-       "      author: " author "\n"
-       "      comment: TODO\n"
-       "      changes:\n"
-       "        - TODO\n"))
+(def ^:private alphanumeric "abcdefghijklmnopqrstuvwxyz0123456789")
+
+(defn- random-id
+  "Generates a random 6-character lowercase alphanumeric string."
+  []
+  (let [rng (SecureRandom.)]
+    (apply str (repeatedly 6 #(nth alphanumeric (.nextInt rng (count alphanumeric)))))))
+
+(defn- migration-template [version author]
+  (let [id (random-id)]
+    (str "## TODO: quick description of what feature/bug this migration is for\n"
+         "\n"
+         "databaseChangeLog:\n"
+         "  - changeSet:\n"
+         "      id: v" version "." id "\n"
+         "      author: " author "\n"
+         "      comment: TODO\n"
+         "      changes:\n"
+         "        - TODO\n")))
 
 (defn new-migration
   "Creates a new directory-based migration file for the given version number.
 
-  Usage: `./bin/mage new-migration 60`"
+  Usage: `./bin/mage new-migration 60 mq-indexes`"
   [{:keys [arguments]}]
-  (let [version    (first arguments)
-        _          (when-not version
-                     (binding [*out* *err*]
-                       (println "Error: version number is required (e.g., 60)"))
-                     (u/exit 1))
-        dir-name   (format "%03d" version)
-        dir        (io/file u/project-root-directory "resources" "migrations" dir-name)
-        timestamp  (utc-timestamp)
-        filename   (str timestamp ".yaml")
-        file       (io/file dir filename)
-        author     (git-user-name)]
+  (let [version     (first arguments)
+        description (second arguments)
+        _           (when-not (and version description)
+                      (binding [*out* *err*]
+                        (println "Usage: mage new-migration <version> <description>")
+                        (println "  e.g., mage new-migration 60 mq-indexes"))
+                      (u/exit 1))
+        _           (when-not (re-matches valid-description-re description)
+                      (binding [*out* *err*]
+                        (println (str "Error: description must be lowercase alphanumeric or hyphens, got: \"" description "\""))
+                        (println "  e.g., mq-indexes, add-user-table, fix-fk"))
+                      (u/exit 1))
+        dir-name    (format "%03d" version)
+        dir         (io/file u/project-root-directory "resources" "migrations" dir-name)
+        date        (utc-date)
+        filename    (str date "-" description ".yaml")
+        file        (io/file dir filename)
+        author      (git-user-name)]
     (.mkdirs dir)
-    (spit file (migration-template author))
+    (spit file (migration-template version author))
     (println "Created" (str "resources/migrations/" dir-name "/" filename))))

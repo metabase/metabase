@@ -20,7 +20,7 @@
 
 ;; Basic type check only — format enforcement is file-aware and happens in
 ;; `lint-migrations-file/require-change-set-ids-match-file-format`.
-(s/def ::id (s/or :string-id string? :int-id int?))
+(s/def ::id string?)
 
 (s/def ::author string?)
 

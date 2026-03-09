@@ -147,26 +147,12 @@
     (liquibase.h2/h2-database liquibase-conn)
     (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)))
 
-(defn- prepend-version-to-directory-changeset-ids!
-  "For directory-based migrations (v60+), prepend v{version}. to changeset IDs
-   so they're compatible with old Metabase rollback code that filters WHERE id LIKE 'v%'."
-  [^DatabaseChangeLog changelog]
-  (let [id-field (doto (.getDeclaredField ChangeSet "id") (.setAccessible true))]
-    (doseq [^ChangeSet cs (.getChangeSets changelog)]
-      (let [id (.getId cs)
-            path (.getFilePath cs)]
-        (when (and (not (str/starts-with? id "v"))
-                   (re-find #"migrations/\d{3}/" path))
-          (when-let [[_ version] (re-find #"migrations/(\d{3})/" path)]
-            (.set id-field cs (str "v" (parse-long version) "." id))))))))
-
 (defn- liquibase ^Liquibase [^Connection conn ^Database database]
   (u/prog1 (Liquibase.
             ^String (decide-liquibase-file conn database)
             (ClassLoaderResourceAccessor. (classloader/the-classloader))
             database)
-    (.setObjectQuotingStrategy (.getDatabaseChangeLog <>) ObjectQuotingStrategy/QUOTE_ALL_OBJECTS)
-    (prepend-version-to-directory-changeset-ids! (.getDatabaseChangeLog <>))))
+    (.setObjectQuotingStrategy (.getDatabaseChangeLog <>) ObjectQuotingStrategy/QUOTE_ALL_OBJECTS)))
 
 (mu/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."
