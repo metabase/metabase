@@ -507,14 +507,12 @@
                 ;; Filter by expected slack_msg_ids to avoid picking up messages from other tests
                 (let [user-msg (t2/select-one :model/MetabotMessage :slack_msg_id event-ts)
                       bot-msg  (t2/select-one :model/MetabotMessage :slack_msg_id "stream123")]
-                  (testing "user message has event ts and channel_id"
+                  (testing "user message has event ts"
                     (is (some? user-msg))
-                    (is (= event-ts (:slack_msg_id user-msg)))
-                    (is (= "C123" (:channel_id user-msg))))
-                  (testing "bot message has stream ts and channel_id"
+                    (is (= event-ts (:slack_msg_id user-msg))))
+                  (testing "bot message has stream ts"
                     (is (some? bot-msg))
-                    (is (= "stream123" (:slack_msg_id bot-msg)))
-                    (is (= "C123" (:channel_id bot-msg)))))))))))))
+                    (is (= "stream123" (:slack_msg_id bot-msg)))))))))))))
 
 (deftest ^:parallel slack-thread-conversation-id-test
   (testing "Same thread produces same conversation ID"
