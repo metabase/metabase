@@ -33,7 +33,7 @@
                                   :progress           0.0}))
 
 (defn start-run!
-  "Mark the active run as succeeded."
+  "Mark the active run as started."
   [run-id]
   (t2/update! :model/ReplacementRun
               :id run-id

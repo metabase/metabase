@@ -16,7 +16,7 @@
   pos-int?)
 
 (mr/def ::run-status
-  [:enum :started :succeeded :failed :canceled :timeout])
+  [:enum :pending :started :succeeded :failed :canceled :timeout])
 
 (mr/def ::run
   [:map
