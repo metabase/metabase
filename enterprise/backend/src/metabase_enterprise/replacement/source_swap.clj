@@ -20,10 +20,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- update-query [query old-source new-source id-updates]
+(defn- update-query [query old-source new-source]
   (cond-> query
     (lib/any-native-stage? query)
-    (source-swap.native/update-native-stages old-source new-source id-updates)
+    (source-swap.native/update-native-stages old-source new-source)
 
     (not (lib/native-only-query? query))
     (source-swap.mbql/swap-mbql-stages old-source new-source)))
@@ -32,7 +32,7 @@
   [transform old-source new-source]
   (when-let [query (get-in transform [:source :query])]
     (when (replacement.util/valid-query? query)
-      (let [query'  (update-query query old-source new-source {})
+      (let [query'  (update-query query old-source new-source)
             changes (cond-> {}
                       (not= query query')
                       (assoc :source (assoc (:source transform) :query query')))]
@@ -46,7 +46,7 @@
   [card old-source new-source]
   (when (replacement.util/valid-query? (:dataset_query card))
     (let [query     (:dataset_query card)
-          query'    (update-query query old-source new-source {})
+          query'    (update-query query old-source new-source)
           table-id  (:table_id card)
           table-id' (:table-id (queries.query/query->database-and-table-ids query'))
           changes   (cond-> {}
@@ -78,7 +78,7 @@
   [segment old-source new-source]
   (when (replacement.util/valid-query? (:definition segment))
     (let [query     (:definition segment)
-          query'    (update-query query old-source new-source {})
+          query'    (update-query query old-source new-source)
           table-id  (:table_id segment)
           table-id' (:table-id (queries.query/query->database-and-table-ids query'))
           changes   (cond-> {}
@@ -96,7 +96,7 @@
   [measure old-source new-source]
   (when (replacement.util/valid-query? (:definition measure))
     (let [query     (:definition measure)
-          query'    (update-query query old-source new-source {})
+          query'    (update-query query old-source new-source)
           table-id  (:table_id measure)
           table-id' (:table-id (queries.query/query->database-and-table-ids query'))
           changes   (cond-> {}

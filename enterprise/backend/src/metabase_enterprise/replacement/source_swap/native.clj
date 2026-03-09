@@ -469,11 +469,11 @@
 (defn update-native-stages
   "Dispatch native query updates based on old/new source types.
    Handles all four combinations: card→card, table→table, table→card, card→table."
-  [query [old-source-type old-source-id] [new-source-type new-source-id] _id-updates]
+  [query [old-source-type old-source-id] [new-source-type new-source-id]]
   (case [old-source-type new-source-type]
-    [:card :card]   (swap-card-in-native-query query old-source-id new-source-id)
+    [:card  :card]  (swap-card-in-native-query query old-source-id new-source-id)
     [:table :table] (replace-table-in-native-query query old-source-id new-source-id)
     [:table :card]  (replace-table-with-card-in-native query old-source-id new-source-id)
-    [:card :table]  (replace-card-with-table-in-native query old-source-id new-source-id)
+    [:card  :table] (replace-card-with-table-in-native query old-source-id new-source-id)
     ;; No-op for unknown combinations
     query))

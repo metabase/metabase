@@ -25,7 +25,7 @@
     (testing "Simple card tag replacement"
       (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}}")
                        (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
-            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
         (is (= "SELECT * FROM {{#2}}"
                (lib/raw-native-query result)))
         (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))))
@@ -34,7 +34,7 @@
       (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}} JOIN {{#3}} ON 1=1")
                        (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}
                                                 "#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}}))
-            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
         (is (= "SELECT * FROM {{#2}} JOIN {{#3}} ON 1=1"
                (lib/raw-native-query result)))
         (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))
@@ -46,7 +46,7 @@
           query  (-> (lib/native-query mp "SELECT * FROM {{#1}} WHERE {{created_at}}")
                      (lib/with-template-tags {"#1"         {:type :card :card-id 1 :name "#1" :display-name "#1"}
                                               "created_at" {:type :dimension :name "created_at" :display-name "Created At" :widget-type :date/single}}))
-          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
       (is (= "SELECT * FROM {{#2}} WHERE {{created_at}}"
              (lib/raw-native-query result)))
       (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))
@@ -59,7 +59,7 @@
       (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}} [[WHERE {{created_at}}]]")
                        (lib/with-template-tags {"#1"         {:type :card :card-id 1 :name "#1" :display-name "#1"}
                                                 "created_at" {:type :dimension :name "created_at" :display-name "Created At" :widget-type :date/single}}))
-            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
         (is (= "SELECT * FROM {{#2}} [[WHERE {{created_at}}]]"
                (lib/raw-native-query result)))
         (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))))
@@ -67,7 +67,7 @@
     (testing "Card tag inside optional clause"
       (let [query  (-> (lib/native-query mp "SELECT * FROM foo [[JOIN {{#1}} ON 1=1]]")
                        (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
-            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
         (is (= "SELECT * FROM foo [[JOIN {{#2}} ON 1=1]]"
                (lib/raw-native-query result)))
         (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))))))
@@ -77,7 +77,7 @@
     (testing "Card tag inside a line comment should NOT be replaced"
       (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}}\n-- old: {{#1}}")
                        (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
-            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
         (is (= "SELECT * FROM {{#2}}\n-- old: {{#1}}"
                (lib/raw-native-query result))
             "The tag in the comment should be left alone")))
@@ -85,7 +85,7 @@
     (testing "Card tag inside a block comment should NOT be replaced"
       (let [query  (-> (lib/native-query mp "SELECT * FROM {{#1}} /* see also {{#1}} */")
                        (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
-            result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+            result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
         (is (= "SELECT * FROM {{#2}} /* see also {{#1}} */"
                (lib/raw-native-query result))
             "The tag in the block comment should be left alone")))))
@@ -95,7 +95,7 @@
     (let [mp     (metadata-provider-with-cards)
           query  (-> (lib/native-query mp "SELECT * FROM {{#1}} WHERE col = '{{#1}}'")
                      (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}}))
-          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
       (is (= "SELECT * FROM {{#2}} WHERE col = '{{#2}}'"
              (lib/raw-native-query result))
           "Both tags are replaced since the parser treats string literal tags as params too"))))
@@ -106,7 +106,7 @@
           query  (-> (lib/native-query mp "SELECT a.* FROM {{#1}} a JOIN {{#3}} b ON a.id = b.id JOIN {{#1}} c ON a.id = c.id")
                      (lib/with-template-tags {"#1" {:type :card :card-id 1 :name "#1" :display-name "#1"}
                                               "#3" {:type :card :card-id 3 :name "#3" :display-name "#3"}}))
-          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
       (is (= "SELECT a.* FROM {{#2}} a JOIN {{#3}} b ON a.id = b.id JOIN {{#2}} c ON a.id = c.id"
              (lib/raw-native-query result)))
       (is (= 2 (get-in (lib/template-tags result) ["#2" :card-id])))
@@ -119,7 +119,7 @@
   (testing "Card reference with whitespace ({{ #1 }}) is replaced correctly"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM {{ #1 }} WHERE x > 1")
-          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
       (is (str/includes? (lib/raw-native-query result) "{{#2}}"))
       (is (not (str/includes? (lib/raw-native-query result) "#1"))))))
 
@@ -127,7 +127,7 @@
   (testing "Multiple card references to the same card are all replaced"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM {{#1}} a JOIN {{#1}} b ON a.id = b.id")
-          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
       (is (= 2 (count (re-seq #"\{\{#2\}\}" (lib/raw-native-query result)))))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
@@ -135,7 +135,7 @@
   (testing "Card reference in CTE is replaced correctly"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "WITH base AS {{#1}} SELECT * FROM base WHERE x > 1")
-          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
       (is (str/includes? (lib/raw-native-query result) "WITH base AS {{#2}}"))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
@@ -143,7 +143,7 @@
   (testing "Card reference with alias ({{#1}} AS t) is replaced correctly"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT t.* FROM {{#1}} AS t WHERE t.x > 1")
-          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
       (is (str/includes? (lib/raw-native-query result) "{{#2}} AS t"))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
@@ -151,7 +151,7 @@
   (testing "Other template params are preserved when replacing card reference"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM {{#1}} WHERE status = {{status}} AND total > {{min_total}}")
-          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
       (is (str/includes? (lib/raw-native-query result) "{{#2}}"))
       (is (str/includes? (lib/raw-native-query result) "{{status}}"))
       (is (str/includes? (lib/raw-native-query result) "{{min_total}}"))
@@ -162,7 +162,7 @@
   (testing "Only the specified card reference is replaced, others are preserved"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM {{#1}} a JOIN {{#3}} b ON a.id = b.id")
-          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
       (is (str/includes? (lib/raw-native-query result) "{{#2}}"))
       (is (str/includes? (lib/raw-native-query result) "{{#3}}"))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
@@ -171,7 +171,7 @@
   (testing "Card reference in subquery is replaced correctly"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM orders WHERE product_id IN (SELECT id FROM {{#1}})")
-          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
       (is (str/includes? (lib/raw-native-query result) "FROM {{#2}}"))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
@@ -179,7 +179,7 @@
   (testing "Card reference inside optional clause [[...{{#1}}...]] is replaced correctly"
     (let [mp     (metadata-provider-with-cards)
           query  (lib/native-query mp "SELECT * FROM orders WHERE 1=1 [[AND product_id IN (SELECT id FROM {{#1}})]]\n")
-          result (source-swap.native/update-native-stages query [:card 1] [:card 2] {})]
+          result (source-swap.native/update-native-stages query [:card 1] [:card 2])]
       (is (str/includes? (lib/raw-native-query result) "{{#2}}"))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1}}"))))))
 
@@ -318,8 +318,7 @@
     (let [query  (lib/native-query meta/metadata-provider "SELECT * FROM PRODUCTS")
           result (source-swap.native/update-native-stages query
                                                           [:table (meta/id :products)]
-                                                          [:table (meta/id :orders)]
-                                                          {})]
+                                                          [:table (meta/id :orders)])]
       (is (str/includes? (lib/raw-native-query result) "ORDERS"))
       (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS")))))
 
@@ -327,8 +326,7 @@
     (let [query  (lib/native-query meta/metadata-provider "SELECT * FROM PRODUCTS WHERE category = {{category}}")
           result (source-swap.native/update-native-stages query
                                                           [:table (meta/id :products)]
-                                                          [:table (meta/id :orders)]
-                                                          {})]
+                                                          [:table (meta/id :orders)])]
       (is (str/includes? (lib/raw-native-query result) "ORDERS"))
       (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS")))
       (is (str/includes? (lib/raw-native-query result) "{{category}}"))))
@@ -337,8 +335,7 @@
     (let [query  (lib/native-query meta/metadata-provider "SELECT o.*, p.title FROM ORDERS o JOIN PRODUCTS p ON o.product_id = p.id")
           result (source-swap.native/update-native-stages query
                                                           [:table (meta/id :orders)]
-                                                          [:table (meta/id :reviews)]
-                                                          {})]
+                                                          [:table (meta/id :reviews)])]
       (is (str/includes? (lib/raw-native-query result) "REVIEWS"))
       (is (str/includes? (lib/raw-native-query result) "PRODUCTS"))
       (is (not (str/includes? (lib/raw-native-query result) "ORDERS")))))
@@ -347,8 +344,7 @@
     (let [query  (lib/native-query meta/metadata-provider "SELECT * FROM PUBLIC.PRODUCTS")
           result (source-swap.native/update-native-stages query
                                                           [:table (meta/id :products)]
-                                                          [:table (meta/id :orders)]
-                                                          {})]
+                                                          [:table (meta/id :orders)])]
       (is (str/includes? (lib/raw-native-query result) "ORDERS"))
       (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS"))))))
 
@@ -360,8 +356,7 @@
       (let [query  (lib/native-query mp "SELECT * FROM PRODUCTS")
             result (source-swap.native/update-native-stages query
                                                             [:table (meta/id :products)]
-                                                            [:card 1]
-                                                            {})]
+                                                            [:card 1])]
         (is (str/includes? (lib/raw-native-query result) "{{#1-card-1}}"))
         (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS")))
         (is (= 1 (get-in (lib/template-tags result) ["#1-card-1" :card-id])))))
@@ -370,8 +365,7 @@
       (let [query  (lib/native-query mp "SELECT * FROM PRODUCTS WHERE category = {{category}}")
             result (source-swap.native/update-native-stages query
                                                             [:table (meta/id :products)]
-                                                            [:card 1]
-                                                            {})]
+                                                            [:card 1])]
         (is (str/includes? (lib/raw-native-query result) "{{#1-card-1}}"))
         (is (str/includes? (lib/raw-native-query result) "{{category}}"))
         (is (contains? (lib/template-tags result) "category"))
@@ -381,8 +375,7 @@
       (let [query  (lib/native-query mp "SELECT * FROM PUBLIC.PRODUCTS")
             result (source-swap.native/update-native-stages query
                                                             [:table (meta/id :products)]
-                                                            [:card 1]
-                                                            {})]
+                                                            [:card 1])]
         (is (str/includes? (lib/raw-native-query result) "{{#1-card-1}}"))
         (is (not (str/includes? (lib/raw-native-query result) "PUBLIC.{{")))
         (is (not (str/includes? (lib/raw-native-query result) "PRODUCTS")))))))
@@ -395,8 +388,7 @@
                      (lib/with-template-tags {"#1-card-1" {:type :card :card-id 1 :name "#1-card-1" :display-name "#1-card-1"}}))
           result (source-swap.native/update-native-stages query
                                                           [:card 1]
-                                                          [:table (meta/id :orders)]
-                                                          {})]
+                                                          [:table (meta/id :orders)])]
       (is (str/includes? (lib/raw-native-query result) "ORDERS"))
       (is (not (str/includes? (lib/raw-native-query result) "{{#1")))
       (is (empty? (filter #(= (:card-id %) 1) (vals (lib/template-tags result)))))))
@@ -406,8 +398,7 @@
                      (lib/with-template-tags {"#1-card-1" {:type :card :card-id 1 :name "#1-card-1" :display-name "#1-card-1"}}))
           result (source-swap.native/update-native-stages query
                                                           [:card 1]
-                                                          [:table (meta/id :orders)]
-                                                          {})]
+                                                          [:table (meta/id :orders)])]
       (is (str/includes? (lib/raw-native-query result) "ORDERS"))
       (is (str/includes? (lib/raw-native-query result) "{{status}}"))
       (is (contains? (lib/template-tags result) "status"))
