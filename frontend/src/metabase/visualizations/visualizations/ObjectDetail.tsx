@@ -10,9 +10,11 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type { DatasetColumn } from "metabase-types/api";
 
-import type { VisualizationDefinition } from "../types";
+import type {
+  VisualizationDefinition,
+  VisualizationSettingsDefinitions,
+} from "../types";
 
 const ObjectDetailProperties: VisualizationDefinition = {
   getUiName() {
@@ -33,11 +35,11 @@ const ObjectDetailProperties: VisualizationDefinition = {
     ...tableColumnSettings({ isShowingDetailsOnlyColumns: true }),
   },
   columnSettings: () => {
-    const settings = {
+    const settings: VisualizationSettingsDefinitions = {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: (column: DatasetColumn) => displayNameForColumn(column),
+        getDefault: (column) => displayNameForColumn(column),
       },
       click_behavior: {},
 
