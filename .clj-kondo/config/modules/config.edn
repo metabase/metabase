@@ -1874,11 +1874,6 @@
            warehouse-schema
            xrays}}
 
-  workspaces
-  {:team "Metabot"
-   :api  #{metabase.workspaces.core}
-   :uses #{util}}
-
   warehouses
   {:team "UX West"
    :api  #{metabase.warehouses.core
@@ -1927,6 +1922,11 @@
            warehouse-schema
            warehouses
            enterprise/advanced-permissions}}
+
+  workspaces
+  {:team "Metabot"
+   :api  #{metabase.workspaces.core}
+   :uses #{util}}
 
   xrays
   {:team "Querying"
