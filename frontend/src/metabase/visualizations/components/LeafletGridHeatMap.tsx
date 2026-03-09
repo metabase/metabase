@@ -79,9 +79,14 @@ export class LeafletGridHeatMap extends LeafletMap<LeafletGridHeatMapProps> {
       const successColor = d3.rgb(color("success"));
       const errorColor = d3.rgb(color("error"));
 
-      const colorScale = d3
-        .scaleLinear([min ?? 0, max ?? 0], [successColor, errorColor])
-        .interpolate(d3.interpolateHcl);
+      const colorScale =
+        min == null || max == null
+          ? d3
+              .scaleLinear([successColor, errorColor])
+              .interpolate(d3.interpolateHcl)
+          : d3
+              .scaleLinear([min, max], [successColor, errorColor])
+              .interpolate(d3.interpolateHcl);
 
       const gridSquares = gridLayer.getLayers().filter(isRectangleLayer);
       const totalSquares = Math.max(points.length, gridSquares.length);
