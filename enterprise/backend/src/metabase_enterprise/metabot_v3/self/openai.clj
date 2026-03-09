@@ -170,7 +170,7 @@
        ;; malli schema expected here
        ;; TODO: check it's a `:map`
        [:schema {:optional true} :any]
-       [:tool_choice {:optional true} :any]]]
+       [:tool_choice {:optional true} [:enum "auto" "required"]]]]
   (assert (llm/ee-openai-api-key) "No OpenAI API key!")
   (let [req {:model        model
              :stream       true

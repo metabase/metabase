@@ -248,7 +248,7 @@
                                                                [:fn [:fn fn?]]]]]]]
        [:temperature {:optional true} [:maybe number?]]
        [:max-tokens {:optional true} [:maybe :int]]
-       [:tool_choice {:optional true} :any]
+       [:tool_choice {:optional true} [:enum "auto" "required"]]
        [:raw-tools {:optional true} [:maybe [:sequential :map]]]]]
   (when-not (llm/ee-openrouter-api-key)
     (throw (ex-info "No OpenRouter API key is set" {:api-error true})))

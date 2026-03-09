@@ -214,7 +214,7 @@
                                                                [:schema :any]
                                                                [:fn [:fn fn?]]]]]]]
        [:schema {:optional true} :any]
-       [:tool_choice {:optional true} :any]]]
+       [:tool_choice {:optional true} [:enum "auto" "required"]]]]
   (when-not (llm/ee-anthropic-api-key)
     (throw (ex-info "No Anthropic API key is set" {})))
   (let [messages (parts->claude-messages input)

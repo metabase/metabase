@@ -251,11 +251,11 @@
                                  tool-choice) (assoc :tool_choice tool-choice))
            make-source    (fn []
                             (eduction (comp (core/tool-executor-xf tools)
-                                        (core/lite-aisdk-xf)
-                                        (report-aisdk-errors-xf tracking-opts)
-                                        (report-token-usage-xf tracking-opts)
-                                        (report-tool-usage-xf tracking-opts))
-                              (stream-fn streaming-opts)))]
+                                            (core/lite-aisdk-xf)
+                                            (report-aisdk-errors-xf tracking-opts)
+                                            (report-token-usage-xf tracking-opts)
+                                            (report-tool-usage-xf tracking-opts))
+                                      (stream-fn streaming-opts)))]
        (reify clojure.lang.IReduceInit
          (reduce [_ rf init]
            (with-span :info {:name       :metabot-v3.agent/call-llm
@@ -291,7 +291,7 @@
                          :function {:name        "json"
                                     :description "Respond with a JSON object"
                                     :parameters  json-schema}}]
-        tool-choice    {:type "function" :function {:name "json"}}
+        tool-choice    "required"
         tracking-opts  (assoc tracking-opts :model model)
         streaming-opts {:model       model
                         :input       messages
