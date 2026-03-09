@@ -742,8 +742,6 @@
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.protocols
-           metabase.lib.parameters.parse
-           metabase.lib.parameters.parse.types
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -783,7 +781,8 @@
   {:team "Querying"
    :api  #{metabase.lib-be.core
            metabase.lib-be.init
-           metabase.lib-be.schema.source-swap}
+           metabase.lib-be.schema.source-swap
+           metabase.lib-be.source-swap}
    :uses #{lib
            models
            settings
