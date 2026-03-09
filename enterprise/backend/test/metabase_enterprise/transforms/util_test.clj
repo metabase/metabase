@@ -25,4 +25,3 @@
     (mt/with-premium-features #{:transforms-basic}
       (is (false? (transforms.util/is-temp-transform-table? {:name :orders})))
       (is (false? (transforms.util/is-temp-transform-table? {:name :public/orders}))))))
-
