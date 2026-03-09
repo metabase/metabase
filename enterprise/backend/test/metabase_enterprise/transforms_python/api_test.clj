@@ -97,7 +97,9 @@
                    "  print(\"out2\")"
                    "  print(\"err2\", file=sys.stderr)"
                    "  return pd.DataFrame({'x': [42, 43]})"]
-          body    {:source_tables [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id))}], :code (str/join "\n" program)}
+          table   (t2/select-one [:model/Table :id :db_id :schema] :db_id (mt/id))
+          body    {:source_tables [{:alias "test" :table_id (:id table) :database_id (:db_id table) :schema (:schema table)}]
+                   :code (str/join "\n" program)}
           {:keys [error logs output]} (mt/user-http-request :crowberto :post 200 "ee/transforms-python/test-run" body)]
       (is (nil? error))
       (is (str/includes? logs "out1\nerr1\nout2\nerr2"))
@@ -106,9 +108,11 @@
 (defn- test-run [& {:keys [program user features source-tables extra-opts]
                     :or   {program       ["import pandas as pd" "def transform():" "  return pd.DataFrame()"]
                            user          :crowberto
-                           source-tables [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id) :active true)}]
                            features      #{:transforms :transforms-python}}}]
-  (let [body (merge {:source_tables source-tables, :code (str/join "\n" program)} extra-opts)]
+  (let [source-tables (or source-tables
+                          (let [table (t2/select-one [:model/Table :id :db_id :schema] :db_id (mt/id) :active true)]
+                            [{:alias "test" :table_id (:id table) :database_id (:db_id table) :schema (:schema table)}]))
+        body (merge {:source_tables source-tables, :code (str/join "\n" program)} extra-opts)]
     (mt/with-premium-features features
       (mt/user-http-request-full-response user :post "ee/transforms-python/test-run" body))))
 
@@ -116,7 +120,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (mt/dataset transforms-dataset/transforms-test
       (let [program       ["def transform(customers):" "  return customers"]
-            source-tables [{:alias "customers" :table_id (mt/id :transforms_customers)}]
+            source-tables [{:alias "customers" :table_id (mt/id :transforms_customers) :database_id (mt/id) :schema (:schema (t2/select-one [:model/Table :schema] (mt/id :transforms_customers)))}]
             {:keys [status body]} (test-run :program program :source-tables source-tables)]
         (is (= 200 status))
         (is (nil? (:error body)))
@@ -126,7 +130,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
     (mt/dataset transforms-dataset/transforms-test
       (let [program       ["import pandas as pd" "def transform(customers):" "  return pd.DataFrame()"]
-            source-tables [{:alias "customers" :table_id (mt/id :transforms_customers)}]
+            source-tables [{:alias "customers" :table_id (mt/id :transforms_customers) :database_id (mt/id) :schema (:schema (t2/select-one [:model/Table :schema] (mt/id :transforms_customers)))}]
             {:keys [status body]} (test-run :program program :source-tables source-tables)]
         (is (= 200 status))
         (is (nil? (:error body)))
@@ -161,7 +165,7 @@
       (is (=? {:status 400} (test-run :extra-opts {:per_input_row_limit 0}))))
     (testing "truncates sources"
       (let [program       ["def transform(customers):" "  return customers"]
-            source-tables [{:alias "customers" :table_id (mt/id :transforms_customers)}]
+            source-tables [{:alias "customers" :table_id (mt/id :transforms_customers) :database_id (mt/id) :schema (:schema (t2/select-one [:model/Table :schema] (mt/id :transforms_customers)))}]
             response      (test-run :program program :source-tables source-tables :extra-opts {:per_input_row_limit 2})]
         (is (=? {:body {:output {:rows #(= 2 (count %))}}} response))))))
 

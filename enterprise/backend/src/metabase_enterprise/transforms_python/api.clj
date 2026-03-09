@@ -9,6 +9,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.permissions.core :as perms]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -63,7 +64,7 @@
            per_input_row_limit 100}}
    :- [:map
        [:code                                 :string]
-       [:source_tables                        [:sequential {:min 1} [:map [:alias :string] [:table_id :int]]]]
+       [:source_tables                        [:sequential {:min 1} ::transforms-base.u/source-table-entry]]
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
   (let [db-ids (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in (map :table_id source_tables)])]
@@ -72,7 +73,7 @@
   ;; NOTE: we do not test database support, as there is no write target.
   (let [result (python-runner/execute-and-read-output!
                 {:code            code
-                 :source-tables   (into {} (map (juxt :alias :table_id)) source_tables)
+                 :source-tables   source_tables
                  :per-input-limit per_input_row_limit
                  :row-limit       output_row_limit
                  :timeout-secs    (transforms-python.settings/python-runner-test-run-timeout-seconds)})
