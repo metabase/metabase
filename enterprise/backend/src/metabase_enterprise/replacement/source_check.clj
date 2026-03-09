@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.usages :as replacement.usages]
-   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema.source-swap :as lib-be.schema.source-swap]
    [metabase.lib-be.source-swap :as lib-be.source-swap]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -58,7 +58,7 @@
           db-mismatch?    (not= source-db-id target-db-id)
           cycle?          (some #(= new-ref %) (replacement.usages/transitive-usages old-ref))
           mappings        (when-not db-mismatch?
-                            (-> (lib-be.metadata.jvm/application-database-metadata-provider source-db-id)
+                            (-> (lib-be/application-database-metadata-provider source-db-id)
                                 (lib-be.source-swap/check-column-mappings old-ref new-ref)
                                 format-column-mappings))
           has-missing?    (some (fn [m] (and (:source m) (nil? (:target m)))) mappings)

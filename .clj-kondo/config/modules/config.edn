@@ -783,9 +783,11 @@
            metabase.lib-be.init
            metabase.lib-be.schema.source-swap
            metabase.lib-be.source-swap}
-   :uses #{lib
+   :uses #{driver
+           lib
            models
            settings
+           sql-tools
            util}}
 
   llm
