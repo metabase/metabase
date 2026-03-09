@@ -335,7 +335,7 @@ If changes don't appear after switching modes: Hard refresh your browser (Cmd/Ct
 ### Branching limitations
 
 - **Only admins can manage branches**. Non-admins won't see the branch dropdown at all.
-- **The current branch is instance-wide.** That means that everyone on the same Metabase is on the same branch at the same time. You can't have different admins working on different branches in a single Metabase.
+- **The current branch is instance-wide**. That means that everyone on the same Metabase is on the same branch at the same time. You can't have different users working on different branches in a single Metabase.
 
 Limiting a Metabase to a single branch at a time means the typical Git feature-branch workflow is a bit different here: only admins can switch branches, create new branches, or push and pull changes. If you need multiple branches worked on simultaneously, the workaround is to spin up multiple Metabases in Read-write mode, one Metabase per branch.
 
