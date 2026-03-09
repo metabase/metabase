@@ -3,12 +3,19 @@
   (:require
    ["ttag" :as ttag]
    [clojure.string :as str]
-   [goog.object :as gobject])
+   [goog.object :as gobject]
+   [metabase.util.i18n.common :as i18n.common]
+   [metabase.util.namespaces :as util.ns])
   (:require-macros
    [metabase.util.i18n]))
 
-(comment metabase.util.i18n/keep-me
+(comment i18n.common/keep-me
+         metabase.util.i18n/keep-me
          ttag/keep-me)
+
+(util.ns/import-fns
+ [i18n.common
+  join-strings-with-conjunction])
 
 (defn- escape-format-string
   "Converts `''` to `'` inside the string; that's `java.text.MessageFormat` escaping that isn't needed in JS."

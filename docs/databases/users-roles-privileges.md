@@ -1,6 +1,6 @@
 ---
 title: Database users, roles, and privileges
-summary: Set up database users and roles for Metabase: read-only access for queries, optional write permissions for transforms, uploads, actions, and model persistence.
+summary: "Set up database users and roles for Metabase: read-only access for queries, optional write permissions for transforms, uploads, actions, and model persistence."
 ---
 
 # Database users, roles, and privileges
@@ -21,7 +21,7 @@ Bundling your privileges into roles based on use cases makes it easier to manage
 - Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-landscape) that need read-only access to the analytics tables in your database.
 - Revoke the write access for `metabase_model_persistence` without affecting the write access for `metabase_actions`.
 
-On Metabase Pro/Enterprise plans, we recommend using separate [Writeable connections](./writeable-connection.md) for operations that require write access.
+For operations that require write access, we recommend using separate [writeable connections](./writeable-connection.md).
 
 ## Minimum database privileges
 

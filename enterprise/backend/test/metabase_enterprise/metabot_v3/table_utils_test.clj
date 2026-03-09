@@ -163,7 +163,8 @@
   (testing "used-tables function"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
-                   :model/Table    {} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}]
+                   :model/Table    {} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
+                   :model/Table    {inactive-id :id} {:db_id db-id, :name "inactive_users", :schema "public", :active false, :visibility_type nil}]
 
       (testing "handles query with recognized tables"
         (mt/with-current-user (mt/user->id :crowberto)
@@ -209,7 +210,14 @@
                           (lib/native-query (mt/metadata-provider) "SELECT * FROM users JOIN order ON ..."))
                   tables (table-utils/used-tables query)]
               (is (>= (count tables) 1))  ; At least the recognized table
-              (is (some #(= table1-id (:id %)) tables)))))))))
+              (is (some #(= table1-id (:id %)) tables))))))
+
+      (testing "filters out recognized inactive tables"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [query (mt/with-db db
+                        (lib/native-query (mt/metadata-provider) "SELECT * FROM inactive_users"))
+                tables (table-utils/used-tables query)]
+            (is (not-any? #(= inactive-id (:id %)) tables))))))))
 
 (deftest used-tables-from-ids-test
   (testing "used-tables-from-ids function"

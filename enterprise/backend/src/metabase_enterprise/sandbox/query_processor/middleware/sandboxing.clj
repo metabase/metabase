@@ -20,7 +20,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -206,8 +205,8 @@
   [query   :- ::lib.schema/query
    card-id :- [:maybe ::lib.schema.id/card]]
   (or (when (= (count (:stages query)) 1)
-        (let [first-stage (lib.util/query-stage query 0)]
-          (when (and (lib.util/native-stage? first-stage)
+        (let [first-stage (lib/query-stage query 0)]
+          (when (and (lib/native-stage? first-stage)
                      (not (:lib/stage-metadata first-stage)))
             (when-let [cols (not-empty (native-query-metadata query))]
               (when card-id

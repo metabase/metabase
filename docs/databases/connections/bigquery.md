@@ -163,8 +163,6 @@ If you're having trouble with your BigQuery connection, you can check out this [
 
 ## Writeable connection
 
-{% include plans-blockquote.html feature="Writeable connection" is_plural=true%}
-
 Set up an additional connection used for write operations. See [Writeable connections](../writeable-connection.md).
 
 ## Model features

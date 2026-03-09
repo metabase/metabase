@@ -13,13 +13,14 @@
    [metabase.request.core :as request]
    [metabase.server.core :as server]
    [metabase.sql-tools.core :as sql-tools]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-inspector.core :as inspector]
    [metabase.transforms-inspector.schema :as inspector.schema]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.schema :as transforms.schema]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.registry :as mr]
@@ -169,12 +170,12 @@
   (transforms.core/check-feature-enabled! body)
   (transforms.core/validate-incremental-column-type! body)
 
-  (api/check (not (transforms.util/target-table-exists? body))
+  (api/check (not (transforms-base.u/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)
-      transforms.core/python-source-table-ref->table-id
-      transforms.util/add-source-readable))
+      transforms.u/add-source-readable
+      transforms.core/source-tables-vec->map-for-fe)) ;; TODO(FE-source-tables): remove
 
 (api.macros/defendpoint :get "/:id" :- TransformResponse
   "Get a specific transform."
@@ -192,8 +193,8 @@
         dep-ids         (get global-ordering id)
         dependencies    (map id->transform dep-ids)]
     (->> (t2/hydrate dependencies :creator :owner)
-         (mapv transforms.core/python-source-table-ref->table-id)
-         transforms.util/add-source-readable)))
+         transforms.u/add-source-readable
+         (mapv transforms.core/source-tables-vec->map-for-fe)))) ;; TODO(FE-source-tables): remove
 
 (def ^:private MergeHistoryEntry
   [:map
@@ -244,7 +245,7 @@
   (-> (transforms.core/paged-runs (assoc query-params
                                          :offset (request/offset)
                                          :limit  (request/limit)))
-      (update :data #(map transforms.util/localize-run-timestamps %))))
+      (update :data #(map transforms-base.u/localize-run-timestamps %))))
 
 (api.macros/defendpoint :get "/run/:run-id" :- TransformRunResponse
   "Get a transform run by ID."
@@ -253,7 +254,7 @@
   (api/check-data-analyst)
   (let [run (api/check-404 (t2/select-one :model/TransformRun :id run-id))]
     (-> (t2/hydrate run [:transform :collection :transform_tag_ids])
-        transforms.util/localize-run-timestamps)))
+        transforms-base.u/localize-run-timestamps)))
 
 (api.macros/defendpoint :put "/:id" :- TransformResponse
   "Update a transform."
@@ -284,7 +285,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
-  (transforms.util/delete-target-table-by-id! id)
+  (transforms-base.u/delete-target-table-by-id! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/cancel" :- :nil
@@ -294,7 +295,7 @@
   (let [transform (api/write-check :model/Transform id)
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
     (transforms.core/mark-cancel-started-run! (:id run))
-    (when (transforms.util/python-transform? transform)
+    (when (transforms-base.u/python-transform? transform)
       (transforms.core/cancel-run! (:id run))))
   nil)
 

@@ -13,11 +13,11 @@ import { ChartSettingInput } from "../ChartSettingInput";
 
 import S from "./ChartSettingSegmentsEditor.module.css";
 
-export interface ChartSettingSegmentsEditorProps {
+export type ChartSettingSegmentsEditorProps = {
   value: ScalarSegment[];
   onChange: (value: ScalarSegment[]) => void;
   canRemoveAll?: boolean;
-}
+};
 
 export const ChartSettingSegmentsEditor = ({
   value: segments,

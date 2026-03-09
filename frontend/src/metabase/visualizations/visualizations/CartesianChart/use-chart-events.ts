@@ -1,5 +1,4 @@
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
-import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
@@ -264,7 +263,7 @@ export const useChartEvents = (
       // all the data labels show
       const isBarSeries =
         seriesModel != null
-          ? settings.series(seriesModel.legacySeriesSettingsObjectKey)
+          ? settings.series?.(seriesModel.legacySeriesSettingsObjectKey)
               .display === "bar"
           : false;
       const shouldHighlightEntireSeries =

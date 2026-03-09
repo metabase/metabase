@@ -18,8 +18,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
+   [metabase.transforms.crud :as transforms.crud]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -257,7 +257,7 @@
               rating-col (lib.metadata/field mp (mt/id :products :rating))
               created-at-col (lib.metadata/field mp (mt/id :products :created_at))
               expected-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                 (lib/aggregate (lib.options/ensure-uuid [:metric {} metric-id]))
+                                 (lib/aggregate (lib/ensure-uuid [:metric {} metric-id]))
                                  (lib/breakout (lib/with-temporal-bucket created-at-col :week))
                                  (lib/breakout (lib/with-temporal-bucket created-at-col :day))
                                  (lib/filter (lib/> id-col 50))
@@ -1271,7 +1271,7 @@
           (is (= "PRODUCT_ID" (:related_by products-table))))))))
 
 (deftest get-transforms-test
-  (mt/with-premium-features #{:metabot-v3 :transforms :transforms-python}
+  (mt/with-premium-features #{:metabot-v3 :transforms-basic :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
@@ -1292,7 +1292,7 @@
                                           :source {:type "python"
                                                    :source-database (mt/id)
                                                    :body "print('hello world')"
-                                                   :source-tables {}}
+                                                   :source-tables []}
                                           :target {:type "table"
                                                    :name "t2_table"}}]
         (testing "With insufficient permissions"
@@ -1303,7 +1303,9 @@
         (testing "With superuser permissions"
           (is (=? {:structured_output [(mt/obj->json->obj (select-keys t1 [:id :entity_id :name :description :source]))
                                          ;; note: t2 not included because it's a (non-native) MBQL query
-                                       (mt/obj->json->obj (select-keys t3 [:id :entity_id :name :description :source]))]
+                                       ;; API converts source-tables from vec back to map for FE
+                                       (mt/obj->json->obj (transforms.crud/source-tables-vec->map-for-fe
+                                                           (select-keys t3 [:id :entity_id :name :description :source])))]
                    :conversation_id conversation-id}
                   (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transforms"
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
@@ -1314,7 +1316,7 @@
                                                         (sort-by :id))))))))))))
 
 (deftest get-transform-test
-  (mt/with-premium-features #{:metabot-v3 :transforms :transforms-python}
+  (mt/with-premium-features #{:metabot-v3 :transforms-basic :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))]
@@ -1329,7 +1331,7 @@
                                           :source {:type "python"
                                                    :body "print('hello world')"
                                                    :source-database (mt/id)
-                                                   :source-tables {}}
+                                                   :source-tables []}
                                           :target {:type "table"
                                                    :name "t2_table"
                                                    :database (mt/id)}}]
@@ -1348,7 +1350,9 @@
         (testing "With superuser permissions"
           (doseq [transform [t1 t2]]
             (testing (:name transform)
-              (is (=? {:structured_output (mt/obj->json->obj (select-keys transform [:id :entity_id :name :description :source :target]))
+              ;; API converts source-tables from vec back to map for FE
+              (is (=? {:structured_output (mt/obj->json->obj (transforms.crud/source-tables-vec->map-for-fe
+                                                              (select-keys transform [:id :entity_id :name :description :source :target])))
                        :conversation_id conversation-id}
                       (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transform-details"
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
@@ -1356,7 +1360,7 @@
                                              :conversation_id conversation-id}))))))))))
 
 (deftest get-transform-python-library-details-test
-  (mt/with-premium-features #{:metabot-v3 :python-transforms :transforms}
+  (mt/with-premium-features #{:metabot-v3 :python-transforms :transforms-basic}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))
@@ -1471,7 +1475,7 @@
 (deftest check-transform-dependencies-test
   ;; This is just a quick sanity check for the API endpoint. The function powering this endpoint is tested more
   ;; thoroughly in metabase-enterprise.metabot-v3.tools.dependencies-test.
-  (mt/with-premium-features #{:metabot-v3 :transforms :dependencies :transforms-python}
+  (mt/with-premium-features #{:metabot-v3 :transforms-basic :dependencies :transforms-python}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))

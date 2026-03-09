@@ -1053,7 +1053,7 @@
 
 (deftest import!-auto-enables-transforms-setting-when-transforms-detected-test
   (testing "import! auto-enables remote-sync-transforms setting only after successful import with transforms"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform :model/RemoteSyncObject]
         (mt/with-temporary-setting-values [remote-sync-transforms false
                                            remote-sync-enabled true]
@@ -1072,7 +1072,7 @@
 
 (deftest import!-auto-enables-transforms-setting-when-python-libraries-detected-test
   (testing "import! auto-enables remote-sync-transforms setting only after successful import with python-libraries"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-model-cleanup [:model/RemoteSyncTask :model/PythonLibrary :model/RemoteSyncObject]
         (mt/with-temporary-setting-values [remote-sync-transforms false
                                            remote-sync-enabled true]

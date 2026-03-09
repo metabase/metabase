@@ -5,10 +5,6 @@ summary: Learn how to unfold JSON columns into separate fields that you can filt
 
 # Working with JSON
 
-## Filtering JSON
-
-In the [query builder](../questions/query-builder/editor.md), Metabase can't parse JSON in columns, so you can only filter by "Is empty" or "Not empty".
-
 ## JSON unfolding
 
 With [some databases](#databases-that-support-json-unfolding), Metabase can unfold JSON columns into their component fields, which you can then filter on using the query builder.
@@ -29,7 +25,20 @@ This unfolding allows you to filter for values found in the original JSON object
 
 Metabase will prefix the unfolded column names with the name of the original column that contained the JSON. You can change the column names in **Admin** > [Table metadata](metadata-editing.md), or by creating a [model](./models.md) and editing the column metadata.
 
+## Databases that support JSON unfolding
+
+- [BigQuery](../databases/connections/postgresql.md): automatically enabled, applies to `STRUCT` types only.
+
+  If your data is stored in the [STRUCT data type](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#struct_type) in BigQuery, you can query the table's nested fields. This is enabled by default. However, Metabase won't unfold JSON stored in BigQuery as the `JSON` type. This is because in BigQuery, nested fields are _part of the table definition itself_, so when Metabase syncs with your BigQuery database, it'll be able to get metadata about any of your tables, including tables with nested fields. Querying nested fields, however, doesn't extend to arrays (REPEATED (STRUCT)) in BigQuery.
+
+- [Druid (JDBC)](../databases/connections/druid.md)
+- [MongoDB](../databases/connections/mysql.md): automatically enabled for all nested fields.
+- [MySQL](../databases/connections/mysql.md)
+- [PostgreSQL](../databases/connections/postgresql.md)
+
 ## Toggling JSON unfolding for a database
+
+_Admin > Databases > Advanced options > Allow unfolding of JSON column_
 
 If you notice a hit to performance from this JSON unfolding, we recommend turning it off.
 
@@ -46,6 +55,8 @@ To turn off JSON unfolding for a database:
 9. Click **Re-scan field values**.
 
 ## Toggling JSON unfolding for a specific column
+
+_Admin > Table metadata > Unfold JSON_
 
 If performance degrades, or you'd rather keep the JSON contained in the original column, you can turn off unfolding for individual fields in their settings.
 
@@ -64,14 +75,6 @@ If performance degrades, or you'd rather keep the JSON contained in the original
 
 For example, if you upload a CSV with JSON in it, you might need to update the data/type in the database. Note that you can't edit the data type via Metabase; you can only change its field type. So even if the field type in Metabase is `Field containing JSON`, if the data/type isn't `JSON`, Metabase won't give you the option to unfold the column. You'll need to change the column type in the database itself.
 
-## Databases that support JSON unfolding
+## Filtering JSON
 
-- [BigQuery](../databases/connections/postgresql.md): automatically enabled, applies to `STRUCT` types only.
-
-  If your data is stored in the [STRUCT data type](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#struct_type) in BigQuery, you can query the table's nested fields. This is enabled by default. However, Metabase won't unfold JSON stored in BigQuery as the `JSON` type. This is because in BigQuery, nested fields are _part of the table definition itself_, so when Metabase syncs with your BigQuery database, it'll be able to get metadata about any of your tables, including tables with nested fields. Querying nested fields, however, doesn't extend to arrays (REPEATED (STRUCT)) in BigQuery.
-
-- [Druid (JDBC)](../databases/connections/druid.md)
-- [MongoDB](../databases/connections/mysql.md): automatically enabled for all nested fields.
-- [MySQL](../databases/connections/mysql.md)
-- [PostgreSQL](../databases/connections/postgresql.md)
-
+In the [query builder](../questions/query-builder/editor.md), Metabase can't parse JSON in columns, so you can only filter by "Is empty" or "Not empty".

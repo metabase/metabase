@@ -3574,6 +3574,22 @@ databaseChangeLog:
             path: instance_analytics_views/query_log/v2/h2-query_log.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v59.2026-03-03T12:00:00
+      author: qnkhuat
+      comment: Unify source-tables format from map to ordered array
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.UnifySourceTablesFormat"
+
+  - changeSet:
+      id: v59.2026-03-04T00:00:00
+      author: rileythompson
+      comment: Fix ClickHouse upload DB schema name and models
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
