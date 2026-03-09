@@ -187,7 +187,9 @@
                       (merge instance select-map))]
     (with-conflict-retry
       (or (apply t2/select-one model select-kvs)
-          (t2/insert-returning-instance! model (insert-fn))))))
+          ;; Wrap INSERT in a savepoint — see comment in [[update-or-insert!]].
+          (t2/with-transaction [_conn]
+            (t2/insert-returning-instance! model (insert-fn)))))))
 
 (defn update-or-insert!
   "Update a database record, if it exists, otherwise create it.
@@ -236,4 +238,9 @@
                 (pk-key updated pk))
             ;; update-fn returned nil — no update needed, return existing pk.
             pk))
-        (t2/insert-returning-pk! model (update-fn nil))))))
+        ;; Wrap INSERT in a savepoint so that a constraint violation inside an existing
+        ;; PostgreSQL transaction doesn't abort the outer transaction. The savepoint is
+        ;; rolled back on failure, keeping the outer transaction usable for the retry
+        ;; in [[with-conflict-retry]].
+        (t2/with-transaction [_conn]
+          (t2/insert-returning-pk! model (update-fn nil)))))))
