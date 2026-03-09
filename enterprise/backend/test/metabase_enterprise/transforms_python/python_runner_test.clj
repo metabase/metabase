@@ -16,6 +16,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.util :as tu]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.test-util :as transforms.tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -59,9 +60,7 @@
   "Convert old test map format {\"alias\" table_id} to new source-table-entry format."
   [tables]
   (mapv (fn [[alias table-id]]
-          {:alias (name alias) :table_id table-id
-           :database_id (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
-           :schema (t2/select-one-fn :schema :model/Table :id table-id)})
+          (transforms.tu/source-table-entry (name alias) table-id))
         tables))
 
 (defn execute! [{:keys [code tables]}]
