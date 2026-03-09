@@ -6,6 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.test :as mt]
+   [metabase.transforms.test-util :as transforms.tu]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel upstream-deps-card-test
@@ -199,9 +200,8 @@
           orders-id (mt/id :orders)]
       (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                  :source {:type :python
-                                                          :source-tables [{:alias "PRODUCTS" :table_id products-id}
-                                                                          {:alias "ORDERS" :table_id orders-id}]
-                                                          ;; A problematic field, hopefully removed again.
+                                                          :source-tables [(transforms.tu/source-table-entry "PRODUCTS" products-id)
+                                                                          (transforms.tu/source-table-entry "ORDERS" orders-id)]
                                                           :source-database (mt/id)
                                                           :body "..."}
                                                  :target {:schema "PUBLIC"
