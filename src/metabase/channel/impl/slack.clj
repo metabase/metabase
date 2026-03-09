@@ -84,6 +84,28 @@
   many columns) is truncated."
   1200)
 
+(defn- card-title-blocks
+  [title-link title inline-parameters]
+  (maybe-append-params-block
+   [{:type "section"
+     :text {:type     "mrkdwn"
+            :text     (mkdwn-link-text title-link title)
+            :verbatim true}}]
+   inline-parameters))
+
+(defn- rendered-card-blocks
+  [rendered-info title]
+  [(if (:render/text rendered-info)
+     {:type "section"
+      :text {:type "plain_text"
+             :text (:render/text rendered-info)}}
+     {:type       "image"
+      :slack_file {:id (-> rendered-info
+                           (channel.render/png-from-render-info slack-width)
+                           (slack/upload-file! (format "%s.png" title))
+                           :id)}
+      :alt_text   title})])
+
 (defn- part->sections!
   "Converts a notification part directly into Slack Block Kit blocks."
   ([part]
@@ -97,27 +119,24 @@
                {card-id :id card-name :name :as card} card
                title                                  (or (-> dashcard :visualization_settings :card.title)
                                                           card-name)
-               rendered-info                          (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
+               chart-type                             (channel.render/detect-pulse-chart-type card dashcard (:data result))
                title-link                             (if dashcard
                                                         (urls/dashcard-url dashcard)
                                                         (when-not (= :table-editable (:display card))
-                                                          (urls/card-url card-id)))]
-           (conj (maybe-append-params-block
-                  [{:type "section"
-                    :text {:type     "mrkdwn"
-                           :text     (mkdwn-link-text title-link title)
-                           :verbatim true}}]
-                  (-> dashcard  :visualization_settings :inline_parameters))
-                 (if (:render/text rendered-info)
-                   {:type "section"
-                    :text {:type "plain_text"
-                           :text (:render/text rendered-info)}}
-                   {:type       "image"
-                    :slack_file {:id (-> rendered-info
-                                         (channel.render/png-from-render-info slack-width)
-                                         (slack/upload-file! (format "%s.png" title))
-                                         :id)}
-                    :alt_text   title}))))
+                                                          (urls/card-url card-id)))
+               title-blocks                           (card-title-blocks title-link
+                                                                         title
+                                                                         (-> dashcard :visualization_settings :inline_parameters))]
+           (into title-blocks
+                 (if (= chart-type :table)
+                   (channel.render/format-results-as-table-blocks result)
+                   (let [rendered-info (channel.render/render-pulse-card
+                                        :inline
+                                        (channel.render/defaulted-timezone card)
+                                        card
+                                        dashcard
+                                        result)]
+                     (rendered-card-blocks rendered-info title))))))
 
        :heading
        [(maybe-append-params-block (text->markdown-section (format "## %s" (:text part))) (:inline_parameters part))]

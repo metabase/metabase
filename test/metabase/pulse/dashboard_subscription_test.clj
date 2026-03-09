@@ -361,9 +361,10 @@
        ;; called
        (testing "\"more results in attachment\" text should not be present for Slack Pulses"
          (testing "Pulse results"
-           (is (= {:channel "#general"
-                   :blocks (default-slack-blocks dashboard-id [card-id])}
-                  pulse-results)))
+           (pulse.test-util/assert-native-slack-table-message!
+            pulse-results
+            (vec (butlast (default-slack-blocks dashboard-id [card-id])))
+            10))
          (testing "attached-results-text should be invoked exactly once"
            (is (= 1
                   (count (pulse.test-util/input @#'body/attached-results-text)))))
@@ -1366,9 +1367,10 @@
                         (first (:channel/email pulse-results))
                         #"Aviary KPIs")))
 
-                (is (=? {:channel "#general",
-                         :blocks (default-slack-blocks dashboard-id [card-id])}
-                        (pulse.test-util/thunk->boolean (first (:channel/slack pulse-results)))))))))))))
+                (pulse.test-util/assert-native-slack-table-message!
+                 (pulse.test-util/thunk->boolean (first (:channel/slack pulse-results)))
+                 (vec (butlast (default-slack-blocks dashboard-id [card-id])))
+                 (inc limit))))))))))
 
 (deftest dashboard-sub-attachment-only-test
   (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name

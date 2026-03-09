@@ -1,5 +1,6 @@
 (ns metabase.pulse.test-util
   (:require
+   [clojure.test :refer [is]]
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.notification.test-util :as notification.tu]
@@ -113,6 +114,25 @@
                                          :rendered-info
                                          (fn [ri] (m/map-vals some? ri)))
                                  attachment-info))))
+
+(defn assert-native-slack-table-message!
+  "Assert that a Slack message contains a native table block at the expected position.
+   Checks channel, prefix blocks, table type, row count, first column header, and absence of image blocks."
+  [message expected-prefix expected-row-count]
+  (let [blocks       (:blocks message)
+        prefix-size  (count expected-prefix)
+        table-block  (nth blocks prefix-size)
+        extra-blocks (drop (inc prefix-size) blocks)]
+    (is (= "#general" (:channel message)))
+    (is (= expected-prefix
+           (vec (take prefix-size blocks))))
+    (is (= "table" (:type table-block)))
+    (is (= expected-row-count
+           (count (:rows table-block))))
+    (is (= "ID"
+           (get-in table-block [:rows 0 0 :text])))
+    (is (not-any? #(= "image" (:type %)) blocks))
+    (is (empty? extra-blocks))))
 
 (def test-dashboard
   "A test dashboard with only the :parameters field included, for testing that dashboard filters

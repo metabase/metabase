@@ -3,12 +3,8 @@
   (:require
    [metabase.api.common :as api]
    [metabase.channel.render.core :as channel.render]
-   [metabase.formatter.core :as formatter]
-   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.schema :as qp.schema]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -68,138 +64,6 @@
      width
      {:channel.render/padding-x render-padding-x-px})))
 
-;;; ------------------------------------------ Slack Table Blocks ----------------------------------------------------
-;;; See https://docs.slack.dev/reference/block-kit/blocks/table-block/
-
-(def slack-table-row-limit
-  "Maximum data rows for Slack table blocks.
-   Slack allows 100 total rows including header, so we use 99 for data."
-  99)
-
-(def ^:private slack-table-max-cols
-  "Maximum number of columns Slack table blocks support."
-  20)
-
-(def ^:dynamic *slack-table-max-cell-length*
-  "Maximum text length per cell. Longer values are truncated with ellipsis."
-  128)
-
-(def ^:dynamic *slack-table-max-chars*
-  "Undocumented Slack limit: table blocks exceeding 10,000 characters are rejected with
-   `table_character_count_must_not_exceed_10000`. We use 9,500 as a budget for cell text content
-   to leave headroom for any structural overhead Slack may count."
-  9500)
-
-(def ^:private no-data-table-blocks
-  [{:type            "table"
-    :rows            [[{:type "raw_text"
-                        :text "No data"}]]
-    :column_settings [{:align "left"}]}])
-
-(defn- normalize-column
-  "Normalize column metadata from the wire format for use with formatters and type checks."
-  [col]
-  (lib/normalize ::qp.schema/result-metadata.column col))
-
-(defn- numeric-column?
-  [col]
-  (let [{:keys [base_type effective_type]} (normalize-column col)]
-    (isa? (or effective_type base_type) :type/Number)))
-
-(defn- create-cell-formatters
-  "Create formatter functions for each column using the standard formatter utility."
-  [cols timezone-id viz-settings]
-  (mapv #(formatter/create-formatter timezone-id (normalize-column %) viz-settings) cols))
-
-(defn- format-cell
-  "Format a cell value for Slack table display.
-   Empty values are replaced with \"-\" since Slack requires non-empty text.
-   Long values are truncated with ellipsis."
-  [value formatter]
-  (let [formatted (if (nil? value)
-                    ""
-                    (str (formatter value)))]
-    (cond
-      (= formatted "") "-"
-      (> (count formatted) *slack-table-max-cell-length*)
-      (str (u/truncate formatted (dec *slack-table-max-cell-length*)) "…")
-      :else formatted)))
-
-(defn- make-column-settings
-  "Generate column settings for Slack table. Numbers are right-aligned."
-  [cols]
-  (mapv (fn [col]
-          (if (numeric-column? col)
-            {:align "right"}
-            {:align "left"}))
-        cols))
-
-(defn- make-table-row
-  "Create a Slack table row from values and formatters."
-  [row formatters]
-  (mapv (fn [value fmt]
-          {:type "raw_text"
-           :text (format-cell value fmt)})
-        row
-        formatters))
-
-(defn- row-char-count
-  "Total character count of all cell text values in a formatted row."
-  [row]
-  (transduce (map (comp count :text)) + row))
-
-(defn- take-rows-within-char-budget
-  "Take as many rows as fit within the character budget."
-  [rows budget]
-  (let [n (->> (map row-char-count rows)
-               (reductions +)
-               (take-while #(<= % budget))
-               count)]
-    (vec (take (max 1 n) rows))))
-
-(defn format-results-as-table-blocks
-  "Format query results as Slack table blocks.
-   Truncates results if they exceed Slack's limits (100 rows, 20 columns, ~10k chars).
-   Cell text is truncated to [[*slack-table-max-cell-length*]] characters.
-   Works for any result shape including single-cell scalars.
-   Filters hidden columns and handles FK remapping.
-   Adds a context block with truncation message if results were truncated."
-  [results]
-  (let [{:keys [cols rows]} (:data results)
-        timezone-id         (get results :results_timezone)
-        viz-settings        {}
-        {:keys [cols rows]} (channel.render/prepare-table-data cols rows)
-        total-rows          (count rows)
-        display-cols        (vec (take slack-table-max-cols cols))
-        display-rows        (take slack-table-row-limit rows)
-        truncated-rows      (mapv #(vec (take slack-table-max-cols %)) display-rows)
-        formatters          (create-cell-formatters display-cols timezone-id viz-settings)
-        headers             (mapv #(str (or (:display_name %) (:name %) "")) display-cols)
-        header-row          (mapv (fn [h] {:type "raw_text" :text (str h)}) headers)
-        data-rows           (mapv #(make-table-row % formatters) truncated-rows)
-        data-rows           (take-rows-within-char-budget
-                             data-rows
-                             (- *slack-table-max-chars* (row-char-count header-row)))
-        displayed-rows      (count data-rows)
-        all-rows            (into [header-row] data-rows)
-        column-settings     (make-column-settings display-cols)
-        table-block         {:type            "table"
-                             :rows            all-rows
-                             :column_settings column-settings}
-        rows-truncated?     (> total-rows displayed-rows)]
-    (cond
-      (zero? total-rows)
-      no-data-table-blocks
-
-      rows-truncated?
-      [table-block
-       {:type     "context"
-        :elements [{:type "mrkdwn"
-                    :text (format "Showing %d of %d rows" displayed-rows total-rows)}]}]
-
-      :else
-      [table-block])))
-
 (def ^:private supported-png-display-types
   "Display types that should render as PNG images rather than Slack tables."
   #{:smartscalar :gauge :progress
@@ -223,7 +87,7 @@
       {:type    :image
        :content (generate-adhoc-png results display)}
       {:type    :table
-       :content (format-results-as-table-blocks results)})))
+       :content (channel.render/format-results-as-table-blocks results)}))
 
 ;;; ------------------------------------------ Saved Card Visualization ----------------------------------------------------
 
@@ -275,5 +139,5 @@
        :content   (render-saved-card-png card results)
        :card-name card-name}
       {:type      :table
-       :content   (format-results-as-table-blocks results)
+       :content   (channel.render/format-results-as-table-blocks results)
        :card-name card-name})))

@@ -38,4 +38,6 @@
  [table-data
   show-in-table?
   create-remapping-lookup
-  prepare-table-data])
+  order-data
+  prepare-table-data
+  format-results-as-table-blocks])

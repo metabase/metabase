@@ -245,9 +245,10 @@
             (fn [{:keys [card-id]} [message]]
               (testing "\"more results in attachment\" text should not be present for Slack Pulses"
                 (testing "Pulse results"
-                  (is (=? {:channel "#general"
-                           :blocks (default-slack-blocks card-id true)}
-                          message)))
+                  (pulse.test-util/assert-native-slack-table-message!
+                   message
+                   (default-slack-blocks card-id false)
+                   10))
                 (testing "attached-results-text should be invoked exactly once"
                   (is (= 1
                          (count (pulse.test-util/input @#'body/attached-results-text)))))

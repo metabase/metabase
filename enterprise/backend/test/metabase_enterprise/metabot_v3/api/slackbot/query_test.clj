@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
+   [metabase.channel.render.table-data :as table-data]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt])
@@ -118,7 +119,7 @@
                           :cols   [{:name "id" :display_name "ID" :base_type :type/Integer}
                                    {:name "name" :display_name "Name" :base_type :type/Text}
                                    {:name "amount" :display_name "Amount" :base_type :type/Float}]}}
-          blocks  (slackbot.query/format-results-as-table-blocks results)]
+          blocks  (table-data/format-results-as-table-blocks results)]
 
       (testing "returns a vector of blocks"
         (is (vector? blocks))
@@ -151,7 +152,7 @@
     (let [many-rows (vec (repeat 150 [1 "test"]))
           results   {:data {:rows many-rows
                             :cols [{:name "id"} {:name "name"}]}}
-          blocks    (slackbot.query/format-results-as-table-blocks results)]
+          blocks    (table-data/format-results-as-table-blocks results)]
 
       (testing "table is truncated to 99 data rows plus header"
         (let [table-block (first blocks)
@@ -168,7 +169,7 @@
   (testing "format-results-as-table-blocks handles scalar (single-cell) results"
     (let [results {:data {:rows [[42]]
                           :cols [{:name "count" :display_name "Count" :base_type :type/Integer}]}}
-          blocks  (slackbot.query/format-results-as-table-blocks results)]
+          blocks  (table-data/format-results-as-table-blocks results)]
       (testing "returns a 1x1 table with header"
         (let [table-block (first blocks)
               rows        (:rows table-block)]
@@ -179,7 +180,7 @@
   (testing "format-results-as-table-blocks handles empty results"
     (let [results {:data {:rows []
                           :cols [{:name "count" :display_name "Count" :base_type :type/Integer}]}}
-          blocks  (slackbot.query/format-results-as-table-blocks results)]
+          blocks  (table-data/format-results-as-table-blocks results)]
       (testing "returns a table with only header row"
         (let [table-block (first blocks)
               rows        (:rows table-block)]
@@ -187,21 +188,21 @@
           (is (= "Count" (get-in rows [0 0 :text])))))))
 
   (testing "format-results-as-table-blocks truncates long cell values"
-    (binding [slackbot.query/*slack-table-max-cell-length* 20]
+    (binding [table-data/*slack-table-max-cell-length* 20]
       (let [long-text (apply str (repeat 50 "x"))
             results   {:data {:rows [[1 long-text]]
                               :cols [{:name "id" :display_name "ID" :base_type :type/Integer}
                                      {:name "desc" :display_name "Description" :base_type :type/Text}]}}
-            blocks    (slackbot.query/format-results-as-table-blocks results)
+            blocks    (table-data/format-results-as-table-blocks results)
             cell-text (get-in (first blocks) [:rows 1 1 :text])]
         (is (<= (count cell-text) 20))
         (is (str/ends-with? cell-text "…")))))
 
   (testing "format-results-as-table-blocks truncates rows to fit character budget"
-    (binding [slackbot.query/*slack-table-max-chars* 100]
+    (binding [table-data/*slack-table-max-chars* 100]
       (let [results {:data {:rows (vec (repeat 20 ["abcdefghij"]))
                             :cols [{:name "val" :display_name "Value" :base_type :type/Text}]}}
-            blocks  (slackbot.query/format-results-as-table-blocks results)
+            blocks  (table-data/format-results-as-table-blocks results)
             data-rows (rest (:rows (first blocks)))]
         (testing "does not include all rows"
           (is (< (count data-rows) 20)))
@@ -229,7 +230,7 @@
                                   :display_name "User Name"
                                   :base_type    :type/Text
                                   :remapped_from "user_id"}]}}
-          blocks  (slackbot.query/format-results-as-table-blocks results)]
+          blocks  (table-data/format-results-as-table-blocks results)]
 
       (testing "skips remapped_from column (the duplicate)"
         (let [table-block (first blocks)

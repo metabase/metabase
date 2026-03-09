@@ -14,7 +14,6 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.timeline.core :as timeline]
    [metabase.types.core :as types]
@@ -188,23 +187,6 @@
   (fn [chart-type _render-type _timezone-id _card _dashcard _data]
     chart-type))
 
-(defn- order-data [data viz-settings]
-  (if (some? (::mb.viz/table-columns viz-settings))
-    (let [;; Deduplicate table-columns by name to handle duplicated viz settings
-          deduped-table-columns       (->> (::mb.viz/table-columns viz-settings)
-                                           (m/distinct-by ::mb.viz/table-column-name))
-          deduped-viz-settings        (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
-          [ordered-cols output-order] (qp.streaming/order-cols (:cols data) deduped-viz-settings)
-          ;; table-columns from viz-settings only includes remapped columns, not the source columns
-          santized-ordered-cols       (map #(dissoc % :remapped_from :remapped_to) ordered-cols)
-          keep-filtered-idx           (fn [row] (if output-order
-                                                  (let [row-v (into [] row)]
-                                                    (for [i output-order] (row-v i)))
-                                                  row))
-          ordered-rows                (map keep-filtered-idx (:rows data))]
-      [santized-ordered-cols ordered-rows])
-    [(:cols data) (:rows data)]))
-
 (defn- minibar-columns
   "Return a list of column definitions for which minibar charts are enabled"
   [cols viz-settings]
@@ -221,7 +203,7 @@
    card
    _dashcard
    {:keys [rows viz-settings format-rows?] :as unordered-data}]
-  (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
+  (let [[ordered-cols ordered-rows] (table-data/order-data unordered-data viz-settings)
         data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
