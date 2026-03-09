@@ -130,7 +130,7 @@
     (throw (ex-info "Resource not found: metabase/app_db/supported-db-versions.edn"
                     {:path "metabase/app_db/supported-db-versions.edn"}))))
 
-(def supported-db-versions
+(def ^:private supported-db-versions
   "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"
   (load-supported-db-versions))
 
