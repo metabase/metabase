@@ -1,4 +1,3 @@
-import { skipToken } from "@reduxjs/toolkit/query";
 import {
   Background,
   Controls,
@@ -13,7 +12,6 @@ import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group, useColorScheme } from "metabase/ui";
-import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type {
   DependencyEntry,
   DependencyGraph,
@@ -60,9 +58,9 @@ type DependencyGraphProps = {
 
 export function DependencyGraph({
   entry,
-  graph: externalGraph,
-  isFetching: isFetchingExternally = false,
-  error: externalError,
+  graph,
+  isFetching = false,
+  error,
   getGraphUrl,
   withEntryPicker,
   headerRightSide = null,
@@ -70,14 +68,6 @@ export function DependencyGraph({
   edgeTypes = EDGE_TYPES,
   openLinksInNewTab = true,
 }: DependencyGraphProps) {
-  const shouldFetch = entry != null && !externalGraph;
-  const dependencyGraph = useGetDependencyGraphQuery(
-    shouldFetch ? entry : skipToken,
-  );
-  const isFetching = isFetchingExternally || dependencyGraph.isFetching;
-  const graph = externalGraph ?? dependencyGraph.data;
-  const error = externalError ?? dependencyGraph.error;
-
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);

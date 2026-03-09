@@ -2,9 +2,13 @@ import { useForceUpdate } from "@mantine/hooks";
 import { useEffect, useRef } from "react";
 import { msgid, ngettext } from "ttag";
 
+import { Api } from "metabase/api";
+import { useDispatch } from "metabase/lib/redux";
 import { Progress, Stack, Text } from "metabase/ui";
 import { useGetReplaceSourceRunQuery } from "metabase-enterprise/api/replacement";
 import type { ReplaceSourceRun, ReplaceSourceRunId } from "metabase-types/api";
+
+import { INVALIDATE_TAGS } from "../../constants";
 
 const POLLING_INTERVAL = 1000;
 
@@ -23,16 +27,18 @@ export function ProgressModalContent({
     pollingInterval: POLLING_INTERVAL,
   });
   const elapsedSeconds = useElapsedSeconds();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (run != null && run.status !== "started") {
+      dispatch(Api.util.invalidateTags(INVALIDATE_TAGS));
       if (run.status === "succeeded") {
         onReplaceSuccess();
       } else {
         onReplaceFailure();
       }
     }
-  }, [run, onReplaceSuccess, onReplaceFailure]);
+  }, [run, dispatch, onReplaceSuccess, onReplaceFailure]);
 
   return (
     <Stack gap="sm">
