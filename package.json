@@ -157,7 +157,7 @@
     "redux-actions": "^2.0.1",
     "redux-auth-wrapper": "2.1.0",
     "redux-undo": "^1.1.0",
-    "rehype-external-links": "^2.0.1",
+    "rehype-external-links": "^3.0.0",
     "remark-gfm": "^4.0.0",
     "reselect": "^5.1.0",
     "resize-observer-polyfill": "^1.5.1",

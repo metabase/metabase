@@ -5,6 +5,7 @@ import type { Dashboard } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
 import type { Document } from "./document";
 import type { Field, FieldDimension, FieldId } from "./field";
+import type { Group } from "./group";
 import type { Measure, MeasureId } from "./measure";
 import type { Segment, SegmentId } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
@@ -23,6 +24,7 @@ export type NormalizedDashboard = Dashboard;
 export type NormalizedDocument = Document;
 export type NormalizedCard = Card;
 export type NormalizedNativeQuerySnippet = NativeQuerySnippet;
+export type NormalizedGroup = Group;
 
 export interface NormalizedDatabase
   extends Omit<Database, "tables" | "schemas"> {

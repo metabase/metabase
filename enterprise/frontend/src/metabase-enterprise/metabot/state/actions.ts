@@ -192,12 +192,13 @@ export const submitInput = createAsyncThunk<
     context: MetabotChatContext;
     agentId: MetabotAgentId;
     metabot_id?: string;
+    profile?: string;
   }
 >(
   "metabase-enterprise/metabot/submitInput",
   async (payload, { dispatch, getState, signal }) => {
     const state = getState();
-    const { agentId, message: rawPrompt, ...data } = payload;
+    const { agentId, message: rawPrompt, profile, ...data } = payload;
     const convo = getMetabotConversation(state, agentId);
 
     const prompt = rawPrompt.trim();
@@ -257,6 +258,7 @@ export const submitInput = createAsyncThunk<
           agentId,
           conversation_id: convo.conversationId,
           ...agentMetadata,
+          ...(profile ? { profile_id: profile } : {}),
         }),
       );
       signal.addEventListener("abort", () => {

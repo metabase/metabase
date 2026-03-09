@@ -81,6 +81,57 @@ describe("scenarios > embedding > modular embedding", () => {
     });
   });
 
+  it("table visualization should span the full width of the container (metabase#69831)", () => {
+    cy.signInAsAdmin();
+    H.createQuestion({
+      name: "Narrow table question",
+      query: {
+        "source-table": ORDERS_TABLE_ID,
+        fields: [
+          ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+          ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+        ],
+        limit: 5,
+      },
+    }).then(({ body: question }) => {
+      cy.signOut();
+
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-question",
+            attributes: {
+              questionId: question.id,
+            },
+          },
+        ],
+      });
+
+      cy.wait("@getCardQuery");
+
+      frame.within(() => {
+        // clientWidth excludes the scrollbar gutter, giving us the actual content area
+        H.tableInteractive()
+          .findByTestId("table-scroll-container")
+          .then(($scrollContainer) => {
+            const contentWidth = $scrollContainer[0].clientWidth;
+
+            const $headerCells = $scrollContainer.find(
+              '[data-testid="header-cell"]',
+            );
+            let totalHeaderWidth = 0;
+            $headerCells.each((_, el) => {
+              totalHeaderWidth += el.getBoundingClientRect().width;
+            });
+
+            expect(Math.round(totalHeaderWidth)).to.be.at.least(
+              Math.round(contentWidth),
+            );
+          });
+      });
+    });
+  });
+
   it("displays a dashboard using entity id", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       elements: [
