@@ -15,10 +15,6 @@
 (mr/def ::source
   [:tuple ::source-type ::source-id])
 
-(mr/def ::source-error
-  [:enum :database-mismatch
-   :cycle-detected])
-
 (mr/def ::column-error
   [:enum :column-type-mismatch
    :missing-primary-key
