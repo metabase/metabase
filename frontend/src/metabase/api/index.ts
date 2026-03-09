@@ -32,6 +32,7 @@ export * from "./permission";
 export * from "./persist";
 export * from "./premium-features";
 export * from "./revision";
+export * from "./group-table-access-policy";
 export * from "./search";
 export * from "./segment";
 export * from "./session";

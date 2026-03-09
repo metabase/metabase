@@ -17,7 +17,7 @@
 (deftest atomic-python-transform-swap-test
   (testing "Python transform execution with atomic table swap"
     (mt/test-drivers #{:mysql :postgres}
-      (mt/with-premium-features #{:transforms-python :transforms}
+      (mt/with-premium-features #{:transforms-python :transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
@@ -69,7 +69,7 @@
 (deftest python-transform-temp-table-cleanup-test
   (testing "Python transform cleans up temp tables on success"
     (mt/test-drivers #{:mysql :postgres}
-      (mt/with-premium-features #{:transforms-python :transforms}
+      (mt/with-premium-features #{:transforms-python :transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
@@ -101,7 +101,7 @@
 (deftest python-transform-timeout-status-test
   (testing "Python transform execution sets correct timeout status when script times out"
     (mt/test-drivers #{:postgres}
-      (mt/with-premium-features #{:transforms-python :transforms}
+      (mt/with-premium-features #{:transforms-python :transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [target {:type   "table"
@@ -136,7 +136,7 @@
 (deftest python-transform-unresolved-source-table-test
   (testing "Python transform execution throws when source table cannot be resolved"
     (mt/test-drivers #{:postgres}
-      (mt/with-premium-features #{:transforms-python :transforms}
+      (mt/with-premium-features #{:transforms-python :transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [target {:type   "table"
@@ -160,7 +160,7 @@
 (deftest python-transform-unresolved-source-table-no-schema-test
   (testing "Python transform error message omits schema when nil"
     (mt/test-drivers #{:postgres}
-      (mt/with-premium-features #{:transforms-python :transforms}
+      (mt/with-premium-features #{:transforms-python :transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target {:type   "table"
                                             :schema nil
