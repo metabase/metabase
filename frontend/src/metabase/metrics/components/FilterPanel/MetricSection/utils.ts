@@ -21,7 +21,9 @@ export function getMetricLabel(
   }
 }
 
-export function getMetricIcon(definition: LibMetric.MetricDefinition): IconName {
+export function getMetricIcon(
+  definition: LibMetric.MetricDefinition,
+): IconName {
   const metricId = LibMetric.sourceMetricId(definition);
   if (metricId != null) {
     return "metric";

@@ -2,8 +2,7 @@
   border-radius: 0;
   visibility: hidden;
   color: var(--mb-color-text-tertiary-inverse);
-  border-left: 2px solid
-    var(--mb-color-border-subtle);
+  border-left: 2px solid var(--mb-color-border-subtle);
 }
 
 *:hover > .triggerButton {

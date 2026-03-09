@@ -149,10 +149,7 @@ type VisualizationOwnProps = {
   isVisualizer?: boolean;
   renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
-  mode?:
-    | ClickActionModeGetter
-    | ClickActionsMode
-    | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
   onEditSummary?: () => void;
   rawSeries?: (
     | SingleSeries

@@ -13,10 +13,7 @@ type MetricSectionProps = {
 };
 
 export function MetricSection({ definition, onRemove }: MetricSectionProps) {
-  const filters = useMemo(
-    () => LibMetric.filters(definition),
-    [definition],
-  );
+  const filters = useMemo(() => LibMetric.filters(definition), [definition]);
 
   const label = useMemo(() => getMetricLabel(definition), [definition]);
   const icon = useMemo(() => getMetricIcon(definition), [definition]);
@@ -44,4 +41,3 @@ export function MetricSection({ definition, onRemove }: MetricSectionProps) {
     </Stack>
   );
 }
-

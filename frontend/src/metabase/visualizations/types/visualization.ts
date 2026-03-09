@@ -229,10 +229,7 @@ export type VisualizationPassThroughProps = {
     index: number,
     theme: unknown,
   ) => ReactNode;
-  mode?:
-    | ClickActionModeGetter
-    | ClickActionsMode
-    | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
