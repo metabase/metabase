@@ -233,7 +233,7 @@
   "Create and checkout a new branch from the base branch for mutation testing a function.
    Fails early if there are uncommitted changes."
   [target-ns fn-name]
-  (let [status (:out (sh "git" "status" "--porcelain"))]
+  (let [status (:out (sh "git" "status" "--porcelain" "-uno"))]
     (when-not (str/blank? status)
       (throw (ex-info (str "Uncommitted changes detected. Commit or stash before running.\n" status)
                       {:status status}))))
@@ -808,7 +808,7 @@
    (when-let [pid (:project-id opts)]
      (set-config! {:project-id pid}))
    ;; 0. Fail early if working tree is dirty
-   (let [status (:out (sh "git" "status" "--porcelain"))]
+   (let [status (:out (sh "git" "status" "--porcelain" "-uno"))]
      (when-not (str/blank? status)
        (throw (ex-info (str "Uncommitted changes detected. Commit or stash before running.\n" status)
                        {:status status}))))
