@@ -18,9 +18,9 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.util :as transforms.u]
-   [metabase.warehouse-schema.models.table :as table]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))

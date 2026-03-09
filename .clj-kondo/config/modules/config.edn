@@ -923,7 +923,8 @@
            settings
            transforms
            transforms-base
-           util}
+           util
+           warehouse-schema}
    :friends #{transforms}}
 
   native-query-snippets
