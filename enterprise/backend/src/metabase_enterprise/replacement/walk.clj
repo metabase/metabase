@@ -23,11 +23,12 @@
   [parameters :- [:sequential :map]
    ref-fn       :- fn?]
   (letfn [(update-legacy-ref [legacy-ref card-id]
-            (if-some [ref (try (lib/->pMBQL legacy-ref) (catch Exception _ nil))]
+            (try
               ;; `value_field` and `label_field` are legacy refs
               #_{:clj-kondo/ignore [:discouraged-var]}
-              (-> ref (ref-fn card-id) lib/->legacy-MBQL)
-              legacy-ref))]
+              (-> legacy-ref lib/->pMBQL (ref-fn card-id) lib/->legacy-MBQL)
+              (catch Exception _
+                legacy-ref)))]
     (mapv (fn [parameter]
             (if-some [card-id (-> parameter :values_source_config :card_id)]
               (-> parameter
