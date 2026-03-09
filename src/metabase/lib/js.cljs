@@ -2155,6 +2155,8 @@
 
 ;; TODO: Move all the join logic into one block - it's scattered all through the lower half of this namespace.
 
+;; TODO: (bshepherdson, 2026-03-25) The name of this function was changed in lib.core and this should probably change
+;; to match it.
 (defn ^:export joinable-columns
   "Returns a JS array of columns that are available when joining `join-or-joinable` into `a-query`.
 
@@ -2172,7 +2174,7 @@
   [a-query stage-number join-or-joinable]
   ;; TODO: It's not practical to cache this currently. We need to be able to key off the query and the joinable, which
   ;; is not supported by the lib.cache system.
-  (to-array (lib.core/joinable-columns a-query stage-number join-or-joinable)))
+  (to-array (lib.core/join-fieldable-columns a-query stage-number join-or-joinable)))
 
 ;; TODO: table-or-card-metadata is too specific and leaks details of how sources are stored. We need a higher-level API
 ;; for the sources of queries, especially with Metrics v2.
