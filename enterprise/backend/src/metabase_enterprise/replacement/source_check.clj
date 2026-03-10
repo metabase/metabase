@@ -3,10 +3,10 @@
    [metabase-enterprise.replacement.schema :as replacement.schema]
    [metabase-enterprise.replacement.usages :as replacement.usages]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.schema.source-swap :as lib-be.schema.source-swap]
-   [metabase.lib-be.source-swap :as lib-be.source-swap]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.source-swap.core :as source-swap]
+   [metabase.source-swap.schema :as source-swap.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -39,7 +39,7 @@
 
 (mu/defn- format-column-mappings :- [:sequential ::replacement.schema/column-mapping]
   "Format column mappings by applying format-column to source and target columns."
-  [mappings :- [:sequential ::lib-be.schema.source-swap/column-mapping]]
+  [mappings :- [:sequential ::source-swap.schema/column-mapping]]
   (mapv #(-> %
              (u/update-some :source format-column)
              (u/update-some :target format-column))
@@ -59,7 +59,7 @@
           cycle?          (some #(= new-ref %) (replacement.usages/transitive-usages old-ref))
           mappings        (when-not db-mismatch?
                             (-> (lib-be/application-database-metadata-provider source-db-id)
-                                (lib-be.source-swap/check-column-mappings old-ref new-ref)
+                                (source-swap/check-column-mappings old-ref new-ref)
                                 format-column-mappings))
           has-missing?    (some (fn [m] (and (:source m) (nil? (:target m)))) mappings)
           has-col-errors? (seq (mapcat :errors mappings))

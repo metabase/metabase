@@ -1,9 +1,9 @@
-(ns metabase.lib-be.source-swap.util-test
+(ns metabase.source-swap.compatibility-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib-be.source-swap.util :as lib-be.source-swap.util]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.source-swap.compatibility :as source-swap.compatibility]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,25 +33,25 @@
 (deftest ^:parallel column-errors-no-errors-test
   (testing "should return empty errors for matching columns"
     (is (= []
-           (lib-be.source-swap.util/column-errors (field 1) (field 1) :table :table)))))
+           (source-swap.compatibility/column-errors (field 1) (field 1) :table :table)))))
 
 (deftest ^:parallel column-errors-type-mismatch-test
   (testing "should detect column type mismatch"
     (is (= [:column-type-mismatch]
-           (lib-be.source-swap.util/column-errors (field 1) (field 2) :table :table)))))
+           (source-swap.compatibility/column-errors (field 1) (field 2) :table :table)))))
 
 (deftest ^:parallel column-errors-missing-primary-key-test
   (testing "should detect missing primary key for table->table"
     (is (= [:column-type-mismatch :missing-primary-key]
-           (lib-be.source-swap.util/column-errors (field 3) (field 2) :table :table))))
+           (source-swap.compatibility/column-errors (field 3) (field 2) :table :table))))
   (testing "should not flag missing primary key for table->card"
     (is (= [:column-type-mismatch]
-           (lib-be.source-swap.util/column-errors (field 3) (field 2) :table :card)))))
+           (source-swap.compatibility/column-errors (field 3) (field 2) :table :card)))))
 
 (deftest ^:parallel column-errors-foreign-key-test
   (testing "should detect missing foreign key"
     (is (= [:missing-foreign-key]
-           (lib-be.source-swap.util/column-errors (field 4) (field 6) :table :table))))
+           (source-swap.compatibility/column-errors (field 4) (field 6) :table :table))))
   (testing "should detect foreign key target mismatch"
     (is (= [:foreign-key-mismatch]
-           (lib-be.source-swap.util/column-errors (field 4) (field 5) :table :table)))))
+           (source-swap.compatibility/column-errors (field 4) (field 5) :table :table)))))

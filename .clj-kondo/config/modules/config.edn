@@ -776,18 +776,26 @@
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
+              source-swap         ;; Source-swap manipulates MBQL queries; tight coupling with lib is expected.
               }}
 
   lib-be
   {:team "Querying"
    :api  #{metabase.lib-be.core
-           metabase.lib-be.init
-           metabase.lib-be.schema.source-swap
-           metabase.lib-be.source-swap}
+           metabase.lib-be.init}
    :uses #{driver
            lib
            models
            settings
+           sql-tools
+           util}}
+
+  source-swap
+  {:team "Graphy"
+   :api  #{metabase.source-swap.core
+           metabase.source-swap.schema}
+   :uses #{driver
+           lib
            sql-tools
            util}}
 
@@ -2357,6 +2365,7 @@
            lib-be
            models
            queries
+           source-swap
            task
            util
            enterprise/dependencies}}

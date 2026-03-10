@@ -1,14 +1,14 @@
-(ns metabase.lib-be.source-swap.mbql-test
+(ns metabase.source-swap.mbql-test
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.lib-be.source-swap.mbql :as lib-be.source-swap.mbql]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.source-swap.mbql :as source-swap.mbql]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -23,17 +23,17 @@
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/with-fields [(meta/field-metadata :orders :id)
                                     (meta/field-metadata :orders :created-at)]))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                          [:table (meta/id :orders)]
-                                                                          [:table (meta/id :products)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                   [:table (meta/id :orders)]
+                                                                   [:table (meta/id :products)])]
     (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields       [[:field {} (meta/id :orders :id)]
                                         [:field {} (meta/id :orders :created-at)]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should preserve id-based field refs when swapping"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :fields       [[:field {} (meta/id :products :id)]
@@ -49,17 +49,17 @@
         query          (-> (lib/query mp (lib.metadata/card mp 1))
                            (lib/with-fields [(meta/field-metadata :orders :id)
                                              (meta/field-metadata :orders :created-at)]))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:card 1]
-                                                                           [:card 2])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:card 1]
+                                                                    [:card 2])]
     (testing "should convert id-based field refs to name-based field refs when upgrading"
       (is (=? {:stages [{:source-card 1
                          :fields      [[:field {} "ID"]
                                        [:field {} "CREATED_AT"]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should change source-card and preserve name-based refs when swapping"
       (is (=? {:stages [{:source-card 2
                          :fields      [[:field {} "ID"]
@@ -72,17 +72,17 @@
         query          (-> (lib/query mp (lib.metadata/card mp 1))
                            (lib/with-fields [(meta/field-metadata :orders :id)
                                              (meta/field-metadata :orders :created-at)]))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:card 1]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:card 1]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should convert id-based field refs to name-based field refs when upgrading"
       (is (=? {:stages [{:source-card 1
                          :fields      [[:field {} "ID"]
                                        [:field {} "CREATED_AT"]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should swap source-card with source-table and convert name-based refs to id-based refs"
       (is (=? {:stages [{:source-table (meta/id :reviews)
                          :fields       [[:field {} (meta/id :reviews :id)]
@@ -95,17 +95,17 @@
         query          (-> (lib/query mp (meta/table-metadata :orders))
                            (lib/with-fields [(meta/field-metadata :orders :id)
                                              (meta/field-metadata :orders :created-at)]))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:card 1])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:card 1])]
     (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields       [[:field {} (meta/id :orders :id)]
                                         [:field {} (meta/id :orders :created-at)]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should swap source-table with source-card and convert to name-based refs"
       (is (=? {:stages [{:source-card 1
                          :fields      [[:field {} "ID"]
@@ -122,10 +122,10 @@
                            (lib/aggregate (lib/sum (meta/field-metadata :orders :id)))
                            (lib/breakout (meta/field-metadata :orders :created-at))
                            (lib/order-by (meta/field-metadata :orders :created-at)))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields       [[:field {} (meta/id :orders :id)]
@@ -163,10 +163,10 @@
   (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :products)) q
                          (lib/join q (meta/table-metadata :orders))
                          (lib/filter q (lib/not-null (find-column (lib/filterable-columns q) "PRODUCT_ID"))))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins   [{:stages [{:source-table (meta/id :orders)}]
@@ -176,7 +176,7 @@
                          :filters [[:not-null {} [:field {:join-alias "Orders"} (meta/id :orders :product-id)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should swap orders to reviews in join and update joined column refs"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins   [{:stages [{:source-table (meta/id :reviews)}]
@@ -192,10 +192,10 @@
         query          (as-> (lib/query mp (meta/table-metadata :products)) q
                          (lib/join q (meta/table-metadata :orders))
                          (lib/filter q (lib/not-null (find-column (lib/filterable-columns q) "PRODUCT_ID"))))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:card 1])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:card 1])]
     (testing "should preserve id-based field refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins   [{:stages [{:source-table (meta/id :orders)}]
@@ -205,7 +205,7 @@
                          :filters [[:not-null {} [:field {:join-alias "Orders"} (meta/id :orders :product-id)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should swap orders join to card with name-based refs and preserve products refs"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins   [{:stages [{:source-card 1}]
@@ -221,16 +221,16 @@
                            (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/Integer
                                                                                :join-alias "Orders"}
                                                                        (meta/id :reviews :product-id)]))))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "upgrade should preserve the wrong field id as-is"
       (is (=? {:stages [{:filters [[:not-null {} [:field {:join-alias "Orders"}
                                                   (meta/id :reviews :product-id)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should preserve the wrong field id when swapping"
       (is (=? {:stages [{:filters [[:not-null {} [:field {:join-alias "Orders"}
                                                   (meta/id :reviews :product-id)]]]}]}
@@ -241,16 +241,16 @@
                            (lib/join (meta/table-metadata :orders))
                            (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/Integer}
                                                                        (meta/id :reviews :product-id)]))))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "upgrade should preserve the wrong field id and missing join-alias as-is"
       (is (=? {:stages [{:filters [[:not-null {} [:field (complement :join-alias)
                                                   (meta/id :reviews :product-id)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "swap should resolve the ref and add the correct join-alias"
       (is (=? {:stages [{:filters [[:not-null {} [:field {:join-alias "Orders"}
                                                   (meta/id :reviews :product-id)]]]}]}
@@ -263,10 +263,10 @@
                            (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/DateTimeWithLocalTZ
                                                                                :join-alias "Orders"}
                                                                        (meta/id :orders :created-at)]))))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "upgrade should heal the broken ref to a name-based ref without join-alias"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins [{:alias "Orders"
@@ -274,7 +274,7 @@
                         {:filters [[:not-null {} [:field (complement :join-alias) "Orders__CREATED_AT"]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should preserve second-stage ref and swap join source to reviews"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins [{:alias "Orders"
@@ -287,17 +287,17 @@
                            (lib/join (meta/table-metadata :orders))
                            (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/Integer}
                                                                        (meta/id :orders :product-id)]))))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "upgrade should heal the missing join-alias"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :filters [[:not-null {} [:field {:join-alias "Orders"}
                                                   (meta/id :orders :product-id)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should swap joined column ref after healing"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins   [{:stages [{:source-table (meta/id :reviews)}]}]
@@ -312,10 +312,10 @@
                          (lib/join q (lib.metadata/card mp 1))
                          (lib/filter q (lib/not-null (find-column (lib/filterable-columns q) "PRODUCT_ID"))))
         join-alias     (-> query lib/joins first lib/current-join-alias)
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:card 1]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:card 1]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should preserve id-based base refs and name-based card refs when upgrading"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins   [{:stages [{:source-card 1}]
@@ -326,7 +326,7 @@
                          :filters [[:not-null {} [:field {:join-alias join-alias} "PRODUCT_ID"]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should swap card join to table with id-based refs and preserve products refs"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :joins   [{:stages [{:source-table (meta/id :reviews)}]
@@ -351,7 +351,7 @@
                             (lib/expression "Tax Rate" (lib// (meta/field-metadata :orders :tax)
                                                               (meta/field-metadata :orders :total)))
                             (lib/expression "Original Time Copy" (meta/field-metadata :orders :created-at)))
-          upgraded      (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)]
+          upgraded      (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)]
       (testing "before upgrade: all four expressions present"
         (is (=? {:stages [{:expressions [[:field {:lib/expression-name "Big Endian Time"} created-at-id]
                                          [:field {:lib/expression-name "Date Only Time"} created-at-id]
@@ -373,16 +373,16 @@
 (deftest ^:parallel swap-source-in-query-identity-expression-test
   (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/expression "created-at-expr" (meta/field-metadata :orders :created-at)))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should preserve id-based ref and :lib/expression-name when upgrading"
       (is (=? {:stages [{:expressions [[:field {:lib/expression-name "created-at-expr"}
                                         (meta/id :orders :created-at)]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should convert to id-based ref and preserve :lib/expression-name when swapping"
       (is (=? {:stages [{:source-table (meta/id :reviews)
                          :expressions  [[:field {:lib/expression-name "created-at-expr"}
@@ -393,10 +393,10 @@
   (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
                          (let [cols (filter #(= (:name %) "CREATED_AT") (lib/filterable-columns q))]
                            (reduce (fn [q col] (lib/filter q (lib/not-null col))) q cols)))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :orders)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :orders)])]
     (testing "should preserve source-field for implicit joins after upgrade"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :filters [[:not-null {} [:field (complement :source-field) (meta/id :orders :created-at)]]
@@ -406,7 +406,7 @@
                                                   (meta/id :products :created-at)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "identity swap should preserve all source-field options"
       (is (= upgraded-query swapped-query)))))
 
@@ -416,10 +416,10 @@
         query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
                          (let [cols (filter #(= (:name %) "CREATED_AT") (lib/filterable-columns q))]
                            (reduce (fn [q col] (lib/filter q (lib/not-null col))) q cols)))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:card 1]
-                                                                           [:card 1])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:card 1]
+                                                                    [:card 1])]
     (testing "should upgrade card column to name-based ref and preserve implicit join refs"
       (is (=? {:stages [{:source-card 1
                          :filters [[:not-null {} [:field (complement :source-field) "CREATED_AT"]]
@@ -429,17 +429,17 @@
                                                   (meta/id :people :created-at)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "identity swap should preserve all refs"
       (is (= upgraded-query swapped-query)))))
 
 (deftest ^:parallel swap-source-in-query-implicit-join-test
   (let [query          (as-> (lib/query meta/metadata-provider (meta/table-metadata :orders)) q
                          (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should preserve IDs for implicit join columns when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :filters [[:= {}
@@ -448,7 +448,7 @@
                                     "Widget"]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should change source-field when swapping"
       (is (=? {:stages [{:source-table (meta/id :reviews)
                          :filters [[:= {}
@@ -462,10 +462,10 @@
         mp             (lib.tu/metadata-provider-with-card-from-query 1 reviews-query)
         query          (as-> (lib/query mp (meta/table-metadata :orders)) q
                          (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:card 1])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:card 1])]
     (testing "should preserve IDs for implicit join columns when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :filters [[:= {}
@@ -474,7 +474,7 @@
                                     "Widget"]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should swap source-table to source-card and change source-field"
       (is (=? {:stages [{:source-card 1
                          :filters [[:= {}
@@ -488,10 +488,10 @@
         mp             (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
         query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
                          (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should preserve IDs for implicit join columns when upgrading"
       (is (=? {:stages [{:source-card 1
                          :filters [[:= {}
@@ -500,7 +500,7 @@
                                     "Widget"]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should keep source-card and only change source-field in the ref"
       (is (=? {:stages [{:source-card 1
                          :filters [[:= {}
@@ -514,10 +514,10 @@
         mp             (lib.tu/metadata-provider-with-card-from-query 1 orders-query)
         query          (as-> (lib/query mp (lib.metadata/card mp 1)) q
                          (lib/filter q (lib/= (find-column (lib/filterable-columns q) "CATEGORY") "Widget")))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:card 1]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:card 1]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should preserve IDs for implicit join columns when upgrading"
       (is (=? {:stages [{:source-card 1
                          :filters [[:= {}
@@ -526,7 +526,7 @@
                                     "Widget"]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should swap source-card to source-table and change source-field"
       (is (=? {:stages [{:source-table (meta/id :reviews)
                          :filters [[:= {}
@@ -548,10 +548,10 @@
                          (lib/breakout q (meta/field-metadata :orders :created-at))
                          (lib/append-stage q)
                          (filter-all-columns q))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :products)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :products)])]
     (testing "should preserve id-based refs in first stage and name-based refs in second stage"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :aggregation  [[:sum {} [:field {} (meta/id :orders :id)]]]
@@ -574,10 +574,10 @@
                          (lib/breakout q (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
                          (lib/append-stage q)
                          (filter-all-columns q))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :products)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :products)])]
     (testing "should preserve id-based refs in first stage and name-based refs in second stage"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :aggregation  [[:sum {} [:field {} (meta/id :orders :id)]]]
@@ -602,16 +602,16 @@
                            (lib/join (meta/table-metadata :products))
                            lib/append-stage
                            (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/BigInteger} "ID_2"]))))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should upgrade second stage deduplicated ref to canonical name"
       (is (=? {:stages [{:source-table (meta/id :orders)}
                         {:filters [[:not-null {} [:field {} "Products__ID"]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should swap orders refs to reviews refs and preserve deduplicated names"
       (is (=? {:stages [{:source-table (meta/id :reviews)}
                         {:filters [[:not-null {} [:field {} "Products__ID"]]]}]}
@@ -623,10 +623,10 @@
                                          (meta/id :products :category)])
         query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/filter (lib/ensure-uuid [:= {} field-ref "Widget"])))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should preserve non-existent source-field when upgrading"
       (is (=? {:stages [{:filters [[:= {}
                                     [:field {:source-field Integer/MAX_VALUE}
@@ -634,7 +634,7 @@
                                     "Widget"]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should preserve non-existent source-field when swapping"
       (is (=? {:stages [{:source-table (meta/id :reviews)
                          :filters [[:= {}
@@ -648,16 +648,16 @@
                                          (meta/id :people :created-at)])
         query          (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
                            (lib/filter (lib/not-null field-ref)))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :products)]
-                                                                           [:table (meta/id :orders)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :products)]
+                                                                    [:table (meta/id :orders)])]
     (testing "should preserve the wrong table field id when upgrading"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :filters [[:not-null {} [:field {} (meta/id :people :created-at)]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should preserve the wrong table field id when swapping"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :filters [[:not-null {} [:field {} (meta/id :people :created-at)]]]}]}
@@ -666,16 +666,16 @@
 (deftest ^:parallel swap-source-in-query-nonexistent-field-id-test
   (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/with-fields [(lib/ensure-uuid [:field {:base-type :type/Integer} Integer/MAX_VALUE])]))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should preserve non-existent field id when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields [[:field {} Integer/MAX_VALUE]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should preserve non-existent field id when swapping"
       (is (=? {:stages [{:source-table (meta/id :reviews)
                          :fields [[:field {} Integer/MAX_VALUE]]}]}
@@ -684,16 +684,16 @@
 (deftest ^:parallel swap-source-in-query-nonexistent-field-name-test
   (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/with-fields [(lib/ensure-uuid [:field {:base-type :type/Text} "DOES_NOT_EXIST"])]))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :reviews)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :reviews)])]
     (testing "should preserve non-existent field name when upgrading"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :fields [[:field {} "DOES_NOT_EXIST"]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should preserve non-existent field name when swapping"
       (is (=? {:stages [{:source-table (meta/id :reviews)
                          :fields [[:field {} "DOES_NOT_EXIST"]]}]}
@@ -702,10 +702,10 @@
 (deftest ^:parallel swap-source-in-query-field-ref-without-base-type-test
   (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/filter (lib/not-null (lib/ensure-uuid [:field {} (meta/id :orders :id)]))))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :products)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :products)])]
     (testing "upgrade should not modify the query when base-type is missing"
       (is (= query upgraded-query)))
     (testing "should swap the field id to the new table"
@@ -717,15 +717,15 @@
   (let [query           (lib/query meta/metadata-provider (meta/table-metadata :orders))
         category-col    (find-column (lib/filterable-columns query) "CATEGORY")
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
-        upgraded-target (lib-be.source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
-        swapped-target  (lib-be.source-swap.mbql/swap-source-in-parameter-mbql-target query target
-                                                                                      [:table (meta/id :orders)]
-                                                                                      [:table (meta/id :reviews)])]
+        upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
+        swapped-target  (source-swap.mbql/swap-source-in-parameter-mbql-target query target
+                                                                               [:table (meta/id :orders)]
+                                                                               [:table (meta/id :reviews)])]
     (testing "should not change implicit join target when upgrading"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
               upgraded-target)))
     (testing "should return an identical target if upgrade is not needed"
-      (is (= upgraded-target (lib-be.source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query upgraded-target))))
+      (is (= upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query upgraded-target))))
     (testing "should swap :source-field to reviews.product-id"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :reviews :product-id)}]]
               swapped-target)))))
@@ -736,15 +736,15 @@
         query           (lib/query mp (lib.metadata/card mp 1))
         category-col    (find-column (lib/filterable-columns query) "CATEGORY")
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
-        upgraded-target (lib-be.source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
-        swapped-target  (lib-be.source-swap.mbql/swap-source-in-parameter-mbql-target query target
-                                                                                      [:card 1]
-                                                                                      [:table (meta/id :reviews)])]
+        upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
+        swapped-target  (source-swap.mbql/swap-source-in-parameter-mbql-target query target
+                                                                               [:card 1]
+                                                                               [:table (meta/id :reviews)])]
     (testing "should not change implicit join target when upgrading"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
               upgraded-target)))
     (testing "should return an identical target if upgrade is not needed"
-      (is (= upgraded-target (lib-be.source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query upgraded-target))))
+      (is (= upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query upgraded-target))))
     (testing "should swap :source-field to reviews.product-id"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :reviews :product-id)}]]
               swapped-target)))))
@@ -755,15 +755,15 @@
         query           (lib/query mp (meta/table-metadata :orders))
         category-col    (find-column (lib/filterable-columns query) "CATEGORY")
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
-        upgraded-target (lib-be.source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
-        swapped-target  (lib-be.source-swap.mbql/swap-source-in-parameter-mbql-target query target
-                                                                                      [:table (meta/id :orders)]
-                                                                                      [:card 1])]
+        upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
+        swapped-target  (source-swap.mbql/swap-source-in-parameter-mbql-target query target
+                                                                               [:table (meta/id :orders)]
+                                                                               [:card 1])]
     (testing "should not change implicit join target when upgrading"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
               upgraded-target)))
     (testing "should return an identical target if upgrade is not needed"
-      (is (= upgraded-target (lib-be.source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query upgraded-target))))
+      (is (= upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query upgraded-target))))
     (testing "should swap :source-field to reviews.product-id"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :reviews :product-id)}]]
               swapped-target)))))
@@ -774,15 +774,15 @@
         query           (lib/query mp (lib.metadata/card mp 1))
         category-col    (find-column (lib/filterable-columns query) "CATEGORY")
         target          [:dimension (lib/->legacy-MBQL (lib/ref category-col))]
-        upgraded-target (lib-be.source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
-        swapped-target  (lib-be.source-swap.mbql/swap-source-in-parameter-mbql-target query target
-                                                                                      [:card 1]
-                                                                                      [:table (meta/id :reviews)])]
+        upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
+        swapped-target  (source-swap.mbql/swap-source-in-parameter-mbql-target query target
+                                                                               [:card 1]
+                                                                               [:table (meta/id :reviews)])]
     (testing "should not change implicit join target when upgrading"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :orders :product-id)}]]
               upgraded-target)))
     (testing "should return an identical target if upgrade is not needed"
-      (is (= upgraded-target (lib-be.source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query upgraded-target))))
+      (is (= upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query upgraded-target))))
     (testing "should swap :source-field to reviews.product-id"
       (is (=? [:dimension [:field (meta/id :products :category) {:source-field (meta/id :reviews :product-id)}]]
               swapped-target)))))
@@ -814,10 +814,10 @@
                          (lib/order-by q (meta/field-metadata :orders :created-at))
                          (lib/order-by q (find-column (lib/orderable-columns q) "CREATED_AT")))
         join-alias     (-> query lib/joins first lib/current-join-alias)
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:card 1]
-                                                                           [:card 3])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:card 1]
+                                                                    [:card 3])]
     (testing "before upgrade: 2 entries in each clause differing only in ref style"
       (is (=? {:stages [{:fields       [[:field {} (meta/id :orders :created-at)]
                                         [:field {} "CREATED_AT"]
@@ -882,10 +882,10 @@
   (let [query          (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                            (lib/expression "expr" (lib/+ (meta/field-metadata :orders :id) 1))
                            (lib/filter (lib/not-null (lib/ensure-uuid [:field {:base-type :type/Integer} "expr"]))))
-        upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
-        swapped-query  (lib-be.source-swap.mbql/swap-source-in-mbql-stages upgraded-query
-                                                                           [:table (meta/id :orders)]
-                                                                           [:table (meta/id :products)])]
+        upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages query)
+        swapped-query  (source-swap.mbql/swap-source-in-mbql-stages upgraded-query
+                                                                    [:table (meta/id :orders)]
+                                                                    [:table (meta/id :products)])]
     (testing "upgrade should convert :field ref pointing to expression into :expression ref"
       (is (=? {:stages [{:source-table (meta/id :orders)
                          :expressions  [[:+ {:lib/expression-name "expr"}
@@ -894,7 +894,7 @@
                          :filters      [[:not-null {} [:expression {} "expr"]]]}]}
               upgraded-query)))
     (testing "should return an identical query if upgrade is not needed"
-      (is (= upgraded-query (lib-be.source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
+      (is (= upgraded-query (source-swap.mbql/upgrade-field-refs-in-mbql-stages upgraded-query))))
     (testing "should swap source to products and update field refs inside expression"
       (is (=? {:stages [{:source-table (meta/id :products)
                          :expressions  [[:+ {:lib/expression-name "expr"}
@@ -907,15 +907,15 @@
   (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                             (lib/expression "expr" (lib/+ (meta/field-metadata :orders :id) 1)))
         target          [:dimension (lib/->legacy-MBQL (lib/ensure-uuid [:field {:base-type :type/Integer} "expr"]))]
-        upgraded-target (lib-be.source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
-        swapped-target  (lib-be.source-swap.mbql/swap-source-in-parameter-mbql-target query target
-                                                                                      [:table (meta/id :orders)]
-                                                                                      [:table (meta/id :products)])]
+        upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query target)
+        swapped-target  (source-swap.mbql/swap-source-in-parameter-mbql-target query target
+                                                                               [:table (meta/id :orders)]
+                                                                               [:table (meta/id :products)])]
     (testing "upgrade should convert :field ref pointing to expression into :expression ref"
       (is (=? [:dimension [:expression "expr" {:base-type :type/Integer}]]
               upgraded-target)))
     (testing "should return an identical target if upgrade is not needed"
-      (is (= upgraded-target (lib-be.source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query upgraded-target))))
+      (is (= upgraded-target (source-swap.mbql/upgrade-field-ref-in-parameter-mbql-target query upgraded-target))))
     (testing "swap should also convert the :field ref pointing to expression"
       (is (=? [:dimension [:expression "expr" {:base-type :type/Integer}]]
               swapped-target)))))
