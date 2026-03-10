@@ -58,11 +58,24 @@
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "construct_notebook_query"))))
 
+    (testing "retrieves slackbot profile"
+      (let [profile (profiles/get-profile :slackbot)]
+        (is (some? profile))
+        (is (= "claude-sonnet-4-5" (:model profile)))
+        (is (= 10 (:max-iterations profile)))
+        (is (= 0.3 (:temperature profile)))
+        (is (vector? (:tools profile)))
+        (is (contains? (tool-names profile) "construct_notebook_query"))
+        (is (contains? (tool-names profile) "search"))
+        (is (contains? (tool-names profile) "static_viz"))
+        (is (contains? (tool-names profile) "create_alert"))
+        (is (contains? (tool-names profile) "create_dashboard_subscription"))))
+
     (testing "returns nil for unknown profile"
       (is (nil? (profiles/get-profile :unknown-profile))))
 
     (testing "all profiles have required keys"
-      (doseq [profile-id [:embedding_next :internal :transforms_codegen :sql :nlq]]
+      (doseq [profile-id [:embedding_next :internal :transforms_codegen :sql :nlq :slackbot]]
         (let [profile (profiles/get-profile profile-id)]
           (is (contains? profile :model))
           (is (contains? profile :max-iterations))

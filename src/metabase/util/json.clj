@@ -110,7 +110,6 @@
       (nil? body)                   nil
       :else                         (decode body true))))
 
-
 (defn decode-body
   "Given a response map, decodes body if headers indicate it's a JSON response, or just slurps if it's not a string."
   [res]

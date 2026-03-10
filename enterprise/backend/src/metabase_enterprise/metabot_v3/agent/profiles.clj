@@ -123,6 +123,20 @@
                     #'agent-tools/create-chart-tool
                     #'agent-tools/edit-chart-tool]})
 
+(register-profile!
+ :slackbot
+ {:prompt-template "slackbot.selmer"
+  :model           "claude-sonnet-4-5"
+  :max-iterations  10
+  :temperature     0.3
+  :tools           [#'agent-tools/search-tool
+                    #'agent-tools/slackbot-construct-notebook-query-tool
+                    #'agent-tools/list-available-fields-tool
+                    #'agent-tools/get-field-values-tool
+                    #'agent-tools/static-viz-tool
+                    #'agent-tools/create-alert-tool
+                    #'agent-tools/create-dashboard-subscription-tool]})
+
 (defn- filter-by-capabilities
   "Filter tool vars by user capabilities.
   Removes tools that require capabilities the user doesn't have."

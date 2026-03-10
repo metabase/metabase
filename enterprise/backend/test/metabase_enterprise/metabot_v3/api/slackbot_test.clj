@@ -4,6 +4,7 @@
    [buddy.core.mac :as mac]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.metabot-v3.agent.core :as agent]
    [metabase-enterprise.metabot-v3.api.slackbot :as slackbot]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
    [metabase-enterprise.metabot-v3.api.slackbot.config :as slackbot.config]
@@ -11,7 +12,6 @@
    [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase-enterprise.metabot-v3.api.slackbot.streaming :as slackbot.streaming]
    [metabase-enterprise.metabot-v3.api.slackbot.uploads :as slackbot.uploads]
-   [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.feedback :as metabot-v3.feedback]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
@@ -251,24 +251,20 @@
                                                                :file-id     file-id})
                                       {:url (str "https://files.slack.com/files/" filename)
                                        :id  file-id}))
-       ;; Mock the streaming client - returns AISDK-formatted lines
-       metabot-v3.client/streaming-request-with-callback
+       ;; Mock the agent loop - returns a reducible of parts
+       agent/run-agent-loop
        (fn [opts]
          (swap! ai-request-calls conj opts)
-         ;; Generate AISDK-format lines from text and data-parts
-         (let [text-lines   (when ai-text [(str "0:" (json/encode ai-text))])
-               data-lines   (map #(str "2:" (json/encode %)) data-parts)
-               finish-line  (str "d:" (json/encode {:finishReason "stop"
-                                                    :usage        {"model" {:prompt 10 :completion 5}}}))
-               mock-lines   (vec (concat text-lines data-lines [finish-line]))]
-           ;; Call on-line callback for each line if provided
-           (when-let [on-line (:on-line opts)]
-             (doseq [line mock-lines]
-               (on-line line)))
-           ;; Call on-complete callback with collected lines
-           (when-let [on-complete (:on-complete opts)]
-             (on-complete mock-lines))
-           mock-lines))
+         (reify clojure.lang.IReduceInit
+           (reduce [_ rf init]
+             (let [text-parts (when ai-text [{:type :text :text ai-text}])
+                   data-parts-out (map (fn [dp]
+                                         {:type      :data
+                                          :data-type (:type dp)
+                                          :data      (:value dp)})
+                                       data-parts)
+                   all-parts (concat text-parts data-parts-out)]
+               (reduce rf init all-parts)))))
        slackbot.query/generate-card-output (fn [card-id]
                                              (swap! generate-card-output-calls conj {:card-id card-id})
                                              {:type :image :content fake-png-bytes :card-name (str "Card " card-id)})
@@ -431,12 +427,14 @@
           (fn [{:keys [stop-stream-calls stream-calls append-text-calls]}]
             ;; Override the AI client to start the stream via on-line, then throw
             (mt/with-dynamic-fn-redefs
-              [metabot-v3.client/streaming-request-with-callback
-               (fn [opts]
-                 ;; Send enough text to trigger a flush (which starts the stream)
-                 (when-let [on-line (:on-line opts)]
-                   (on-line (str "0:" (json/encode (apply str (repeat (inc @#'slackbot.streaming/min-text-batch-size) "x"))))))
-                 (throw (ex-info "AI service unavailable" {})))]
+              [agent/run-agent-loop
+               (fn [_opts]
+                 ;; Return a reducible that emits text then throws
+                 (reify clojure.lang.IReduceInit
+                   (reduce [_ rf init]
+                     (let [text (apply str (repeat (inc @#'slackbot.streaming/min-text-batch-size) "x"))]
+                       (rf init {:type :text :text text})
+                       (throw (ex-info "AI service unavailable" {}))))))]
               (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                         (slack-request-options event-body)
                                         event-body)]
@@ -453,7 +451,7 @@
                   (is (= 1 (count @stop-stream-calls))))))))))))
 
 (deftest streaming-request-args-test
-  (testing "POST /events passes correct arguments to streaming-request-with-callback"
+  (testing "POST /events passes correct arguments to run-agent-loop"
     (with-slackbot-setup
       (doseq [[desc event-body]
               [["DM message"            (assoc-in base-dm-event [:event :channel] "D-MY-DM-CHANNEL")]
@@ -472,20 +470,21 @@
                        :timeout-ms 5000})
               (is (= 1 (count @ai-request-calls)))
               (let [opts (first @ai-request-calls)]
-                (is (re-matches #"[0-9a-f-]{36}" (:conversation-id opts)))
+                (is (= :slackbot (:profile-id opts)))
                 (is (map? (:context opts)))
                 (is (= (get-in event-body [:event :channel])
                        (get-in opts [:context :slack_channel_id])))
                 ;; DMs send the raw prompt; channel mentions append a response-style suffix
-                (if (= "im" (get-in event-body [:event :channel_type]))
-                  (is (= (get-in event-body [:event :text])
-                         (get-in opts [:message :content])))
-                  (let [content (get-in opts [:message :content])]
-                    (is (str/includes? content "Hello!") "user message is included in prompt")
-                    (is (str/includes? content "Do not narrate the steps you took")
-                        "channel response-style suffix is appended")))
-                (is (vector? (:history opts)))
-                (is (fn? (:on-line opts)))))))))))
+                (let [last-msg (last (:messages opts))
+                      content  (:content last-msg)]
+                  (if (= "im" (get-in event-body [:event :channel_type]))
+                    (is (= (get-in event-body [:event :text]) content))
+                    (do
+                      (is (str/includes? content "Hello!") "user message is included in prompt")
+                      (is (str/includes? content "Do not narrate the steps you took")
+                          "channel response-style suffix is appended"))))
+                (is (vector? (:messages opts)))
+                (is (= {} (:state opts)))))))))))
 
 (deftest slack-msg-id-stored-test
   (testing "User and bot messages are stored with their Slack ts as slack_msg_id"

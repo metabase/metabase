@@ -1,7 +1,8 @@
 (ns metabase-enterprise.metabot-v3.agent.markdown-link-buffer-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.agent.markdown-link-buffer :as mlb]))
+   [metabase-enterprise.metabot-v3.agent.markdown-link-buffer :as mlb]
+   [metabase.system.core :as system]))
 
 (defn- process
   "Process text through a fresh state with given queries/charts context.
@@ -155,3 +156,60 @@
           [state4 output2] (mlb/step state3 " See [More](metabase://query/new-query)")]
       (is (re-find #"\[More\]\(/question#" output2))
       (is (= "" (mlb/flush-state state4))))))
+
+;;; Slack link resolution tests
+
+(deftest resolve-slack-entity-link-test
+  (with-redefs [system/site-url (constantly "http://localhost:3000")]
+    (testing "resolves Slack-format metabase:// entity link with display text"
+      (let [[output flushed] (process "<metabase://dashboard/123|Sales>")]
+        (is (= "<http://localhost:3000/dashboard/123|Sales>" output))
+        (is (= "" flushed))))
+
+    (testing "resolves Slack-format metabase:// entity link without display text"
+      (let [[output flushed] (process "<metabase://dashboard/123>")]
+        (is (= "<http://localhost:3000/dashboard/123>" output))
+        (is (= "" flushed))))
+
+    (testing "falls back to link text on failed resolution"
+      (let [[output flushed] (process "<metabase://query/unknown|Results>")]
+        (is (= "Results" output))
+        (is (= "" flushed))))))
+
+(deftest resolve-slack-query-link-test
+  (with-redefs [system/site-url (constantly "http://localhost:3000")]
+    (testing "resolves Slack-format query link with query state"
+      (let [query {:database 1 :type :query :query {:source-table 1}}
+            [output flushed] (process "<metabase://query/q-123|Results>" {"q-123" query})]
+        (is (re-find #"<http://localhost:3000/question#[a-zA-Z0-9=]+\|Results>" output))
+        (is (= "" flushed))))
+
+    (testing "unknown query falls back to display text"
+      (let [[output flushed] (process "<metabase://query/unknown|Results>")]
+        (is (= "Results" output))
+        (is (= "" flushed))))))
+
+(deftest buffering-incomplete-slack-link-test
+  (with-redefs [system/site-url (constantly "http://localhost:3000")]
+    (testing "buffers incomplete Slack-format link split across chunks"
+      (let [[outputs flushed] (process-chunks ["Check <metabase://dash" "board/123|Sales>"])]
+        (is (= "Check " (first outputs)))
+        (is (= "<http://localhost:3000/dashboard/123|Sales>" (second outputs)))
+        (is (= "" flushed))))
+
+    (testing "regular < does not trigger buffering"
+      (let [[output flushed] (process "x < 5")]
+        (is (= "x < 5" output))
+        (is (= "" flushed))))))
+
+(deftest multiple-slack-links-test
+  (with-redefs [system/site-url (constantly "http://localhost:3000")]
+    (testing "resolves two Slack links in one chunk"
+      (let [[output flushed] (process "<metabase://dashboard/1|Dash1> and <metabase://model/2|Model2>")]
+        (is (= "<http://localhost:3000/dashboard/1|Dash1> and <http://localhost:3000/model/2|Model2>" output))
+        (is (= "" flushed))))
+
+    (testing "mix of Slack and markdown links in same text"
+      (let [[output flushed] (process "<metabase://dashboard/1|Dash> and [Model](metabase://model/2)")]
+        (is (= "<http://localhost:3000/dashboard/1|Dash> and [Model](/model/2)" output))
+        (is (= "" flushed))))))
