@@ -1333,4 +1333,3 @@
                                           {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
                                           {:arguments {:snippet_id (:id snippet-1)}
                                            :conversation_id conversation-id})))))))))
-
