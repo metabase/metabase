@@ -519,23 +519,23 @@
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
-      (is (= (set (keys (setting/user-readable-values-map #{:public})))
+      (is (= (set (keys (setting/user-readable-values-map #{:public :admin-write-public-read})))
              (set (keys (mt/client :get 200 "session/properties"))))))
 
     (testing "Authenticated normal user"
       (mt/with-test-user :lucky
-        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :admin-write-public-read})))
                (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
 
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
         (with-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
-          (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
+          (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-public-read})))
                  (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
     (testing "Authenticated super user"
       (mt/with-test-user :crowberto
-        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin})))
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-public-read :admin})))
                (set (keys (mt/user-http-request :crowberto :get 200 "session/properties")))))))
 
     (testing "Includes user-local settings"
