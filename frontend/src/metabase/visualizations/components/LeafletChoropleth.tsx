@@ -1,5 +1,5 @@
 import "leaflet/dist/leaflet.css";
-import type { Feature } from "geojson";
+import type { Feature, FeatureCollection } from "geojson";
 import L from "leaflet";
 
 import CS from "metabase/css/core/index.css";
@@ -24,14 +24,16 @@ interface LeafletChoroplethProps {
   onRenderError?: (error?: unknown) => void;
 }
 
+function isFeatureCollection(value: GeoJSONData): value is FeatureCollection {
+  return Array.isArray(value);
+}
+
 export const LeafletChoropleth = ({
   series = [],
   geoJson,
   minimalBounds = geoJson
     ? computeMinimalBounds(
-        "features" in geoJson && Array.isArray(geoJson.features)
-          ? geoJson.features
-          : [geoJson],
+        isFeatureCollection(geoJson) ? geoJson.features : [geoJson],
       )
     : undefined,
   getColor = () => color("brand"),
