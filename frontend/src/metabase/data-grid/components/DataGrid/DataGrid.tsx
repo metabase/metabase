@@ -152,15 +152,12 @@ export const DataGrid = function DataGrid<TData>({
     row: MaybeVirtualRow<TData>,
     columns: DataGridColumn<TData>[],
     key: string,
-    isVirtual?: boolean,
   ) => (
     <DataGridRow
       key={key}
       row={row}
       rowMeasureRef={rowMeasureRef}
       columns={columns}
-      virtualPaddingLeft={isVirtual ? virtualPaddingLeft : undefined}
-      virtualPaddingRight={isVirtual ? virtualPaddingRight : undefined}
       stickyElementsBackgroundColor={stickyElementsBackgroundColor}
       zoomedRowIndex={zoomedRowIndex}
       selection={selection}
@@ -173,16 +170,60 @@ export const DataGrid = function DataGrid<TData>({
   const renderHeader = (
     headerGroup: HeaderGroup<TData>,
     columns: DataGridColumn<TData>[],
-    isVirtual?: boolean,
   ) => (
     <DataGridHeader
       headerGroup={headerGroup}
       columns={columns}
-      virtualPaddingLeft={isVirtual ? virtualPaddingLeft : undefined}
-      virtualPaddingRight={isVirtual ? virtualPaddingRight : undefined}
       onHeaderCellClick={onHeaderCellClick}
       isColumnReorderingDisabled={isColumnReorderingDisabled}
     />
+  );
+
+  const centralSectionStyle: React.CSSProperties &
+    Record<`--${string}`, string | undefined> = {
+    width: `${columnVirtualizer.getTotalSize()}px`,
+    backgroundColor,
+    "--virtual-padding-left": virtualPaddingLeft
+      ? `${virtualPaddingLeft}px`
+      : undefined,
+    "--virtual-padding-right": virtualPaddingRight
+      ? `${virtualPaddingRight}px`
+      : undefined,
+  };
+
+  const renderGridPanels = ({
+    pinnedContent,
+    centralContent,
+    showPinned = true,
+    height,
+  }: {
+    pinnedContent: React.ReactNode;
+    centralContent: React.ReactNode;
+    showPinned?: boolean;
+    height?: string;
+  }) => (
+    <>
+      {showPinned && (
+        <div
+          className={cx(S.pinnedSection, {
+            [S.withSeparator]: hasSeparator,
+          })}
+          style={{
+            width: pinnedPanelWidth,
+            height,
+            backgroundColor: stickyElementsBackgroundColor,
+          }}
+        >
+          {pinnedContent}
+        </div>
+      )}
+      <div
+        className={S.centralSection}
+        style={{ ...centralSectionStyle, height }}
+      >
+        {centralContent}
+      </div>
+    </>
   );
 
   return (
@@ -222,26 +263,16 @@ export const DataGrid = function DataGrid<TData>({
                   items={table.getState().columnOrder}
                   strategy={horizontalListSortingStrategy}
                 >
-                  <div
-                    className={cx(S.pinnedSection, {
-                      [S.withSeparator]: hasSeparator,
-                    })}
-                    style={{
-                      width: pinnedPanelWidth,
-                      backgroundColor: stickyElementsBackgroundColor,
-                    }}
-                  >
-                    {renderHeader(headerGroup, getPinnedColumns())}
-                  </div>
-                  <div
-                    className={S.centralSection}
-                    style={{
-                      width: `${columnVirtualizer.getTotalSize()}px`,
-                      backgroundColor,
-                    }}
-                  >
-                    {renderHeader(headerGroup, getCentralColumns(), true)}
-                  </div>
+                  {renderGridPanels({
+                    pinnedContent: renderHeader(
+                      headerGroup,
+                      getPinnedColumns(),
+                    ),
+                    centralContent: renderHeader(
+                      headerGroup,
+                      getCentralColumns(),
+                    ),
+                  })}
                 </SortableContext>
               ))}
             </div>
@@ -253,34 +284,16 @@ export const DataGrid = function DataGrid<TData>({
               })}
               style={styles?.bodyContainer}
             >
-              {hasPinnedColumns && (
-                <div
-                  className={cx(S.pinnedSection, {
-                    [S.withSeparator]: hasSeparator,
-                  })}
-                  style={{
-                    width: pinnedPanelWidth,
-                    height: `${totalHeight}px`,
-                    backgroundColor: stickyElementsBackgroundColor,
-                  }}
-                >
-                  {getVisibleRows().map((row, index) =>
-                    renderRow(row, getPinnedColumns(), `pinned-${index}`),
-                  )}
-                </div>
-              )}
-              <div
-                className={S.centralSection}
-                style={{
-                  height: `${totalHeight}px`,
-                  width: `${columnVirtualizer.getTotalSize()}px`,
-                  backgroundColor,
-                }}
-              >
-                {getVisibleRows().map((row, index) =>
-                  renderRow(row, getCentralColumns(), `center-${index}`, true),
-                )}
-              </div>
+              {renderGridPanels({
+                pinnedContent: getVisibleRows().map((row, index) =>
+                  renderRow(row, getPinnedColumns(), `pinned-${index}`),
+                ),
+                centralContent: getVisibleRows().map((row, index) =>
+                  renderRow(row, getCentralColumns(), `center-${index}`),
+                ),
+                showPinned: hasPinnedColumns,
+                height: `${totalHeight}px`,
+              })}
             </div>
           </div>
 

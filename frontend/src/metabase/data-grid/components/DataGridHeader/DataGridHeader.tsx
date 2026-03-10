@@ -14,8 +14,6 @@ import { SortableHeader } from "../SortableHeader/SortableHeader";
 export interface DataGridHeaderProps<TData> extends DataGridStylesProps {
   headerGroup: HeaderGroup<TData>;
   columns: DataGridColumn<TData>[];
-  virtualPaddingLeft?: number;
-  virtualPaddingRight?: number;
   isColumnReorderingDisabled?: boolean;
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
@@ -26,8 +24,6 @@ export interface DataGridHeaderProps<TData> extends DataGridStylesProps {
 export const DataGridHeader = <TData,>({
   headerGroup,
   columns,
-  virtualPaddingLeft,
-  virtualPaddingRight,
   isColumnReorderingDisabled,
   onHeaderCellClick,
   classNames,
@@ -40,7 +36,6 @@ export const DataGridHeader = <TData,>({
       ...styles?.row,
     }}
   >
-    {virtualPaddingLeft ? <div style={{ width: virtualPaddingLeft }} /> : null}
     {columns.map((column) => {
       const header = headerGroup.headers[column.origin.getIndex()];
       const headerCell = flexRender(
@@ -76,8 +71,5 @@ export const DataGridHeader = <TData,>({
         </div>
       );
     })}
-    {virtualPaddingRight ? (
-      <div style={{ width: virtualPaddingRight }} />
-    ) : null}
   </div>
 );
