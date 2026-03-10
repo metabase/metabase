@@ -1,6 +1,5 @@
 import type { MouseEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { useLatest } from "react-use";
 import { isEmpty } from "underscore";
 
 import { useCaptureEvent } from "metabase/common/hooks";
@@ -26,8 +25,8 @@ import {
 
 export type DropdownSidebarFilterProps<T extends FilterTypeKeys = any> = {
   filter: SearchFilterDropdown<T>;
-  isOpen?: boolean;
-  onOpenChange?: (isOpen: boolean) => void;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
 } & SearchFilterComponentProps<T>;
 
 export const DropdownSidebarFilter = ({
@@ -35,25 +34,14 @@ export const DropdownSidebarFilter = ({
   "data-testid": dataTestId,
   value,
   onChange,
-  isOpen: controlledIsOpen,
+  isOpen: isPopoverOpen,
   onOpenChange,
 }: DropdownSidebarFilterProps) => {
-  const [uncontrolledIsOpen, setUncontrolledIsOpen] = useState(false);
-
-  const isControlled = controlledIsOpen !== undefined;
-  const isPopoverOpen = isControlled ? controlledIsOpen : uncontrolledIsOpen;
-
-  const onOpenChangeRef = useLatest(onOpenChange);
-
   const setIsPopoverOpen = useCallback(
     (open: boolean) => {
-      if (isControlled) {
-        onOpenChangeRef.current?.(open);
-      } else {
-        setUncontrolledIsOpen(open);
-      }
+      onOpenChange(open);
     },
-    [isControlled, onOpenChangeRef],
+    [onOpenChange],
   );
 
   const isNavbarOpen = useSelector(getIsNavbarOpen);

@@ -1,5 +1,4 @@
 import { useCallback, useLayoutEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { t } from "ttag";
 
 import { Flex, Icon, Popover } from "metabase/ui";
@@ -66,8 +65,8 @@ export const RightClickPopover = ({
     return null;
   }
 
-  return createPortal(
-    <Popover opened position="bottom-start" withinPortal={false}>
+  return (
+    <Popover opened position="bottom-start">
       <Popover.Target>
         <div ref={setAnchorRef} />
       </Popover.Target>
@@ -90,7 +89,6 @@ export const RightClickPopover = ({
           )}
         </Flex>
       </Popover.Dropdown>
-    </Popover>,
-    document.body,
+    </Popover>
   );
 };

@@ -37,18 +37,31 @@ const MockSearchSidebarFilter = ({
   filter,
   value,
   onChange,
+  isOpen: initialIsOpen,
+  onOpenChange,
+  "data-testid": dataTestId,
 }: DropdownSidebarFilterProps) => {
   const [selectedValues, setSelectedValues] = useState(value);
+  const [isOpen, setIsOpen] = useState(initialIsOpen);
+
   const onFilterChange = (elem: DropdownSidebarFilterProps["value"]) => {
     setSelectedValues(elem);
     onChange(elem);
   };
 
+  const handleOpenChange = (nextIsOpen: boolean) => {
+    setIsOpen(nextIsOpen);
+    onOpenChange(nextIsOpen);
+  };
+
   return (
     <DropdownSidebarFilter
       filter={filter}
+      data-testid={dataTestId}
       value={selectedValues}
       onChange={onFilterChange}
+      isOpen={isOpen}
+      onOpenChange={handleOpenChange}
     />
   );
 };
@@ -58,6 +71,8 @@ const setup = (options: Partial<DropdownSidebarFilterProps> = {}) => {
     filter: mockFilter,
     value: [],
     onChange: jest.fn(),
+    isOpen: false,
+    onOpenChange: jest.fn(),
   };
 
   const props: DropdownSidebarFilterProps = { ...defaultProps, ...options };

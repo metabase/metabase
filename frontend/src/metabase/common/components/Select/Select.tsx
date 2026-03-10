@@ -198,7 +198,7 @@ class BaseSelect<
     onChange?.({ target: { name, value } });
     if (!multiple) {
       this.closePopover();
-      this.handleClose();
+      this.restoreTriggerFocus();
     }
   };
 
@@ -232,7 +232,7 @@ class BaseSelect<
     return <span style={{ minWidth: MIN_ICON_WIDTH }} />;
   };
 
-  handleClose = () => {
+  restoreTriggerFocus = () => {
     // Focusing in the next tick prevents it is from reopening
     // when closed by selecting an item with Enter
     setTimeout(() => {
@@ -249,7 +249,7 @@ class BaseSelect<
     if (!this.props.disabled) {
       this.setState(({ isPopoverOpen }) => {
         if (isPopoverOpen) {
-          this.handleClose();
+          this.restoreTriggerFocus();
         }
         return { isPopoverOpen: !isPopoverOpen };
       });
@@ -259,7 +259,7 @@ class BaseSelect<
   handlePopoverDismiss = () => {
     this.props.onClose?.();
     this.closePopover();
-    this.handleClose();
+    this.restoreTriggerFocus();
   };
 
   render() {
