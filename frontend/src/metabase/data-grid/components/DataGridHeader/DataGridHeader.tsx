@@ -43,10 +43,15 @@ export const DataGridHeader = <TData,>({
       );
       const width = header.column.getSize();
       const isRowIdColumn = header.column.id === ROW_ID_COLUMN_ID;
-      const style: React.CSSProperties = { width };
-      if (column.virtualItem) {
-        style.left = `${column.virtualItem.start}px`;
-      }
+      const style: React.CSSProperties = column.virtualItem
+        ? {
+            position: "absolute",
+            left: column.virtualItem.start,
+            width,
+            top: 0,
+            bottom: 0,
+          }
+        : { width };
 
       const headerContent = isRowIdColumn ? (
         headerCell

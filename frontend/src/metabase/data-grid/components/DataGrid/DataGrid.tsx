@@ -11,7 +11,6 @@ import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
-import { DataGridHeader } from "metabase/data-grid/components/DataGridHeader/DataGridHeader";
 
 import {
   DEFAULT_FONT_SIZE,
@@ -25,6 +24,7 @@ import type {
   DataGridTheme,
   MaybeVirtualRow,
 } from "../../types";
+import { DataGridHeader } from "../DataGridHeader/DataGridHeader";
 import { DataGridRow } from "../DataGridRow/DataGridRow";
 import { Footer } from "../Footer/Footer";
 
@@ -179,77 +179,84 @@ export const DataGrid = function DataGrid<TData>({
           }}
         >
           <div
-            data-testid="table-header"
-            className={cx(S.headerContainer, classNames?.headerContainer)}
+            ref={gridRef}
+            data-testid="table-scroll-container"
+            className={cx(S.tableGrid, classNames?.tableGrid)}
             style={{
-              backgroundColor: stickyElementsBackgroundColor,
-              ...styles?.headerContainer,
+              backgroundColor: theme?.cell?.backgroundColor,
+              color: theme?.cell?.textColor,
+              ...styles?.tableGrid,
             }}
           >
-            {table.getHeaderGroups().map((headerGroup) => (
-              <SortableContext
-                key={headerGroup.id}
-                items={table.getState().columnOrder}
-                strategy={horizontalListSortingStrategy}
-              >
+            <div
+              data-testid="table-header"
+              className={cx(S.headerContainer, classNames?.headerContainer)}
+              style={{
+                backgroundColor: stickyElementsBackgroundColor,
+                ...styles?.headerContainer,
+              }}
+            >
+              {table.getHeaderGroups().map((headerGroup) => (
+                <SortableContext
+                  key={headerGroup.id}
+                  items={table.getState().columnOrder}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  <div
+                    className={cx(S.pinnedSection, {
+                      [S.withSeparator]: hasSeparator,
+                    })}
+                    style={{ width: pinnedPanelWidth }}
+                  >
+                    {renderHeader(headerGroup, getPinnedColumns())}
+                  </div>
+                  <div
+                    className={S.centralSection}
+                    style={{
+                      width: `${columnVirtualizer.getTotalSize()}px`,
+                    }}
+                  >
+                    {renderHeader(headerGroup, getCentralColumns())}
+                  </div>
+                </SortableContext>
+              ))}
+            </div>
+
+            <div
+              data-testid="table-body"
+              className={cx(S.bodyContainer, classNames?.bodyContainer, {
+                [S.selectableBody]: selection.isEnabled,
+              })}
+              style={styles?.bodyContainer}
+            >
+              {hasPinnedColumns && (
                 <div
                   className={cx(S.pinnedSection, {
                     [S.withSeparator]: hasSeparator,
                   })}
-                  style={{ width: pinnedPanelWidth }}
-                >
-                  {renderHeader(headerGroup, getPinnedColumns())}
-                </div>
-                <div
-                  className={S.centralSection}
                   style={{
-                    width: `${columnVirtualizer.getTotalSize()}px`,
+                    width: pinnedPanelWidth,
+                    height: `${totalHeight}px`,
+                    backgroundColor: stickyElementsBackgroundColor,
                   }}
                 >
-                  {renderHeader(headerGroup, getCentralColumns())}
+                  {getVisibleRows().map((row, index) =>
+                    renderRow(row, getPinnedColumns(), `pinned-${index}`),
+                  )}
                 </div>
-              </SortableContext>
-            ))}
-          </div>
-
-          <div
-            ref={gridRef}
-            data-testid="table-body"
-            className={cx(S.bodyContainer, classNames?.bodyContainer, {
-              [S.selectableBody]: selection.isEnabled,
-            })}
-            style={{
-              backgroundColor: theme?.cell?.backgroundColor,
-              color: theme?.cell?.textColor,
-              ...styles?.bodyContainer,
-            }}
-          >
-            {hasPinnedColumns && (
+              )}
               <div
-                className={cx(S.pinnedSection, {
-                  [S.withSeparator]: hasSeparator,
-                })}
+                className={S.centralSection}
                 style={{
-                  width: pinnedPanelWidth,
                   height: `${totalHeight}px`,
-                  backgroundColor: stickyElementsBackgroundColor,
+                  width: `${columnVirtualizer.getTotalSize()}px`,
+                  backgroundColor,
                 }}
               >
                 {getVisibleRows().map((row, index) =>
-                  renderRow(row, getPinnedColumns(), `pinned-${index}`),
+                  renderRow(row, getCentralColumns(), `center-${index}`),
                 )}
               </div>
-            )}
-            <div
-              className={S.centralSection}
-              style={{
-                height: `${totalHeight}px`,
-                width: `${columnVirtualizer.getTotalSize()}px`,
-              }}
-            >
-              {getVisibleRows().map((row, index) =>
-                renderRow(row, getCentralColumns(), `center-${index}`),
-              )}
             </div>
           </div>
 
