@@ -90,6 +90,11 @@
   [value]
   value)
 
+(defn same-time?
+  "True if these two dayjs values represent the same millisecond."
+  [^dayjs d1 ^dayjs d2]
+  (.isSame d1 d2))
+
 (defn same-day?
   "Given two platform-specific datetimes, checks if they fall within the same day."
   [^dayjs d1 ^dayjs d2]
