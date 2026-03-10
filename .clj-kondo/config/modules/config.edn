@@ -775,8 +775,8 @@
    :friends #{legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
-              enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
+              enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
               }}
 
   lib-be
