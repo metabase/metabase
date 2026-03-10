@@ -19,7 +19,6 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
-import { DEPENDENTS_GROUP_TYPES_WITH_DATA_SOURCES } from "./constants";
 import type {
   DependencyError,
   DependencyErrorGroup,
@@ -504,19 +503,6 @@ export function getNodeDataSourceEntry(
     default:
       return null;
   }
-}
-
-export function isNodeUsedAsDataSource(node: DependencyNode): boolean {
-  if (node.type !== "table" && node.type !== "card") {
-    return false;
-  }
-  if (node.dependents_count == null) {
-    return false;
-  }
-  return DEPENDENTS_GROUP_TYPES_WITH_DATA_SOURCES.some((groupType) => {
-    const count = node.dependents_count?.[groupType];
-    return count != null && count > 0;
-  });
 }
 
 export function getCardType(groupType: DependencyGroupType): CardType | null {

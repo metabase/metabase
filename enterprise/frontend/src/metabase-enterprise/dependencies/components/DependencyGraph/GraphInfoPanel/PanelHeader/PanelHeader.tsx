@@ -21,7 +21,6 @@ import {
   getNodeLabel,
   getNodeLink,
   getNodeLocationInfo,
-  isNodeUsedAsDataSource,
 } from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
@@ -37,7 +36,6 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
   const location = getNodeLocationInfo(node);
   const sourceEntry = getNodeDataSourceEntry(node);
-  const isUsedAsDataSource = isNodeUsedAsDataSource(node);
   const canUserReplaceSources = useSelector(
     PLUGIN_REPLACEMENT.canUserReplaceSources,
   );
@@ -62,18 +60,16 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
           {link != null && (
             <GraphExternalLink label={link.label} url={link.url} />
           )}
-          {sourceEntry != null &&
-            isUsedAsDataSource &&
-            canUserReplaceSources && (
-              <Tooltip label={t`Find and replace`}>
-                <ActionIcon
-                  aria-label={t`Replace data source`}
-                  onClick={openReplaceModal}
-                >
-                  <FixedSizeIcon name="find_replace" />
-                </ActionIcon>
-              </Tooltip>
-            )}
+          {sourceEntry != null && canUserReplaceSources && (
+            <Tooltip label={t`Find and replace`}>
+              <ActionIcon
+                aria-label={t`Replace data source`}
+                onClick={openReplaceModal}
+              >
+                <FixedSizeIcon name="find_replace" />
+              </ActionIcon>
+            </Tooltip>
+          )}
           <ActionIcon aria-label={t`Close`} onClick={onClose}>
             <FixedSizeIcon name="close" />
           </ActionIcon>
