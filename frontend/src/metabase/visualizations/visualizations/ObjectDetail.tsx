@@ -11,7 +11,12 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 
-const ObjectDetailProperties = {
+import type {
+  VisualizationDefinition,
+  VisualizationSettingsDefinitions,
+} from "../types";
+
+const ObjectDetailProperties: VisualizationDefinition = {
   getUiName() {
     return t`Detail`;
   },
@@ -29,8 +34,8 @@ const ObjectDetailProperties = {
     ...columnSettings({ hidden: true }),
     ...tableColumnSettings({ isShowingDetailsOnlyColumns: true }),
   },
-  columnSettings: (column) => {
-    const settings = {
+  columnSettings: () => {
+    const settings: VisualizationSettingsDefinitions = {
       column_title: {
         title: t`Column title`,
         widget: "input",
@@ -48,6 +53,7 @@ const ObjectDetailProperties = {
     return settings;
   },
   isSensible: () => true,
+  checkRenderable: () => true,
 };
 
 const ObjectDetailWithProperties = Object.assign(
