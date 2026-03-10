@@ -233,7 +233,7 @@ export function colorShade(hex: string, shade: number = 0): string {
   );
 }
 
-// cache computed cardinalities in a weak map since they are computationally expensive
+// cache computed cardinalities since they are computationally expensive
 const cardinalityCache = new Map<string, number>();
 
 export function getColumnCardinality(
