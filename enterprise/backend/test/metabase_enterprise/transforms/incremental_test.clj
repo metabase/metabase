@@ -174,8 +174,7 @@
     :integer (= (bigint expected) (bigint actual))
     :float (and (number? actual)
                 (< (Math/abs (double (- expected actual))) 0.01))
-    :temporal (and (string? actual)
-                   (str/starts-with? actual expected))))
+    :temporal (= expected actual)))
 
 (defn- insert-test-products!
   "Insert new products into the transforms_products table."
