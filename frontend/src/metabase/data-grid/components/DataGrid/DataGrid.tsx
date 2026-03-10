@@ -1,7 +1,5 @@
 import { DndContext, pointerWithin } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import type { Column } from "@tanstack/react-table";
-import type { VirtualItem } from "@tanstack/react-virtual";
 import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
@@ -16,6 +14,7 @@ import {
 } from "../../constants";
 import { DataGridThemeProvider } from "../../hooks";
 import type {
+  DataGridColumn,
   DataGridInstance,
   DataGridTheme,
   MaybeVirtualRow,
@@ -51,18 +50,15 @@ export const DataGrid = function DataGrid<TData>({
   enablePagination,
   showRowsCount,
   getVisibleRows,
+  getPinnedColumns,
+  getCentralColumns,
   zoomedRowIndex,
   onBodyCellClick,
   tableFooterExtraButtons,
   rowsTruncated,
   sorting,
 }: DataGridProps<TData>) {
-  const {
-    virtualColumns,
-    virtualPaddingLeft,
-    rowVirtualizer,
-    columnVirtualizer,
-  } = virtualGrid;
+  const { rowVirtualizer, columnVirtualizer } = virtualGrid;
 
   const dndContextProps = useMemo(
     () => ({
@@ -141,16 +137,14 @@ export const DataGrid = function DataGrid<TData>({
 
   const renderRow = (
     row: MaybeVirtualRow<TData>,
-    columns: Column<TData>[] | VirtualItem[],
+    columns: DataGridColumn<TData>[],
     key: string,
-    isPinned: boolean,
   ) => (
     <DataGridRow
       key={key}
       row={row}
       rowMeasureRef={rowMeasureRef}
       columns={columns}
-      virtualPaddingLeft={isPinned ? undefined : virtualPaddingLeft}
       stickyElementsBackgroundColor={stickyElementsBackgroundColor}
       zoomedRowIndex={zoomedRowIndex}
       selection={selection}
@@ -197,7 +191,7 @@ export const DataGrid = function DataGrid<TData>({
                 }}
               >
                 {getVisibleRows().map((row, index) =>
-                  renderRow(row, pinnedColumns, `pinned-${index}`, true),
+                  renderRow(row, getPinnedColumns(), `pinned-${index}`),
                 )}
               </div>
             )}
@@ -209,7 +203,7 @@ export const DataGrid = function DataGrid<TData>({
               }}
             >
               {getVisibleRows().map((row, index) =>
-                renderRow(row, virtualColumns, `center-${index}`, false),
+                renderRow(row, getCentralColumns(), `center-${index}`),
               )}
             </div>
           </div>

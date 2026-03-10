@@ -63,6 +63,7 @@
 .row {
   display: flex;
   width: 100%;
+  position: relative;
 
   &.active {
     background-color: color-mix(

@@ -31,6 +31,7 @@ import { useColumnsReordering } from "metabase/data-grid/hooks/use-columns-reord
 import { useMeasureColumnWidths } from "metabase/data-grid/hooks/use-measure-column-widths";
 import { useVirtualGrid } from "metabase/data-grid/hooks/use-virtual-grid";
 import type {
+  DataGridColumn,
   DataGridInstance,
   DataGridOptions,
   ExpandedColumnsState,
@@ -510,6 +511,26 @@ export const useDataGridInstance = <TData, TValue>({
     return table.getRowModel().rows;
   }, [enableRowVirtualization, table, virtualGrid.virtualRows]);
 
+  const getPinnedColumns = useCallback(
+    (): DataGridColumn<TData>[] =>
+      table.getLeftVisibleLeafColumns().map((column) => ({
+        origin: column,
+        getCell: (row) => row.getLeftVisibleCells()[column.getIndex("left")],
+      })),
+    [table],
+  );
+
+  const getCentralColumns = useCallback((): DataGridColumn<TData>[] => {
+    const centralColumns = table.getCenterLeafColumns();
+    return virtualGrid.virtualColumns.map((virtualColumn) => {
+      return {
+        origin: centralColumns[virtualColumn.index],
+        virtualItem: virtualColumn,
+        getCell: (row) => row.getCenterVisibleCells()[virtualColumn.index],
+      };
+    });
+  }, [table, virtualGrid.virtualColumns]);
+
   // Auto-adjust column widths when pagination changes
   const previousPagination = usePrevious(pagination);
   useEffect(() => {
@@ -583,6 +604,8 @@ export const useDataGridInstance = <TData, TValue>({
     enableRowVirtualization,
     getTotalHeight,
     getVisibleRows,
+    getCentralColumns,
+    getPinnedColumns,
     enablePagination,
     sorting,
   };

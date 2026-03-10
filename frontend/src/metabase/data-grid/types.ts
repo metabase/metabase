@@ -1,6 +1,7 @@
 import type {
   Cell,
   CellContext,
+  Column,
   ColumnDefTemplate,
   ColumnSizingState,
   HeaderContext,
@@ -13,7 +14,6 @@ import type {
   Table,
 } from "@tanstack/react-table";
 import type { VirtualItem } from "@tanstack/react-virtual";
-import type React from "react";
 import type { RefObject } from "react";
 
 import type { ColumnsReordering } from "./hooks/use-columns-reordering";
@@ -305,6 +305,8 @@ export interface DataGridInstance<TData> {
   sorting: SortingState | undefined;
   getTotalHeight: () => number;
   getVisibleRows: () => MaybeVirtualRow<TData>[];
+  getPinnedColumns: () => DataGridColumn<TData>[];
+  getCentralColumns: () => DataGridColumn<TData>[];
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
     columnId?: string,
@@ -324,3 +326,9 @@ export type VirtualRow<TData> = {
 };
 
 export type MaybeVirtualRow<TData> = Row<TData> | VirtualRow<TData>;
+
+export type DataGridColumn<TData, TValue = unknown> = {
+  origin: Column<TData, TValue>;
+  virtualItem?: VirtualItem;
+  getCell: (row: Row<TData>) => Cell<TData, TValue>;
+};

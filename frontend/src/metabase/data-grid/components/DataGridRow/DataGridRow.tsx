@@ -1,23 +1,24 @@
-import type { Column } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
-import type { VirtualItem } from "@tanstack/react-virtual";
 import cx from "classnames";
 import type React from "react";
 
 import { hasModifierKeys } from "metabase/common/utils/keyboard";
 
-import { isVirtualColumn, isVirtualRow } from "../../guards";
-import type { DataGridSelection, MaybeVirtualRow } from "../../types";
+import { isVirtualRow } from "../../guards";
+import type {
+  DataGridColumn,
+  DataGridSelection,
+  MaybeVirtualRow,
+} from "../../types";
 import S from "../DataGrid/DataGrid.module.css";
 import type { DataGridStylesProps } from "../DataGrid/types";
 
-import { getRowPositionStyles } from "./utils";
+import { getColumnPositionStyles, getRowPositionStyles } from "./utils";
 
 export interface DataGridRowProps<TData> extends DataGridStylesProps {
   row: MaybeVirtualRow<TData>;
-  columns: Column<TData>[] | VirtualItem[];
+  columns: DataGridColumn<TData>[];
   rowMeasureRef?: ((element: HTMLElement | null) => void) | undefined;
-  virtualPaddingLeft?: number | undefined;
   stickyElementsBackgroundColor: string;
   zoomedRowIndex: number | undefined;
   selection: DataGridSelection;
@@ -32,7 +33,6 @@ export const DataGridRow = <TData,>({
   row: maybeVirtualRow,
   rowMeasureRef,
   columns,
-  virtualPaddingLeft,
   stickyElementsBackgroundColor,
   zoomedRowIndex,
   selection,
@@ -65,31 +65,20 @@ export const DataGridRow = <TData,>({
       className={cx(S.row, classNames?.row, {
         [S.active]: active,
       })}
-      style={{
-        ...rowPositionStyles,
-        ...styles?.row,
-        paddingLeft: virtualPaddingLeft,
-      }}
+      style={{ ...rowPositionStyles, ...styles?.row }}
     >
       {columns.map((column) => {
-        const cell = isVirtualColumn(column)
-          ? row.getCenterVisibleCells()[column.index]
-          : row.getLeftVisibleCells()[column.getIndex("left")];
-
-        const columnDef = cell.column.columnDef;
+        const cell = column.getCell(row);
+        const columnDef = column.origin.columnDef;
         const isSelectable =
           selection.isEnabled && columnDef?.meta?.enableSelection;
 
-        const style: React.CSSProperties = {
-          width: cell.column.getSize(),
-          ...styles?.bodyCell,
-        };
-
+        const columnPositionStyles = getColumnPositionStyles(column);
         return (
           <div
             key={cell.id}
             aria-selected={selection.isCellSelected(cell)}
-            data-column-id={cell.column.id}
+            data-column-id={column.origin.id}
             data-selectable-cell={isSelectable ? "" : undefined}
             className={cx(S.bodyCell, classNames?.bodyCell, {
               [S.focusedCell]: selection.isCellFocused(cell),
@@ -98,15 +87,15 @@ export const DataGridRow = <TData,>({
               if (hasModifierKeys(e)) {
                 return;
               }
-              onBodyCellClick?.(e, cell.row.index, cell.column.id);
+              onBodyCellClick?.(e, cell.row.index, column.origin.id);
             }}
             onDoubleClick={() => selection.handlers.handleCellDoubleClick(cell)}
             onMouseDown={(e) => selection.handlers.handleCellMouseDown(e, cell)}
             onMouseUp={(e) => selection.handlers.handleCellMouseUp(e, cell)}
             onMouseOver={(e) => selection.handlers.handleCellMouseOver(e, cell)}
-            style={style}
+            style={{ ...columnPositionStyles, ...styles?.bodyCell }}
           >
-            {flexRender(cell.column.columnDef.cell, {
+            {flexRender(columnDef.cell, {
               ...cell.getContext(),
               isSelected: selection.isCellSelected(cell),
             })}

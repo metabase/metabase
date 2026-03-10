@@ -20,7 +20,6 @@ interface VirtualGridOptions<TData> {
 export interface VirtualGrid {
   virtualColumns: VirtualItem[];
   virtualRows: VirtualItem[];
-  virtualPaddingLeft: number | undefined;
   rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
   columnVirtualizer: Virtualizer<HTMLDivElement, Element>;
   measureGrid: () => void;
@@ -41,7 +40,7 @@ export const useVirtualGrid = <TData,>({
     getScrollElement: () => gridRef.current,
     estimateSize: (index) => {
       const column = centralColumns[index];
-      const size = centralColumns[index].getSize();
+      const size = column.getSize();
       const actualSize = table.getState().columnSizing[column.id];
       return actualSize ?? size;
     },
@@ -104,25 +103,11 @@ export const useVirtualGrid = <TData,>({
   const virtualColumns = columnVirtualizer.getVirtualItems();
   const virtualRows = rowVirtualizer.getVirtualItems();
 
-  return useMemo(() => {
-    const virtualPaddingLeft =
-      columnVirtualizer && virtualColumns?.length
-        ? (virtualColumns[0]?.start ?? 0)
-        : undefined;
-
-    return {
-      virtualColumns,
-      virtualRows,
-      virtualPaddingLeft,
-      rowVirtualizer,
-      columnVirtualizer,
-      measureGrid,
-    };
-  }, [
+  return {
     virtualColumns,
     virtualRows,
     rowVirtualizer,
     columnVirtualizer,
     measureGrid,
-  ]);
+  };
 };
