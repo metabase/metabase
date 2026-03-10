@@ -14,6 +14,7 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.macros.defendpoint.mcp-tools :as mcp-tools]
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.api.util.handlers :as handlers]
@@ -199,7 +200,8 @@
 
 (api.macros/defendpoint :get "/v1/table/:id" :- ::table
   "Get details for a table by ID."
-  {:scope "agent:table:read"}
+  {:scope "agent:table:read"
+   :tool  true}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
     :or   {with-fields true, with-field-values false, with-related-tables true,
@@ -223,10 +225,12 @@
 
 (api.macros/defendpoint :get "/v1/table/:id/field/:field-id/values" :- ::field-values
   "Get statistics and sample values for a table field."
-  {:scope "agent:table:read"}
+  {:scope "agent:table:read"
+   :tool  true}
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
-                             [:field-id ms/NonBlankString]]]
+                             [:field-id {:tool/description "Field identifier in the format '<prefix><entity-id>-<field-index>', e.g. 't123-0' for a table field."}
+                              ms/NonBlankString]]]
   (check-tool-result
    (field-stats/field-values
     {:entity-type "table"
@@ -236,7 +240,8 @@
 
 (api.macros/defendpoint :get "/v1/metric/:id" :- ::metric
   "Get details for a metric by ID."
-  {:scope "agent:metric:read"}
+  {:scope "agent:metric:read"
+   :tool  true}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-default-temporal-breakout with-field-values with-queryable-dimensions with-segments]
     :or   {with-default-temporal-breakout true, with-field-values false,
@@ -256,10 +261,12 @@
 
 (api.macros/defendpoint :get "/v1/metric/:id/field/:field-id/values" :- ::field-values
   "Get statistics and sample values for a metric field."
-  {:scope "agent:metric:read"}
+  {:scope "agent:metric:read"
+   :tool  true}
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
-                             [:field-id ms/NonBlankString]]]
+                             [:field-id {:tool/description "Field identifier in the format '<prefix><entity-id>-<field-index>', e.g. 'c456-2' for a metric field."}
+                              ms/NonBlankString]]]
   (check-tool-result
    (field-stats/field-values
     {:entity-type "metric"
@@ -272,7 +279,8 @@
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
-  {:scope "agent:search"}
+  {:scope "agent:search"
+   :tool  {:annotations {:read-only? true}}}
   [_route-params
    _query-params
    {term-queries     :term_queries
@@ -363,7 +371,8 @@
 
   For tables, supports: filters, fields, aggregations, group_by, order_by, limit.
   For metrics, supports: filters, group_by (aggregation is defined by the metric)."
-  {:scope "agent:query:construct"}
+  {:scope "agent:query:construct"
+   :tool  {:annotations {:read-only? true, :idempotent? true}}}
   [_route-params
    _query-params
    body :- ::construct-query-request]
@@ -376,7 +385,8 @@
 (mr/def ::execute-query-request
   "Request schema for /v1/execute. Accepts a base64-encoded MBQL query."
   [:map
-   [:query ms/NonBlankString]])
+   [:query {:tool/description "A base64-encoded query string returned by /v1/construct-query. Do not construct this value manually."}
+    ms/NonBlankString]])
 
 (mr/def ::column-metadata
   "Metadata for a single result column."
@@ -411,7 +421,8 @@
   - On failure: {:status :failed :error \"message\" ...}
 
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
-  {:scope "agent:query:execute"}
+  {:scope "agent:query:execute"
+   :tool  {:annotations {:read-only? true}}}
   [_route-params
    _query-params
    {encoded-query :query} :- ::execute-query-request]
@@ -427,6 +438,14 @@
            qp/userland-query-with-default-constraints
            (update :info merge info))
        rff))))
+
+;;; ------------------------------------------------- Tool Manifest --------------------------------------------------
+
+(api.macros/defendpoint :get "/v1/tools" :- [:map [:tools [:sequential :map]]]
+  "Returns MCP tool manifest for all agent API tools."
+  {:scope "agent:tools:read"}
+  []
+  (mcp-tools/tool-manifest 'metabase-enterprise.agent-api.api "/api/agent"))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
