@@ -183,7 +183,7 @@ export const DataGrid = function DataGrid<TData>({
             data-testid="table-scroll-container"
             className={cx(S.tableGrid, classNames?.tableGrid)}
             style={{
-              backgroundColor: theme?.cell?.backgroundColor,
+              backgroundColor,
               color: theme?.cell?.textColor,
               ...styles?.tableGrid,
             }}

@@ -31,7 +31,6 @@ export const DataGridHeader = <TData,>({
     className={cx(S.row, classNames?.row)}
     style={{
       height: `${HEADER_HEIGHT}px`,
-      // backgroundColor,
       ...styles?.row,
     }}
   >
