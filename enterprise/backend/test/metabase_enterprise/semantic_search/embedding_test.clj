@@ -25,10 +25,10 @@
 
 (deftest test-get-provider
   (testing "get-active-model returns based on setting"
-    (mt/with-temporary-setting-values [ee-embedding-provider "embedding-service"
+    (mt/with-temporary-setting-values [ee-embedding-provider "ai-service"
                                        ee-embedding-model "Snowflake/snowflake-arctic-embed-l-v2.0"
                                        ee-embedding-model-dimensions 1024]
-      (is (= {:provider "embedding-service"
+      (is (= {:provider "ai-service"
               :model-name "Snowflake/snowflake-arctic-embed-l-v2.0"
               :vector-dimensions 1024}
              (embedding/get-configured-model))))
@@ -189,7 +189,7 @@
               [{:provider       "openai"
                 :mock-response  openai-response
                 :counts-tokens? true}
-               {:provider       "embedding-service"
+               {:provider       "ai-service"
                 :mock-response  openai-response
                 :counts-tokens? true}
                {:provider       "ollama"
@@ -225,29 +225,29 @@
                 (is (= 2 (t2/count :model/SemanticSearchTokenTracking)))))))))))
 
 (deftest test-embedding-service-validation
-  (testing "embedding-service throws when base URL not configured"
+  (testing "ai-service throws when base URL not configured"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url nil
                                        ee-embedding-service-api-key  "some-key"]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Embedding service base URL not configured"
-           (embedding/get-embedding {:provider "embedding-service"
+           (embedding/get-embedding {:provider "ai-service"
                                      :model-name "test-model"
                                      :vector-dimensions 4}
                                     "test text")))))
-  (testing "embedding-service throws when API key not configured"
+  (testing "ai-service throws when API key not configured"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://localhost:1234"
                                        ee-embedding-service-api-key  nil]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Embedding service API key not configured"
-           (embedding/get-embedding {:provider "embedding-service"
+           (embedding/get-embedding {:provider "ai-service"
                                      :model-name "test-model"
                                      :vector-dimensions 4}
                                     "test text"))))))
 
 (deftest test-embedding-service-snowplow-tracking
-  (testing "embedding-service fires a Snowplow token_usage event on each batch call"
+  (testing "ai-service fires a Snowplow token_usage event on each batch call"
     (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://mock-embedding-service"
                                        ee-embedding-service-api-key  "mock-key"]
       (let [mock-response {:data  [{:object    "embedding"
@@ -261,7 +261,7 @@
                                                   {:status  200
                                                    :headers {"Content-Type" "application/json"}
                                                    :body    (json/encode mock-response)})]
-            (embedding/get-embeddings-batch {:provider         "embedding-service"
+            (embedding/get-embeddings-batch {:provider         "ai-service"
                                              :model-name       "test-model"
                                              :vector-dimensions 3}
                                             ["hello world"]))
@@ -278,7 +278,7 @@
 (deftest token-tracking-write-test
   (mt/with-premium-features #{:semantic-search}
     (when (string? (not-empty (:mb-pgvector-db-url env/env)))
-      (doseq [provider ["openai" "embedding-service"]]
+      (doseq [provider ["openai" "ai-service"]]
         (semantic.tu/with-test-db! {:mode :blank}
           (let [mock-embedding (repeat 1024 1.0)
                 mock-response {:data [{:object "embedding"

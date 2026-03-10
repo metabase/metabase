@@ -5,14 +5,25 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
+(def ^:private valid-embedding-providers
+  "The set of valid embedding provider names."
+  #{"ai-service" "openai" "ollama"})
+
 (defsetting ee-embedding-provider
-  (deferred-tru "The embedding provider to use (`openai`, `ollama, or `embedding-service`)")
+  (deferred-tru "The embedding provider to use (`openai`, `ollama`, or `ai-service`)")
   :encryption :no
   :visibility :settings-manager
-  :default "embedding-service"
+  :default "ai-service"
   :type :string
   :export? false
-  :doc false)
+  :doc false
+  :setter (fn [new-value]
+            (when (and new-value (not (contains? valid-embedding-providers new-value)))
+              (throw (ex-info (str "Invalid embedding provider: " (pr-str new-value)
+                                   ". Valid providers are: " (pr-str valid-embedding-providers))
+                              {:invalid-value new-value
+                               :valid-values  valid-embedding-providers})))
+            (setting/set-value-of-type! :string :ee-embedding-provider new-value)))
 
 (defsetting ee-embedding-model
   (deferred-tru "Set the embedding model for the selected provider")
