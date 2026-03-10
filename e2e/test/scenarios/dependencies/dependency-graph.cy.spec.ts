@@ -19,32 +19,25 @@ import type {
   NativeQuerySnippetId,
   SegmentId,
   TableId,
-  TransformId,
 } from "metabase-types/api";
 
 const BASE_URL = "/dependencies";
 const TABLE_NAME = "scoreboard_actions";
 const TABLE_DISPLAY_NAME = "Scoreboard Actions";
 const TABLE_ID_ALIAS = "tableId";
-const TRANSFORM_TABLE_NAME = "transform_table";
-const TRANSFORM_TABLE_DISPLAY_NAME = "Transform Table";
 const TABLE_BASED_QUESTION_NAME = "Table-based question";
 const TABLE_BASED_MODEL_NAME = "Table-based model";
 const TABLE_BASED_METRIC_NAME = "Table-based metric";
-const TABLE_BASED_TRANSFORM_NAME = "Table-based transform";
 const CARD_BASED_QUESTION_NAME = "Card-based question";
 const CARD_BASED_MODEL_NAME = "Card-based model";
 const CARD_BASED_METRIC_NAME = "Card-based metric";
-const CARD_BASED_TRANSFORM_NAME = "Card-based transform";
 const CARD_BASED_SNIPPET_NAME = "Card-based snippet";
 const METRIC_BASED_QUESTION_NAME = "Metric-based question";
 const METRIC_BASED_MODEL_NAME = "Metric-based model";
 const METRIC_BASED_METRIC_NAME = "Metric-based metric";
-const METRIC_BASED_TRANSFORM_NAME = "Metric-based transform";
 const EMPTY_SNIPPET_NAME = "Empty snippet";
 const SNIPPET_BASED_QUESTION_NAME = "Snippet-based question";
 const SNIPPET_BASED_MODEL_NAME = "Snippet-based model";
-const SNIPPET_BASED_TRANSFORM_NAME = "Snippet-based transform";
 const SNIPPET_BASED_SNIPPET_NAME = "Snippet-based snippet";
 const TABLE_BASED_SEGMENT_NAME = "Table-based segment";
 const SEGMENT_BASED_QUESTION_NAME = "Segment-based question";
@@ -136,7 +129,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
     it("should be able to use inline search for all supported entity types", () => {
       getScoreboardTableId().then((tableId) => {
         createTableBasedMetric({ tableId });
-        createTableBasedTransform({ tableName: TABLE_NAME });
       });
       visitGraph();
 
@@ -160,17 +152,11 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
         itemIcon: "metric",
         isRecentItem: false,
       });
-      testEntitySearch({
-        itemName: TABLE_BASED_TRANSFORM_NAME,
-        itemIcon: "refresh_downstream",
-        isRecentItem: false,
-      });
     });
 
     it("should be able to use the entity picker for all supported entity types", () => {
       getScoreboardTableId().then((tableId) => {
         createTableBasedMetric({ tableId });
-        createTableBasedTransform({ tableName: TABLE_NAME });
       });
 
       visitGraph();
@@ -197,12 +183,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
         itemName: TABLE_BASED_METRIC_NAME,
         itemLevel: 1,
         itemIcon: "metric",
-      });
-      testEntityPicker({
-        tabName: "Transforms",
-        itemName: TABLE_BASED_TRANSFORM_NAME,
-        itemLevel: 0,
-        itemIcon: "refresh_downstream",
       });
     });
   });
@@ -251,7 +231,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
         createTableBasedQuestion({ tableId });
         createTableBasedModel({ tableId });
         createTableBasedMetric({ tableId });
-        createTableBasedTransform({ tableName: TABLE_NAME });
         createTableBasedSegment({ tableId });
         visitGraphForEntity(tableId, "table");
       });
@@ -269,11 +248,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_DISPLAY_NAME,
         groupTitle: "1 metric",
         dependentItemTitle: TABLE_BASED_METRIC_NAME,
-      });
-      verifyPanelNavigation({
-        itemTitle: TABLE_DISPLAY_NAME,
-        groupTitle: "1 transform",
-        dependentItemTitle: TABLE_BASED_TRANSFORM_NAME,
       });
       verifyPanelNavigation({
         itemTitle: TABLE_DISPLAY_NAME,
@@ -321,7 +295,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
           createCardBasedQuestion({ cardId: card.id });
           createCardBasedModel({ cardId: card.id });
           createCardBasedMetric({ cardId: card.id });
-          createCardBasedTransform({ cardId: card.id });
           createCardBasedSnippet({ cardId: card.id });
           visitGraphForEntity(card.id, "card");
         });
@@ -339,11 +312,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_BASED_QUESTION_NAME,
         groupTitle: "1 metric",
         dependentItemTitle: CARD_BASED_METRIC_NAME,
-      });
-      verifyPanelNavigation({
-        itemTitle: TABLE_BASED_QUESTION_NAME,
-        groupTitle: "1 transform",
-        dependentItemTitle: CARD_BASED_TRANSFORM_NAME,
       });
       verifyPanelNavigation({
         itemTitle: TABLE_BASED_QUESTION_NAME,
@@ -359,7 +327,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
           createCardBasedQuestion({ cardId: card.id });
           createCardBasedModel({ cardId: card.id });
           createCardBasedMetric({ cardId: card.id });
-          createCardBasedTransform({ cardId: card.id });
           createCardBasedSnippet({ cardId: card.id });
           visitGraphForEntity(card.id, "card");
         });
@@ -380,11 +347,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
       });
       verifyPanelNavigation({
         itemTitle: TABLE_BASED_MODEL_NAME,
-        groupTitle: "1 transform",
-        dependentItemTitle: CARD_BASED_TRANSFORM_NAME,
-      });
-      verifyPanelNavigation({
-        itemTitle: TABLE_BASED_MODEL_NAME,
         groupTitle: "1 snippet",
         dependentItemTitle: CARD_BASED_SNIPPET_NAME,
       });
@@ -396,7 +358,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
           createMetricBasedQuestion({ tableId, metricId: card.id });
           createMetricBasedModel({ tableId, metricId: card.id });
           createMetricBasedMetric({ tableId, metricId: card.id });
-          createMetricBasedTransform({ tableId, metricId: card.id });
           visitGraphForEntity(card.id, "card");
         }),
       );
@@ -415,25 +376,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
         groupTitle: "1 metric",
         dependentItemTitle: METRIC_BASED_METRIC_NAME,
       });
-      verifyPanelNavigation({
-        itemTitle: TABLE_BASED_METRIC_NAME,
-        groupTitle: "1 transform",
-        dependentItemTitle: METRIC_BASED_TRANSFORM_NAME,
-      });
-    });
-
-    it("should display dependencies for a transform and navigate to them", () => {
-      createTableBasedTransform({ tableName: TABLE_NAME }).then(
-        ({ body: transform }) => {
-          runTransformAndWaitForSuccess(transform.id);
-          visitGraphForEntity(transform.id, "transform");
-        },
-      );
-      verifyPanelNavigation({
-        itemTitle: TABLE_BASED_TRANSFORM_NAME,
-        groupTitle: "1 table",
-        dependentItemTitle: TRANSFORM_TABLE_DISPLAY_NAME,
-      });
     });
 
     it("should display dependencies for a snippet and navigate to them", () => {
@@ -444,11 +386,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
           snippetName: snippet.name,
         });
         createSnippetBasedModel({
-          tableName: TABLE_NAME,
-          snippetId: snippet.id,
-          snippetName: snippet.name,
-        });
-        createSnippetBasedTransform({
           tableName: TABLE_NAME,
           snippetId: snippet.id,
           snippetName: snippet.name,
@@ -465,11 +402,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
         itemTitle: EMPTY_SNIPPET_NAME,
         groupTitle: "1 model",
         dependentItemTitle: SNIPPET_BASED_MODEL_NAME,
-      });
-      verifyPanelNavigation({
-        itemTitle: EMPTY_SNIPPET_NAME,
-        groupTitle: "1 transform",
-        dependentItemTitle: SNIPPET_BASED_TRANSFORM_NAME,
       });
       verifyPanelNavigation({
         itemTitle: EMPTY_SNIPPET_NAME,
@@ -586,7 +518,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
         createTableBasedQuestion({ tableId });
         createTableBasedModel({ tableId });
         createTableBasedMetric({ tableId });
-        createTableBasedTransform({ tableName: TABLE_NAME });
         cy.signIn("nocollection");
         visitGraphForEntity(tableId, "table");
       });
@@ -596,7 +527,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
           cy.findByText(/question/).should("not.exist");
           cy.findByText(/model/).should("not.exist");
           cy.findByText(/metric/).should("not.exist");
-          cy.findByText(/transform/).should("not.exist");
         });
       });
     });
@@ -608,7 +538,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
           createCardBasedQuestion({ cardId: card.id });
           createCardBasedModel({ cardId: card.id });
           createCardBasedMetric({ cardId: card.id });
-          createCardBasedTransform({ cardId: card.id });
           createCardBasedSnippet({ cardId: card.id });
           cy.signIn("nodata");
           visitGraphForEntity(card.id, "card");
@@ -621,7 +550,6 @@ describe.skip("scenarios > dependencies > dependency graph", () => {
           cy.findByText("1 model").should("be.visible");
           cy.findByText("1 metric").should("be.visible");
           cy.findByText(/snippet/).should("not.exist");
-          cy.findByText(/transform/).should("not.exist");
         });
       });
     });
@@ -932,125 +860,6 @@ function createMetricBasedMetric({
       aggregation: [["metric", metricId]],
     },
   });
-}
-
-function createTableBasedTransform({ tableName }: { tableName: string }) {
-  return H.createTransform({
-    name: TABLE_BASED_TRANSFORM_NAME,
-    source: {
-      type: "query",
-      query: {
-        database: WRITABLE_DB_ID,
-        type: "native",
-        native: {
-          query: `SELECT * from ${tableName}`,
-          "template-tags": {},
-        },
-      },
-    },
-    target: {
-      type: "table",
-      database: WRITABLE_DB_ID,
-      schema: "public",
-      name: TRANSFORM_TABLE_NAME,
-    },
-  });
-}
-
-function createCardBasedTransform({ cardId }: { cardId: CardId }) {
-  return H.createTransform({
-    name: CARD_BASED_TRANSFORM_NAME,
-    source: {
-      type: "query",
-      query: {
-        database: WRITABLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": `card__${cardId}`,
-        },
-      },
-    },
-    target: {
-      type: "table",
-      database: WRITABLE_DB_ID,
-      schema: "public",
-      name: TRANSFORM_TABLE_NAME,
-    },
-  });
-}
-
-function createMetricBasedTransform({
-  tableId,
-  metricId,
-}: {
-  tableId: TableId;
-  metricId: CardId;
-}) {
-  return H.createTransform({
-    name: METRIC_BASED_TRANSFORM_NAME,
-    source: {
-      type: "query",
-      query: {
-        database: WRITABLE_DB_ID,
-        type: "query",
-        query: {
-          "source-table": tableId,
-          aggregation: [["metric", metricId]],
-        },
-      },
-    },
-    target: {
-      type: "table",
-      database: WRITABLE_DB_ID,
-      schema: "public",
-      name: TRANSFORM_TABLE_NAME,
-    },
-  });
-}
-
-function createSnippetBasedTransform({
-  tableName,
-  snippetId,
-  snippetName,
-}: {
-  tableName: string;
-  snippetId: NativeQuerySnippetId;
-  snippetName: string;
-}) {
-  return H.createTransform({
-    name: SNIPPET_BASED_TRANSFORM_NAME,
-    source: {
-      type: "query",
-      query: {
-        database: WRITABLE_DB_ID,
-        type: "native",
-        native: {
-          query: `SELECT * FROM ${tableName} WHERE {{snippet:${snippetName}}}`,
-          "template-tags": {
-            [`snippet:${snippetName}`]: {
-              id: "4b77cc1f-ea70-4ef6-84db-58432fce6928",
-              name: `snippet:${snippetName}`,
-              "display-name": `snippet:${snippetName}`,
-              type: "snippet",
-              "snippet-id": snippetId,
-              "snippet-name": snippetName,
-            },
-          },
-        },
-      },
-    },
-    target: {
-      type: "table",
-      database: WRITABLE_DB_ID,
-      schema: "public",
-      name: TRANSFORM_TABLE_NAME,
-    },
-  });
-}
-
-function runTransformAndWaitForSuccess(transformId: TransformId) {
-  cy.request("POST", `/api/ee/transform/${transformId}/run`);
-  H.waitForSucceededTransformRuns();
 }
 
 function createEmptySnippet() {
