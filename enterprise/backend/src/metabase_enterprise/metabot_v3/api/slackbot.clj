@@ -501,10 +501,8 @@
         freeform-block]))})
 
 (defn- replace-feedback-buttons-with-thanks
-  "Update the Slack message to replace the feedback buttons with a confirmation.
-   Uses the message from the `block_actions` payload (which contains the full content as rendered by
-   Slack) rather than re-fetching via `conversations.history`, which may not return the full content
-   for streamed messages."
+  "Replace the feedback buttons on a Slack message with a confirmation.
+   `message` should come directly from the `block_actions` payload to preserve message content."
   [client channel message]
   (let [{:keys [ts text blocks]} message
         updated-blocks           (-> (into [] (remove #(= (:block_id %) "metabot_feedback")) blocks)
