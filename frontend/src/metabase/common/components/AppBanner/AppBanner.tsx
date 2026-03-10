@@ -41,11 +41,11 @@ export const AppBanner = () => {
 
   // Most banners are only visible to admins, but DevModeBanner gets shown to all users
   if (!isAdmin) {
-    if (migrateReadOnly) {
-      return <ReadOnlyBanner />;
-    }
-
-    return isDevMode ? <DevModeBanner /> : null;
+    return migrateReadOnly ? (
+      <ReadOnlyBanner />
+    ) : isDevMode ? (
+      <DevModeBanner />
+    ) : null;
   }
 
   if (migrateReadOnly) {
