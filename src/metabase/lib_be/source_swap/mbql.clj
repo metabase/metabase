@@ -174,9 +174,9 @@
 
 (mu/defn- build-field-id-mapping :- ::field-id-mapping
   "Builds a mapping of old field IDs to new columns."
-  [query                                         :- ::lib.schema/query
-   [old-source-type _old-id :as old-source]      :- ::lib-be.schema.source-swap/source
-   [new-source-type _new-id :as new-source]      :- ::lib-be.schema.source-swap/source]
+  [query      :- ::lib.schema/query
+   old-source :- ::lib-be.schema.source-swap/source
+   new-source :- ::lib-be.schema.source-swap/source]
   (let [old-columns       (lib-be.source-swap.util/source-columns query old-source)
         new-columns       (lib-be.source-swap.util/source-columns query new-source)
         new-column-by-key (m/index-by lib-be.source-swap.util/column-match-key new-columns)]
