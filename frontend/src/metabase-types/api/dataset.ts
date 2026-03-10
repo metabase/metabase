@@ -1,4 +1,4 @@
-import type { ClickObjectDimension } from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type {
   CacheStrategy,
   LocalFieldReference,
@@ -23,7 +23,7 @@ import type { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[] & {
-  _dimension?: ClickObjectDimension; // present in pivoted data
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
 };
 
 export function getRowsForStableKeys(
@@ -89,7 +89,7 @@ export interface DatasetColumn {
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
 
-  _dimension?: ClickObjectDimension; // present in pivoted data
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
   remapping?: Map<RowValue, string | number>;
 }
 
