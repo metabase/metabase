@@ -8,7 +8,6 @@ import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
-import { DataGridRow } from "metabase/data-grid/components/DataGridRow/DataGridRow";
 
 import {
   DEFAULT_FONT_SIZE,
@@ -21,6 +20,7 @@ import type {
   DataGridTheme,
   MaybeVirtualRow,
 } from "../../types";
+import { DataGridRow } from "../DataGridRow/DataGridRow";
 import { Footer } from "../Footer/Footer";
 
 import S from "./DataGrid.module.css";
