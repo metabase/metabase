@@ -140,6 +140,14 @@ describe("SchemaPickerInput", () => {
     expect(screen.getByText("Analytics DB / REPORTING")).toBeInTheDocument();
   });
 
+  it("does not show schema in label when API returns blank schema name", () => {
+    setupSchemaMocks({ 2: [""] });
+    renderSchemaPicker({ databaseId: 2 as DatabaseId, schema: undefined });
+
+    expect(screen.getByText("Analytics DB")).toBeInTheDocument();
+    expect(screen.queryByText("Analytics DB / ")).not.toBeInTheDocument();
+  });
+
   it("filters out Saved Questions from database list", async () => {
     renderSchemaPicker();
     await userEvent.click(screen.getByTestId("schema-picker-button"));
@@ -184,6 +192,23 @@ describe("SchemaPickerInput", () => {
 
   it("auto-navigates to database URL when selected database has no schemas", async () => {
     setupSchemaMocks({ 1: [] });
+    renderSchemaPicker();
+
+    await userEvent.click(screen.getByTestId("schema-picker-button"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Sample Database" }),
+    );
+
+    await waitFor(() => {
+      expect(Urls.dataStudioErdDatabase).toHaveBeenCalledWith(1);
+    });
+    expect(mockPush).toHaveBeenCalledWith(
+      "/data-studio/schema-viewer?database-id=1",
+    );
+  });
+
+  it("auto-navigates to database URL when selected database has blank schema name only", async () => {
+    setupSchemaMocks({ 1: [""] });
     renderSchemaPicker();
 
     await userEvent.click(screen.getByTestId("schema-picker-button"));

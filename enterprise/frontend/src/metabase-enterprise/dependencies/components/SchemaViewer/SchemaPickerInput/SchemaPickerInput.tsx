@@ -50,16 +50,24 @@ export function SchemaPickerInput({
   const { data: databasesResponse, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
 
-  // Fetch schemas for the picker navigation
-  const { data: pickerSchemas, isLoading: isLoadingSchemas } =
+  const schemaQueryDatabaseId =
+    selectedDatabaseId ??
+    (databaseId != null && schema == null ? databaseId : null);
+
+  // Single top-level schema query shared by picker flow and button label fallback.
+  const { data: queriedSchemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
-      selectedDatabaseId != null ? { id: selectedDatabaseId } : skipToken,
+      schemaQueryDatabaseId != null ? { id: schemaQueryDatabaseId } : skipToken,
     );
 
-  // Fetch schemas for the currently selected database to show auto-selected schema
-  const { data: currentSchemas } = useListDatabaseSchemasQuery(
-    databaseId != null && schema == null ? { id: databaseId } : skipToken,
-  );
+  // Some drivers can return [""]. Treat blank schema names as no schemas.
+  const normalizedSchemas = useMemo(() => {
+    return (queriedSchemas ?? []).filter(
+      (schemaName): schemaName is SchemaName => schemaName.trim().length > 0,
+    );
+  }, [queriedSchemas]);
+
+  const schemas = queriedSchemas == null ? undefined : normalizedSchemas;
 
   const databases = useMemo(() => {
     return databasesResponse?.data?.filter((db) => !db.is_saved_questions);
@@ -71,17 +79,14 @@ export function SchemaPickerInput({
 
   // Auto-select when database has a single schema
   useEffect(() => {
-    if (selectedDatabaseId != null && pickerSchemas != null) {
-      if (pickerSchemas.length === 1) {
+    if (selectedDatabaseId != null && schemas != null) {
+      if (schemas.length === 1) {
         // Single schema - include it in the URL
-        const url = Urls.dataStudioErdSchema(
-          selectedDatabaseId,
-          pickerSchemas[0],
-        );
+        const url = Urls.dataStudioErdSchema(selectedDatabaseId, schemas[0]);
         dispatch(push(url));
         setSelectedDatabaseId(null);
         close();
-      } else if (pickerSchemas.length === 0) {
+      } else if (schemas.length === 0) {
         // No schemas - just use database
         const url = Urls.dataStudioErdDatabase(selectedDatabaseId);
         dispatch(push(url));
@@ -89,7 +94,7 @@ export function SchemaPickerInput({
         close();
       }
     }
-  }, [pickerSchemas, selectedDatabaseId, dispatch, close]);
+  }, [schemas, selectedDatabaseId, dispatch, close]);
 
   const handleDatabaseClick = useCallback((dbId: DatabaseId) => {
     setSelectedDatabaseId(dbId);
@@ -133,7 +138,7 @@ export function SchemaPickerInput({
   const hasSelection = databaseId != null;
   // Show explicit schema, or auto-selected schema (single schema)
   const autoSelectedSchema =
-    currentSchemas?.length === 1 ? currentSchemas[0] : null;
+    selectedDatabaseId == null && schemas?.length === 1 ? schemas[0] : null;
   const displaySchema = schema ?? autoSelectedSchema;
   // Display "Database / Schema" or just "Database"
   const displayLabel = selectedDatabase
@@ -205,9 +210,9 @@ export function SchemaPickerInput({
               <Stack align="center" justify="center" py="md">
                 <Loader size="sm" />
               </Stack>
-            ) : pickerSchemas != null && pickerSchemas.length > 1 ? (
+            ) : schemas != null && schemas.length > 1 ? (
               <SchemaList
-                schemas={pickerSchemas}
+                schemas={schemas}
                 databaseName={
                   databases?.find((db) => db.id === selectedDatabaseId)?.name
                 }
