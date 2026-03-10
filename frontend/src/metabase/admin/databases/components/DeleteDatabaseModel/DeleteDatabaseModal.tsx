@@ -109,6 +109,7 @@ export const DeleteDatabaseModal = ({
 
   const errorMessage = getErrorMessage(error);
   const hasMoreThanOneEntityType = usageInfo && entityTypesCount(usageInfo) > 1;
+  const hasTransforms = (usageInfo?.transform ?? 0) > 0;
 
   const databaseNameConfirmationRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -155,6 +156,13 @@ export const DeleteDatabaseModal = ({
                   ? t`Deleting this database will also delete everything based on it. If you’re really trying to do this, please check each of these boxes:`
                   : t`Deleting this database will also delete everything based on it. If you’re really trying to do this, please check the box below:`}
               </DeleteDatabaseModalSection>
+              {hasTransforms && (
+                <DeleteDatabaseModalSection>
+                  <Text>
+                    {t`Transforms that use this database won’t be deleted, but they will stop working.`}
+                  </Text>
+                </DeleteDatabaseModalSection>
+              )}
 
               <DeleteDatabaseModalSection>
                 <ContentRemovalConfirmation

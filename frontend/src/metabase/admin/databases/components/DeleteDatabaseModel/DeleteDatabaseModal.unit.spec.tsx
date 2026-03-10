@@ -16,6 +16,7 @@ const getUsageInfo = (hasContent: boolean) => ({
   dataset: hasContent ? 20 : 0,
   metric: hasContent ? 30 : 0,
   segment: hasContent ? 40 : 0,
+  transform: hasContent ? 50 : 0,
 });
 
 const database = { name: "database name", id: 1 } as Database;
@@ -33,7 +34,7 @@ const setup = async ({
       opened
       title={"Delete the destination database?"}
       defaultDatabaseRemovalMessage={
-        "Users routed to this database will lose access to every question, model, metric, and segment if you continue."
+        "Users routed to this database will lose access to every question, model, metric, and segment if you continue. Transforms that use this database won’t be deleted, but they will stop working."
       }
       onClose={jest.fn()}
       onDelete={onDelete}
@@ -89,8 +90,14 @@ describe("DeleteDatabaseModal", () => {
     await userEvent.click(screen.getByText("Delete 20 models"));
     await userEvent.click(screen.getByText("Delete 30 metrics"));
     await userEvent.click(screen.getByText("Delete 40 segments"));
+    await userEvent.click(screen.getByText("50 transforms will stop working"));
 
     expect(deleteButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Transforms that use this database won’t be deleted, but they will stop working.",
+      ),
+    ).toBeInTheDocument();
 
     await userEvent.type(
       screen.getByTestId("database-name-confirmation-input"),

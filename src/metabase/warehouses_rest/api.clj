@@ -487,7 +487,7 @@
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
-  [:question :dataset :metric :segment]) ; TODO -- rename `:dataset` to `:model`?
+  [:question :dataset :metric :segment :transform]) ; TODO -- rename `:dataset` to `:model`?
 
 (def ^:private always-false-hsql-expr
   "A Honey SQL expression that is never true.
@@ -528,6 +528,14 @@
    :where  (if table-ids
              [:in :table_id table-ids]
              always-false-hsql-expr)})
+
+(defmethod database-usage-query :transform
+  [_ db-id _table-ids]
+  {:select [[:%count.* :transform]]
+   :from   [(t2/table-name :model/Transform)]
+   :where  [:or
+            [:= :source_db_id db-id]
+            [:= :target_db_id db-id]]})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

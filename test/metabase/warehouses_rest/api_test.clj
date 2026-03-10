@@ -261,7 +261,23 @@
      :model/Card     _                {:database_id db-id
                                        :table_id    table-id-2
                                        :type        :metric}
-     :model/Segment  _                {:table_id table-id-2}]
+     :model/Segment  _                {:table_id table-id-2}
+     :model/Transform _               {:name   "Source DB transform"
+                                       :source {:type :table
+                                                :source-tables [{:database db-id
+                                                                 :schema "PUBLIC"
+                                                                 :table "ORDERS"}]}
+                                       :target {:database db-id
+                                                :schema "PUBLIC"
+                                                :name "source_db_transform_target"}}
+     :model/Transform _               {:name   "Target DB transform"
+                                       :source {:type :table
+                                                :source-tables [{:database (mt/id)
+                                                                 :schema "PUBLIC"
+                                                                 :table "ORDERS"}]}
+                                       :target {:database db-id
+                                                :schema "PUBLIC"
+                                                :name "target_db_transform_target"}}]
     (testing "should require admin"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (format "database/%d/usage_info" db-id)))))
@@ -269,7 +285,8 @@
       (is (= {:question 1
               :dataset  2
               :metric   3
-              :segment  1}
+              :segment  1
+              :transform 2}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
     (testing "404 if db does not exist"
       (let [non-existing-db-id (inc (t2/select-one-pk :model/Database {:order-by [[:id :desc]]}))]
@@ -284,7 +301,8 @@
       (is (= {:question 0
               :dataset  0
               :metric   0
-              :segment  0}
+              :segment  0
+              :transform 0}
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))))
 
 (defn- create-db-via-api! [& [m]]

@@ -994,7 +994,7 @@ describe("scenarios > admin > databases > sample database", () => {
         .click()
         .should("be.checked");
       cy.findByText(
-        "This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone!",
+        "This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone. Transforms that use this database won’t be deleted, but they will stop working.",
       );
 
       cy.get("@deleteButton").should("be.disabled");

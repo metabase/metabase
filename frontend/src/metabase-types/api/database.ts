@@ -117,6 +117,7 @@ export interface DatabaseUsageInfo {
   dataset: number;
   metric: number;
   segment: number;
+  transform: number;
 }
 
 export interface GetDatabaseRequest {
