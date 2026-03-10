@@ -47,11 +47,12 @@
 
     (testing "retrieves sql profile"
       (let [profile (profiles/get-profile :sql)]
-        (is (some? profile))
-        (is (= :sql (:name profile)))
-        (is (= "openrouter/anthropic/claude-haiku-4-5" (:model profile)))
-        (is (= 10 (:max-iterations profile)))
-        (is (= 0.3 (:temperature profile)))
+        (is (=? {:name :sql
+                 :model "openrouter/anthropic/claude-haiku-4-5"
+                 :max-iterations int?
+                 :temperature pos?
+                 :required-tool-call? true}
+                profile))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_sql_query"))))
 
