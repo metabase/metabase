@@ -81,11 +81,8 @@
 
   Accepts [name, var] or [name, {:doc :schema :fn}] pairs — the same format
   that the agent loop provides."
-  [tool-or-pair]
-  (let [[tool-name tool] (if (vector? tool-or-pair)
-                           tool-or-pair
-                           [nil tool-or-pair])
-        {:keys [doc schema]} (if (map? tool) tool (meta tool))
+  [[tool-name tool]]
+  (let [{:keys [doc schema]} (if (map? tool) tool (meta tool))
         [_:=> [_:cat params] _out] schema
         doc        (if (str/starts-with? (or doc "") "Inputs: ")
                      (second (str/split doc #"\n\n  " 2))
@@ -220,48 +217,29 @@
   "Perform a streaming request to the Chat Completions API.
 
   Works with OpenRouter, or any OpenAI-compatible endpoint that supports
-  `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.).
-
-  Accepts the same opts shape as `claude-raw` / `openai-raw`:
-    :model, :system, :input (AISDK parts), :tools
-
-  Additional options:
-    :temperature - Sampling temperature (omitted by default, uses provider default)
-    :max-tokens  - Maximum tokens in the response (omitted by default)
-    :tool_choice - Override tool_choice (default: \"auto\" when tools present)
-    :raw-tools   - Pre-formatted tool definitions (Chat Completions format),
-                   used instead of converting :tools via [[tool->openai-chat]]
-
-  Converts parts to Chat Completions messages via [[parts->cc-messages]]."
-  [{:keys [model system input tools temperature max-tokens tool_choice raw-tools]
-    :or   {model "anthropic/claude-haiku-4-5"}}
-   :- [:map
-       [:model {:optional true} :string]
-       [:system {:optional true} :string]
-       [:input {:optional true} [:sequential :map]]
-       [:tools {:optional true} [:sequential [:or
-                                              [:fn var?]
-                                              [:tuple :string [:fn var?]]
-                                              [:tuple :string [:map
-                                                               [:doc {:optional true} [:maybe :string]]
-                                                               [:schema :any]
-                                                               [:fn [:fn fn?]]]]]]]
-       [:temperature {:optional true} [:maybe number?]]
-       [:max-tokens {:optional true} [:maybe :int]]
-       [:tool_choice {:optional true} :any]
-       [:raw-tools {:optional true} [:maybe [:sequential :map]]]]]
+  `/v1/chat/completions` (e.g. vLLM, Ollama, Together, etc.)."
+  [{:keys [model system input tools temperature max-tokens tool_choice schema]
+    :or   {model "anthropic/claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (when-not (llm/ee-openrouter-api-key)
     (throw (ex-info "No OpenRouter API key is set" {:api-error true})))
   (let [messages   (cond-> (parts->cc-messages input)
                      system (as-> msgs (into [{:role "system" :content system}] msgs)))
-        all-tools  (or (seq raw-tools)
+        all-tools  (or (when schema
+                         ;; Structured output: force a tool call with the given JSON schema
+                         [{:type     "function"
+                           :function {:name        "structured_output"
+                                      :description "Output structured data"
+                                      :parameters  schema}}])
                        (seq (mapv tool->openai-chat tools)))
         req        (cond-> {:model             model
                             :stream            true
                             :stream_options    {:include_usage true}
                             :messages          messages}
-                     all-tools   (assoc :tools      (vec all-tools)
-                                        :tool_choice (or tool_choice "auto"))
+                     all-tools   (assoc :tools       (vec all-tools)
+                                        :tool_choice (cond
+                                                       schema      "required"
+                                                       tool_choice tool_choice
+                                                       :else       "auto"))
                      temperature (assoc :temperature temperature)
                      max-tokens  (assoc :max_tokens max-tokens))]
     (log/debug "OpenRouter request" {:model model :msg-count (count messages) :tools (count (or tools []))})

@@ -3,7 +3,6 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
-   [malli.util :as mut]
    [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self.core :as core]
    [metabase.util :as u]
@@ -171,63 +170,42 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (defn- tool->claude
-  "Convert a tool to Claude API format.
-  Accepts either:
-  - A var (legacy) - uses var name as tool name
-  - A [name, var] pair - uses explicit name
-  - A [name, {:doc :schema :fn}] map - for wrapped tools"
-  [tool-or-pair]
-  (let [[tool-name tool] (if (vector? tool-or-pair)
-                           tool-or-pair
-                           [nil tool-or-pair])
-        {:keys [doc schema]} (if (map? tool) tool (meta tool))
-        [_:=> [_:cat params] _out] schema
-        doc (if (str/starts-with? (or doc "") "Inputs: ")
-              ;; strip that stuff we're appending in mu/defn
-              (second (str/split doc #"\n\n  " 2))
-              doc)
-        ;; For wrapped tools, tool-name is provided; for vars, extract from metadata
-        final-name (or tool-name
-                       (when (var? tool) (name (:name (meta tool))))
-                       "unknown")]
-    {:name         final-name
+  "Convert a [name, var-or-map] tool entry to Claude API format."
+  [[tool-name tool]]
+  (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
+        [_:=> [_:cat params] _out]    schema
+        doc                           (if (str/starts-with? (or doc "") "Inputs: ")
+                                        ;; strip that stuff we're appending in mu/defn
+                                        (second (str/split doc #"\n\n  " 2))
+                                        doc)]
+    {:name         (or tool-name (name (:name tool)) "unknown")
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
 
 (mu/defn claude-raw
-  "Perform a request to Claude API.
-
-  `:input` is a sequence of AISDK parts (and user messages).  They are converted
-  to Claude wire format via [[parts->claude-messages]]."
-  [{:keys [model system input tools schema]
-    :or   {model "claude-haiku-4-5"
-           input [{:role :user :content "Hello"}]}}
-   :- [:map
-       [:model {:optional true} :string]
-       [:system {:optional true} :string]
-       [:input {:optional true} [:sequential :map]]
-       [:tools {:optional true} [:sequential [:or
-                                              [:fn var?]
-                                              [:tuple :string [:fn var?]]
-                                              [:tuple :string [:map
-                                                               [:doc {:optional true} [:maybe :string]]
-                                                               [:schema :any]
-                                                               [:fn [:fn fn?]]]]]]]
-       [:schema {:optional true} :any]]]
+  "Perform a streaming request to Claude API."
+  [{:keys [model system input tools schema tool_choice temperature max-tokens]
+    :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (when-not (llm/ee-anthropic-api-key)
-    (throw (ex-info "No Anthropic API key is set" {})))
-  (let [messages (parts->claude-messages input)
-        req      (cond-> {:model      model
-                          :max_tokens 4096
-                          :stream     true
-                          :messages   messages}
-                   system      (assoc :system system)
-                   (seq tools) (assoc :tools (mapv tool->claude tools))
-                   schema      (assoc :tool_choice {:type "tool"
-                                                    :name "structured_output"}
-                                      :tools [{:name         "structured_output"
-                                               :description  "Output structured data"
-                                               :input_schema (mjs/transform (mut/closed-schema schema))}]))]
+    (throw (ex-info "No Anthropic API key is set" {:api-error true})))
+  (let [messages  (parts->claude-messages input)
+        all-tools (when (seq tools) (mapv tool->claude tools))
+        req       (cond-> {:model      model
+                           :max_tokens (or max-tokens 4096)
+                           :stream     true
+                           :messages   messages}
+                    system            (assoc :system system)
+                    all-tools         (assoc :tools all-tools)
+                    (and all-tools
+                         tool_choice) (assoc :tool_choice (case (name tool_choice)
+                                                            "auto"     {:type "auto"}
+                                                            "required" {:type "any"}))
+                    temperature       (assoc :temperature temperature)
+                    schema            (assoc :tool_choice {:type "tool"
+                                                           :name "structured_output"}
+                                             :tools [{:name         "structured_output"
+                                                      :description  "Output structured data"
+                                                      :input_schema schema}]))]
     (with-span :info {:name       :metabot-v3.claude/request
                       :model      model
                       :msg-count  (count input)
