@@ -1470,7 +1470,7 @@
 (defn current-user-readable-visibilities
   "Returns a set of setting visibilities that the current user has read access to."
   []
-  (set (concat [:public]
+  (set (concat [:public :admin-write-public-read]
                (when @api/*current-user*
                  [:authenticated])
                (when (has-advanced-setting-access?)
@@ -1485,7 +1485,7 @@
                (when (has-advanced-setting-access?)
                  [:settings-manager :authenticated :public])
                (when api/*is-superuser?*
-                 [:admin]))))
+                 [:admin :admin-write-public-read]))))
 
 (defn- user-facing-settings-matching
   "Returns the user facing view of the registered settings satisfying the given predicate"
