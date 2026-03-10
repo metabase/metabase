@@ -776,7 +776,7 @@
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
-              source-swap         ;; Source-swap manipulates MBQL queries; tight coupling with lib is expected.
+              source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
               }}
 
   lib-be
