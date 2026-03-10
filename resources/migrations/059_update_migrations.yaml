@@ -3632,6 +3632,12 @@ databaseChangeLog:
       id: v59.2026-03-09T00:00:01
       author: bronsa
       comment: Add checkpoint_filter_field_id column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_filter_field_id
       changes:
         - addColumn:
             tableName: transform_run
@@ -3647,6 +3653,12 @@ databaseChangeLog:
       id: v59.2026-03-09T00:00:02
       author: bronsa
       comment: Add checkpoint_lo_value column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_lo_value
       changes:
         - addColumn:
             tableName: transform_run
@@ -3662,6 +3674,12 @@ databaseChangeLog:
       id: v59.2026-03-09T00:00:03
       author: bronsa
       comment: Add checkpoint_hi_value column to transform_run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: checkpoint_hi_value
       changes:
         - addColumn:
             tableName: transform_run
