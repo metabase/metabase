@@ -448,9 +448,10 @@
     com.lambdaisland/glogi             {:mvn/version "1.3.169"}
     io.github.metabase/hawk            {:mvn/version "1.0.13"}
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
+    org.clojure/clojurescript          {:mvn/version "1.12.134"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.11.0"}
     ;; keep it in sync with package.json
-    thheller/shadow-cljs               {:mvn/version "3.2.1"}}}
+    thheller/shadow-cljs               {:mvn/version "3.3.5"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
@@ -633,6 +634,29 @@
                ;; An issue has been filed here https://github.com/jonase/eastwood/issues/444
                ;; and a simple reproduction repo can be found here https://github.com/metabase/snowplow-eastwood-issue
                :exclude-namespaces [metabase.analytics.snowplow]}}
+
+  ;; Test counterpart of :eastwood. Starts with :reflection only; add more linters as we fix other eastwood
+  ;; issues in tests.
+  ;;
+  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+  :eastwood/test
+  {:exec-fn   metabase.linters.eastwood/eastwood
+   :exec-args {:source-paths ["test"
+                              "enterprise/backend/test"]
+               :linters      [:reflection]
+               :exclude-namespaces
+               [;; byte/1 dispatch value trips up Eastwood's reader
+                metabase.test.http-client
+                ;; Cookie/.getName qualified method trips up Eastwood's analyzer
+                metabase.server.middleware.settings-cache-test
+                ;; .cljc syntax error during Eastwood's analyze+eval phase
+                metabase.lib.query-test
+                ;; "count not supported on this type: Symbol" in Eastwood's analyzer
+                metabase.query-processor.parameters.temporal-units-test
+                ;; Syntax error compiling fn* in Eastwood's analyzer
+                metabase.sql-tools.macaw.references-test
+                ;; Method too large for Eastwood's analyzer
+                metabase.sql-tools.sqlglot.references-test]}}
 
   ;; clojure -T:whitespace-linter
   :whitespace-linter

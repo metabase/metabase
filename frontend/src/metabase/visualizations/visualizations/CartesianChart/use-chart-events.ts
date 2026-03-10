@@ -50,6 +50,7 @@ export const useChartEvents = (
     settings,
     visualizationIsClickable,
     onChangeCardAndRun,
+    onBrush,
     onVisualizationClick,
     onHoverChange,
     onOpenTimelines,
@@ -192,23 +193,28 @@ export const useChartEvents = (
       {
         eventName: "brushEnd",
         handler: (event: EChartsSeriesBrushEndEvent) => {
-          const eventData = getBrushData(
-            isVisualizerCard ? visualizerRawSeries : rawSeries,
-            metadata,
-            chartModel,
-            event,
-          );
-
-          if (eventData) {
-            onChangeCardAndRun?.(eventData);
-
-            // clear selected brush area after calling change handler
-            chartRef.current?.dispatchAction({
-              type: "brush",
-              command: "clear",
-              areas: [],
-            });
+          if (onBrush) {
+            const range = event.areas[0]?.coordRange;
+            if (range) {
+              onBrush({ start: Number(range[0]), end: Number(range[1]) });
+            }
+          } else {
+            const eventData = getBrushData(
+              isVisualizerCard ? visualizerRawSeries : rawSeries,
+              metadata,
+              chartModel,
+              event,
+            );
+            if (eventData) {
+              onChangeCardAndRun?.(eventData);
+            }
           }
+
+          chartRef.current?.dispatchAction({
+            type: "brush",
+            command: "clear",
+            areas: [],
+          });
         },
       },
     ],
@@ -231,6 +237,7 @@ export const useChartEvents = (
       isVisualizerCard,
       metadata,
       onChangeCardAndRun,
+      onBrush,
     ],
   );
 
@@ -311,7 +318,7 @@ export const useChartEvents = (
   useEffect(
     function toggleBrushing() {
       const shouldEnableBrushing =
-        canBrush(rawSeries, settings, onChangeCardAndRun) &&
+        canBrush(rawSeries, settings, onChangeCardAndRun, onBrush) &&
         !hovered &&
         !clicked;
 
@@ -336,6 +343,7 @@ export const useChartEvents = (
       chartRef,
       hovered,
       onChangeCardAndRun,
+      onBrush,
       option,
       rawSeries,
       settings,
