@@ -60,7 +60,6 @@ export const DataGrid = function DataGrid<TData>({
   const {
     virtualColumns,
     virtualPaddingLeft,
-    virtualPaddingRight,
     rowVirtualizer,
     columnVirtualizer,
   } = virtualGrid;
@@ -141,22 +140,21 @@ export const DataGrid = function DataGrid<TData>({
   const totalHeight = rowVirtualizer.getTotalSize();
 
   const renderRow = (
-    maybeVirtualRow: MaybeVirtualRow<TData>,
+    row: MaybeVirtualRow<TData>,
     columns: Column<TData>[] | VirtualItem[],
     key: string,
     isPinned: boolean,
   ) => (
     <DataGridRow
       key={key}
-      maybeVirtualRow={maybeVirtualRow}
+      row={row}
       rowMeasureRef={rowMeasureRef}
       columns={columns}
+      virtualPaddingLeft={isPinned ? undefined : virtualPaddingLeft}
       stickyElementsBackgroundColor={stickyElementsBackgroundColor}
       zoomedRowIndex={zoomedRowIndex}
       selection={selection}
       onBodyCellClick={onBodyCellClick}
-      virtualPaddingRight={isPinned ? undefined : virtualPaddingRight}
-      virtualPaddingLeft={isPinned ? undefined : virtualPaddingLeft}
       classNames={classNames}
       styles={styles}
     />
@@ -198,13 +196,8 @@ export const DataGrid = function DataGrid<TData>({
                   backgroundColor: stickyElementsBackgroundColor,
                 }}
               >
-                {getVisibleRows().map((maybeVirtualRow, index) =>
-                  renderRow(
-                    maybeVirtualRow,
-                    pinnedColumns,
-                    `pinned-${index}`,
-                    true,
-                  ),
+                {getVisibleRows().map((row, index) =>
+                  renderRow(row, pinnedColumns, `pinned-${index}`, true),
                 )}
               </div>
             )}
@@ -215,13 +208,8 @@ export const DataGrid = function DataGrid<TData>({
                 width: `${columnVirtualizer.getTotalSize()}px`,
               }}
             >
-              {getVisibleRows().map((maybeVirtualRow, index) =>
-                renderRow(
-                  maybeVirtualRow,
-                  virtualColumns,
-                  `center-${index}`,
-                  false,
-                ),
+              {getVisibleRows().map((row, index) =>
+                renderRow(row, virtualColumns, `center-${index}`, false),
               )}
             </div>
           </div>

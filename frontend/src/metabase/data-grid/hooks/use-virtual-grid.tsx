@@ -21,7 +21,6 @@ export interface VirtualGrid {
   virtualColumns: VirtualItem[];
   virtualRows: VirtualItem[];
   virtualPaddingLeft: number | undefined;
-  virtualPaddingRight: number | undefined;
   rowVirtualizer: Virtualizer<HTMLDivElement, Element>;
   columnVirtualizer: Virtualizer<HTMLDivElement, Element>;
   measureGrid: () => void;
@@ -106,22 +105,15 @@ export const useVirtualGrid = <TData,>({
   const virtualRows = rowVirtualizer.getVirtualItems();
 
   return useMemo(() => {
-    let virtualPaddingLeft: number | undefined;
-    let virtualPaddingRight: number | undefined;
-
-    if (columnVirtualizer && virtualColumns?.length) {
-      virtualPaddingLeft = virtualColumns[0]?.start ?? 0;
-
-      virtualPaddingRight =
-        columnVirtualizer.getTotalSize() -
-        (virtualColumns[virtualColumns.length - 1]?.end ?? 0);
-    }
+    const virtualPaddingLeft =
+      columnVirtualizer && virtualColumns?.length
+        ? (virtualColumns[0]?.start ?? 0)
+        : undefined;
 
     return {
       virtualColumns,
       virtualRows,
       virtualPaddingLeft,
-      virtualPaddingRight,
       rowVirtualizer,
       columnVirtualizer,
       measureGrid,

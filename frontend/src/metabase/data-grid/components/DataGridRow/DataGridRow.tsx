@@ -17,11 +17,10 @@ import S from "../DataGrid/DataGrid.module.css";
 import type { DataGridStylesProps } from "../DataGrid/types";
 
 export interface DataGridRowProps<TData> extends DataGridStylesProps {
-  maybeVirtualRow: MaybeVirtualRow<TData>;
+  row: MaybeVirtualRow<TData>;
   columns: Column<TData>[] | VirtualItem[];
   rowMeasureRef?: ((element: HTMLElement | null) => void) | undefined;
   virtualPaddingLeft?: number | undefined;
-  virtualPaddingRight?: number | undefined;
   stickyElementsBackgroundColor: string;
   zoomedRowIndex: number | undefined;
   selection: DataGridSelection;
@@ -57,11 +56,10 @@ const getRowPositionStyles = <TData,>(
 };
 
 export const DataGridRow = <TData,>({
-  maybeVirtualRow,
+  row: maybeVirtualRow,
   rowMeasureRef,
   columns,
   virtualPaddingLeft,
-  virtualPaddingRight,
   stickyElementsBackgroundColor,
   zoomedRowIndex,
   selection,
@@ -97,18 +95,9 @@ export const DataGridRow = <TData,>({
       style={{
         ...rowPositionStyles,
         ...styles?.row,
+        paddingLeft: virtualPaddingLeft,
       }}
     >
-      {virtualPaddingLeft ? (
-        <div
-          className={cx(S.bodyCell, classNames?.bodyCell)}
-          style={{
-            width: virtualPaddingLeft,
-            ...styles?.bodyCell,
-          }}
-        />
-      ) : null}
-
       {columns.map((column) => {
         const cell = isVirtualColumn(column)
           ? row.getCenterVisibleCells()[column.index]
@@ -151,15 +140,6 @@ export const DataGridRow = <TData,>({
           </div>
         );
       })}
-      {virtualPaddingRight ? (
-        <div
-          className={cx(S.bodyCell, classNames?.bodyCell)}
-          style={{
-            width: virtualPaddingRight,
-            ...styles?.bodyCell,
-          }}
-        />
-      ) : null}
     </div>
   );
 };
