@@ -80,8 +80,37 @@
                                       (map :name))]
               (search.engine/delete! e search-model (:ids msg)))))
 
+(defn- command-key
+  "Extract the command value from a message map, handling both string and keyword keys
+  (messages may not be keywordized yet when dedup runs)."
+  [msg]
+  (when (map? msg)
+    (some-> (or (:command msg) (get msg "command")) keyword)))
+
+(defn dedup-search-messages
+  "Dedup function for search reindex queue messages.
+  - Update vectors: flatten to individual [model where] pairs, dedup by identity, re-group
+  - Command messages: collapse duplicate :init and :reindex (keep last), pass through :delete"
+  [messages]
+  (let [{commands true updates false} (group-by #(boolean (command-key %)) messages)
+        ;; For commands: collapse duplicate :init and :reindex, keep last occurrence
+        deduped-commands (let [grouped (group-by command-key commands)]
+                           (concat
+                            (when-let [inits (seq (:init grouped))]
+                              [(last inits)])
+                            (when-let [reindexes (seq (:reindex grouped))]
+                              [(last reindexes)])
+                            (:delete grouped)))
+        ;; For updates: flatten all update vecs, dedup individual pairs, re-wrap
+        deduped-updates (when (seq updates)
+                          (let [all-pairs (into [] cat updates)]
+                            (when (seq all-pairs)
+                              [(into [] (distinct) all-pairs)])))]
+    (vec (concat deduped-commands deduped-updates))))
+
 (mq/def-listener! :queue/search-reindex
-  {:max-batch-messages 50 :max-next-ms 100 :exclusive true}
+  {:max-batch-messages 50 :max-next-ms 100 :exclusive true
+   :dedup-fn dedup-search-messages}
   [messages]
   (try
     (let [messages (map #(cond-> % (map? %) walk/keywordize-keys) messages)

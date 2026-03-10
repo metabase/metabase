@@ -263,7 +263,7 @@
     (if (seq (search.engine/active-engines))
       (let [updates  (mapv (fn [[model where]] [model (deserialize-where-clause where)]) updates)
             documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
-                             (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
+                             (spec-index-reducible search-model (into [:or] where-clauses)))
                            ;; init collection is only for clj-kondo, as we know that the list is non-empty
                            (reduce u/rconcat [])
                            query->documents)

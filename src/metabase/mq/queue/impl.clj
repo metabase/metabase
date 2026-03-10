@@ -54,7 +54,8 @@
   [queue-name :- :metabase.mq.queue/queue-name
    message-bundles :- [:map-of :any ::q.backend/backend]
    messages :- [:sequential :any]]
-  (let [{:keys [listener max-batch-messages]} (get @*listeners* queue-name)]
+  (let [{:keys [listener max-batch-messages dedup-fn]} (get @*listeners* queue-name)
+        messages (if dedup-fn (dedup-fn messages) messages)]
     (mq.impl/invoke-listener!
      {:channel-name    queue-name
       :listener-fn     (constantly listener)
@@ -202,7 +203,11 @@
    Pass `:exclusive true` in config to ensure only one node processes messages at a time."
   [queue-name :- :metabase.mq.queue/queue-name
    listener :- fn?
-   config :- [:map [:max-batch-messages pos-int?] [:max-next-ms nat-int?] [:exclusive {:optional true} :boolean]]]
+   config :- [:map
+              [:max-batch-messages pos-int?]
+              [:max-next-ms nat-int?]
+              [:exclusive {:optional true} :boolean]
+              [:dedup-fn {:optional true} fn?]]]
   (register-listener! queue-name (merge {:exclusive false} config {:listener listener})))
 
 (defmethod mq.impl/unlisten! "queue"
@@ -230,10 +235,13 @@
                        `q.backend/*backend*)]
     `(mq.impl/with-buffer
        (fn [msgs#]
-         (q.backend/publish! ~backend-expr ~queue-name msgs#)
-         (mq.impl/analytics-inc! :metabase-mq/queue-messages-published
-                                 {:queue (name ~queue-name)}
-                                 (count msgs#)))
+         (let [dedup-fn# (:dedup-fn (get @*listeners* ~queue-name))
+               msgs#     (if dedup-fn# (dedup-fn# msgs#) msgs#)]
+           (when (seq msgs#)
+             (q.backend/publish! ~backend-expr ~queue-name msgs#)
+             (mq.impl/analytics-inc! :metabase-mq/queue-messages-published
+                                     {:queue (name ~queue-name)}
+                                     (count msgs#)))))
        "Error in queue processing, no messages will be persisted to the queue"
        [~queue-binding]
        ~@body)))

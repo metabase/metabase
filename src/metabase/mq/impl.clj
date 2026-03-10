@@ -67,6 +67,11 @@
          (log/error e# ~error-label)
          (throw e#)))))
 
+(defn dedup-distinct
+  "Standard dedup function for queue messages. Removes exact duplicates while preserving order."
+  [messages]
+  (into [] (distinct) messages))
+
 (mr/def ::channel-name
   [:and :keyword [:fn {:error/message "Channel name must be namespaced to 'queue' or 'topic'"}
                   #(#{"queue" "topic"} (namespace %))]])
@@ -139,7 +144,8 @@
          ((requiring-resolve 'metabase.mq.queue.impl/batch-listen!)
           ~channel-name
           (fn [~@bindings] ~@body)
-          ~(merge {:max-batch-messages 1 :max-next-ms 0 :exclusive false} config)))
+          ~(merge {:max-batch-messages 1 :max-next-ms 0 :exclusive false}
+                  (select-keys config [:max-batch-messages :max-next-ms :exclusive :dedup-fn]))))
       `(defmethod def-listener* ~channel-name [~'_]
          (listen! ~channel-name ~(or config {}) (fn [~@bindings] ~@body))))))
 

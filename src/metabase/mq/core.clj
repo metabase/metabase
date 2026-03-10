@@ -57,6 +57,7 @@
 (p/import-vars
  [mq.impl
   put
+  dedup-distinct
   def-listener!
   listen!
   register-listeners!
