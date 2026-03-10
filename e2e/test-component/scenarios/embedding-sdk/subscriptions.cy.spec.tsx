@@ -87,7 +87,7 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.findByText("Email this dashboard").should("be.visible");
 
         // EMB-1413
-        cy.findByText("Hourly").closest("button").click();
+        cy.findByDisplayValue("Hourly").click();
 
         cy.log("can customize filter values");
         cy.findByRole("heading", {
@@ -121,7 +121,7 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.findByText("Email this dashboard").should("be.visible");
 
         // EMB-1413
-        cy.findByText("Hourly").closest("button").click();
+        cy.findByDisplayValue("Hourly").click();
 
         cy.log("can customize filter values");
         cy.findByRole("heading", {
@@ -155,7 +155,7 @@ describe("scenarios > embedding-sdk > subscriptions", () => {
         cy.findByText("Email this dashboard").should("be.visible");
 
         // EMB-1413
-        cy.findByText("Hourly").closest("button").click();
+        cy.findByDisplayValue("Hourly").click();
 
         cy.log("can customize filter values");
         cy.findByRole("heading", {
