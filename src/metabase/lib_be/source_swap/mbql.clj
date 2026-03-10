@@ -170,10 +170,7 @@
   (update query :stages (fn [stages] (perf/mapv #(swap-source-table-or-card-in-stage % old-source new-source) stages))))
 
 (mr/def ::field-id-mapping
-  [:map
-   [:old-id->new-column [:map-of ::lib.schema.id/field ::lib.schema.metadata/column]]
-   [:old-source-type ::lib-be.schema.source-swap/source-type]
-   [:new-source-type ::lib-be.schema.source-swap/source-type]])
+  [:map-of ::lib.schema.id/field ::lib.schema.metadata/column])
 
 (mu/defn- build-field-id-mapping :- ::field-id-mapping
   "Builds a mapping of old field IDs to new columns."
@@ -182,16 +179,13 @@
    [new-source-type _new-id :as new-source]      :- ::lib-be.schema.source-swap/source]
   (let [old-columns       (lib-be.source-swap.util/source-columns query old-source)
         new-columns       (lib-be.source-swap.util/source-columns query new-source)
-        new-column-by-key (m/index-by lib-be.source-swap.util/column-match-key new-columns)
-        old-id->new-column (into {}
-                                 (keep (fn [old-column]
-                                         (when-let [new-column (get new-column-by-key (lib-be.source-swap.util/column-match-key old-column))]
-                                           (when (:id old-column)
-                                             [(:id old-column) new-column]))))
-                                 old-columns)]
-    {:old-id->new-column old-id->new-column
-     :old-source-type    old-source-type
-     :new-source-type    new-source-type}))
+        new-column-by-key (m/index-by lib-be.source-swap.util/column-match-key new-columns)]
+    (into {}
+          (keep (fn [old-column]
+                  (when-let [new-column (get new-column-by-key (lib-be.source-swap.util/column-match-key old-column))]
+                    (when (:id old-column)
+                      [(:id old-column) new-column]))))
+          old-columns)))
 
 (mu/defn- swap-field-ref :- ::lib.schema.ref/ref
   "Swaps a field ref to reference the new source. Assumes that query has been upgraded to use alias-based field refs.
@@ -209,20 +203,20 @@
   - Preserves the expression name from the original field ref."
   [query            :- ::lib.schema/query
    stage-number     :- :int
-   {:keys [old-id->new-column old-source-type new-source-type]} :- ::field-id-mapping
+   field-id-mapping :- ::field-id-mapping
    field-ref        :- :mbql.clause/field]
   (let [old-id            (lib.ref/field-ref-id field-ref)
-        new-id-column     (get old-id->new-column old-id)
+        new-id-column     (get field-id-mapping old-id)
         old-fk-id         (-> field-ref lib.options/options :source-field)
-        new-fk-id-column  (get old-id->new-column old-fk-id)
+        new-fk-id-column  (get field-id-mapping old-fk-id)
         swapped-field-ref (cond-> field-ref
-                            (and new-id-column (:id new-id-column) (= :table old-source-type) (= :table new-source-type))
+                            (and new-id-column (:id new-id-column) old-fk-id)
                             (lib.ref/with-field-ref-id (:id new-id-column))
 
                             ;; base-type is required for name-based refs, make sure it's set
-                            (and new-id-column (:base-type new-id-column) (= :table old-source-type) (not= :table new-source-type))
+                            (and new-id-column (not old-fk-id))
                             (-> (lib.options/update-options assoc :base-type (:base-type new-id-column))
-                                (lib.ref/with-field-ref-name (:name new-id-column)))
+                                (lib.ref/with-field-ref-name (lib-be.source-swap.util/column-match-key new-id-column)))
 
                             (and new-fk-id-column (:id new-fk-id-column))
                             (lib.options/update-options assoc :source-field (:id new-fk-id-column)))]
