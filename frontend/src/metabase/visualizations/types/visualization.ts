@@ -2,13 +2,13 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
 } from "metabase/visualizations/shared/types/measure-text";
 import type {
   ClickActionModeGetter,
+  ClickActionsMode,
   ClickObject,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
@@ -139,6 +139,7 @@ export interface VisualizationProps {
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
+  autoAdjustSettings?: boolean;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
   errorIcon?: IconName | null;
@@ -158,6 +159,7 @@ export interface VisualizationProps {
   isMobile: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
+  hideLegend?: boolean;
   isRawTable?: boolean;
   scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
@@ -186,6 +188,7 @@ export interface VisualizationProps {
   onRenderError: (error?: string) => void;
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
+  onBrush?: ((range: { start: number; end: number }) => void) | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
@@ -231,7 +234,7 @@ export type VisualizationPassThroughProps = {
     index: number,
     theme: unknown,
   ) => ReactNode;
-  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx

@@ -18,7 +18,6 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Flex } from "metabase/ui";
 
 const { H } = cy;
 
@@ -33,9 +32,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     cy.intercept("POST", "/api/card").as("createCard");
 
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" />
-      </Flex>,
+      </div>,
     );
 
     assertSdkNotebookEditorUsable();
@@ -76,9 +75,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     mockAuthProviderAndJwtSignIn();
 
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" />
-      </Flex>,
+      </div>,
     );
 
     getSdkRoot().within(() => {
@@ -118,9 +117,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     cy.intercept("POST", "/api/card").as("createCard");
 
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" />
-      </Flex>,
+      </div>,
     );
 
     // Wait until the entity picker modal is visible
@@ -186,9 +185,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     cy.log('1. `entityTypes` = ["table"]');
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" entityTypes={["table"]} />
-      </Flex>,
+      </div>,
     );
 
     // Wait until the entity picker modal is visible
@@ -202,9 +201,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     cy.log('2. `entityTypes` = ["model"]');
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" entityTypes={["model"]} />
-      </Flex>,
+      </div>,
     );
 
     // Wait until the entity picker modal is visible
@@ -218,12 +217,12 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     cy.log('3. `entityTypes` = ["model", "table]');
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion
           questionId="new"
           entityTypes={["model", "table"]}
         />
-      </Flex>,
+      </div>,
     );
 
     // Wait until the entity picker modal is visible
@@ -252,12 +251,12 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       cy.intercept("POST", "/api/card").as("createCard");
 
       mountSdkContent(
-        <Flex p="xl">
+        <div style={{ display: "flex", padding: "20px" }}>
           <InteractiveQuestion
             questionId="new"
             targetCollection={targetCollectionId}
           />
-        </Flex>,
+        </div>,
       );
 
       assertSdkNotebookEditorUsable();
@@ -292,9 +291,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     mockAuthProviderAndJwtSignIn();
 
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" />
-      </Flex>,
+      </div>,
     );
 
     popover().within(() => {
