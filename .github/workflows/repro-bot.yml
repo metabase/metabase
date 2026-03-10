@@ -215,7 +215,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: repro-bot
+          name: repro-bot-${{ steps.issue.outputs.number }}
           if-no-files-found: ignore
           path: |
             repro/*/SUGGESTIONS.md
@@ -223,4 +223,3 @@ jobs:
             repro/*/*.patch
             repro/*/playwright/**
             ${{ steps.claude.outputs.execution_file }}
-            /tmp/claude-debug-logs/**
