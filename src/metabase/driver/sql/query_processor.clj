@@ -1499,10 +1499,10 @@
   [driver clause & _unique-name-fn]
   (let [{cast-type ::add-cast
          wrap-in-case? ::wrap-in-case} (driver-api/field-options clause)
-        maybe-wrap    #(cond-> %
+        maybe-cast    #(cond-> %
                          wrap-in-case? (as-> <> (vector ::wrap-in-case <>))
                          cast-type     (as-> <> (vector ::cast <> cast-type)))
-        honeysql-form (->honeysql driver (maybe-wrap clause))
+        honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
       [honeysql-form [field-alias]]
