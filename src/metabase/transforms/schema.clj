@@ -10,7 +10,7 @@
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
-   [:checkpoint-filter-field-id ::lib.schema.id/field]])
+   [:checkpoint-filter-field-id {:optional true} ::lib.schema.id/field]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}
