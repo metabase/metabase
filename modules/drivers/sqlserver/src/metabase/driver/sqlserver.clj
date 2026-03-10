@@ -603,8 +603,8 @@
         ;; Tell [[sql.qp/as]] to insert a cast to :bit for boolean expressions. This ensures the :type/Boolean is
         ;; preserved in results metadata, so downstream questions and query stages can use the column in contexts
         ;; where a boolean is required; otherwise, SQL Server returns a value of type int for `SELECT 1 AS MyBool`.
-        ;; For comparison expressions (like [:> field1 field2]), we use ::sql.qp/wrap-in-case instead since SQL Server
-        ;; cannot CAST a comparison result directly - it needs CASE WHEN expr THEN 1 ELSE 0 END.
+        ;; For comparison expressions (e.g. [:> field1 field2]), tell [[sql.qp/as]] to wrap it in a case statement
+        ;; and then cast it to a :bit. See #53805 for more details.
         maybe-add-cast #(cond
                           (sql.qp.boolean-to-comparison/comparison-expression-clause? %)
                           (-> %
@@ -819,9 +819,8 @@
   [driver [_ expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar(256)"]))
 
-;;; This is a pseudo-MBQL clause to wrap a comparison expression in CASE WHEN ... THEN 1 ELSE 0 END.
-;;; SQL Server cannot return boolean values from comparison expressions in SELECT, so we wrap them in CASE.
-;;; This is used for custom columns with comparison operators like [:> field1 field2].
+;; This is used to wrap comparison expressions (e.g. [:> field1 field2]) in a case statement as
+;; SQL server does not have a boolean data type. See #53805 for more details.
 (defmethod sql.qp/->honeysql [:sqlserver ::sql.qp/wrap-in-case]
   [driver [_tag expr]]
   [:case (sql.qp/->honeysql driver expr) [:inline 1] :else [:inline 0]])
