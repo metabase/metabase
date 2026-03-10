@@ -2,13 +2,33 @@ import L from "leaflet";
 import _ from "underscore";
 
 import { getSubpathSafeUrl } from "metabase/lib/urls";
+import type { HoveredObject } from "metabase/visualizations/types";
+import type { ClickObject } from "metabase-lib";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 
-import { LeafletMap } from "./LeafletMap";
+import {
+  LeafletMap,
+  type LeafletMapPoint,
+  type LeafletMapProps,
+} from "./LeafletMap";
 
-export class LeafletMarkerPinMap extends LeafletMap {
+type IndexedPoint = LeafletMapPoint<[number]>;
+
+interface LeafletMarkerPinMapProps extends LeafletMapProps<IndexedPoint> {
+  onHoverChange?: (hoverObject?: HoveredObject | null) => void;
+  onVisualizationClick?: (clickObject: ClickObject | null) => void;
+}
+
+export class LeafletMarkerPinMap extends LeafletMap<LeafletMarkerPinMapProps> {
+  pinMarkerLayer: L.LayerGroup | null = null;
+  pinMarkerIcon: L.Icon | null = null;
+
   componentDidMount() {
     super.componentDidMount();
+
+    if (!this.map) {
+      return;
+    }
 
     this.pinMarkerLayer = L.layerGroup([]).addTo(this.map);
     this.pinMarkerIcon = L.icon({
@@ -18,23 +38,28 @@ export class LeafletMarkerPinMap extends LeafletMap {
       popupAnchor: [0, -13],
     });
 
-    this.componentDidUpdate({}, {});
+    this.syncMarkerLayer();
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    super.componentDidUpdate(prevProps, prevState);
+  componentDidUpdate(prevProps: LeafletMarkerPinMapProps) {
+    super.componentDidUpdate(prevProps);
+    this.syncMarkerLayer();
+  }
 
+  private syncMarkerLayer() {
     try {
       this._createMarkers(this.props.points);
     } catch (err) {
       console.error(err);
-      this.props.onRenderError(err.message || err);
+      this.props.onRenderError(
+        err instanceof Error ? err.message : (err ?? undefined),
+      );
     }
   }
 
-  _createMarkers = (points) => {
+  _createMarkers = (points?: IndexedPoint[] | null) => {
     const { pinMarkerLayer } = this;
-    if (!this.map) {
+    if (!this.map || !pinMarkerLayer || !points) {
       return;
     }
 
@@ -50,28 +75,30 @@ export class LeafletMarkerPinMap extends LeafletMap {
     const crossesRightDateline = mapWest < 180 && mapEast > 180;
     const shouldGetWrappedPoints = crossesLeftDateline || crossesRightDateline;
 
-    const wrappedPoints = shouldGetWrappedPoints
+    const wrappedPoints: IndexedPoint[] = shouldGetWrappedPoints
       ? points.flatMap((point, index) => {
           const [lat, lng] = point;
           // we need to store the data index separately
           // because the same point can have multiple markers
-          const points = [[lat, lng, index]];
+          const wrapped: IndexedPoint[] = [[lat, lng, index]];
 
           // note: for wide screens, we may need extra copies on both sides
           if (crossesLeftDateline) {
             // copy on the left side
-            points.push([lat, lng - 360, index]);
+            wrapped.push([lat, lng - 360, index]);
           }
 
           if (crossesRightDateline) {
             // copy on the right side
-            points.push([lat, lng + 360, index]);
+            wrapped.push([lat, lng + 360, index]);
           }
-          return points;
+          return wrapped;
         })
       : points;
 
-    const markers = pinMarkerLayer.getLayers();
+    const markers = pinMarkerLayer
+      .getLayers()
+      .filter((layer): layer is L.Marker => layer instanceof L.Marker);
     const max = Math.max(wrappedPoints.length, markers.length);
     for (let i = 0; i < max; i++) {
       if (i >= wrappedPoints.length) {
@@ -92,7 +119,7 @@ export class LeafletMarkerPinMap extends LeafletMap {
         const { lat, lng } = markers[i].getLatLng();
         // if any marker doesn't match the point, update it
         if (lng !== wrappedPoints[i][0] || lat !== wrappedPoints[i][1]) {
-          markers[i].setLatLng(wrappedPoints[i].slice(0, 2));
+          markers[i].setLatLng([wrappedPoints[i][0], wrappedPoints[i][1]]);
           // we need to re-attach the pointer events because the indexes might have changed from zooming
           this._setupMarkerEvents(markers[i], index);
         }
@@ -100,12 +127,14 @@ export class LeafletMarkerPinMap extends LeafletMap {
     }
   };
 
-  _createMarker = (rowIndex) => {
-    const marker = L.marker([0, 0], { icon: this.pinMarkerIcon });
+  _createMarker = (rowIndex: number) => {
+    const marker = L.marker([0, 0], {
+      ...(this.pinMarkerIcon ? { icon: this.pinMarkerIcon } : {}),
+    });
     return this._setupMarkerEvents(marker, rowIndex);
   };
 
-  _setupMarkerEvents = (marker, rowIndex) => {
+  _setupMarkerEvents = (marker: L.Marker, rowIndex: number) => {
     marker.off("mousemove");
     marker.off("mouseout");
     marker.off("click");
@@ -121,12 +150,12 @@ export class LeafletMarkerPinMap extends LeafletMap {
           },
         ],
       } = this.props;
-      const hover = {
+      const hover: HoveredObject = {
         dimensions: cols.map((col, colIndex) => ({
-          value: rows[rowIndex][colIndex],
+          value: String(rows[rowIndex][colIndex] ?? ""),
           column: col,
         })),
-        element: marker._icon,
+        element: marker.getElement(),
       };
       onHoverChange(hover);
     });
@@ -159,8 +188,8 @@ export class LeafletMarkerPinMap extends LeafletMap {
 
       onVisualizationClick({
         value: hasPk ? rows[rowIndex][pkIndex] : null,
-        column: hasPk ? cols[pkIndex] : null,
-        element: marker._icon,
+        column: hasPk ? cols[pkIndex] : undefined,
+        element: marker.getElement(),
         origin: { row: rows[rowIndex], cols },
         settings,
         data,
