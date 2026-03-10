@@ -1,6 +1,7 @@
 (ns metabase.transforms.schema
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.malli.registry :as mr]
@@ -9,7 +10,7 @@
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
-   [:checkpoint-filter-field-id :int]])
+   [:checkpoint-filter-field-id ::lib.schema.id/field]])
 
 (mr/def ::source-incremental-strategy
   [:multi {:dispatch :type}
