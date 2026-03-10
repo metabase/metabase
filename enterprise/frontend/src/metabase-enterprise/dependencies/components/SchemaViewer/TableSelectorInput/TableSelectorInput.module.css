@@ -25,13 +25,31 @@
   }
 }
 
+.checkboxRoot {
+  flex: 1;
+  min-width: 0;
+}
+
+.checkboxBody {
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+.checkboxLabelWrapper {
+  overflow: hidden;
+}
+
 .checkboxLabel {
+  flex: 1;
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .checkboxLabelBold {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -39,6 +57,7 @@
 }
 
 .checkboxLabelTertiary {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

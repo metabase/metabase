@@ -310,7 +310,11 @@ export function TableSelectorInput({
                     onChange={(e) =>
                       handleSelectAllClick(e.currentTarget.checked)
                     }
-                    classNames={{ label: S.checkboxLabel }}
+                    classNames={{
+                      root: S.checkboxRoot,
+                      body: S.checkboxBody,
+                      label: S.checkboxLabel,
+                    }}
                   />
                 </Group>
               )}
@@ -404,10 +408,18 @@ function TableListItem({
         label={label}
         checked={isSelected}
         onChange={(e) => onToggle(tableId, e.currentTarget.checked)}
-        classNames={{ label: labelClass }}
+        classNames={{
+          root: S.checkboxRoot,
+          body: S.checkboxBody,
+          label: labelClass,
+          labelWrapper: S.checkboxLabelWrapper,
+        }}
       />
       {isVisible && (
-        <Tooltip label={t`Focus table`} openDelay={TOOLTIP_OPEN_DELAY_MS}>
+        <Tooltip
+          label={t`Focus "${label}" table`}
+          openDelay={TOOLTIP_OPEN_DELAY_MS}
+        >
           <UnstyledButton
             className={S.focusButton}
             onClick={() => onFocus(tableId)}
