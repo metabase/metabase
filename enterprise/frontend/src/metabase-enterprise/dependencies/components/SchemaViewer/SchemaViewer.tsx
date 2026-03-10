@@ -28,7 +28,6 @@ import {
 } from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type {
-  CardId,
   ConcreteTableId,
   DatabaseId,
   GetErdRequest,
@@ -99,7 +98,6 @@ function CompactModeToggle({
 }
 
 interface SchemaViewerProps {
-  modelId: CardId | undefined;
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
   initialTableIds: ConcreteTableId[] | undefined;
@@ -113,50 +111,39 @@ interface GetErdQueryParamsArgs extends SchemaViewerProps {
 }
 
 function getErdQueryParams({
-  modelId,
   databaseId,
   schema,
   hops,
   selectedTableIds,
   isUserModified,
 }: GetErdQueryParamsArgs): GetErdRequest | typeof skipToken {
-  if (modelId != null) {
-    return { "model-id": modelId, hops };
+  if (databaseId == null) {
+    return skipToken;
   }
-  if (databaseId != null) {
-    // User explicitly cleared all tables - show empty canvas
-    if (
-      isUserModified &&
-      selectedTableIds != null &&
-      selectedTableIds.length === 0
-    ) {
-      return skipToken;
-    }
-    // Include table-ids when user has made a custom selection
-    if (
-      isUserModified &&
-      selectedTableIds != null &&
-      selectedTableIds.length > 0
-    ) {
-      return schema != null
-        ? {
-            "database-id": databaseId,
-            schema,
-            "table-ids": selectedTableIds,
-            hops,
-          }
-        : { "database-id": databaseId, "table-ids": selectedTableIds, hops };
-    }
-    // Initial fetch or auto-initialized - let backend determine "most relationships"
-    return schema != null
-      ? { "database-id": databaseId, schema, hops }
-      : { "database-id": databaseId, hops };
+  // User explicitly cleared all tables - show empty canvas
+  if (
+    isUserModified &&
+    selectedTableIds != null &&
+    selectedTableIds.length === 0
+  ) {
+    return skipToken;
   }
-  return skipToken;
+  const params: GetErdRequest = { "database-id": databaseId, hops };
+  if (schema != null) {
+    params.schema = schema;
+  }
+  // Include table-ids when user has made a custom selection
+  if (
+    isUserModified &&
+    selectedTableIds != null &&
+    selectedTableIds.length > 0
+  ) {
+    params["table-ids"] = selectedTableIds;
+  }
+  return params;
 }
 
 export function SchemaViewer({
-  modelId,
   databaseId,
   schema,
   initialTableIds,
@@ -169,9 +156,7 @@ export function SchemaViewer({
 
   // Persist table selection + hops per database:schema
   const prefsKey =
-    modelId == null && databaseId != null
-      ? `${databaseId}:${schema ?? ""}`
-      : null;
+    databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
 
   const {
     value: savedPrefs,
@@ -280,7 +265,6 @@ export function SchemaViewer({
     shouldWaitForPrefs
       ? skipToken
       : getErdQueryParams({
-          modelId,
           databaseId,
           schema,
           initialTableIds,
@@ -427,7 +411,7 @@ export function SchemaViewer({
     [],
   );
   const { colorScheme } = useColorScheme();
-  const hasEntry = modelId != null || databaseId != null;
+  const hasEntry = databaseId != null;
 
   // Set of currently visible table IDs on the canvas
   const visibleTableIds = useMemo(

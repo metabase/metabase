@@ -1,4 +1,4 @@
-import type { CardId, DatabaseId, FieldId, TableId } from "./";
+import type { DatabaseId, FieldId, TableId } from "./";
 
 export type ErdRelationship = "one-to-one" | "many-to-one";
 
@@ -35,6 +35,9 @@ export type ErdResponse = {
   edges: ErdEdge[];
 };
 
-export type GetErdRequest =
-  | { "model-id": CardId; "database-id"?: never; "table-ids"?: never; schema?: never; hops?: number }
-  | { "model-id"?: never; "database-id": DatabaseId; "table-ids"?: TableId[]; schema?: string; hops?: number };
+export type GetErdRequest = {
+  "database-id": DatabaseId;
+  "table-ids"?: TableId[];
+  schema?: string;
+  hops?: number;
+};

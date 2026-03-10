@@ -9,13 +9,12 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Stack } from "metabase/ui";
-import type { CardId, ConcreteTableId, DatabaseId } from "metabase-types/api";
+import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 
 import { SchemaViewer } from "../../components/SchemaViewer";
 import { decodeSchemaViewerShareState } from "../../components/SchemaViewer/useSchemaViewerShareUrl";
 
 type SchemaViewerPageQuery = {
-  "model-id"?: string;
   "database-id"?: string;
   "table-ids"?: string | string[];
   schema?: string;
@@ -38,14 +37,11 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
     [rawShare],
   );
 
-  const rawModelId = location?.query?.["model-id"];
   const rawDatabaseId = location?.query?.["database-id"];
   const rawTableIds = location?.query?.["table-ids"];
   const rawHops = location?.query?.hops;
   const schema = location?.query?.schema;
 
-  const modelId: CardId | undefined =
-    rawModelId != null ? Number(rawModelId) : undefined;
   const databaseId: DatabaseId | undefined =
     rawDatabaseId != null ? Number(rawDatabaseId) : undefined;
   const initialHops: number | undefined =
@@ -83,8 +79,7 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
   const effectiveSchema = sharedState?.schema ?? schema;
 
   // Redirect to last opened database only on initial load (not when user clears selection)
-  const hasUrlSelection =
-    modelId != null || databaseId != null || rawShare != null;
+  const hasUrlSelection = databaseId != null || rawShare != null;
   const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
@@ -144,7 +139,6 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
   return (
     <Stack h="100%">
       <SchemaViewer
-        modelId={modelId}
         databaseId={effectiveDatabaseId}
         schema={effectiveSchema}
         initialTableIds={sharedState?.tableIds ?? initialTableIds}
