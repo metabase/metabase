@@ -161,13 +161,6 @@ export interface SourceDisplayInfo {
   name: string;
 }
 
-export function getSourceDisplayName(
-  sourceId: MetricSourceId,
-  sourceDataById: Record<MetricSourceId, SourceDisplayInfo>,
-): string {
-  return sourceDataById[sourceId]?.name ?? sourceId;
-}
-
 // ── Dimension picker sections ──
 
 export type DimensionPickerItem = AvailableDimension & {
@@ -242,7 +235,7 @@ export function buildDimensionPickerSections({
     }
 
     if (hasMultipleSources) {
-      const sourceName = getSourceDisplayName(sourceId, sourceDataById);
+      const sourceName = sourceDataById[sourceId]?.name ?? sourceId;
       splitByGroup(sourceDimensions, sourceName);
     } else {
       splitByGroup(sourceDimensions);
