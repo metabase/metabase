@@ -206,7 +206,10 @@ export const DataGrid = function DataGrid<TData>({
                     className={cx(S.pinnedSection, {
                       [S.withSeparator]: hasSeparator,
                     })}
-                    style={{ width: pinnedPanelWidth }}
+                    style={{
+                      width: pinnedPanelWidth,
+                      backgroundColor: stickyElementsBackgroundColor,
+                    }}
                   >
                     {renderHeader(headerGroup, getPinnedColumns())}
                   </div>
