@@ -187,6 +187,7 @@ jobs:
             mcp__linear-server__list_comments
             mcp__linear-server__list_issues
             mcp__linear-server__save_comment
+            mcp__linear-server__save_issue
             mcp__metabase-repro__repl_eval
           claude_args: '--disallowedTools "Bash(git push*),Bash(rm -rf /*)"'
 
