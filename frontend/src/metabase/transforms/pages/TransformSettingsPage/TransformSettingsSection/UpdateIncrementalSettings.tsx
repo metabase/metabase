@@ -10,8 +10,7 @@ import {
   useResetCheckpointMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Form, FormProvider } from "metabase/forms";
-import { FormObserver } from "metabase/forms";
+import { Form, FormObserver, FormProvider } from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { CheckpointValue } from "metabase/transforms/components/CheckpointValue";
 import type { IncrementalSettingsFormValues } from "metabase/transforms/components/IncrementalTransform";
