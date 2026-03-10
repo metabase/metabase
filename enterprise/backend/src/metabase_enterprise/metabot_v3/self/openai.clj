@@ -3,7 +3,6 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [malli.json-schema :as mjs]
-   [malli.util :as mut]
    [metabase-enterprise.llm.settings :as llm]
    [metabase-enterprise.metabot-v3.self.core :as core]
    [metabase.util :as u]
@@ -142,7 +141,7 @@
 
 ;;; Tool definition format
 
-(defn- tool->openai [tool]
+(defn- tool->openai [[tool-name tool]]
   (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
         [_:=> [_:cat params] _out]    schema
         doc                           (if (str/starts-with? doc "Inputs: ")
@@ -150,40 +149,35 @@
                                         (second (str/split doc #"\n\n  " 2))
                                         doc)]
     {:type        "function"
-     :name        (name (:name tool))
+     :name        (or tool-name (name (:name tool)))
      :description doc
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
 (mu/defn openai-raw
-  "Perform a request to OpenAI.
-
-  `:input` is a sequence of AISDK parts (and user messages).  They are converted
-  to OpenAI Responses API input items via [[parts->openai-input]]."
-  [{:keys [model system input tools schema]
-    :or   {model "gpt-4.1-mini"
-           input [{:role :user :content "Just tell something to a user"}]}}
-   :- [:map
-       [:model {:optional true} :string]
-       [:system {:optional true} :string]
-       [:input {:optional true} [:sequential :map]]
-       [:tools {:optional true} [:sequential [:fn var?]]]
-       ;; malli schema expected here
-       ;; TODO: check it's a `:map`
-       [:schema {:optional true} :any]]]
-  (assert (llm/ee-openai-api-key) "No OpenAI API key!")
-  (let [req {:model        model
-             :stream       true
-             :store        false
-             :instructions system
-             :input        (parts->openai-input input)
-             :tool_choice  (when (seq tools) "auto")
-             :tools        (when (seq tools) (mapv tool->openai tools))
-             :text         (when schema
-                             {:format {:type   "json_schema"
-                                       :strict true
-                                       :name   "schema"
-                                       ;; OpenAI insists on `{additionalProperties false}`
-                                       :schema (mjs/transform (mut/closed-schema schema))}})}]
+  "Perform a streaming request to OpenAI Responses API."
+  [{:keys [model system input tools schema tool_choice temperature max-tokens]
+    :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
+  (when-not (llm/ee-openai-api-key)
+    (throw (ex-info "No OpenAI API key is set" {:api-error true})))
+  (let [all-tools (or (when schema
+                        ;; Structured output: force a tool call with the given JSON schema
+                        [{:type        "function"
+                          :name        "structured_output"
+                          :description "Output structured data"
+                          :parameters  schema}])
+                      (when (seq tools) (mapv tool->openai tools)))
+        req       (cond-> {:model        model
+                           :stream       true
+                           :store        false
+                           :instructions system
+                           :input        (parts->openai-input input)}
+                    all-tools   (assoc :tool_choice (cond
+                                                      schema      "required"
+                                                      tool_choice tool_choice
+                                                      :else       "auto")
+                                       :tools       all-tools)
+                    temperature (assoc :temperature temperature)
+                    max-tokens  (assoc :max_tokens max-tokens))]
     (try
       (let [res (http/post (str (llm/ee-openai-api-base-url) "/v1/responses")
                            {:as      :stream
