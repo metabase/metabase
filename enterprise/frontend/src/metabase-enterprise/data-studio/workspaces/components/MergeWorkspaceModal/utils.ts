@@ -61,6 +61,6 @@ export function areSourceTablesEqual(
 
   return a.every(
     (entry, index) =>
-      b[index].alias === entry.alias && b[index].table === entry.table,
+      b[index].alias === entry.alias && b[index].table_id === entry.table_id,
   );
 }

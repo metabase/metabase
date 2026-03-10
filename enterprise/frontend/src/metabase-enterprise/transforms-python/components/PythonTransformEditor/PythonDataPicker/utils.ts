@@ -7,8 +7,8 @@ export function getInitialTableSelections(
   tables: PythonTransformTableAliases | undefined,
 ) {
   if (tables && tables.length > 0) {
-    return tables.map(({ alias, table }) => ({
-      tableId: table,
+    return tables.map(({ alias, table_id }) => ({
+      tableId: table_id,
       alias,
     }));
   }
@@ -31,7 +31,7 @@ export function selectionsToTableAliases(
       const table = tableInfo.find((tbl) => tbl.id === s.tableId);
       return {
         alias: s.alias,
-        table: s.tableId!,
+        table_id: s.tableId!,
         schema: table?.schema ?? null,
         database_id: table?.db_id,
       };

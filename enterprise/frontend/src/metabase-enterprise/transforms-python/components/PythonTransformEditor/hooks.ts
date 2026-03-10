@@ -36,7 +36,7 @@ export function useTestPythonTransform(
       code: source.body,
       source_tables: source["source-tables"].map((t) => ({
         alias: t.alias,
-        table_id: t.table,
+        table_id: t.table_id,
       })),
     });
 

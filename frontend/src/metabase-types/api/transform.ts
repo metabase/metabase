@@ -59,7 +59,7 @@ export type SuggestedTransform = Partial<Pick<Transform, "id">> &
 
 export type PythonTransformTableEntry = {
   alias: string;
-  table: ConcreteTableId;
+  table_id: ConcreteTableId;
   schema?: SchemaName | null;
   database_id: DatabaseId;
 };

@@ -47,7 +47,10 @@ export const TransformSourceTablesDiff = ({
               </Text>
             </Group>
 
-            <TableItem oldTableId={oldEntry?.table} tableId={entry.table} />
+            <TableItem
+              oldTableId={oldEntry?.table_id}
+              tableId={entry.table_id}
+            />
           </Fragment>
         );
       })}
@@ -59,7 +62,7 @@ export const TransformSourceTablesDiff = ({
               {entry.alias}
             </Text>
 
-            <TableItem oldTableId={entry.table} tableId={undefined} />
+            <TableItem oldTableId={entry.table_id} tableId={undefined} />
           </Fragment>
         );
       })}
