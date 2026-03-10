@@ -152,6 +152,7 @@
            metabase.api.docs
            metabase.api.init
            metabase.api.macros
+           metabase.api.macros.scope
            metabase.api.open-api
            metabase.api.response
            metabase.api.routes.common
@@ -275,6 +276,7 @@
            config
            events
            models
+           permissions
            premium-features
            request
            settings
@@ -785,6 +787,16 @@
            settings
            util}}
 
+  lib-metric
+  {:team "UX West"
+   :api  #{metabase.lib-metric.core
+           metabase.lib-metric.schema}
+   :uses #{lib
+           lib-be
+           settings
+           types
+           util}}
+
   llm
   {:team "Metabot"
    :api  #{metabase.llm.api
@@ -834,10 +846,27 @@
            events
            lib
            lib-be
+           metrics
            models
            permissions
            remote-sync
            search
+           util}}
+
+  metrics
+  {:team "UX West"
+   :api  #{metabase.metrics.api
+           metabase.metrics.core}
+   :uses #{api
+           collections
+           lib
+           lib-be
+           lib-metric
+           models
+           parameters
+           query-processor
+           request
+           server
            util}}
 
   model-persistence
@@ -1113,6 +1142,7 @@
            events
            lib
            lib-be
+           metrics
            models
            parameters
            permissions
@@ -2520,6 +2550,7 @@
            lib
            lib-be
            models
+           premium-features
            queries
            ;; NOTE: we will remove this once we get "pure transforms" module.
            query-processor
