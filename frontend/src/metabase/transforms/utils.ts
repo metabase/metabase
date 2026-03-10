@@ -8,11 +8,9 @@ import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CollectionNamespace,
-  ConcreteTableId,
   Database,
   DatabaseId,
   DraftTransformSource,
-  PythonTransformTableAliases,
   TemplateTag,
   Transform,
   TransformRun,
@@ -137,100 +135,9 @@ export function isSameSource(
     return Lib.areLegacyQueriesEqual(source1.query, source2.query);
   }
   if (source1.type === "python" && source2.type === "python") {
-    return _.isEqual(
-      {
-        ...source1,
-        "source-tables": collapseSourceTableReferences(
-          source1["source-tables"],
-        ),
-      },
-      {
-        ...source2,
-        "source-tables": collapseSourceTableReferences(
-          source2["source-tables"],
-        ),
-      },
-    );
+    return _.isEqual(source1, source2);
   }
   return false;
-}
-
-type SourceTableReference = {
-  table: ConcreteTableId;
-  schema?: string | null;
-  database_id: DatabaseId;
-};
-
-/**
- * Extract source table reference details from values that may be:
- * - modern source-table entries ({ table, schema, database_id })
- * - legacy backend refs ({ table_id, schema, database_id })
- * - bare table IDs (number)
- */
-export function extractTableReference(
-  value: ConcreteTableId | Record<string, unknown>,
-): SourceTableReference | undefined {
-  if (typeof value === "number") {
-    return { table: value };
-  }
-  if (typeof value === "object" && value != null) {
-    const sourceTable = value as Record<string, unknown>;
-    const tableValue = sourceTable.table ?? sourceTable.table_id;
-    if (typeof tableValue === "number") {
-      return {
-        table: tableValue as ConcreteTableId,
-        schema:
-          typeof sourceTable.schema === "string" || sourceTable.schema == null
-            ? (sourceTable.schema as string | null | undefined)
-            : undefined,
-        database_id:
-          typeof sourceTable.database_id === "number"
-            ? (sourceTable.database_id as DatabaseId)
-            : undefined,
-      };
-    }
-  }
-  return undefined;
-}
-
-const collapseCache = new WeakMap<
-  Record<string, unknown>,
-  PythonTransformTableAliases
->();
-
-/**
- * Collapse backend source-tables map values into source-table entries array.
- * Supports both modern entries and legacy map refs.
- */
-export function collapseSourceTableReferences(
-  tables: PythonTransformTableAliases | Record<string, unknown>,
-): PythonTransformTableAliases {
-  if (Array.isArray(tables)) {
-    return tables;
-  }
-
-  const cached = collapseCache.get(tables);
-  if (cached) {
-    return cached;
-  }
-
-  const result: PythonTransformTableAliases = [];
-  for (const [alias, value] of Object.entries(tables)) {
-    const tableReference = extractTableReference(
-      value as ConcreteTableId | Record<string, unknown>,
-    );
-
-    if (tableReference != null) {
-      result.push({
-        alias,
-        table: tableReference.table,
-        schema: tableReference.schema ?? null,
-        database_id: tableReference.database_id,
-      });
-    }
-  }
-  collapseCache.set(tables, result);
-  return result;
 }
 
 export function isSourceEmpty(
