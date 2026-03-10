@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
+import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
 import { UpsellCta } from "metabase/common/components/upsells/components/UpsellCta";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import {
   trackUpsellClicked,
   trackUpsellViewed,
 } from "metabase/common/components/upsells/components/analytics";
-import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
 import { useSelector } from "metabase/lib/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";

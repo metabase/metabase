@@ -1,15 +1,12 @@
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import {
-  UpsellCard,
-  type UpsellCardProps,
-} from "metabase/common/components/UpsellCard";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Box, type BoxProps, Text } from "metabase/ui";
 
+import { UpsellCard, type UpsellCardProps } from "./UpsellCard";
 import { UPGRADE_URL } from "./constants";
 
 const usageAnalyticsIllustrationSource = "app/assets/img/usage-analytics.png";
@@ -28,6 +25,7 @@ export const UpsellUsageAnalytics = (
     location,
   });
   const usageAnalyticsUrl = useSelector((state) =>
+    // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Upsell component only visible to admins
     getDocsUrl(state, {
       page: "usage-and-performance-tools/usage-analytics",
     }),
@@ -51,6 +49,7 @@ export const UpsellUsageAnalytics = (
       {...props}
     >
       <Text lh="1.5rem" style={{ paddingInlineStart: "2rem" }}>
+        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins */}
         {t`Get detailed reports for tracking Metabase content usage, performance, and configuration changes.`}{" "}
         <ExternalLink href={usageAnalyticsUrl}>{t`Learn more`}</ExternalLink>
       </Text>

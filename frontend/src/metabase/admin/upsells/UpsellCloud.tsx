@@ -1,10 +1,9 @@
 import { c, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useHasTokenFeature } from "metabase/common/hooks";
-
 import { UpsellBigCard } from "metabase/common/components/upsells/components";
 import S from "metabase/common/components/upsells/components/Upsells.module.css";
+import { useHasTokenFeature } from "metabase/common/hooks";
 
 export const UpsellCloud = ({
   source,
