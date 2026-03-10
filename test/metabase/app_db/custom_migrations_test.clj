@@ -2777,8 +2777,8 @@
           (is (nil? (id->target deleted-id))))))))
 
 (deftest unify-source-tables-format-test
-  (testing "v59.2026-03-03T12:00:00: convert source-tables from map to vec format"
-    (impl/test-migrations ["v59.2026-03-03T12:00:00"] [migrate!]
+  (testing "v60.2026-03-03T12:00:00: convert source-tables from map to vec format"
+    (impl/test-migrations ["v60.2026-03-03T12:00:00"] [migrate!]
       (let [user-id     (:id (new-instance-with-default :core_user))
             db-id       (:id (new-instance-with-default :metabase_database))
             ;; source-tables as map with int values (FE format)
@@ -2851,7 +2851,7 @@
             (is (= 2 (count st)))))
 
         (testing "Rollback converts vec back to map"
-          (migrate! :down 58)
+          (migrate! :down 59)
           (let [st (get-source-tables :transform {:id int-id})]
             (is (map? st))
             (is (= 42 (get st "orders")))

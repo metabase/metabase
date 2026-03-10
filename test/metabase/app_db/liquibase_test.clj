@@ -203,12 +203,12 @@
               "workspace_input_transform should be dropped during rollback")
           (is (not (liquibase/table-exists? wi-name conn))
               "workspace_input should be dropped during rollback"))
-        ;; No v59 changesets should remain in databasechangelog
+        ;; No v59 or v60 changesets should remain in databasechangelog
         (let [changelog-table (liquibase/changelog-table-name liquibase)
               remaining (jdbc/query {:connection conn}
-                                    [(format "SELECT id FROM %s WHERE id LIKE 'v59.%%'" changelog-table)])]
+                                    [(format "SELECT id FROM %s WHERE id LIKE 'v59.%%' OR id LIKE 'v60.%%'" changelog-table)])]
           (is (empty? remaining)
-              (str "v59 changesets remaining: " (mapv :id remaining))))))))
+              (str "v59/v60 changesets remaining: " (mapv :id remaining))))))))
 
 (deftest rollback-mark-ran-workspace-tables-test
   (testing "Rollback works even when workspace table changesets were MARK_RAN (simulating prior state)"
@@ -222,7 +222,7 @@
             ;; Simulate the scenario: these changesets were MARK_RAN (table already existed
             ;; from a prior branch version). Flip EXECTYPE in databasechangelog.
             (jdbc/execute! {:connection conn}
-                           [(format "UPDATE %s SET EXECTYPE = 'MARK_RAN' WHERE ID IN ('v59.2026-02-09T12:00:07', 'v59.2026-01-31T12:00:41', 'v59.2026-02-09T12:00:01')"
+                           [(format "UPDATE %s SET EXECTYPE = 'MARK_RAN' WHERE ID IN ('v60.2026-02-09T12:00:07', 'v59.2026-01-31T12:00:41', 'v60.2026-02-09T12:00:01')"
                                     changelog-table)])
             ;; Tables still exist
             (is (liquibase/table-exists? wit-name conn))
@@ -233,12 +233,12 @@
                 "workspace_input_transform should be dropped even when MARK_RAN")
             (is (not (liquibase/table-exists? wi-name conn))
                 "workspace_input should be dropped even when MARK_RAN"))
-          ;; No v59 changesets should remain
+          ;; No v59 or v60 changesets should remain
           (let [changelog-table (liquibase/changelog-table-name liquibase)
                 remaining (jdbc/query {:connection conn}
-                                      [(format "SELECT id FROM %s WHERE id LIKE 'v59.%%'" changelog-table)])]
+                                      [(format "SELECT id FROM %s WHERE id LIKE 'v59.%%' OR id LIKE 'v60.%%'" changelog-table)])]
             (is (empty? remaining)
-                (str "v59 changesets remaining: " (mapv :id remaining)))))))))
+                (str "v59/v60 changesets remaining: " (mapv :id remaining)))))))))
 
 (deftest rollback-filename-mismatch-workspace-tables-test
   (testing "Rollback works even when FILENAME in databasechangelog doesn't match current changelog"
@@ -250,9 +250,9 @@
                 wit-name (if (= driver/*driver* :h2) "WORKSPACE_INPUT_TRANSFORM" "workspace_input_transform")
                 wi-name  (if (= driver/*driver* :h2) "WORKSPACE_INPUT" "workspace_input")]
             ;; Simulate: these changesets were originally applied from a different file
-            ;; (e.g., 058_update_migrations.yaml before being moved to 059)
+            ;; (e.g., 058_update_migrations.yaml before being moved to 060)
             (jdbc/execute! {:connection conn}
-                           [(format "UPDATE %s SET FILENAME = 'migrations/058_update_migrations.yaml' WHERE ID LIKE 'v59.2026-02-09T12:00:%%'"
+                           [(format "UPDATE %s SET FILENAME = 'migrations/058_update_migrations.yaml' WHERE ID LIKE 'v60.2026-02-09T12:00:%%'"
                                     changelog-table)])
             (is (liquibase/table-exists? wit-name conn))
             (is (liquibase/table-exists? wi-name conn))
@@ -264,7 +264,7 @@
                 "workspace_input should be dropped even with filename mismatch"))
           (let [changelog-table (liquibase/changelog-table-name liquibase)
                 remaining (jdbc/query {:connection conn}
-                                      [(format "SELECT id FROM %s WHERE id LIKE 'v59.%%'" changelog-table)])]
+                                      [(format "SELECT id FROM %s WHERE id LIKE 'v59.%%' OR id LIKE 'v60.%%'" changelog-table)])]
             (is (empty? remaining)
-                (str "v59 changesets remaining: " (mapv :id remaining)))))))))
+                (str "v59/v60 changesets remaining: " (mapv :id remaining)))))))))
 
