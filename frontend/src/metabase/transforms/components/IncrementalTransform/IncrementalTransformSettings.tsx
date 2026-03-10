@@ -39,6 +39,7 @@ type IncrementalTransformSettingsProps = {
   onIncrementalChange: (value: boolean) => void;
   variant?: "embedded" | "standalone";
   readOnly?: boolean;
+  extraActions?: React.ReactNode;
 };
 
 export const IncrementalTransformSettings = ({
@@ -47,6 +48,7 @@ export const IncrementalTransformSettings = ({
   onIncrementalChange,
   variant = "embedded",
   readOnly,
+  extraActions,
 }: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
   const libQuery = getLibQuery(source, metadata);
@@ -156,6 +158,12 @@ export const IncrementalTransformSettings = ({
                 readOnly={readOnly}
               />
             </Group>
+            {extraActions && (
+              <>
+                <Divider />
+                <Group p="lg">{extraActions}</Group>
+              </>
+            )}
             <TargetStrategyFields variant={variant} />
           </>
         )}

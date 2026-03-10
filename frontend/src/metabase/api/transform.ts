@@ -198,6 +198,14 @@ export const transformApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("transform"), listTag("table")]),
     }),
+    resetCheckpoint: builder.mutation<void, TransformId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/transform/${id}/reset-checkpoint`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("transform", id)]),
+    }),
     getInspectorDiscovery: builder.query<
       InspectorDiscoveryResponse,
       TransformId
@@ -240,5 +248,6 @@ export const {
   useUpdateTransformMutation,
   useDeleteTransformMutation,
   useDeleteTransformTargetMutation,
+  useResetCheckpointMutation,
   useRunInspectorQueryQuery,
 } = transformApi;

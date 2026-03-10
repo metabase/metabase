@@ -304,6 +304,13 @@
       (transforms.core/cancel-run! (:id run))))
   nil)
 
+(api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
+  "Reset the stored checkpoint for an incremental transform."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/write-check :model/Transform id)
+  (t2/update! :model/Transform id {:last_checkpoint_value nil})
+  nil)
+
 (defn run-transform!
   "Run a transform. Returns a 202 response with run_id.
    The transform must already be fetched and validated."
