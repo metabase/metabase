@@ -1,4 +1,3 @@
-import type * as Lib from "metabase-lib";
 import type {
   CacheStrategy,
   LocalFieldReference,
@@ -22,9 +21,7 @@ import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import type { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean | object;
-export type RowValues = RowValue[] & {
-  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
-};
+export type RowValues = RowValue[];
 
 export function getRowsForStableKeys(
   data: Pick<DatasetData, "rows" | "untranslatedRows">,
@@ -89,7 +86,6 @@ export interface DatasetColumn {
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
 
-  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
   remapping?: Map<RowValue, string | number>;
 }
 

@@ -7,7 +7,11 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type { ClickObject } from "../types";
+import type {
+  ClickObject,
+  PivotedDatasetColumn,
+  PivotedRowValues,
+} from "../types";
 
 type Dimension = {
   col: DatasetColumn;
@@ -55,9 +59,12 @@ export function getTableCellClickedObject(
   const value = row[columnIndex];
 
   if (isPivoted) {
+    const pivotedRow: PivotedRowValues = row;
+    const pivotedColumn: PivotedDatasetColumn = column;
+
     // if it's a pivot table, the first column is
-    if (columnIndex === 0 && row._dimension) {
-      const { value: dimensionValue, column: col } = row._dimension;
+    if (columnIndex === 0 && pivotedRow._dimension) {
+      const { value: dimensionValue, column: col } = pivotedRow._dimension;
       return {
         value: dimensionValue,
         column: col,
@@ -67,9 +74,9 @@ export function getTableCellClickedObject(
     } else {
       return {
         value,
-        column,
+        column: pivotedColumn,
         settings,
-        dimensions: [row._dimension, column._dimension].filter(
+        dimensions: [pivotedRow._dimension, pivotedColumn._dimension].filter(
           (dimension) => dimension != null,
         ),
         data: clickedRowData ?? undefined,
@@ -106,10 +113,13 @@ export function getTableHeaderClickedObject(
   isPivoted: boolean,
 ): { column: DatasetColumn } | undefined | null {
   const column = data.cols[columnIndex];
+
   if (isPivoted) {
+    const pivotedColumn: PivotedDatasetColumn | undefined = column;
+
     // if it's a pivot table, the first column is
-    if (columnIndex >= 0 && column) {
-      return column._dimension;
+    if (columnIndex >= 0 && pivotedColumn) {
+      return pivotedColumn._dimension;
     } else {
       return null; // FIXME?
     }
