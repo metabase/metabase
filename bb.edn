@@ -165,10 +165,10 @@
   new-migration
   {:doc "Create a new directory-based migration file (v60+)"
    :requires [[mage.new-migration :as new-migration]]
-   :examples [["./bin/mage new-migration 60 mq-indexes" "Create resources/migrations/060/20260905-mq-indexes.yaml"]]
+   :examples [["./bin/mage new-migration 60 mq_indexes" "Create resources/migrations/060/20260905_mq_indexes.yaml"]]
    :arg-schema [:tuple
                 [:int {:name "version" :description "Major version number (e.g., 60)"}]
-                [:string {:name "description" :description "Lowercase alphanumeric/hyphen name (e.g., mq-indexes)"}]]
+                [:string {:name "description" :description "Lowercase alphanumeric/underscore name (e.g., mq_indexes)"}]]
    :task (task! (new-migration/new-migration parsed))}
 
   jar-download

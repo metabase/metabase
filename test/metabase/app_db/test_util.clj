@@ -105,7 +105,7 @@
                   file-seq
                   (filter (fn [^java.io.File f]
                             (and (.isFile f)
-                                 (re-matches #".*\d{3}/\d{8}-.+\.yaml$" (str f)))))
+                                 (re-matches #".*\d{3}/\d{8}_.+\.yaml$" (str f)))))
                   sort
                   (map (fn [^java.io.File f]
                          (str "migrations/" (.getName (.getParentFile f)) "/" (.getName f))))))))))

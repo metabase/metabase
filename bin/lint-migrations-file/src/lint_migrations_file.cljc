@@ -54,9 +54,9 @@
       (throw (validation-error "Change set IDs are not distinct." {:duplicates duplicates})))))
 
 (defn- directory-based-migration-file?
-  "Returns true if the file is a directory-based migration file (e.g., `060/20260905-mq-indexes.yaml`)."
+  "Returns true if the file is a directory-based migration file (e.g., `060/20260905_mq_indexes.yaml`)."
   [file]
-  (boolean (re-matches #".*\d{3}/\d{8}-[a-z0-9\-]+\.yaml$" (str file))))
+  (boolean (re-matches #".*\d{3}/\d{8}_[a-z0-9_]+\.yaml$" (str file))))
 
 (defn- file-version
   "Extracts the migration version number from a file.

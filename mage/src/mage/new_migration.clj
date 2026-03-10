@@ -2,7 +2,7 @@
   "Mage task for creating new directory-based migration files (v60+).
 
   Each migration file is a YAML file inside a version directory,
-  e.g., `resources/migrations/060/20260905-mq-indexes.yaml`."
+  e.g., `resources/migrations/060/20260905_mq_indexes.yaml`."
   (:require
    [clojure.java.io :as io]
    [mage.util :as u])
@@ -14,8 +14,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private valid-description-re
-  "Descriptions must be lowercase alphanumeric or hyphens."
-  #"[a-z0-9][a-z0-9\-]*[a-z0-9]|[a-z0-9]")
+  "Descriptions must be lowercase alphanumeric or underscores."
+  #"[a-z0-9][a-z0-9_]*[a-z0-9]|[a-z0-9]")
 
 (defn- git-user-name []
   (try
@@ -50,24 +50,24 @@
 (defn new-migration
   "Creates a new directory-based migration file for the given version number.
 
-  Usage: `./bin/mage new-migration 60 mq-indexes`"
+  Usage: `./bin/mage new-migration 60 mq_indexes`"
   [{:keys [arguments]}]
   (let [version     (first arguments)
         description (second arguments)
         _           (when-not (and version description)
                       (binding [*out* *err*]
                         (println "Usage: mage new-migration <version> <description>")
-                        (println "  e.g., mage new-migration 60 mq-indexes"))
+                        (println "  e.g., mage new-migration 60 mq_indexes"))
                       (u/exit 1))
         _           (when-not (re-matches valid-description-re description)
                       (binding [*out* *err*]
-                        (println (str "Error: description must be lowercase alphanumeric or hyphens, got: \"" description "\""))
-                        (println "  e.g., mq-indexes, add-user-table, fix-fk"))
+                        (println (str "Error: description must be lowercase alphanumeric or underscores, got: \"" description "\""))
+                        (println "  e.g., mq_indexes, add_user_table, fix_fk"))
                       (u/exit 1))
         dir-name    (format "%03d" version)
         dir         (io/file u/project-root-directory "resources" "migrations" dir-name)
         date        (utc-date)
-        filename    (str date "-" description ".yaml")
+        filename    (str date "_" description ".yaml")
         file        (io/file dir filename)
         author      (git-user-name)]
     (.mkdirs dir)
