@@ -60,7 +60,11 @@ const PreviewSectionBase = ({
       <Group justify="space-between">
         <Text fw="bold">{t`Field preview`}</Text>
 
-        <ActionIcon color="text-dark" variant="transparent" onClick={onClose}>
+        <ActionIcon
+          color="text-primary"
+          variant="transparent"
+          onClick={onClose}
+        >
           <Icon name="close" />
         </ActionIcon>
       </Group>

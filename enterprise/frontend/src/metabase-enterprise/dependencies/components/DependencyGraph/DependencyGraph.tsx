@@ -7,14 +7,22 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Group } from "metabase/ui";
-import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
-import type { DependencyEntry } from "metabase-types/api";
+import { Group, useColorScheme } from "metabase/ui";
+import type {
+  DependencyEntry,
+  DependencyGraph,
+  WorkspaceDependencyGraph,
+} from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
@@ -37,26 +45,40 @@ const EDGE_TYPES = {
   edge: GraphEdge,
 };
 
+const PRO_OPTIONS = {
+  hideAttribution: true,
+};
+
 type DependencyGraphProps = {
+  graph?: DependencyGraph | WorkspaceDependencyGraph;
+  isFetching?: boolean;
+  error?: unknown;
   entry?: DependencyEntry;
-  getGraphUrl: (entry?: DependencyEntry) => string;
+  nodeTypes?: typeof NODE_TYPES;
+  edgeTypes?: typeof EDGE_TYPES;
+  headerRightSide?: ReactNode;
   withEntryPicker?: boolean;
+  openLinksInNewTab?: boolean;
+  getGraphUrl: (entry?: DependencyEntry) => string;
 };
 
 export function DependencyGraph({
   entry,
+  graph,
+  isFetching = false,
+  error,
   getGraphUrl,
   withEntryPicker,
+  headerRightSide = null,
+  nodeTypes = NODE_TYPES,
+  edgeTypes = EDGE_TYPES,
+  openLinksInNewTab = true,
 }: DependencyGraphProps) {
-  const {
-    data: graph,
-    isFetching,
-    error,
-  } = useGetDependencyGraphQuery(entry ?? skipToken);
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);
   const { sendErrorToast } = useMetadataToasts();
+  const { colorScheme } = useColorScheme();
 
   const entryNode = useMemo(() => {
     return entry != null ? findNode(nodes, entry) : null;
@@ -66,23 +88,27 @@ export function DependencyGraph({
     return selection != null ? findNode(nodes, selection) : null;
   }, [nodes, selection]);
 
-  useEffect(() => {
-    if (entry == null || error != null) {
+  useLayoutEffect(() => {
+    if (graph == null) {
       setNodes([]);
       setEdges([]);
-      setSelection(null);
     } else if (graph != null) {
       const { nodes: initialNodes, edges: initialEdges } =
         getInitialGraph(graph);
       setNodes(initialNodes);
       setEdges(initialEdges);
+    }
+  }, [graph, setNodes, setEdges]);
+
+  useLayoutEffect(() => {
+    if (selection != null && selectedNode == null) {
       setSelection(null);
     }
-  }, [entry, graph, error, setNodes, setEdges]);
+  }, [selection, selectedNode, setSelection]);
 
   useEffect(() => {
     if (error != null) {
-      sendErrorToast(t`Failed to load dependencies`);
+      sendErrorToast(t`Failed to load the dependency graph`);
     }
   }, [error, sendErrorToast]);
 
@@ -91,24 +117,29 @@ export function DependencyGraph({
   };
 
   return (
-    <GraphContext.Provider value={{ selection, setSelection }}>
+    <GraphContext.Provider
+      value={{ selection, setSelection, openLinksInNewTab }}
+    >
       <ReactFlow
+        className={S.reactFlow}
         nodes={nodes}
         edges={edges}
-        nodeTypes={NODE_TYPES}
-        edgeTypes={EDGE_TYPES}
-        fitView
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        proOptions={PRO_OPTIONS}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
+        colorMode={colorScheme === "dark" ? "dark" : "light"}
+        fitView
         data-testid="dependency-graph"
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
       >
         <Background />
-        <Controls />
+        <Controls className={S.controls} showInteractive={false} />
         <GraphNodeLayout />
-        <Panel position="top-left">
-          <Group>
+        <Panel className={S.leftPanel} position="top-left">
+          <Group className={S.panelContent} wrap="nowrap">
             {withEntryPicker && (
               <GraphEntryInput
                 node={entryNode?.data ?? null}
@@ -117,10 +148,11 @@ export function DependencyGraph({
               />
             )}
             {nodes.length > 1 && <GraphSelectInput nodes={nodes} />}
+            {headerRightSide}
           </Group>
         </Panel>
         {selection != null && selectedNode != null && (
-          <Panel className={S.panel} position="top-right">
+          <Panel className={S.rightPanel} position="top-right">
             {selection.groupType != null ? (
               <GraphDependencyPanel
                 node={selectedNode.data}

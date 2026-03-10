@@ -6,6 +6,7 @@ import type {
   ExportFormat,
   TableExportFormat,
 } from "metabase/common/types/export";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   ActionIcon,
@@ -47,13 +48,12 @@ const BaseQuestionDownloadPopover = ({
   result,
   dashboardId,
   dashcardId,
-  uuid,
-  token,
   visualizationSettings,
   variant,
   floating,
   formatPreference,
 }: BaseQuestionDownloadPopoverProps) => {
+  const { uuid, token } = useEmbeddingEntityContext();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const [, handleDownload] = useDownloadData({
@@ -134,6 +134,3 @@ const shouldRender = ({ result }: ShouldRenderDownloadPopoverProps) => {
 
 QuestionDownloadPopover.shouldRender = shouldRender;
 PublicOrEmbeddedQuestionDownloadPopover.shouldRender = shouldRender;
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QuestionDownloadPopover;

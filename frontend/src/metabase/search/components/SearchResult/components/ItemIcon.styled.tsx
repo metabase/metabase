@@ -11,7 +11,7 @@ function getColorForIconWrapper(
   type: SearchModel,
 ) {
   if (!active || archived) {
-    return color("text-medium");
+    return color("text-secondary");
   }
   if (type === "collection") {
     return lighten("brand", 0.35);
@@ -34,5 +34,5 @@ export const IconWrapper = styled.div<{
   color: ${({ active, archived, type }) =>
     getColorForIconWrapper(active, archived, type)};
   flex-shrink: 0;
-  background: var(--mb-color-bg-white);
+  background: var(--mb-color-background-primary);
 `;

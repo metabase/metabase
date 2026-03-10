@@ -167,7 +167,7 @@ describe("command palette", () => {
     cy.wait(100); // pressing page down too fast does nothing
     H.pressPageDown();
     H.commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: "New collection" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageDown();
@@ -177,7 +177,7 @@ describe("command palette", () => {
 
     H.pressPageUp();
     H.commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: "New collection" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageUp();
@@ -425,29 +425,38 @@ describe("command palette", () => {
     });
   });
 
-  it("should show the 'Report an issue' command palette item", () => {
+  it("should show the 'Download diagnostics' command palette item", () => {
     cy.visit("/");
     cy.findByRole("button", { name: /search/i }).click();
 
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("exist").type("Issue");
-      cy.findByText("Report an issue").should("be.visible");
+      cy.findByText("Download diagnostics").should("be.visible");
+    });
+  });
+
+  it("should allow searching personal collections if no results and user is admin", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /search/i }).click();
+    cy.realType("asdf");
+    H.commandPalette()
+      .get("#search-results-metadata")
+      .should("contain", "Search everything");
+  });
+
+  it("should show the 'New embed' command palette item", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /search/i }).click();
+
+    H.commandPalette().within(() => {
+      H.commandPaletteInput().should("exist").type("new embed");
+      cy.findByText("New embed").should("be.visible");
     });
   });
 
   describe("ee", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
-    });
-
-    it("should show the 'New embed' command palette item", () => {
-      cy.visit("/");
-      cy.findByRole("button", { name: /search/i }).click();
-
-      H.commandPalette().within(() => {
-        H.commandPaletteInput().should("exist").type("new embed");
-        cy.findByText("New embed").should("be.visible");
-      });
     });
 
     it("should have a 'New document' item", () => {
@@ -488,8 +497,9 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("?");
     H.shortcutModal().should("not.exist");
 
-    H.appBar().findByRole("img", { name: /gear/ }).click();
-    H.popover().findByText("Keyboard shortcuts").click();
+    H.getProfileLink().click();
+    H.popover().findByText("Help").click();
+    H.getHelpSubmenu().findByText("Keyboard shortcuts").click();
     H.shortcutModal().should("exist");
     cy.realPress("Escape");
     H.shortcutModal().should("not.exist");
@@ -598,14 +608,13 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("[");
     H.navigationSidebar().should("not.visible");
 
-    cy.findByLabelText("Settings menu").click();
-    H.popover().findByText("Admin settings").click();
+    H.goToAdmin();
 
     cy.findByTestId("site-name-setting").should("exist");
     cy.location("pathname").should("contain", "/admin/settings");
-    cy.realPress("4");
+    cy.realPress("5");
     cy.location("pathname").should("contain", "/admin/datamodel");
-    cy.realPress("8");
+    cy.realPress("9");
     cy.location("pathname").should("contain", "/admin/tools");
   });
 

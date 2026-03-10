@@ -4,7 +4,7 @@
 
   &:hover {
     &:not(.active) {
-      background-color: var(--mb-color-brand-lighter) !important;
+      background-color: var(--mb-color-background-hover) !important;
     }
   }
 }
@@ -34,7 +34,7 @@
 
     &:focus {
       color: var(--mb-color-text-secondary);
-      background-color: var(--mb-color-brand-lighter);
+      background-color: var(--mb-color-background-primary);
     }
   }
 
@@ -42,7 +42,7 @@
     textarea {
       &:focus,
       &:hover {
-        background-color: var(--mb-color-bg-white);
+        background-color: var(--mb-color-background-primary);
       }
     }
   }

@@ -25,7 +25,9 @@
 
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
-  #{:model/ApiKey
+  #{:model/AnalysisFinding
+    :model/AnalysisFindingError
+    :model/ApiKey
     :model/CacheConfig
     :model/CardFavorite
     :model/CloudMigration
@@ -34,6 +36,7 @@
     :model/DatabaseRouter
     :model/Dependency
     :model/PythonLibrary
+    :model/PremiumFeaturesCache
     :model/Query
     :model/QueryCache
     :model/QueryExecution
@@ -41,10 +44,12 @@
     :model/QueryTable
     :model/RemoteSyncObject
     :model/RemoteSyncTask
+    :model/ReplacementRun
     :model/SearchIndexMetadata
     :model/SemanticSearchTokenTracking
     :model/SupportAccessGrantLog
     :model/TaskHistory
+    :model/TaskRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/Transform
     :model/TransformRun
@@ -55,7 +60,18 @@
     :model/TransformTag
     :model/TransformTransformTag
     :model/Undo
-    :model/UserKeyValue})
+    :model/UserKeyValue
+    :model/Workspace
+    :model/WorkspaceGraph
+    :model/WorkspaceInput
+    :model/WorkspaceInputExternal
+    :model/WorkspaceInputTransform
+    :model/WorkspaceLog
+    :model/WorkspaceMerge
+    :model/WorkspaceMergeTransform
+    :model/WorkspaceOutput
+    :model/WorkspaceOutputExternal
+    :model/WorkspaceTransform})
 
 (defn- all-model-names []
   (into (sorted-set)

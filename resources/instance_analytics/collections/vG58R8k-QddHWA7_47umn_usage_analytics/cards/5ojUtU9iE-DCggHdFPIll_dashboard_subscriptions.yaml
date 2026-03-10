@@ -240,13 +240,12 @@ visualization_settings:
   table.cell_column: recipient_external
   table.column_widths: [null, null, null, null, 136]
   table.pivot_column: name
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: 5ojUtU9iE-DCggHdFPIll, label: dashboard_subscriptions, model: Card}
 archived_directly: false
 dashboard_id: null
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: null
 type: model

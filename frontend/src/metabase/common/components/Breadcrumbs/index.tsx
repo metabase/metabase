@@ -1,2 +1,2 @@
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export { default } from "./Breadcrumbs";
+export { Breadcrumbs } from "./Breadcrumbs";
+export type { Crumb } from "./Breadcrumbs";

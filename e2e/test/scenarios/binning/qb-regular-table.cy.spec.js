@@ -21,7 +21,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Total: 50 bins");
 
       H.chartPathWithFillColor("#509EE3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("70");
     });
 
@@ -36,7 +36,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Quarter");
 
       H.cartesianChartCircle();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2023");
     });
 
@@ -51,7 +51,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Longitude: 20°");
 
       H.chartPathWithFillColor("#509EE3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("180° W");
     });
   });
@@ -69,7 +69,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Total: 50 bins");
 
       H.chartPathWithFillColor("#509EE3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("70");
     });
 
@@ -85,7 +85,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Quarter");
 
       H.cartesianChartCircle();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2023");
     });
 
@@ -101,7 +101,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Longitude: 20°");
 
       H.chartPathWithFillColor("#509EE3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("180° W");
     });
   });
@@ -110,39 +110,39 @@ describe("scenarios > binning > binning options", () => {
     it("should work for number", () => {
       H.openTable({ table: ORDERS_ID });
       H.tableHeaderClick("Total");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       getTitle("Count by Total: Auto binned");
 
       H.chartPathWithFillColor("#509EE3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("60");
     });
 
     it("should work for time series", () => {
       H.openTable({ table: ORDERS_ID });
       H.tableHeaderClick("Created At");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       getTitle("Count by Created At: Month");
 
       H.cartesianChartCircle();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("January 2023");
     });
 
     it("should work for longitude/latitude", () => {
       H.openTable({ table: PEOPLE_ID });
       H.tableHeaderClick("Longitude");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       getTitle("Count by Longitude: Auto binned");
 
       H.chartPathWithFillColor("#509EE3");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
     });
   });

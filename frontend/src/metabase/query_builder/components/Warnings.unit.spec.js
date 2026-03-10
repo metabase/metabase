@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
-import Warnings from "metabase/query_builder/components/Warnings";
+import { Warnings } from "metabase/query_builder/components/Warnings";
 
 describe("Warnings", () => {
   it("should render a warning icon", () => {

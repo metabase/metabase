@@ -1,11 +1,11 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Input from "metabase/common/components/Input";
+import { Input } from "metabase/common/components/Input";
 import { Icon, TextInputBlurChange } from "metabase/ui";
 
 export const OptionsIcon = styled(Icon)`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   cursor: pointer;
 
   &:hover {

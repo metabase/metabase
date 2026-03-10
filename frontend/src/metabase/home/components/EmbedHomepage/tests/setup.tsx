@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -22,14 +22,14 @@ import { EmbedHomepage } from "../EmbedHomepage";
 
 export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   settings?: Partial<Settings>;
   isAdmin?: boolean;
 }
 
 export async function setup({
   tokenFeatures = createMockTokenFeatures(),
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   settings = {},
   isAdmin = false,
 }: SetupOpts = {}) {
@@ -48,8 +48,10 @@ export async function setup({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   renderWithProviders(

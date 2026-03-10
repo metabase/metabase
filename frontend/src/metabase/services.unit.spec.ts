@@ -23,12 +23,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import * as getIsEmbedPreviewModule from "./get-is-embed-preview";
-import {
-  DashboardApi,
-  runQuestionQuery,
-  setEmbedDashboardEndpoints,
-} from "./services";
+import { runQuestionQuery } from "./services";
 
 const MOCK_QUERY = createMockStructuredDatasetQuery({
   database: SAMPLE_DB_ID,
@@ -205,53 +200,64 @@ describe("metabase/services > runQuestionQuery", () => {
       expect(result).toEqual([mockResult]);
     });
   });
-});
 
-describe("DashboardApi parameter endpoints with IS_EMBED_PREVIEW", () => {
-  let isEmbedPreviewMock: jest.SpyInstance<boolean, []>;
+  describe("error handling", () => {
+    it("should convert 4xx errors to successful responses with error data (saved question)", async () => {
+      const question = createMockSavedQuestion();
+      const errorData = {
+        error: "Query failed",
+        error_type: "client-error",
+        status: "failed",
+      };
 
-  beforeEach(() => {
-    isEmbedPreviewMock = jest.spyOn(
-      getIsEmbedPreviewModule,
-      "getIsEmbedPreview",
-    );
-  });
+      fetchMock.post(getQueryEndpointPath(question), {
+        status: 400,
+        body: errorData,
+      });
 
-  it("should use /api/embed prefix when IS_EMBED_PREVIEW is false", async () => {
-    isEmbedPreviewMock.mockReturnValue(false);
+      const result = await runQuestionQuery(question, {
+        cancelDeferred: defer(),
+      });
 
-    setEmbedDashboardEndpoints("test-token");
+      // 4xx errors should be returned as successful responses with error data
+      expect(result).toEqual([errorData]);
+    });
 
-    fetchMock.get(
-      "path:/api/embed/dashboard/test-token/params/param1/values",
-      {},
-    );
+    it("should convert 4xx errors to successful responses with error data (ad-hoc question)", async () => {
+      const question = createMockAdHocQuestion();
+      const errorData = {
+        error: "Permission denied",
+        error_type: "permission-error",
+        status: "failed",
+      };
 
-    await DashboardApi.parameterValues({ dashId: "123", paramId: "param1" });
+      fetchMock.post(getQueryEndpointPath(question), {
+        status: 403,
+        body: errorData,
+      });
 
-    expect(
-      fetchMock.callHistory.called(
-        "path:/api/embed/dashboard/test-token/params/param1/values",
-      ),
-    ).toBe(true);
-  });
+      const result = await runQuestionQuery(question, {
+        cancelDeferred: defer(),
+      });
 
-  it("should use /api/preview_embed prefix when IS_EMBED_PREVIEW is true", async () => {
-    isEmbedPreviewMock.mockReturnValue(true);
+      // 4xx errors should be returned as successful responses with error data
+      expect(result).toEqual([errorData]);
+    });
 
-    setEmbedDashboardEndpoints("test-token");
+    it("should throw on 5xx server errors", async () => {
+      const question = createMockSavedQuestion();
 
-    fetchMock.get(
-      "path:/api/preview_embed/dashboard/test-token/params/param1/values",
-      {},
-    );
+      fetchMock.post(getQueryEndpointPath(question), {
+        status: 500,
+        body: { error: "Internal server error" },
+      });
 
-    await DashboardApi.parameterValues({ dashId: "123", paramId: "param1" });
-
-    expect(
-      fetchMock.callHistory.called(
-        "path:/api/preview_embed/dashboard/test-token/params/param1/values",
-      ),
-    ).toBe(true);
+      // 5xx errors should still throw
+      await expect(
+        runQuestionQuery(question, { cancelDeferred: defer() }),
+      ).rejects.toMatchObject({
+        status: 500,
+      });
+    });
   });
 });

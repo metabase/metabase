@@ -2,7 +2,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { Form, FormProvider } from "metabase/forms";
 
-import FormNumericInput from "./FormNumericInput";
+import { FormNumericInput } from "./FormNumericInput";
 
 export default {
   title: "Components/Ask Before Using/FormNumericInput",

@@ -6,3 +6,7 @@
 .radioCard[data-checked] {
   border-color: var(--mb-color-brand);
 }
+
+.radioCard[data-checked] .radioCardTitle {
+  color: var(--mb-color-brand);
+}

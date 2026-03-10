@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import PasswordReveal from "metabase/common/components/PasswordReveal";
+import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { generatePassword } from "metabase/lib/security";
@@ -19,12 +19,12 @@ import type { User } from "metabase-types/api";
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
-interface UserPasswordResetModalProps {
+interface UserPasswordResetModalInnerProps {
   clearTemporaryPassword: () => void;
   onClose: () => void;
   user: User;
   emailConfigured: boolean;
-  temporaryPassword: string;
+  temporaryPassword: string | null;
 }
 
 const UserPasswordResetModalInner = ({
@@ -33,7 +33,7 @@ const UserPasswordResetModalInner = ({
   onClose,
   temporaryPassword,
   user,
-}: UserPasswordResetModalProps) => {
+}: UserPasswordResetModalInnerProps) => {
   useUnmount(() => {
     clearTemporaryPassword();
   });
@@ -91,12 +91,12 @@ const UserPasswordResetModalInner = ({
 };
 
 interface UserPasswordResetModalProps {
-  params: { userId: string };
+  params: { userId?: string };
   onClose: () => void;
 }
 
 export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
-  const userId = parseInt(props.params.userId);
+  const userId = parseInt(props.params.userId ?? "");
 
   const dispatch = useDispatch();
 

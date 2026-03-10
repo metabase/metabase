@@ -44,7 +44,7 @@ export const WidgetStatus = ({
           >
             <Icon
               name="close"
-              color={highlighted ? undefined : "text-medium"}
+              c={highlighted ? undefined : "text-secondary"}
               size={16}
             />
           </Box>
@@ -63,7 +63,7 @@ export const WidgetStatus = ({
           >
             <Icon
               name="revert"
-              color={highlighted ? undefined : "text-medium"}
+              c={highlighted ? undefined : "text-secondary"}
               size={16}
             />
           </Box>

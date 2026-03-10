@@ -112,7 +112,7 @@
 
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
-  Restaurant -> Category instead of the usual Category -> Restuarant*)
+  Restaurant -> Category instead of the usual Category -> Restaurant*)
 
   This switch mostly exists because I'm not 100% sure what the right behavior is."
   true)
@@ -223,17 +223,20 @@
                                      [:not= :fk-field.fk_target_field_id nil]
                                      :fk-field.active]
                          :order-by [[:fk-field.id :desc]
-                                    [:pk-field.id :desc]]})]
-    (reduce
-     (partial merge-with merge)
-     {}
-     (for [{:keys [t1 f1 t2 f2]} rows]
-       (merge
-        {t1 {t2 [{:lhs {:table t1, :field f1}, :rhs {:table t2, :field f2}}]}}
-        (let [reverse-join {:lhs {:table t2, :field f2}, :rhs {:table t1, :field f1}}]
-          (if enable-reverse-joins?
-            {t2 {t1 [reverse-join]}}
-            (log/tracef "Not including reverse join (disabled) %s" (format-join-for-logging reverse-join)))))))))
+                                    [:pk-field.id :desc]]})
+        joins (for [{:keys [t1 f1 t2 f2]} rows]
+                {:lhs {:table t1, :field f1}
+                 :rhs {:table t2, :field f2}})
+        reversed (map (fn [{:keys [lhs rhs]}]
+                        {:lhs rhs, :rhs lhs})
+                      joins)
+        joins (if enable-reverse-joins?
+                (concat joins reversed)
+                (do (doseq [rev-join reversed]
+                      (log/tracef "Not including reverse join (disabled) %s" (format-join-for-logging rev-join)))
+                    joins))]
+    (-> (group-by (comp :table :lhs) joins)                ; Outer grouping: LHS table ID
+        (update-vals #(group-by (comp :table :rhs) %)))))  ; Inner grouping: RHS table ID
 
 (def ^:private ^{:arglists '([database-id enable-reverse-joins?])} database-fk-relationships
   "Return a sequence of FK relationships that exist in a database, in the format
@@ -288,6 +291,8 @@
     ;;
     ;; the general idea here is to see if LHS can join directly against RHS, otherwise recursively try all of the
     ;; tables LHS can join against and see if we can find a path that way.
+    ;; TODO: (bshepherdson 2025/11/25) This bespoke graph construction and traversal would be better migrated to
+    ;; use `metabase.graph.core`.
     (u/prog1 (traverse-graph fk-relationships source-table-id other-table-id max-traversal-depth)
       (when (seq <>)
         (log/tracef (format-joins-for-logging <>))))))
@@ -295,7 +300,10 @@
 (def ^:private ^{:arglists '([database-id source-table-id other-table-id]
                              [database-id source-table-id other-table-id enable-reverse-joins?])} find-joins
   "Find the joins that must be done to make fields in Table with `other-table-id` accessible in a query whose
-  primary (source) Table is the Table with `source-table-id`. Information about joins is returned in the format
+  primary (source) Table is the Table with `source-table-id`. Note that if there are multiple FKs for a particular
+  link between two tables, both will be returned as possible joins.
+
+  Information about joins is returned in the format:
 
     [{:lhs {:table <id>, :field <id>}, :rhs {table <id>, :field <id>}}
      ...]
@@ -330,11 +338,11 @@
         (f database-id source-table-id other-table-id enable-reverse-joins?)))
      (meta f))))
 
-(def ^:private ^{:arglists '([source-table other-table-ids enable-reverse-joins?])} find-all-joins*
+(def ^:private ^{:arglists '([source-table field-ids other-table-ids enable-reverse-joins?])} find-all-joins*
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[source-table-id other-table-ids enable-reverse-joins?]]
-                         [(mdb/unique-identifier) source-table-id other-table-ids enable-reverse-joins?])}
-   (fn [source-table-id other-table-ids enable-reverse-joins?]
+   ^{::memoize/args-fn (fn [[source-table-id field-ids other-table-ids enable-reverse-joins?]]
+                         [(mdb/unique-identifier) source-table-id field-ids other-table-ids enable-reverse-joins?])}
+   (fn [source-table-id field-ids other-table-ids enable-reverse-joins?]
      (let [db-id     (database/table-id->database-id source-table-id)
            all-joins (mapcat #(find-joins db-id source-table-id % enable-reverse-joins?)
                              other-table-ids)]
@@ -344,7 +352,7 @@
                      (str/join ", " (map (partial name-for-logging :model/Table)
                                          other-table-ids))
                      (format-joins-for-logging all-joins))
-         (u/prog1 (vec (dedupe/dedupe-joins source-table-id all-joins other-table-ids))
+         (u/prog1 (vec (dedupe/dedupe-joins source-table-id field-ids all-joins other-table-ids))
            (when-not (= all-joins <>)
              (log/tracef "Deduplicated:\n%s" (format-joins-for-logging <>)))))))
    :ttl/threshold find-joins-cache-duration-ms))
@@ -355,7 +363,7 @@
    field-ids       :- [:set ::lib.schema.id/field]]
   (when-let [other-table-ids (not-empty (disj (set (map field/field-id->table-id (set field-ids)))
                                               source-table-id))]
-    (find-all-joins* source-table-id other-table-ids *enable-reverse-joins*)))
+    (find-all-joins* source-table-id field-ids other-table-ids *enable-reverse-joins*)))
 
 (mu/defn- add-joins :- ::lib.schema/query
   "Add joins to the MBQL `query` we're generating. The Field for which we are returning values is the \"source Field\",

@@ -20,7 +20,7 @@ export default {
 };
 
 export const QuestionVisualizationButton = {
-  render() {
+  render: function Render() {
     const [count, setCount] = useState(0);
     return (
       <Box p="lg">
@@ -43,7 +43,7 @@ export const QuestionVisualizationButton = {
 };
 
 export const CustomVisualizationButton = {
-  render() {
+  render: function Render() {
     const OisinsRandomButton = () => {
       const { visualizeQuestion } = useRunVisualization();
       return (

@@ -74,10 +74,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
       "Ensure that table is visible in admin without refreshing (metabase#38041)",
     );
 
-    cy.findByTestId("app-bar")
-      .findByRole("button", { name: "Settings" })
-      .click();
-    H.popover().findByText("Admin settings").click();
+    H.goToAdmin();
 
     cy.findByRole("link", { name: "Table Metadata" }).click();
 
@@ -380,7 +377,7 @@ describe("Upload Table Cleanup/Management", { tags: "@external" }, () => {
 
       // multiple delete
       cy.findAllByRole("checkbox").first().click();
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByRole("checkbox").last().click();
     });
 
@@ -459,7 +456,7 @@ function uploadToExisting({
 
     cy.wait(uploadEndpoints[uploadMode]);
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("status")
       .last()
       .findByText(/Data (added|replaced)/i, {

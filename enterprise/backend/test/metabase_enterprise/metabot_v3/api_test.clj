@@ -9,6 +9,7 @@
    [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
    [metabase.search.test-util :as search.tu]
    [metabase.server.instance :as server.instance]
@@ -22,7 +23,7 @@
 
 (deftest agent-streaming-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [mock-response      (client-test/make-mock-stream-response
+    (let [mock-response      (client-test/make-mock-text-stream-response
                               ["Hello", " from", " streaming!"]
                               {"some-model" {:prompt 12 :completion 3}})
           conversation-id    (str (random-uuid))
@@ -43,14 +44,12 @@
                                                         :context         {}
                                                         :conversation_id conversation-id
                                                         :history         [historical-message]
-                                                        :state           {}
-                                                        :use_case        "nlq"}
+                                                        :state           {}}
                                                        (m/assoc-some :metabot_id metabot-id)))
                     conv     (t2/select-one :model/MetabotConversation :id conversation-id)
                     messages (t2/select :model/MetabotMessage :conversation_id conversation-id)]
                 (is (=? [{:messages        [historical-message question]
-                          :conversation_id conversation-id
-                          :use_case        "nlq"}]
+                          :conversation_id conversation-id}]
                         @ai-requests))
                 (is (=? [{:_type   :TEXT
                           :role    "assistant"
@@ -63,11 +62,9 @@
                         conv))
                 (is (=? [{:total_tokens 0
                           :role         :user
-                          :use_case     "nlq"
                           :data         [{:role "user" :content (:content question)}]}
                          {:total_tokens 15
                           :role         :assistant
-                          :use_case     "nlq"
                           :data         [{:role "assistant" :content "Hello from streaming!"}]}]
                         messages))))))))))
 
@@ -104,7 +101,7 @@
         (search.tu/with-index-disabled
           (mt/with-premium-features #{:metabot-v3}
             (with-redefs [client/ai-url      (constantly ai-url)
-                          api/store-message! (fn [_conv-id _use-case _profile msgs]
+                          api/store-message! (fn [_conv-id _prof-id msgs]
                                                (reset! messages msgs))
                           sr/async-cancellation-poll-interval-ms 5]
               (testing "Closing body stream drops connection"
@@ -115,8 +112,7 @@
                                                   :context         {}
                                                   :conversation_id (str (random-uuid))
                                                   :history         []
-                                                  :state           {}
-                                                  :use_case        "nlq"})]
+                                                  :state           {}})]
                   (.read ^java.io.InputStream body) ;; start the handler
                   (.close ^java.io.Closeable body)
                   (u/poll {:thunk       #(deref canceled)
@@ -130,7 +126,7 @@
                   (testing "request to ai-service was canceled"
                     (is (< 20 @cnt) "Stopped writing when channel closed")
                     ;; see `metabase.server.streaming-response-test/canceling-chan-is-working-test` for explanation,
-                    ;; reducing flakyness here
+                    ;; reducing flakiness here
                     (is (some? @canceled)))))))))
       (finally
         (.stop ai-server)))))
@@ -171,3 +167,65 @@
         (testing "Throws when premium token is missing"
           (mt/with-temporary-setting-values [premium-embedding-token nil]
             (mt/user-http-request :rasta :post 400 "ee/metabot-v3/feedback" {:foo "bar"})))))))
+
+(deftest metabot-enabled-setting-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [mock-response   (client-test/make-mock-text-stream-response
+                           ["Hello"] {"m" {:prompt 1 :completion 1}})
+          conversation-id (str (random-uuid))
+          base-request    {:message         "Test"
+                           :context         {}
+                           :conversation_id conversation-id
+                           :history         []
+                           :state           {}}]
+      (mt/with-dynamic-fn-redefs [client/post! (fn [url opts]
+                                                 ((client-test/mock-post! mock-response) url opts))]
+        (testing "Regular metabot is blocked when metabot-enabled is false"
+          (mt/with-temporary-setting-values [metabot-enabled? false]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 403 "ee/metabot-v3/agent-streaming"
+                                    base-request))))
+
+        (testing "Regular metabot works when metabot-enabled is true"
+          (mt/with-temporary-setting-values [metabot-enabled? true]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                    (assoc base-request :conversation_id (str (random-uuid)))))))
+
+        (testing "Embedded metabot is blocked when embedded-metabot-enabled? is false"
+          (mt/with-temporary-setting-values [embedded-metabot-enabled? false]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 403 "ee/metabot-v3/agent-streaming"
+                                    (assoc base-request
+                                           :metabot_id metabot-v3.config/embedded-metabot-id
+                                           :conversation_id (str (random-uuid)))))))
+
+        (testing "Embedded metabot works when embedded-metabot-enabled? is true"
+          (mt/with-temporary-setting-values [embedded-metabot-enabled? true]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                    (assoc base-request
+                                           :metabot_id metabot-v3.config/embedded-metabot-id
+                                           :conversation_id (str (random-uuid)))))))
+
+        (testing "Regular metabot still works when only embedded is disabled"
+          (mt/with-temporary-setting-values [metabot-enabled?          true
+                                             embedded-metabot-enabled? false]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                    (assoc base-request :conversation_id (str (random-uuid)))))))
+
+        (testing "Embedded metabot still works when only regular is disabled"
+          (mt/with-temporary-setting-values [metabot-enabled?          false
+                                             embedded-metabot-enabled? true]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                    (assoc base-request
+                                           :metabot_id metabot-v3.config/embedded-metabot-id
+                                           :conversation_id (str (random-uuid)))))))))))

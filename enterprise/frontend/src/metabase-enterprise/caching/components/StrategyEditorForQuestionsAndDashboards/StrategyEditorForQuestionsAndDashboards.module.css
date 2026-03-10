@@ -12,7 +12,7 @@
 
 .CacheableItemTable {
   table-layout: fixed;
-  background-color: var(--mb-color-text-white);
+  background-color: var(--mb-color-text-primary-inverse);
 
   col {
     width: 30%;
@@ -23,11 +23,11 @@
   }
 
   tbody > tr:hover {
-    background-color: var(--mb-color-brand-alpha-04) !important;
+    background-color: var(--mb-color-background-hover) !important;
   }
 
   tbody > tr.currentTarget {
-    background-color: var(--mb-color-brand-lighter) !important;
+    background-color: var(--mb-color-background-highlight) !important;
   }
 }
 

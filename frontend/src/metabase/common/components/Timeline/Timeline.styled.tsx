@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 
 export const TimelineContainer = styled.ul`
   position: relative;
@@ -39,7 +39,7 @@ export const EventHeader = styled.div`
 `;
 
 export const Timestamp = styled.time`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.875em;
   padding-bottom: 0.5rem;
 `;

@@ -6,8 +6,9 @@
 ;;; enumerated here?
 (mr/def ::current-user-info
   [:map
-   [:metabase-user-id  {:optional true} pos-int?]
-   [:is-superuser?     {:optional true} :boolean]
-   [:user-locale       {:optional true} [:maybe string?]]
-   [:is-group-manager? {:optional true} :boolean]
-   [:permissions-set   {:optional true} [:set :string]]])
+   [:metabase-user-id   {:optional true} pos-int?]
+   [:is-superuser?      {:optional true} :boolean]
+   [:is-data-analyst?   {:optional true} :boolean]
+   [:user-locale        {:optional true} [:maybe string?]]
+   [:is-group-manager?  {:optional true} :boolean]
+   [:permissions-set    {:optional true} [:set :string]]])

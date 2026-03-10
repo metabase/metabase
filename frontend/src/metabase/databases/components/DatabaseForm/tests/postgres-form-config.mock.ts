@@ -9,17 +9,23 @@ export const postgresFormConfig = {
   },
   "details-fields": [
     {
-      name: "host",
-      "display-name": "Host",
-      "helper-text":
-        "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).",
-      placeholder: "name.database.com",
-    },
-    {
-      name: "port",
-      "display-name": "Port",
-      type: "integer",
-      placeholder: 5432,
+      type: "group",
+      "container-style": ["grid", "3fr 1fr"],
+      fields: [
+        {
+          name: "host",
+          "display-name": "Host",
+          "helper-text":
+            "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).",
+          placeholder: "name.database.com",
+        },
+        {
+          name: "port",
+          "display-name": "Port",
+          type: "integer",
+          placeholder: 5432,
+        },
+      ],
     },
     {
       name: "dbname",

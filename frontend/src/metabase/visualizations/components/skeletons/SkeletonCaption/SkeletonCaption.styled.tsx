@@ -18,7 +18,7 @@ interface SkeletonTitleProps {
 }
 
 export const SkeletonCaptionTitle = styled(Ellipsified)<SkeletonTitleProps>`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: ${(props) => (props.size === "large" ? "1rem" : "")};
   line-height: ${(props) => (props.size === "large" ? "1.375rem" : "")};
   font-weight: bold;
@@ -26,7 +26,7 @@ export const SkeletonCaptionTitle = styled(Ellipsified)<SkeletonTitleProps>`
 `;
 
 export const SkeletonCaptionDescription = styled(Icon)`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin-left: 0.5rem;
   visibility: hidden;
 `;

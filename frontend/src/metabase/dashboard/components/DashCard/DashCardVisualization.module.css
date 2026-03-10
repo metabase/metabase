@@ -1,9 +1,9 @@
 .DashCardVisualization {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .VirtualDashCardOverlayText {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .InlineParametersList *,

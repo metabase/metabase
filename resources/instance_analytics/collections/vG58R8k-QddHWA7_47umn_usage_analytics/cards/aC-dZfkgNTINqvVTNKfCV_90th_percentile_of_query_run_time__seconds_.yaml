@@ -89,13 +89,12 @@ visualization_settings:
   series_settings:
     'false': {title: Not cached}
     'true': {title: Cached}
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: aC-dZfkgNTINqvVTNKfCV, label: 90th_percentile_of_query_run_time__seconds_, model: Card}
 archived_directly: false
 dashboard_id: Glqmoytsnu0n6rfLUjock
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

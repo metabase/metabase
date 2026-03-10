@@ -17,13 +17,15 @@ import {
   useGetRemappedDashboardParameterValueQuery,
   useGetRemappedParameterValueQuery,
 } from "metabase/api";
-import ExplicitSize from "metabase/common/components/ExplicitSize";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
-import TokenField, {
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
+import {
+  TokenField,
   parseStringValue,
 } from "metabase/common/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import CS from "metabase/css/core/index.css";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { Fields } from "metabase/entities/fields";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
@@ -113,7 +115,6 @@ export interface IFieldValuesWidgetProps {
   fields: Field[];
   dashboardId?: DashboardId;
   cardId?: CardId;
-  token?: string | null;
 
   value: RowValue[];
   onChange: (value: RowValue[]) => void;
@@ -152,7 +153,6 @@ export const FieldValuesWidgetInner = forwardRef<
     fields,
     dashboardId,
     cardId,
-    token,
     value,
     onChange,
     multi,
@@ -182,6 +182,9 @@ export const FieldValuesWidgetInner = forwardRef<
   const tc = useTranslateContent();
 
   const previousWidth = usePrevious(width);
+
+  const { uuid, token } = useEmbeddingEntityContext();
+  const entityIdentifier = uuid ?? token ?? null;
 
   useMount(() => {
     if (shouldList({ parameter, fields, disableSearch })) {
@@ -250,7 +253,7 @@ export const FieldValuesWidgetInner = forwardRef<
     return dispatch(
       fetchCardParameterValues({
         cardId,
-        token,
+        entityIdentifier,
         parameter,
         query,
       }),
@@ -265,7 +268,7 @@ export const FieldValuesWidgetInner = forwardRef<
     return dispatch(
       fetchDashboardParameterValues({
         dashboardId,
-        token,
+        entityIdentifier,
         parameter,
         parameters,
         query,
@@ -726,6 +729,9 @@ function RemappedValue({
   cardId,
   tc,
 }: RemappedValueProps) {
+  const { uuid, token } = useEmbeddingEntityContext();
+  const entityIdentifier = uuid ?? token ?? null;
+
   const isRemapped =
     Field.remappedField(fields) != null ||
     getSourceType(parameter) === "static-list";
@@ -733,7 +739,9 @@ function RemappedValue({
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
     dashboardId != null && value != null && isRemapped
       ? {
-          dashboard_id: dashboardId,
+          ...(entityIdentifier
+            ? { entityIdentifier }
+            : { dashboard_id: dashboardId }),
           parameter_id: parameter.id,
           value,
         }
@@ -743,7 +751,7 @@ function RemappedValue({
   const { data: cardData } = useGetRemappedCardParameterValueQuery(
     cardId != null && value != null && isRemapped
       ? {
-          card_id: cardId,
+          ...(entityIdentifier ? { entityIdentifier } : { card_id: cardId }),
           parameter_id: parameter.id,
           value,
         }

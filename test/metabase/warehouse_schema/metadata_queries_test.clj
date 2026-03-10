@@ -9,7 +9,7 @@
    [metabase.warehouse-schema.metadata-queries :as metadata-queries]))
 
 (defn- sort-by-field-id [clauses]
-  (sort-by #(lib.util.match/match-one %
+  (sort-by #(lib.util.match/match-lite %
               [:field _opts (id :guard pos-int?)]
               id)
            clauses))

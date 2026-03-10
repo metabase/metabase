@@ -91,8 +91,8 @@ Just like uploaded CSV data, the data from your Google Sheets counts toward your
 To check how much storage you're using:
 
 1. Log in to your Metabase.
-2. Click on the **gear** icon in the upper right.
-3. Select **Admin settings**.
+2. Click the **grid** icon in the upper right.
+3. Select **Admin**.
 4. In the **Settings** tab, click on **License and billing**.
 5. Check:
    - Currently stored rows

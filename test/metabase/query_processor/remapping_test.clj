@@ -355,7 +355,7 @@
                             ["CATEGORY" nil      "Category"]                  ; products.category
                             ["TITLE_2"  "Orders" "Product → Title"]           ; product.title, remapped from orders.product_id
                             ["sum"      "Orders" "Orders → Sum of Quantity"]] ; sum(orders.quantity)
-                           (map (juxt :name :metabase.lib.join/join-alias :display_name) (mt/cols results))))))
+                           (map (juxt :name :lib/join-alias :display_name) (mt/cols results))))))
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
                         ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
                         ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
@@ -560,3 +560,49 @@
                (mt/formatted-rows [int str str str str str 2.0 str str str str 2.0 str
                                    int int 2.0 2.0 2.0 2.0 str int str str]
                                   (qp/process-query query))))))))
+
+(deftest ^:parallel fk-remapped-should-remap-test
+  (testing (format "Check that we return the title when it's remapped")
+    (let [mp (-> (mt/metadata-provider)
+                 (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                 (mt/id :products :title)))
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/limit 1))]
+      ;; make sure the title is returned
+      (is (string? (last (first (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel fk-excluded-should-not-break-test
+  (doseq [field [:id :title]
+          vis   [:sensitive :retired]]
+    (testing (format "Check that we don't error when product %s is %s (#64050)" (name field) (name vis))
+      (let [mp (-> (mt/metadata-provider)
+                   (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                   (mt/id :products :title))
+                   (lib.tu/merged-mock-metadata-provider
+                    {:fields [{:id (mt/id :products field)
+                               :visibility-type vis}]}))
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/limit 1))]
+        (is (seq (mt/rows (qp/process-query query))))))))
+
+(deftest ^:parallel fk-do-not-include-should-not-break-nested-test
+  (doseq [field [:id :title]
+          vis   [:sensitive :retired]]
+    (testing (format "Check that we don't error when product %s is %s in nested query (#64050)" (name field) (name vis))
+      (let [mp (-> (mt/metadata-provider)
+                   (lib.tu/remap-metadata-provider (mt/id :orders :product_id)
+                                                   (mt/id :products :title))
+                   (lib.tu/merged-mock-metadata-provider
+                    {:fields [{:id (mt/id :products field)
+                               :visibility-type vis}]}))
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/limit 1))
+            mp (lib.tu/mock-metadata-provider mp {:cards
+                                                  [{:id              1
+                                                    :name            "ORDERS"
+                                                    :database-id     (mt/id)
+                                                    :dataset-query   query
+                                                    :type :model}]})
+            q2 (-> (lib/query mp (lib.metadata/card mp 1))
+                   (lib/limit 1))]
+        (is (seq (mt/rows (qp/process-query q2))))))))

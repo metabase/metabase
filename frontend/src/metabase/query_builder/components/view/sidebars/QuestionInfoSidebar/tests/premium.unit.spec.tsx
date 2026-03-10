@@ -22,7 +22,12 @@ const setupEnterprise = (opts: SetupOpts) => {
         audit_app: true,
       }),
     }),
-    hasEnterprisePlugins: true,
+    enterprisePlugins: [
+      "content_verification",
+      "audit_app",
+      "collections",
+      "moderation",
+    ],
   });
 };
 

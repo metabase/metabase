@@ -24,16 +24,14 @@ You can get a license by signing up for a free trial of the [Pro or Enterprise e
 
 ### Download the Enterprise edition
 
-- [Enterprise Docker image](https://hub.docker.com/r/metabase/metabase-enterprise/) at `metabase/metabase-enterprise:latest`. (RECOMMENDED)
-- [Enterprise JAR](https://downloads.metabase.com/enterprise/latest/metabase.jar).
-
-You'll also need to set up a dedicated [application database](../installation-and-operation/configuring-application-database.md) to store your Metabase data.
+- **Download Enterprise Edition**. You can download the latest Docker image or jar file from [Metabase releases](https://github.com/metabase/metabase/releases). Find the release with the latest badge. Download that specific point version. For example, `metabase/metabase-enterprise:v1.XX.X.x`. We recommend using Docker in production.
+- **Set up your application database**. You'll also need to set up a dedicated [application database](../installation-and-operation/configuring-application-database.md) to store your Metabase data.
 
 ### Activate your license
 
 There are two ways to activate your license when self-hosting Metabase:
 
-- **When Metabase is running**: go to **Settings** > **Admin settings**, and click **License and Billing** in the lefthand sidebar. Paste in your license token under **License** and click **Activate**.
+- **When Metabase is running**: go to **Admin** > **Settings**, and click **License** in the lefthand sidebar. Paste in your license token under **License** and click **Activate**.
 
 OR
 

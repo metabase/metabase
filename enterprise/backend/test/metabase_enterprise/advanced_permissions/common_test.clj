@@ -26,7 +26,7 @@
       (letfn [(user-permissions [user]
                 (-> (mt/user-http-request user :get 200 "user/current")
                     :permissions))]
-        (testing "admins should have full advanced permisions"
+        (testing "admins should have full advanced permissions"
           (is (=? {:can_access_setting        true
                    :can_access_subscription   true
                    :can_access_monitoring     true
@@ -62,7 +62,7 @@
 
 (deftest current-user-query-permissions-published-table-test
   (testing "GET /api/user/current can_create_queries respects published tables"
-    (mt/with-premium-features #{:data-studio}
+    (mt/with-premium-features #{:library}
       (letfn [(user-permissions [user]
                 (-> (mt/user-http-request user :get 200 "user/current")
                     :permissions))]
@@ -267,7 +267,8 @@
                                              :get
                                              200
                                              (format "database/%d/metadata?include_editable_data_model=true" (mt/id)))]
-            (is (= {:id (mt/id) :name (:name (mt/db))} (dissoc result :tables)))
+            (is (= (mt/id) (:id result)))
+            (is (= (:name (mt/db)) (:name result)))
             (is (= [id-1] (map :id (:tables result))))))))))
 
 (deftest fetch-id-fields-test
@@ -294,10 +295,10 @@
         (mt/with-all-users-data-perms-graph! {db-id {:view-data      :blocked
                                                      :create-queries :no
                                                      :data-model     {:schemas :all}}}
-          (testing "and if data permissions are revoked, it should be a 403"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (format "database/%d/schema/%s" db-id "schema1")))))
-          (testing "and if include_editable_data_model=true and data permissions are revoked, it should return values"
+          (testing "user can access schema due to data-model perms"
+            (is (= ["t1" "t3"]
+                   (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
+          (testing "include_editable_data_model=true also returns values"
             (is (= ["t1" "t3"]
                    (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")
                                                     :include_editable_data_model true)))))))
@@ -330,11 +331,10 @@
       (mt/with-all-users-data-perms-graph! {db-id {:view-data      :blocked
                                                    :create-queries :no
                                                    :data-model     {:schemas :all}}}
-        (testing "If data permissions are revoked, it should be a 403"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%d/schema/" db-id)))))
-        (testing "If include_editable_data_model=true and data permissions are revoked, it should return tables with both
-                  `nil` and \"\" as its schema"
+        (testing "user can access schema due to data-model perms - returns tables with both nil and \"\" schema"
+          (is (= ["t1" "t3"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/" db-id))))))
+        (testing "include_editable_data_model=true also returns tables with both `nil` and \"\" as schema"
           (is (= ["t1" "t3"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/" db-id)
                                                   :include_editable_data_model true))))))
@@ -368,10 +368,10 @@
         (mt/with-all-users-data-perms-graph! {db-id {:view-data      :blocked
                                                      :create-queries :no
                                                      :data-model     {:schemas :all}}}
-          (testing "if include_editable_data_model=nil, it should be a 403"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (format "database/%d/schemas" db-id)))))
-          (testing "and if include_editable_data_model=true, it should return values"
+          (testing "user can access schemas due to data-model perms"
+            (is (= ["schema1" "schema2"]
+                   (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)))))
+          (testing "include_editable_data_model=true also returns values"
             (is (= ["schema1" "schema2"]
                    (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
                                          :include_editable_data_model true))))
@@ -402,6 +402,69 @@
           (is (= ["schema1"]
                  (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
                                        :include_editable_data_model true))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                can-query and can-write-metadata filter tests                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest list-databases-can-write-metadata-filter-test
+  (testing "GET /api/database with can-write-metadata=true filters to only databases with editable tables"
+    (mt/with-temp [:model/Database {db-1-id :id} {:name "Editable DB"}
+                   :model/Database {db-2-id :id} {:name "Not Editable DB"}
+                   :model/Table    t1            {:db_id db-1-id :name "table1" :active true}
+                   :model/Table    _             {:db_id db-2-id :name "table2" :active true}]
+      (mt/with-all-users-data-perms-graph! {db-1-id {:view-data      :unrestricted
+                                                     :create-queries :query-builder
+                                                     :data-model     {:schemas {"" {(u/the-id t1) :all}}}}
+                                            db-2-id {:view-data      :unrestricted
+                                                     :create-queries :query-builder
+                                                     :data-model     {:schemas :none}}}
+        (let [response (->> (mt/user-http-request :rasta :get 200 "database" :can-write-metadata true)
+                            :data
+                            (filter #(#{db-1-id db-2-id} (:id %))))]
+          (is (= 1 (count response)))
+          (is (= "Editable DB" (-> response first :name))))))))
+
+(deftest list-databases-with-tables-can-write-metadata-filter-test
+  (testing "GET /api/database?include=tables&can-write-metadata=true filters tables within databases"
+    (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
+                   :model/Table    t1          {:db_id db-id :name "editable_table" :active true}
+                   :model/Table    t2          {:db_id db-id :name "not_editable_table" :active true}]
+      (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                   :create-queries :query-builder
+                                                   :data-model     {:schemas {"" {(u/the-id t1) :all
+                                                                                  (u/the-id t2) :none}}}}}
+        (let [response (->> (mt/user-http-request :rasta :get 200 "database" :include "tables" :can-write-metadata true)
+                            :data
+                            (filter #(= (:id %) db-id))
+                            first)]
+          (is (= 1 (count (:tables response))))
+          (is (= "editable_table" (-> response :tables first :name))))))))
+
+(deftest list-schemas-can-write-metadata-filter-test
+  (testing "GET /api/database/:id/schemas with can-write-metadata=true filters to only schemas with editable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    t1 {:db_id db-id :schema "editable_schema" :name "t1" :active true}
+                   :model/Table    _ {:db_id db-id :schema "not_editable_schema" :name "t2" :active true}]
+      (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                   :create-queries :query-builder
+                                                   :data-model     {:schemas {"editable_schema" {(u/the-id t1) :all}
+                                                                              "not_editable_schema" :none}}}}
+        (is (= ["editable_schema"]
+               (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id) :can-write-metadata true)))))))
+
+(deftest list-schema-tables-can-write-metadata-filter-test
+  (testing "GET /api/database/:id/schema/:schema with can-write-metadata=true filters to only editable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    t1 {:db_id db-id :schema "test_schema" :name "editable_table" :active true}
+                   :model/Table    t2 {:db_id db-id :schema "test_schema" :name "not_editable_table" :active true}]
+      (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                   :create-queries :query-builder
+                                                   :data-model     {:schemas {"test_schema" {(u/the-id t1) :all
+                                                                                             (u/the-id t2) :none}}}}}
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "test_schema") :can-write-metadata true)]
+          (is (= 1 (count response)))
+          (is (= "editable_table" (-> response first :name))))))))
 
 (deftest get-field-hydrated-target-with-advanced-perms-test
   (testing "GET /api/field/:id"

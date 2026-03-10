@@ -2,7 +2,21 @@
   (:require
    [clojure.test :refer :all]
    [metabase.cache.settings :as cache.settings]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
+
+(deftest enable-query-caching-test
+  (t2/with-transaction [_conn nil {:rollback-only true}]
+    (testing "returns false when no CacheConfig rows exist"
+      (t2/delete! :model/CacheConfig)
+      (is (false? (cache.settings/enable-query-caching))))
+    (testing "returns true when CacheConfig rows exist"
+      (t2/insert! :model/CacheConfig {:model    "root"
+                                      :model_id 0
+                                      :strategy :ttl
+                                      :config   {:multiplier 1
+                                                 :min_duration_ms 1}})
+      (is (true? (cache.settings/enable-query-caching))))))
 
 (deftest query-caching-max-kb-test
   (testing (str "Make sure Max Cache Entry Size can be set via with a string value, which is what comes back from the "

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.core :as core]
+   [metabase.collections.test-utils :refer [with-library-synced with-library-not-synced]]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -202,3 +203,103 @@
             (is (contains? event-collection-ids coll3-id))
             (is (not (contains? event-collection-ids coll2-id)))
             (is (not (contains? event-collection-ids coll4-id)))))))))
+
+;;; ------------------------------------------- No-Op Optimization Tests -------------------------------------------
+
+(deftest bulk-set-remote-sync-skips-already-enabled-collections-test
+  (testing "bulk-set-remote-sync does not update collections that are already in the target state (enable)"
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced true}
+                   :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced true}]
+      ;; Both collections already have is_remote_synced = true
+      ;; The UPDATE should affect 0 rows because of the WHERE is_remote_synced = false clause
+      (core/bulk-set-remote-sync {parent-id true})
+      ;; Verify collections remain unchanged (the UPDATE was a no-op)
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child-id)))))))
+
+(deftest bulk-set-remote-sync-skips-already-disabled-collections-test
+  (testing "bulk-set-remote-sync does not update collections that are already in the target state (disable)"
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced false}
+                   :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced false}]
+      ;; Both collections already have is_remote_synced = false
+      ;; The UPDATE should affect 0 rows because of the WHERE is_remote_synced = true clause
+      (core/bulk-set-remote-sync {parent-id false})
+      ;; Verify collections remain unchanged (the UPDATE was a no-op)
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child-id)))))))
+
+(deftest bulk-set-remote-sync-only-updates-changed-descendants-test
+  (testing "bulk-set-remote-sync only updates descendants that need changing"
+    ;; Create all collections with is_remote_synced=false first (valid state),
+    ;; then update child2 directly to avoid before-insert validation
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced false}
+                   :model/Collection {child1-id :id} {:name "Child 1" :location (format "/%d/" parent-id) :is_remote_synced false}
+                   :model/Collection {child2-id :id} {:name "Child 2" :location (format "/%d/" parent-id) :is_remote_synced false}]
+      ;; Set child2 to already be remote-synced directly in DB (bypasses hooks)
+      (t2/query-one {:update :collection :set {:is_remote_synced true} :where [:= :id child2-id]})
+      ;; Parent and Child 1 are false, Child 2 is already true
+      ;; When enabling parent, only parent and child1 should be updated, child2 should be skipped
+      (core/bulk-set-remote-sync {parent-id true})
+      ;; All should now be true
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child1-id))))
+      (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child2-id)))))))
+
+(deftest bulk-set-remote-sync-only-updates-changed-descendants-disable-test
+  (testing "bulk-set-remote-sync only updates descendants that need changing (disable)"
+    ;; Create all collections with is_remote_synced=true first (valid state),
+    ;; then update child2 directly to avoid before-insert validation
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced true}
+                   :model/Collection {child1-id :id} {:name "Child 1" :location (format "/%d/" parent-id) :is_remote_synced true}
+                   :model/Collection {child2-id :id} {:name "Child 2" :location (format "/%d/" parent-id) :is_remote_synced true}]
+      ;; Set child2 to already be not remote-synced directly in DB (bypasses hooks)
+      (t2/query-one {:update :collection :set {:is_remote_synced false} :where [:= :id child2-id]})
+      ;; Parent and Child 1 are true, Child 2 is already false
+      ;; When disabling parent, only parent and child1 should be updated, child2 should be skipped
+      (core/bulk-set-remote-sync {parent-id false})
+      ;; All should now be false
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child1-id))))
+      (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child2-id)))))))
+
+;;; ------------------------------------------- batch-model-eligible? Tests -------------------------------------------
+
+(deftest batch-model-eligible-for-remote-sync-cards-in-remote-synced-collection-test
+  (testing "returns true for cards in remote-synced collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true}
+                   :model/Card card1 {:collection_id coll-id}
+                   :model/Card card2 {:collection_id coll-id}]
+      (is (= {(:id card1) true, (:id card2) true}
+             (core/batch-model-eligible? :model/Card [card1 card2]))))))
+
+(deftest batch-model-eligible-for-remote-sync-cards-not-in-remote-synced-collection-test
+  (testing "returns false for cards NOT in remote-synced collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced false}
+                   :model/Card card {:collection_id coll-id}]
+      (is (= {(:id card) false}
+             (core/batch-model-eligible? :model/Card [card]))))))
+
+(deftest batch-model-eligible-for-remote-sync-snippets-library-synced-test
+  (testing "snippets eligible when Library is synced"
+    (with-library-synced
+      (mt/with-temp [:model/Collection {snippet-coll-id :id} {:namespace "snippets"}
+                     :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                        :content "SELECT 1"
+                                                        :collection_id snippet-coll-id}]
+        (is (= {(:id snippet) true}
+               (core/batch-model-eligible? :model/NativeQuerySnippet [snippet])))))))
+
+(deftest batch-model-eligible-for-remote-sync-snippets-library-not-synced-test
+  (testing "snippets NOT eligible when Library is not synced"
+    (with-library-not-synced
+      (mt/with-temp [:model/Collection {snippet-coll-id :id} {:namespace "snippets"}
+                     :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                        :content "SELECT 1"
+                                                        :collection_id snippet-coll-id}]
+        (is (= {(:id snippet) false}
+               (core/batch-model-eligible? :model/NativeQuerySnippet [snippet])))))))
+
+(deftest batch-model-eligible-for-remote-sync-unknown-model-test
+  (testing "unknown model returns false for all instances"
+    (is (= {1 false, 2 false}
+           (core/batch-model-eligible? :model/UnknownModel [{:id 1} {:id 2}])))))

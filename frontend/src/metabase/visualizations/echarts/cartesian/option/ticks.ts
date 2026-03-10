@@ -15,7 +15,7 @@ import {
 
 // HACK: ECharts in some cases do not render two ticks on line charts with 1 interval (2 values) when minInterval is defined.
 // For example, when a dataset has two days and minInterval is 1 day in milliseconds datasets like ["2022-01-01", "2022-01-02"]
-// will be rendered without the second tick. However, for ["2022-01-02", "2022-01-03"] ECharts would corectly render two ticks as needed.
+// will be rendered without the second tick. However, for ["2022-01-02", "2022-01-03"] ECharts would correctly render two ticks as needed.
 // The workaround is to add more padding on sides for this corner case.
 const getPadding = (intervalsCount: number) => {
   if (intervalsCount <= 1) {
@@ -87,6 +87,18 @@ export const getTicksOptions = (
     maxInterval = getTimeSeriesIntervalDuration({
       count: 1,
       unit: effectiveTicksUnit,
+    });
+  }
+
+  // HACK: For monthly ticks, we need to handle variable month lengths.
+  // Setting a fixed minInterval causes ECharts to skip months because some months
+  // (like February with 28 days) are shorter than others (31 days).
+  // Instead, we force ECharts to generate daily ticks and filter to month starts.
+  if (largestInterval.unit === "month") {
+    canRender = (date: Dayjs) => isWithinRange(date) && date.date() === 1;
+    maxInterval = getTimeSeriesIntervalDuration({
+      count: 1,
+      unit: "day",
     });
   }
 

@@ -51,13 +51,12 @@ result_metadata:
   semantic_type: type/Quantity
   source: aggregation
 visualization_settings: {column_settings: null, table.cell_column: recipient_external, table.pivot_column: name}
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: JPERH6xYVcj3m2Zw0YVY1, label: active_alerts, model: Card}
 archived_directly: false
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: skoPT2xiuEcUV8vFkHE6S
 type: question

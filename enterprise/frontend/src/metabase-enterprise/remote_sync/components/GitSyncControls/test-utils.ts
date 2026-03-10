@@ -58,9 +58,6 @@ export const createMockDirtyEntity = (
 ): RemoteSyncEntity => ({
   id: 1,
   name: "Test Card",
-  description: null,
-  created_at: "2024-01-01T00:00:00Z",
-  updated_at: null,
   model: "card",
   sync_status: "update",
   collection_id: 1,

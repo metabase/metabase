@@ -1,6 +1,6 @@
 import { render, screen } from "__support__/ui";
 
-import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator";
+import { DatasetMetadataStrengthIndicator } from "./DatasetMetadataStrengthIndicator";
 
 function setup({ resultMetadata } = {}) {
   const mockDataset = {

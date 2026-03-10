@@ -293,7 +293,6 @@
                         (lib.drill-thru.tu/append-filter-stage "count"))
       :expected-query (-> base-case
                           :expected-query
-                          (assoc-in [:stages 0 :filters 0 2 2] "CREATED_AT")
                           (lib.drill-thru.tu/append-filter-stage-to-test-expectation "count"))})))
 
 (deftest ^:parallel returns-pivot-drill-boolean-column-test

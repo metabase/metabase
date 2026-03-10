@@ -71,7 +71,9 @@ export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
       color(props.checked ? props.checkedColor : props.uncheckedColor)};
   border-radius: 0.25rem;
   background-color: ${(props) =>
-    props.checked ? color(props.checkedColor) : "var(--mb-color-bg-white)"};
+    props.checked
+      ? color(props.checkedColor)
+      : "var(--mb-color-background-primary)"};
 `;
 
 export const CheckBoxLabel = styled.span<CheckBoxLabelProps>`

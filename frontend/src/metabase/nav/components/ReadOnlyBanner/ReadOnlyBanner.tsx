@@ -8,8 +8,8 @@ export const ReadOnlyBanner = () => {
     <Banner
       bg="warning"
       body={
-        <Text fw="bold" c="text-dark">
-          {/* eslint-disable-next-line no-literal-metabase-strings -- correct usage */}
+        <Text fw="bold" c="text-primary">
+          {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- correct usage */}
           {t`Metabase is under maintenance and is operating in read-only mode. It should only take up to 30 minutes.`}
         </Text>
       }

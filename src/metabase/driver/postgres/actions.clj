@@ -21,7 +21,7 @@
         sql-args  ["select column_name from information_schema.constraint_column_usage where constraint_name = ?" constraint-name]]
     (into []
           (map :column_name)
-          (jdbc/reducible-query jdbc-spec sql-args {:identifers identity, :transaction? false}))))
+          (jdbc/reducible-query jdbc-spec sql-args {:transaction? false}))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres driver-api/violate-not-null-constraint]
   [_driver error-type _database _action-type error-message]

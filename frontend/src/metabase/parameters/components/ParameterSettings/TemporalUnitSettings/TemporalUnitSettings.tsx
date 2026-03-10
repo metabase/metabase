@@ -30,7 +30,6 @@ export function TemporalUnitSettings({
   const selectedUnits = parameter.temporal_units ?? availableUnits;
   const isAll = selectedUnits.length === availableUnits.length;
   const isNone = selectedUnits.length === 0;
-
   return (
     <Popover width="target">
       <Popover.Target>
@@ -39,7 +38,7 @@ export function TemporalUnitSettings({
           rightSection={<Icon name="chevrondown" />}
           fullWidth
           px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
-          styles={{ inner: { justifyContent: "space-between" } }} // justify prop in mantine v7
+          justify="space-between"
         >
           {getSelectedText(selectedUnits, isAll, isNone)}
         </Button>
@@ -73,11 +72,10 @@ function TemporalUnitDropdown({
   onChange,
 }: TemporalUnitDropdownProps) {
   const selectedUnitsSet = new Set(selectedUnits);
-  const isDisabledDeselection = selectedUnits.length <= 1;
 
   const handleAllToggle = () => {
     if (isAll) {
-      onChange([availableUnits[0]]);
+      onChange([]);
     } else {
       onChange(availableUnits);
     }
@@ -109,13 +107,11 @@ function TemporalUnitDropdown({
       <Divider />
       {availableUnits.map((unit) => {
         const isSelected = selectedUnitsSet.has(unit);
-        const isDisabled = isSelected && isDisabledDeselection;
 
         return (
           <label key={unit} className={S.label}>
             <Checkbox
               checked={isSelected}
-              disabled={isDisabled}
               onChange={() => handleUnitToggle(unit)}
             />
             <Text ml="sm" c="inherit">

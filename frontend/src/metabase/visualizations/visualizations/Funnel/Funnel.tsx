@@ -29,9 +29,14 @@ import type {
 } from "metabase/visualizations/types";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
-import type { DatasetData, RawSeries, RowValue } from "metabase-types/api";
+import {
+  type DatasetData,
+  type RawSeries,
+  type RowValue,
+  getRowsForStableKeys,
+} from "metabase-types/api";
 
-import FunnelNormal from "../../components/FunnelNormal";
+import { FunnelNormal } from "../../components/FunnelNormal";
 
 import type { FunnelRow } from "./types";
 
@@ -99,13 +104,10 @@ Object.assign(Funnel, {
       section: t`Data`,
       widget: ChartSettingOrderedSimple,
       getValue: (
-        [
-          {
-            data: { cols, rows },
-          },
-        ]: RawSeries,
+        rawSeries: RawSeries,
         settings: ComputedVisualizationSettings,
       ) => {
+        const { cols } = rawSeries[0].data;
         const dimensionIndex = cols.findIndex(
           (col) => col.name === settings["funnel.dimension"],
         );
@@ -113,7 +115,10 @@ Object.assign(Funnel, {
         const dimension = settings["funnel.dimension"];
 
         const rowsOrder = settings["funnel.rows"];
-        const rowsKeys = rows.map((row) => formatNullable(row[dimensionIndex]));
+        const rowsForKeys = getRowsForStableKeys(rawSeries[0].data);
+        const rowsKeys = rowsForKeys.map((row) =>
+          formatNullable(row[dimensionIndex]),
+        );
 
         const getDefault = (keys: RowValue[]) =>
           keys.map((key) => ({
@@ -190,11 +195,12 @@ export function Funnel(props: VisualizationProps) {
     headerIcon,
     settings,
     showTitle,
-    isVisualizerViz,
+    isVisualizerCard,
     actionButtons,
     className,
     onChangeCardAndRun,
     rawSeries,
+    visualizerRawSeries,
     fontFamily,
     getHref,
     isDashboard,
@@ -225,13 +231,14 @@ export function Funnel(props: VisualizationProps) {
   // so title selection is disabled in this case
   const canSelectTitle =
     !!onChangeCardAndRun &&
-    (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
+    (!isVisualizerCard || React.Children.count(titleMenuItems) === 1);
 
   return (
     <div className={cx(className, CS.flex, CS.flexColumn, CS.p1)}>
       {hasTitle && (
         <ChartCaption
           series={groupedRawSeries}
+          visualizerRawSeries={visualizerRawSeries}
           settings={settings}
           icon={headerIcon}
           getHref={canSelectTitle ? getHref : undefined}

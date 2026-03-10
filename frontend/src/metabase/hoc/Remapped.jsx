@@ -16,6 +16,7 @@ const mapDispatchToProps = {
 /**
  * @deprecated HOCs are deprecated
  */
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default (ComposedComponent) =>
   connect(
     mapStateToProps,
@@ -35,6 +36,8 @@ export default (ComposedComponent) =>
             field: this.props.column,
             cardId: this.props.cardId,
             dashboardId: this.props.dashboardId,
+            uuid: this.props.uuid,
+            token: this.props.token,
           });
         }
       }
@@ -45,7 +48,9 @@ export default (ComposedComponent) =>
             this.props.column?.id !== nextProps.column.id ||
             this.props.parameter?.id !== nextProps.parameter?.id ||
             this.props.cardId !== nextProps.cardId ||
-            this.props.dashboardId !== nextProps.dashboardId)
+            this.props.dashboardId !== nextProps.dashboardId ||
+            this.props.uuid !== nextProps.uuid ||
+            this.props.token !== nextProps.token)
         ) {
           this.props.fetchRemapping({
             parameter: nextProps.parameter,
@@ -53,6 +58,8 @@ export default (ComposedComponent) =>
             field: this.props.column,
             cardId: nextProps.cardId,
             dashboardId: nextProps.dashboardId,
+            uuid: nextProps.uuid,
+            token: nextProps.token,
           });
         }
       }

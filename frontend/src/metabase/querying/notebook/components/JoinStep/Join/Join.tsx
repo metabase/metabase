@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import * as Lib from "metabase-lib";
 
 import { JoinComplete } from "../JoinComplete";
@@ -10,7 +11,7 @@ interface JoinProps {
   stageIndex: number;
   join: Lib.Join;
   joinPosition: number;
-  color: string;
+  color: ColorName;
   isReadOnly: boolean;
   onJoinChange: (newJoin: Lib.Join) => void;
   onQueryChange: (newQuery: Lib.Query) => void;

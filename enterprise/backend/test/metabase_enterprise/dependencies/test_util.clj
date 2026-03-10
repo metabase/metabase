@@ -44,12 +44,12 @@
   (let [snippets        (map mock-snippet
                              [{:id            1
                                :name          "inner"
-                               :content       "{{#card-ref}}"
-                               :template-tags {"#card-ref" {:card-id      1
-                                                            :type         :card
-                                                            :name         "#card-ref"
-                                                            :display-name "#Card Ref"
-                                                            :id           (str (random-uuid))}}}
+                               :content       "{{#1-card-ref}}"
+                               :template-tags {"#1-card-ref" {:card-id      1
+                                                              :type         :card
+                                                              :name         "#1-card-ref"
+                                                              :display-name "#1-Card Ref"
+                                                              :id           (str (random-uuid))}}}
                               {:id            2
                                :name          "outer"
                                :content       "{{snippet: inner}}"

@@ -108,7 +108,7 @@
     [#"CLOB"      :type/Text]
     [#"BLOB"      :type/*]
     [#"REAL"      :type/Float]
-    [#"DOUB"      :type/Float]
+    [#"DOUB"      :type/Float] ; codespell:ignore
     [#"FLOA"      :type/Float]
     [#"NUMERIC"   :type/Float]
     [#"DECIMAL"   :type/Decimal]
@@ -530,3 +530,6 @@
 (defmethod sql.qp/->integer :sqlite
   [driver value]
   (sql.qp/->integer-with-round driver value))
+
+(defmethod driver/llm-sql-dialect-resource :sqlite [_]
+  "llm/prompts/dialects/sqlite.md")

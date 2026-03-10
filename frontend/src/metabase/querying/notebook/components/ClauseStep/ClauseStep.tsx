@@ -7,6 +7,7 @@ import { useMergedRef } from "@mantine/hooks";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { Icon } from "metabase/ui";
 
 import {
@@ -32,7 +33,7 @@ type RenderPopoverOpts<T> = {
 };
 
 export type ClauseStepProps<T> = {
-  color: string;
+  color: ColorName;
   items: T[];
   initialAddText?: string;
   readOnly?: boolean;
@@ -105,6 +106,7 @@ export const ClauseStep = <T,>({
         {items.map((item, index) => (
           <ClausePopover
             key={index}
+            disabled={readOnly}
             renderItem={(onOpen, hasPopover) =>
               renderItem({ item, index, onOpen, hasPopover })
             }

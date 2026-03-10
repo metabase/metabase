@@ -6,6 +6,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -16,7 +17,7 @@
 (defn- user-details [user]
   (select-keys
    user
-   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale :tenant_id]))
+   [:email :first_name :last_login :is_qbnewb :is_superuser :is_data_analyst :id :last_name :date_joined :common_name :locale :tenant_id]))
 
 (defn- segment-response [segment]
   (-> (into {} segment)
@@ -181,6 +182,27 @@
                                           :revision_message "WOW HOW COOL"
                                           :definition       {}})))))))
 
+(deftest update-with-full-legacy-query-test
+  (testing "PUT /api/segment/:id"
+    (testing "Can update a segment with a full legacy MBQL query structure (type, database, query keys)"
+      (mt/with-temp [:model/Segment {:keys [id]} {:table_id   (mt/id :orders)
+                                                  :definition (mbql4-segment-definition (mt/id :orders) (mt/id :orders :total) 50)}]
+        (let [legacy-full-query {:type     "query"
+                                 :database (mt/id)
+                                 :query    {:source-table (mt/id :orders)
+                                            :filter       [">" ["field" (mt/id :orders :total) nil] 100]}}]
+          (is (=? {:name       "Updated Segment"
+                   :definition {:lib/type "mbql/query"
+                                :database (mt/id)
+                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                            :source-table (mt/id :orders)
+                                            :filters      some?}]}}
+                  (mt/user-http-request :crowberto :put 200 (format "segment/%d" id)
+                                        {:name             "Updated Segment"
+                                         :revision_message "Updated with full legacy query"
+                                         :definition       legacy-full-query}))
+              "The definition should be converted to MBQL5"))))))
+
 (deftest archive-test
   (testing "PUT /api/segment/:id"
     (testing "Can we archive a Segment with the PUT endpoint?"
@@ -304,6 +326,33 @@
                 (filter (fn [{segment-id :id}]
                           (contains? #{id-1 id-2 id-3} segment-id))
                         (mt/user-http-request :rasta :get 200 "segment/"))))))))
+
+(deftest list-permissions-test
+  (testing "GET /api/segment/"
+    (mt/with-temp [:model/Segment {users-seg-id :id}  {:name       "Users Segment"
+                                                       :table_id   (mt/id :users)
+                                                       :definition (mbql4-segment-definition (mt/id :users) (mt/id :users :name) "cans")}
+                   :model/Segment {venues-seg-id :id} {:name       "Venues Segment"
+                                                       :table_id   (mt/id :venues)
+                                                       :definition (mbql4-segment-definition (mt/id :venues) (mt/id :venues :name) "bar")}]
+      (let [segment-ids #{users-seg-id venues-seg-id}
+            returned-segment-ids (fn []
+                                   (->> (mt/user-http-request :rasta :get 200 "segment/")
+                                        (filter #(segment-ids (:id %)))
+                                        (map :id)
+                                        set))]
+        (testing "user with full data perms sees all segments"
+          (mt/with-full-data-perms-for-all-users!
+            (is (= segment-ids (returned-segment-ids)))))
+        (testing "user with no data perms sees no segments"
+          (mt/with-no-data-perms-for-all-users!
+            (is (= #{} (returned-segment-ids)))))
+        (testing "user with perms to one table sees only that table's segment"
+          (mt/with-no-data-perms-for-all-users!
+            (let [all-users-group-id (:id (perms/all-users-group))]
+              (mt/with-perm-for-group-and-table! all-users-group-id (mt/id :users) :perms/view-data :unrestricted
+                (mt/with-perm-for-group-and-table! all-users-group-id (mt/id :users) :perms/create-queries :query-builder
+                  (is (= #{users-seg-id} (returned-segment-ids))))))))))))
 
 (deftest related-entities-test
   (testing "GET /api/segment/:id/related"

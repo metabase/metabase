@@ -50,10 +50,14 @@ export const trackPushChanges = ({
   });
 };
 
-export const trackRemoteSyncSettingsChanged = () => {
+export const trackRemoteSyncSettingsChanged = ({
+  triggeredFrom,
+}: {
+  triggeredFrom: "admin-settings" | "data-studio";
+}) => {
   trackSimpleEvent({
     event: "remote_sync_settings_changed",
-    triggered_from: "admin-settings",
+    triggered_from: triggeredFrom,
   });
 };
 

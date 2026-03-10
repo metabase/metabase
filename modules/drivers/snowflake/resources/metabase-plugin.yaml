@@ -58,7 +58,10 @@ driver:
       helper-text: Specify a role to override the database user’s default role.
       placeholder: user
     - cloud-ip-address-info
-    - ssh-tunnel
+    - group:
+        container-style: ["component", "backdrop"]
+        fields:
+        - ssh-tunnel
     - advanced-options-start
     - merge:
       - additional-options

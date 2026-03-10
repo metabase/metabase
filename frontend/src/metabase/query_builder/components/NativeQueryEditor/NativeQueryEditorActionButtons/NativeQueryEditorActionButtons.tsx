@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
 import { NativeVariablesButton } from "metabase/query_builder/components/view/NativeVariablesButton";
 import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
@@ -31,6 +30,7 @@ interface NativeQueryEditorActionButtonsProps {
   cancelQuery?: () => void;
   toggleDataReference?: () => void;
   toggleSnippetSidebar?: () => void;
+  toggleTemplateTagsEditor?: () => void;
   onOpenModal?: (modalType: QueryModalType) => void;
   onFormatQuery?: () => void;
 }
@@ -44,6 +44,7 @@ export const NativeQueryEditorActionButtons = (
     snippets,
     features,
     toggleDataReference,
+    toggleTemplateTagsEditor,
     onFormatQuery,
   } = props;
 
@@ -57,8 +58,6 @@ export const NativeQueryEditorActionButtons = (
 
   // Default to true if not explicitly set to false
   const showFormatButton = features.formatQuery !== false;
-  const showAiGeneration =
-    features.aiGeneration !== false && PLUGIN_METABOT.isEnabled();
 
   return (
     <Flex
@@ -81,7 +80,11 @@ export const NativeQueryEditorActionButtons = (
         <SnippetSidebarButton {...props} size={ICON_SIZE} />
       )}
       {features.variables && (
-        <NativeVariablesButton {...props} size={ICON_SIZE} />
+        <NativeVariablesButton
+          {...props}
+          size={ICON_SIZE}
+          onClick={toggleTemplateTagsEditor}
+        />
       )}
       {showFormatButton && onFormatQuery && (
         <Tooltip label={t`Auto-format`}>
@@ -95,7 +98,6 @@ export const NativeQueryEditorActionButtons = (
           />
         </Tooltip>
       )}
-      {showAiGeneration && <PLUGIN_METABOT.MetabotToggleButton />}
     </Flex>
   );
 };

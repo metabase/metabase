@@ -94,7 +94,7 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
             top: `${pos.y}px`,
             position: "fixed",
             zIndex: 200,
-            backgroundColor: "var(--mb-color-background)",
+            backgroundColor: "var(--mb-color-background-primary)",
             border: "1px solid var(--mb-color-border)",
             borderRadius: "8px",
             boxShadow: "0 4px 10px var(--mb-color-shadow)",
@@ -204,6 +204,78 @@ export const createSuggestionRenderer = <I = unknown, TSelected = unknown>(
         }
         component?.destroy();
         currentClientRect = undefined;
+      },
+    };
+  };
+};
+
+export interface BareSuggestionRendererProps<I = unknown, TSelected = unknown>
+  extends SuggestionProps<I, TSelected> {
+  onClose: () => void;
+}
+
+export interface BareSuggestionRendererRef {
+  onKeyDown: (props: { event: KeyboardEvent }) => boolean;
+}
+
+/**
+ * Mount a suggestion component without positioning/styling a container.
+ *
+ * Useful when the suggestion UI uses its own overlay component (e.g. Mantine Menu)
+ * and anchors itself to `props.decorationNode`.
+ */
+export const createBareSuggestionRenderer = <I = unknown, TSelected = unknown>(
+  SuggestionComponent: React.ComponentType<
+    BareSuggestionRendererProps<I, TSelected>
+  >,
+) => {
+  return () => {
+    let component: ReactRenderer | undefined;
+
+    const destroy = () => {
+      if (
+        component?.element instanceof HTMLElement &&
+        document.body.contains(component.element)
+      ) {
+        document.body.removeChild(component.element);
+      }
+      component?.destroy();
+      component = undefined;
+    };
+
+    return {
+      onStart: (props: SuggestionProps<I, TSelected>) => {
+        component = new ReactRenderer(SuggestionComponent, {
+          props: {
+            ...props,
+            onClose: destroy,
+          },
+          editor: props.editor,
+        });
+      },
+
+      onUpdate(props: SuggestionProps<I, TSelected>) {
+        component?.updateProps({
+          ...props,
+          onClose: destroy,
+        });
+      },
+
+      onKeyDown(props: SuggestionKeyDownProps) {
+        const ref = component?.ref;
+        if (
+          ref &&
+          typeof ref === "object" &&
+          "onKeyDown" in ref &&
+          typeof ref.onKeyDown === "function"
+        ) {
+          return ref.onKeyDown(props);
+        }
+        return false;
+      },
+
+      onExit() {
+        destroy();
       },
     };
   };

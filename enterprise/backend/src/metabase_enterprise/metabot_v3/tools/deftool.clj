@@ -3,7 +3,6 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase.api.macros :as api.macros]
    [metabase.util.malli.registry :as mr]
@@ -12,11 +11,14 @@
 ;;; ---------------------------------------------------- Schemas ----------------------------------------------------
 
 (mr/def ::tool-request
-  "Base schema for all tool requests. Contains the conversation ID."
-  [:map [:conversation_id ms/UUIDString]])
+  "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
+  [:map
+   [:conversation_id ms/UUIDString]
+   [:profile_id {:optional true} [:maybe :string]]])
 
-(def ^:private request-transformer
-  "Transformer for encoding tool request arguments (snake_case -> kebab-case)."
+(def request-transformer
+  "Transformer for encoding tool request arguments (snake_case -> kebab-case).
+   Converts snake_case keys to kebab-case and string enum values to keywords."
   (mtx/transformer {:name :tool-api-request}))
 
 (def ^:private response-transformer
@@ -37,19 +39,17 @@
     - `:handler` - Function to call with encoded arguments (receives args map with :metabot-id)
 
   The handler receives a single map argument containing the encoded args plus `:metabot-id`
-  and `:use-case` (extracted from the request)."
-  [{:keys [arguments conversation_id] :as body}
+  and `:profile-id` (extracted from the request body)."
+  [{:keys [arguments conversation_id profile_id] :as body}
    request
    {:keys [api-name args-schema result-schema handler]}]
   (metabot-v3.context/log (assoc body :api api-name) :llm.log/llm->be)
   (let [metabot-id   (:metabot-v3/metabot-id request)
-        use-case     (or (get-in request [:headers "x-metabot-use-case"])
-                         (metabot-v3.config/default-use-case metabot-id))
         encoded-args (cond-> (if args-schema
                                (mc/encode args-schema arguments request-transformer)
                                {})
                        metabot-id (assoc :metabot-id metabot-id)
-                       :always (assoc :use-case use-case))
+                       profile_id (assoc :profile-id profile_id))
         raw-result   (handler encoded-args)
         result       (if result-schema
                        (mc/decode result-schema raw-result response-transformer)
@@ -65,7 +65,7 @@
   - Encoding arguments from snake_case to kebab-case (via `:tool-api-request` transformer)
   - Decoding results from kebab-case to snake_case (via `:tool-api-response` transformer)
   - Attaching `conversation_id` to responses
-  - Extracting `:metabot-id` from the request and including it in the args map
+  - Extracting `:metabot-id` and `:profile-id` from the request body and including them in the args map
 
   Options:
     :args-schema    - Malli schema for arguments (optional - omit for no-args tools)

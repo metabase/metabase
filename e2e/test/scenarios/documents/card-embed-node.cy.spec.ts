@@ -308,7 +308,7 @@ describe("documents card embed node custom logic", () => {
         });
 
       // Add another card to try to exceed the limit
-      addNewStandaloneCard("Orders Model", "model");
+      addNewStandaloneCard("Orders Model");
 
       // Wait for the new card to be added
       H.documentContent()
@@ -454,7 +454,7 @@ describe("documents card embed node custom logic", () => {
     it("should handle moving cards between different flexContainers", () => {
       // First create another flexContainer by dragging the standalone card onto a new location
       // Add another standalone card first
-      addNewStandaloneCard("Orders Model", "model");
+      addNewStandaloneCard("Orders Model");
 
       // Wait for the new card
       H.documentContent()
@@ -539,6 +539,90 @@ describe("documents card embed node custom logic", () => {
           .invoke("height")
           .should("be.greaterThan", 60);
       });
+    });
+  });
+
+  describe("navigating from cardEmbed", () => {
+    it("should open a question in a new tab when clicking title with ctrl/meta key", () => {
+      H.createDocument({
+        name: "Test Document",
+        document: DOCUMENT_WITH_TWO_CARDS,
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      // Wait for cards to load
+      H.getDocumentCard("Orders")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+
+      // Verify window.open was called
+      cy.on("uncaught:exception", (error) => {
+        expect(error.message.includes("expected '<a>' to have attribute")).to.be
+          .false;
+      });
+
+      H.onNextAnchorClick((anchor) => {
+        expect(anchor)
+          .to.have.attr("href")
+          .match(/\/question\//);
+        expect(anchor).to.have.attr("rel", "noopener");
+        expect(anchor).to.have.attr("target", "_blank");
+      });
+
+      // Click on the card title with ctrl/meta key
+      H.getDocumentCard("Orders")
+        .findByTestId("card-embed-title")
+        .click(H.holdMetaKey);
+    });
+
+    it("should open drill-through action in a new tab when clicking with ctrl/meta key", () => {
+      H.createDocument({
+        name: "Test Document",
+        document: DOCUMENT_WITH_TWO_CARDS,
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      // Wait for cards to load
+      H.getDocumentCard("Orders, Count")
+        .should("be.visible")
+        .findByTestId("table-root")
+        .should("exist");
+
+      // Click on a table cell to trigger click actions menu
+      H.getDocumentCard("Orders, Count")
+        .findByTestId("table-body")
+        .findAllByTestId("cell-data")
+        .first()
+        .click();
+
+      // Verify window.open was called
+      cy.on("uncaught:exception", (error) => {
+        expect(error.message.includes("expected '<a>' to have attribute")).to.be
+          .false;
+      });
+
+      H.onNextAnchorClick((anchor) => {
+        expect(anchor)
+          .to.have.attr("href")
+          .match(/\/question/);
+        expect(anchor).to.have.attr("rel", "noopener");
+        expect(anchor).to.have.attr("target", "_blank");
+      });
+
+      // Wait for the popover to appear and click the first action with ctrl/meta key
+      H.popover()
+        .findByText("See these Orders")
+        .should("be.visible")
+        .click(H.holdMetaKey);
     });
   });
 
@@ -689,18 +773,12 @@ function assertFlexContainerCardsOrder(expectedCardTitles: string[]) {
   }
 }
 
-function addNewStandaloneCard(
-  cardName: string,
-  cardType: "question" | "model",
-) {
+function addNewStandaloneCard(cardName: string) {
   cy.get(".node-paragraph.is-empty").click();
   H.addToDocument("/", false);
   H.commandSuggestionItem("Chart").click();
   H.commandSuggestionItem(/Browse all/).click();
-  H.entityPickerModalTab(
-    cardType === "question" ? "Questions" : "Models",
-  ).click();
-  H.entityPickerModalItem(1, cardName).click();
+  H.pickEntity({ path: ["Our analytics", cardName], select: true });
 }
 
 function getCardWidths(

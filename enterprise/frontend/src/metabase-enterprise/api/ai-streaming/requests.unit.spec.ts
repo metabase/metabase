@@ -2,7 +2,10 @@ import fetchMock from "fetch-mock";
 
 import api from "metabase/lib/api";
 
-import { aiStreamingQuery, getInflightRequestsForUrl } from "./requests";
+import {
+  aiStreamingQuery,
+  findMatchingInflightAiStreamingRequests,
+} from "./requests";
 import { mockStreamedEndpoint } from "./test-utils";
 
 const endpoint = "/some-streamed-endpoint";
@@ -119,26 +122,38 @@ describe("ai requests", () => {
         mockStreamedEndpoint(endpoint, {
           textChunks: whoIsYourFavoriteResponse,
         });
-        expect(getInflightRequestsForUrl(endpoint).length).toBe(0);
+        expect(findMatchingInflightAiStreamingRequests(endpoint).length).toBe(
+          0,
+        );
         const promise = aiStreamingQuery({ url: endpoint, body: {} });
-        expect(getInflightRequestsForUrl(endpoint).length).toBe(1);
+        expect(findMatchingInflightAiStreamingRequests(endpoint).length).toBe(
+          1,
+        );
         await promise;
-        expect(getInflightRequestsForUrl(endpoint).length).toBe(0);
+        expect(findMatchingInflightAiStreamingRequests(endpoint).length).toBe(
+          0,
+        );
       });
 
       it("should properly unregister with inflight requests on abort", async () => {
         const controller = new AbortController();
 
         fetchMock.post(`path:${endpoint}`, { delay: 100, status: 200 });
-        expect(getInflightRequestsForUrl(endpoint).length).toBe(0);
+        expect(findMatchingInflightAiStreamingRequests(endpoint).length).toBe(
+          0,
+        );
         const promise = aiStreamingQuery({
           url: endpoint,
           body: {},
           signal: controller.signal,
         });
-        expect(getInflightRequestsForUrl(endpoint).length).toBe(1);
+        expect(findMatchingInflightAiStreamingRequests(endpoint).length).toBe(
+          1,
+        );
         controller.abort();
-        expect(getInflightRequestsForUrl(endpoint).length).toBe(0);
+        expect(findMatchingInflightAiStreamingRequests(endpoint).length).toBe(
+          0,
+        );
         try {
           await promise;
         } catch (err) {}

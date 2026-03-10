@@ -3,7 +3,7 @@ import dayjs, { type Dayjs } from "dayjs";
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
@@ -12,7 +12,6 @@ import {
   clickBehaviorIsValid,
   getDataFromClicked,
 } from "metabase-lib/v1/parameters/utils/click-behavior";
-import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import {
   isBoolean,
   isCoordinate,
@@ -22,6 +21,7 @@ import {
   isTime,
   isURL,
 } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetColumn } from "metabase-types/api";
 
 import { formatDateTimeWithUnit, formatRange } from "./date";
 import { formatEmail } from "./email";
@@ -196,7 +196,12 @@ export function formatValueRaw(
   ) {
     return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {
-    if (isNumber(column)) {
+    // Check if we're looking for a number isNumber(column) and
+    // check that the value string is a valid number
+    // it could be a remap
+    // TODO(eric, 2025-12-23): The second check should probably be in parseNumber(),
+    // but it caused tests to fail so I put it here.
+    if (isNumber(column) && Number.isFinite(Number(value))) {
       const number = parseNumber(value);
       if (number != null) {
         return formatNumber(number, options);
@@ -233,6 +238,12 @@ export function formatValueRaw(
   } else {
     const strValue = String(value);
     return options.collapseNewlines ? removeNewLines(strValue) : strValue;
+  }
+}
+
+function rangeForValue(value: unknown, column: DatasetColumn) {
+  if (typeof value === "number" && column?.binning_info?.bin_width) {
+    return [value, value + column.binning_info.bin_width];
   }
 }
 

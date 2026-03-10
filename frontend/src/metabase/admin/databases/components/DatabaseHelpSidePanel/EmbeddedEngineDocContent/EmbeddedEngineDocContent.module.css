@@ -25,7 +25,7 @@
   }
 
   pre {
-    background-color: var(--mb-color-background-light);
+    background-color: var(--mb-color-background-secondary);
     padding: 8px 10px;
   }
 
@@ -34,7 +34,7 @@
   }
 
   blockquote {
-    background-color: var(--mb-color-bg-medium);
+    background-color: var(--mb-color-background-tertiary);
     border-radius: 0.25rem;
     margin: 0.25rem 0 1.25rem;
     padding: 1rem 1.5rem;

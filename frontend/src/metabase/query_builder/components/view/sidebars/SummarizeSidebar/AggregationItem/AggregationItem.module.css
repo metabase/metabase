@@ -4,7 +4,7 @@
   padding: 0.5rem;
   font-weight: bold;
   border-radius: 6px;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: var(--mb-color-summarize);
   transition:
     background 300ms linear,

@@ -40,6 +40,7 @@ export const initialState: DocumentsState = {
   childTargetId: undefined,
   hoveredChildTargetId: undefined,
   hasUnsavedChanges: false,
+  isHistorySidebarOpen: false,
 };
 
 const documentsSlice = createSlice({
@@ -83,7 +84,8 @@ const documentsSlice = createSlice({
       state.cardEmbeds = action.payload;
     },
     setCurrentDocument: (state, action: PayloadAction<Document | null>) => {
-      // @ts-expect-error - possibly infinite type error
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore - possibly infinite type error
       state.currentDocument = action.payload;
     },
     resetDocuments: () => {
@@ -128,6 +130,9 @@ const documentsSlice = createSlice({
     setHasUnsavedChanges: (state, action: PayloadAction<boolean>) => {
       state.hasUnsavedChanges = action.payload;
     },
+    setIsHistorySidebarOpen: (state, action: PayloadAction<boolean>) => {
+      state.isHistorySidebarOpen = action.payload;
+    },
   },
 });
 
@@ -146,6 +151,7 @@ export const {
   setChildTargetId,
   setHoveredChildTargetId,
   setHasUnsavedChanges,
+  setIsHistorySidebarOpen,
 } = documentsSlice.actions;
 
 export const generateDraftCardId = (): number => {

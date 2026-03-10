@@ -1,8 +1,8 @@
 import type { ComponentType } from "react";
 import { t } from "ttag";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 
 import type {
   NotebookStepHeaderProps,
@@ -28,7 +28,7 @@ type StepUIItem = {
   priority?: number;
   secondary?: boolean;
   compact?: boolean;
-  color: () => string;
+  color: () => ColorName;
   Step: ComponentType<NotebookStepProps>;
   StepHeader: ComponentType<NotebookStepHeaderProps>;
 };
@@ -38,7 +38,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     get title() {
       return t`Data`;
     },
-    color: () => color("brand"),
+    color: () => "brand",
     Step: DataStep,
     StepHeader: NotebookStepHeader,
   },
@@ -49,7 +49,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "join_left_outer",
     priority: 1,
     compact: true,
-    color: () => color("brand"),
+    color: () => "brand",
     Step: JoinStep,
     StepHeader: NotebookStepHeader,
   },
@@ -60,7 +60,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "add_data",
     compact: true,
     secondary: true,
-    color: () => color("text-light"),
+    color: () => "text-tertiary",
     Step: ExpressionStep,
     StepHeader: NotebookStepHeader,
   },
@@ -70,7 +70,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     },
     icon: "filter",
     priority: 10,
-    color: () => color("filter"),
+    color: () => "filter",
     Step: FilterStep,
     StepHeader: NotebookStepHeader,
   },
@@ -80,7 +80,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     },
     icon: "sum",
     priority: 5,
-    color: () => color("summarize"),
+    color: () => "summarize",
     Step: SummarizeStep,
     StepHeader: SummarizeStepHeader,
   },
@@ -90,7 +90,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     },
     icon: "sum",
     priority: 5,
-    color: () => color("summarize"),
+    color: () => "summarize",
     Step: AggregateStep,
     StepHeader: NotebookStepHeader,
   },
@@ -100,7 +100,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     },
     icon: "segment",
     priority: 1,
-    color: () => color("accent4"),
+    color: () => "accent4",
     Step: BreakoutStep,
     StepHeader: NotebookStepHeader,
   },
@@ -111,7 +111,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "sort",
     compact: true,
     secondary: true,
-    color: () => color("text-light"),
+    color: () => "text-tertiary",
     Step: SortStep,
     StepHeader: NotebookStepHeader,
   },
@@ -122,7 +122,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "list",
     compact: true,
     secondary: true,
-    color: () => color("text-light"),
+    color: () => "text-tertiary",
     Step: LimitStep,
     StepHeader: NotebookStepHeader,
   },

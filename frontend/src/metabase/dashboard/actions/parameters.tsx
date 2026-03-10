@@ -245,7 +245,7 @@ export const moveParameter =
           message: (
             <Text
               className={cx(CS.flex, CS.flexFull, CS.flexNoShrink)}
-              c="text-white"
+              c="text-primary-inverse"
               w="8rem"
             >{t`Filter moved`}</Text>
           ),
@@ -994,7 +994,23 @@ export const setOrUnsetParameterValues =
       _.isEqual(value, parameterValues[id]),
     );
     parameterIdValuePairs
-      .map(([id, value]) => setParameterValue(id, areAllSet ? null : value))
+      .map(([id, value]) => {
+        let valueToSet = value;
+
+        if (areAllSet) {
+          // unsetting value from parameter custom click behavior (Update a dashboard filter)
+          const parameter = getParameters(getState()).find(
+            ({ id: itemId }) => id === itemId,
+          );
+
+          valueToSet =
+            parameter?.default && parameter?.required
+              ? parameter.default || null
+              : null;
+        }
+
+        return setParameterValue(id, valueToSet);
+      })
       .forEach(dispatch);
   };
 

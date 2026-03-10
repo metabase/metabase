@@ -41,7 +41,7 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
 
     Object.entries(DASHBOARD_SQL_NUMBER_FILTERS).forEach(
       ([filter, { value, representativeResult }], index) => {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetNumberFilter(value);
 

@@ -1,7 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 import { useState } from "react";
 
-import NumericInput from "./NumericInput";
+import { NumericInput } from "./NumericInput";
 
 export default {
   title: "Components/Ask Before Using/NumericInput",

@@ -22,7 +22,7 @@
   720)
 
 (defn log-minimum-value-warning
-  "Logs a warning that the value for `audit-max-retention-days` is below the allowed minimum and will be overriden."
+  "Logs a warning that the value for `audit-max-retention-days` is below the allowed minimum and will be overridden."
   [env-var-value]
   (log/warnf "MB_AUDIT_MAX_RETENTION_DAYS is set to %d; using the minimum value of %d instead."
              env-var-value

@@ -213,13 +213,12 @@ visualization_settings:
     - {base-type: type/Text}
     name: visualization_settings
   table.pivot_column: name_2
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: yVr4oMzxq8BPWf5HLbdwL, label: questions_in_this_dashboard, model: Card}
 archived_directly: false
 dashboard_id: bJEYb0o5CXlfWFcIztDwJ
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: pKdvc0pwu1zDi8NqnyJkt
 type: question

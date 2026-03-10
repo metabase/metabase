@@ -105,16 +105,16 @@ describe("Table editing", () => {
     TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").click();
 
-    H.selectHasValue("Owner", "Unspecified").click();
+    H.selectHasValue("Owner", "No owner").click();
     H.selectDropdown().contains("Bobby Tables").click();
     H.undoToastListContainer()
       .findByText("Table owner updated")
       .should("be.visible");
 
-    H.selectHasValue("Visibility type", "Bronze").click();
-    H.selectDropdown().contains("Gold").click();
+    H.selectHasValue("Visibility layer", "Internal").click();
+    H.selectDropdown().contains("Final").click();
     H.undoToastListContainer()
-      .findByText("Table visibility type updated")
+      .findByText("Table visibility layer updated")
       .should("be.visible");
 
     H.selectHasValue("Entity type", "Transaction").click();
@@ -134,7 +134,7 @@ describe("Table editing", () => {
     TablePicker.getTable("Orders").click();
 
     H.selectHasValue("Owner", "Bobby Tables");
-    H.selectHasValue("Visibility type", "Gold");
+    H.selectHasValue("Visibility layer", "Final");
     H.selectHasValue("Entity type", "Person");
     H.selectHasValue("Source", "Ingested");
   });

@@ -8,12 +8,12 @@ import type { Root } from "react-dom/client";
 
 import type { ColumnOptions, DataGridTheme } from "metabase/data-grid/types";
 import { pickRowsToMeasure } from "metabase/data-grid/utils/column-sizing";
-import { renderRoot } from "metabase/lib/react-compat";
+import {
+  MeasurementProviders,
+  createMeasurementContainer,
+} from "metabase/data-grid/utils/measure-utils";
+import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
 import { isNotNull } from "metabase/lib/types";
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { ThemeProvider } from "metabase/ui";
-
-import { DEFAULT_FONT_SIZE } from "../constants";
 
 import { DataGridThemeProvider } from "./use-table-theme";
 
@@ -41,30 +41,15 @@ export const useMeasureColumnWidths = <TData, TValue>(
   ) => React.ReactElement,
 ) => {
   const measureColumnWidths = useCallback(
-    (
-      onMeasured: (columnSizingState: ColumnSizingState) => void,
-      skipColumnIds: string[] = [],
-    ) => {
-      // Create hidden container for measurement rendering
-      const measureRoot = document.createElement("div");
+    (onMeasured: (columnSizingState: ColumnSizingState) => void) => {
+      const measureRoot = createMeasurementContainer();
       let measureRootTree: Root | undefined = undefined;
-      measureRoot.style.position = "absolute";
-      measureRoot.style.top = "-9999px";
-      measureRoot.style.left = "-9999px";
-      measureRoot.style.visibility = "hidden";
-      measureRoot.style.pointerEvents = "none";
-      measureRoot.style.zIndex = "-999";
-      measureRoot.style.fontSize = DEFAULT_FONT_SIZE;
-      document.body.appendChild(measureRoot);
-
-      const skipColumnIdsSet = new Set(skipColumnIds);
 
       const onMeasureHeaderRender = (div: HTMLDivElement) => {
         if (div === null) {
           return;
         }
 
-        // Extract width measurements from rendered elements
         const elementsMeasures = Array.from(
           div.querySelectorAll("[data-measure-id]"),
         )
@@ -81,7 +66,6 @@ export const useMeasureColumnWidths = <TData, TValue>(
           })
           .filter(isNotNull);
 
-        // Calculate column widths based on measurements
         const measuredColumnSizingMap =
           elementsMeasures.reduce<ColumnSizingState>(
             (acc, { columnId, width, type }) => {
@@ -89,7 +73,6 @@ export const useMeasureColumnWidths = <TData, TValue>(
                 acc[columnId] = 0;
               }
 
-              // Add appropriate spacing based on element type
               if (type === "header") {
                 const headerWidth = width + CELL_BORDER_WIDTHS;
                 acc[columnId] = Math.max(acc[columnId], headerWidth);
@@ -105,9 +88,8 @@ export const useMeasureColumnWidths = <TData, TValue>(
 
         onMeasured(measuredColumnSizingMap);
 
-        // Asynchronously unmount the root after the current render has completed to avoid race conditions.
         setTimeout(() => {
-          measureRootTree?.unmount();
+          unmountRoot(measureRootTree, measureRoot);
           document.body.removeChild(measureRoot);
         }, 0);
       };
@@ -115,13 +97,11 @@ export const useMeasureColumnWidths = <TData, TValue>(
       const rows = table.getRowModel().rows;
       const rowsData = rows.map((row) => row.original);
 
-      // Render hidden elements for measurement
       const measureContent = (
         <div style={{ display: "flex" }} ref={onMeasureHeaderRender}>
           {table
             .getHeaderGroups()
             .flatMap((headerGroup) => headerGroup.headers)
-            .filter((header) => !skipColumnIdsSet.has(header.column.id))
             .map((header) => {
               const headerCell = flexRender(
                 header.column.columnDef.header,
@@ -152,11 +132,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
                   (rowIndex) => {
                     const cell = rows[rowIndex]
                       .getVisibleCells()
-                      .find(
-                        (cell) =>
-                          cell.column.id === columnOptions.id &&
-                          !skipColumnIdsSet.has(cell.column.id),
-                      );
+                      .find((cell) => cell.column.id === columnOptions.id);
 
                     if (!cell) {
                       return null;
@@ -178,15 +154,12 @@ export const useMeasureColumnWidths = <TData, TValue>(
         </div>
       );
 
-      // Wrap measurement content with necessary providers
       const wrappedContent = (
-        <EmotionCacheProvider>
-          <ThemeProvider>
-            <DataGridThemeProvider theme={theme}>
-              {measureContent}
-            </DataGridThemeProvider>
-          </ThemeProvider>
-        </EmotionCacheProvider>
+        <MeasurementProviders>
+          <DataGridThemeProvider theme={theme}>
+            {measureContent}
+          </DataGridThemeProvider>
+        </MeasurementProviders>
       );
 
       const content = measurementRenderWrapper

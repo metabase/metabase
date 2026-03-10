@@ -6,7 +6,7 @@ import { t } from "ttag";
 import {
   SingleDatePicker,
   type SingleDatePickerValue,
-} from "metabase/querying/filters/components/DatePicker/SpecificDatePicker/SingleDatePicker";
+} from "metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker";
 import {
   deserializeDateParameterValue,
   serializeDateParameterValue,

@@ -160,13 +160,12 @@ visualization_settings:
     : {column_title: Dashboard name}
   table.cell_column: size_x
   table.pivot_column: dashboardtab_id
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: r8r6O1VedjAjSD2MPxJs6, label: dashboards_with_more_questions_in_the_same_tab, model: Card}
 archived_directly: false
 dashboard_id: Glqmoytsnu0n6rfLUjock
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: pKdvc0pwu1zDi8NqnyJkt
 type: question

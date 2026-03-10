@@ -2,6 +2,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { embedModalEnableEmbedding } from "e2e/support/helpers";
 
 import {
   assertDashboard,
@@ -22,7 +23,9 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+
     H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-static", true);
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -121,7 +124,11 @@ describe(suiteTitle, () => {
 
       getEmbedSidebar().within(() => {
         cy.findByLabelText("Metabase account (SSO)").click();
+      });
 
+      embedModalEnableEmbedding();
+
+      getEmbedSidebar().within(() => {
         cy.findByText("Browser").click();
         cy.findByText("Next").click();
       });
@@ -150,6 +157,14 @@ describe(suiteTitle, () => {
       cy.log("simulate an empty activity log");
       cy.intercept("GET", "/api/activity/recents?*", { recents: [] }).as(
         "emptyRecentItems",
+      );
+
+      // The embed wizard calls the search API to find recently created
+      // dashboards. Without this, the snapshot's admin-owned dashboards
+      // would be returned and selected as the default.
+      cy.log("simulate that there are no recently created dashboards");
+      cy.intercept("GET", "/api/search?*", { data: [], total: 0 }).as(
+        "emptySearch",
       );
     });
 
@@ -263,7 +278,11 @@ describe(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Metabase account (SSO)").click();
+    });
 
+    embedModalEnableEmbedding();
+
+    getEmbedSidebar().within(() => {
       cy.findByText("Metabot").click();
       cy.findByText("Next").click();
     });

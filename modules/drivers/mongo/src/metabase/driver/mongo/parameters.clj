@@ -89,7 +89,7 @@
 ;; Field filter value is either params/no-value (handled in `substitute-param`, a map with `:type` and `:value`, or a
 ;; sequence of those maps.
 (defn- substitute-one-field-filter [{field :field, alias :alias, {param-type :type, value :value} :value, :as field-filter}]
-  ;; convert relative dates to approprate date range representations
+  ;; convert relative dates to appropriate date range representations
   (cond
     (params.dates/not-single-date-type? param-type)
     (substitute-one-field-filter-date-range field-filter)

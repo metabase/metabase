@@ -7,6 +7,7 @@
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
+   [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -81,6 +82,26 @@
                   result))
               results)))))
 
+(defn- remove-unreadable-transforms
+  "Remove transforms from search results that the user cannot read.
+  This filters out transforms where the user doesn't have access to the source tables/database."
+  [results]
+  (let [transform-ids (->> results
+                           (filter #(= "transform" (:type %)))
+                           (map :id)
+                           set)]
+    (if-not (seq transform-ids)
+      results
+      (let [readable-ids (->> (t2/select :model/Transform :id [:in transform-ids])
+                              transforms/add-source-readable
+                              (filter :source_readable)
+                              (map :id)
+                              set)]
+        (filterv (fn [result]
+                   (or (not= "transform" (:type result))
+                       (contains? readable-ids (:id result))))
+                 results)))))
+
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
   [search-result]
@@ -138,7 +159,7 @@
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id search-native-query weights]}]
+           entity-types limit metabot-id profile-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-queries        term-queries
               :semantic-queries    semantic-queries
@@ -148,6 +169,7 @@
               :entity-types        entity-types
               :limit               limit
               :metabot-id          metabot-id
+              :profile-id          profile-id
               :search-native-query search-native-query
               :weights             weights})
   (let [search-models   (if (seq entity-types)
@@ -158,6 +180,9 @@
         use-verified?   (if metabot-id
                           (:use_verified_content metabot)
                           false)
+        embedded-metabot?  (= metabot-id metabot-v3.config/embedded-metabot-id)
+        collection-id   (when (or embedded-metabot? (= profile-id "nlq"))
+                          (:collection_id metabot))
         limit           (or limit 50)
         search-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
@@ -185,7 +210,9 @@
                                                   weights
                                                   (assoc :weights weights)
                                                   search-engine
-                                                  (assoc :search-engine (name search-engine))))
+                                                  (assoc :search-engine (name search-engine))
+                                                  collection-id
+                                                  (assoc :collection collection-id)))
                                 _              (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
                                                           search-string (:models search-context))
                                 search-results (search/search search-context)
@@ -212,7 +239,8 @@
     (->> fused-results
          (take limit)
          (map postprocess-search-result)
-         enrich-with-collection-descriptions)))
+         enrich-with-collection-descriptions
+         remove-unreadable-transforms)))
 
 (defn search-tool
   "Handler for the /search and /search_v2 tool endpoints.

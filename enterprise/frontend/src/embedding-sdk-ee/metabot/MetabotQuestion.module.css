@@ -58,7 +58,7 @@
       transition: background-color 0.2s ease;
 
       &:hover {
-        background-color: var(--mb-color-brand-lighter);
+        background-color: var(--mb-color-background-hover);
       }
     }
 
@@ -89,7 +89,7 @@
   width: fit-content;
   border-radius: 8px;
   border: 1px solid var(--mb-color-border);
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   color: var(--mb-color-text-secondary);
   font-size: 0.875rem;
 }

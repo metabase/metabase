@@ -182,6 +182,47 @@
                                 (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))
                                "Querying fails due to insufficient permissions")))))))))))))))
 
+(deftest ^:sequential dashboard-remapping-parallel-fks-test
+  (testing "two FKs to the same table, same remap, but pointing to different rows (#65838)"
+    (testing "always shows parameter values using the correct FK"
+      ;; Before this bug was fixed, the logic chose a parallel edge at random, so one of the two parameter bindings
+      ;; below would fail.
+      (mt/dataset avian-singles
+        (let [sender-id   (mt/id :messages :sender_id)
+              receiver-id (mt/id :messages :receiver_id)]
+          ;; Create dashboard with parameter mapped to *one* field.
+          ;; Alternate between this a few times to be sure none of the ad-hoc caching in `chain-filter`
+          ;; is reusing something it shouldn't!
+          (doseq [filter-fk [sender-id receiver-id sender-id receiver-id]]
+            (mt/with-temp [:model/Card {messages-card-id :id} {:dataset_query (mt/mbql-query messages)}
+                           :model/Dashboard {dashboard-id :id} {:parameters [{:id "p1"
+                                                                              :name "Squawker"
+                                                                              :slug "p1"
+                                                                              :type "id"
+                                                                              :sectionId "id"
+                                                                              :default 1}]}
+                           :model/DashboardCard {} {:dashboard_id       dashboard-id
+                                                    :card_id            messages-card-id
+                                                    :parameter_mappings
+                                                    [{:card_id messages-card-id
+                                                      :parameter_id "p1"
+                                                      :target ["dimension" ["field" filter-fk nil]]}]}]
+              (mt/with-column-remappings [messages.sender_id   users.name
+                                          messages.receiver_id users.name]
+                (binding [api/*current-user-id* (mt/user->id :rasta)]
+                  (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                        parameter (first (:parameters dashboard))]
+                  ;; Mimicks the API endpoint (required):
+                    (binding [qp.perms/*param-values-query* true]
+                    ;; Important to check all the mappings here because sometimes they match up by coincidence
+                    ;; and pass even when the bug is still present.
+                      (let [expected (into {} (mt/rows (mt/process-query (mt/mbql-query users))))
+                            actual   (into {} (map (fn [id]
+                                                     (parameters.dashboard/dashboard-param-remapped-value
+                                                      dashboard (:id parameter) id)))
+                                           (keys expected))]
+                        (is (= expected actual))))))))))))))
+
 (deftest ^:sequential dashboard-remapping-conflict-scenarios-test
   ;; Test various scenarios where FK1, FK2, and PK have different remapping configurations.
   ;; This tests the logic in find-common-remapping-target and documents that it was

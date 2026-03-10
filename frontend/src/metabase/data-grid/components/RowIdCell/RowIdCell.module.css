@@ -2,7 +2,7 @@
   height: 100%;
   padding: 0 0.5rem;
   text-align: right;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   display: flex;
   justify-content: flex-end;
   cursor: pointer;

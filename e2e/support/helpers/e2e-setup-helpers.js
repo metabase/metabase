@@ -28,8 +28,5 @@ export function restore(name = "default") {
     resetWritableDb({ type: dbType });
   }
 
-  // Force the color scheme to be consistent, otherwise, it will pick up system color theme
-  window.localStorage.setItem("metabase-color-scheme", "light");
-
   return cy.request("POST", `/api/testing/restore/${name}`);
 }

@@ -59,6 +59,10 @@
   [segment-def]
   (lib.ref/ref segment-def))
 
+(defmethod ->op-arg :metadata/measure
+  [measure-def]
+  (lib.ref/ref measure-def))
+
 (defmethod ->op-arg :lib/external-op
   [{:keys [operator options args] :or {options {}}}]
   (->op-arg (-> (lib.options/ensure-uuid (into [(keyword operator) options]

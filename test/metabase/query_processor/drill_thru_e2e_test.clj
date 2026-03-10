@@ -84,3 +84,61 @@
                  (mt/formatted-rows
                   [double long]
                   (qp/process-query query')))))))))
+
+(deftest ^:parallel pivot-drill-on-implicit-join-with-filter-after-aggregation-test
+  (testing "Pivot drill on implicitly joined column with filter-after-aggregation should work (#67228)"
+    ;; Reproduces a bug where applying a pivot drill-through on a query with:
+    ;; 1. Breakout by an implicitly joined column (e.g., Products.Category via Orders.product_id)
+    ;; 2. A filter stage after the aggregation (e.g., Count > 1)
+    ;; Would produce an invalid query with a filter in stage 0 referencing a column by its
+    ;; output alias (e.g., "PRODUCTS__via__PRODUCT_ID__CATEGORY") instead of by field ID.
+    (mt/dataset test-data
+      (qp.store/with-metadata-provider (mt/id)
+        (let [orders        (lib.metadata/table (qp.store/metadata-provider) (mt/id :orders))
+              initial-query (-> (lib/query (qp.store/metadata-provider) orders)
+                                (lib/aggregate (lib/count)))
+              products-cat  (m/find-first #(and (= (:name %) "CATEGORY")
+                                                (= (:table-id %) (mt/id :products)))
+                                          (lib/breakoutable-columns initial-query))
+              base-query    (lib/breakout initial-query products-cat)
+              query         (-> base-query
+                                lib/append-stage
+                                (as-> q
+                                      (let [count-col (m/find-first #(= (:name %) "count")
+                                                                    (lib/filterable-columns q))]
+                                        (lib/filter q (lib/> count-col 1)))))
+              returned-cols (lib/returned-columns query)
+              count-col     (m/find-first #(= (:name %) "count") returned-cols)
+              category-col  (m/find-first #(= (:name %) "CATEGORY") returned-cols)
+              drill-context {:column     count-col
+                             :column-ref (lib.ref/ref count-col)
+                             :value      42
+                             :row        [{:column     category-col
+                                           :column-ref (lib.ref/ref category-col)
+                                           :value      "Doohickey"}
+                                          {:column     count-col
+                                           :column-ref (lib.ref/ref count-col)
+                                           :value      42}]
+                             :dimensions [{:column     category-col
+                                           :column-ref (lib.ref/ref category-col)
+                                           :value      "Doohickey"}]}
+              pivot-drill   (m/find-first #(= (:type %) :drill-thru/pivot)
+                                          (lib/available-drill-thrus query drill-context))
+              _             (is (some? pivot-drill))
+              people-source (m/find-first #(= (:name %) "SOURCE")
+                                          (lib/pivot-columns-for-type pivot-drill :category))
+              query'        (lib/drill-thru query -1 nil pivot-drill people-source)]
+          ;; Overspecification?
+          (is (=? {:stages [{:source-table (mt/id :orders)
+                             :aggregation  [[:count {}]]
+                             :breakout     [[:field {} (mt/id :people :source)]]
+                             :filters      [[:= {} [:field {} (mt/id :products :category)] "Doohickey"]]}
+                            {:filters [[:> {} [:field {} "count"] 1]]}]}
+                  query'))
+          (mt/with-native-query-testing-context query'
+            (is (= [["Affiliate" 783]
+                    ["Facebook" 816]
+                    ["Google" 844]
+                    ["Organic" 738]
+                    ["Twitter" 795]]
+                   (mt/formatted-rows [str int] (qp/process-query query'))))))))))

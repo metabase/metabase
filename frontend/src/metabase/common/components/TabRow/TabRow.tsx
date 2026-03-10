@@ -26,7 +26,7 @@ import {
 } from "react";
 import { usePreviousDistinct } from "react-use";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { Icon } from "metabase/ui";
 
 import type { TabListProps } from "../TabList/TabList";
@@ -162,7 +162,7 @@ export function ScrollArrow({ direction, onClick }: ScrollArrowProps) {
       direction={direction}
       aria-label={`scroll tabs ${direction}`}
     >
-      <Icon name={`chevron${direction}`} color="brand" />
+      <Icon name={`chevron${direction}`} />
     </ScrollButton>
   );
 }

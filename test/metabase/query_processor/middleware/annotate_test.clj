@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -345,3 +346,54 @@
                    {:cols [{:name "sleep", :base_type :type/*, :database_type "void"}]}
                    [[""]])
                   :cols))))))
+
+(deftest ^:sequential expected-cols-no-infinite-loop-test
+  (testing "In case of a lib vs. driver column count mismatch, don't loop infinitely (#66955)"
+    (let [query       (lib/query meta/metadata-provider
+                                 (meta/table-metadata :orders))
+          all-cols    (mapv #(select-keys % [:name :base-type]) (lib/returned-columns query))
+          missing-one (butlast all-cols)]
+      (is (= 9 (count (annotate/expected-cols query all-cols))))
+      (testing "in dev and test modes, we throw an error when the counts differ"
+        (is (thrown-with-msg? Exception #"column number mismatch"
+                              (annotate/expected-cols query missing-one))))
+      (testing "in prod, we log and append nils to make the counts line up - this looped forever before #66955!"
+        (with-redefs [config/is-prod? true]
+          (is (= 8 (count (annotate/expected-cols query missing-one)))))))))
+
+(deftest ^:parallel nested-field-display-name-test
+  (testing "expected-cols should produce correct nested display_names for fields with parent_id"
+    (let [grandparent-id (+ (meta/id :venues :id) 50)
+          parent-id      (+ (meta/id :venues :id) 60)
+          child-id       (+ (meta/id :venues :id) 70)
+          mp             (lib.tu/mock-metadata-provider
+                          {:database meta/database
+                           :tables   [(meta/table-metadata :venues)]
+                           :fields   (mapv (fn [field-metadata]
+                                             (merge {:visibility-type :normal
+                                                     :table-id        (meta/id :venues)}
+                                                    field-metadata))
+                                           [{:lib/type     :metadata/column
+                                             :name         "grandparent"
+                                             :display-name "Grandparent"
+                                             :id           grandparent-id
+                                             :base-type    :type/Text}
+                                            {:lib/type     :metadata/column
+                                             :name         "parent"
+                                             :display-name "Parent"
+                                             :parent-id    grandparent-id
+                                             :id           parent-id
+                                             :base-type    :type/Text}
+                                            {:lib/type     :metadata/column
+                                             :name         "child"
+                                             :display-name "Child"
+                                             :parent-id    parent-id
+                                             :id           child-id
+                                             :base-type    :type/Text}])})
+          query          (lib/query mp (meta/table-metadata :venues))]
+      (qp.store/with-metadata-provider mp
+        (let [cols (annotate/expected-cols query)]
+          (is (= ["Grandparent: Parent: Child"
+                  "Grandparent"
+                  "Grandparent: Parent"]
+                 (mapv :display_name cols))))))))

@@ -3,7 +3,7 @@
   (:require
    [metabase.auth-identity.core :as auth-identity]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.sso.common :as sso.common]
+   [metabase.sso.core :as sso]
    [metabase.sso.ldap :as ldap]
    [metabase.sso.ldap.default-implementation :as ldap.impl]
    [metabase.util :as u]
@@ -130,6 +130,6 @@
           (try
             (let [group-ids (ldap.impl/ldap-groups->mb-group-ids groups settings)
                   all-mapped-ids (ldap.impl/all-mapped-group-ids settings)]
-              (sso.common/sync-group-memberships! (:user result) group-ids all-mapped-ids))
+              (sso/sync-group-memberships! (:user result) group-ids all-mapped-ids))
             (catch Exception e
               (log/error e "Error syncing LDAP group memberships"))))))))

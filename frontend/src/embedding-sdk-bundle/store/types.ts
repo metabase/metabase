@@ -5,7 +5,6 @@ import type {
   Store,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
-import type { JSX } from "react";
 
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
@@ -41,7 +40,6 @@ export type SdkState = {
   plugins: null | MetabasePluginsConfig;
   eventHandlers: null | SdkEventHandlersConfig;
   usageProblem: null | SdkUsageProblem;
-  loaderComponent: null | (() => JSX.Element);
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | MetabaseAuthConfig["fetchRequestToken"];
 };

@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import FormTextArea from "metabase/common/components/FormTextArea";
+import { FormTextArea } from "metabase/common/components/FormTextArea";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
 import { Modal, Text } from "metabase/ui";
 
@@ -55,7 +55,7 @@ export const DownloadDiagnosticModal = ({
           placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
         />
         <Text>
-          {/* eslint-disable-next-line no-literal-metabase-strings -- this is a translation context string, not shown to users */}
+          {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a translation context string, not shown to users */}
           {c("{0} is the name of the application, usually 'Metabase'")
             .t`This information helps ${applicationName} figure out what exactly caused the issue`}
         </Text>

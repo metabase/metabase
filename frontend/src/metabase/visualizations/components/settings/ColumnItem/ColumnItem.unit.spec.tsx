@@ -5,7 +5,7 @@ import { render, screen } from "__support__/ui";
 import type { ColumnItemProps } from "./ColumnItem";
 import { ColumnItem } from "./ColumnItem";
 
-interface SetupProps extends Partial<ColumnItemProps> {}
+type SetupProps = Partial<ColumnItemProps>;
 
 const setup = (props?: SetupProps) => {
   const onClick = jest.fn();

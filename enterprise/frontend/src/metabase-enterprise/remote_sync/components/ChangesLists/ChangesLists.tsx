@@ -2,16 +2,14 @@ import { t } from "ttag";
 
 import { Box, Loader, Text } from "metabase/ui";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
-import type { Collection } from "metabase-types/api";
 
 import { AllChangesView } from "./AllChangesView";
 
 interface ChangesListsProps {
-  collections: Collection[];
   title?: string;
 }
 
-export const ChangesLists = ({ collections, title }: ChangesListsProps) => {
+export const ChangesLists = ({ title }: ChangesListsProps) => {
   const { data: dirtyData, isLoading: isLoadingChanges } =
     useGetRemoteSyncChangesQuery(undefined, {
       refetchOnMountOrArgChange: true,
@@ -31,18 +29,12 @@ export const ChangesLists = ({ collections, title }: ChangesListsProps) => {
   if (allEntities.length === 0) {
     return (
       <Box ta="center" py="xl">
-        <Text c="text-light" size="sm">
+        <Text c="text-tertiary" size="sm">
           {t`No changes to push`}
         </Text>
       </Box>
     );
   }
 
-  return (
-    <AllChangesView
-      entities={allEntities}
-      collections={collections}
-      title={title}
-    />
-  );
+  return <AllChangesView entities={allEntities} title={title} />;
 };

@@ -182,7 +182,10 @@ function recursiveCheckFields(id, i = 0) {
   cy.request("GET", `/api/database/${id}/schemas`).then(({ body: schemas }) => {
     const [schema] = schemas;
     if (schema) {
-      cy.request("GET", `/api/database/${id}/schema/${schema}`)
+      cy.request(
+        "GET",
+        `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
+      )
         .then(({ body: schema }) => {
           return schema[0].id;
         })
@@ -284,11 +287,15 @@ export function createTestRoles({ type, isWritable }) {
  * @param {Object} obj
  * @param {number} [obj.databaseId] - Defaults to WRITABLE_DB_ID
  * @param {string} obj.name - The table's real name, not its display name
+ * @param {string} [obj.schema] - The table's schema name
  */
-export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
+export function getTableId({ databaseId = WRITABLE_DB_ID, name, schema }) {
   return cy.request("GET", "/api/table").then(({ body: tables }) => {
     const table = tables.find(
-      (table) => table.db_id === databaseId && table.name === name,
+      (table) =>
+        table.db_id === databaseId &&
+        table.name === name &&
+        (schema ? table.schema === schema : true),
     );
     if (!table) {
       throw new TypeError(`Table with name ${name} cannot be found`);

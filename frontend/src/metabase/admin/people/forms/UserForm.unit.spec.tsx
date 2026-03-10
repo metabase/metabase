@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
@@ -34,12 +34,19 @@ const USER = createMockUser({
   ],
 });
 
+interface SetupOpts {
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  initialValues?: typeof USER;
+  external?: boolean;
+  tenants?: Tenant[];
+}
+
 const setup = ({
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   initialValues = USER,
   external = false,
   tenants = [] as Tenant[],
-} = {}) => {
+}: SetupOpts = {}) => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
 
@@ -56,8 +63,10 @@ const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   renderWithProviders(
@@ -185,7 +194,7 @@ describe("UserForm", () => {
 
     it("should show login attributes widget", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -200,7 +209,7 @@ describe("UserForm", () => {
 
     it("should allow you to add a login attribute", async () => {
       const { onSubmit } = setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -235,7 +244,7 @@ describe("UserForm", () => {
 
     it("should allow you to remove a login attribute", async () => {
       const { onSubmit } = setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -258,7 +267,7 @@ describe("UserForm", () => {
 
     it("should should not change the order of the inputs when working with numbers (#35316)", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -276,16 +285,16 @@ describe("UserForm", () => {
 
     it("should show errors messages and disable form submit when 2 login attributes have the same key (#30196)", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
       await userEvent.click(await screen.findByText("Add an attribute"));
 
       // We need a delay in typing into the form so that the error
-      // state is handled apropriately. Formik clears errors when you call
+      // state is handled appropriately. Formik clears errors when you call
       // setValue, so we need to ensure that no other setValue calls are in
-      // flight before typing the letter can causes the error.
+      // flight before typing the letter can cause the error.
       await userEvent.type(
         (await screen.findAllByPlaceholderText("Key"))[1],
         "team",
@@ -312,7 +321,7 @@ describe("UserForm", () => {
 
     it("should require tenant_id for tenant users", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         external: true,
         tenants: TENANTS,
         initialValues: {
@@ -330,7 +339,7 @@ describe("UserForm", () => {
 
     it("should allow you to submit when tenant_id is selected", async () => {
       const { onSubmit } = setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         external: true,
         tenants: TENANTS,
         initialValues: {

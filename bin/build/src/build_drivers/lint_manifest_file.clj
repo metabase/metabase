@@ -26,7 +26,7 @@
 (s/def ::contact-info (spell/keys :req-un [::name]
                                   :opt-un [::address]))
 
-(def ^:private property-types #{"string" "text" "textFile" "boolean" "secret" "info" "schema-filters" "section"})
+(def ^:private property-types #{"string" "text" "textFile" "boolean" "secret" "info" "schema-filters" "section" "password"})
 
 (s/def ::display-name string?)
 (s/def ::default any?)
@@ -47,7 +47,15 @@
                       :merge-map ::connection-property-map))
 (s/def ::merge-map (spell/keys :req-un [::merge]))
 
+(s/def ::container-style-type #{"grid" "component"})
+(s/def ::container-style (s/cat :type ::container-style-type :value string?))
+(s/def ::fields (s/coll-of ::connection-property))
+(s/def ::group-map (spell/keys :req-un [::container-style ::fields]))
+(s/def ::group-property (spell/keys :req-un [::group]))
+(s/def ::group ::group-map)
+
 (s/def ::connection-property (s/or :merge-with ::merge-map
+                                   :group-with ::group-property
                                    :property-name ::raw-property-name-ref
                                    :property-map (s/merge (spell/keys :req-un [::name]) ::connection-property-map)))
 

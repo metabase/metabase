@@ -2,7 +2,7 @@ import { c, msgid, ngettext, t } from "ttag";
 
 import type { DependencyNode } from "metabase-types/api";
 
-import type { DependentGroup } from "./types";
+import type { DependentGroup } from "../../../types";
 
 export function getDependentGroups(node: DependencyNode): DependentGroup[] {
   const {
@@ -11,11 +11,13 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     metric = 0,
     table = 0,
     transform = 0,
+    "workspace-transform": workspaceTransform = 0,
     snippet = 0,
     dashboard = 0,
     document = 0,
     sandbox = 0,
     segment = 0,
+    measure = 0,
   } = node.dependents_count ?? {};
 
   const groups: DependentGroup[] = [
@@ -24,11 +26,13 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
     { type: "metric", count: metric },
     { type: "table", count: table },
     { type: "transform", count: transform },
+    { type: "workspace-transform", count: workspaceTransform },
     { type: "snippet", count: snippet },
     { type: "dashboard", count: dashboard },
     { type: "document", count: document },
     { type: "sandbox", count: sandbox },
     { type: "segment", count: segment },
+    { type: "measure", count: measure },
   ];
 
   return groups.filter(({ count }) => count !== 0);
@@ -65,6 +69,12 @@ export function getDependentGroupLabel({
       return ngettext(msgid`${count} table`, `${count} tables`, count);
     case "transform":
       return ngettext(msgid`${count} transform`, `${count} transforms`, count);
+    case "workspace-transform":
+      return ngettext(
+        msgid`${count} workspace transform`,
+        `${count} workspace transforms`,
+        count,
+      );
     case "snippet":
       return ngettext(msgid`${count} snippet`, `${count} snippet`, count);
     case "dashboard":
@@ -81,6 +91,12 @@ export function getDependentGroupLabel({
       return c("{0} is the number of segments").ngettext(
         msgid`${count} segment`,
         `${count} segments`,
+        count,
+      );
+    case "measure":
+      return c("{0} is the number of measures").ngettext(
+        msgid`${count} measure`,
+        `${count} measures`,
         count,
       );
   }

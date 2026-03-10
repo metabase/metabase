@@ -72,7 +72,7 @@ export type ValuesSourceType = null | "card" | "static-list";
 export interface ValuesSourceConfig {
   values?: string[] | ParameterValue[];
   card_id?: CardId;
-  value_field?: unknown[];
+  value_field?: FieldReference;
 }
 
 export type VariableTarget = ["template-tag", string];

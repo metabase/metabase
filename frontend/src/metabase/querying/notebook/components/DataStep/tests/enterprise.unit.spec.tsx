@@ -7,7 +7,7 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 
 function setup(opts: SetupOpts = {}) {
   return baseSetup({
-    hasEnterprisePlugins: true,
+    enterprisePlugins: ["embedding"],
     ...opts,
   });
 }

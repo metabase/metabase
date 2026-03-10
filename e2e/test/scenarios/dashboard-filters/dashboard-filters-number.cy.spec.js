@@ -49,7 +49,7 @@ describe("scenarios > dashboard > filters > number", () => {
 
     DASHBOARD_NUMBER_FILTERS.forEach(
       ({ operator, value, representativeResult }, index) => {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         H.filterWidget().eq(index).click();
         addWidgetNumberFilter(value);
         cy.wait("@dashboardData");
@@ -66,7 +66,7 @@ describe("scenarios > dashboard > filters > number", () => {
   it("should work when set as the default filter", () => {
     H.setFilter("Number", "Equal to");
     H.selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     addWidgetNumberFilter("2.07");

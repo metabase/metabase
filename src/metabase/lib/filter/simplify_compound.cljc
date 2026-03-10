@@ -68,10 +68,10 @@
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
   and duplicate subclauses from the clauses."
   [x]
-  (lib.util.match/replace x
+  (lib.util.match/replace-lite x
     ;; double negation, eliminate both
     [:not opts [:not arg-opts arg-arg]]
-    (recur
+    (&recur
      ;; preserve options from the collapsed clauses.
      (lib.options/update-options arg-arg merge arg-opts opts))
 

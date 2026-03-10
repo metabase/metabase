@@ -1,18 +1,21 @@
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import {
-  setupPropertiesEndpoints,
-  setupSettingsEndpoints,
-} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Collection } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockSettings,
-} from "metabase-types/api/mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
+
+// Mock useRemoteSyncDirtyState
+const mockIsCollectionDirty = jest.fn(
+  (_id: number | string | undefined) => false,
+);
+jest.mock("../../hooks/use-remote-sync-dirty-state", () => ({
+  useRemoteSyncDirtyState: () => ({
+    isCollectionDirty: mockIsCollectionDirty,
+  }),
+}));
 
 import { CollectionsNavTree } from "./CollectionsNavTree";
 
@@ -29,34 +32,28 @@ const createMockCollectionTreeItem = (
 
 const setupEndpoints = ({
   collections = [createMockCollectionTreeItem()],
-  dirty = [],
-  changedCollections = {},
 }: {
   collections?: Collection[];
-  dirty?: { id: number; name: string; model: string; collection_id: number }[];
-  changedCollections?: Record<number, boolean>;
 } = {}) => {
   fetchMock.get("path:/api/collection", collections);
-  fetchMock.get("path:/api/ee/remote-sync/dirty", {
-    dirty,
-    changedCollections,
-  });
-  setupPropertiesEndpoints(createMockSettings());
-  setupSettingsEndpoints([]);
 };
 
 const setup = ({
   collections = [createMockCollectionTreeItem()],
   collectionsList = [createMockCollectionTreeItem()],
-  dirty = [],
-  changedCollections = {},
+  dirtyCollectionIds = [] as number[],
 }: {
   collections?: Collection[];
   collectionsList?: Collection[];
-  dirty?: { id: number; name: string; model: string; collection_id: number }[];
-  changedCollections?: Record<number, boolean>;
+  dirtyCollectionIds?: number[];
 } = {}) => {
-  setupEndpoints({ collections: collectionsList, dirty, changedCollections });
+  setupEndpoints({ collections: collectionsList });
+
+  // Configure mock to return true for dirty collection IDs
+  mockIsCollectionDirty.mockImplementation(
+    (id: number | string | undefined) =>
+      typeof id === "number" && dirtyCollectionIds.includes(id),
+  );
 
   return renderWithProviders(
     <Route
@@ -82,6 +79,9 @@ const setup = ({
 describe("CollectionsNavTree", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    fetchMock.removeRoutes();
+    fetchMock.clearHistory();
+    mockIsCollectionDirty.mockReturnValue(false);
   });
 
   describe("rendering", () => {
@@ -124,8 +124,7 @@ describe("CollectionsNavTree", () => {
       setup({
         collections: [collection],
         collectionsList: [collection],
-        dirty: [{ id: 1, name: "Card", model: "card", collection_id: 1 }],
-        changedCollections: { 1: true },
+        dirtyCollectionIds: [1],
       });
 
       await waitFor(() => {
@@ -147,8 +146,7 @@ describe("CollectionsNavTree", () => {
       setup({
         collections: [collection],
         collectionsList: [collection],
-        dirty: [{ id: 1, name: "Card", model: "card", collection_id: 1 }],
-        changedCollections: { 1: true },
+        dirtyCollectionIds: [1],
       });
 
       await waitFor(() => {
@@ -169,8 +167,7 @@ describe("CollectionsNavTree", () => {
       setup({
         collections: [syncedCollection],
         collectionsList: [syncedCollection],
-        dirty: [],
-        changedCollections: {},
+        dirtyCollectionIds: [],
       });
 
       await waitFor(() => {
@@ -197,8 +194,7 @@ describe("CollectionsNavTree", () => {
       setup({
         collections: [dirtyCollection, cleanCollection],
         collectionsList: [dirtyCollection, cleanCollection],
-        dirty: [{ id: 1, name: "Card", model: "card", collection_id: 1 }],
-        changedCollections: { 1: true },
+        dirtyCollectionIds: [1],
       });
 
       await waitFor(() => {

@@ -5,9 +5,10 @@ import styled from "@emotion/styled";
 import type { ComponentProps } from "react";
 import { forwardRef } from "react";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import { alpha } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import type { IconProps } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
@@ -20,7 +21,7 @@ export const SidebarIcon = styled(
     },
   ),
 )<{
-  color?: string | null;
+  color?: ColorName | string;
   isSelected: boolean;
 }>`
   ${(props) =>
@@ -54,6 +55,11 @@ export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
   padding-left: ${(props) => props.depth}rem;
   border-radius: 4px;
 
+  &:focus-within {
+    outline: 2px solid var(--mb-color-focus);
+    outline-offset: -2px;
+  }
+
   ${ExpandToggleButton} {
     ${(props) => props.isSelected && activeColorCSS}
   }
@@ -78,7 +84,7 @@ export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
 `;
 
 const collectionDragAndDropHoverStyle = css`
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: var(--mb-color-brand);
 `;
 
@@ -106,10 +112,20 @@ export const FullWidthButton = styled.button<{ isSelected: boolean }>`
       color: var(--mb-color-brand);
     }
   }
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
 `;
 
 export const FullWidthLink = styled(Link)`
   ${itemContentStyle}
+
+  &:focus,
+  &:focus-visible {
+    outline: none !important;
+  }
 `;
 
 const ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD = 35;

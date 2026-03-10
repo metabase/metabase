@@ -38,12 +38,12 @@ export function SmartScalar({
       fontSize: "14px",
     },
     value: {
-      color: getColor("text-dark"),
+      color: getColor("text-primary"),
       fontSize: "24px",
       fontWeight: 700,
     },
     date: {
-      color: getColor("text-dark"),
+      color: getColor("text-primary"),
       fontWeight: 700,
     },
     comparisonList: {
@@ -106,16 +106,16 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       marginRight: "6px",
     },
     percentChange: {
-      color: comparison.changeColor || getColor("text-light"),
+      color: comparison.changeColor || getColor("text-tertiary"),
       fontWeight: 900,
       marginRight: 4,
     },
     comparisonDescription: {
-      color: getColor("text-medium"),
+      color: getColor("text-secondary"),
       fontWeight: 700,
     },
     comparisonValue: {
-      color: getColor("text-light"),
+      color: getColor("text-tertiary"),
       fontWeight: 700,
     },
   };

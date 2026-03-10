@@ -363,7 +363,7 @@ describe("nav > containers > MainNavbar", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not display the new collection button if a user has no write permisisons", async () => {
+    it("should not display the new collection button if a user has no write permissions", async () => {
       await setup({
         user: createMockUser({ can_write_any_collection: false }),
       });

@@ -1,15 +1,23 @@
 (ns metabase.task-history.models.task-history
   (:require
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [clojure.tools.logging]
+   [clojure.tools.logging.impl]
    [java-time.api :as t]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.task-history.models.task-run :as task-run]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (clojure.lang PersistentQueue)
+           (java.time Clock)
+           (org.apache.commons.lang3.exception ExceptionUtils)))
 
 (set! *warn-on-reflection* true)
 
@@ -62,6 +70,7 @@
 
 (t2/deftransforms :model/TaskHistory
   {:task_details mi/transform-json-eliding
+   :logs         mi/transform-json
    :status       mi/transform-keyword})
 
 (defn- params->where
@@ -82,13 +91,13 @@
     dir :sort_direction}]
   {:order-by [[col dir]]})
 
-(def ^:private avaialble-sort-columns
+(def ^:private available-sort-columns
   #{:duration :ended_at :started_at})
 
 (def SortParams
   "Sorting map schema."
   [:map
-   [:sort_column    {:default :started_at} (into [:enum] avaialble-sort-columns)]
+   [:sort_column    {:default :started_at} (into [:enum] available-sort-columns)]
    [:sort_direction {:default :desc}       [:enum :asc :desc]]])
 
 (mu/defn all
@@ -142,6 +151,73 @@
                             info)]
     (t2/update! :model/TaskHistory th-id updated-info)))
 
+(def ^:dynamic ^Clock *log-capture-clock*
+  "The java.time.Clock used for captured log message `:timestamp` values. Can be overridden for tests."
+  (Clock/systemUTC))
+
+(def ^:private log-capture-truncation-threshold 100)
+
+(defn- log-capture-atom []
+  (atom {:queue PersistentQueue/EMPTY
+         :trunc {:start-timestamp nil, :last-timestamp nil :levels {}}}))
+
+(defn- elide-string
+  "Elides the string to the specified length, adding '...' if it exceeds that length."
+  [s max-length]
+  (if (> (count s) max-length)
+    (str (subs s 0 (- max-length 3)) "...")
+    s))
+
+(defn- format-timestamp
+  "Format a timestamp from the clock as an ISO instant string."
+  [^Clock clock]
+  (t/format :iso-instant (t/instant clock)))
+
+(defn- log-capture-entries [{:keys [queue trunc]}]
+  (if (nil? (:last-timestamp trunc))
+    (vec queue)
+    (into [{:level     :info
+            :timestamp (:last-timestamp trunc)
+            :fqns      "metabase.task-history"
+            :msg       (format "[truncated] %d messages" (apply + (vals (:levels trunc))))
+            :trunc     trunc}]
+          queue)))
+
+(defn- log-capture-entry [fqns level msg ^Throwable e]
+  (cond->
+   {:level     level
+    :timestamp (format-timestamp *log-capture-clock*)
+    :fqns      (str fqns)
+    :msg       (elide-string (str msg) 4000)
+    :process_uuid config/local-process-uuid}
+    e (assoc :exception
+             (take 20 (map #(elide-string (str %) 500)
+                           (seq (ExceptionUtils/getStackFrames e)))))))
+
+(defn- add-log-capture-entry [{:keys [queue, trunc]} entry]
+  (if (< (count queue) log-capture-truncation-threshold)
+    {:queue (conj queue entry), :trunc trunc}
+    (let [removed                           (peek queue)
+          {:keys [start-timestamp, levels]} trunc]
+      {:queue (conj (pop queue) entry)
+       :trunc {:levels          (update levels (:level removed) (fnil inc 0))
+               :start-timestamp (or start-timestamp (:timestamp removed))
+               :last-timestamp  (:timestamp removed)}})))
+
+(defn- log-capture-factory [base-factory logs-atom]
+  (reify clojure.tools.logging.impl/LoggerFactory
+    (name [_] "metabase.task_history")
+    (get-logger [_ logger-ns]
+      (let [base-logger (clojure.tools.logging.impl/get-logger base-factory logger-ns)]
+        (reify clojure.tools.logging.impl/Logger
+          (enabled? [_ level] (clojure.tools.logging.impl/enabled? base-logger level))
+          (write! [_ level ex msg]
+            (case level
+              (:fatal :error :warn :info)
+              (swap! logs-atom add-log-capture-entry (log-capture-entry logger-ns level msg ex))
+              nil)
+            (clojure.tools.logging.impl/write! base-logger level ex msg)))))))
+
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."
   [info :- TaskHistoryInfo f]
@@ -149,26 +225,33 @@
         on-fail-info    (or (:on-fail-info info) (fn [& args] (first args)))
         info            (dissoc info :on-success-info :on-fail-info)
         start-time-ns   (System/nanoTime)
+        run-id          (task-run/current-run-id)
         th-id           (t2/insert-returning-pk! :model/TaskHistory
-                                                 (assoc info
-                                                        :status     :started
-                                                        :started_at (t/instant)))]
-    (try
-      (u/prog1 (f)
-        (update-task-history! th-id start-time-ns (on-success-info {:status       :success
-                                                                    :task_details (:task_details info)}
-                                                                   <>)))
-      (catch Throwable e
-        (update-task-history! th-id start-time-ns
-                              (on-fail-info {:task_details {:status        :failed
-                                                            :exception     (class e)
-                                                            :message       (.getMessage e)
-                                                            :stacktrace    (u/filtered-stacktrace e)
-                                                            :ex-data       (ex-data e)
-                                                            :original-info (:task_details info)}
-                                             :status       :failed}
-                                            e))
-        (throw e)))))
+                                                 (cond-> (assoc info
+                                                                :status     :started
+                                                                :started_at (t/instant))
+                                                   run-id (assoc :run_id run-id)))
+        logs-atom       (log-capture-atom)]
+    (binding [clojure.tools.logging/*logger-factory*
+              (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]
+      (try
+        (u/prog1 (f)
+          (update-task-history! th-id start-time-ns (on-success-info {:status       :success
+                                                                      :task_details (:task_details info)
+                                                                      :logs         (log-capture-entries @logs-atom)}
+                                                                     <>)))
+        (catch Throwable e
+          (update-task-history! th-id start-time-ns
+                                (on-fail-info {:task_details {:status        :failed
+                                                              :exception     (class e)
+                                                              :message       (.getMessage e)
+                                                              :stacktrace    (u/filtered-stacktrace e)
+                                                              :ex-data       (ex-data e)
+                                                              :original-info (:task_details info)}
+                                               :logs         (log-capture-entries @logs-atom)
+                                               :status       :failed}
+                                              e))
+          (throw e))))))
 
 (defmacro with-task-history
   "Record a TaskHistory before executing the body, updating TaskHistory accordingly when the body completes.

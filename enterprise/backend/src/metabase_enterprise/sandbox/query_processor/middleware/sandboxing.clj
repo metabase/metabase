@@ -20,7 +20,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -95,7 +94,8 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    target-field-clause   :- ::lib.schema.parameter/target]
   ;; parameter targets still use legacy field refs for whatever wacko reason
-  (when-let [field-id (lib.util.match/match-one target-field-clause [:field (field-id :guard pos-int?) _opts] field-id)]
+  (when-let [field-id (lib.util.match/match-lite target-field-clause
+                        [:field (field-id :guard pos-int?) _opts] field-id)]
     (:base-type (lib.metadata/field metadata-providerable field-id))))
 
 (defn- attr-value->param-value
@@ -164,7 +164,7 @@
     ;; log the query at this point, it's useful for some purposes
     (log/debugf "Fetched query from Card %s:\n%s" card-id (u/cprint-to-str (select-keys query [:stages :parameters])))
     (cond-> query
-      ;; This will be applied, if still appropriate, by the peristence middleware
+      ;; This will be applied, if still appropriate, by the persistence middleware
       persisted?
       (assoc :persisted-info/native
              (qp.persisted/persisted-info-native-query
@@ -205,8 +205,8 @@
   [query   :- ::lib.schema/query
    card-id :- [:maybe ::lib.schema.id/card]]
   (or (when (= (count (:stages query)) 1)
-        (let [first-stage (lib.util/query-stage query 0)]
-          (when (and (lib.util/native-stage? first-stage)
+        (let [first-stage (lib/query-stage query 0)]
+          (when (and (lib/native-stage? first-stage)
                      (not (:lib/stage-metadata first-stage)))
             (when-let [cols (not-empty (native-query-metadata query))]
               (when card-id
@@ -401,8 +401,8 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (some? (lib.util.match/match-one query
-                                                          (m :guard (every-pred map? :query-permissions/sandboxed-table)))))
+    (let [metadata (assoc metadata :is_sandboxed (boolean (lib.util.match/match-lite query
+                                                            {:query-permissions/sandboxed-table sandboxed?} sandboxed?)))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

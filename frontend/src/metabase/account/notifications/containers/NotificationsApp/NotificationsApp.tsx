@@ -10,7 +10,7 @@ import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUser,
 } from "metabase/selectors/user";
-import type { Alert } from "metabase-types/api";
+import type { DashboardSubscription } from "metabase-types/api";
 
 import {
   navigateToArchive,
@@ -20,7 +20,7 @@ import {
 import { NotificationList } from "../../components/NotificationList";
 
 interface NotificationsAppProps {
-  pulses: Alert[];
+  pulses: DashboardSubscription[];
   children?: ReactNode;
 }
 

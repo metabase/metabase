@@ -16,7 +16,7 @@
 <defs>
 <linearGradient id="paint0_linear_4_66" x1="42.75" y1="3" x2="42.75" y2="25.538" gradientUnits="userSpaceOnUse">
 <stop stop-color="var(--metabot-outline)"/>
-<stop offset="1" stop-color="var(--mb-color-bg-light)"/>
+<stop offset="1" stop-color="var(--mb-color-background-secondary)"/>
 </linearGradient>
 </defs>
 </svg>

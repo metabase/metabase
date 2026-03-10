@@ -87,6 +87,7 @@ Metabase's reference documentation.
 
 - [The SQL editor](./questions/native-editor/writing-sql.md)
 - [SQL parameters](./questions/native-editor/sql-parameters.md)
+- [Table variables](./questions/native-editor/table-variables.md)
 - [Referencing models and saved questions](./questions/native-editor/referencing-saved-questions-in-queries.md)
 - [Snippets](./questions/native-editor/snippets.md)
 - [Snippet folder permissions](./permissions/snippets.md)
@@ -94,6 +95,7 @@ Metabase's reference documentation.
 #### Visualizing data
 
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
+- [Box plots](./questions/visualizations/box-plot.md)
 - [Combo charts](./questions/visualizations/combo-chart.md)
 - [Detail](./questions/visualizations/detail.md)
 - [Funnel charts](./questions/visualizations/funnel.md)
@@ -149,6 +151,7 @@ Metabase's reference documentation.
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
 - [Setting up Metabot](./ai/settings.md)
+- [SQL generation](./ai/sql-generation.md)
 
 ### Exploration and organization
 
@@ -204,16 +207,12 @@ Metabase's reference documentation.
 
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
-- [Modular embedding](./embedding/modular-embedding.md)
-- [Modular embedding SDK](./embedding/sdk/introduction.md)
-- Full app embedding
-  - [Full app embedding overview](./embedding/full-app-embedding.md)
-  - [Full app embedding quick start](./embedding/full-app-embedding-quick-start-guide.md)
-- Static embedding
-  - [Static embedding overview](./embedding/static-embedding.md)
-  - [Parameters for static embeds](./embedding/static-embedding-parameters.md)
-  - [Translate embedded dashboards and questions](./embedding/translations.md)
-- [Securing embedded Metabase](./embedding/securing-embeds.md)
+- Modular embedding
+  - [SSO](./embedding/modular-embedding.md)
+  - [Guest](./embedding/guest-embedding.md)
+  - [SDK](./embedding/sdk/introduction.md)
+- [Full app embedding](./embedding/full-app-embedding.md)
+- [Securing embeds](./embedding/securing-embeds.md)
 
 ### Configuration
 

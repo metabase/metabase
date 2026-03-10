@@ -43,6 +43,17 @@
            '{:metabase/modules {api    {:uses #{search}}
                                 search {:api  #{metabase.search.core}}}}))))
 
+(deftest ^:parallel module-checker-friends-test
+  (is (= []
+         (lint-modules
+          '(ns metabase.search-rest.api
+             (:require
+              [metabase.search.config :as search.config]
+              [metabase.search.core :as search]))
+          '{:metabase/modules {search      {:api     #{metabase.search.core}
+                                            :friends #{search-rest}}
+                               search-rest {:uses #{search}}}}))))
+
 (deftest ^:parallel module-checker-api-namespaces-ignore-test
   (is (empty? (lint-modules
                '(ns metabase.api.search

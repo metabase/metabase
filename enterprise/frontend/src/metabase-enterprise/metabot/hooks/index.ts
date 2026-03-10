@@ -1,2 +1,3 @@
 export { useMetabotAgent } from "./use-metabot-agent";
-export { useMetabotChatHandlers } from "./use-metabot-chat-handlers";
+export { useMetabotAgentsManager } from "./use-metabot-agents-manager";
+export { useMetabotSQLSuggestion } from "./use-metabot-sql-suggestion";

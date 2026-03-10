@@ -5,10 +5,10 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -28,7 +28,7 @@
 (t2/deftransforms :model/NativeQuerySnippet
   {:template_tags {:in mi/json-in
                    :out (comp (mi/catch-normalization-exceptions
-                               #(lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map %))
+                               #(lib/normalize :metabase.lib.schema.template-tag/template-tag-map %))
                               mi/json-out-without-keywordization)}})
 
 (defmethod collection/allowed-namespaces :model/NativeQuerySnippet
@@ -122,6 +122,22 @@
   [& args]
   (apply snippet.perms/can-update? args))
 
+(methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
+  [_model k snippets]
+  (let [non-nil-snippets (remove nil? snippets)
+        snippets-with-collections (t2/hydrate non-nil-snippets :collection)
+        editable-map (remote-sync/batch-model-editable? :model/NativeQuerySnippet non-nil-snippets)]
+    (mi/instances-with-hydrated-data
+     snippets k
+     #(into {}
+            (map (fn [snippet]
+                   [(:id snippet)
+                    (and (get editable-map (:id snippet) true)
+                         (mi/can-write? snippet))]))
+            snippets-with-collections)
+     :id
+     {:default false})))
+
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
 (def NativeQuerySnippetName
@@ -137,14 +153,17 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes/extract-query "NativeQuerySnippet" [_ {:keys [collection-set where]}]
-  ;; NativeQuerySnippets leave in their own special collections, so the logic is the following:
+(defmethod serdes/extract-query "NativeQuerySnippet" [_ {:keys [collection-set where skip-archived]}]
+  ;; NativeQuerySnippets live in their own special collections, so the logic is the following:
   ;; - you either are exporting one of those
   ;; - or it was requested as a dependency of some Card, so export it regardless of collection
-  (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:or
-                                                                  [:in :collection_id (remove nil? collection-set)]
-                                                                  (when (some nil? collection-set)
-                                                                    [:= :collection_id nil])]}
+  (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:and
+                                                                  (when skip-archived [:not :archived])
+                                                                  [:or
+                                                                   (when-let [collection-ids (not-empty (remove nil? collection-set))]
+                                                                     [:in :collection_id collection-ids])
+                                                                   (when (some nil? collection-set)
+                                                                     [:= :collection_id nil])]]}
                                                    where (sql.helpers/where :or where))))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]

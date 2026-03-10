@@ -4,7 +4,7 @@ import * as Yup from "yup";
 
 import { render, screen, waitFor } from "__support__/ui";
 
-import FormToggle from "./FormToggle";
+import { FormToggle } from "./FormToggle";
 
 const TEST_SCHEMA = Yup.object({
   value: Yup.boolean().isTrue("error"),

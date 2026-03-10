@@ -10,6 +10,7 @@ import type {
   MentionableUser,
   RecentItem,
   SearchModel,
+  SearchRequest,
   SearchResult,
 } from "metabase-types/api";
 
@@ -27,6 +28,8 @@ import {
   filterRecents,
 } from "./suggestionUtils";
 
+export type EntitySearchOptions = Omit<SearchRequest, "q" | "models" | "limit">;
+
 interface UseEntitySearchOptions {
   query: string;
   onSelectRecent: (item: RecentItem) => void;
@@ -35,6 +38,7 @@ interface UseEntitySearchOptions {
   enabled?: boolean;
   shouldFetchRecents?: boolean;
   searchModels?: SuggestionModel[];
+  searchOptions?: EntitySearchOptions;
 }
 
 interface UseEntitySearchResult {
@@ -51,6 +55,7 @@ export function useEntitySearch({
   enabled = true,
   shouldFetchRecents = true,
   searchModels = LINK_SEARCH_MODELS,
+  searchOptions = {},
 }: UseEntitySearchOptions): UseEntitySearchResult {
   const { data: recents = [], isLoading: isRecentsLoading } =
     useListRecentsQuery(undefined, {
@@ -75,6 +80,7 @@ export function useEntitySearch({
         (model): model is SearchModel => model !== "user",
       ),
       limit: LINK_SEARCH_LIMIT,
+      ...searchOptions,
     },
     {
       skip: !enabled || shouldFetchRecents,

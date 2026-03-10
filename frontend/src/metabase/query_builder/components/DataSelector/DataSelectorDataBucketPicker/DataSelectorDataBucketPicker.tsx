@@ -1,4 +1,4 @@
-import SelectList from "metabase/common/components/SelectList";
+import { SelectList } from "metabase/common/components/SelectList";
 import { Box, Flex, Icon } from "metabase/ui";
 
 import type { DataTypeInfoItem } from "../types";
@@ -10,7 +10,7 @@ type DataSelectorDataBucketPickerProps = {
   onChangeDataBucket: (id: DataTypeInfoItem["id"]) => void;
 };
 
-const DataSelectorDataBucketPicker = ({
+export const DataSelectorDataBucketPicker = ({
   dataTypes,
   onChangeDataBucket,
 }: DataSelectorDataBucketPickerProps) => (
@@ -69,6 +69,3 @@ const DataBucketListItem = ({
     </Box>
   </SelectList.BaseItem>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorDataBucketPicker;

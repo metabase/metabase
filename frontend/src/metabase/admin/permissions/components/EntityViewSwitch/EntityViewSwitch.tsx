@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import Radio from "metabase/common/components/Radio";
+import { Radio } from "metabase/common/components/Radio";
 
-import { EntityViewSwitchRoot } from "./EntityViewSwitch.styled";
+import S from "./EntityViewSwitch.module.css";
 
 type EntityView = "group" | "database";
 
@@ -15,7 +15,7 @@ export const EntityViewSwitch = ({
   value,
   onChange,
 }: EntityViewSwitchProps) => (
-  <EntityViewSwitchRoot>
+  <div className={S.EntityViewSwitchRoot}>
     <Radio<string>
       variant="bubble"
       colorScheme="accent7"
@@ -32,5 +32,5 @@ export const EntityViewSwitch = ({
       value={value}
       onChange={onChange}
     />
-  </EntityViewSwitchRoot>
+  </div>
 );

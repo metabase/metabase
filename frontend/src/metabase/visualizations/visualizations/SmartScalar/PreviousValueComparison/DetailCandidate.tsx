@@ -1,12 +1,13 @@
 import { jt } from "ttag";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { isEmpty } from "metabase/lib/validate";
 import { Text } from "metabase/ui";
 
 import type { ComparisonResult } from "../compute";
 
 interface Props {
-  color: string;
+  color: ColorName;
   comparison: ComparisonResult;
   valueFormatted: string | number | JSX.Element | null;
 }

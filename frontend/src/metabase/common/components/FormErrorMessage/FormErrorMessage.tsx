@@ -13,7 +13,7 @@ export interface FormErrorMessageProps
 /**
  * @deprecated: use FormErrorMessage from "metabase/forms"
  */
-const FormErrorMessage = forwardRef(function FormErrorMessage(
+export const FormErrorMessage = forwardRef(function FormErrorMessage(
   { inline, ...props }: FormErrorMessageProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -28,6 +28,3 @@ const FormErrorMessage = forwardRef(function FormErrorMessage(
     </ErrorMessageRoot>
   );
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormErrorMessage;

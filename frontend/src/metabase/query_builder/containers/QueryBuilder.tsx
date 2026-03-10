@@ -9,6 +9,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
@@ -17,7 +18,6 @@ import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Timelines } from "metabase/entities/timelines";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
-import { isWithinIframe } from "metabase/lib/dom";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -331,10 +331,12 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const handleSave = useSaveQuestion({ scheduleCallback });
 
   useMount(() => {
-    const isRouteInSync = window.location.pathname === location.pathname;
-    if (isWithinIframe() && !isRouteInSync) {
-      return null; // Don't initialize query builder until route syncs (metabase#65500)
+    // Prevent initializing the query builder if the route is out of sync
+    // metabase#65500
+    if (!isRouteInSync(location.pathname)) {
+      return;
     }
+
     initializeQB(location, params);
   });
 

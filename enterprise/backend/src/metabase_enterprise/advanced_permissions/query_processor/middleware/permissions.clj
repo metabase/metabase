@@ -6,7 +6,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise-schema]]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.i18n :refer [tru]]
@@ -19,30 +18,6 @@
   [query :- ::qp.schema/any-query]
   (some-> query :info :context name (str/includes? "download")))
 
-(defmulti ^:private current-user-download-perms-level
-  {:arglists '([mbql5-query])}
-  (mu/fn [query :- ::lib.schema/query]
-    (:lib/type (lib/query-stage query -1))))
-
-(defmethod current-user-download-perms-level :mbql.stage/native
-  [{database-id :database, :as _query}]
-  (perms/native-download-permission-for-user api/*current-user-id* database-id))
-
-(mu/defmethod current-user-download-perms-level :mbql.stage/mbql
-  [{db-id :database, :as query} :- ::lib.schema/query]
-  (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)
-        perms (if (or native? (lib/any-native-stage-not-introduced-by-sandbox? query))
-                ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
-                ;; download perms
-                #{(perms/native-download-permission-for-user api/*current-user-id* db-id)}
-                (set (map (fn table-perms-lookup [table-id]
-                            (perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
-                          table-ids)))]
-     ;; The download perm level for a query should be equal to the lowest perm level of any table referenced by the query.
-    (or (perms :no)
-        (perms :ten-thousand-rows)
-        :one-million-rows)))
-
 (defenterprise-schema apply-download-limit :- ::lib.schema/query
   "Pre-processing middleware to apply row limits to MBQL export queries if the user has `ten-thousand-rows` download
   perms. This does not apply to native queries, which are instead limited by the [[limit-download-result-rows]]
@@ -52,7 +27,7 @@
   (cond-> query
     (and (is-download? query)
          (= (:lib/type (lib/query-stage query -1)) :mbql.stage/mbql)
-         (= (current-user-download-perms-level query) :ten-thousand-rows))
+         (= (perms/download-perms-level query api/*current-user-id*) :ten-thousand-rows))
     (lib/limit ((fnil min Integer/MAX_VALUE) (lib/current-limit query -1) max-rows-in-limited-downloads))))
 
 (defenterprise-schema limit-download-result-rows :- ::qp.schema/rff
@@ -63,7 +38,7 @@
   [query :- ::lib.schema/query
    rff   :- ::qp.schema/rff]
   (if (and (is-download? query)
-           (= (current-user-download-perms-level query) :ten-thousand-rows))
+           (= (perms/download-perms-level query api/*current-user-id*) :ten-thousand-rows))
     (fn limit-download-result-rows* [metadata]
       ((take max-rows-in-limited-downloads) (rff metadata)))
     rff))
@@ -79,7 +54,7 @@
   (mu/fn [query :- ::lib.schema/query
           rff   :- ::qp.schema/rff]
     (let [download-perms-level (if api/*current-user-id*
-                                 (current-user-download-perms-level query)
+                                 (perms/download-perms-level query api/*current-user-id*)
                                  ;; If no user is bound, assume full download permissions (e.g. for public questions)
                                  :one-million-rows)]
       (when (and (is-download? query)

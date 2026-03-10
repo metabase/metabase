@@ -8,7 +8,7 @@
 }
 
 .SelectWrapper {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &[data-disabled] {
     opacity: 1;
@@ -38,19 +38,19 @@
 
 .SelectInput {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
 
   &[data-disabled] {
     opacity: 1;
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
   }
 
   &::placeholder {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
   }
 
   [data-position="right"] {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
   }
 
   /*
@@ -79,11 +79,11 @@
 
   [data-disabled] & {
     opacity: 1;
-    color: var(--mb-color-text-light);
-    background-color: var(--mb-color-bg-medium);
+    color: var(--mb-color-text-tertiary);
+    background-color: var(--mb-color-background-tertiary);
 
     &::placeholder {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
     }
   }
 }
@@ -108,7 +108,7 @@
 
   &[data-combobox-disabled] {
     cursor: default;
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
     pointer-events: none;
     opacity: 0.75;
   }
@@ -137,7 +137,7 @@
 }
 
 .SelectItemsNothingFound {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   padding: var(--mantine-spacing-sm);
   font-size: var(--select-item-font-size);
   line-height: var(--select-item-line-height);
@@ -153,7 +153,7 @@
 }
 
 .Dropdown {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   border-color: var(--mb-color-border);
 }
 
@@ -164,5 +164,5 @@
 }
 
 .SelectClearButton {
-  color: var(--mb-color-text-dark) !important;
+  color: var(--mb-color-text-primary) !important;
 }

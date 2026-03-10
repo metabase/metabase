@@ -3,7 +3,7 @@ import { action } from "@storybook/addon-actions";
 import { ReduxProvider } from "__support__/storybook";
 import { Flex } from "metabase/ui";
 
-import { type UpsellCardProps, _UpsellCard } from "./UpsellCard";
+import { UpsellCardInner, type UpsellCardProps } from "./UpsellCard";
 
 const args = {
   title: "Ice Cream",
@@ -60,13 +60,13 @@ const Wrapper = (args: {
 
 const DefaultTemplate = (args: UpsellCardProps) => (
   <Wrapper>
-    <_UpsellCard {...args} />
+    <UpsellCardInner {...args} />
   </Wrapper>
 );
 
 export default {
   title: "Patterns/Upsells/Card",
-  component: _UpsellCard,
+  component: UpsellCardInner,
   args,
   argTypes,
 };

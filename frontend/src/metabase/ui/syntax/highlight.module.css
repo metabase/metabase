@@ -32,12 +32,12 @@
 .comment,
 .lineComment,
 .blockComment {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-style: italic;
 }
 
 .brace {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .squareBracket {
@@ -58,7 +58,7 @@
 
 .arithmeticOperator,
 .compareOperator {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .escape {

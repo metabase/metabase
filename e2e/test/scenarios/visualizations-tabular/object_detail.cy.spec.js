@@ -95,11 +95,18 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     };
 
     H.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("Wait for the table to fully render");
     cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
+    cy.findByTestId("table-header")
+      .should("be.visible")
+      .and("contain", "Subtotal");
+    cy.findByTestId("table-body")
+      .should("be.visible")
+      .and("contain", "37.65")
+      .and("contain", "110.93");
 
     cy.log("Check object details for the first row");
-    cy.findAllByTestId("cell-data").filter(":contains(37.65)").realHover();
-    cy.findAllByTestId("detail-shortcut").eq(1).should("be.hidden");
     H.openObjectDetail(0);
     cy.findByTestId("object-detail").within(() => {
       cy.findByRole("heading", { name: "Awesome Concrete Shoes" }).should(
@@ -111,8 +118,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
 
     cy.log("Check object details for the second row");
-    cy.findAllByTestId("cell-data").filter(":contains(110.93)").realHover();
-    cy.findAllByTestId("detail-shortcut").eq(0).should("be.hidden");
     H.openObjectDetail(1);
     cy.findByTestId("object-detail").within(() => {
       cy.findByRole("heading", { name: "Mediocre Wooden Bench" }).should(
@@ -293,7 +298,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     drillPK({ id: 2 });
     cy.url().should("contain", "objectId=2");
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findByTestId("object-detail")
       .findAllByText("Domenica Williamson")
       .last()
@@ -359,9 +364,9 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("object-detail");
 
     cy.log("metabase(#29023)");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("People → Name").scrollIntoView().should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
   });
 
@@ -579,7 +584,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         .eq("7")
         .as("stateItem")
         .should("have.text", "State");
-      H.moveDnDKitElement(cy.get("@stateItem"), { vertical: -300 });
+      H.moveDnDKitElementByAlias("@stateItem", { vertical: -300 });
     });
 
     H.openObjectDetail(0);
@@ -991,5 +996,38 @@ describe("Object Detail > public", () => {
     cy.findByTestId("pagination-footer").within(() => {
       cy.findByText("Item 1 of 3").should("be.visible");
     });
+  });
+});
+
+describe("issue 66957", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable();
+  });
+
+  it("filter header should not hide when opening object details (metabase#66957)", () => {
+    H.tableInteractive().findByText("Quantity").click();
+    H.popover().findByText("Filter by this column").click();
+    H.popover().within(() => {
+      cy.findByText("2").click();
+      cy.button("Add filter").click();
+    });
+
+    H.openObjectDetail(5);
+
+    H.queryBuilderFiltersPanel()
+      .should("be.visible")
+      .findByText("Quantity is equal to 2")
+      .click();
+
+    H.popover().within(() => {
+      cy.findByText("3").click();
+      cy.button("Update filter").click();
+    });
+
+    H.queryBuilderFiltersPanel()
+      .findByText("Quantity is equal to 2 selections")
+      .should("be.visible");
   });
 });

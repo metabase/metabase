@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useListCardsQuery } from "metabase/api";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getIcon } from "metabase/lib/icon";
 import * as Urls from "metabase/lib/urls";
@@ -44,7 +44,7 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
     return (
       <Text
         lh={1}
-        color="text-medium"
+        color="text-secondary"
       >{t`This model is not used by any questions yet.`}</Text>
     );
   }
@@ -61,7 +61,7 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
           >
             <Group gap="sm">
               <Icon
-                c="text-dark"
+                c="text-primary"
                 name={getIcon({ model: "card", ...card }).name as IconName}
               />
               <Text lh="1.25rem" color="inherit">

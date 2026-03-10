@@ -1,7 +1,4 @@
-import _ from "underscore";
-
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
-import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
@@ -32,6 +29,35 @@ export const GTAPApi = {
 export const StoreApi = {
   tokenStatus: GET("/api/premium-features/token/status"),
 };
+
+/**
+ * Handles API errors for query endpoints. For 4xx errors from streaming query
+ * endpoints, the error response body contains the actual error data that should
+ * be displayed (just like the old 202-with-error-in-body behavior). This function
+ * converts 4xx errors into successful responses with the error data.
+ *
+ * @param {Promise} apiPromise - The API promise to handle
+ * @returns {Promise} The result or error data
+ */
+async function handleQueryApiError(apiPromise) {
+  try {
+    return await apiPromise;
+  } catch (error) {
+    // For 4xx errors, treat the error response body as a successful response
+    // (maintaining compatibility with the old 202-with-error-in-body behavior)
+    if (
+      error &&
+      typeof error === "object" &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      error.data
+    ) {
+      return error.data;
+    }
+    // For 5xx and other errors, re-throw
+    throw error;
+  }
+}
 
 // Pivot tables need extra data beyond what's described in the MBQL query itself.
 // To fetch that extra data we rely on specific APIs for pivot tables that mirrow the normal endpoints.
@@ -121,29 +147,33 @@ export async function runQuestionQuery(
     };
 
     return [
-      await maybeUsePivotEndpoint(
-        dashboardId ? DashboardApi.cardQuery : CardApi.query,
-        card,
-        question.metadata(),
-      )(queryParams, {
-        cancelled: cancelDeferred.promise,
-      }),
+      await handleQueryApiError(
+        maybeUsePivotEndpoint(
+          dashboardId ? DashboardApi.cardQuery : CardApi.query,
+          card,
+          question.metadata(),
+        )(queryParams, {
+          cancelled: cancelDeferred.promise,
+        }),
+      ),
     ];
   }
 
   const getDatasetQueryResult = (datasetQuery) => {
     const datasetQueryWithParameters = { ...datasetQuery, parameters };
-    return maybeUsePivotEndpoint(
-      MetabaseApi.dataset,
-      card,
-      question.metadata(),
-    )(
-      datasetQueryWithParameters,
-      cancelDeferred
-        ? {
-            cancelled: cancelDeferred.promise,
-          }
-        : {},
+    return handleQueryApiError(
+      maybeUsePivotEndpoint(
+        MetabaseApi.dataset,
+        card,
+        question.metadata(),
+      )(
+        datasetQueryWithParameters,
+        cancelDeferred
+          ? {
+              cancelled: cancelDeferred.promise,
+            }
+          : {},
+      ),
     );
   };
 
@@ -265,7 +295,6 @@ export const PulseApi = {
   update: PUT("/api/pulse/:id"),
   test: POST("/api/pulse/test"),
   form_input: GET("/api/pulse/form_input"),
-  preview_card: GET("/api/pulse/preview_card_info/:id"),
   unsubscribe: DELETE("/api/pulse/:id/subscription"),
 };
 
@@ -338,74 +367,6 @@ export const UtilApi = {
   },
 };
 
-export function setPublicQuestionEndpoints(uuid) {
-  const encodedUuid = encodeURIComponent(uuid);
-  setCardEndpoints({ base: publicBase, encodedUuid });
-}
-
-export function setPublicDashboardEndpoints(uuid) {
-  const encodedUuid = encodeURIComponent(uuid);
-  setDashboardEndpoints({ base: publicBase, encodedUuid });
-}
-
-/**
- * @param token {string}
- */
-export function setEmbedQuestionEndpoints(token) {
-  const encodedToken = encodeURIComponent(token);
-  setCardEndpoints({ base: getEmbedBase(), encodedToken });
-  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
-}
-
-/**
- * @param token {string}
- */
-export function setEmbedDashboardEndpoints(token) {
-  const encodedToken = encodeURIComponent(token);
-  setDashboardEndpoints({ base: getEmbedBase(), encodedToken });
-  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
-}
-
-function GET_with(url, omitKeys) {
-  return (data, options) => GET(url)({ ..._.omit(data, omitKeys) }, options);
-}
-
-function setCardEndpoints({ base, encodedUuid, encodedToken }) {
-  const prefix = `${base}/card/${encodedUuid ?? encodedToken}`;
-
-  // RTK query
-  PLUGIN_API.getRemappedCardParameterValueUrl = (_cardId, parameterId) =>
-    `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
-
-  // legacy API
-  CardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
-    "cardId",
-  ]);
-  CardApi.parameterSearch = GET_with(
-    `${prefix}/params/:paramId/search/:query`,
-    ["cardId"],
-  );
-}
-
-function setDashboardEndpoints({ base, encodedUuid, encodedToken }) {
-  const prefix = `${base}/dashboard/${encodedUuid ?? encodedToken}`;
-
-  // RTK query
-  PLUGIN_API.getRemappedDashboardParameterValueUrl = (
-    _dashboardId,
-    parameterId,
-  ) => `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
-
-  // legacy API
-  DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
-    "dashId",
-  ]);
-  DashboardApi.parameterSearch = GET_with(
-    `${prefix}/params/:paramId/search/:query`,
-    ["dashId"],
-  );
-}
-
 export const ActionsApi = {
   execute: POST("/api/action/:id/execute"),
   prefetchValues: GET("/api/action/:id/execute"),
@@ -415,11 +376,4 @@ export const ActionsApi = {
   executeDashcardAction: POST(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-};
-
-export const CacheConfigApi = {
-  list: GET("/api/cache"),
-  update: PUT("/api/cache"),
-  delete: DELETE("/api/cache"),
-  invalidate: POST("/api/cache/invalidate"),
 };

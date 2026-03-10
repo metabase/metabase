@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-external-references-for-sdk-package-code
+// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code
 import { getSdkLoaderCss } from "embedding/sdk-common/lib/get-sdk-loader-css";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
@@ -11,7 +11,7 @@ type SpinnerProps = {
 
 const SPINNER_CLASS_NAME = "metabase-spinner-loader";
 
-// eslint-disable-next-line no-color-literals
+// eslint-disable-next-line metabase/no-color-literals
 const Spinner = ({ size = "1.5rem", color = "#509EE3" }: SpinnerProps) => {
   return (
     <div>

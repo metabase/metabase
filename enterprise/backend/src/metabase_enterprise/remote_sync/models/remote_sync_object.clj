@@ -1,5 +1,13 @@
 (ns metabase-enterprise.remote-sync.models.remote-sync-object
+  "Model and queries for tracking remote-synced objects and their dirty state.
+
+   The RemoteSyncObject table stores denormalized information about objects that are
+   tracked for remote synchronization. This includes the object's name, collection_id,
+   and for Field/Segment/Table models, parent table information."
   (:require
+   [clojure.set :as set]
+   [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -9,107 +17,42 @@
 
 (derive :model/RemoteSyncObject :metabase/model)
 
-(def ^:private synced-models
-  {:collection "Collection" :report_card "Card" :document "Document" :report_dashboard "Dashboard" :native_query_snippet "NativeQuerySnippet" :timeline "Timeline"})
+;;; ------------------------------------------------- Public API -------------------------------------------------------
 
-(def ^:private items-select
-  {:collection [:collection.id
-                :collection.name
-                :collection.created_at
-                :collection.authority_level
-                [:collection.id :collection_id]
-                [nil :display]
-                [nil :query_type]
-                [nil :description]
-                [nil :updated_at]
-                [[:inline "collection"] :model]
-                [:rs_obj.status :sync_status]]
-   :report_card [:report_card.id
-                 :report_card.name
-                 :report_card.created_at
-                 [nil :authority_level]
-                 :report_card.collection_id
-                 :report_card.display
-                 :report_card.query_type
-                 :report_card.description
-                 :report_card.updated_at
-                 [[:inline "card"] :model]
-                 [:rs_obj.status :sync_status]]
-   :document [:document.id
-              :document.name
-              :document.created_at
-              [nil :authority_level]
-              :document.collection_id
-              [nil :display]
-              [nil :query_type]
-              [nil :description]
-              :document.updated_at
-              [[:inline "document"] :model]
-              [:rs_obj.status :sync_status]]
-   :report_dashboard [:report_dashboard.id
-                      :report_dashboard.name
-                      :report_dashboard.created_at
-                      [nil :authority_level]
-                      :report_dashboard.collection_id
-                      [nil :display]
-                      [nil :query_type]
-                      :report_dashboard.description
-                      :report_dashboard.updated_at
-                      [[:inline "dashboard"] :model]
-                      [:rs_obj.status :sync_status]]
-   :native_query_snippet [:native_query_snippet.id
-                          :native_query_snippet.name
-                          :native_query_snippet.created_at
-                          [nil :authority_level]
-                          :native_query_snippet.collection_id
-                          [nil :display]
-                          [nil :query_type]
-                          [nil :description]
-                          :native_query_snippet.updated_at
-                          [[:inline "snippet"] :model]
-                          [:rs_obj.status :sync_status]]
-   :timeline [:timeline.id
-              :timeline.name
-              :timeline.created_at
-              [nil :authority_level]
-              :timeline.collection_id
-              [nil :display]
-              [nil :query_type]
-              :timeline.description
-              :timeline.updated_at
-              [[:inline "timeline"] :model]
-              [:rs_obj.status :sync_status]]})
-
-(defn- build-dirty-union-all
-  "Builds a HoneySQL select statement that returns dirty children of a collection.
-
-  Takes a map of model-type to HoneySQL select clause configurations.
-
-  Returns a HoneySQL union-all query that counts dirty objects across all synced model types."
-  [select-options]
-  (let [queries (mapv (fn [[table entity-type]]
-                        (let [id-col (keyword (str (name table) ".id"))]
-                          {:select (select-options table)
-                           :from [table]
-                           :inner-join [[:remote_sync_object :rs_obj]
-                                        [:and
-                                         [:= :rs_obj.model_id id-col]
-                                         [:= :rs_obj.model_type [:inline entity-type]]]]
-                           :where [:not= :status "synced"]}))
-                      synced-models)]
-    {:union-all queries}))
-
-(defn dirty-global?
+(defn dirty?
   "Checks if any collection has changes since the last sync.
-
-  Returns true if any remote-synced object has a status other than 'synced', false otherwise."
+   Returns true if any remote-synced object has a status other than 'synced', false otherwise.
+   Excludes transform model types when transform sync is disabled."
   []
-  (t2/exists? :model/RemoteSyncObject :status [:not= "synced"]))
+  (let [excluded (spec/excluded-model-types)]
+    (if (empty? excluded)
+      (t2/exists? :model/RemoteSyncObject :status [:not= "synced"])
+      (t2/exists? :model/RemoteSyncObject
+                  :status [:not= "synced"]
+                  :model_type [:not-in excluded]))))
 
-(defn dirty-for-global
+(defn dirty-objects
   "Gets all models in any collection that are dirty with their sync status.
-
-  Returns a sequence of model maps that have changed since the last remote sync, including details about their
-  current state and sync status."
+   Returns a sequence of model maps that have changed since the last remote sync,
+   including details about their current state and sync status.
+   Excludes transform model types when transform sync is disabled."
   []
-  (t2/query (build-dirty-union-all items-select)))
+  (let [excluded (spec/excluded-model-types)
+        query (if (empty? excluded)
+                (t2/select :model/RemoteSyncObject :status [:not= "synced"])
+                (t2/select :model/RemoteSyncObject
+                           :status [:not= "synced"]
+                           :model_type [:not-in excluded]))]
+    (->> query
+         (map #(-> %
+                   (dissoc :id :status_changed_at)
+                   (set/rename-keys {:model_id :id
+                                     :model_name :name
+                                     :model_type :model
+                                     :model_collection_id :collection_id
+                                     :model_display :display
+                                     :model_table_id :table_id
+                                     :model_table_name :table_name
+                                     :status :sync_status})
+                   (update :model u/lower-case-en)))
+         (into []))))

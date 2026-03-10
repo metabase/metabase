@@ -148,6 +148,18 @@
                   {:filter   [:!= false false]
                    :order-by [[:asc $id]]}))))))))
 
+(deftest ^:parallel comparison-test-8
+  (mt/test-drivers (mt/normal-drivers)
+    (mt/dataset places-cam-likes
+      (testing "Can we use != with literals on both sides, 0 != 0"
+        (is (= []
+               (mt/formatted-rows
+                [int str ->bool]
+                :format-nil-values
+                (mt/run-mbql-query places
+                  {:filter   [:!= 0 0]
+                   :order-by [[:asc $id]]}))))))))
+
 (deftest ^:parallel between-test
   (mt/test-drivers (mt/normal-drivers)
     (testing ":between filter, single subclause (neither :and nor :or)"
@@ -383,6 +395,52 @@
                  :order-by [[:asc $id]]
                  :limit    3})))))))
 
+(mt/defdataset strings-that-need-escaping
+  [["escaping_table"
+    [{:field-name "string1", :base-type :type/Text}]
+    [["\\Backslash"]
+     ["Back\\slash"]
+     ["Backslash\\"]
+     ["_Underscore"]
+     ["Under_score"]
+     ["Underscore_"]
+     ["%ile"]
+     ["per%cent"]
+     ["100%"]
+     ["_many%\\escapes"]
+     ["more%___%esca\\pes%"]
+     ["%backslash\\%before_percent_"]
+     ["\\backslash\\_before%underscore\\"]]]])
+
+;; TODO: (Braden 2026-01-08) This set can be expanded further!
+;; - :athena, :vertica, :clickhouse, :presto all support these clauses but have issues loading the test dataset.
+;; - :mongo supports `:starts-with` etc. but is not SQL; its regex-based fuzzy matching could be upgraded.
+(doseq [driver #{:h2 :sqlserver :mysql :maria :postgres :oracle :sqlite}]
+  (defmethod driver/database-supports? [driver :test/escaping-like-metacharacters]
+    [_driver _feature _database]
+    true))
+
+(defmethod driver/database-supports? [:default :test/escaping-like-metacharacters]
+  [_driver _feature _database]
+  false)
+
+(deftest ^:parallel starts-with-escaped-char-in-literal-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/escaping-like-metacharacters)
+    (mt/dataset strings-that-need-escaping
+      (doseq [[lit exp] {"\\" [[1 "\\Backslash"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "_"  [[4 "_Underscore"]
+                               [10 "_many%\\escapes"]]
+                         "%"  [[7 "%ile"]
+                               [12 "%backslash\\%before_percent_"]]}]
+        (testing (str "literal argument starts with " lit)
+          (is (=? exp
+                  (mt/formatted-rows
+                   [int identity]
+                   (mt/run-mbql-query escaping_table
+                     {:filter   [:starts-with $string1 lit]
+                      :limit    3})))))))))
+
 ;;; --------------------------------------------------- ends-with ----------------------------------------------------
 
 (deftest ^:parallel ends-with-test
@@ -461,6 +519,23 @@
                  :order-by [[:asc $id]]
                  :limit 3})))))))
 
+(deftest ^:parallel ends-with-escaped-char-in-literal-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/escaping-like-metacharacters)
+    (mt/dataset strings-that-need-escaping
+      (doseq [[lit exp] {"\\" [[3  "Backslash\\"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "_"  [[6  "Underscore_"]
+                               [12 "%backslash\\%before_percent_"]]
+                         "%"  [[9  "100%"]
+                               [11 "more%___%esca\\pes%"]]}]
+        (testing (str "literal argument ends with " lit)
+          (is (=? exp
+                  (mt/formatted-rows
+                   [int identity]
+                   (mt/run-mbql-query escaping_table
+                     {:filter   [:ends-with $string1 lit]
+                      :limit    3})))))))))
+
 ;;; ---------------------------------------------------- contains ----------------------------------------------------
 
 (deftest ^:parallel contains-test
@@ -534,6 +609,39 @@
                 {:filter   [:contains $name $name]
                  :order-by [[:asc $id]]
                  :limit 3})))))))
+
+(deftest ^:parallel contains-with-escaped-char-in-literal-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/escaping-like-metacharacters)
+    (mt/dataset strings-that-need-escaping
+      (doseq [[lit exp] {"\\" [[1 "\\Backslash"]
+                               [2 "Back\\slash"]
+                               [3 "Backslash\\"]
+                               [10 "_many%\\escapes"]
+                               [11 "more%___%esca\\pes%"]
+                               [12 "%backslash\\%before_percent_"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "_"  [[4 "_Underscore"]
+                               [5 "Under_score"]
+                               [6 "Underscore_"]
+                               [10 "_many%\\escapes"]
+                               [11 "more%___%esca\\pes%"]
+                               [12 "%backslash\\%before_percent_"]
+                               [13 "\\backslash\\_before%underscore\\"]]
+                         "%"  [[7 "%ile"]
+                               [8 "per%cent"]
+                               [9 "100%"]
+                               [10 "_many%\\escapes"]
+                               [11 "more%___%esca\\pes%"]
+                               [12 "%backslash\\%before_percent_"]
+                               [13 "\\backslash\\_before%underscore\\"]]}]
+        (testing (str "literal argument contains " lit)
+          (is (=? exp
+                  (mt/formatted-rows
+                   [int identity]
+                   (mt/run-mbql-query escaping_table
+                     {:filter   [:contains $string1 lit]
+                      :order-by [[:asc $id]]
+                      :limit    8})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             NESTED AND/OR CLAUSES                                              |

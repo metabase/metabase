@@ -60,7 +60,6 @@ describe("SharedCombinedEmbeddingSettings", () => {
     const [{ url, body }] = puts;
     expect(url).toContain("/setting");
     expect(body).toEqual({
-      "enable-embedding-simple": true,
       "enable-embedding-static": true,
     });
   });

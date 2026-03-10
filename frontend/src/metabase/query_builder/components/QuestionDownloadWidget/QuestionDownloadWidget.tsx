@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import type {
@@ -169,12 +169,12 @@ export const QuestionDownloadWidget = ({
       {showPivotXlsxExportHint && (
         <Flex
           p="md"
-          bg="var(--mb-color-background-light)"
+          bg="background-secondary"
           align="center"
           justify="space-between"
           className={CS.rounded}
         >
-          <Text fz="12px" lh="16px" c="text-medium">
+          <Text fz="12px" lh="16px" c="text-secondary">
             {t`Trying to pivot this data in Excel? You should download the raw data instead.`}{" "}
             <Link
               target="_new"
@@ -194,7 +194,7 @@ export const QuestionDownloadWidget = ({
           >
             <Icon
               name="close"
-              c="text-medium"
+              c="text-secondary"
               tooltip={t`Don't show me this again.`}
               onClick={() => setDismissedExcelPivotExportsBanner(true)}
             />
@@ -205,12 +205,12 @@ export const QuestionDownloadWidget = ({
         <Box>
           <Text
             size="sm"
-            c="text-medium"
+            c="text-secondary"
             mb="1rem"
           >{t`Your answer has a large number of rows so it could take a while to download.`}</Text>
 
           {format === "xlsx" && (
-            <Text size="sm" c="text-medium">
+            <Text size="sm" c="text-secondary">
               {limitedDownloadSizeText}
             </Text>
           )}

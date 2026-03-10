@@ -897,8 +897,7 @@
                      :source-metadata [{:name         "CATEGORY"
                                         :display_name "Category"
                                         :base_type    :type/Number
-                                        :id           %category
-                                        :field_ref    $orders.product-id->category}]})]
+                                        :id           %category}]})]
         (is (=? query (add-implicit-joins query)))))))
 
 (deftest ^:parallel metadata-join-alias-test-1b
@@ -924,42 +923,6 @@
                               :alias        "Q2"
                               :condition    [:= $orders.product-id->category &Q2.$reviews.product-id->category]
                               :strategy     :left-join}]})))))
-
-(deftest ^:parallel metadata-join-alias-test-2
-  ;; With remapping, metadata may contain field with `:source-field` which is not used in corresponding query.
-  ;;   See [[metabase.parameters.custom-values-test/with-mbql-card-test]].
-  (testing "`:join-alias` is correctly updated in metadata fields containing `:source-field`"
-    (testing "#26631 Case 2: Join query with implicit join into a query with a table as source"
-      (is (=? (lib.tu.macros/mbql-query products
-                {:source-table $$products
-                 :joins        [{:join-alias      "Q2"
-                                 :fields          :all
-                                 :condition       [:= $category &Q2.$orders.product-id->category]
-                                 :strategy        :left-join
-                                 :source-query    {:source-table $$orders
-                                                   :aggregation  [[:count]]
-                                                   :breakout     [&PRODUCTS__via__PRODUCT_ID.$orders.product-id->category]
-                                                   :joins        [{:alias        "PRODUCTS__via__PRODUCT_ID"
-                                                                   :fields       :none
-                                                                   :strategy     :left-join
-                                                                   :condition    [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.$id]
-                                                                   :source-table $$products
-                                                                   :fk-field-id  %orders.product-id}]}
-                                 :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$orders.product-id->category}]}]})
-              (add-implicit-joins
-               (lib.tu.macros/mbql-query products
-                 {:source-table $$products
-                  :joins        [{:join-alias      "Q2"
-                                  :fields          :all
-                                  :condition       [:= $category &Q2.$orders.product-id->category]
-                                  :strategy        :left-join
-                                  :source-query    {:source-table $$orders
-                                                    :aggregation  [[:count]]
-                                                    :breakout     [$orders.product-id->category]}
-                                  :source-metadata [{:name         "CATEGORY"
-                                                     :display_name "Category"
-                                                     :base_type    :type/Number
-                                                     :field_ref    $orders.product-id->category}]}]})))))))
 
 (deftest ^:parallel test-59695
   (testing "Resolving an implicit join should not add field refs to incorrect places (#59695)"
@@ -1093,7 +1056,7 @@
           stage (get-in query path)]
       (is (=? {:joins [{:alias "CATEGORIES__via__CATEGORY_ID"}
                        {:alias "CATEGORIES__via__ID"}]}
-              (#'qp.add-implicit-joins/resolve-implicit-joins-this-level query path stage))))))
+              (#'qp.add-implicit-joins/resolve-implicit-joins query path stage))))))
 
 (deftest ^:parallel implicit-join-from-much-earlier-stage-test
   (testing "if a join in stage 1 is used in stage 2, the field should propagate through stage 1 (#63245)"
@@ -1125,3 +1088,87 @@
                         {}
                         {}]}
               preprocessed)))))
+
+;; before the fix this failed with
+;;
+;; Error preprocessing query in #'metabase.query-processor.middleware.add-implicit-joins/add-implicit-joins:
+;; Cannot find matching FK Table ID for FK Field 31 nil
+(deftest ^:parallel conflicting-implicit-joins-with-same-generated-alias-test
+  (testing "If two DIFFERENT implicit joins need to be added that would have the same generated alias, deduplicate them"
+    (let [mp          (-> (lib.tu/mock-metadata-provider
+                           {:database meta/database
+                            :tables   [{:id 1, :name "A"}
+                                       {:id 2, :name "B"}
+                                       {:id 3, :name "C"}
+                                       {:id 4, :name "D"}]
+                            :fields   [{:id 10, :table-id 1, :name "ID", :semantic-type :type/PK}
+                                       {:id 11, :table-id 1, :name "B_ID", :fk-target-field-id 20, :semantic-type :type/FK}
+                                       {:id 12, :table-id 1, :name "C_ID", :fk-target-field-id 30, :semantic-type :type/FK}
+                                       {:id 20, :table-id 2, :name "ID", :semantic-type :type/PK}
+                                       {:id 21, :table-id 2, :name "D_ID", :fk-target-field-id 40, :semantic-type :type/FK}
+                                       {:id 30, :table-id 3, :name "ID", :semantic-type :type/PK}
+                                       {:id 31, :table-id 3, :name "D_ID", :fk-target-field-id 40, :semantic-type :type/FK}
+                                       {:id 40, :table-id 4, :name "ID", :semantic-type :type/PK}
+                                       {:id 41, :table-id 4, :name "NAME"}]})
+                          (lib.tu/remap-metadata-provider 21 41)
+                          (lib.tu/remap-metadata-provider 31 41))
+          model-query (-> (lib/query mp (lib.metadata/table mp 1))
+                          (lib/join (lib.metadata/table mp 2))
+                          (lib/join (lib.metadata/table mp 3)))
+          mp          (lib.tu/mock-metadata-provider
+                       mp
+                       {:cards [{:id            1
+                                 :type          :model
+                                 :name          "A + B + C"
+                                 :display-name  "A + B + C"
+                                 :dataset-query model-query}]})
+          query       (lib/query mp (lib.metadata/card mp 1))]
+      (is (=? {:stages [{:joins [{:alias "B"}
+                                 {:alias "C"}]}
+                        {:joins [{:alias      "D__via__D_ID"
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} "B__D_ID"]
+                                                [:field {:join-alias "D__via__D_ID"} 40]]]}
+                                 {:alias      "D__via__D_ID_2"
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} "C__D_ID"]
+                                                [:field {:join-alias "D__via__D_ID_2"} 40]]]}]}]}
+              (qp.preprocess/preprocess query))))))
+
+(deftest ^:parallel filter-creator-full-name-test
+  (testing "Implicit join through a filter on field with a remap only shows field once (#66418)"
+    (let [mp (-> (mt/metadata-provider)
+                 (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title))
+                 (as-> $mp
+                       (let [model-query (lib/query $mp (lib.metadata/table $mp (mt/id :orders)))]
+                         (lib.tu/mock-metadata-provider
+                          $mp
+                          {:cards [{:id            1
+                                    :dataset-query model-query}]}))))
+          q  (-> (lib/query mp (lib.metadata/card mp 1))
+                 (lib/filter (lib/= (-> (lib.metadata/field mp (mt/id :products :title))
+                                        (lib/ref)
+                                        ;; these options can get passed in from the frontend
+                                        (lib/update-options assoc
+                                                            :source-field-name "PRODUCT_ID"
+                                                            :source-field   (mt/id :orders :product_id)))
+                                    "Blah")))]
+      (is (=? [[:field {} (mt/id :orders :id)]
+               [:field {} (mt/id :orders :user_id)]
+               [:field {} (mt/id :orders :product_id)]
+               [:field {} (mt/id :orders :subtotal)]
+               [:field {} (mt/id :orders :tax)]
+               [:field {} (mt/id :orders :total)]
+               [:field {} (mt/id :orders :discount)]
+               [:field {} (mt/id :orders :created_at)]
+               [:field {} (mt/id :orders :quantity)]
+               [:field
+                {:source-field (mt/id :orders :product_id)
+                 :join-alias   "PRODUCTS__via__PRODUCT_ID"}
+                (mt/id :products :title)]
+               ;; should only have one product title... this is broken if we have a second copy that includes
+               ;; `:source-field-name`
+               ]
+              (get-in (qp.preprocess/preprocess q) [:stages 0 :fields]))))))

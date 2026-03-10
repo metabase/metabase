@@ -9,15 +9,15 @@ import {
 } from "react";
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { OnboardingIllustration } from "metabase/common/components/OnboardingIllustration";
 import { useSetting, useTempStorage } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useHelpLink } from "metabase/nav/components/ProfileLink/useHelpLink";
+import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import {
   getDocsUrl,
   getIsPaidPlan,
@@ -286,10 +286,10 @@ export const Onboarding = () => {
                       width="100%"
                     />
                     {!isPaidPlan ? (
-                      // eslint-disable-next-line no-literal-metabase-strings -- OSS doesn't have whitelabeling option
+                      // eslint-disable-next-line metabase/no-literal-metabase-strings -- OSS doesn't have whitelabeling option
                       <Text>{t`Don't be shy with invites. Metabase makes self-service analytics easy.`}</Text>
                     ) : (
-                      // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins
+                      // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins
                       <Text>{t`Don't be shy with invites. Metabase Starter plan includes 5 users, and Pro includes 10 users without the need to pay additionally.`}</Text>
                     )}
 
@@ -339,7 +339,7 @@ export const Onboarding = () => {
                       <Text>
                         {jt`Hover over a table and click the yellow lightning bolt ${(
                           <Icon
-                            c="var(--mb-color-warning)"
+                            c="warning"
                             className={S.inlineIcon}
                             key="bolt_icon"
                             name="bolt_filled"

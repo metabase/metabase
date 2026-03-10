@@ -1,6 +1,7 @@
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { Alert } from "metabase/common/components/Alert";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { isSameOrigin } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
@@ -8,7 +9,7 @@ import { isEmpty } from "metabase/lib/utils";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Box, Center, Stack, Text } from "metabase/ui";
 
-import { SameSiteAlert } from "./EmbeddingAppSameSiteCookieDescription.styled";
+import S from "./EmbeddingAppSameSiteCookieDescription.module.css";
 
 export const EmbeddingAppSameSiteCookieDescription = () => {
   const docsUrl = useSelector((state) =>
@@ -41,7 +42,7 @@ export const EmbeddingAppSameSiteCookieDescription = () => {
 function AuthorizedOriginsNote() {
   return (
     <Box data-testid="authorized-origins-note" w="22rem">
-      <SameSiteAlert variant="warning" hasBorder>
+      <Alert className={S.SameSiteAlert} variant="warning" hasBorder>
         <Center>
           <Text>{jt`You should probably change this setting to ${(
             <Text key="inner" component="span" fw="bold">
@@ -49,7 +50,7 @@ function AuthorizedOriginsNote() {
             </Text>
           )}.`}</Text>
         </Center>
-      </SameSiteAlert>
+      </Alert>
     </Box>
   );
 }

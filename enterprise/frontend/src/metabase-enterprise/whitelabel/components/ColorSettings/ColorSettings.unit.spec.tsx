@@ -8,8 +8,10 @@ import { color } from "metabase/lib/colors/palette";
 import { ColorSettings } from "./ColorSettings";
 
 describe("ColorSettings", () => {
-  const textMediumHex = Color(color("text-medium", staticVizOverrides)).hex();
-  const textLightHex = Color(color("text-light", staticVizOverrides)).hex();
+  const textMediumHex = Color(
+    color("text-secondary", staticVizOverrides),
+  ).hex();
+  const textLightHex = Color(color("text-tertiary", staticVizOverrides)).hex();
 
   const initialColors = {
     brand: color("filter"),
@@ -22,7 +24,7 @@ describe("ColorSettings", () => {
     render(
       <ColorSettings
         initialColors={initialColors}
-        originalColors={colors}
+        themeColors={colors}
         onChange={onChange}
       />,
     );
@@ -46,7 +48,7 @@ describe("ColorSettings", () => {
     render(
       <ColorSettings
         initialColors={initialColors}
-        originalColors={colors}
+        themeColors={colors}
         onChange={onChange}
       />,
     );
@@ -67,7 +69,7 @@ describe("ColorSettings", () => {
     render(
       <ColorSettings
         initialColors={initialColors}
-        originalColors={colors}
+        themeColors={colors}
         onChange={onChange}
       />,
     );
@@ -86,7 +88,7 @@ describe("ColorSettings", () => {
     render(
       <ColorSettings
         initialColors={initialColors}
-        originalColors={colors}
+        themeColors={colors}
         onChange={onChange}
       />,
     );

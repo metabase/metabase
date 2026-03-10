@@ -1,0 +1,11 @@
+.item {
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-background-secondary);
+  }
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+}

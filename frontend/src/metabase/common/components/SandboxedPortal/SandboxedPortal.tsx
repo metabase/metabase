@@ -1,12 +1,12 @@
 import ReactDOM from "react-dom";
 
-import EventSandbox from "metabase/common/components/EventSandbox";
+import { EventSandbox } from "metabase/common/components/EventSandbox";
 
 import type { EventSandboxProps } from "../EventSandbox/EventSandbox";
 
 // Prevent DOM events from bubbling through the React component tree
 // See https://reactjs.org/docs/portals.html#event-bubbling-through-portals
-const SandboxedPortal = ({
+export const SandboxedPortal = ({
   children,
   container,
   ...props
@@ -19,6 +19,3 @@ const SandboxedPortal = ({
     container,
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SandboxedPortal;

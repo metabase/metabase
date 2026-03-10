@@ -55,7 +55,6 @@
      help-link-custom-destination
      instance-creation
      is-hosted?
-     is-metabot-enabled
      jdbc-data-warehouse-max-connection-pool-size
      jdbc-data-warehouse-unreturned-connection-timeout-seconds
      jwt-attribute-email
@@ -97,7 +96,6 @@
      metabot-get-prompt-templates-url
      metabot-prompt-generator-token-limit
      multi-setting-read-only
-     notebook-native-preview-shown
      notebook-native-preview-sidebar-width
      notification-link-base-url
      num-metabot-choices

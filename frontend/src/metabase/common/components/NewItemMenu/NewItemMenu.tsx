@@ -12,7 +12,7 @@ import {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { State } from "metabase-types/store";
 
-import NewItemMenuView from "./NewItemMenuView";
+import { NewItemMenuView } from "./NewItemMenuView";
 
 interface MenuDatabaseProps {
   databases?: Database[];
@@ -32,8 +32,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
+export const NewItemMenu = _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,
   }),

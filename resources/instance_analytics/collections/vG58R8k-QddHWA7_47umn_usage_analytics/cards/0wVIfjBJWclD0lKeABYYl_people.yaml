@@ -237,13 +237,12 @@ result_metadata:
   settings: null
   visibility_type: normal
 visualization_settings: {column_settings: null, table.cell_column: locale, table.pivot_column: sso_source}
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: 0wVIfjBJWclD0lKeABYYl, label: people, model: Card}
 archived_directly: false
 dashboard_id: null
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: null
 type: model

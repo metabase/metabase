@@ -10,11 +10,20 @@
                                                         ;; netty is updated because of CVE
                                                         io.netty/netty-common
                                                         io.netty/netty-buffer]}
+  ;; Required for service account impersonation in workspace isolation
+  ;; Version matches what google-cloud-bigquery depends on
+  com.google.auth/google-auth-library-oauth2-http {:mvn/version "1.40.0"}
+  ;; Required for granting project-level IAM roles to workspace service accounts
+  com.google.cloud/google-cloud-resourcemanager {:mvn/version "1.82.0"}
+  ;; Required for creating service accounts for workspace isolation
+  com.google.cloud/google-iam-admin {:mvn/version "3.54.0"}
   ;; pin arrow formats to 17 for cve about parquet files
   org.apache.arrow/arrow-format          {:mvn/version "18.3.0"}
   org.apache.arrow/arrow-memory-core     {:mvn/version "18.3.0"}
   org.apache.arrow/arrow-memory-netty    {:mvn/version "18.3.0"}
   org.apache.arrow/arrow-vector          {:mvn/version "18.3.0"}
+  ;; was 1.71.0. bumping to 77
+  io.grpc/grpc-netty-shaded              {:mvn/version "1.77.0"}
   ;; matches those in athena
   io.netty/netty-common                  {:mvn/version "4.2.7.Final"}
   io.netty/netty-buffer                  {:mvn/version "4.2.7.Final"}}}

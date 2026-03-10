@@ -166,7 +166,7 @@ export const ManageApiKeys = () => {
             align="center"
             data-testid="api-keys-settings-header"
           >
-            <Text c="text-medium">
+            <Text c="text-secondary">
               {t`Allow users to use API keys to authenticate their API calls.`}
             </Text>
             <Button

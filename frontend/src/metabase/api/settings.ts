@@ -55,6 +55,10 @@ export const settingsApi = Api.injectEndpoints({
         return invalidateTags(error, [
           tag("session-properties"),
           ...(key === "uploads-settings" ? [listTag("database")] : []),
+          ...(key === "llm-anthropic-api-key" ? [listTag("llm-models")] : []),
+
+          // Enabling tenants creates the "all-external-users" permission group
+          ...(key === "use-tenants" ? [listTag("permissions-group")] : []),
         ]);
       },
     }),

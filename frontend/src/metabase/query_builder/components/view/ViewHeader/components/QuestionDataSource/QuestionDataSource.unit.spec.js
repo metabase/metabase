@@ -1,4 +1,4 @@
-/* eslint-disable react/display-name, react/prop-types */
+/* eslint-disable react/prop-types */
 import { Component } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -254,9 +254,9 @@ function setup({
   return { onError, question };
 }
 
-jest.mock("metabase/common/components/Link", () => ({ to: href, ...props }) => (
-  <a href={href} {...props} />
-));
+jest.mock("metabase/common/components/Link", () => ({
+  Link: ({ to: href, ...props }) => <a href={href} {...props} />,
+}));
 
 function getQuestionFromUrl(relativeUrl) {
   const url = new URL(relativeUrl, document.location.href);
@@ -390,35 +390,38 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays table name", async () => {
           const { question } = setup({ card });
-          const node = await screen.findByText(
-            new RegExp(question.legacyQueryTable().displayName()),
-          );
+          const table = question
+            .metadata()
+            .table(Lib.sourceTableOrCardId(question.query()));
+          const node = await screen.findByText(new RegExp(table.displayName()));
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).not.toBeInTheDocument();
         });
 
         it("displays table link in subhead variant", async () => {
           const { question } = setup({ card, subHead: true });
-          const node = await screen.findByText(
-            new RegExp(question.legacyQueryTable().displayName()),
-          );
+          const table = question
+            .metadata()
+            .table(Lib.sourceTableOrCardId(question.query()));
+          const node = await screen.findByText(new RegExp(table.displayName()));
           expect(
             areQuestionUrlsEquivalent(
               node.closest("a").href,
-              ML_Urls.getUrl(question.legacyQueryTable().newQuestion()),
+              ML_Urls.getUrl(table.newQuestion()),
             ),
           ).toBe(true);
         });
 
         it("displays table link in object detail view", async () => {
           const { question } = setup({ card, isObjectDetail: true });
-          const node = await screen.findByText(
-            new RegExp(question.legacyQueryTable().displayName()),
-          );
+          const table = question
+            .metadata()
+            .table(Lib.sourceTableOrCardId(question.query()));
+          const node = await screen.findByText(new RegExp(table.displayName()));
           expect(
             areQuestionUrlsEquivalent(
               node.closest("a").href,
-              ML_Urls.getUrl(question.legacyQueryTable().newQuestion()),
+              ML_Urls.getUrl(table.newQuestion()),
             ),
           ).toBe(true);
         });
@@ -436,13 +439,14 @@ describe("QuestionDataSource", () => {
       describe(questionType, () => {
         it("displays schema name", async () => {
           const { question } = setup({ card });
-          const node = await screen.findByText(
-            question.legacyQueryTable().schema_name,
-          );
+          const table = question
+            .metadata()
+            .table(Lib.sourceTableOrCardId(question.query()));
+          const node = await screen.findByText(table.schema_name);
           expect(node).toBeInTheDocument();
           expect(node.closest("a")).toHaveAttribute(
             "href",
-            Urls.browseSchema(question.legacyQueryTable()),
+            Urls.browseSchema(table),
           );
         });
       });

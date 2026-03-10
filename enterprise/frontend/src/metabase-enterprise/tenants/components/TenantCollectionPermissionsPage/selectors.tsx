@@ -7,19 +7,25 @@ import { COLLECTION_OPTIONS } from "metabase/admin/permissions/constants/collect
 import { Messages } from "metabase/admin/permissions/constants/messages";
 import type {
   CollectionIdProps,
-  CollectionPermissionEditorType,
   CollectionSidebarType,
 } from "metabase/admin/permissions/selectors/collection-permissions";
 import { buildCollectionTree } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
-import type { DataPermissionValue } from "metabase/admin/permissions/types";
+import type {
+  DataPermissionValue,
+  PermissionEditorType,
+} from "metabase/admin/permissions/types";
 import {
   Collections,
   ROOT_COLLECTION,
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
-import { getGroupNameLocalized, isAdminGroup } from "metabase/lib/groups";
+import {
+  getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
+} from "metabase/lib/groups";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   Collection,
@@ -89,7 +95,7 @@ export const getTenantCollectionsSidebar = createSelector(
   (collectionsTree, collectionId): CollectionSidebarType => {
     return {
       selectedId: collectionId,
-      title: t`Tenant Collections`,
+      title: t`Shared collections`,
       entityGroups: [collectionsTree || []],
       filterPlaceholder: t`Search for a collection`,
     };
@@ -157,7 +163,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
   getTenantCollectionsPermissions,
   getTenantCollectionEntity,
   Groups.selectors.getList,
-  (permissions, collection, groups): CollectionPermissionEditorType => {
+  (permissions, collection, groups): PermissionEditorType | null => {
     if (!permissions || collection == null) {
       return null;
     }
@@ -172,7 +178,7 @@ export const getTenantCollectionsPermissionEditor = createSelector(
 
         const defaultGroup = _.find(
           groups,
-          PLUGIN_TENANTS.isExternalUsersGroup,
+          isTenantGroup ? PLUGIN_TENANTS.isExternalUsersGroup : isDefaultGroup,
         );
 
         const defaultGroupPermission = defaultGroup

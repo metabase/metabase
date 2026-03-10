@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 import { ReduxProvider } from "__support__/storybook";
 import { Box } from "metabase/ui";
 
-import { _UpsellPill } from "./UpsellPill";
+import { UpsellPillInner } from "./UpsellPill";
 
 const args = {
   children: "Metabase Enterprise is so great",
@@ -28,12 +28,12 @@ const argTypes = {
   },
 };
 
-type UpsellPillProps = ComponentProps<typeof _UpsellPill>;
+type UpsellPillProps = ComponentProps<typeof UpsellPillInner>;
 
 const DefaultTemplate = (args: UpsellPillProps) => (
   <ReduxProvider>
     <Box>
-      <_UpsellPill {...args} />
+      <UpsellPillInner {...args} />
     </Box>
   </ReduxProvider>
 );
@@ -41,14 +41,14 @@ const DefaultTemplate = (args: UpsellPillProps) => (
 const NarrowTemplate = (args: UpsellPillProps) => (
   <ReduxProvider>
     <Box style={{ maxWidth: "10rem" }}>
-      <_UpsellPill {...args} />
+      <UpsellPillInner {...args} />
     </Box>
   </ReduxProvider>
 );
 
 export default {
   title: "Patterns/Upsells/Pill",
-  component: _UpsellPill,
+  component: UpsellPillInner,
   args,
   argTypes,
 };

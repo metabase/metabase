@@ -15,6 +15,7 @@
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
@@ -172,7 +173,7 @@
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
-(deftest edge-case-identifiers-test
+(deftest ^:sequential edge-case-identifiers-test
   (mt/test-driver :postgres
     (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
       (mt/dataset dots-in-names
@@ -260,9 +261,10 @@
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
-                       SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
+                       SELECT 'Toucans are the coolest type of bird.' AS true_facts;
+                       ANALYZE test_mview;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-          (is (=? [(default-table-result "test_mview" {:estimated_row_count (mt/malli=? int?)})]
+          (is (=? [(default-table-result "test_mview")]
                   (describe-database->tables :postgres database))))))))
 
 (deftest foreign-tables-test
@@ -296,7 +298,19 @@
                               GRANT ALL ON public.local_table to PUBLIC;")])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (=? [(default-table-result "foreign_table")
-                   (default-table-result "local_table" {:estimated_row_count (mt/malli=? int?)})]
+                   (default-table-result "local_table" {:estimated_row_count nil})]
+                  (describe-database->tables :postgres database))))))))
+
+(deftest estimated-row-count-hides-zero-test
+  (mt/test-driver :postgres
+    (testing "Check that tables with n_live_tup = 0 return nil for estimated_row_count to avoid confusion with stale stats"
+      (tx/drop-if-exists-and-create-db! driver/*driver* "estimated_count_test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "estimated_count_test"})]
+        (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
+                       ["CREATE TABLE empty_table (id INTEGER);
+                         ANALYZE empty_table;"])
+        (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "estimated_count_test")}]
+          (is (=? [(default-table-result "empty_table" {:estimated_row_count nil})]
                   (describe-database->tables :postgres database))))))))
 
 (deftest recreated-views-test
@@ -1047,6 +1061,25 @@
                    (testing (format "Filtering on enums in `%s` based query works as expected (#27680)" card-type)
                      (is (=? {:data {:rows [["Rasta" "good bird" "sad bird" "toucan"]]}}
                              (qp/process-query query))))))))))))))
+
+(deftest filtering-on-enum-from-source-bad-effective-type-test
+  (mt/test-driver
+    :postgres
+    (do-with-enums-db!
+     (fn [enums-db]
+       (mt/with-db enums-db
+         (testing "filtering on enum column should cast properly (#67440)"
+           (let [mp (-> (mt/metadata-provider)
+                        (lib.tu/merged-mock-metadata-provider
+                         {:fields [{:id (mt/id :birds :status)
+                                    :effective-type :type/Text}]}))
+                 query (as-> (lib/query mp (lib.metadata/table mp (mt/id :birds))) $q
+                         (lib/filter $q (lib/= (m/find-first (comp #{"status"} :name)
+                                                             (lib/filterable-columns $q))
+                                               "good bird")))
+                 sql (:query (qp.compile/compile query))]
+             (is (re-find #"CAST" sql))
+             (is (some? (mt/rows (qp/process-query query)))))))))))
 
 ;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
@@ -2105,3 +2138,55 @@
               (is (= [[1 "1" "10101010" "1101" "111000111"]
                       [2 "0" "00001111" "10101" "1001001"]]
                      (mt/rows (qp/process-query query)))))))))))
+
+(deftest set-network-timeout-test
+  (mt/test-driver :postgres
+    (testing "network hangs are interrupted after *network-timeout-ms*"
+      (binding [driver.settings/*network-timeout-ms* 3000]
+        (is (thrown-with-msg?
+             org.postgresql.util.PSQLException
+             #"An I/O error occurred while sending to the backend"
+             (try
+               (sql-jdbc.execute/do-with-connection-with-options
+                driver/*driver* (mt/id) nil
+                (fn [^Connection conn]
+                  (with-open [stmt (.createStatement conn)]
+                    (.execute stmt "SELECT pg_sleep(6)"))))
+               (catch Exception e
+                 (is (true? (some #(instance? java.net.SocketTimeoutException %)
+                                  (u/full-exception-chain e))))
+                 (throw e)))))))
+    (testing "network hangs are not interrupted before *network-timeout-ms*"
+      (is (true?
+           (sql-jdbc.execute/do-with-connection-with-options
+            driver/*driver* (mt/id) nil
+            (fn [^Connection conn]
+              (with-open [stmt (.createStatement conn)]
+                (.execute stmt "SELECT pg_sleep(6)")))))))))
+
+(deftest ^:parallel parse-final-identifier-test
+  (mt/test-driver
+    :postgres
+
+    (testing "`final` is allowed as identifier and parsed correctly"
+      (mt/with-temp [:model/Database db {:engine "postgres"
+                                         :name "final"
+                                         :initial_sync_status "complete"}
+                     :model/Table t {:name "final"
+                                     :schema "public"
+                                     :db_id (:id db)}
+                     :model/Field _ {:name "final"
+                                     :table_id (:id t)}]
+        (mt/with-db
+          db
+          (let [mp (mt/metadata-provider)
+                query (lib/native-query mp "select final from final")
+                broken-query (lib/native-query mp "select final, xix from final")]
+            (is (=? #{{:table (:id t)}}
+                    (driver/native-query-deps :postgres query)))
+            (is (=? [{:name "final"
+                      :lib/desired-column-alias "final"}]
+                    (driver/native-result-metadata :postgres query)))
+            (is (=? {:type :missing-column
+                     :name "xix"}
+                    (first (driver/validate-native-query-fields :postgres broken-query))))))))))

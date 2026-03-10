@@ -116,6 +116,7 @@ export interface Field {
 
 export interface FieldFormattingSettings {
   currency?: string;
+  number_separators?: string;
 }
 
 export interface GetFieldRequest {

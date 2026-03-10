@@ -2,10 +2,10 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import EmptyState from "metabase/common/components/EmptyState";
-import ErrorDetails from "metabase/common/components/ErrorDetails/ErrorDetails";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/lib/engine";
@@ -113,10 +113,10 @@ export function VisualizationError({
 
   if (isNative) {
     // always show errors for native queries
-    let processedError = String(error);
+    let processedError = typeof error === "string" ? error : error.data;
     const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
-    if (typeof origSql === "string") {
-      processedError = adjustPositions(error, origSql);
+    if (typeof origSql === "string" && processedError) {
+      processedError = adjustPositions(processedError, origSql);
     }
     processedError = stripRemarks(processedError);
     const database = question.database();

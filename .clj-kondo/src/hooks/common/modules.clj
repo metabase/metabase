@@ -31,7 +31,7 @@
                 second
                 symbol))))
 
-(defn module-api-namespaces
+(defn- module-api-namespaces
   "Set of API namespace symbols for a given module. `:any` means you can use anything, there are no API namespaces for
   this module (yet). If unspecified, the default is just the `<module>.core` namespace."
   [config module]
@@ -51,6 +51,12 @@
           (symbol (str ns-prefix ".core"))
           (symbol (str ns-prefix ".init"))}))))
 
+(defn- module-friends
+  [config module]
+  "Set of modules that are `:friends` of `module`, i.e. allowed to use *any* namespace from the module, not just the
+  designated [[module-api-namespaces]]."
+  (set (get-in config [:metabase/modules module :friends])))
+
 (defn allowed-modules
   "Set of namespace symbols that `module` is allowed to use. `:any` means it's allowed to use anything."
   [config module]
@@ -61,11 +67,22 @@
     (or (= allowed-modules :any)
         (contains? (set allowed-modules) required-module))))
 
-(defn allowed-module-namespace? [config ns-symb]
+(defn- allowed-module-namespace? [config current-module ns-symb]
   (let [module                (module ns-symb)
-        module-api-namespaces (module-api-namespaces config module)]
+        module-api-namespaces (module-api-namespaces config module)
+        module-friends        (module-friends config module)]
     (or (empty? module-api-namespaces)
-        (contains? module-api-namespaces ns-symb))))
+        (contains? module-api-namespaces ns-symb)
+        (contains? module-friends current-module))))
+
+(defn- rest-module? [module]
+  (str/ends-with? module "-rest"))
+
+(defn- routes-module? [module]
+  (str/ends-with? module "-routes"))
+
+(defn- core-module? [module]
+  (str/ends-with? module "core"))
 
 (defn usage-error
   "Find usage errors when a `required-namespace` is required in the `current-module`. Returns a string describing the
@@ -81,8 +98,19 @@
                 current-module
                 current-module)
 
-        (not (allowed-module-namespace? config required-namespace))
+        (not (allowed-module-namespace? config current-module required-namespace))
         (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"
                 required-namespace
                 required-module
-                required-module)))))
+                required-module)
+
+        ;; (for now) rest modules are allowed to use one another; `routes` is ok because it collects routes together
+        ;; and `core` is ok because [[metabase.core.init]] might need to init some of the `-routes` modules'
+        ;; namespaces
+        (and (not ((some-fn rest-module? routes-module? core-module?) current-module))
+             (rest-module? required-module))
+        (format "Do not use -rest modules (%s) in non-rest modules (%s) -- move things from %s to %s if needed"
+                required-module
+                current-module
+                required-module
+                (symbol (str/replace required-module #"-rest$" "")))))))

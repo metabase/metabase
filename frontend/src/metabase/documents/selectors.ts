@@ -90,3 +90,8 @@ export const getHasUnsavedChanges = createSelector(
   getDocumentsState,
   (documents) => documents.hasUnsavedChanges,
 );
+
+export const getIsHistorySidebarOpen = createSelector(
+  getDocumentsState,
+  (documents) => documents.isHistorySidebarOpen,
+);

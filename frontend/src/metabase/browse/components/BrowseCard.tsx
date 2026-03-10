@@ -1,7 +1,7 @@
 import cx from "classnames";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import type { ColorName } from "metabase/lib/colors/types";
 import {
@@ -58,7 +58,7 @@ export const BrowseCard = ({
       p="1.5rem"
       classNames={{
         root: cx(
-          CS.bgBrandLighterHover,
+          CS.bgBrandHover,
           CS.hoverParent,
           CS.hoverDisplay,
           CS.textBrandHover,

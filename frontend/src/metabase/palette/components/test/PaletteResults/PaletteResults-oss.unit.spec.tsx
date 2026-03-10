@@ -13,20 +13,21 @@ const setup = (props: CommonSetupProps = {}) => {
 };
 
 describe("PaletteResults", () => {
-  it("should not show actions when there is no search query", () => {
+  it("should not show actions when there is no search query", async () => {
     setup();
+    expect(await screen.findByText("Recents")).toBeInTheDocument();
+    expect(screen.queryByText("New question")).not.toBeInTheDocument();
+    expect(screen.queryByText("New SQL query")).not.toBeInTheDocument();
     expect(screen.queryByText("New dashboard")).not.toBeInTheDocument();
-    expect(screen.queryByText("New collection")).not.toBeInTheDocument();
-    expect(screen.queryByText("New model")).not.toBeInTheDocument();
 
     expect(screen.queryByText("Results")).not.toBeInTheDocument();
   });
 
   it("should show actions when there is a search query", async () => {
     setup({ query: "new" });
+    expect(await screen.findByText("New question")).toBeInTheDocument();
+    expect(await screen.findByText("New SQL query")).toBeInTheDocument();
     expect(await screen.findByText("New dashboard")).toBeInTheDocument();
-    expect(await screen.findByText("New collection")).toBeInTheDocument();
-    expect(await screen.findByText("New model")).toBeInTheDocument();
 
     expect(screen.getByText("Results")).toBeInTheDocument();
   });
@@ -161,7 +162,7 @@ describe("PaletteResults", () => {
     expect(screen.queryByText("Permissions")).not.toBeInTheDocument();
   });
 
-  it("should not compute search results if 'search-typeahead-enabled' is diabled", async () => {
+  it("should not compute search results if 'search-typeahead-enabled' is disabled", async () => {
     setup({ query: "ques", settings: { "search-typeahead-enabled": false } });
     expect(
       await screen.findByRole("option", { name: /View search results/ }),

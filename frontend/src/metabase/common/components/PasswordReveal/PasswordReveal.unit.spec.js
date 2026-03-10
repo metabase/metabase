@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "__support__/ui";
-import PasswordReveal from "metabase/common/components/PasswordReveal";
+import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 
 describe("password reveal", () => {
   it("should toggle the visibility state when hide / show are clicked", () => {

@@ -31,9 +31,9 @@
     (is (table-utils/similar? "people" "person"))   ; change 2 chars
     (is (table-utils/similar? "accounts" "account")) ; remove 1 char
     (is (table-utils/similar? "products" "product")) ; remove 1 char
-    (is (table-utils/similar? "PEOPLE" "PEOPL"))    ; remove 1 char (our use case!)
+    (is (table-utils/similar? "PEOPLE" "PEOPL"))    ; codespell:ignore | remove 1 char (our use case!)
     (is (table-utils/similar? "ORDERS" "ORDRE"))    ; change 1 char
-    (is (table-utils/similar? "ACCOUNTS" "ACOUNT")))) ; remove 2 chars
+    (is (table-utils/similar? "ACCOUNTS" "ACOUNT")))) ; codespell:ignore | remove 2 chars
 
 (deftest similar?-threshold-boundary-test
   (testing "similar? function at threshold boundary"
@@ -163,7 +163,8 @@
   (testing "used-tables function"
     (mt/with-temp [:model/Database {db-id :id :as db} {}
                    :model/Table    {table1-id :id} {:db_id db-id, :name "users", :schema "public", :active true, :visibility_type nil}
-                   :model/Table    {} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}]
+                   :model/Table    {} {:db_id db-id, :name "orders", :schema "public", :active true, :visibility_type nil}
+                   :model/Table    {inactive-id :id} {:db_id db-id, :name "inactive_users", :schema "public", :active false, :visibility_type nil}]
 
       (testing "handles query with recognized tables"
         (mt/with-current-user (mt/user->id :crowberto)
@@ -209,7 +210,14 @@
                           (lib/native-query (mt/metadata-provider) "SELECT * FROM users JOIN order ON ..."))
                   tables (table-utils/used-tables query)]
               (is (>= (count tables) 1))  ; At least the recognized table
-              (is (some #(= table1-id (:id %)) tables)))))))))
+              (is (some #(= table1-id (:id %)) tables))))))
+
+      (testing "filters out recognized inactive tables"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [query (mt/with-db db
+                        (lib/native-query (mt/metadata-provider) "SELECT * FROM inactive_users"))
+                tables (table-utils/used-tables query)]
+            (is (not-any? #(= inactive-id (:id %)) tables))))))))
 
 (deftest used-tables-from-ids-test
   (testing "used-tables-from-ids function"
@@ -224,9 +232,9 @@
 
       (testing "returns tables with correct structure for valid table-ids"
         (mt/with-current-user (mt/user->id :crowberto)
-          (is (= [{:id table1-id :name "users" :schema "public"}
-                  {:id table3-id :name "products" :schema "inventory"}]
-                 (table-utils/used-tables-from-ids db-id [table1-id table3-id])))))
+          (is (= #{{:id table1-id :name "users" :schema "public"}
+                   {:id table3-id :name "products" :schema "inventory"}}
+                 (set (table-utils/used-tables-from-ids db-id [table1-id table3-id]))))))
 
       (testing "handles empty table-ids collection"
         (mt/with-current-user (mt/user->id :crowberto)
@@ -255,9 +263,9 @@
       (testing "handles mix of valid and invalid table-ids"
         (mt/with-current-user (mt/user->id :crowberto)
           (let [fake-id 999999]
-            (is (= [{:id table1-id :name "users" :schema "public"}
-                    {:id table2-id :name "orders" :schema "public"}]
-                   (table-utils/used-tables-from-ids db-id [table1-id fake-id table2-id])))))))))
+            (is (= #{{:id table1-id :name "users" :schema "public"}
+                     {:id table2-id :name "orders" :schema "public"}}
+                   (set (table-utils/used-tables-from-ids db-id [table1-id fake-id table2-id]))))))))))
 
 ;; ======================================
 ;; Edge Cases and Error Handling

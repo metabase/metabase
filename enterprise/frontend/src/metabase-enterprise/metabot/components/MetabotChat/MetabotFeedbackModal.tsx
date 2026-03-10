@@ -1,15 +1,41 @@
+import { useFormikContext } from "formik";
 import { c, t } from "ttag";
+import * as Yup from "yup";
 
 import { useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
+import * as Errors from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
-import { getMetabot, getMetabotId } from "metabase-enterprise/metabot/state";
+import { useMetabotSelector } from "metabase-enterprise/metabot/hooks/use-metabot-store";
+import {
+  getMetabotId,
+  getMetabotState,
+} from "metabase-enterprise/metabot/state";
 import type { MetabotFeedback } from "metabase-types/api";
+
+// Issue types that require free text feedback
+const ISSUE_TYPES_REQUIRING_FREEFORM = ["ui-bug", "other"] as const;
+type IssueTypesRequiringFreeform =
+  (typeof ISSUE_TYPES_REQUIRING_FREEFORM)[number];
+
+const isFreeformRequired = (
+  value: string,
+): value is IssueTypesRequiringFreeform =>
+  ISSUE_TYPES_REQUIRING_FREEFORM.includes(value as IssueTypesRequiringFreeform);
+
+const FEEDBACK_SCHEMA = Yup.object({
+  issue_type: Yup.string().nullable().default(""),
+  freeform_feedback: Yup.string().when("issue_type", {
+    is: isFreeformRequired,
+    then: (schema) => schema.required(Errors.required),
+    otherwise: (schema) => schema.nullable(),
+  }),
+});
 
 interface MetabotFeedbackModalProps {
   onClose: () => void;
@@ -17,6 +43,21 @@ interface MetabotFeedbackModalProps {
   messageId: string;
   positive: boolean;
 }
+
+const FeedbackTextLabel = ({ positive }: { positive: boolean }) => {
+  const { values } = useFormikContext<Yup.InferType<typeof FEEDBACK_SCHEMA>>();
+
+  const isRequired =
+    !positive && values.issue_type && isFreeformRequired(values.issue_type);
+
+  return (
+    <Text>
+      {isRequired
+        ? t`Any details that you'd like to share? (required)`
+        : t`Any details that you'd like to share? (optional)`}
+    </Text>
+  );
+};
 
 export const MetabotFeedbackModal = ({
   onClose,
@@ -28,12 +69,8 @@ export const MetabotFeedbackModal = ({
   const isAdmin = useSelector(getUserIsAdmin);
   const version = useSetting("version");
 
-  const metabotId = useSelector(getMetabotId as any) as ReturnType<
-    typeof getMetabotId
-  >;
-  const metabotState = useSelector(getMetabot as any) as ReturnType<
-    typeof getMetabot
-  >;
+  const metabotId = useMetabotSelector(getMetabotId);
+  const metabotState = useMetabotSelector(getMetabotState);
 
   const handleSubmit = (
     values: Pick<
@@ -67,6 +104,7 @@ export const MetabotFeedbackModal = ({
           issue_type: positive ? undefined : "",
           freeform_feedback: "",
         }}
+        validationSchema={FEEDBACK_SCHEMA}
         onSubmit={handleSubmit}
       >
         <Form>
@@ -99,7 +137,7 @@ export const MetabotFeedbackModal = ({
               </Stack>
             )}
             <Stack gap="xs">
-              <Text>{t`Any details that you'd like to share? (optional)`}</Text>
+              <FeedbackTextLabel positive={positive} />
               <FormTextarea
                 name="freeform_feedback"
                 placeholder={
@@ -115,7 +153,7 @@ export const MetabotFeedbackModal = ({
             </Stack>
 
             <Text size="sm" color="text-secondary">
-              {/* eslint-disable-next-line no-literal-metabase-strings -- this is a translation context string, not shown to users */}
+              {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a translation context string, not shown to users */}
               {c("{0} is the name of the application, usually 'Metabase'")
                 .t`Please submit this report to ${applicationName}. Note that it may contain sensitive data from your conversation.`}
             </Text>

@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK } from "embedding-sdk-bundle/components/public/subscriptions";
+import { PLUGIN_NOTIFICATIONS_SDK } from "embedding-sdk-bundle/components/public/notifications";
 import { DashboardArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/DashboardArchivedEntityBanner";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
@@ -13,7 +13,7 @@ import { useSelector } from "metabase/lib/redux";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
+import { Box, Flex, Loader } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
@@ -53,12 +53,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
   if (!dashboard) {
-    return (
-      <Stack justify="center" align="center" gap="sm" mt="xl">
-        <Loader size="lg" />
-        <Text c="text-light" size="xl">{t`Loading…`}</Text>
-      </Stack>
-    );
+    return <Loader size="lg" label={t`Loading…`} />;
   }
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
@@ -109,6 +104,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
         mih={0}
         className={cx(S.DashboardBody, {
           [S.isEditingOrSharing]: isEditing || isSharing,
+          [S.isEmbeddingSdk]: isEmbeddingSdk(),
         })}
       >
         <Box
@@ -146,7 +142,7 @@ type DashboardComponentType = typeof DashboardDefaultView & {
   ParametersList: typeof ParametersList;
   FullscreenButton: typeof FullscreenToggle;
   ExportAsPdfButton: typeof ExportAsPdfButton;
-  SubscriptionsButton: typeof PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK.DashboardSubscriptionsButton;
+  SubscriptionsButton: typeof PLUGIN_NOTIFICATIONS_SDK.DashboardSubscriptionsButton;
   InfoButton: typeof DashboardInfoButton;
   RefreshPeriod: typeof RefreshWidget;
 };
@@ -160,7 +156,7 @@ DashboardComponent.ParametersList = ParametersList;
 DashboardComponent.FullscreenButton = FullscreenToggle;
 DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
 DashboardComponent.SubscriptionsButton =
-  PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK.DashboardSubscriptionsButton;
+  PLUGIN_NOTIFICATIONS_SDK.DashboardSubscriptionsButton;
 DashboardComponent.InfoButton = DashboardInfoButton;
 DashboardComponent.RefreshPeriod = RefreshWidget;
 

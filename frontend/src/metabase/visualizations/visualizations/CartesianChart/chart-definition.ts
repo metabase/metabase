@@ -13,6 +13,7 @@ import {
   TOOLTIP_SETTINGS,
 } from "metabase/visualizations/lib/settings/graph";
 import {
+  validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
@@ -23,9 +24,22 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  Series,
+  TransformedSeries,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { transformSeries } from "./chart-definition-legacy";
+
+const transformCartesianSeries = (series: Series): TransformedSeries => {
+  if ("_raw" in series) {
+    return series;
+  }
+
+  const transformed = transformSeries(series);
+  return Object.assign([...transformed], { _raw: series });
+};
 
 export const getCartesianChartDefinition = (
   props: Partial<Visualization>,
@@ -50,13 +64,14 @@ export const getCartesianChartDefinition = (
 
     checkRenderable(series, settings) {
       validateDatasetRows(series);
+      validateBreakoutSeriesCount(series, settings);
       validateChartDataSettings(settings);
       validateStacking(settings);
     },
 
     hasEmptyState: true,
 
-    transformSeries,
+    transformSeries: transformCartesianSeries,
 
     onDisplayUpdate: (settings) => {
       if (settings[SERIES_SETTING_KEY] == null) {

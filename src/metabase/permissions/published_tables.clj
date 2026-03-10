@@ -30,3 +30,17 @@
   metabase-enterprise.data-studio.permissions.published-tables
   [_database-id]
   false)
+
+(defenterprise can-access-via-collection?
+  "Returns true if the user can access this published table via collection read permissions.
+  OSS implementation always returns false - published tables only grant access in EE."
+  metabase-enterprise.data-studio.permissions.published-tables
+  [_table]
+  false)
+
+(defenterprise published-table-visible-clause
+  "Returns a HoneySQL clause for published tables visible via collection permissions.
+  OSS implementation returns nil."
+  metabase-enterprise.data-studio.permissions.published-tables
+  [_table-id-column _user-info]
+  nil)

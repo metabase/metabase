@@ -151,7 +151,7 @@ const MetabotMentionSuggestionComponent = forwardRef<
           ))}
           {query.length > 0 && totalItems === 0 && !isLoading ? (
             <Box p="sm">
-              <Text size="md" c="text-medium" ta="center">
+              <Text size="md" c="text-secondary" ta="center">
                 {t`No results found`}
               </Text>
             </Box>
@@ -162,4 +162,5 @@ const MetabotMentionSuggestionComponent = forwardRef<
   );
 });
 
+// @deprecated only supports databases, use `MetabotMentionSuggestionNew` instead
 export const MetabotMentionSuggestion = MetabotMentionSuggestionComponent;

@@ -1,3 +1,5 @@
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+
 import type { CollectionId, CollectionType } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
@@ -79,7 +81,7 @@ export const isRecentTableItem = (item: RecentItem): item is RecentTableItem =>
   item.model === "table";
 
 export const isRecentCollectionItem = (
-  item: RecentItem,
+  item: OmniPickerItem,
 ): item is RecentCollectionItem =>
   ["collection", "dashboard", "card", "dataset", "metric"].includes(item.model);
 

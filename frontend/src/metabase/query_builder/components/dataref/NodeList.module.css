@@ -26,7 +26,7 @@
   text-decoration: none;
 
   &:hover {
-    background-color: var(--mb-color-bg-medium);
+    background-color: var(--mb-color-background-tertiary);
   }
 
   &.isDisabled {
@@ -45,5 +45,5 @@
 }
 
 .NodeListItemId {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }

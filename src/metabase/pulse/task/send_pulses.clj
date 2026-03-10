@@ -23,7 +23,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util TimeZone)
-   (org.quartz CronTrigger DisallowConcurrentExecution TriggerKey)))
+   (org.quartz CronTrigger DisallowConcurrentExecution JobExecutionContext TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -49,19 +49,19 @@
 (defn- send-pulse!
   [pulse-id channel-ids]
   (try
-    (task-history/with-task-history {:task         "send-pulse"
-                                     :task_details {:pulse-id    pulse-id
-                                                    :channel-ids (seq channel-ids)}}
-      (if-let [pulse (models.pulse/retrieve-notification pulse-id
-                                                         :archived false
-                                                         ;; alerts should all be migrated to notifications by now
-                                                         :alert_condition nil)]
-        (do
+    (if-let [pulse (models.pulse/retrieve-notification pulse-id
+                                                       :archived false
+                                                       ;; alerts should all be migrated to notifications by now
+                                                       :alert_condition nil)]
+      (task-history/with-task-run (some-> (pulse.send/pulse->task-run-info pulse) (assoc :auto-complete false))
+        (task-history/with-task-history {:task         "send-pulse"
+                                         :task_details {:pulse-id    pulse-id
+                                                        :channel-ids (seq channel-ids)}}
           (log/debugf "Starting Pulse Execution: %d" pulse-id)
           (pulse.send/send-pulse! pulse :channel-ids channel-ids :async? true)
           (log/debugf "Finished Pulse Execution: %d" pulse-id)
-          :done)
-        (log/debugf "Pulse %d not found, Skipping." pulse-id)))
+          :done))
+      (log/debugf "Pulse %d not found, Skipping." pulse-id))
     (catch Throwable e
       (log/errorf e "Error sending Pulse %d to channel ids: %s" pulse-id (str/join ", " channel-ids)))))
 
@@ -152,8 +152,25 @@
 (task/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
   [context]
-  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
-    (send-pulse!* pulse-id channel-ids)))
+  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)
+        ^JobExecutionContext ctx  context
+        scheduled-fire-time       (.getScheduledFireTime ctx)
+        fire-time                 (.getFireTime ctx)
+        fire-instance-id          (.getFireInstanceId ctx)
+        recovering?               (.isRecovering ctx)
+        refire-count              (.getRefireCount ctx)
+        trigger-key               (.. ctx getTrigger getKey getName)
+        scheduler-id              (.. ctx getScheduler getSchedulerInstanceId)]
+    (log/with-context {:quartz-fire-instance-id    fire-instance-id
+                       :quartz-scheduled-fire-time (str scheduled-fire-time)
+                       :quartz-fire-time           (str fire-time)
+                       :quartz-recovering          recovering?
+                       :quartz-refire-count        refire-count
+                       :quartz-trigger-key         trigger-key
+                       :quartz-scheduler-id        scheduler-id}
+      (log/infof "SendPulse fired for pulse %d (trigger=%s, scheduled=%s, actual=%s, recovering=%s, refire=%d, scheduler=%s)"
+                 pulse-id trigger-key scheduled-fire-time fire-time recovering? refire-count scheduler-id)
+      (send-pulse!* pulse-id channel-ids))))
 
 (declare update-send-pulse-trigger-if-needed!)
 
@@ -214,7 +231,7 @@
                             (some? remove-pc-ids) (set/difference (set remove-pc-ids)))
                           (set add-pc-ids))]
     (cond
-     ;; no op when new-pc-ids doesnt't change
+     ;; no op when new-pc-ids doesn't change
       (= new-pc-ids existing-pc-ids) nil
 
      ;; delete if no new pc-ids and there is an existing trigger

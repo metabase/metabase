@@ -18,6 +18,7 @@ import {
 import {
   REMOVE_PARAMETER,
   removeParameter,
+  setOrUnsetParameterValues,
   setParameterIsMultiSelect,
   setParameterType,
 } from "./parameters";
@@ -211,5 +212,65 @@ describe("removeParameter", () => {
       type: REMOVE_PARAMETER,
       payload: { id: "123" },
     });
+  });
+});
+
+describe("setOrUnsetParameterValues", () => {
+  it("should set parameter value to default when parameter is required and has a default value", async () => {
+    const store = setup(
+      createMockState({
+        dashboard: createMockDashboardState({
+          dashboardId: 1,
+          dashboards: {
+            "1": createMockStoreDashboard({
+              id: 1,
+              parameters: [
+                createMockParameter({
+                  id: "123",
+                  default: "default-value",
+                  required: true,
+                }),
+              ],
+            }),
+          },
+          parameterValues: {
+            "123": "current-value",
+          },
+        }),
+      }),
+    );
+
+    await store.dispatch(setOrUnsetParameterValues([["123", "current-value"]]));
+
+    const state = store.getState();
+    expect(state.dashboard.parameterValues["123"]).toBe("default-value");
+  });
+
+  it("should set parameter to provided value when parameter does not have a default value", async () => {
+    const store = setup(
+      createMockState({
+        dashboard: createMockDashboardState({
+          dashboardId: 1,
+          dashboards: {
+            "1": createMockStoreDashboard({
+              id: 1,
+              parameters: [
+                createMockParameter({
+                  id: "123",
+                }),
+              ],
+            }),
+          },
+          parameterValues: {
+            "123": "current-value",
+          },
+        }),
+      }),
+    );
+
+    await store.dispatch(setOrUnsetParameterValues([["123", "current-value"]]));
+
+    const state = store.getState();
+    expect(state.dashboard.parameterValues["123"]).toBe(null);
   });
 });

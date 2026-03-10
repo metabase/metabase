@@ -101,7 +101,10 @@ export const TableActionInputSearchableSelect = ({
 
     if (!value && inputProps?.placeholder) {
       return (
-        <Input.Placeholder c="text-light" className={classNames?.selectLabel}>
+        <Input.Placeholder
+          c="text-tertiary"
+          className={classNames?.selectLabel}
+        >
           {inputProps.placeholder}
         </Input.Placeholder>
       );
@@ -109,7 +112,10 @@ export const TableActionInputSearchableSelect = ({
 
     if (isLoading) {
       return (
-        <Input.Placeholder c="text-light" className={classNames?.selectLabel}>
+        <Input.Placeholder
+          c="text-tertiary"
+          className={classNames?.selectLabel}
+        >
           {t`Loading...`}
         </Input.Placeholder>
       );
@@ -161,7 +167,7 @@ export const TableActionInputSearchableSelect = ({
             shouldDisplayClearButton && (
               <Icon
                 name="close"
-                color="var(--mb-color-text-light)"
+                c="text-tertiary"
                 onClick={() => handleOptionSubmit(null)}
                 onMouseDown={(event) => event.stopPropagation()}
               />
@@ -174,7 +180,7 @@ export const TableActionInputSearchableSelect = ({
       </Combobox.Target>
 
       <Combobox.Dropdown mah="none" miw={250}>
-        <Box p="0.5rem" pb="0" bg="white" pos="sticky" top={0}>
+        <Box p="0.5rem" pb="0" bg="background-primary" pos="sticky" top={0}>
           <TextInput
             value={search}
             onChange={(event) => setSearch(event.currentTarget.value)}

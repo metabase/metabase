@@ -1,13 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, render, screen, within } from "__support__/ui";
+import type { ScalarSegment } from "metabase-types/api";
 
 import {
   ChartSettingSegmentsEditor,
-  type Segment,
+  type ChartSettingSegmentsEditorProps,
 } from "./ChartSettingSegmentsEditor";
 
-const createMockSegment = (opts?: Partial<Segment>): Segment => {
+const createMockSegment = (opts?: Partial<ScalarSegment>): ScalarSegment => {
   return { label: "", min: 0, max: 100, color: "red", ...opts };
 };
 
@@ -16,10 +17,14 @@ const DEFAULT_VALUE = [
   createMockSegment({ label: "good", min: 100, max: 200, color: "green" }),
 ];
 
-const setup = () => {
+const setup = (props: Partial<ChartSettingSegmentsEditorProps> = {}) => {
   const onChange = jest.fn();
   render(
-    <ChartSettingSegmentsEditor value={DEFAULT_VALUE} onChange={onChange} />,
+    <ChartSettingSegmentsEditor
+      value={DEFAULT_VALUE}
+      onChange={onChange}
+      {...props}
+    />,
   );
   return { onChange };
 };
@@ -32,7 +37,7 @@ it("Should render a segment editor", () => {
 
   const firstRow = screen.getAllByRole("row").at(1) as HTMLElement;
 
-  expect(within(firstRow).getByPlaceholderText(/Optional/)).toHaveValue("bad");
+  expect(within(firstRow).getByPlaceholderText(/optional/)).toHaveValue("bad");
   expect(within(firstRow).getByPlaceholderText(/Min/)).toHaveValue("0");
   expect(within(firstRow).getByPlaceholderText(/Max/)).toHaveValue("100");
 });
@@ -68,7 +73,27 @@ it("Should allow you to remove a segment", async () => {
   ]);
 });
 
-it("Should allow you to add a new segment with apropriate defaults", async () => {
+it("Should not allow you to remove the last segment", async () => {
+  setup({ value: [DEFAULT_VALUE[0]] });
+
+  expect(await screen.findByDisplayValue("bad")).toBeInTheDocument();
+
+  expect(screen.queryAllByRole("img", { name: /trash/ })).toHaveLength(0);
+});
+
+it("Should allow you to remove all segments if canRemoveAll is passed", async () => {
+  const { onChange } = setup({ value: [DEFAULT_VALUE[0]], canRemoveAll: true });
+
+  expect(await screen.findAllByRole("img", { name: /trash/ })).toHaveLength(1);
+
+  await userEvent.click(
+    (await screen.findAllByRole("img", { name: /trash/ })).at(0) as HTMLElement,
+  );
+
+  expect(onChange).toHaveBeenCalledWith([]);
+});
+
+it("Should allow you to add a new segment with appropriate defaults", async () => {
   const { onChange } = setup();
 
   await userEvent.click(
@@ -113,4 +138,18 @@ it("Should not call onChange when blurring without changing value", async () => 
   fireEvent.blur(min);
 
   expect(onChange).not.toHaveBeenCalled();
+});
+
+it("should show a placeholder if there are no segments", async () => {
+  const { onChange } = setup({ value: [], canRemoveAll: true });
+
+  expect(await screen.findByText(/Add color ranges/)).toBeInTheDocument();
+
+  await userEvent.click(
+    await screen.findByRole("button", { name: /Add a range/ }),
+  );
+
+  expect(onChange).toHaveBeenCalledWith([
+    expect.objectContaining({ min: 0, max: 1, color: expect.anything() }),
+  ]);
 });

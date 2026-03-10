@@ -90,7 +90,7 @@ export function turnIntoModel() {
 }
 
 export function selectFromDropdown(option, clickOpts) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   popover().last().findByText(option).click(clickOpts);
 }
 

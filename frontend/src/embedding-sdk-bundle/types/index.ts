@@ -5,5 +5,6 @@ export type * from "./entity";
 export type * from "./events";
 export type * from "./plugins";
 export type * from "./question";
+export type * from "./theme";
 export type * from "./ui";
 export type * from "./user";

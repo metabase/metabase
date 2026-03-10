@@ -16,5 +16,5 @@ jobs:
     - uses: actions/checkout@v4
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
-    - run: clojure -T:whitespace-linter lint
+    - run: clojure -T:whitespace-linter lint :whitespace-linter/progress-bar false
       name: Run Whitespace Linter

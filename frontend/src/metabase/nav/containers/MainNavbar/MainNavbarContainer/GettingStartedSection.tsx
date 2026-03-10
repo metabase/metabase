@@ -32,7 +32,7 @@ export const GettingStartedSection = ({
         gap="sm"
         onClick={toggle}
         component={UnstyledButton}
-        c="text-medium"
+        c="text-secondary"
         mb="sm"
         className={CS.cursorPointer}
       >
@@ -58,7 +58,7 @@ export const GettingStartedSection = ({
           isSelected={isOnboardingPageSelected}
           onClick={() => trackOnboardingChecklistOpened()}
         >
-          {/* eslint-disable-next-line no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
+          {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
           {t`How to use Metabase`}
         </PaddedSidebarLink>
 

@@ -123,17 +123,20 @@
              :cum-sum
              :sum-where
              :var
-             :metric]]
+             :metric
+             :measure]]
   (lib.hierarchy/derive tag ::aggregation-clause-tag))
 
 (defn- aggregation-expression?
   "A clause is a valid aggregation if it is an aggregation clause, or it is an expression that transitively contains
   a single aggregation clause."
   [x]
-  (when-let [[tag _opts & args] (and (vector? x) x)]
+  (when-let [[tag _opts & args] (when (vector? x) x)]
     (or (lib.hierarchy/isa? tag ::aggregation-clause-tag)
         ;; Case has the following shape [:case opts [[cond expr]...] default-expr?]
-        (if (= :case tag)
+        ;;
+        ;; `:if` is an alias for `:case`
+        (if (#{:case :if} tag)
           (or (some aggregation-expression? (ffirst args))
               (some aggregation-expression? (fnext args)))
           (some aggregation-expression? args)))))

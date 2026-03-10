@@ -36,10 +36,22 @@ jobs:
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
         name: Run Eastwood linter
 
+  be-linter-eastwood-test:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    name: Eastwood (test)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+        name: Run Eastwood linter on tests
+
   be-tests:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -88,8 +100,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
@@ -104,7 +116,7 @@ jobs:
         with:
           java-version: "${{ matrix.java-version }}"
       - name: Build static-viz frontend
-        run: yarn build-static-viz
+        run: bun run build-static-viz
         env:
           MB_EDITION: ${{ matrix.job.edition }}
 
@@ -130,6 +142,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.run-java-tests.outcome }}
 
       - name: Publish Test Report (JUnit)
         uses: dorny/test-reporter@v1
@@ -183,6 +196,7 @@ jobs:
   be-tests-result:
     needs:
       - be-linter-eastwood
+      - be-linter-eastwood-test
       - be-linter-clj-kondo
       - be-cljfmt
       - be-check

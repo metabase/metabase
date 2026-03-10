@@ -4,16 +4,13 @@ import type { ResizableBoxProps, ResizeCallbackData } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setNotebookNativePreviewSidebarWidth,
   setUIControls,
 } from "metabase/query_builder/actions";
-import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import {
-  getIsNotebookNativePreviewShown,
-  getUiControls,
-} from "metabase/query_builder/selectors";
+import { getUiControls } from "metabase/query_builder/selectors";
 import {
   Notebook,
   type NotebookProps,
@@ -49,7 +46,9 @@ export const NotebookContainer = ({
   const { width: windowWidth } = useWindowSize();
 
   useEffect(() => {
-    isOpen && setShouldShowNotebook(isOpen);
+    if (isOpen) {
+      setShouldShowNotebook(isOpen);
+    }
   }, [isOpen]);
 
   const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
@@ -83,25 +82,7 @@ export const NotebookContainer = ({
     dispatch(setNotebookNativePreviewSidebarWidth(width));
   };
 
-  const screenSize = useNotebookScreenSize();
-  const isNotebookNativePreviewShown = useSelector(
-    getIsNotebookNativePreviewShown,
-  );
-
-  useEffect(() => {
-    if (screenSize === "small") {
-      dispatch(setUIControls({ isShowingNotebookNativePreview: false }));
-    } else if (screenSize === "large") {
-      const currentSettingValue = isNotebookNativePreviewShown;
-
-      dispatch(
-        setUIControls({
-          isShowingNotebookNativePreview: currentSettingValue,
-        }),
-      );
-    }
-  }, [dispatch, isNotebookNativePreviewShown, screenSize]);
-
+  const shouldShowFullWidthNativePreview = useIsSmallScreen();
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
   const Handle = forwardRef<
@@ -140,7 +121,7 @@ export const NotebookContainer = ({
     <Flex
       pos="absolute"
       inset={0}
-      bg="bg-white"
+      bg="background-primary"
       opacity={isOpen ? 1 : 0}
       style={{
         transform: transformStyle,
@@ -170,15 +151,13 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {renderNativePreview && screenSize && (
+      {renderNativePreview && (
         <>
-          {screenSize === "small" && (
+          {shouldShowFullWidthNativePreview ? (
             <Box pos="absolute" inset={0}>
               <NotebookNativePreview />
             </Box>
-          )}
-
-          {screenSize === "large" && (
+          ) : (
             <ResizableBox
               width={sidebarWidth}
               minConstraints={[minSidebarWidth, 0]}

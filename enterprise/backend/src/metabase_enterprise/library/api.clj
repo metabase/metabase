@@ -5,6 +5,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.schema :as collections.schema]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -16,11 +17,11 @@
 (api.macros/defendpoint :post "/"
   "Creates the Library if it doesn't exist. Returns the created collection.
 
-  Requires superuser permissions."
+  Requires data analyst or superuser permissions."
   [_route
    _query
    _body]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (api/check-400 (not (collections/library-collection)) "Library already exists")
   (collections/create-library-collection!))
 
@@ -30,19 +31,20 @@
         below-tables? (t2/exists? :model/Table :is_published true :collection_id [:in descendent-ids])]
     ;; This function is only used on the root Library which cannot have items directly in it
     ;; So can assume :here is only collection, and all descendants are :below
-    (assoc collection :here #{:collection}
+    (assoc collection :here #{"collection"}
            :below (cond-> below-card-types
                     (contains? below-card-types :model)
                     (-> (disj :model) (conj :dataset))
                     below-tables? (conj :table)
-                    true sort))))
+                    true sort
+                    true ((partial map name))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/"
-  "Get the Library. If no library exists, it doesn't fail but returns an empty response."
+(api.macros/defendpoint :get "/" :- [:or ::collections.schema/CollectionItem [:map [:data nil?]]]
+  "Get the Library. If no library exists, it doesn't fail but returns an empty response"
   [_route
    _query
    _body]

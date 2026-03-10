@@ -23,7 +23,7 @@ jobs:
           # Remove the matchers to not report false positives on every PR
           # unrelated to embedding (EMB-765)
           echo "::remove-matcher owner=tsc::"
-          yarn build-embedding-sdk-package
+          bun run build-embedding-sdk-package
       - name: Prepare Embedding SDK artifact
         uses: actions/upload-artifact@v4
         with:

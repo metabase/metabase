@@ -51,7 +51,7 @@ describe("EditUserStrategyModal", () => {
   it("should handle loading state", async () => {
     await setup();
     expect(screen.getByText("Loading...")).toBeInTheDocument();
-    await screen.findByText("User strategy");
+    await screen.findByText("Pick a user strategy");
   });
 
   it("should correctly select single-tenancy if use-tenants setting is false", async () => {

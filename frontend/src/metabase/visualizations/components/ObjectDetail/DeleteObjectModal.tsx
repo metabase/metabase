@@ -2,10 +2,9 @@ import type { FunctionComponent } from "react";
 import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
-import Button from "metabase/common/components/Button";
-import ModalContent from "metabase/common/components/ModalContent";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
+import { Button } from "metabase/common/components/Button";
+import { ModalContent } from "metabase/common/components/ModalContent";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { ActionsApi } from "metabase/services";
 import type { WritebackActionId } from "metabase-types/api";
 
@@ -24,7 +23,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
   onClose,
   onSuccess,
 }) => {
-  const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const handleSubmit = async () => {
     try {
@@ -36,12 +35,12 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       });
 
       const message = t`Successfully deleted`;
-      dispatch(addUndo({ message, toastColor: "success" }));
+      sendToast({ message, toastColor: "success" });
       onClose();
       onSuccess();
     } catch (error) {
       const message = getActionErrorMessage(error);
-      dispatch(addUndo({ icon: "warning", toastColor: "error", message }));
+      sendToast({ icon: "warning", toastColor: "error", message });
     }
   };
 
