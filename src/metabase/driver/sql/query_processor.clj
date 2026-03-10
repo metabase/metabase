@@ -1483,26 +1483,25 @@
     ;; -> [[::h2x/identifier ...] [[::h2x/identifier ...]]]
     ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
 
-  `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
+    `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
 
     ;; Honey SQL 2
     (as [:expression \"x\" {:base-type :type/Boolean, ::add-cast :bit}])
     ;; -> [[::h2x/typed [:cast ... [:raw \"bit\"]] {:database-type \"bit\"}] [[::h2x/identifier ...]]]
     ;; -> SELECT CAST(1 AS bit) AS \"x\"
 
-  `clause` will be wrapped in ::wrap-in-case if ::wrap-in-case is found in the `clause` options.
-  This is used by drivers like SQL Server that need to wrap comparison expressions in CASE statements
-  since they cannot return boolean values directly from SELECT clauses."
+    `clause` will be wrapped in a ::case if ::wrap-in-case is found in the `clause` options
+
+    ;; Honey SQL 2
+    (as [:expression \"x\" {:base-type :type/Boolean, ::wrap-in-case true}])
+    ;; -> [:case [:> ... ...] [:inline 1] :else [:inline 0]]
+    ;; -> SELECT CASE WHEN ... > ... THEN 1 ELSE 0 END AS \"x\""
   [driver clause & _unique-name-fn]
-  (let [opts          (driver-api/field-options clause)
-        cast-type     (::add-cast opts)
-        wrap-in-case? (::wrap-in-case opts)
-        wrap-cast     #(vector ::cast % cast-type)
-        wrap-case     #(vector ::wrap-in-case %)
-        maybe-wrap    #(cond
-                         wrap-in-case? (wrap-case %)
-                         cast-type     (wrap-cast %)
-                         :else         %)
+  (let [{cast-type ::add-cast
+         wrap-in-case? ::wrap-in-case} (driver-api/field-options clause)
+        maybe-wrap    #(cond-> %
+                         wrap-in-case? (as-> <> (vector ::wrap-in-case <>))
+                         cast-type     (as-> <> (vector ::cast <> cast-type)))
         honeysql-form (->honeysql driver (maybe-wrap clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias

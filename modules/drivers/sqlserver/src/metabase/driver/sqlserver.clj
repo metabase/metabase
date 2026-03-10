@@ -607,7 +607,9 @@
         ;; cannot CAST a comparison result directly - it needs CASE WHEN expr THEN 1 ELSE 0 END.
         maybe-add-cast #(cond
                           (sql.qp.boolean-to-comparison/comparison-expression-clause? %)
-                          (driver-api/assoc-field-options % ::sql.qp/wrap-in-case true)
+                          (-> %
+                              (driver-api/assoc-field-options ::sql.qp/wrap-in-case true)
+                              (driver-api/assoc-field-options ::sql.qp/add-cast :bit))
 
                           (sql.qp.boolean-to-comparison/boolean-expression-clause? %)
                           (driver-api/assoc-field-options % ::sql.qp/add-cast :bit)
