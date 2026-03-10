@@ -94,7 +94,7 @@
     (slackbot.client/post-message
      client
      (merge (slackbot.events/event->reply-context event)
-            { ;; DMs: always thread. Channels: only thread if already in a thread.
+            {;; DMs: always thread. Channels: only thread if already in a thread.
              :thread_ts (or (:thread_ts event) (:ts event))
              :text msg
              :blocks [{:type "section"
@@ -501,15 +501,20 @@
         freeform-block]))})
 
 (defn- replace-feedback-buttons-with-thanks
-  "Update the Slack message to replace the feedback buttons with a confirmation."
-  [client channel message-ts message-blocks]
-  (let [updated-blocks (-> (into [] (remove #(= (:block_id %) "metabot_feedback")) message-blocks)
-                           (conj {:type     "context"
-                                  :elements [{:type "mrkdwn"
-                                              :text "Thanks for your feedback!"}]}))]
-    (slackbot.client/update-message client {:channel channel
-                                            :ts      message-ts
-                                            :blocks  updated-blocks})))
+  "Update the Slack message to replace the feedback buttons with a confirmation.
+   Uses the message from the `block_actions` payload (which contains the full content as rendered by
+   Slack) rather than re-fetching via `conversations.history`, which may not return the full content
+   for streamed messages."
+  [client channel message]
+  (let [{:keys [ts text blocks]} message
+        updated-blocks           (-> (into [] (remove #(= (:block_id %) "metabot_feedback")) blocks)
+                                     (conj {:type     "context"
+                                            :elements [{:type "mrkdwn"
+                                                        :text "Thanks for your feedback!"}]}))]
+    (slackbot.client/update-message client (cond-> {:channel channel
+                                                    :ts      ts
+                                                    :blocks  updated-blocks}
+                                             text (assoc :text text)))))
 
 (defn- build-base-feedback
   "Build the common feedback payload fields."
@@ -526,9 +531,9 @@
 
 (defn- handle-feedback-action
   "Handle a metabot feedback button click from Slack.
-   Opens the detail modal immediately (trigger_id expires in 3s). Feedback is
-   submitted to Harbormaster only when the user submits the modal."
-  [{:keys [action trigger-id slack-user-id channel-id message-ts]}]
+   Opens the detail modal immediately (trigger_id expires in 3s), then asynchronously replaces the
+   feedback buttons with a confirmation message using the message from the interaction payload."
+  [{:keys [action trigger-id slack-user-id channel-id message]}]
   (let [{:keys [conversation_id positive]} (json/decode (:value action) true)
         client  {:token (channel.settings/unobfuscated-slack-app-token)}
         user-id (slack-id->user-id slack-user-id)]
@@ -541,9 +546,14 @@
                                                      :positive        positive
                                                      :user_id         user-id
                                                      :channel_id      channel-id
-                                                     :message_ts      message-ts})})
+                                                     :message_ts      (:ts message)})})
         (catch Exception e
-          (log/errorf e "[slackbot] Error opening feedback modal: %s" (ex-data e)))))))
+          (log/errorf e "[slackbot] Error opening feedback modal: %s" (ex-data e))))
+      (future
+        (try
+          (replace-feedback-buttons-with-thanks client channel-id message)
+          (catch Exception e
+            (log/errorf e "[slackbot] Error replacing feedback buttons: %s" (ex-data e))))))))
 
 (defn- handle-delete-action
   "Handle replacing a metabot response message with a removed notice.
@@ -563,11 +573,11 @@
 
 (defn- handle-feedback-modal-submission
   "Handle submission of the feedback details modal.
-   Always submits to Harbormaster (the modal opening already captured positive/negative),
-   then replaces the feedback buttons with a thanks message."
+   Submits detailed feedback to Harbormaster. The feedback buttons are already replaced with a
+   confirmation message at button-click time (see `handle-feedback-action`)."
   [payload]
   (let [private-metadata (json/decode (get-in payload [:view :private_metadata]) true)
-        {:keys [conversation_id positive user_id channel_id message_ts]} private-metadata
+        {:keys [conversation_id positive user_id]} private-metadata
         values           (get-in payload [:view :state :values])
         issue-type       (get-in values [:issue_type :issue_type_select :selected_option :value])
         freeform         (get-in values [:freeform_feedback :freeform_input :value])]
@@ -578,15 +588,7 @@
            true       (assoc-in [:feedback :freeform_feedback] (or freeform ""))
            issue-type (assoc-in [:feedback :issue_type] issue-type)))
         (catch Exception e
-          (log/error e "[slackbot] Error submitting feedback to Harbormaster")))
-      (try
-        (when (and channel_id message_ts)
-          (let [client  {:token (channel.settings/unobfuscated-slack-app-token)}
-                message (slackbot.client/fetch-message client channel_id message_ts)]
-            (when message
-              (replace-feedback-buttons-with-thanks client channel_id message_ts (:blocks message)))))
-        (catch Exception e
-          (log/error e "[slackbot] Error replacing feedback buttons"))))))
+          (log/error e "[slackbot] Error submitting feedback to Harbormaster"))))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/interactive"
@@ -602,7 +604,7 @@
               slack-user (get-in payload [:user :id])
               trigger-id (:trigger_id payload)
               channel-id (get-in payload [:channel :id])
-              message-ts (get-in payload [:message :ts])]
+              message    (:message payload)]
           (doseq [action actions]
             (case (:action_id action)
               "metabot_feedback"
@@ -610,12 +612,12 @@
                                        :trigger-id    trigger-id
                                        :slack-user-id slack-user
                                        :channel-id    channel-id
-                                       :message-ts    message-ts})
+                                       :message       message})
 
               "metabot_delete_response"
               (handle-delete-action {:slack-user-id slack-user
                                      :channel-id    channel-id
-                                     :message-ts    message-ts})
+                                     :message-ts    (:ts message)})
               nil)))
 
         "view_submission"
