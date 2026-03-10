@@ -71,7 +71,7 @@
     (lib-be.source-swap.native/swap-source-in-native-stages old-source new-source)
 
     (not (lib/native-only-query? query))
-    (lib-be.source-swap.mbql/swap-source-in-mbql-stages old-source new-source)))
+    (lib-be.source-swap.mbql/swap-source-in-mbql-stages {old-source new-source})))
 
 (mu/defn swap-source-in-parameter-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, swap it to reference the new source."
@@ -81,4 +81,4 @@
    new-source :- ::lib-be.schema.source-swap/source]
   (if (lib/native-only-query? query)
     target
-    (lib-be.source-swap.mbql/swap-source-in-parameter-mbql-target query target old-source new-source)))
+    (lib-be.source-swap.mbql/swap-source-in-parameter-mbql-target query target {old-source new-source})))

@@ -15,6 +15,9 @@
 (mr/def ::source
   [:tuple ::source-type ::source-id])
 
+(mr/def ::source-mapping
+  [:map-of ::source ::source])
+
 (mr/def ::column-error
   [:enum
    :column-type-mismatch
