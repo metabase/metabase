@@ -13,6 +13,7 @@
    [metabase-enterprise.metabot-v3.feedback :as metabot-v3.feedback]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.channel.api.slack :as channel.api.slack]
    [metabase.channel.settings :as channel.settings]
@@ -23,6 +24,7 @@
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -190,6 +192,20 @@
               (log/warnf "[slackbot] Failed to remove processing reaction: %s (channel=%s ts=%s name=%s)"
                          (:error res) (:channel reaction-target) (:ts reaction-target) (:name reaction-target)))))))))
 
+(defmethod analytics/known-labels :metabase-slackbot/responses-generated [_]
+  [{:source "dm"      :result "success"}
+   {:source "dm"      :result "error"}
+   {:source "channel" :result "success"}
+   {:source "channel" :result "error"}])
+
+(defmethod analytics/known-labels :metabase-slackbot/file-uploads [_]
+  [{:result "success"} {:result "error"}])
+
+(defn- event-source
+  "Return the source label for a Slack event: \"dm\" or \"channel\"."
+  [event]
+  (if (slackbot.events/dm? event) "dm" "channel"))
+
 (defn- process-async
   "Process an event asynchronously with logging and error handling.
    Authenticates the user and calls handler with [client event]."
@@ -202,7 +218,16 @@
           (try
             (when-let [user-id (require-authenticated-slack-user! client event)]
               (request/with-current-user user-id
-                (handler client event)))
+                (let [source (event-source event)
+                      timer  (u/start-timer)]
+                  (try
+                    (handler client event)
+                    (analytics/inc! :metabase-slackbot/responses-generated {:source source :result "success"})
+                    (catch Exception e
+                      (analytics/inc! :metabase-slackbot/responses-generated {:source source :result "error"})
+                      (throw e))
+                    (finally
+                      (analytics/observe! :metabase-slackbot/response-duration-ms {:source source} (u/since-ms timer)))))))
             (catch Exception e
               (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e)))))))))
 
@@ -237,6 +262,7 @@
         (when-not (slackbot.persistence/soft-delete-response! channel-id message-ts deleter-user-id)
           (log/warnf "[slackbot] Slack message updated but soft delete was not recorded (channel=%s ts=%s user_id=%s)"
                      channel-id message-ts deleter-user-id))
+        (analytics/inc! :metabase-slackbot/responses-deleted)
         true)
       (do
         (log/warnf "[slackbot] Failed to replace metabot response with removed notice: %s (channel=%s ts=%s user_id=%s)"

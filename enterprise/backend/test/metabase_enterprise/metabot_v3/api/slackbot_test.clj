@@ -15,6 +15,7 @@
    [metabase-enterprise.metabot-v3.feedback :as metabot-v3.feedback]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
    [metabase.premium-features.core :as premium-features]
@@ -1995,7 +1996,7 @@
         {:cbs          cbs
          :append-calls append-calls}))))
 
-(deftest ^:parallel on-text-respects-batch-size-test
+(deftest on-text-respects-batch-size-test
   (testing "on-text does not flush until pending text reaches min-text-batch-size"
     (let [{:keys [cbs append-calls]} (make-test-callbacks)
           {:keys [on-text request-flush! slack-writer]} cbs
@@ -2014,7 +2015,7 @@
       (request-flush! true)
       (await slack-writer))))
 
-(deftest ^:parallel flush-throttle-test
+(deftest flush-throttle-test
   (testing "rapid flushes are throttled by min-flush-interval-ns"
     (let [{:keys [cbs append-calls]} (make-test-callbacks)
           {:keys [on-text request-flush! slack-writer]} cbs
@@ -2032,3 +2033,82 @@
       (request-flush! true)
       (await slack-writer)
       (is (= 2 (count @append-calls)) "Force flush should bypass throttle"))))
+
+;;; -------------------------------------------------- Metrics tests --------------------------------------------------
+
+(deftest dm-response-metrics-test
+  (testing "Successful DM response increments prometheus counters and records duration"
+    (mt/with-prometheus-system! [_ system]
+      (with-slackbot-setup
+        (with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [{:keys [stop-stream-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options base-dm-event)
+                                      base-dm-event)]
+              (is (= "ok" response))
+              (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                       :done? true?
+                       :timeout-ms 5000})
+              (testing "responses-generated counter is incremented for dm/success"
+                (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
+                                                                {:source "dm" :result "success"}))))
+              (testing "response-duration-ms histogram is recorded"
+                (is (pos? (:sum (mt/metric-value system :metabase-slackbot/response-duration-ms
+                                                 {:source "dm"}))))))))))))
+
+(deftest channel-response-metrics-test
+  (testing "Successful channel response increments prometheus counters"
+    (mt/with-prometheus-system! [_ system]
+      (with-slackbot-setup
+        (with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [{:keys [update-calls remove-reaction-calls]}]
+            (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                      (slack-request-options base-mention-event)
+                                      base-mention-event)]
+              (is (= "ok" response))
+              (u/poll {:thunk      #(and (>= (count @update-calls) 1)
+                                         (>= (count @remove-reaction-calls) 1))
+                       :done?      true?
+                       :timeout-ms 5000})
+              (testing "responses-generated counter is incremented for channel/success"
+                (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
+                                                                {:source "channel" :result "success"})))))))))))
+
+(deftest error-response-metrics-test
+  (testing "Failed response increments error counter and records duration"
+    (mt/with-prometheus-system! [_ system]
+      (with-slackbot-setup
+        (with-slackbot-mocks
+          {:ai-text "Hello!"}
+          (fn [_]
+            (with-redefs [slackbot.streaming/send-response (fn [& _] (throw (Exception. "boom")))]
+              (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
+                                        (slack-request-options base-dm-event)
+                                        base-dm-event)]
+                (is (= "ok" response))
+                ;; Wait for async error handling to complete
+                (u/poll {:thunk #(prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
+                                                                             {:source "dm" :result "error"}))
+                         :done? true?
+                         :timeout-ms 5000})
+                (testing "responses-generated error counter is incremented"
+                  (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-generated
+                                                                  {:source "dm" :result "error"}))))
+                (testing "response-duration-ms histogram is recorded even on error"
+                  (is (pos? (:sum (mt/metric-value system :metabase-slackbot/response-duration-ms
+                                                   {:source "dm"})))))))))))))
+
+(deftest delete-response-metrics-test
+  (testing "Deleting a response increments responses-deleted counter"
+    (mt/with-prometheus-system! [_ system]
+      (with-slackbot-setup
+        (let [channel-id "C123"
+              message-ts "1234567890.000001"
+              user-id    (mt/user->id :rasta)]
+          (with-redefs [slackbot.client/update-message (constantly {:ok true})
+                        slackbot.persistence/soft-delete-response! (constantly true)]
+            (#'slackbot/replace-response-with-removed-notice!
+             {:token "xoxb-test"} channel-id message-ts user-id)
+            (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-deleted)))))))))
