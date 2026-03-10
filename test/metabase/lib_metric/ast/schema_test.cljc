@@ -29,6 +29,23 @@
       (is (some? (me/humanize (mr/explain ::ast.schema/table-node
                                           {:node/type :ast/column :id 1})))))))
 
+(deftest ^:parallel card-node-test
+  (testing "valid card nodes"
+    (are [node] (nil? (me/humanize (mr/explain ::ast.schema/card-node node)))
+      {:node/type :ast/card :id 1}
+      {:node/type :ast/card :id 1 :name "my-model"}
+      {:node/type :ast/card :id 42 :name nil}))
+  (testing "invalid card nodes"
+    (testing "missing id"
+      (is (some? (me/humanize (mr/explain ::ast.schema/card-node
+                                          {:node/type :ast/card})))))
+    (testing "invalid id"
+      (is (some? (me/humanize (mr/explain ::ast.schema/card-node
+                                          {:node/type :ast/card :id 0})))))
+    (testing "wrong node type"
+      (is (some? (me/humanize (mr/explain ::ast.schema/card-node
+                                          {:node/type :ast/table :id 1})))))))
+
 (deftest ^:parallel column-node-test
   (testing "valid column nodes"
     (are [node] (nil? (me/humanize (mr/explain ::ast.schema/column-node node)))
@@ -268,6 +285,25 @@
        :aggregation {:node/type :aggregation/sum
                      :column    {:node/type :ast/column :id 10}}
        :base-table  {:node/type :ast/table :id 1 :name "orders"}})))
+
+(deftest ^:parallel source-metric-with-card-test
+  (testing "valid source metric node with :base-card instead of :base-table"
+    (are [node] (nil? (me/humanize (mr/explain ::ast.schema/source-metric node)))
+      {:node/type   :source/metric
+       :id          1
+       :aggregation {:node/type :aggregation/count}
+       :base-card   {:node/type :ast/card :id 42}}
+      {:node/type   :source/metric
+       :id          1
+       :name        "Revenue"
+       :aggregation {:node/type :aggregation/sum
+                     :column    {:node/type :ast/column :id 10}}
+       :base-card   {:node/type :ast/card :id 42 :name "my-model"}}))
+  (testing "invalid: neither :base-table nor :base-card"
+    (is (some? (me/humanize (mr/explain ::ast.schema/source-metric
+                                        {:node/type   :source/metric
+                                         :id          1
+                                         :aggregation {:node/type :aggregation/count}}))))))
 
 (deftest ^:parallel source-measure-test
   (testing "valid source measure nodes"

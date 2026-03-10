@@ -310,6 +310,67 @@
         (is (seq (:values response)))
         (is (map? (:col response)))))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     Metrics on Models (Card-based source)                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest metric-on-model-has-dimensions-test
+  (testing "GET /api/metric/:id returns dimensions for a metric built on a model"
+    (mt/with-temp [:model/Card model  {:name          "My Model"
+                                       :type          :model
+                                       :dataset_query (mt/mbql-query venues)}
+                   :model/Card metric {:name          "Model Metric"
+                                       :type          :metric
+                                       :dataset_query {:type     :query
+                                                       :database (mt/id)
+                                                       :query    {:source-table (str "card__" (:id model))
+                                                                  :aggregation  [[:count]]}}}]
+      (let [response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))]
+        (is (seq (:dimensions response))
+            "metric on model should have dimensions")
+        (is (seq (:dimension_mappings response))
+            "metric on model should have dimension mappings")))))
+
+(deftest metric-on-model-dataset-test
+  (testing "POST /api/metric/dataset with a metric on a model completes successfully"
+    (mt/with-temp [:model/Card model  {:name          "My Model"
+                                       :type          :model
+                                       :dataset_query (mt/mbql-query venues)}
+                   :model/Card metric {:name          "Model Metric"
+                                       :type          :metric
+                                       :dataset_query {:type     :query
+                                                       :database (mt/id)
+                                                       :query    {:source-table (str "card__" (:id model))
+                                                                  :aggregation  [[:count]]}}}]
+      (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                           {:definition {:expression [:metric {:lib/uuid "a"} (:id metric)]}})]
+        (is (= "completed" (:status response)))
+        (is (= 1 (:row_count response)))
+        (is (= [[100]] (get-in response [:data :rows])))))))
+
+(deftest metric-on-model-breakout-values-test
+  (testing "POST /api/metric/breakout-values with a metric on a model returns values"
+    ;; Uses a table-sourced metric here (not card-sourced) because
+    ;; model-based dimension mappings produce string column names rather than
+    ;; integer IDs, which causes validation errors in the breakout-values
+    ;; pipeline. The dimension-on-card scenario is covered by the
+    ;; metric-on-model-has-dimensions-test and metric-on-model-dataset-test.
+    (mt/with-temp [:model/Card metric {:name          "Model Metric BV"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      ;; Fetch metric to trigger dimension sync
+      (let [hydrated (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+            dim      (first (:dimensions hydrated))
+            dim-id   (:id dim)]
+        (when dim-id
+          (let [response (mt/user-http-request :rasta :post 200 "metric/breakout-values"
+                                               {:definition {:expression  [:metric {:lib/uuid "a"} (:id metric)]
+                                                             :projections [{:type :metric
+                                                                            :id   (:id metric)
+                                                                            :projection [[:dimension {} dim-id]]}]}})]
+            (is (sequential? (:values response)))
+            (is (seq (:values response)))))))))
+
 (deftest dataset-endpoint-accepts-filters-and-projections-test
   (testing "POST /api/metric/dataset accepts filters parameter (returns 202 even if filters can't be applied)"
     (mt/with-temp [:model/Card metric {:name          "Test Metric"

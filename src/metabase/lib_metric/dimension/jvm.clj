@@ -6,7 +6,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib.core :as lib]
-   [metabase.lib.util :as lib.util]
    [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
@@ -60,13 +59,18 @@
 
 (defn- db-provider-for-query
   "When the metadata provider is a MetricContextMetadataProvider, return the
-   database-specific provider for the query's source table. The DB provider can
-   resolve column-by-ID lookups that the metric context provider cannot, which
-   is required for FK / implicitly-joinable column resolution."
+   database-specific provider for the query's source table or source card.
+   The DB provider can resolve column-by-ID lookups that the metric context
+   provider cannot, which is required for FK / implicitly-joinable column
+   resolution."
   [mp query-with-mp]
   (when (satisfies? lib-metric.provider/MetricMetadataProvider mp)
-    (when-let [table-id (lib.util/source-table-id query-with-mp)]
-      (lib-metric.provider/database-provider-for-table mp table-id))))
+    (or
+     (when-let [table-id (lib/primary-source-table-id query-with-mp)]
+       (lib-metric.provider/database-provider-for-table mp table-id))
+     (when-let [card-id (lib/primary-source-card-id query-with-mp)]
+       (when-let [db-id (t2/select-one-fn :database_id :model/Card card-id)]
+         (lib-be/application-database-metadata-provider db-id))))))
 
 (defn- group-type->type
   "Convert a column group's group-type to a dimension group type string."

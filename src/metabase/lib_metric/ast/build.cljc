@@ -5,7 +5,6 @@
    [metabase.lib-metric.operators :as operators]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.util :as lib.util]
    [metabase.util.performance :as perf]))
 
 ;;; -------------------- Helper Functions --------------------
@@ -22,6 +21,14 @@
   ([id] (table-node id nil))
   ([id name]
    (cond-> {:node/type :ast/table
+            :id        id}
+     name (assoc :name name))))
+
+(defn card-node
+  "Create a card node."
+  ([id] (card-node id nil))
+  ([id name]
+   (cond-> {:node/type :ast/card
             :id        id}
      name (assoc :name name))))
 
@@ -310,7 +317,8 @@
 (defn- pmbql-query->source-node
   "Parse pMBQL query into source node structure using lib functions."
   [source-type id metadata pmbql-query]
-  (let [table-id      (lib.util/source-table-id pmbql-query)
+  (let [table-id      (lib/primary-source-table-id pmbql-query)
+        card-id       (lib/primary-source-card-id pmbql-query)
         aggregation   (first (lib/aggregations pmbql-query 0))
         source-filter (extract-source-filters pmbql-query)
         source-joins  (extract-source-joins pmbql-query)]
@@ -319,8 +327,9 @@
              :name        (:name metadata)
              :aggregation (or (mbql-aggregation->node aggregation)
                               {:node/type :aggregation/count})
-             :base-table  (table-node table-id)
              :metadata    metadata}
+      table-id      (assoc :base-table (table-node table-id))
+      card-id       (assoc :base-card (card-node card-id))
       source-joins  (assoc :joins source-joins)
       source-filter (assoc :filters source-filter))))
 

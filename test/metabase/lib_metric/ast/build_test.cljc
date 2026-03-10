@@ -82,6 +82,17 @@
 
 ;;; -------------------------------------------------- Primitive Construction --------------------------------------------------
 
+(deftest ^:parallel card-node-test
+  (testing "creates valid card node with id only"
+    (let [node (ast.build/card-node 42)]
+      (is (= {:node/type :ast/card :id 42} node))
+      (is (nil? (me/humanize (mr/explain ::ast.schema/card-node node))))))
+
+  (testing "creates valid card node with name"
+    (let [node (ast.build/card-node 42 "my-model")]
+      (is (= {:node/type :ast/card :id 42 :name "my-model"} node))
+      (is (nil? (me/humanize (mr/explain ::ast.schema/card-node node)))))))
+
 (deftest ^:parallel table-node-test
   (testing "creates valid table node with id only"
     (let [node (ast.build/table-node 1)]
@@ -411,6 +422,59 @@
       ;; Dimensions are loaded from provider -> sample-metric-metadata
       (is (= 2 (count (:dimensions ast))))
       (is (= 2 (count (:mappings ast)))))))
+
+;;; -------------------------------------------------- Card-Based Source (Model) --------------------------------------------------
+
+(defn- sample-card-metric-query []
+  {:lib/type :mbql/query
+   :database 1
+   :stages   [{:lib/type    :mbql.stage/mbql
+               :source-card 555
+               :aggregation [[:count {:lib/uuid "cccccccc-cccc-cccc-cccc-cccccccccccc"}]]}]})
+
+(defn- sample-card-metric-metadata []
+  {:lib/type           :metadata/metric
+   :id                 42
+   :name               "Card Metric"
+   :dimensions         (sample-dimensions)
+   :dimension-mappings (sample-mappings)
+   :dataset-query      (sample-card-metric-query)})
+
+(defn- make-card-test-provider
+  "Create a metadata provider that serves card-based metric metadata."
+  [metric-metadata]
+  (reify lib.metadata.protocols/MetadataProvider
+    (metadatas [_this metadata-spec]
+      (case (:lib/type metadata-spec)
+        :metadata/metric
+        (if (contains? (:id metadata-spec) (:id metric-metadata))
+          [metric-metadata]
+          [])
+        ;; Delegate to base provider for everything else
+        (lib.metadata.protocols/metadatas meta/metadata-provider metadata-spec)))
+    (database [_this]
+      (lib.metadata.protocols/database meta/metadata-provider))
+    (setting [_this setting-key]
+      (lib.metadata.protocols/setting meta/metadata-provider setting-key))))
+
+(deftest ^:parallel from-definition-card-source-test
+  (let [provider   (make-card-test-provider (sample-card-metric-metadata))
+        definition {:lib/type          :metric/definition
+                    :expression        [:metric {:lib/uuid expr-uuid} 42]
+                    :filters           []
+                    :projections       []
+                    :metadata-provider provider}
+        ast        (ast.build/from-definition definition)]
+
+    (testing "creates valid AST structure"
+      (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
+
+    (testing "source has :base-card with correct card id"
+      (is (= {:node/type :ast/card :id 555}
+             (get-in ast [:source :base-card]))))
+
+    (testing "source has no :base-table"
+      (is (nil? (get-in ast [:source :base-table]))))))
 
 ;;; -------------------------------------------------- Multi-Stage Source Queries --------------------------------------------------
 

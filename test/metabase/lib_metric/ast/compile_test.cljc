@@ -709,3 +709,57 @@
       (is (= 2 (count (:breakout stage-1))))
       (is (not (contains? stage-0 :aggregation)))
       (is (not (contains? stage-1 :aggregation))))))
+
+;;; -------------------------------------------------- Card-Source Compilation --------------------------------------------------
+
+(def ^:private sample-card-ast
+  "AST with :base-card (model/card source) instead of :base-table."
+  {:node/type  :ast/root
+   :source     {:node/type   :source/metric
+                :id          42
+                :name        "Card Metric"
+                :aggregation {:node/type :aggregation/count}
+                :base-card   {:node/type :ast/card :id 555}
+                :metadata    {:dataset-query {:database 1}}}
+   :dimensions [{:node/type    :ast/dimension
+                 :id           uuid-1
+                 :name         "category"
+                 :display-name "Category"}]
+   :mappings   [{:node/type    :ast/dimension-mapping
+                 :dimension-id uuid-1
+                 :table-id     100
+                 :column       {:node/type :ast/column :id 1}}]
+   :filter     nil
+   :group-by   []
+   :metadata-provider :test-provider})
+
+(deftest ^:parallel compile-to-mbql-card-source-test
+  (let [result (ast.compile/compile-to-mbql sample-card-ast)]
+
+    (testing "produces valid MBQL structure"
+      (is (= :mbql/query (:lib/type result)))
+      (is (= 1 (:database result))))
+
+    (testing "stage has :source-card and no :source-table"
+      (let [stage (first (:stages result))]
+        (is (= 555 (:source-card stage)))
+        (is (not (contains? stage :source-table)))))))
+
+(deftest ^:parallel compile-two-stage-card-source-test
+  (let [ast-with-card-joins (assoc-in sample-card-ast [:source :joins]
+                                      [{:node/type :ast/join
+                                        :mbql-join sample-join}])
+        result              (ast.compile/compile-to-mbql ast-with-card-joins)]
+
+    (testing "stage-0 has :source-card"
+      (let [stage-0 (first (:stages result))]
+        (is (= 555 (:source-card stage-0)))
+        (is (not (contains? stage-0 :source-table)))))))
+
+(deftest ^:parallel compile-to-values-query-card-source-test
+  (let [result (ast.compile/compile-to-values-query sample-card-ast)]
+
+    (testing "values query stage has :source-card and no :source-table"
+      (let [stage (first (:stages result))]
+        (is (= 555 (:source-card stage)))
+        (is (not (contains? stage :source-table)))))))

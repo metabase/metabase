@@ -140,6 +140,13 @@
   [{:keys [clause]}]
   clause)
 
+(defn- source-reference
+  "Return the appropriate source key for a source node — either {:source-table id} or {:source-card id}."
+  [source]
+  (if-let [table-id (perf/get-in source [:base-table :id])]
+    {:source-table table-id}
+    {:source-card (perf/get-in source [:base-card :id])}))
+
 ;;; -------------------- Source Compilation --------------------
 
 (defn- compile-source-filters
@@ -192,9 +199,9 @@
                     (perf/mapv #(resolve-dimension-ref % mappings) group-by))
 
         ;; Build stage
-        stage (cond-> {:lib/type     :mbql.stage/mbql
-                       :source-table (perf/get-in source [:base-table :id])
-                       :aggregation  [(compile-aggregation-node (:aggregation source))]}
+        stage (cond-> (merge {:lib/type    :mbql.stage/mbql
+                              :aggregation [(compile-aggregation-node (:aggregation source))]}
+                             (source-reference source))
                 (seq all-filters) (assoc :filters all-filters)
                 (seq breakouts)   (assoc :breakout breakouts)
                 limit             (assoc :limit limit))
@@ -212,9 +219,9 @@
    Stage 1: Analysis - user filters, breakouts, aggregation"
   [{:keys [source mappings filter group-by]} {:keys [limit]}]
   (let [;; Stage 0: Data model
-        stage-0 (cond-> {:lib/type     :mbql.stage/mbql
-                         :source-table (perf/get-in source [:base-table :id])
-                         :joins        (compile-join-nodes (:joins source))}
+        stage-0 (cond-> (merge {:lib/type :mbql.stage/mbql
+                                :joins    (compile-join-nodes (:joins source))}
+                               (source-reference source))
                   (:filters source)
                   (assoc :filters [(compile-filter-node (:filters source) mappings)]))
 
@@ -263,8 +270,8 @@
                          :else          nil)
         breakouts (when (seq group-by)
                     (perf/mapv #(resolve-dimension-ref % mappings) group-by))
-        stage (cond-> {:lib/type     :mbql.stage/mbql
-                       :source-table (perf/get-in source [:base-table :id])}
+        stage (cond-> (merge {:lib/type :mbql.stage/mbql}
+                             (source-reference source))
                 (seq all-filters) (assoc :filters all-filters)
                 (seq breakouts)   (assoc :breakout breakouts)
                 limit             (assoc :limit limit))
@@ -279,9 +286,9 @@
    Stage 0: Data model - base table, joins, source filters
    Stage 1: User filters, breakouts (no aggregation)"
   [{:keys [source mappings filter group-by]} {:keys [limit]}]
-  (let [stage-0 (cond-> {:lib/type     :mbql.stage/mbql
-                         :source-table (perf/get-in source [:base-table :id])
-                         :joins        (compile-join-nodes (:joins source))}
+  (let [stage-0 (cond-> (merge {:lib/type :mbql.stage/mbql
+                                :joins    (compile-join-nodes (:joins source))}
+                               (source-reference source))
                   (:filters source)
                   (assoc :filters [(compile-filter-node (:filters source) mappings)]))
         user-filters (when filter [(compile-filter-node filter mappings)])

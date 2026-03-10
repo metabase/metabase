@@ -15,6 +15,13 @@
    [:id pos-int?]
    [:name {:optional true} [:maybe string?]]])
 
+(mr/def ::card-node
+  "Reference to a saved question / model card."
+  [:map
+   [:node/type [:= :ast/card]]
+   [:id pos-int?]
+   [:name {:optional true} [:maybe string?]]])
+
 (mr/def ::column-node
   "Reference to a database column/field."
   [:map
@@ -223,15 +230,19 @@
 (defn- source-node-schema
   "Create a source node schema with the given node-type keyword."
   [node-type]
-  [:map
-   [:node/type [:= node-type]]
-   [:id pos-int?]
-   [:name {:optional true} [:maybe string?]]
-   [:aggregation ::aggregation-node]
-   [:base-table ::table-node]
-   [:metadata {:optional true} [:maybe :map]]
-   [:joins {:optional true} [:maybe [:sequential ::join-node]]]
-   [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
+  [:and
+   [:map
+    [:node/type [:= node-type]]
+    [:id pos-int?]
+    [:name {:optional true} [:maybe string?]]
+    [:aggregation ::aggregation-node]
+    [:base-table {:optional true} [:maybe ::table-node]]
+    [:base-card {:optional true} [:maybe ::card-node]]
+    [:metadata {:optional true} [:maybe :map]]
+    [:joins {:optional true} [:maybe [:sequential ::join-node]]]
+    [:filters {:optional true} [:maybe [:ref ::filter-node]]]]
+   [:fn {:error/message "source node must have :base-table or :base-card"}
+    (fn [m] (or (:base-table m) (:base-card m)))]])
 
 (mr/def ::source-metric
   "Metric source - contains the metric's query as AST."
