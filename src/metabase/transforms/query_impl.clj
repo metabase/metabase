@@ -57,7 +57,6 @@
                                                      :with-stage-timing-fn (fn [rid stage thunk]
                                                                              (transforms.instrumentation/with-stage-timing [rid stage]
                                                                                (thunk)))})))))
-
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)
