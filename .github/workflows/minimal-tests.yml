@@ -60,7 +60,7 @@ jobs:
           junit-name: "minimal-be-tests-postgres-ee"
           test-args: >-
             :only '["test" "enterprise/backend/test"]'
-            :exclude-tags '[:mb/driver-tests :mb/transforms-python-test]'
+            :exclude-tags '[:mb/driver-tests]'
             :partition/total 2
             :partition/index 0
       - name: Upload Test Results
@@ -110,7 +110,6 @@ jobs:
           junit-name: "minimal-be-tests-postgres-driver-ee"
           test-args: >-
             :only-tags [:mb/driver-tests]
-            :exclude-tags [:mb/transforms-python-test]
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
