@@ -1472,6 +1472,15 @@
            sql-parsing
            util}}
 
+  source-swap
+  {:team "Graphy"
+   :api  #{metabase.source-swap.core
+           metabase.source-swap.schema}
+   :uses #{driver
+           lib
+           sql-tools
+           util}}
+
   sso
   {:team "UX West"
    :api  #{metabase.sso.api
