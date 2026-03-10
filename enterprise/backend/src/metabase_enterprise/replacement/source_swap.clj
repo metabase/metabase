@@ -1,9 +1,15 @@
 (ns metabase-enterprise.replacement.source-swap
   "Swap sources namespace. Entrypoint is [[swap-source!]]. Internally, we rely on the field references having been
-  already upgraded. Then we only have to swap concrete usages. We also need to update dependencies: we do this in two
-  ways. We might explicitly call [[models.dependency/swap-dependency!]] which needs to happen regardless of whether a
-  change actually happened. And then we fire the event only in case of actual changes: this will redo dependency
-  calculation, but also do other things that must happen which cards/metrics/etc change like revisions."
+  already upgraded. Then we only have to swap concrete usages.
+
+  We also need to update dependencies, which we do in two ways. We explicitly
+  call [[models.dependency/swap-dependency!]] regardless of whether the query actually changed (dependency edges may
+  shift even without query text changes). Then we fire the entity's update event only when actual changes occurred;
+  the event handler will redo dependency calculation, but also triggers other necessary side-effects like revisions.
+  This means dependency analysis runs twice when there are changes, which is intentional: suppressing the event
+  handler's dependency work would be complicated and could risk the dep graph getting out of sync. If we measure a
+  performance problem here, that would be a good optimization step. In practice most swaps don't change queries
+  (the table was already upgraded and the query references are the same), so this is rarely an issue."
   (:require
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.replacement.util :as replacement.util]
@@ -58,11 +64,7 @@
         (events/publish-event! :event/card-update
                                {:object (merge card changes)
                                 :user-id api/*current-user-id*
-                                :previous-object card})
-        ;; todo: we still want to publish the card changed event here, but we should suppress the depdency analysis
-        ;; and do it ourselves. This probably should be moved higher up so it's a bit more generic than this
-        ;; paritcular spot
-        ))))
+                                :previous-object card})))))
 
 (defn- segment-swap-source!
   [segment old-source new-source]
@@ -134,17 +136,24 @@
         all-card-ids   (into #{}
                              (mapcat (fn [dashcard]
                                        (concat
-                                        (replacement.walk/parameter-mapping-card-ids (:parameter_mappings dashcard))
-                                        (replacement.walk/viz-settings-click-behavior-card-ids (-> dashcard :visualization_settings vs/db->norm)))))
+                                        (replacement.walk/parameter-mapping-card-ids
+                                         (:parameter_mappings dashcard))
+                                        (replacement.walk/viz-settings-click-behavior-card-ids
+                                         (-> dashcard :visualization_settings vs/db->norm)))))
                              dashcards)
         card-id->card (if (seq all-card-ids)
                         (t2/select-pk->fn identity :model/Card :id [:in all-card-ids])
-                        {})]
-    (doseq [dashcard dashcards]
-      (dashcard-swap-source! dashcard card-id->card old-source new-source))
-    (events/publish-event! :event/dashboard-update {:object  (t2/select-one :model/Dashboard
-                                                                            :id (:id dashboard))
-                                                    :user-id api/*current-user-id*})))
+                        {})
+        any-changed? (reduce (fn [changed? dashcard]
+                               (or
+                                (dashcard-swap-source! dashcard card-id->card old-source new-source)
+                                changed?))
+                             false
+                             dashcards)]
+    (when any-changed?
+      (events/publish-event!
+       :event/dashboard-update {:object  (t2/select-one :model/Dashboard :id (:id dashboard))
+                                :user-id api/*current-user-id*}))))
 
 (defn swap-source!
   "Swap old-source to new-source in an entity.

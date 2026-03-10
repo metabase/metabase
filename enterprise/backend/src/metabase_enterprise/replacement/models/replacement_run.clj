@@ -20,7 +20,7 @@
    :target_entity_type mi/transform-keyword})
 
 (defn create-run!
-  "Insert a new active run. Throws on duplicate key if one is already active."
+  "Insert a new pending run. It becomes active when [[start-run!]] is called."
   [source-type source-id target-type target-id user-id]
   (t2/insert-returning-instance! :model/ReplacementRun
                                  {:source_entity_type source-type
