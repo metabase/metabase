@@ -155,8 +155,7 @@ export function SchemaViewer({
   const [explicitFullMode, setExplicitFullMode] = useState(false);
 
   // Persist table selection + hops per database:schema
-  const prefsKey =
-    databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
+  const prefsKey = databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
 
   const {
     value: savedPrefs,
@@ -484,6 +483,11 @@ export function SchemaViewer({
     }
   }, [clipboard, shareUrl]);
 
+  const handleSchemaPickerChange = useCallback(() => {
+    setNodes([]);
+    setEdges([]);
+  }, [setNodes, setEdges]);
+
   const handleToggleCompactMode = useCallback(
     (explicit = true) => {
       setIsCompactMode((prev) => {
@@ -514,7 +518,13 @@ export function SchemaViewer({
         return newMode;
       });
     },
-    [effectiveSelectedTableIds, explicitFullMode, hops, prefsKey, setSavedPrefs],
+    [
+      effectiveSelectedTableIds,
+      explicitFullMode,
+      hops,
+      prefsKey,
+      setSavedPrefs,
+    ],
   );
 
   const schemaViewerContextValue = useMemo(
@@ -603,11 +613,19 @@ export function SchemaViewer({
     if (!hasEntry || error != null || isExplicitlyEmpty) {
       setNodes([]);
       setEdges([]);
-    } else if (graph != null) {
+    } else if (!isFetching && graph != null) {
       setNodes(graph.nodes);
       setEdges(graph.edges);
     }
-  }, [hasEntry, graph, error, isExplicitlyEmpty, setNodes, setEdges]);
+  }, [
+    hasEntry,
+    graph,
+    error,
+    isExplicitlyEmpty,
+    isFetching,
+    setNodes,
+    setEdges,
+  ]);
 
   return (
     <SchemaViewerContext.Provider value={schemaViewerContextValue}>
@@ -662,6 +680,7 @@ export function SchemaViewer({
               databaseId={databaseId}
               schema={schema}
               isLoading={isFetching}
+              onChange={handleSchemaPickerChange}
             />
             {effectiveSelectedTableIds != null && (
               <TableSelectorInput
@@ -672,7 +691,8 @@ export function SchemaViewer({
                 onSelectionChange={handleTableSelectionChange}
               />
             )}
-            {effectiveSelectedTableIds != null &&
+            {!isFetchingTables &&
+              effectiveSelectedTableIds != null &&
               effectiveSelectedTableIds.length > 0 && (
                 <HopsInput value={hops} onChange={handleHopsChange} />
               )}

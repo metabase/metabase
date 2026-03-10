@@ -217,67 +217,6 @@ function CompactTableNode({
   onDoubleClick,
 }: CompactTableNodeProps) {
   const headerColor = data.is_focal ? "brand" : "text-primary";
-  const edges = useEdges();
-  const nodes = useNodes();
-
-  // Build map of node ID to table name
-  const nodeIdToName = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const node of nodes) {
-      map.set(node.id, node.data?.name as string);
-    }
-    return map;
-  }, [nodes]);
-
-  // Find connected tables with direction and cardinality
-  // inbound = other table has FK pointing to this table (other is "many" side)
-  // outbound = this table has FK pointing to other table (this is "many" side)
-  const connectedTables = useMemo(() => {
-    const outbound = new Map<string, "one" | "many">();
-    const inbound = new Map<string, "one" | "many">();
-    for (const edge of edges) {
-      const relationship = edge.data?.relationship ?? "many-to-one";
-      if (edge.source === nodeId && edge.target !== nodeId) {
-        // Outbound: this table is source (FK holder), so this side is "many" for many-to-one
-        // The other side (target) is always "one"
-        outbound.set(edge.target, "one");
-      }
-      if (edge.target === nodeId && edge.source !== nodeId) {
-        // Inbound: other table is source (FK holder)
-        // For many-to-one, source side is "many"; for one-to-one, source is "one"
-        const cardinality = relationship === "one-to-one" ? "one" : "many";
-        inbound.set(edge.source, cardinality);
-      }
-    }
-    const result: Array<{
-      name: string;
-      direction: "inbound" | "outbound";
-      cardinality: "one" | "many";
-    }> = [];
-    for (const [id, cardinality] of outbound) {
-      result.push({
-        name: nodeIdToName.get(id) ?? id,
-        direction: "outbound",
-        cardinality,
-      });
-    }
-    for (const [id, cardinality] of inbound) {
-      if (!outbound.has(id)) {
-        result.push({
-          name: nodeIdToName.get(id) ?? id,
-          direction: "inbound",
-          cardinality,
-        });
-      }
-    }
-    return result.sort((a, b) => {
-      // Sort by direction first (outbound before inbound), then by name
-      if (a.direction !== b.direction) {
-        return a.direction === "outbound" ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
-    });
-  }, [edges, nodeId, nodeIdToName]);
 
   // Collect all connected fields that need handles for edge routing
   const connectedFields = useMemo(() => {

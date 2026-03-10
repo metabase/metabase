@@ -35,12 +35,14 @@ interface SchemaPickerInputProps {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
   isLoading: boolean;
+  onChange?: () => void;
 }
 
 export function SchemaPickerInput({
   databaseId,
   schema,
   isLoading,
+  onChange,
 }: SchemaPickerInputProps) {
   const dispatch = useDispatch();
   const [opened, { open, close, toggle }] = useDisclosure(false);
@@ -83,18 +85,20 @@ export function SchemaPickerInput({
       if (schemas.length === 1) {
         // Single schema - include it in the URL
         const url = Urls.dataStudioErdSchema(selectedDatabaseId, schemas[0]);
+        onChange?.();
         dispatch(push(url));
         setSelectedDatabaseId(null);
         close();
       } else if (schemas.length === 0) {
         // No schemas - just use database
         const url = Urls.dataStudioErdDatabase(selectedDatabaseId);
+        onChange?.();
         dispatch(push(url));
         setSelectedDatabaseId(null);
         close();
       }
     }
-  }, [schemas, selectedDatabaseId, dispatch, close]);
+  }, [schemas, selectedDatabaseId, onChange, dispatch, close]);
 
   const handleDatabaseClick = useCallback((dbId: DatabaseId) => {
     setSelectedDatabaseId(dbId);
@@ -104,12 +108,13 @@ export function SchemaPickerInput({
     (schemaName: SchemaName) => {
       if (selectedDatabaseId != null) {
         const url = Urls.dataStudioErdSchema(selectedDatabaseId, schemaName);
+        onChange?.();
         dispatch(push(url));
         setSelectedDatabaseId(null);
         close();
       }
     },
-    [selectedDatabaseId, dispatch, close],
+    [selectedDatabaseId, onChange, dispatch, close],
   );
 
   const handleBack = useCallback(() => {
@@ -119,9 +124,10 @@ export function SchemaPickerInput({
   const handleClear = useCallback(
     (event: MouseEvent) => {
       event.stopPropagation();
+      onChange?.();
       dispatch(push(Urls.dataStudioErdBase()));
     },
-    [dispatch],
+    [onChange, dispatch],
   );
 
   const handleClose = useCallback(() => {
