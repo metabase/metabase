@@ -696,6 +696,11 @@ export type MetricCreatedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type ChartGeneratedEvent = ValidateEvent<{
+  event: "chart_generated";
+  event_detail: VisualizationDisplay;
+}>;
+
 export type DataStudioEvent =
   | DataStudioOpenedEvent
   | DataStudioLibraryCreatedEvent
@@ -783,4 +788,5 @@ export type SimpleEvent =
   | RemoteSyncEvent
   | ClickActionPerformedEvent
   | DataStudioEvent
-  | UnsavedChangesWarningDisplayedEvent;
+  | UnsavedChangesWarningDisplayedEvent
+  | ChartGeneratedEvent;

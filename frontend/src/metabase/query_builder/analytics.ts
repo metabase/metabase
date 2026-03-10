@@ -1,29 +1,35 @@
 import { trackSchemaEvent, trackSimpleEvent } from "metabase/lib/analytics";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type { NewQuestionSavedEvent } from "metabase-types/analytics";
+import type { Card } from "metabase-types/api";
 
 export const trackNewQuestionSaved = (
-  draftQuestion,
-  createdQuestion,
-  isBasedOnExistingQuestion,
+  draftQuestion: Question,
+  createdQuestion: Question,
+  isBasedOnExistingQuestion?: boolean,
 ) => {
   trackSchemaEvent("question", {
     event: "new_question_saved",
     question_id: createdQuestion.id(),
     database_id: createdQuestion.databaseId(),
     visualization_type: createdQuestion.display(),
-    type: draftQuestion.creationType(),
-    source: isBasedOnExistingQuestion ? "existing_question" : "from_scratch",
+    type: draftQuestion.creationType() as NewQuestionSavedEvent["type"],
+    method: isBasedOnExistingQuestion ? "existing_question" : "from_scratch",
   });
 };
 
-export const trackTurnIntoModelClicked = (question) => {
+export const trackTurnIntoModelClicked = (question: Question) => {
   trackSchemaEvent("question", {
     event: "turn_into_model_clicked",
     question_id: question.id(),
   });
 };
 
-export const trackNotebookNativePreviewShown = (question, isShown) => {
+export const trackNotebookNativePreviewShown = (
+  question: Question,
+  isShown?: boolean,
+) => {
   trackSchemaEvent("question", {
     event: isShown
       ? "notebook_native_preview_shown"
@@ -33,7 +39,10 @@ export const trackNotebookNativePreviewShown = (question, isShown) => {
   });
 };
 
-export const trackColumnCombineViaShortcut = (query, question) => {
+export const trackColumnCombineViaShortcut = (
+  query: Lib.Query,
+  question?: Question,
+) => {
   trackSchemaEvent("question", {
     event: "column_combine_via_shortcut",
     custom_expressions_used: ["concat"],
@@ -42,7 +51,10 @@ export const trackColumnCombineViaShortcut = (query, question) => {
   });
 };
 
-export const trackColumnCombineViaPlusModal = (query, question) => {
+export const trackColumnCombineViaPlusModal = (
+  query: Lib.Query,
+  question?: Question,
+) => {
   trackSchemaEvent("question", {
     event: "column_combine_via_plus_modal",
     custom_expressions_used: ["concat"],
@@ -52,10 +64,10 @@ export const trackColumnCombineViaPlusModal = (query, question) => {
 };
 
 export const trackColumnExtractViaShortcut = (
-  query,
-  stageIndex,
-  extraction,
-  question,
+  query: Lib.Query,
+  stageIndex: number,
+  extraction: Lib.ColumnExtraction,
+  question?: Question,
 ) => {
   trackSchemaEvent("question", {
     event: "column_extract_via_shortcut",
@@ -70,10 +82,10 @@ export const trackColumnExtractViaShortcut = (
 };
 
 export const trackColumnExtractViaPlusModal = (
-  query,
-  stageIndex,
-  extraction,
-  question,
+  query: Lib.Query,
+  stageIndex: number,
+  extraction: Lib.ColumnExtraction,
+  question?: Question,
 ) => {
   trackSchemaEvent("question", {
     event: "column_extract_via_plus_modal",
@@ -87,14 +99,14 @@ export const trackColumnExtractViaPlusModal = (
   });
 };
 
-export const trackFirstNonTableChartGenerated = (card) => {
+export const trackFirstNonTableChartGenerated = (card: Card) => {
   trackSimpleEvent({
     event: "chart_generated",
     event_detail: card.display,
   });
 };
 
-export const trackCardBookmarkAdded = (card) => {
+export const trackCardBookmarkAdded = (card: Card) => {
   trackSimpleEvent({
     event: "bookmark_added",
     event_detail: card.type,
