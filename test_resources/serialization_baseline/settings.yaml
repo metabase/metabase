@@ -10,6 +10,7 @@ available-fonts: null
 available-locales: null
 available-timezones: null
 breakout-bins-num: null
+csv-field-separator: nil
 custom-formatting: null
 custom-geojson: null
 custom-geojson-enabled: null
