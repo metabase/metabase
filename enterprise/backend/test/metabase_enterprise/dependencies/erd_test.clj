@@ -6,12 +6,47 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]))
 
-;;; ---------------------------------------- Pure function tests ----------------------------------------
+;;; ---------------------------------------- Test helpers ----------------------------------------
 
 (defn- ->field-by-id
   "Build a field-by-id map from a collection of fields."
   [fields]
   (into {} (map (fn [f] [(:id f) f])) fields))
+
+(defn- node-by-table
+  "Find an ERD node by table keyword (e.g. :orders) or table ID."
+  [response table-or-id]
+  (let [tid (if (keyword? table-or-id) (mt/id table-or-id) table-or-id)]
+    (some #(when (= tid (:table_id %)) %) (:nodes response))))
+
+(defn- edge-between
+  "Find an ERD edge from source to target (keywords or IDs)."
+  [response source-table target-table]
+  (let [src (if (keyword? source-table) (mt/id source-table) source-table)
+        tgt (if (keyword? target-table) (mt/id target-table) target-table)]
+    (some #(when (and (= src (:source_table_id %))
+                      (= tgt (:target_table_id %)))
+             %)
+          (:edges response))))
+
+(defn- table-ids
+  "Set of all table IDs in an ERD response."
+  [response]
+  (set (map :table_id (:nodes response))))
+
+(defn- erd-request!
+  "Make an ERD endpoint request. `opts` is a map with optional keys
+   :table-ids (coll), :schema, :hops."
+  [opts]
+  (apply mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+         :database-id (mt/id)
+         (mapcat (fn [[k v]]
+                   (if (= k :table-ids)
+                     (mapcat (fn [tid] [:table-ids tid]) v)
+                     [k v]))
+                 opts)))
+
+;;; ---------------------------------------- Pure function tests ----------------------------------------
 
 (deftest ^:parallel build-erd-field-test
   (testing "basic field without FK"
@@ -164,133 +199,97 @@
 
 (deftest erd-endpoint-with-explicit-tables-test
   (mt/with-premium-features #{:dependencies}
-    (testing "GET /api/ee/dependencies/erd with explicit table-ids"
-      (let [orders-id   (mt/id :orders)
-            products-id (mt/id :products)
-            response    (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
-                                              :database-id (mt/id)
-                                              :table-ids   orders-id
-                                              :table-ids   products-id
-                                              :hops        0)]
-        (testing "returns exactly the requested tables when hops=0"
-          (is (= #{orders-id products-id}
-                 (set (map :table_id (:nodes response))))))
+    (testing "GET /api/ee/dependencies/erd with explicit table-ids, hops=0"
+      (let [response (erd-request! {:table-ids [(mt/id :orders) (mt/id :products)]
+                                    :hops      0})]
+        (testing "returns exactly the requested focal tables"
+          (is (= #{(mt/id :orders) (mt/id :products)} (table-ids response))))
 
-        (testing "all nodes have required keys"
-          (doseq [node (:nodes response)]
-            (is (contains? node :table_id))
-            (is (contains? node :name))
-            (is (contains? node :display_name))
-            (is (contains? node :db_id))
-            (is (contains? node :is_focal))
-            (is (contains? node :fields))))
+        (testing "nodes have correct shape"
+          (is (=? {:table_id     (mt/id :orders)
+                   :name         "ORDERS"
+                   :display_name "Orders"
+                   :db_id        (mt/id)
+                   :schema       "PUBLIC"
+                   :is_focal     true
+                   :fields       sequential?}
+                  (node-by-table response :orders)))
+          (is (=? {:table_id (mt/id :products)
+                   :is_focal true}
+                  (node-by-table response :products))))
 
-        (testing "focal tables are marked correctly"
-          (doseq [node (:nodes response)]
-            (is (true? (:is_focal node)))))
-
-        (testing "edges have required keys"
-          (doseq [edge (:edges response)]
-            (is (contains? edge :source_table_id))
-            (is (contains? edge :source_field_id))
-            (is (contains? edge :target_table_id))
-            (is (contains? edge :target_field_id))
-            (is (contains? edge :relationship))))))))
+        (testing "each field has the expected shape"
+          (is (=? {:id                 pos-int?
+                   :name               string?
+                   :display_name       string?
+                   :database_type      string?}
+                  (first (:fields (node-by-table response :orders))))))))))
 
 (deftest erd-endpoint-with-hops-test
   (mt/with-premium-features #{:dependencies}
-    (testing "GET /api/ee/dependencies/erd with hops expands to related tables"
-      (let [orders-id (mt/id :orders)
-            response  (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
-                                            :database-id (mt/id)
-                                            :table-ids   orders-id
-                                            :hops        1)]
-        (testing "orders has FKs to products and people, so both should appear"
-          (let [table-ids (set (map :table_id (:nodes response)))]
-            (is (contains? table-ids orders-id))
-            (is (contains? table-ids (mt/id :products)))
-            (is (contains? table-ids (mt/id :people)))))
+    (testing "hops=1 from orders expands to products and people via outbound FKs"
+      (let [response (erd-request! {:table-ids [(mt/id :orders)]
+                                    :hops      1})]
+        (testing "focal + related tables present"
+          (is (=? {:table_id (mt/id :orders)  :is_focal true}  (node-by-table response :orders)))
+          (is (=? {:table_id (mt/id :products) :is_focal false} (node-by-table response :products)))
+          (is (=? {:table_id (mt/id :people)   :is_focal false} (node-by-table response :people))))
 
-        (testing "orders is focal, related tables are not"
-          (let [nodes-by-id (into {} (map (fn [n] [(:table_id n) n])) (:nodes response))]
-            (is (true? (:is_focal (nodes-by-id orders-id))))
-            (is (false? (:is_focal (nodes-by-id (mt/id :products)))))
-            (is (false? (:is_focal (nodes-by-id (mt/id :people)))))))
-
-        (testing "has edges connecting orders to products and people"
-          (let [edge-pairs (set (map (fn [e] [(:source_table_id e) (:target_table_id e)])
-                                     (:edges response)))]
-            (is (contains? edge-pairs [orders-id (mt/id :products)]))
-            (is (contains? edge-pairs [orders-id (mt/id :people)]))))))))
+        (testing "edges connect orders to its FK targets"
+          (is (=? {:source_table_id (mt/id :orders)
+                   :target_table_id (mt/id :products)
+                   :relationship    "many-to-one"}
+                  (edge-between response :orders :products)))
+          (is (=? {:source_table_id (mt/id :orders)
+                   :target_table_id (mt/id :people)
+                   :relationship    "many-to-one"}
+                  (edge-between response :orders :people))))))))
 
 (deftest erd-endpoint-multi-hop-test
   (mt/with-premium-features #{:dependencies}
     (testing "hops=2 from orders reaches tables two hops away via outbound FKs"
       ;; orders → products (hop 1), orders → people (hop 1)
       ;; products and people have no outbound FKs, so hop 2 discovers nothing new
-      (let [orders-id (mt/id :orders)
-            response  (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
-                                            :database-id (mt/id)
-                                            :table-ids   orders-id
-                                            :hops        2)
-            table-ids (set (map :table_id (:nodes response)))]
-        (is (contains? table-ids orders-id))
-        (is (contains? table-ids (mt/id :products)))
-        (is (contains? table-ids (mt/id :people)))))
+      (let [response (erd-request! {:table-ids [(mt/id :orders)]
+                                    :hops      2})]
+        (is (=? {:is_focal true}  (node-by-table response :orders)))
+        (is (=? {:is_focal false} (node-by-table response :products)))
+        (is (=? {:is_focal false} (node-by-table response :people)))))
 
     (testing "BFS only follows outbound FKs — a table with no FKs expands to nothing"
-      (let [products-id (mt/id :products)
-            response    (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
-                                              :database-id (mt/id)
-                                              :table-ids   products-id
-                                              :hops        2)
-            table-ids   (set (map :table_id (:nodes response)))]
-        (is (= #{products-id} table-ids))))))
+      (let [response (erd-request! {:table-ids [(mt/id :products)]
+                                    :hops      2})]
+        (is (= #{(mt/id :products)} (table-ids response)))))))
 
 (deftest erd-endpoint-hops-clamped-test
   (mt/with-premium-features #{:dependencies}
     (testing "hops > max (5) is clamped — does not error or run unbounded"
-      (let [orders-id (mt/id :orders)
-            response  (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
-                                            :database-id (mt/id)
-                                            :table-ids   orders-id
-                                            :hops        99)]
+      (let [response (erd-request! {:table-ids [(mt/id :orders)]
+                                    :hops      99})]
         (is (seq (:nodes response)))))))
 
 (deftest erd-endpoint-auto-discover-test
   (mt/with-premium-features #{:dependencies}
-    (testing "GET /api/ee/dependencies/erd auto-discovers focal tables when none specified"
-      (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
-                                           :database-id (mt/id))]
-        (testing "returns nodes and edges"
-          (is (seq (:nodes response)))
-          (is (seq (:edges response))))
-
-        (testing "some nodes are focal"
-          (is (some :is_focal (:nodes response))))
-
-        (testing "some nodes are non-focal (discovered via hops)"
-          (is (some (complement :is_focal) (:nodes response))))))))
+    (testing "auto-discovers focal tables when none specified"
+      (let [response (erd-request! {})]
+        (is (seq (:nodes response)))
+        (is (seq (:edges response)))
+        (is (some :is_focal (:nodes response)))
+        (is (some (complement :is_focal) (:nodes response)))))))
 
 (deftest erd-endpoint-hops-zero-test
   (mt/with-premium-features #{:dependencies}
     (testing "hops=0 returns only focal tables with no expansion"
-      (let [orders-id (mt/id :orders)
-            response  (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
-                                            :database-id (mt/id)
-                                            :table-ids   orders-id
-                                            :hops        0)]
-        (is (= #{orders-id} (set (map :table_id (:nodes response)))))))))
+      (let [response (erd-request! {:table-ids [(mt/id :orders)]
+                                    :hops      0})]
+        (is (= #{(mt/id :orders)} (table-ids response)))))))
 
 (deftest erd-endpoint-schema-filter-test
   (mt/with-premium-features #{:dependencies}
     (testing "schema param filters auto-discovery to that schema"
-      (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
-                                           :database-id (mt/id)
-                                           :schema      "PUBLIC")]
-        (testing "all nodes belong to the specified schema"
-          (doseq [node (:nodes response)]
-            (is (= "PUBLIC" (:schema node)))))))))
+      (let [response (erd-request! {:schema "PUBLIC"})]
+        (doseq [node (:nodes response)]
+          (is (= "PUBLIC" (:schema node))))))))
 
 (deftest erd-endpoint-requires-premium-feature-test
   (testing "without :dependencies feature returns 402"
@@ -317,22 +316,19 @@
             ;; Grant access to orders only — not products
             (data-perms/set-table-permission! group-id orders-id :perms/view-data :unrestricted)
             (data-perms/set-table-permission! group-id orders-id :perms/create-queries :query-builder)
-            (let [response  (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
-                                                  :database-id (mt/id)
-                                                  :table-ids   orders-id
-                                                  :table-ids   products-id
-                                                  :hops        1)
-                  table-ids (set (map :table_id (:nodes response)))]
-              (testing "orders is included (user has access)"
-                (is (contains? table-ids orders-id)))
-              (testing "products is excluded (user lacks access)"
-                (is (not (contains? table-ids products-id))))
+            (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                                 :database-id (mt/id)
+                                                 :table-ids   orders-id
+                                                 :table-ids   products-id
+                                                 :hops        1)]
+              (testing "orders is included, products is excluded"
+                (is (some? (node-by-table response orders-id)))
+                (is (nil?  (node-by-table response products-id))))
               (testing "no edges reference the excluded table"
                 (doseq [edge (:edges response)]
                   (is (not= products-id (:source_table_id edge)))
                   (is (not= products-id (:target_table_id edge)))))
               (testing "FK fields pointing to excluded tables have nil target IDs"
-                (let [all-fields (mapcat :fields (:nodes response))]
-                  (doseq [field all-fields
-                          :when (some? (:fk_target_table_id field))]
-                    (is (contains? table-ids (:fk_target_table_id field)))))))))))))
+                (doseq [field (mapcat :fields (:nodes response))
+                        :when (some? (:fk_target_table_id field))]
+                  (is (contains? (table-ids response) (:fk_target_table_id field))))))))))))
