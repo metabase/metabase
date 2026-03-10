@@ -47,13 +47,13 @@
       (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 14 :minor 0 :patch -1}))))
 
     (testing "for mysql"
-      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 4 :patch 17})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 9 :minor 4 :patch 17})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 5 :patch 17})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 4 :patch 18})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 7 :minor 4 :patch 17})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 3 :patch 17})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 4 :patch 16}))))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 4 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 9 :minor 4 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 5 :patch 0})))
+      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 4 :patch 1})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 7 :minor 4 :patch 0})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 3 :patch 0})))
+      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 4 :patch -1}))))
 
     (testing "for mariadb"
       (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 6 :patch 0})))
