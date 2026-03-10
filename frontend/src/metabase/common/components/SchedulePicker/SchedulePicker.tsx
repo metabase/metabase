@@ -2,8 +2,6 @@ import cx from "classnames";
 import { type CSSProperties, Component } from "react";
 import { t } from "ttag";
 
-import type { SelectChangeEvent } from "metabase/common/components/Select";
-import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
   AM_PM_OPTIONS,
@@ -15,7 +13,7 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, type BoxProps, SegmentedControl } from "metabase/ui";
+import { Box, type BoxProps, SegmentedControl, Select } from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -67,6 +65,23 @@ export interface SchedulePickerProps {
 }
 
 const DEFAULT_DAY = "mon";
+
+const SELECT_STYLE = { wrapper: { width: 110 } };
+
+function getSelectDayStyles(schedule: ScheduleSettings) {
+  if (schedule.schedule_day === "wed") {
+    return { wrapper: { width: 130 } };
+  }
+
+  // Calendar Day
+  if (schedule.schedule_day === null) {
+    return { wrapper: { width: 140 } };
+  }
+
+  return {
+    wrapper: { width: 110 },
+  };
+}
 
 /**
  * @deprecated use "metabase/common/components/Schedule" instead
@@ -147,28 +162,47 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
     const { schedule } = this.props;
 
     const DAY_OPTIONS = [
-      { name: t`Calendar Day`, value: null },
-      ...getDayOfWeekOptions(),
+      { label: t`Calendar Day`, value: "" },
+      ...getDayOfWeekOptions().map((opt) => ({
+        label: opt.name,
+        value: opt.value,
+      })),
     ];
 
     return (
       <PickerSpacedRow>
         <PickerText>{t`on the`}</PickerText>
         <Select
-          value={schedule.schedule_frame}
-          onChange={(e: SelectChangeEvent<ScheduleFrameType>) =>
-            this.handleChangeProperty("schedule_frame", e.target.value)
+          styles={{
+            wrapper: { width: schedule.schedule_frame === "mid" ? 150 : 110 },
+          }}
+          comboboxProps={{ width: 150 }}
+          value={schedule.schedule_frame ?? ""}
+          onChange={(value) =>
+            this.handleChangeProperty(
+              "schedule_frame",
+              value as ScheduleFrameType,
+            )
           }
-          options={MONTH_DAY_OPTIONS}
+          data={MONTH_DAY_OPTIONS.map((opt) => ({
+            label: opt.name,
+            value: opt.value,
+          }))}
         />
         {schedule.schedule_frame !== "mid" && (
           <span className={CS.mx1}>
             <Select
-              value={schedule.schedule_day}
-              onChange={(e: SelectChangeEvent<ScheduleDayType>) =>
-                this.handleChangeProperty("schedule_day", e.target.value)
+              styles={getSelectDayStyles(schedule)}
+              comboboxProps={{ width: 150 }}
+              value={schedule.schedule_day || ""}
+              onChange={(value) =>
+                this.handleChangeProperty(
+                  "schedule_day",
+                  // We only need to convert this option back to null because it's the only option we change from `null` to `""` in this file.
+                  (value || null) as ScheduleDayType,
+                )
               }
-              options={DAY_OPTIONS}
+              data={DAY_OPTIONS}
             />
           </span>
         )}
@@ -183,11 +217,16 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
       <PickerRow>
         <span className={cx(CS.textBold, CS.mx1)}>{t`on`}</span>
         <Select
-          value={schedule.schedule_day}
-          onChange={(e: SelectChangeEvent<ScheduleDayType>) =>
-            this.handleChangeProperty("schedule_day", e.target.value)
+          styles={getSelectDayStyles(schedule)}
+          comboboxProps={{ width: 150 }}
+          value={schedule.schedule_day ?? ""}
+          onChange={(value) =>
+            this.handleChangeProperty("schedule_day", value as ScheduleDayType)
           }
-          options={getDayOfWeekOptions()}
+          data={getDayOfWeekOptions().map((opt) => ({
+            label: opt.name,
+            value: opt.value,
+          }))}
         />
       </PickerRow>
     );
@@ -197,16 +236,23 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
     const { schedule } = this.props;
     const minuteOfHour = isNaN(schedule.schedule_minute as number)
       ? 0
-      : schedule.schedule_minute;
+      : (schedule.schedule_minute ?? 0);
     return (
       <PickerSpacedRow>
         <PickerText>{t`at`}</PickerText>
         <Select
+          styles={SELECT_STYLE}
           className={CS.mr1}
-          value={minuteOfHour}
-          options={MINUTE_OPTIONS}
-          onChange={(e: SelectChangeEvent<number>) =>
-            this.handleChangeProperty("schedule_minute", e.target.value)
+          value={minuteOfHour.toString()}
+          data={MINUTE_OPTIONS.map((opt) => ({
+            label: opt.name,
+            value: opt.value.toString(),
+          }))}
+          onChange={(value) =>
+            this.handleChangeProperty(
+              "schedule_minute",
+              value ? parseInt(value) : 0,
+            )
           }
         />
         <span className={CS.textBold}>{t`minutes past the hour`}</span>
@@ -229,13 +275,17 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
         <PickerSpacedRow>
           <PickerText>{t`at`}</PickerText>
           <Select
+            styles={SELECT_STYLE}
             className={CS.mr1}
-            value={hour}
-            options={HOUR_OPTIONS}
-            onChange={(e: SelectChangeEvent<number>) =>
+            value={hour.toString()}
+            data={HOUR_OPTIONS.map((opt) => ({
+              label: opt.name,
+              value: opt.value.toString(),
+            }))}
+            onChange={(value) =>
               this.handleChangeProperty(
                 "schedule_hour",
-                e.target.value + amPm * 12,
+                (value ? parseInt(value) : 0) + amPm * 12,
               )
             }
           />
@@ -282,15 +332,15 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
         <PickerRow>
           <PickerText>{textBeforeInterval}</PickerText>
           <Select
+            styles={SELECT_STYLE}
             value={scheduleType}
-            onChange={(e: SelectChangeEvent<ScheduleType>) =>
-              this.handleChangeProperty("schedule_type", e.target.value)
+            onChange={(value) =>
+              this.handleChangeProperty("schedule_type", value as ScheduleType)
             }
-            options={scheduleOptions}
-            optionNameFn={(o: ScheduleType) =>
-              optionNameTranslations[o] || capitalize(o)
-            }
-            optionValueFn={(o: ScheduleType) => o}
+            data={scheduleOptions.map((o) => ({
+              label: optionNameTranslations[o] || capitalize(o),
+              value: o,
+            }))}
           />
           {scheduleType === "weekly" && this.renderDayPicker()}
         </PickerRow>
