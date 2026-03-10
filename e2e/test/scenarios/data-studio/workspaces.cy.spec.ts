@@ -1766,8 +1766,18 @@ describe("scenarios > data studio > workspaces", () => {
           createPythonTransform({
             body: TEST_PYTHON_TRANSFORM,
             sourceTables: [
-              { alias: "foo", table: id1 },
-              { alias: "bar", table: id2 },
+              {
+                alias: "foo",
+                table_id: id1,
+                database_id: WRITABLE_DB_ID,
+                schema: "Schema A",
+              },
+              {
+                alias: "bar",
+                table_id: id2,
+                database_id: WRITABLE_DB_ID,
+                schema: "Schema B",
+              },
             ],
             visitTransform: true,
           });
@@ -1912,8 +1922,18 @@ describe("scenarios > data studio > workspaces", () => {
             createPythonTransform({
               body: TEST_PYTHON_TRANSFORM_MULTI_TABLE,
               sourceTables: [
-                { alias: "animals_a", table: id1 },
-                { alias: "animals_b", table: id2 },
+                {
+                  alias: "animals_a",
+                  table_id: id1,
+                  database_id: WRITABLE_DB_ID,
+                  schema: "Schema A",
+                },
+                {
+                  alias: "animals_b",
+                  table_id: id2,
+                  database_id: WRITABLE_DB_ID,
+                  schema: "Schema B",
+                },
               ],
               visitTransform: true,
             });
@@ -2523,7 +2543,14 @@ function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then((id) => {
     createPythonTransform({
       body: TEST_PYTHON_TRANSFORM,
-      sourceTables: [{ alias: "foo", table: id }],
+      sourceTables: [
+        {
+          alias: "foo",
+          table_id: id,
+          database_id: WRITABLE_DB_ID,
+          schema: TARGET_SCHEMA,
+        },
+      ],
     });
   });
 
