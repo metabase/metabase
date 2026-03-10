@@ -6,8 +6,8 @@ import {
   HEADER_BORDER_SIZE,
   HEADER_HEIGHT,
   PINNED_ROW_Z_INDEX,
-} from "../../constants";
-import type { DataGridColumn } from "../../types";
+} from "../constants";
+import type { DataGridColumn } from "../types";
 
 export const getRowPositionStyles = <TData>(
   row: Row<TData>,

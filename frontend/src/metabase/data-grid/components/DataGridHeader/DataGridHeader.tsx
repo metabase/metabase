@@ -3,6 +3,8 @@ import type { HeaderGroup } from "@tanstack/table-core/src/types";
 import cx from "classnames";
 import type React from "react";
 
+import { getColumnPositionStyles } from "metabase/data-grid/utils/stylings";
+
 import { HEADER_HEIGHT, ROW_ID_COLUMN_ID } from "../../constants";
 import type { DataGridColumn } from "../../types";
 import S from "../DataGrid/DataGrid.module.css";
@@ -40,17 +42,8 @@ export const DataGridHeader = <TData,>({
         header.column.columnDef.header,
         header.getContext(),
       );
-      const width = header.column.getSize();
       const isRowIdColumn = header.column.id === ROW_ID_COLUMN_ID;
-      const style: React.CSSProperties = column.virtualItem
-        ? {
-            position: "absolute",
-            left: column.virtualItem.start,
-            width,
-            top: 0,
-            bottom: 0,
-          }
-        : { width };
+      const columnPositionStyles = getColumnPositionStyles(column);
 
       const headerContent = isRowIdColumn ? (
         headerCell
@@ -69,7 +62,11 @@ export const DataGridHeader = <TData,>({
       );
 
       return (
-        <div key={header.id} style={style} data-header-id={header.id}>
+        <div
+          key={header.id}
+          style={columnPositionStyles}
+          data-header-id={header.id}
+        >
           {headerContent}
         </div>
       );

@@ -10,10 +10,12 @@ import type {
   DataGridSelection,
   MaybeVirtualRow,
 } from "../../types";
+import {
+  getColumnPositionStyles,
+  getRowPositionStyles,
+} from "../../utils/stylings";
 import S from "../DataGrid/DataGrid.module.css";
 import type { DataGridStylesProps } from "../DataGrid/types";
-
-import { getColumnPositionStyles, getRowPositionStyles } from "./utils";
 
 export interface DataGridRowProps<TData> extends DataGridStylesProps {
   row: MaybeVirtualRow<TData>;
