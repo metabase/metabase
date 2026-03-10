@@ -95,25 +95,30 @@ describe("issue GDGT-1774", () => {
   it("should display field options in the incremental update field picker (GDGT-1774)", () => {
     H.getTableId({ name: SOURCE_TABLE })
       .then((tableId) =>
-        H.createTransform({
-          name: "Incremental MBQL transform",
-          source: {
-            type: "query",
-            query: {
-              database: WRITABLE_DB_ID,
+        H.getFieldId({ tableId, name: "id" }).then((fieldId) =>
+          H.createTransform({
+            name: "Incremental MBQL transform",
+            source: {
               type: "query",
-              query: { "source-table": tableId },
+              query: {
+                database: WRITABLE_DB_ID,
+                type: "query",
+                query: { "source-table": tableId },
+              },
+              "source-incremental-strategy": {
+                type: "checkpoint",
+                "checkpoint-filter-field-id": fieldId,
+              },
             },
-            "source-incremental-strategy": { type: "checkpoint" },
-          },
-          target: {
-            type: "table-incremental",
-            database: WRITABLE_DB_ID,
-            name: TARGET_TABLE,
-            schema: TARGET_SCHEMA,
-            "target-incremental-strategy": { type: "append" },
-          },
-        }),
+            target: {
+              type: "table-incremental",
+              database: WRITABLE_DB_ID,
+              name: TARGET_TABLE,
+              schema: TARGET_SCHEMA,
+              "target-incremental-strategy": { type: "append" },
+            },
+          }),
+        ),
       )
       .then((res) => H.DataStudio.Transforms.visitSettingsTab(res.body.id));
 
