@@ -215,9 +215,13 @@
    Range predicate terms (maps :type, :value), can be nil (in which case the filter clause should be omitted):
    :lo                         values in the source table must be > this :value.
    :hi                         values in the source table must be <= this :value."
-  [{:keys [source] :as transform}]
+  [{:keys [source target] :as transform}]
   (let [{:keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
+    (when (and (= "table-incremental" (:type target))
+               (not checkpoint-filter-field-id))
+      (throw (ex-info "Incremental transform is enabled but no checkpoint field is selected. Please select a checkpoint field in the transform settings."
+                      {:transform-message "Incremental transform is enabled but no checkpoint field is selected. Please select a checkpoint field in the transform settings."})))
     (when checkpoint-filter-field-id
       (let [{:keys [last_checkpoint_value]} transform
             db-id             (transforms-base.i/target-db-id transform)
