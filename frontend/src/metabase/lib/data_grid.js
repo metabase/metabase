@@ -26,7 +26,7 @@ export function multiLevelPivot(data, settings) {
     data.cols,
   );
 
-  const columns = Pivot.columns_without_pivot_group(data.cols);
+  const columns = data.cols.filter((col) => col.name !== "pivot-grouping");
 
   const {
     columns: columnIndexes,
