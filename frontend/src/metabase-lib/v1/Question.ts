@@ -52,7 +52,7 @@ import type {
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
 
-import type { Query } from "../types";
+import type { Query } from "../query/types";
 
 export type QuestionCreatorOpts = {
   cardType?: CardType;
