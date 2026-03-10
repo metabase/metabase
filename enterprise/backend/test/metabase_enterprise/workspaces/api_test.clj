@@ -510,7 +510,7 @@
               (is (not= :archived (:status ws-after))))))))))
 
 (deftest merge-history-endpoint-test
-  (mt/with-premium-features #{:transforms :transforms-python :workspaces}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :workspaces}
     (testing "GET /api/transform/:id/merge-history"
       (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_history_test_table"}
                      :model/Transform x1     {:name        "Transform for history"
@@ -1283,7 +1283,9 @@
         (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
           (mt/with-temp [:model/Transform x1 {:name   "Transform"
                                               :source {:type  "query"
-                                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
+                                                       :query (-> (mt/mbql-query orders {:aggregation [[:count]]})
+                                                                  ws.tu/mbql->native
+                                                                  mt/native-query)}
                                               :target {:type     "table"
                                                        :database (mt/id)
                                                        :schema   target-schema
@@ -1627,48 +1629,34 @@
                                      (ws-url (:id ws) "/query")
                                      {:sql "SELECT 1"})))))))
 
-#_(deftest ^:synchronized adhoc-query-remapping-test
-    (testing "POST /api/ee/workspace/:id/query remaps table references to isolated tables"
-      (ws.tu/with-workspaces! [ws {:name "Adhoc Query Remapping Test"}]
-        (let [target-schema (driver.sql/default-schema driver/*driver*)
-              target-table  (str "adhoc_remap_" (str/replace (str (random-uuid)) "-" "_"))
-              transform-def {:name   "Remapping Test Transform"
-                             :source {:type  "query"
-                                      :query (mt/native-query
-                                              {:query "SELECT 1 as id, 'remapped' as status"})}
-                             :target {:type     "table"
-                                      :database (mt/id)
-                                      :schema   target-schema
-                                      :name     target-table}}
-            ;; Add transform to workspace
-              ref-id        (:ref_id (mt/user-http-request :crowberto :post 200
-                                                           (ws-url (:id ws) "/transform")
-                                                           transform-def))
-              ws            (ws.tu/ws-done! (:id ws))]
-          ;; Run the transform to populate the isolated table
-          #_{:clj-kondo/ignore [:redundant-let]}
-          (let [run-result (mt/user-http-request :crowberto :post 200
-                                                 (ws-url (:id ws) "/transform/" ref-id "/run"))]
-            (is (= "succeeded" (:status run-result)) "Transform should run successfully"))
+(deftest ^:synchronized adhoc-query-remapping-test
+  (testing "POST /api/ee/workspace/:id/query remaps table references to isolated tables"
+    (ws.tu/with-workspaces! [ws {:name "Adhoc Query Remapping Test"}]
+      (let [default-schema (driver.sql/default-schema driver/*driver*)
+            target-schema  (or default-schema (sql.normalize/normalize-name driver/*driver* "public"))
+            target-table   (str "adhoc_remap_" (str/replace (str (random-uuid)) "-" "_"))
+            tx-def         {:name   "Remapping Test Transform"
+                            :source {:type  "query"
+                                     :query (mt/native-query
+                                             {:query "SELECT 1 as id, 'remapped' as status"})}
+                            :target {:type     "table"
+                                     :database (mt/id)
+                                     :schema   target-schema
+                                     :name     target-table}}
+            ref-id         (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") tx-def))
+            ws             (ws.tu/ws-ready! ws)
+            run-result     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform/" ref-id "/run"))]
+        (is (= "succeeded" (:status run-result)) "Transform should have run successfully")
+        (let [run-qry (fn [query-sql]
+                        (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/query") {:sql query-sql}))
+              expected {:status "succeeded"
+                        :data   {:rows [[1 "remapped"]]
+                                 :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}]
           (testing "ad-hoc query can SELECT from transform output using schema-qualified table name"
-            (let [query-sql (str "SELECT * FROM " target-schema "." target-table)
-                  result    (mt/user-http-request :crowberto :post 200
-                                                  (ws-url (:id ws) "/query")
-                                                  {:sql query-sql})]
-              (is (=? {:status "succeeded"
-                       :data   {:rows [[1 "remapped"]]
-                                :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
-                      result))))
-
-          (testing "ad-hoc query can SELECT from transform output using unqualified table name"
-            (let [query-sql (str "SELECT * FROM " target-table)
-                  result    (mt/user-http-request :crowberto :post 200
-                                                  (ws-url (:id ws) "/query")
-                                                  {:sql query-sql})]
-              (is (=? {:status "succeeded"
-                       :data   {:rows [[1 "remapped"]]
-                                :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
-                      result))))))))
+            (is (=? expected (run-qry (str "SELECT * FROM " target-schema "." target-table)))))
+          (when default-schema
+            (testing "ad-hoc query can SELECT from transform output using unqualified table name"
+              (is (=? expected (run-qry (str "SELECT * FROM " target-table)))))))))))
 
 (deftest ^:synchronized adhoc-query-uses-isolated-credentials-test
   (testing "POST /api/ee/workspace/:id/query executes with workspace isolated credentials"
@@ -1710,7 +1698,7 @@
 
 (deftest external-transforms-test
   (testing "GET /api/ee/workspace/id/external/transform"
-    (mt/with-premium-features #{:transforms :workspaces}
+    (mt/with-premium-features #{:transforms-basic :workspaces}
       (let [db-1 (mt/id)]
         (ws.tu/with-workspaces! [ws1 {:name "Our Workspace"}
                                  ws2 {:name "Their Workspace"}]
@@ -2078,9 +2066,7 @@
   (testing "GET /api/ee/workspace/checkout returns checkout status for a transform"
     (mt/with-temp [:model/Transform tx {:name   "Native Transform"
                                         :source {:type  :query
-                                                 :query {:database (mt/id)
-                                                         :type     :native
-                                                         :native   {:query "SELECT 1"}}}
+                                                 :query (mt/native-query {:query "SELECT 1"})}
                                         :target {:type     "table"
                                                  :database (mt/id)
                                                  :schema   "public"

@@ -35,9 +35,22 @@ runs:
       with:
         name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
         path: temp/current-uberjar
-    - name: Extract embedding-sdk.js from current uberjar
+    - name: Extract embedding-sdk bundles from current uberjar
       shell: bash
-      run: unzip -j temp/current-uberjar/target/uberjar/metabase.jar frontend_client/app/embedding-sdk.js -d temp/current-bundle
+      run: |
+        # Try new layout first (app/embedding-sdk/legacy/), fall back to old layout (app/embedding-sdk.js)
+        unzip -j temp/current-uberjar/target/uberjar/metabase.jar \
+          "frontend_client/app/embedding-sdk/legacy/embedding-sdk.js" \
+          -d temp/current-bundle 2>/dev/null || \
+        unzip -j temp/current-uberjar/target/uberjar/metabase.jar \
+          "frontend_client/app/embedding-sdk.js" \
+          -d temp/current-bundle
+
+        # Extract chunks directory if it exists (new layout only)
+        mkdir -p temp/current-chunks
+        unzip -j temp/current-uberjar/target/uberjar/metabase.jar \
+          "frontend_client/app/embedding-sdk/chunks/*" \
+          -d temp/current-chunks 2>/dev/null || true
     - name: Checkout base ref
       uses: actions/checkout@v4
       with:
@@ -53,13 +66,21 @@ runs:
       id: compare
       shell: bash
       run: |
+        # --- Legacy (monolithic) bundle comparison ---
         current_size=$(wc -c < temp/current-bundle/embedding-sdk.js) || { echo "::error::Failed to read current bundle"; exit 1; }
-        base_ref_size=$(wc -c < temp/base-ref-src/resources/frontend_client/app/embedding-sdk.js) || { echo "::error::Failed to read base-ref bundle"; exit 1; }
+
+        # Base ref: try new layout first, fall back to old
+        if [ -f "temp/base-ref-src/resources/frontend_client/app/embedding-sdk/legacy/embedding-sdk.js" ]; then
+          base_ref_size=$(wc -c < "temp/base-ref-src/resources/frontend_client/app/embedding-sdk/legacy/embedding-sdk.js")
+        else
+          base_ref_size=$(wc -c < "temp/base-ref-src/resources/frontend_client/app/embedding-sdk.js")
+        fi
         [ "$current_size" -gt 0 ] && [ "$base_ref_size" -gt 0 ] || { echo "::error::Bundle file is empty"; exit 1; }
 
         diff=$((current_size - base_ref_size))
         percent=$(( diff * 100 / base_ref_size ))
 
+        echo "=== Legacy (monolithic) bundle ==="
         echo "Current size: $current_size bytes"
         echo "Base ref size: $base_ref_size bytes"
         echo "Difference: $diff bytes ($percent%)"
@@ -75,3 +96,15 @@ runs:
 
         echo "status=$status" >> $GITHUB_OUTPUT
         echo "size_change_percent=$percent" >> $GITHUB_OUTPUT
+
+        # --- Chunked bundle (informational) ---
+        if ls temp/current-chunks/*.js 1>/dev/null 2>&1; then
+          chunks_size=$(cat temp/current-chunks/*.js | wc -c)
+          echo ""
+          echo "=== Chunked bundle (bootstrap + chunks) ==="
+          echo "Total chunked size: $chunks_size bytes"
+          echo "chunks_size=$chunks_size" >> $GITHUB_OUTPUT
+        else
+          echo ""
+          echo "No chunked bundle found (expected on master)"
+        fi
