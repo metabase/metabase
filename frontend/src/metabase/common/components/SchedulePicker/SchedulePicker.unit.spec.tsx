@@ -61,14 +61,17 @@ describe("SchedulePicker", () => {
 
       // Verify that onScheduleChange was called with the correct value
       expect(onScheduleChange).toHaveBeenCalledWith(
-        expect.objectContaining({
+        {
+          schedule_type: "monthly",
           schedule_frame: "mid",
           schedule_day: null, // Should be null when frame is "mid"
-        }),
-        expect.objectContaining({
+          schedule_hour: 8,
+          schedule_minute: 0,
+        },
+        {
           name: "schedule_frame",
           value: "mid",
-        }),
+        },
       );
     });
 
@@ -91,14 +94,17 @@ describe("SchedulePicker", () => {
       await userEvent.click(firstOption);
 
       expect(onScheduleChange).toHaveBeenCalledWith(
-        expect.objectContaining({
+        {
+          schedule_type: "monthly",
           schedule_frame: "first",
           schedule_day: "mon", // Should default to "mon" when switching to first/last
-        }),
-        expect.objectContaining({
+          schedule_hour: 8,
+          schedule_minute: 0,
+        },
+        {
           name: "schedule_frame",
           value: "first",
-        }),
+        },
       );
     });
 
@@ -121,14 +127,17 @@ describe("SchedulePicker", () => {
       await userEvent.click(lastOption);
 
       expect(onScheduleChange).toHaveBeenCalledWith(
-        expect.objectContaining({
+        {
+          schedule_type: "monthly",
           schedule_frame: "last",
           schedule_day: "mon",
-        }),
-        expect.objectContaining({
+          schedule_hour: 8,
+          schedule_minute: 0,
+        },
+        {
           name: "schedule_frame",
           value: "last",
-        }),
+        },
       );
     });
   });
@@ -154,15 +163,19 @@ describe("SchedulePicker", () => {
       const calendarDayOption = within(listbox).getByText("Calendar Day");
       await userEvent.click(calendarDayOption);
 
-      // Verify that onScheduleChange was called with null, not ""
+      // Verify that onScheduleChange was called with null, not "" because Mantine Select uses ""
       expect(onScheduleChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          schedule_day: null, // Should be null, NOT ""
-        }),
-        expect.objectContaining({
+        {
+          schedule_type: "monthly",
+          schedule_frame: "first",
+          schedule_day: null,
+          schedule_hour: 8,
+          schedule_minute: 0,
+        },
+        {
           name: "schedule_day",
-          value: null, // Should be null, NOT ""
-        }),
+          value: null,
+        },
       );
     });
 
@@ -187,13 +200,17 @@ describe("SchedulePicker", () => {
       await userEvent.click(wednesdayOption);
 
       expect(onScheduleChange).toHaveBeenCalledWith(
-        expect.objectContaining({
+        {
+          schedule_type: "monthly",
+          schedule_frame: "first",
           schedule_day: "wed",
-        }),
-        expect.objectContaining({
+          schedule_hour: 8,
+          schedule_minute: 0,
+        },
+        {
           name: "schedule_day",
           value: "wed",
-        }),
+        },
       );
     });
   });
@@ -280,72 +297,22 @@ describe("SchedulePicker", () => {
 
       // Verify the day was changed correctly
       expect(onScheduleChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          schedule_day: "fri",
-        }),
-        expect.objectContaining({
-          name: "schedule_day",
-          value: "fri",
-        }),
-      );
-    });
-
-    it("should display empty value when schedule_day is null", () => {
-      setup({
-        schedule: {
+        {
           schedule_type: "weekly",
-          schedule_day: null,
+          schedule_day: "fri",
           schedule_frame: null,
           schedule_hour: 8,
           schedule_minute: 0,
         },
-      });
-
-      // Verify that when schedule_day is null, the Select displays empty value
-      // This tests that the value prop uses ?? "" correctly
-      const inputs = screen.getAllByRole("textbox");
-      const dayInput = inputs.find((el) => {
-        const value = el.getAttribute("value");
-        // The empty value for weekly schedule day selector
-        return value === "" || value === null;
-      });
-      expect(dayInput).toBeInTheDocument();
+        {
+          name: "schedule_day",
+          value: "fri",
+        },
+      );
     });
   });
 
   describe("schedule type changes", () => {
-    it("should set default values when switching to monthly", async () => {
-      const { onScheduleChange } = setup({
-        schedule: {
-          schedule_type: "daily",
-          schedule_day: null,
-          schedule_frame: null,
-          schedule_hour: 8,
-          schedule_minute: 0,
-        },
-      });
-
-      // Find and click the "Daily" select
-      const typeSelect = screen.getByDisplayValue("Daily");
-      await userEvent.click(typeSelect);
-
-      const listbox = await screen.findByRole("listbox");
-      const monthlyOption = within(listbox).getByText("Monthly");
-      await userEvent.click(monthlyOption);
-
-      expect(onScheduleChange).toHaveBeenCalledWith(
-        expect.objectContaining({
-          schedule_type: "monthly",
-          schedule_frame: "first",
-          schedule_day: "mon",
-        }),
-        expect.objectContaining({
-          name: "schedule_type",
-          value: "monthly",
-        }),
-      );
-    });
-
     it("should clear frame and day when switching to daily", async () => {
       const { onScheduleChange } = setup({
         schedule: {
@@ -365,15 +332,17 @@ describe("SchedulePicker", () => {
       await userEvent.click(dailyOption);
 
       expect(onScheduleChange).toHaveBeenCalledWith(
-        expect.objectContaining({
+        {
           schedule_type: "daily",
           schedule_day: null,
           schedule_frame: null,
-        }),
-        expect.objectContaining({
+          schedule_hour: 8,
+          schedule_minute: 0,
+        },
+        {
           name: "schedule_type",
           value: "daily",
-        }),
+        },
       );
     });
 
@@ -396,15 +365,51 @@ describe("SchedulePicker", () => {
       await userEvent.click(weeklyOption);
 
       expect(onScheduleChange).toHaveBeenCalledWith(
-        expect.objectContaining({
+        {
           schedule_type: "weekly",
           schedule_day: "mon",
           schedule_frame: null,
-        }),
-        expect.objectContaining({
+          schedule_hour: 8,
+          schedule_minute: 0,
+        },
+        {
           name: "schedule_type",
           value: "weekly",
-        }),
+        },
+      );
+    });
+
+    it("should set default values when switching to monthly", async () => {
+      const { onScheduleChange } = setup({
+        schedule: {
+          schedule_type: "daily",
+          schedule_day: null,
+          schedule_frame: null,
+          schedule_hour: 8,
+          schedule_minute: 0,
+        },
+      });
+
+      // Find and click the "Daily" select
+      const typeSelect = screen.getByDisplayValue("Daily");
+      await userEvent.click(typeSelect);
+
+      const listbox = await screen.findByRole("listbox");
+      const monthlyOption = within(listbox).getByText("Monthly");
+      await userEvent.click(monthlyOption);
+
+      expect(onScheduleChange).toHaveBeenCalledWith(
+        {
+          schedule_type: "monthly",
+          schedule_frame: "first",
+          schedule_day: "mon",
+          schedule_hour: 8,
+          schedule_minute: 0,
+        },
+        {
+          name: "schedule_type",
+          value: "monthly",
+        },
       );
     });
   });
