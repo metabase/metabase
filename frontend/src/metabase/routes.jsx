@@ -37,6 +37,7 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
+import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
@@ -317,6 +318,8 @@ export const getRoutes = (store) => {
               to="databases/:dbId/schema/:schemaName"
             />
           </Route>
+
+          <Route path="explore" component={MetricsViewerPage} />
 
           <Route path="table">
             <Route path=":tableId/detail/:rowId" component={TableDetailPage} />
