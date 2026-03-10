@@ -59,17 +59,23 @@
   "Number of tables to auto-select as focal when none are specified."
   3)
 
+(def ^:private ^{:doc "Columns needed for mi/can-read? permission checks on Table."}
+  table-perm-columns
+  [:id :db_id :is_published :collection_id])
+
 (defn- auto-discover-focal-table-ids
   "Find the top N tables by FK relationship count using a SQL aggregate query.
    Only considers readable tables. Returns a set of table IDs."
   [database-id schema]
-  (let [readable-tables (filter mi/can-read?
-                                (t2/select :model/Table
-                                           {:where (cond-> [:and
-                                                            [:= :db_id database-id]
-                                                            [:= :active true]]
-                                                     schema (conj [:= :schema schema]))}))
-        readable-ids    (set (map :id readable-tables))]
+  (let [readable-ids (->> (t2/select :model/Table
+                                     {:select table-perm-columns
+                                      :where  (cond-> [:and
+                                                       [:= :db_id database-id]
+                                                       [:= :active true]]
+                                                schema (conj [:= :schema schema]))})
+                          (filter mi/can-read?)
+                          (map :id)
+                          set)]
     (when (empty? readable-ids)
       (throw (ex-info (tru "No tables found in the specified database/schema")
                       {:status-code 404
@@ -87,9 +93,9 @@
                                :order-by [[:cnt :desc]]
                                :limit    auto-focal-table-count})
           top-ids   (set (map :tid fk-counts))]
-      ;; If no tables have FKs, just pick the first N readable tables
+      ;; If no tables have FKs, just pick the first N readable IDs
       (if (empty? top-ids)
-        (->> readable-tables (take auto-focal-table-count) (map :id) set)
+        (set (take auto-focal-table-count readable-ids))
         top-ids))))
 
 ;;; ---------------------------------------- Phase 2: Lazy BFS fetch ----------------------------------------
@@ -117,110 +123,115 @@
 
 (defn- discover-fk-targets
   "Given a collection of fields, find FK target field IDs that point to tables
-   we haven't loaded yet. Returns the set of new table IDs to fetch."
-  [fields known-table-ids]
-  (let [target-field-ids (->> fields
-                              (keep :fk_target_field_id)
-                              set)]
+   we haven't loaded yet. Returns the set of new table IDs to fetch.
+   Checks `field-by-id` first and only queries the DB for unknown target fields."
+  [fields known-table-ids field-by-id]
+  (let [target-field-ids (->> fields (keep :fk_target_field_id) set)]
     (if (empty? target-field-ids)
       #{}
-      (let [target-fields (t2/select :model/Field
-                                     :id [:in target-field-ids]
-                                     :active true
-                                     :visibility_type [:not= "retired"])]
-        (->> target-fields
-             (map :table_id)
-             set
-             (#(set/difference % known-table-ids)))))))
+      (let [unknown-fids (remove field-by-id target-field-ids)
+            ;; Resolve known targets from the accumulated map
+            table-ids    (into #{} (keep (comp :table_id field-by-id)) target-field-ids)
+            ;; Query DB only for truly unknown target fields
+            table-ids    (if (seq unknown-fids)
+                           (into table-ids
+                                 (map :table_id)
+                                 (t2/select :model/Field
+                                            :id [:in unknown-fids]
+                                            :active true
+                                            :visibility_type [:not= "retired"]))
+                           table-ids)]
+        (set/difference table-ids known-table-ids)))))
 
 (defn- fetch-erd-subgraph
   "Iteratively expand from focal tables by following FK relationships for n hops.
    Each hop fetches only newly-discovered tables and their fields.
-   Returns {:tables-by-id, :fields-by-table, :field->table, :all-table-ids}."
+   Returns {:tables-by-id, :fields-by-table, :field-by-id, :all-table-ids}."
   [focal-table-ids hops]
   (loop [tables-by-id    {}
          fields-by-table {}
-         field->table    {}
+         field-by-id     {}
          frontier        focal-table-ids
          remaining-hops  (inc hops)] ;; inc because hop 0 = loading the focal tables themselves
     (if (or (zero? remaining-hops) (empty? frontier))
-      {:tables-by-id  tables-by-id
+      {:tables-by-id   tables-by-id
        :fields-by-table fields-by-table
-       :field->table  field->table
-       :all-table-ids (set (keys tables-by-id))}
+       :field-by-id    field-by-id
+       :all-table-ids  (set (keys tables-by-id))}
       (let [{new-tables-by-id :tables-by-id
-             new-table-ids    :table-ids}  (fetch-readable-tables frontier)
+             new-table-ids    :table-ids}  (or (fetch-readable-tables frontier)
+                                               {:tables-by-id {} :table-ids #{}})
             new-fields                     (fetch-fields-for-tables new-table-ids)
             new-fields-by-table            (group-by :table_id new-fields)
-            new-field->table               (into {} (map (fn [f] [(:id f) (:table_id f)])) new-fields)
+            new-field-by-id                (into {} (map (fn [f] [(:id f) f])) new-fields)
             ;; Merge into accumulated state
             tables-by-id'                  (merge tables-by-id new-tables-by-id)
             fields-by-table'               (merge fields-by-table new-fields-by-table)
-            field->table'                  (merge field->table new-field->table)
+            field-by-id'                   (merge field-by-id new-field-by-id)
             ;; Discover next frontier: tables reachable via FKs not yet loaded
-            next-frontier                  (discover-fk-targets new-fields (set (keys tables-by-id')))]
-        (recur tables-by-id' fields-by-table' field->table' next-frontier (dec remaining-hops))))))
+            next-frontier                  (discover-fk-targets new-fields (set (keys tables-by-id')) field-by-id')]
+        (recur tables-by-id' fields-by-table' field-by-id' next-frontier (dec remaining-hops))))))
 
 ;;; ---------------------------------------- Phase 3: Build response ----------------------------------------
 
 (defn build-erd-field
-  "Convert a field to the ERD field shape."
-  [field field->table]
-  {:id                 (:id field)
-   :name               (:name field)
-   :display_name       (:display_name field)
-   :database_type      (:database_type field)
-   :semantic_type      (some-> (:semantic_type field) u/qualified-name)
-   :fk_target_field_id (:fk_target_field_id field)
-   :fk_target_table_id (some-> (:fk_target_field_id field) field->table)})
+  "Convert a field to the ERD field shape.
+   Nils out FK target references when the target table isn't in the visible graph,
+   so we don't leak field/table IDs the user can't access."
+  [field field-by-id]
+  (let [target-table-id (some-> (:fk_target_field_id field) field-by-id :table_id)]
+    {:id                 (:id field)
+     :name               (:name field)
+     :display_name       (:display_name field)
+     :database_type      (:database_type field)
+     :semantic_type      (some-> (:semantic_type field) u/qualified-name)
+     :fk_target_field_id (when target-table-id (:fk_target_field_id field))
+     :fk_target_table_id target-table-id}))
 
 (defn build-erd-node
   "Build an ERD node for a table with its fields."
-  [table fields is-focal field->table]
+  [table fields is-focal field-by-id]
   {:table_id     (:id table)
    :name         (:name table)
    :display_name (:display_name table)
    :schema       (:schema table)
    :db_id        (:db_id table)
    :is_focal     is-focal
-   :fields       (mapv #(build-erd-field % field->table) fields)})
+   :fields       (mapv #(build-erd-field % field-by-id) fields)})
 
 (defn build-erd-edges
   "Build ERD edges from fields, filtered to only include edges between visible tables."
-  [fields-by-table field->table visible-table-ids]
-  (let [all-fields (mapcat val fields-by-table)
-        field-by-id (into {} (map (fn [f] [(:id f) f])) all-fields)]
+  [fields-by-table field-by-id visible-table-ids]
+  (let [all-fields (mapcat val fields-by-table)]
     (->> all-fields
          (keep (fn [field]
                  (when-let [target-field-id (:fk_target_field_id field)]
-                   (let [target-table (field->table target-field-id)
-                         target-field (field-by-id target-field-id)]
-                     (when (and target-table
-                                target-field
-                                (contains? visible-table-ids (:table_id field))
-                                (contains? visible-table-ids target-table))
-                       {:source_table_id (:table_id field)
-                        :source_field_id (:id field)
-                        :target_table_id target-table
-                        :target_field_id target-field-id
-                        :relationship    (if (and (:database_is_pk field)
-                                                  (:database_is_pk target-field))
-                                           "one-to-one"
-                                           "many-to-one")})))))
+                   (when-let [target-field (field-by-id target-field-id)]
+                     (let [target-table (:table_id target-field)]
+                       (when (and (contains? visible-table-ids (:table_id field))
+                                  (contains? visible-table-ids target-table))
+                         {:source_table_id (:table_id field)
+                          :source_field_id (:id field)
+                          :target_table_id target-table
+                          :target_field_id target-field-id
+                          :relationship    (if (and (:database_is_pk field)
+                                                    (:database_is_pk target-field))
+                                             "one-to-one"
+                                             "many-to-one")}))))))
          vec)))
 
 (defn build-erd-response
   "Build the ERD response from fetched subgraph data."
-  [{:keys [tables-by-id fields-by-table field->table all-table-ids]} focal-table-ids]
+  [{:keys [tables-by-id fields-by-table field-by-id all-table-ids]} focal-table-ids]
   (let [nodes (->> all-table-ids
                    (keep (fn [tid]
                            (when-let [table (tables-by-id tid)]
                              (build-erd-node table
                                              (get fields-by-table tid [])
                                              (contains? focal-table-ids tid)
-                                             field->table))))
+                                             field-by-id))))
                    vec)
-        edges (build-erd-edges fields-by-table field->table all-table-ids)]
+        edges (build-erd-edges fields-by-table field-by-id all-table-ids)]
     {:nodes nodes
      :edges edges}))
 

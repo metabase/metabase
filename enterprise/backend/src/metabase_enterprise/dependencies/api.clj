@@ -1197,8 +1197,7 @@
   The `hops` parameter controls how many FK hops to traverse (default: 2, max: 5).
   When `hops` is 0, only the focal tables are returned with no related tables."
   [_route-params
-   {:keys [database-id table-ids schema hops]
-    :or   {hops 2}} :- ::erd/erd-request]
+   {:keys [database-id table-ids schema hops]} :- ::erd/erd-request]
   (erd/erd {:database-id database-id
             :table-ids   table-ids
             :schema      schema
