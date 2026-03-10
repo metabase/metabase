@@ -182,6 +182,8 @@ jobs:
           - snippet-collections
           - sso
           - stale
+          - transforms
+          - transforms-python
           - upload-management
     steps:
       - uses: actions/checkout@v4
