@@ -2,9 +2,12 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
+import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
+import { Link } from "metabase/common/components/Link/Link";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
 import { isNullOrUndefined } from "metabase/lib/types";
+import * as Urls from "metabase/lib/urls";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -36,7 +39,6 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
-  const formattedDate = new Date(table.updated_at).toLocaleString();
   const formatNumber = useNumberFormatter();
   const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;
 
@@ -153,18 +155,22 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
   return (
     <Stack gap={0} align="stretch" data-testid="table-description-sidebar">
       {/* Entity Type Selector */}
-      <Box className={S.contentSectionGridContainer} px="lg" py="md">
+      <Flex justify="space-between" align="center" px="lg" py="md">
+        <Text size="md" c="text-secondary">
+          {t`Entity type`}
+        </Text>
         <EntityTypeInput
           value={table.entity_type ?? "entity/GenericTable"}
+          label={null}
           onChange={handleEntityTypeChange}
           classNames={{
             input: S.input,
             label: S.label,
-            section: table.entity_type ? S.entityTypeLeftSection : "",
+            section: table.entity_type ? S.sectionLabel : "",
           }}
           className={S.gridLabelInput}
         />
-      </Box>
+      </Flex>
 
       <Divider />
 
@@ -184,7 +190,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
           <Group gap="sm" mb={4}>
             <Icon name="pencil" c="brand" />
             <Text size="md" fw={600} lh="1rem">
-              {formattedDate}
+              <DateTime value={table.updated_at} />
             </Text>
           </Group>
           <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
@@ -194,9 +200,17 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
             <Icon name="database" c="brand" />
-            <Text size="md" fw={600} lh="1rem">
-              {table.db?.name || "—"}
-            </Text>
+            {table.db ? (
+              <Link to={Urls.dataStudioData({ databaseId: table.db.id })}>
+                <Text size="md" fw={600} lh="1rem">
+                  {table.db.name}
+                </Text>
+              </Link>
+            ) : (
+              <Text size="md" fw={600} lh="1rem">
+                —
+              </Text>
+            )}
           </Group>
           <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
             {t`Database`}
@@ -264,9 +278,11 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
             <Text size="md" c="text-secondary">
               {t`Fields`}
             </Text>
-            <Text size="xl" fw={600}>
-              {table.fields?.length ?? 0}
-            </Text>
+            <Link to={Urls.dataStudioTableFields(table.id)}>
+              <Text size="xl" fw={600}>
+                {table.fields?.length ?? 0}
+              </Text>
+            </Link>
           </Flex>
         </Card.Section>
 
@@ -289,9 +305,18 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
               <Text size="md" c="text-secondary">
                 {t`Dependents`}
               </Text>
-              <Text size="xl" fw={600}>
-                {dependentsCount}
-              </Text>
+
+              {dependentsCount > 0 ? (
+                <Link to={Urls.dataStudioTableDependencies(table.id)}>
+                  <Text size="xl" fw={600}>
+                    {dependentsCount}
+                  </Text>
+                </Link>
+              ) : (
+                <Text size="xl" fw={600}>
+                  {dependentsCount}
+                </Text>
+              )}
             </Flex>
           </Card.Section>
         )}

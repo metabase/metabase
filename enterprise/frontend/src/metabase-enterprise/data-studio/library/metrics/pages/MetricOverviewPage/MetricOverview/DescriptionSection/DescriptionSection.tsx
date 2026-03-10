@@ -5,8 +5,11 @@ import {
   useGetTableQuery,
   useUpdateCardMutation,
 } from "metabase/api";
+import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
+import { Link } from "metabase/common/components/Link/Link";
 import { Markdown } from "metabase/common/components/Markdown";
+import * as Urls from "metabase/lib/urls";
 import { getUserName } from "metabase/lib/user";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
@@ -21,7 +24,6 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
   const [updateCard] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const formattedDate = new Date(card.updated_at).toLocaleString();
   const isDependenciesEnabled = PLUGIN_DEPENDENCIES.isEnabled;
 
   const { data: database } = useGetDatabaseQuery(
@@ -76,7 +78,7 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
           <Group gap="sm" mb={4}>
             <Icon name="refresh" c="brand" />
             <Text size="md" fw={600} lh="1rem">
-              {formattedDate}
+              <DateTime value={card.updated_at} />
             </Text>
           </Group>
           <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
@@ -88,9 +90,18 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
         <Card.Section withBorder p="md">
           <Group gap="sm" mb={4}>
             <Icon name="database" c="brand" />
-            <Text size="md" fw={600} lh="1rem">
-              {database?.name || "—"}
-            </Text>
+
+            {database ? (
+              <Link to={Urls.dataStudioData({ databaseId: database.id })}>
+                <Text size="md" fw={600} lh="1rem">
+                  {database.name}
+                </Text>
+              </Link>
+            ) : (
+              <Text size="md" fw={600} lh="1rem">
+                —
+              </Text>
+            )}
           </Group>
           <Text size="sm" c="text-secondary" lh="1rem" ml="1.5rem">
             {t`Database`}
@@ -117,9 +128,17 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
               <Text size="md" c="text-secondary">
                 {t`Dependencies`}
               </Text>
-              <Text size="xl" fw={600}>
-                {dependenciesCount}
-              </Text>
+              {dependenciesCount > 0 ? (
+                <Link to={Urls.dataStudioMetricDependencies(card.id)}>
+                  <Text size="xl" fw={600}>
+                    {dependenciesCount}
+                  </Text>
+                </Link>
+              ) : (
+                <Text size="xl" fw={600}>
+                  {dependenciesCount}
+                </Text>
+              )}
             </Flex>
           </Card.Section>
           <Card.Section withBorder py={rem(12)} px="md">
@@ -127,9 +146,18 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
               <Text size="md" c="text-secondary">
                 {t`Dependents`}
               </Text>
-              <Text size="xl" fw={600}>
-                {dependentsCount}
-              </Text>
+
+              {dependentsCount > 0 ? (
+                <Link to={Urls.dataStudioMetricDependencies(card.id)}>
+                  <Text size="xl" fw={600}>
+                    {dependentsCount}
+                  </Text>
+                </Link>
+              ) : (
+                <Text size="xl" fw={600}>
+                  {dependentsCount}
+                </Text>
+              )}
             </Flex>
           </Card.Section>
         </Card>

@@ -11,30 +11,29 @@
 }
 
 .gridLabelInput {
-  display: grid;
-  justify-content: space-between;
-  align-items: center;
-  grid-template-columns: subgrid;
-  grid-column: 1 / 3;
-
   .label {
     font-weight: normal;
     color: var(--mb-color-text-secondary);
-    grid-column: 1;
   }
 
   .input {
-    grid-column: 1;
+    width: 11rem;
     border-radius: 1.25rem;
 
     &.unset {
       color: var(--mb-color-text-secondary);
     }
   }
-}
 
-.entityTypeLeftSection {
-  color: var(--mb-color-brand);
+  .sectionLabel {
+    &[data-position="right"] {
+      color: var(--mb-color-text-primary);
+    }
+
+    &[data-position="left"] {
+      color: var(--mb-color-brand);
+    }
+  }
 }
 
 .inputActiveIcon {
@@ -51,6 +50,11 @@
   background: transparent;
   height: 1rem;
   min-height: 1rem;
+  cursor: pointer;
+
+  &[data-expanded="true"] {
+    cursor: text;
+  }
 }
 
 .selectedInput {
