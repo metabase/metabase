@@ -9,8 +9,6 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------ column matching ---------------------------------------------------
-
 (mu/defn column-match-key :- :string
   "Gets the column match key from a column. This is used to match columns by name or alias."
   [column :- ::lib.schema.metadata/column]
@@ -23,4 +21,3 @@
   (case source-type
     :table (lib.metadata/fields metadata-providerable source-id)
     :card  (into [] (remove :remapped-from) (lib.card/saved-question-metadata metadata-providerable source-id))))
-
