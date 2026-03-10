@@ -111,7 +111,7 @@
      (contains? (set (keys (methods get-value-of-type))) a-type))])
 
 (def ^:private Visibility
-  [:enum :public :authenticated :settings-manager :admin :internal])
+  [:enum :public :authenticated :settings-manager :admin-write-public-read :admin :internal])
 
 (defmulti default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
