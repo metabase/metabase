@@ -107,7 +107,6 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_REPRO_BOT }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
-          show_full_output: true
           prompt: |
             Read and follow the instructions in .claude/commands/repro.md to investigate this GitHub issue:
             https://github.com/${{ github.repository }}/issues/${{ steps.issue.outputs.number }}
@@ -186,6 +185,7 @@ jobs:
             mcp__linear-server__get_issue
             mcp__linear-server__list_comments
             mcp__linear-server__list_issues
+            mcp__linear-server__list_issue_labels
             mcp__linear-server__save_comment
             mcp__linear-server__save_issue
             mcp__metabase-repro__repl_eval
@@ -211,26 +211,16 @@ jobs:
 
           echo "Repro-bot completed successfully and posted to Linear"
 
-      - name: Upload SUGGESTIONS.md artifact
+      - name: Upload repro-bot artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: repro-suggestions
-          path: repro/*/SUGGESTIONS.md
+          name: repro-bot
           if-no-files-found: ignore
-
-      - name: Upload Metabase logs
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: metabase-logs
-          path: repro/*/metabase.log
-          if-no-files-found: ignore
-
-      - name: Upload Claude debug logs
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: claude-debug-logs
-          path: /tmp/claude-debug-logs/
-          if-no-files-found: ignore
+          path: |
+            repro/*/SUGGESTIONS.md
+            repro/*/*.log
+            repro/*/*.patch
+            repro/*/playwright/**
+            ${{ steps.claude.outputs.execution_file }}
+            /tmp/claude-debug-logs/**
