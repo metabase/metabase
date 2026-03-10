@@ -1,4 +1,4 @@
-import type { Column, Row } from "@tanstack/react-table";
+import type { Column } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import cx from "classnames";
@@ -6,15 +6,12 @@ import type React from "react";
 
 import { hasModifierKeys } from "metabase/common/utils/keyboard";
 
-import {
-  HEADER_BORDER_SIZE,
-  HEADER_HEIGHT,
-  PINNED_ROW_Z_INDEX,
-} from "../../constants";
 import { isVirtualColumn, isVirtualRow } from "../../guards";
 import type { DataGridSelection, MaybeVirtualRow } from "../../types";
 import S from "../DataGrid/DataGrid.module.css";
 import type { DataGridStylesProps } from "../DataGrid/types";
+
+import { getRowPositionStyles } from "./utils";
 
 export interface DataGridRowProps<TData> extends DataGridStylesProps {
   row: MaybeVirtualRow<TData>;
@@ -30,30 +27,6 @@ export interface DataGridRowProps<TData> extends DataGridStylesProps {
     columnId: string,
   ) => void;
 }
-
-const getRowPositionStyles = <TData,>(
-  row: Row<TData>,
-  virtualRow: VirtualItem | undefined,
-  stickyElementsBackgroundColor: string,
-): React.CSSProperties => {
-  if (!virtualRow) {
-    return {};
-  }
-  const pinnedPosition = row.getIsPinned();
-  if (pinnedPosition === "top") {
-    return {
-      position: "sticky",
-      top: `${HEADER_HEIGHT + virtualRow.start + HEADER_BORDER_SIZE}px`,
-      zIndex: PINNED_ROW_Z_INDEX,
-      backgroundColor: stickyElementsBackgroundColor,
-    };
-  }
-  return {
-    position: "absolute",
-    minHeight: `${virtualRow.size}px`,
-    transform: `translateY(${virtualRow.start}px)`,
-  };
-};
 
 export const DataGridRow = <TData,>({
   row: maybeVirtualRow,
