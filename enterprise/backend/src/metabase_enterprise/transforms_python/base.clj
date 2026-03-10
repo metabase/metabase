@@ -221,18 +221,18 @@
 
    Options:
    - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
-  [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn]}]
+  [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn source-range-params]}]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
   (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]
     (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]
       (let [driver          (:engine db)
             server-url      (transforms-python.settings/python-runner-url)
-            _               (python-runner/copy-tables-to-s3! {:run-id         run-id
-                                                               :shared-storage @shared-storage-ref
-                                                               :source         (assoc source :source-tables resolved-source-tables)
-                                                               :cancel-chan    cancel-chan
-                                                               :limit          (:limit source)
-                                                               :transform-id   (:id transform)})
+            _               (python-runner/copy-tables-to-s3! {:run-id              run-id
+                                                               :shared-storage      @shared-storage-ref
+                                                               :source              (assoc source :source-tables resolved-source-tables)
+                                                               :cancel-chan          cancel-chan
+                                                               :limit               (:limit source)
+                                                               :source-range-params source-range-params})
             _               (start-cancellation-process! server-url run-id cancel-chan)
             {:keys [status body] :as response}
             (python-runner/execute-python-code-http-call!
@@ -310,7 +310,7 @@
     :logs <string>
     :error <exception if failed>}"
   [transform :- ::transforms-base.schema/transform
-   {:keys [cancelled? run-id with-stage-timing-fn message-log cancel-chan]} :- [:maybe ::transforms-base.schema/execute-base-options]]
+   {:keys [cancelled? run-id with-stage-timing-fn message-log cancel-chan source-range-params]} :- [:maybe ::transforms-base.schema/execute-base-options]]
   (assert (transforms-base.u/python-transform? transform) "Transform must be a python transform")
   (let [message-log (or message-log (empty-message-log))]
     (try
@@ -341,7 +341,8 @@
         (log/info "Executing Python transform" transform-id "with target" (pr-str target))
 
         (let [result (run-python-transform-impl! transform db effective-run-id cancel-chan message-log
-                                                 {:with-stage-timing-fn with-stage-timing-fn})]
+                                                 {:with-stage-timing-fn with-stage-timing-fn
+                                                  :source-range-params  source-range-params})]
           (log! message-log (i18n/tru "Python execution finished successfully in {0}"
                                       (u.format/format-milliseconds (u/since-ms start-ms))))
 
@@ -351,7 +352,8 @@
 
           {:status :succeeded
            :result result
-           :logs (message-log->string message-log)}))
+           :logs (message-log->string message-log)
+           :source-range-params source-range-params}))
 
       (catch Exception e
         (let [data (ex-data e)

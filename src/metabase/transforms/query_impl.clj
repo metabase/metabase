@@ -34,17 +34,16 @@
                exec-result
                (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
                  (transforms.u/run-cancelable-transform!
-                  run-id driver transform-details
-                  (fn [cancel-chan]
+                  run-id transform driver transform-details
+                  (fn [cancel-chan source-range-params]
                     (let [result (transforms-base.i/execute-base!
                                   transform
                                   {:cancelled?           #(boolean (a/poll! cancel-chan))
                                    :run-id               run-id
+                                   :source-range-params  source-range-params
                                    :with-stage-timing-fn (fn [rid stage thunk]
                                                            (transforms.instrumentation/with-stage-timing [rid stage]
                                                              (thunk)))})]
-                      ;; Save checkpoint range early so it's recorded even on failure
-                      (transforms-base.u/save-run-checkpoint-range! run-id (:source-range-params result))
                       ;; Bridge result-map to exception-based flow for run-cancelable-transform!
                       (when-not (= :succeeded (:status result))
                         (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))

@@ -49,7 +49,8 @@
    [:with-stage-timing-fn {:optional true} ifn?]
    [:publish-events? {:optional true} :boolean]
    [:message-log {:optional true} [:maybe ::atom]]
-   [:cancel-chan {:optional true} [:maybe ::chan]]])
+   [:cancel-chan {:optional true} [:maybe ::chan]]
+   [:source-range-params {:optional true} [:maybe :map]]])
 
 ;;; ------------------------------------------------- Result -------------------------------------------------
 

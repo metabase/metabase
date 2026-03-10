@@ -79,7 +79,7 @@
     :result <driver result>
     :error <exception if failed>}"
   [{:keys [id source target] :as transform} :- ::transforms-base.schema/transform
-   {:keys [cancelled?] :as _opts} :- [:maybe ::transforms-base.schema/execute-base-options]]
+   {:keys [cancelled? source-range-params] :as _opts} :- [:maybe ::transforms-base.schema/execute-base-options]]
   (try
     ;; Check cancellation before starting
     (when (and cancelled? (cancelled?))
@@ -88,7 +88,6 @@
     (let [db (get-in source [:query :database])
           {driver :engine :as database} (t2/select-one :model/Database db)
           _ (transforms-base.u/throw-if-db-routing-enabled! transform database)
-          source-range-params (transforms-base.u/get-source-range-params transform)
           ;; First incremental run (no checkpoint) should behave like non-incremental
           ;; to drop and recreate the table rather than appending to existing data.
           effective-transform-type (if (and (= :table-incremental (keyword (:type target)))

@@ -364,8 +364,8 @@
             (with-redefs [transforms-base.i/execute-base!                            (constantly {:status :succeeded})
                           transforms-base.u/sync-target!                             (constantly nil)
                           transforms-base.u/execute-secondary-index-ddl-if-required! (constantly nil)
-                          transforms.u/run-cancelable-transform!                     (fn [_run-id _driver _details run-fn & _opts]
-                                                                                       (run-fn (a/promise-chan)))]
+                          transforms.u/run-cancelable-transform!                     (fn [_run-id _transform _driver _details run-fn & _opts]
+                                                                                       (run-fn (a/promise-chan) nil))]
               (transforms.execute/execute! transform {:run-method :manual})
               (is (= transform-id
                      (t2/select-one-fn :transform_id :model/Table :id table-id))))))))))
