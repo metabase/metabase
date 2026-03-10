@@ -42,6 +42,30 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown LLM provider"
                           (#'self/resolve-adapter "unknown")))))
 
+(deftest call-llm-tool-choice-test
+  (testing "passes required tool choice to LLM providers"
+    (let [captured (atom nil)]
+      (mt/with-dynamic-fn-redefs [http/post (fn [_url opts]
+                                              (reset! captured (json/decode+kw (:body opts)))
+                                              (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
+        (mt/with-temporary-setting-values [ee-anthropic-api-key  "test-key"
+                                           ee-openrouter-api-key "test-key"
+                                           ee-openai-api-key     "test-key"]
+          (doseq [[model expected] [["anthropic/test-model"  {:type "any"}]
+                                    ["openrouter/test-model" "required"]
+                                    ["openai/test-model"     "required"]]]
+            (try
+              (run! identity (self/call-llm model
+                                            nil
+                                            []
+                                            {"search" #'test-util/get-time}
+                                            {:tag "agent"}
+                                            {:tool-choice "required"}))
+              (catch Exception e
+                (when-not (::skip (ex-data e))
+                  (throw e))))
+            (is (= expected (:tool_choice @captured)))))))))
+
 ;;; utils tests
 
 (deftest sse-reducible-test

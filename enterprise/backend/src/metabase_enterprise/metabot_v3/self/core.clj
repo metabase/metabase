@@ -12,6 +12,48 @@
 
 (set! *warn-on-reflection* true)
 
+;;; Canonical LLM request schema
+;;
+;; Every provider adapter (`claude-raw`, `openai-raw`, `openrouter-raw`) must
+;; accept this same opts map.  Provider-specific translation (e.g. tool_choice
+;; "required" → {:type "any"} for Claude, system-message placement, tool wire
+;; format) happens inside each adapter, but the **input contract is identical**.
+
+(def ToolEntry
+  "A tool entry: [name, var] or [name, wrapped-map].
+  The wrapped-map form comes from `wrap-tools-with-state` and carries
+  :doc, :schema, :fn, and optionally :decode/:prompt."
+  [:tuple :string [:or [:fn var?]
+                   [:map
+                    [:doc {:optional true} [:maybe :string]]
+                    [:schema :any]
+                    [:fn [:fn fn?]]]]])
+
+(def LLMRequestOpts
+  "Canonical schema for the opts map passed to every LLM provider adapter.
+
+  Required:
+    :model       - Model name string (e.g. \"claude-haiku-4-5\", \"gpt-4.1-mini\")
+
+  Optional:
+    :system      - System prompt string
+    :input       - Sequence of AISDK parts and user messages
+    :tools       - Sequence of [name, var-or-map] tool entries
+    :tool_choice - \"auto\" or \"required\"
+    :temperature - Sampling temperature
+    :max-tokens  - Maximum tokens in the response
+    :schema      - JSON Schema map for structured output; each provider forces a
+                   tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)"
+  [:map
+   [:model       {:optional true} :string]
+   [:system      {:optional true} [:maybe :string]]
+   [:input       {:optional true} [:sequential :map]]
+   [:tools       {:optional true} [:sequential ToolEntry]]
+   [:tool_choice {:optional true} [:maybe [:enum "auto" "required"]]]
+   [:temperature {:optional true} [:maybe number?]]
+   [:max-tokens  {:optional true} [:maybe :int]]
+   [:schema      {:optional true} :any]])
+
 (defn mkid
   "Generate a random id"
   []
