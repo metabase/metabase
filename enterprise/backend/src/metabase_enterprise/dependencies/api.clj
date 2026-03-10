@@ -1200,7 +1200,7 @@
    {:keys [database-id table-ids schema hops]} :- ::erd/erd-request]
   (erd/erd {:database-id database-id
             :table-ids   table-ids
-            :schema      schema
+            :schema      (not-empty schema)
             :hops        hops}))
 
 (def ^{:arglists '([request respond raise])} routes

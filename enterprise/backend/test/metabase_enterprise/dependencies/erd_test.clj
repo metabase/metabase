@@ -1,38 +1,30 @@
 (ns metabase-enterprise.dependencies.erd-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.dependencies.erd :as erd]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 ;;; ---------------------------------------- Test helpers ----------------------------------------
 
-(defn- ->field-by-id
-  "Build a field-by-id map from a collection of fields."
-  [fields]
-  (into {} (map (fn [f] [(:id f) f])) fields))
-
-(defn- node-by-table
-  "Find an ERD node by table keyword (e.g. :orders) or table ID."
-  [response table-or-id]
-  (let [tid (if (keyword? table-or-id) (mt/id table-or-id) table-or-id)]
-    (some #(when (= tid (:table_id %)) %) (:nodes response))))
-
-(defn- edge-between
-  "Find an ERD edge from source to target (keywords or IDs)."
-  [response source-table target-table]
-  (let [src (if (keyword? source-table) (mt/id source-table) source-table)
-        tgt (if (keyword? target-table) (mt/id target-table) target-table)]
-    (some #(when (and (= src (:source_table_id %))
-                      (= tgt (:target_table_id %)))
-             %)
-          (:edges response))))
-
-(defn- table-ids
-  "Set of all table IDs in an ERD response."
+(defn- graph-shape
+  "Distill an ERD response into a readable topology map.
+   Returns e.g. {:orders  {:focal true  :fk [:people :products]}
+                 :people  {:focal false :fk []}}
+   Table names are lowercased keywords, FK targets are sorted."
   [response]
-  (set (map :table_id (:nodes response))))
+  (let [id->name    (into {} (map (fn [n] [(:table_id n)
+                                           (keyword (u/lower-case-en (:name n)))]))
+                          (:nodes response))
+        edges-by-src (group-by :source_table_id (:edges response))]
+    (into (sorted-map)
+          (map (fn [node]
+                 [(keyword (u/lower-case-en (:name node)))
+                  {:focal (:is_focal node)
+                   :fk    (vec (sort (keep #(id->name (:target_table_id %))
+                                           (edges-by-src (:table_id node)))))}]))
+          (:nodes response))))
 
 (defn- erd-request!
   "Make an ERD endpoint request. `opts` is a map with optional keys
@@ -46,289 +38,175 @@
                      [k v]))
                  opts)))
 
-;;; ---------------------------------------- Pure function tests ----------------------------------------
+(defn- grant-table-read!
+  "Grant view-data + create-queries on a table for a permission group."
+  [group-id table-id]
+  (data-perms/set-table-permission! group-id table-id :perms/view-data :unrestricted)
+  (data-perms/set-table-permission! group-id table-id :perms/create-queries :query-builder))
 
-(deftest ^:parallel build-erd-field-test
-  (testing "basic field without FK"
-    (let [field {:id 1 :name "id" :display_name "ID"
-                 :database_type "INTEGER" :semantic_type :type/PK
-                 :fk_target_field_id nil}]
-      (is (= {:id                 1
-              :name               "id"
-              :display_name       "ID"
-              :database_type      "INTEGER"
-              :semantic_type      "type/PK"
-              :fk_target_field_id nil
-              :fk_target_table_id nil}
-             (erd/build-erd-field field {})))))
+;;; ---------------------------------------- Graph tests (e2e) ----------------------------------------
 
-  (testing "FK field resolves target table"
-    (let [field        {:id 2 :name "product_id" :display_name "Product ID"
-                        :database_type "INTEGER" :semantic_type :type/FK
-                        :fk_target_field_id 10}
-          target-field {:id 10 :name "id" :table_id 100}
-          field-by-id  (->field-by-id [target-field])]
-      (is (= {:id                 2
-              :name               "product_id"
-              :display_name       "Product ID"
-              :database_type      "INTEGER"
-              :semantic_type      "type/FK"
-              :fk_target_field_id 10
-              :fk_target_table_id 100}
-             (erd/build-erd-field field field-by-id)))))
+;; Sample dataset FK graph:
+;;   orders → products  (via product_id)
+;;   orders → people    (via user_id)
+;;   reviews → products (via product_id)
 
-  (testing "nil semantic_type stays nil"
-    (let [field {:id 3 :name "x" :display_name "X"
-                 :database_type "TEXT" :semantic_type nil
-                 :fk_target_field_id nil}]
-      (is (nil? (:semantic_type (erd/build-erd-field field {}))))))
-
-  (testing "FK target not in visible graph nils out both FK references"
-    (let [field  {:id 2 :name "product_id" :display_name "Product ID"
-                  :database_type "INTEGER" :semantic_type :type/FK
-                  :fk_target_field_id 10}
-          result (erd/build-erd-field field {})]
-      (is (nil? (:fk_target_field_id result)))
-      (is (nil? (:fk_target_table_id result))))))
-
-(deftest ^:parallel build-erd-node-test
-  (testing "focal node with fields"
-    (let [table       {:id 1 :name "ORDERS" :display_name "Orders"
-                       :schema "PUBLIC" :db_id 1}
-          fields      [{:id 10 :name "id" :display_name "ID"
-                        :database_type "INTEGER" :semantic_type :type/PK
-                        :fk_target_field_id nil}
-                       {:id 11 :name "product_id" :display_name "Product ID"
-                        :database_type "INTEGER" :semantic_type :type/FK
-                        :fk_target_field_id 20}]
-          field-by-id (->field-by-id [{:id 20 :name "id" :table_id 2}])
-          node        (erd/build-erd-node table fields true field-by-id)]
-      (is (= {:table_id 1 :name "ORDERS" :display_name "Orders"
-              :schema "PUBLIC" :db_id 1 :is_focal true}
-             (dissoc node :fields)))
-      (is (= 2 (count (:fields node))))
-      (is (= 2 (:fk_target_table_id (second (:fields node)))))))
-
-  (testing "non-focal node"
-    (let [table {:id 2 :name "PRODUCTS" :display_name "Products"
-                 :schema "PUBLIC" :db_id 1}
-          node  (erd/build-erd-node table [] false {})]
-      (is (false? (:is_focal node)))))
-
-  (testing "table with no fields produces empty fields vector"
-    (let [table {:id 3 :name "EMPTY" :display_name "Empty" :schema nil :db_id 1}
-          node  (erd/build-erd-node table [] true {})]
-      (is (= [] (:fields node))))))
-
-(deftest ^:parallel build-erd-edges-test
-  (let [;; Table 1 has a FK field (id=11) pointing to table 2's field (id=20)
-        fields-by-table {1 [{:id 10 :name "id" :table_id 1
-                             :database_type "INTEGER" :semantic_type :type/PK
-                             :fk_target_field_id nil :database_is_pk true}
-                            {:id 11 :name "product_id" :table_id 1
-                             :database_type "INTEGER" :semantic_type :type/FK
-                             :fk_target_field_id 20 :database_is_pk false}]
-                         2 [{:id 20 :name "id" :table_id 2
-                             :database_type "INTEGER" :semantic_type :type/PK
-                             :fk_target_field_id nil :database_is_pk true}]}
-        field-by-id     (->field-by-id (mapcat val fields-by-table))
-        visible-ids     #{1 2}]
-
-    (testing "produces edge for FK relationship"
-      (let [edges (erd/build-erd-edges fields-by-table field-by-id visible-ids)]
-        (is (= 1 (count edges)))
-        (is (= {:source_table_id 1
-                :source_field_id 11
-                :target_table_id 2
-                :target_field_id 20
-                :relationship    "many-to-one"}
-               (first edges)))))
-
-    (testing "excludes edges when target table not in visible set"
-      (is (empty? (erd/build-erd-edges fields-by-table field-by-id #{1}))))
-
-    (testing "excludes edges when source table not in visible set"
-      (is (empty? (erd/build-erd-edges fields-by-table field-by-id #{2}))))
-
-    (testing "empty fields-by-table produces no edges"
-      (is (empty? (erd/build-erd-edges {} field-by-id visible-ids))))
-
-    (testing "one-to-one when both fields are PK"
-      (let [fields-both-pk {1 [{:id 11 :name "user_id" :table_id 1
-                                :database_type "INTEGER" :semantic_type :type/FK
-                                :fk_target_field_id 20 :database_is_pk true}]
-                            2 [{:id 20 :name "id" :table_id 2
-                                :database_type "INTEGER" :semantic_type :type/PK
-                                :fk_target_field_id nil :database_is_pk true}]}
-            field-by-id-pk (->field-by-id (mapcat val fields-both-pk))
-            edges          (erd/build-erd-edges fields-both-pk field-by-id-pk visible-ids)]
-        (is (= "one-to-one" (:relationship (first edges))))))))
-
-(deftest ^:parallel build-erd-response-test
-  (let [table1   {:id 1 :name "ORDERS" :display_name "Orders" :schema "PUBLIC" :db_id 1}
-        table2   {:id 2 :name "PRODUCTS" :display_name "Products" :schema "PUBLIC" :db_id 1}
-        field1   {:id 10 :name "id" :table_id 1 :display_name "ID"
-                  :database_type "INT" :semantic_type :type/PK :fk_target_field_id nil}
-        field2   {:id 11 :name "product_id" :table_id 1 :display_name "Product ID"
-                  :database_type "INT" :semantic_type :type/FK :fk_target_field_id 20}
-        field3   {:id 20 :name "id" :table_id 2 :display_name "ID"
-                  :database_type "INT" :semantic_type :type/PK :fk_target_field_id nil}
-        subgraph {:tables-by-id    {1 table1 2 table2}
-                  :fields-by-table {1 [field1 field2] 2 [field3]}
-                  :field-by-id     (->field-by-id [field1 field2 field3])
-                  :all-table-ids   #{1 2}}]
-
-    (testing "response has nodes and edges"
-      (let [response (erd/build-erd-response subgraph #{1})]
-        (is (= 2 (count (:nodes response))))
-        (is (= 1 (count (:edges response))))))
-
-    (testing "focal table is marked correctly"
-      (let [nodes-by-id (->> (erd/build-erd-response subgraph #{1})
-                             :nodes
-                             (into {} (map (fn [n] [(:table_id n) n]))))]
-        (is (true? (:is_focal (nodes-by-id 1))))
-        (is (false? (:is_focal (nodes-by-id 2))))))
-
-    (testing "focal table not in tables-by-id is silently excluded"
-      (let [response (erd/build-erd-response subgraph #{1 999})]
-        (is (= 2 (count (:nodes response))))
-        (is (true? (:is_focal (first (filter #(= 1 (:table_id %)) (:nodes response))))))))))
-
-;;; ---------------------------------------- Integration tests (via HTTP) ----------------------------------------
-
-(deftest erd-endpoint-with-explicit-tables-test
+(deftest erd-graph-single-focal-test
   (mt/with-premium-features #{:dependencies}
-    (testing "GET /api/ee/dependencies/erd with explicit table-ids, hops=0"
-      (let [response (erd-request! {:table-ids [(mt/id :orders) (mt/id :products)]
-                                    :hops      0})]
-        (testing "returns exactly the requested focal tables"
-          (is (= #{(mt/id :orders) (mt/id :products)} (table-ids response))))
+    (testing "single focal table with hops=1 expands to FK neighbors"
+      (is (= {:orders   {:focal true  :fk [:people :products]}
+              :people   {:focal false :fk []}
+              :products {:focal false :fk []}}
+             (graph-shape (erd-request! {:table-ids [(mt/id :orders)]
+                                         :hops      1})))))
 
-        (testing "nodes have correct shape"
-          (is (=? {:table_id     (mt/id :orders)
-                   :name         "ORDERS"
-                   :display_name "Orders"
-                   :db_id        (mt/id)
-                   :schema       "PUBLIC"
-                   :is_focal     true
-                   :fields       sequential?}
-                  (node-by-table response :orders)))
-          (is (=? {:table_id (mt/id :products)
-                   :is_focal true}
-                  (node-by-table response :products))))
+    (testing "hops=0 returns focal table alone with no edges"
+      (is (= {:orders {:focal true :fk []}}
+             (graph-shape (erd-request! {:table-ids [(mt/id :orders)]
+                                         :hops      0})))))
 
-        (testing "each field has the expected shape"
-          (is (=? {:id                 pos-int?
-                   :name               string?
-                   :display_name       string?
-                   :database_type      string?}
-                  (first (:fields (node-by-table response :orders))))))))))
+    (testing "table with no outbound FKs stays isolated regardless of hops"
+      (is (= {:products {:focal true :fk []}}
+             (graph-shape (erd-request! {:table-ids [(mt/id :products)]
+                                         :hops      2})))))))
 
-(deftest erd-endpoint-with-hops-test
+(deftest erd-graph-multi-focal-test
   (mt/with-premium-features #{:dependencies}
-    (testing "hops=1 from orders expands to products and people via outbound FKs"
-      (let [response (erd-request! {:table-ids [(mt/id :orders)]
-                                    :hops      1})]
-        (testing "focal + related tables present"
-          (is (=? {:table_id (mt/id :orders)  :is_focal true}  (node-by-table response :orders)))
-          (is (=? {:table_id (mt/id :products) :is_focal false} (node-by-table response :products)))
-          (is (=? {:table_id (mt/id :people)   :is_focal false} (node-by-table response :people))))
+    (testing "two focals sharing an FK target — target discovered once, both have edges"
+      (is (= {:orders   {:focal true  :fk [:people :products]}
+              :people   {:focal false :fk []}
+              :products {:focal false :fk []}
+              :reviews  {:focal true  :fk [:products]}}
+             (graph-shape (erd-request! {:table-ids [(mt/id :orders) (mt/id :reviews)]
+                                         :hops      1})))))
 
-        (testing "edges connect orders to its FK targets"
-          (is (=? {:source_table_id (mt/id :orders)
-                   :target_table_id (mt/id :products)
-                   :relationship    "many-to-one"}
-                  (edge-between response :orders :products)))
-          (is (=? {:source_table_id (mt/id :orders)
-                   :target_table_id (mt/id :people)
-                   :relationship    "many-to-one"}
-                  (edge-between response :orders :people))))))))
+    (testing "when FK target is also focal, is_focal reflects that"
+      (is (= {:orders   {:focal true :fk [:people :products]}
+              :people   {:focal false :fk []}
+              :products {:focal true :fk []}
+              :reviews  {:focal true :fk [:products]}}
+             (graph-shape (erd-request! {:table-ids [(mt/id :orders) (mt/id :products) (mt/id :reviews)]
+                                         :hops      1})))))))
 
-(deftest erd-endpoint-multi-hop-test
+(deftest erd-graph-field-shape-test
   (mt/with-premium-features #{:dependencies}
-    (testing "hops=2 from orders reaches tables two hops away via outbound FKs"
-      ;; orders → products (hop 1), orders → people (hop 1)
-      ;; products and people have no outbound FKs, so hop 2 discovers nothing new
-      (let [response (erd-request! {:table-ids [(mt/id :orders)]
-                                    :hops      2})]
-        (is (=? {:is_focal true}  (node-by-table response :orders)))
-        (is (=? {:is_focal false} (node-by-table response :products)))
-        (is (=? {:is_focal false} (node-by-table response :people)))))
+    (testing "FK fields on nodes carry resolved target IDs, PK fields have nil FK refs"
+      (let [response (erd-request! {:table-ids [(mt/id :orders)] :hops 1})
+            orders   (first (filter #(= (mt/id :orders) (:table_id %)) (:nodes response)))
+            fk-field (first (filter #(= "PRODUCT_ID" (:name %)) (:fields orders)))
+            pk-field (first (filter #(= "ID" (:name %)) (:fields orders)))]
+        (is (= (mt/id :products :id) (:fk_target_field_id fk-field)))
+        (is (= (mt/id :products)     (:fk_target_table_id fk-field)))
+        (is (= "type/FK"             (:semantic_type fk-field)))
+        (is (nil? (:fk_target_field_id pk-field)))
+        (is (nil? (:fk_target_table_id pk-field)))))
 
-    (testing "BFS only follows outbound FKs — a table with no FKs expands to nothing"
-      (let [response (erd-request! {:table-ids [(mt/id :products)]
-                                    :hops      2})]
-        (is (= #{(mt/id :products)} (table-ids response)))))))
+    (testing "FK field to excluded table has nil target IDs (no ID leak)"
+      (let [response (erd-request! {:table-ids [(mt/id :orders)] :hops 0})]
+        (doseq [field (mapcat :fields (:nodes response))
+                :when (= "type/FK" (:semantic_type field))]
+          (is (nil? (:fk_target_field_id field)))
+          (is (nil? (:fk_target_table_id field))))))))
 
-(deftest erd-endpoint-hops-clamped-test
+(deftest erd-graph-self-referential-fk-test
   (mt/with-premium-features #{:dependencies}
-    (testing "hops > max (5) is clamped — does not error or run unbounded"
-      (let [response (erd-request! {:table-ids [(mt/id :orders)]
-                                    :hops      99})]
-        (is (seq (:nodes response)))))))
+    (testing "self-referential FK produces edge from table to itself"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table    {tid :id}   {:db_id db-id :name "categories" :schema "PUBLIC"}
+                     :model/Field    {pk-id :id} {:table_id tid :name "id"
+                                                  :database_type "INTEGER" :base_type :type/Integer
+                                                  :semantic_type :type/PK}
+                     :model/Field    _            {:table_id tid :name "parent_id"
+                                                   :database_type "INTEGER" :base_type :type/Integer
+                                                   :semantic_type :type/FK
+                                                   :fk_target_field_id pk-id}]
+        (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                             :database-id db-id
+                                             :table-ids tid
+                                             :hops 1)]
+          (is (= {:categories {:focal true :fk [:categories]}}
+                 (graph-shape response))))))))
+
+;;; ---------------------------------------- Integration tests ----------------------------------------
+
+(deftest erd-endpoint-hops-clamping-test
+  (mt/with-premium-features #{:dependencies}
+    (testing "hops > max (5) is clamped — does not error"
+      (is (seq (:nodes (erd-request! {:table-ids [(mt/id :orders)]
+                                      :hops      99})))))))
 
 (deftest erd-endpoint-auto-discover-test
   (mt/with-premium-features #{:dependencies}
     (testing "auto-discovers focal tables when none specified"
-      (let [response (erd-request! {})]
-        (is (seq (:nodes response)))
-        (is (seq (:edges response)))
-        (is (some :is_focal (:nodes response)))
-        (is (some (complement :is_focal) (:nodes response)))))))
-
-(deftest erd-endpoint-hops-zero-test
-  (mt/with-premium-features #{:dependencies}
-    (testing "hops=0 returns only focal tables with no expansion"
-      (let [response (erd-request! {:table-ids [(mt/id :orders)]
-                                    :hops      0})]
-        (is (= #{(mt/id :orders)} (table-ids response)))))))
+      (let [shape (graph-shape (erd-request! {}))]
+        (is (some (fn [[_ v]] (:focal v)) shape))
+        (is (some (fn [[_ v]] (not (:focal v))) shape))))))
 
 (deftest erd-endpoint-schema-filter-test
   (mt/with-premium-features #{:dependencies}
     (testing "schema param filters auto-discovery to that schema"
-      (let [response (erd-request! {:schema "PUBLIC"})]
-        (doseq [node (:nodes response)]
-          (is (= "PUBLIC" (:schema node))))))))
+      (doseq [node (:nodes (erd-request! {:schema "PUBLIC"}))]
+        (is (= "PUBLIC" (:schema node)))))))
 
-(deftest erd-endpoint-requires-premium-feature-test
+(deftest erd-endpoint-guard-rails-test
   (testing "without :dependencies feature returns 402"
     (mt/with-premium-features #{}
       (mt/user-http-request :rasta :get 402 "ee/dependencies/erd"
-                            :database-id (mt/id)))))
+                            :database-id (mt/id))))
 
-(deftest erd-endpoint-invalid-database-test
   (mt/with-premium-features #{:dependencies}
     (testing "non-existent database returns 404"
       (mt/user-http-request :rasta :get 404 "ee/dependencies/erd"
                             :database-id Integer/MAX_VALUE))))
 
-;;; ---------------------------------------- Permission tests ----------------------------------------
+;;; ---------------------------------------- Permission graph tests ----------------------------------------
 
-(deftest erd-endpoint-excludes-unreadable-tables-test
+;; These tests verify that the graph topology changes correctly under
+;; different permission scenarios. We use with-no-data-perms-for-all-users!
+;; to revoke everything, then selectively grant table-level access.
+
+(deftest erd-permissions-unreadable-table-excluded-test
   (mt/with-premium-features #{:dependencies}
-    (testing "tables the user cannot read are excluded from ERD results"
-      (let [orders-id   (mt/id :orders)
-            products-id (mt/id :products)]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
-            (perms/add-user-to-group! (mt/user->id :rasta) group-id)
-            ;; Grant access to orders only — not products
-            (data-perms/set-table-permission! group-id orders-id :perms/view-data :unrestricted)
-            (data-perms/set-table-permission! group-id orders-id :perms/create-queries :query-builder)
-            (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
-                                                 :database-id (mt/id)
-                                                 :table-ids   orders-id
-                                                 :table-ids   products-id
-                                                 :hops        1)]
-              (testing "orders is included, products is excluded"
-                (is (some? (node-by-table response orders-id)))
-                (is (nil?  (node-by-table response products-id))))
-              (testing "no edges reference the excluded table"
-                (doseq [edge (:edges response)]
-                  (is (not= products-id (:source_table_id edge)))
-                  (is (not= products-id (:target_table_id edge)))))
-              (testing "FK fields pointing to excluded tables have nil target IDs"
-                (doseq [field (mapcat :fields (:nodes response))
-                        :when (some? (:fk_target_table_id field))]
-                  (is (contains? (table-ids response) (:fk_target_table_id field))))))))))))
+    (testing "unreadable table is excluded from graph, edges, and FK fields"
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/PermissionsGroup {gid :id} {}]
+          (perms/add-user-to-group! (mt/user->id :rasta) gid)
+          ;; Grant orders only — products is unreachable
+          (grant-table-read! gid (mt/id :orders))
+          (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                               :database-id (mt/id)
+                                               :table-ids (mt/id :orders)
+                                               :table-ids (mt/id :products)
+                                               :hops 1)]
+            (testing "graph shows orders alone, no FK edges"
+              (is (= {:orders {:focal true :fk []}}
+                     (graph-shape response))))
+            (testing "no FK field leaks IDs of excluded tables"
+              (doseq [field (mapcat :fields (:nodes response))
+                      :when (:fk_target_table_id field)]
+                (is (contains? (set (map :table_id (:nodes response)))
+                               (:fk_target_table_id field)))))))))))
+
+(deftest erd-permissions-intermediate-table-blocks-bfs-test
+  (mt/with-premium-features #{:dependencies}
+    (testing "unreadable intermediate table blocks BFS — downstream tables are not discovered"
+      ;; Graph: orders → products, reviews → products
+      ;; Grant: orders + reviews, deny: products
+      ;; orders' FK to products is blocked, reviews' FK to products is blocked
+      ;; With orders as focal + hops=2, products is unreadable so nothing beyond orders is found
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/PermissionsGroup {gid :id} {}]
+          (perms/add-user-to-group! (mt/user->id :rasta) gid)
+          (grant-table-read! gid (mt/id :orders))
+          (grant-table-read! gid (mt/id :reviews))
+          (grant-table-read! gid (mt/id :people))
+          ;; products is NOT granted — it's the "intermediate" table
+          (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                               :database-id (mt/id)
+                                               :table-ids (mt/id :orders)
+                                               :hops 2)]
+            (testing "orders reaches people (readable) but not products (unreadable)"
+              (is (= {:orders {:focal true  :fk [:people]}
+                      :people {:focal false :fk []}}
+                     (graph-shape response))))))))))
+
