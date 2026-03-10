@@ -22,6 +22,7 @@ export * from "./document";
 export * from "./email";
 export * from "./entity-id";
 export * from "./field";
+export * from "./metric";
 export * from "./geojson";
 export * from "./group";
 export * from "./insight";

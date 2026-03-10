@@ -276,6 +276,7 @@
            config
            events
            models
+           permissions
            premium-features
            request
            settings
@@ -790,6 +791,16 @@
            sql-tools
            util}}
 
+  lib-metric
+  {:team "UX West"
+   :api  #{metabase.lib-metric.core
+           metabase.lib-metric.schema}
+   :uses #{lib
+           lib-be
+           settings
+           types
+           util}}
+
   llm
   {:team "Metabot"
    :api  #{metabase.llm.api
@@ -839,10 +850,27 @@
            events
            lib
            lib-be
+           metrics
            models
            permissions
            remote-sync
            search
+           util}}
+
+  metrics
+  {:team "UX West"
+   :api  #{metabase.metrics.api
+           metabase.metrics.core}
+   :uses #{api
+           collections
+           lib
+           lib-be
+           lib-metric
+           models
+           parameters
+           query-processor
+           request
+           server
            util}}
 
   model-persistence
@@ -1118,6 +1146,7 @@
            events
            lib
            lib-be
+           metrics
            models
            parameters
            permissions

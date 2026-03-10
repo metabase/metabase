@@ -317,7 +317,7 @@ const TableSectionBase = ({
             >{t`Segments`}</Tabs.Tab>
             <Tabs.Tab
               value="measures"
-              leftSection={<Icon name="sum" />}
+              leftSection={<Icon name="ruler" />}
             >{t`Measures`}</Tabs.Tab>
           </Tabs.List>
 
