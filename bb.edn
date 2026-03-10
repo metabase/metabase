@@ -533,4 +533,20 @@
    :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
    :examples [["mage -escherize-fix-whitespace '**/*.clj{,c,s}'" "Removes all lines like '  ' from all clj files"]]
    :arg-schema [:sequential [:string {:name "glob-pattern" :description "Glob pattern to match files"}]]
-   :task (task! (fix-whitespace/run-clean parsed))}}}
+   :task (task! (fix-whitespace/run-clean parsed))}
+
+  -edpaget-dev-env
+  {:doc "Stand up (or tear down) an isolated dev environment for this worktree"
+   :examples [["./bin/mage -edpaget-dev-env --app-db postgres" "Postgres app-db with auto ports"]
+              ["./bin/mage -edpaget-dev-env --app-db postgres --with mysql --with mongo" "Full stack"]
+              ["./bin/mage -edpaget-dev-env" "Minimal: just port config (H2 app-db)"]
+              ["./bin/mage -edpaget-dev-env --down" "Tear down containers for this worktree"]
+              ["./bin/mage -edpaget-dev-env --status" "Show running containers and ports"]]
+   :requires [[mage.edpaget.dev-env :as dev-env]]
+   :options [[nil "--app-db DB" "App database: h2 (default), postgres, mysql" :default "h2"]
+             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"
+              :multi true :default [] :update-fn conj]
+             [nil "--down" "Tear down all containers for this worktree"]
+             [nil "--status" "Show current env status"]
+             [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]]
+   :task (task! (dev-env/dev-env! parsed))}}}
