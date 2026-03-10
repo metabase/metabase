@@ -47,20 +47,24 @@
     (let [captured (atom nil)]
       (mt/with-dynamic-fn-redefs [http/post (fn [_url opts]
                                               (reset! captured (json/decode+kw (:body opts)))
-                                              (throw (ex-info "stop" {})))]
-        (doseq [[model expected getter] [["anthropic/test-model"  {:type "any"} :tool_choice]
-                                         ["openrouter/test-model" "required"    :tool_choice]
-                                         ["openai/test-model"     "required"    :tool_choice]]]
-          (try
-            (run! identity (self/call-llm model
-                                          nil
-                                          []
-                                          {"search" #'test-util/get-time}
-                                          {:tag "agent"}
-                                          {:tool-choice "required"}))
-            (catch Exception _))
-          (let [res @captured]
-            (is (= expected (getter res)))))))))
+                                              (throw (ex-info "stop" {::skip true :status 401 :body "skip parsing"})))]
+        (mt/with-temporary-setting-values [ee-anthropic-api-key  "test-key"
+                                           ee-openrouter-api-key "test-key"
+                                           ee-openai-api-key     "test-key"]
+          (doseq [[model expected] [["anthropic/test-model"  {:type "any"}]
+                                    ["openrouter/test-model" "required"]
+                                    ["openai/test-model"     "required"]]]
+            (try
+              (run! identity (self/call-llm model
+                                            nil
+                                            []
+                                            {"search" #'test-util/get-time}
+                                            {:tag "agent"}
+                                            {:tool-choice "required"}))
+              (catch Exception e
+                (when-not (::skip (ex-data e))
+                  (throw e))))
+            (is (= expected (:tool_choice @captured)))))))))
 
 ;;; utils tests
 

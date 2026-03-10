@@ -81,11 +81,8 @@
 
   Accepts [name, var] or [name, {:doc :schema :fn}] pairs — the same format
   that the agent loop provides."
-  [tool-or-pair]
-  (let [[tool-name tool] (if (vector? tool-or-pair)
-                           tool-or-pair
-                           [nil tool-or-pair])
-        {:keys [doc schema]} (if (map? tool) tool (meta tool))
+  [[tool-name tool]]
+  (let [{:keys [doc schema]} (if (map? tool) tool (meta tool))
         [_:=> [_:cat params] _out] schema
         doc        (if (str/starts-with? (or doc "") "Inputs: ")
                      (second (str/split doc #"\n\n  " 2))
@@ -240,7 +237,6 @@
        [:system {:optional true} :string]
        [:input {:optional true} [:sequential :map]]
        [:tools {:optional true} [:sequential [:or
-                                              [:fn var?]
                                               [:tuple :string [:fn var?]]
                                               [:tuple :string [:map
                                                                [:doc {:optional true} [:maybe :string]]

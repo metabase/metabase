@@ -142,7 +142,7 @@
 
 ;;; Tool definition format
 
-(defn- tool->openai [tool]
+(defn- tool->openai [[tool-name tool]]
   (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
         [_:=> [_:cat params] _out]    schema
         doc                           (if (str/starts-with? doc "Inputs: ")
@@ -150,7 +150,7 @@
                                         (second (str/split doc #"\n\n  " 2))
                                         doc)]
     {:type        "function"
-     :name        (name (:name tool))
+     :name        (or tool-name (name (:name tool)))
      :description doc
      :parameters  (mjs/transform params {:additionalProperties false})}))
 
@@ -166,7 +166,7 @@
        [:model {:optional true} :string]
        [:system {:optional true} :string]
        [:input {:optional true} [:sequential :map]]
-       [:tools {:optional true} [:sequential [:fn var?]]]
+       [:tools {:optional true} [:sequential [:tuple :string [:fn var?]]]]
        ;; malli schema expected here
        ;; TODO: check it's a `:map`
        [:schema {:optional true} :any]

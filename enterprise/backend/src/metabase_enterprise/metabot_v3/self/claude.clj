@@ -176,21 +176,14 @@
   - A var (legacy) - uses var name as tool name
   - A [name, var] pair - uses explicit name
   - A [name, {:doc :schema :fn}] map - for wrapped tools"
-  [tool-or-pair]
-  (let [[tool-name tool] (if (vector? tool-or-pair)
-                           tool-or-pair
-                           [nil tool-or-pair])
-        {:keys [doc schema]} (if (map? tool) tool (meta tool))
-        [_:=> [_:cat params] _out] schema
-        doc (if (str/starts-with? (or doc "") "Inputs: ")
-              ;; strip that stuff we're appending in mu/defn
-              (second (str/split doc #"\n\n  " 2))
-              doc)
-        ;; For wrapped tools, tool-name is provided; for vars, extract from metadata
-        final-name (or tool-name
-                       (when (var? tool) (name (:name (meta tool))))
-                       "unknown")]
-    {:name         final-name
+  [[tool-name tool]]
+  (let [{:keys [doc schema] :as tool} (if (map? tool) tool (meta tool))
+        [_:=> [_:cat params] _out]    schema
+        doc                           (if (str/starts-with? (or doc "") "Inputs: ")
+                                        ;; strip that stuff we're appending in mu/defn
+                                        (second (str/split doc #"\n\n  " 2))
+                                        doc)]
+    {:name         (or tool-name (name (:name tool)) "unknown")
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
 
@@ -207,7 +200,6 @@
        [:system {:optional true} :string]
        [:input {:optional true} [:sequential :map]]
        [:tools {:optional true} [:sequential [:or
-                                              [:fn var?]
                                               [:tuple :string [:fn var?]]
                                               [:tuple :string [:map
                                                                [:doc {:optional true} [:maybe :string]]
