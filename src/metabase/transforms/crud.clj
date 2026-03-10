@@ -153,12 +153,7 @@
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/target-table-exists? new)))
                                  403
-                                 (deferred-tru "A table with that name already exists."))
-                      ;; Reset checkpoint if the incremental filter field changed
-                      (let [old-field-id (get-in old [:source :source-incremental-strategy :checkpoint-filter-field-id])
-                            new-field-id (get-in new [:source :source-incremental-strategy :checkpoint-filter-field-id])]
-                        (when (and old-field-id (not= old-field-id new-field-id))
-                          (t2/update! :model/Transform id {:last_checkpoint_type nil :last_checkpoint_value nil}))))
+                                 (deferred-tru "A table with that name already exists.")))
                     (t2/update! :model/Transform id (dissoc body :tag_ids))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
