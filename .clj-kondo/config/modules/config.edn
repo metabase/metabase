@@ -788,15 +788,6 @@
            settings
            util}}
 
-  source-swap
-  {:team "Graphy"
-   :api  #{metabase.source-swap.core
-           metabase.source-swap.schema}
-   :uses #{driver
-           lib
-           sql-tools
-           util}}
-
   lib-metric
   {:team "UX West"
    :api  #{metabase.lib-metric.core
