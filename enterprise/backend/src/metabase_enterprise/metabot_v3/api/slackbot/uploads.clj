@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
+   [metabase.analytics.core :as analytics]
    [metabase.channel.settings :as channel.settings]
    [metabase.upload.core :as upload]
    [metabase.util.log :as log]
@@ -58,11 +59,13 @@
                          :table-prefix  table_prefix
                          :collection-id nil})]
             (log/infof "[slackbot] File uploaded: file=%s model_id=%d" name (:id result))
+            (analytics/inc! :metabase-slackbot/file-uploads {:result "success"})
             {:filename name
              :model-id (:id result)
              :model-name (:name result)}))
         (catch Exception e
           (log/warnf "[slackbot] File upload failed: file=%s error=%s" name (ex-message e))
+          (analytics/inc! :metabase-slackbot/file-uploads {:result "error"})
           {:error (ex-message e) :filename name})
         (finally
           (io/delete-file temp-file true))))))

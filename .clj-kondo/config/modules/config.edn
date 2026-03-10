@@ -2247,6 +2247,7 @@
               metabase-enterprise.metabot-v3.tools.api}
    :friends #{enterprise/agent-api}
    :uses    #{activity-feed
+              analytics
               api
               app-db
               audit-app
