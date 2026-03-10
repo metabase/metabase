@@ -210,14 +210,17 @@
         old-fk-id         (-> field-ref lib.options/options :source-field)
         new-fk-id-column  (get field-id-mapping old-fk-id)
         swapped-field-ref (cond-> field-ref
-                            (and new-id-column (:id new-id-column) old-fk-id)
-                            (lib.ref/with-field-ref-id (:id new-id-column))
-
                             ;; base-type is required for name-based refs, make sure it's set
+                            ;; don't use the column name for implicit joins or [[resolve-field-ref]] won't resolve it
                             (and new-id-column (not old-fk-id))
                             (-> (lib.options/update-options assoc :base-type (:base-type new-id-column))
                                 (lib.ref/with-field-ref-name (lib-be.source-swap.util/column-match-key new-id-column)))
 
+                            ;; implicit joins PK table field ID
+                            (and new-id-column (:id new-id-column) old-fk-id)
+                            (lib.ref/with-field-ref-id (:id new-id-column))
+
+                            ;; implicit joins FK table field ID
                             (and new-fk-id-column (:id new-fk-id-column))
                             (lib.options/update-options assoc :source-field (:id new-fk-id-column)))]
     (or (when-let [new-column (lib.field.resolution/resolve-field-ref query stage-number swapped-field-ref)]
