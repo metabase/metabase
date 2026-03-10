@@ -137,7 +137,7 @@
       (let [old-field-id (get-in (t2/original transform) [:source :source-incremental-strategy :checkpoint-filter-field-id])
             new-field-id (get-in transform [:source :source-incremental-strategy :checkpoint-filter-field-id])]
         (and old-field-id (not= old-field-id new-field-id)))
-      (assoc :last_checkpoint_type nil :last_checkpoint_value nil))))
+      (assoc :last_checkpoint_value nil))))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]

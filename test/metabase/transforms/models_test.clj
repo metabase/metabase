@@ -342,11 +342,9 @@
                                :schema "public"
                                :name "test_incr"
                                :db_id db-id}
-                      :last_checkpoint_type "Integer"
                       :last_checkpoint_value "42"}]
         (testing "checkpoint is present before update"
           (let [t (t2/select-one :model/Transform transform-id)]
-            (is (= "Integer" (:last_checkpoint_type t)))
             (is (= "42" (:last_checkpoint_value t)))))
 
         (testing "changing checkpoint-filter-field-id resets checkpoint"
@@ -359,13 +357,12 @@
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
           (let [t (t2/select-one :model/Transform transform-id)]
-            (is (nil? (:last_checkpoint_type t)))
             (is (nil? (:last_checkpoint_value t)))))
 
         (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
           ;; Set checkpoint again
           (t2/update! :model/Transform transform-id
-                      {:last_checkpoint_type "Integer" :last_checkpoint_value "99"})
+                      {:last_checkpoint_value "99"})
           (t2/update! :model/Transform transform-id
                       {:source {:type "query"
                                 :query {:database db-id
@@ -375,5 +372,4 @@
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
           (let [t (t2/select-one :model/Transform transform-id)]
-            (is (= "Integer" (:last_checkpoint_type t)))
             (is (= "99" (:last_checkpoint_value t)))))))))

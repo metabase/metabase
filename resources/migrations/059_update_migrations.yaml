@@ -3600,23 +3600,23 @@ databaseChangeLog:
       rollback: # rolling back still leaves the fix in place
 
   - changeSet:
-      id: v59.2026-03-08T12:00:01
+      id: v59.2026-03-08T12:00:00
       author: wotbrew
-      comment: Add last_checkpoint_type columns transform table
+      comment: Add last_checkpoint_value to transform table
       preConditions:
         - onFail: MARK_RAN
         - not:
             - columnExists:
                 tableName: transform
-                columnName: last_checkpoint_type
+                columnName: last_checkpoint_value
       changes:
         - addColumn:
             tableName: transform
             columns:
               - column:
-                  name: last_checkpoint_type
-                  type: varchar(32)
-                  remarks: Base type of the persisted checkpoint value, e.g. type/Integer, type/Float, type/DateTimeWithLocalTZ
+                  name: last_checkpoint_value
+                  type: ${text.type}
+                  remarks: Serialized checkpoint watermark value for incremental transforms, temporal as ISO8601
                   constraints:
                     nullable: true
 
