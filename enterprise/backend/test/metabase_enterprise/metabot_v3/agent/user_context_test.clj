@@ -1,7 +1,9 @@
 (ns metabase-enterprise.metabot-v3.agent.user-context-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.agent.user-context :as user-context]))
+   [metabase-enterprise.metabot-v3.agent.user-context :as user-context]
+   [metabase-enterprise.metabot-v3.tools.entity-details :as entity-details]
+   [metabase-enterprise.metabot-v3.tools.llm-representations :as llm-rep]))
 
 (deftest format-current-time-test
   (testing "formats time from context with timezone"
@@ -273,27 +275,48 @@
           result (user-context/format-recent-views context)]
       (is (= "" result)))))
 
+(deftest format-current-user-info-test
+  (testing "formats the current user as XML"
+    (with-redefs [entity-details/get-current-user (fn [_]
+                                                    {:structured-output {:id            1
+                                                                         :name          "Jane Doe"
+                                                                         :email-address "jane@example.com"
+                                                                         :glossary      {"ARR" "Annual Recurring Revenue"}}})]
+      (is (= (llm-rep/user->xml {:id       1
+                                 :name     "Jane Doe"
+                                 :email    "jane@example.com"
+                                 :glossary {"ARR" "Annual Recurring Revenue"}})
+             (user-context/format-current-user-info {})))))
+
+  (testing "returns nil when there is no current user"
+    (with-redefs [entity-details/get-current-user (fn [_]
+                                                    {:output "current user not found"})]
+      (is (nil? (user-context/format-current-user-info {}))))))
+
 (deftest enrich-context-for-template-test
   (testing "enriches context with all template variables (legacy type: native)"
-    (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
-                   :first_day_of_week "Monday"
-                   :user_is_viewing [{:type "native"
-                                      :sql_engine "PostgreSQL"
-                                      :query "SELECT * FROM users"}]
-                   :user_recently_viewed [{:type "table"
-                                           :id 123
-                                           :name "users"}]}
-          result (user-context/enrich-context-for-template context)]
-      (is (contains? result :current_time))
-      (is (contains? result :first_day_of_week))
-      (is (contains? result :sql_dialect))
-      (is (contains? result :viewing_context))
-      (is (contains? result :recent_views))
-      (is (string? (:current_time result)))
-      (is (= "Monday" (:first_day_of_week result)))
-      (is (= "postgresql" (:sql_dialect result)))
-      (is (string? (:viewing_context result)))
-      (is (string? (:recent_views result)))))
+    (with-redefs [user-context/format-current-user-info (constantly "<user>Jane Doe</user>")]
+      (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
+                     :first_day_of_week "Monday"
+                     :user_is_viewing [{:type "native"
+                                        :sql_engine "PostgreSQL"
+                                        :query "SELECT * FROM users"}]
+                     :user_recently_viewed [{:type "table"
+                                             :id 123
+                                             :name "users"}]}
+            result (user-context/enrich-context-for-template context)]
+        (is (contains? result :current_time))
+        (is (contains? result :first_day_of_week))
+        (is (contains? result :sql_dialect))
+        (is (contains? result :current_user_info))
+        (is (contains? result :viewing_context))
+        (is (contains? result :recent_views))
+        (is (string? (:current_time result)))
+        (is (= "Monday" (:first_day_of_week result)))
+        (is (= "postgresql" (:sql_dialect result)))
+        (is (= "<user>Jane Doe</user>" (:current_user_info result)))
+        (is (string? (:viewing_context result)))
+        (is (string? (:recent_views result))))))
 
   (testing "enriches context from frontend adhoc native query payload"
     (let [context {:current_time_with_timezone "2024-01-15T14:30:00-05:00"
