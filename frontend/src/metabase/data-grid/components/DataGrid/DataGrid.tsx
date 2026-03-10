@@ -135,10 +135,13 @@ export const DataGrid = function DataGrid<TData>({
       ? "var(--mb-color-background-primary)"
       : backgroundColor);
 
-  const pinnedColumns = table.getLeftVisibleLeafColumns();
+  const visibleRows = getVisibleRows();
+  const pinnedColumns = getPinnedColumns();
+  const centralColumns = getCentralColumns();
   const hasPinnedColumns = pinnedColumns.length > 0;
   const lastPinnedColumn = pinnedColumns.at(-1);
-  const isLastPinnedColumnRowId = lastPinnedColumn?.id === ROW_ID_COLUMN_ID;
+  const isLastPinnedColumnRowId =
+    lastPinnedColumn?.origin.id === ROW_ID_COLUMN_ID;
   const hasSeparator = lastPinnedColumn != null && !isLastPinnedColumnRowId;
 
   const pinnedColumnsWidth = table.getLeftTotalSize();
@@ -262,14 +265,8 @@ export const DataGrid = function DataGrid<TData>({
                   strategy={horizontalListSortingStrategy}
                 >
                   {renderGridPanels({
-                    pinnedContent: renderHeader(
-                      headerGroup,
-                      getPinnedColumns(),
-                    ),
-                    centralContent: renderHeader(
-                      headerGroup,
-                      getCentralColumns(),
-                    ),
+                    pinnedContent: renderHeader(headerGroup, pinnedColumns),
+                    centralContent: renderHeader(headerGroup, centralColumns),
                   })}
                 </SortableContext>
               ))}
@@ -283,11 +280,11 @@ export const DataGrid = function DataGrid<TData>({
               style={styles?.bodyContainer}
             >
               {renderGridPanels({
-                pinnedContent: getVisibleRows().map((row, index) =>
-                  renderRow(row, getPinnedColumns(), `pinned-${index}`),
+                pinnedContent: visibleRows.map((row, index) =>
+                  renderRow(row, pinnedColumns, `pinned-${index}`),
                 ),
-                centralContent: getVisibleRows().map((row, index) =>
-                  renderRow(row, getCentralColumns(), `center-${index}`),
+                centralContent: visibleRows.map((row, index) =>
+                  renderRow(row, centralColumns, `center-${index}`),
                 ),
                 height: `${totalHeight}px`,
               })}
