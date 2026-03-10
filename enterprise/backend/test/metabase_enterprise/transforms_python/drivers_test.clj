@@ -421,7 +421,7 @@
                            ;; we sometimes get I/O error in CI due to it taking too long. it's too slow, too flakey to keep enabled
                            :redshift)
       (mt/with-empty-db
-        (mt/with-premium-features #{:transforms-python :transforms}
+        (mt/with-premium-features #{:transforms-python :transforms-basic}
           (with-test-table [source-table-id source-table-name] [base-type-test-data (:data base-type-test-data)]
             (let [table-name (mt/random-name)
                   exotic-config (get driver-exotic-types driver/*driver*)
@@ -457,9 +457,9 @@
                                           "    # Return processed dataframe\n"
                                           "    return df")
 
-                      source-tables (cond-> {source-table-name source-table-id}
+                      source-tables (cond-> [{:alias source-table-name :table_id source-table-id}]
                                       exotic-table-id
-                                      (assoc (str source-table-name "_exotic") exotic-table-id))
+                                      (conj {:alias (str source-table-name "_exotic") :table_id exotic-table-id}))
 
                       result (execute-e2e-transform! table-name transform-code source-tables)
                       {:keys [columns] result-rows :rows} result

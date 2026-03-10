@@ -316,7 +316,7 @@ At the top of the screen, you'll see a branch dropdown:
 ![Choose branches from the dropdown](./images/branch-dropdown.png)
 
 1. Click the branch dropdown to see available branches.
-2. Select a different branch to switch to it.
+2. Select a different branch. This will change the branch for everyone in your Metabase (see [limitations](#branching-limitations)).
 
 If the branch doesn't appear, ensure it exists in your Git repository and that the name matches exactly (branch names are case-sensitive).
 
@@ -331,6 +331,13 @@ The dialog shows you exactly which items have changed, so you can make an inform
 If you switch modes (from Read-write to Read-only or vice versa) with unpushed changes, you'll be prompted to save or discard them. You cannot switch to Read-only mode with uncommitted changes.
 
 If changes don't appear after switching modes: Hard refresh your browser (Cmd/Ctrl + Shift + R).
+
+### Branching limitations
+
+- **Only admins can manage branches**. Non-admins won't see the branch dropdown at all.
+- **The current branch is instance-wide**. This means that everyone on the same Metabase is on the same branch at the same time. You can't have different people working on different branches in a single Metabase.
+
+Limiting a Metabase to a single branch at a time means that the typical Git feature-branch workflow is a bit different here: only admins can switch branches, create new branches, or push and pull changes. If you need multiple branches worked on simultaneously, the workaround is to spin up multiple Metabases in Read-write mode, one Metabase per branch.
 
 ## Pushing changes to Git
 

@@ -534,3 +534,32 @@ export function getSeriesModelsForSettings(
   const cardsColumns = getCardsColumns(rawSeries, settings);
   return getCardsSeriesModels(rawSeries, cardsColumns, [], settings);
 }
+
+export function getDefaultBoxplotDimensions(
+  series: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  // since a boxplot needs unaggregated data, we default to only one dimension - the one with the lowest cardinality
+  const dimensions = getDefaultDimensions(series, settings);
+  if (dimensions.length <= 1) {
+    return dimensions;
+  }
+  const { cols, rows } = series[0].data;
+  let lowestDimension: string | undefined;
+  let lowestCardinality = Infinity;
+  for (const dimension of dimensions) {
+    const index = cols.findIndex((col) => col.name === dimension);
+    if (index === -1) {
+      continue;
+    }
+    const cardinality = getColumnCardinality(cols, rows, index);
+    if (cardinality < lowestCardinality) {
+      lowestDimension = dimension;
+      lowestCardinality = cardinality;
+    }
+  }
+  if (lowestDimension === undefined) {
+    return [];
+  }
+  return [lowestDimension];
+}
