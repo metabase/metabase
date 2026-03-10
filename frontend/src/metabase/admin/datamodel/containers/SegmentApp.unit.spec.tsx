@@ -41,7 +41,7 @@ const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   setupSearchEndpoints([]);
   setupCardDataset({
     data: {
-      rows: [[null]],
+      rows: [[1, 2, 3]],
     },
   });
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
@@ -144,6 +144,8 @@ describe("SegmentApp", () => {
 
     await waitForLoaderToBeRemoved();
 
+    await userEvent.click(await screen.findByText("Databases"));
+    await userEvent.click(await screen.findByText("Sample Database"));
     await userEvent.click(await screen.findByText("Orders"));
 
     await waitForLoaderToBeRemoved();

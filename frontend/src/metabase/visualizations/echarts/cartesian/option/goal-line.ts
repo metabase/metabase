@@ -4,11 +4,12 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
+import type { RowValue } from "metabase-types/api";
 
 import type { EChartsCartesianCoordinateSystem } from "../../types";
 import { GOAL_LINE_SERIES_ID, X_AXIS_DATA_KEY } from "../constants/dataset";
 import { CHART_STYLE, Z_INDEXES } from "../constants/style";
-import type { BaseCartesianChartModel, ChartDataset } from "../model/types";
+import type { ChartDataset } from "../model/types";
 
 export const GOAL_LINE_DASH = [3, 4];
 
@@ -26,8 +27,33 @@ function getFirstNonNullXValue(dataset: ChartDataset) {
   return String(null);
 }
 
+export interface GoalLineParams {
+  dataset: ChartDataset;
+  isNormalized: boolean;
+  toEChartsAxisValue: (value: RowValue) => number | null;
+  labelOnLeft: boolean;
+}
+
+interface GoalLineParamsSource {
+  dataset: ChartDataset;
+  leftAxisModel: { isNormalized?: boolean } | null;
+  rightAxisModel: unknown;
+  yAxisScaleTransforms: {
+    toEChartsAxisValue: (value: RowValue) => number | null;
+  };
+}
+
+export function getGoalLineParams(model: GoalLineParamsSource): GoalLineParams {
+  return {
+    dataset: model.dataset,
+    isNormalized: model.leftAxisModel?.isNormalized ?? false,
+    toEChartsAxisValue: model.yAxisScaleTransforms.toEChartsAxisValue,
+    labelOnLeft: model.rightAxisModel != null,
+  };
+}
+
 export function getGoalLineSeriesOption(
-  chartModel: BaseCartesianChartModel,
+  { dataset, isNormalized, toEChartsAxisValue, labelOnLeft }: GoalLineParams,
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ): CustomSeriesOption | null {
@@ -35,20 +61,17 @@ export function getGoalLineSeriesOption(
     return null;
   }
 
-  const value = chartModel.leftAxisModel?.isNormalized
+  const value = isNormalized
     ? settings["graph.goal_value"] / 100
     : settings["graph.goal_value"];
 
-  const scaleTransformedGoalValue =
-    chartModel.yAxisScaleTransforms.toEChartsAxisValue(value);
+  const scaleTransformedGoalValue = toEChartsAxisValue(value);
   const { fontSize } = renderingContext.theme.cartesian.goalLine.label;
 
   return {
     id: GOAL_LINE_SERIES_ID,
     type: "custom",
-    data: [
-      [getFirstNonNullXValue(chartModel.dataset), scaleTransformedGoalValue],
-    ],
+    data: [[getFirstNonNullXValue(dataset), scaleTransformedGoalValue]],
     z: Z_INDEXES.goalLine,
     blur: {
       opacity: 1,
@@ -81,9 +104,8 @@ export function getGoalLineSeriesOption(
         },
       };
 
-      const hasRightYAxis = chartModel.rightAxisModel == null;
-      const align = hasRightYAxis ? ("right" as const) : ("left" as const);
-      const labelX = hasRightYAxis ? xEnd : xStart;
+      const align = labelOnLeft ? ("left" as const) : ("right" as const);
+      const labelX = labelOnLeft ? xStart : xEnd;
       const labelY = y - fontSize - CHART_STYLE.goalLine.label.margin;
 
       const label = {

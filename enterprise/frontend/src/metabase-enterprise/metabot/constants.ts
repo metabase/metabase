@@ -6,6 +6,7 @@ export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 export const FIXED_METABOT_IDS = {
   DEFAULT: 1 as const,
   EMBEDDED: 2 as const,
+  SLACKBOT: 3 as const,
 };
 
 export const METABOT_REQUEST_IDS = {
@@ -15,16 +16,21 @@ export const METABOT_REQUEST_IDS = {
 export const FIXED_METABOT_ENTITY_IDS = {
   DEFAULT: "metabotmetabotmetabot" as const,
   EMBEDDED: "embeddedmetabotmetabo" as const,
+  SLACKBOT: "slackbotmetabotmetabo" as const,
 };
 
 export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
   SQL: "sql",
+  TRANSFORMS_CODEGEN: "transforms_codegen",
 };
 
 export const METABOT_ERR_MSG = {
   get default() {
     return t`Sorry, I ran into an error. Could you please try that again?`;
+  },
+  get unauthenticated() {
+    return t`Metabot could not authenticate your request. Please contact your administrator.`;
   },
   get agentOffline() {
     return t`Metabot is currently offline. Please try again later.`;

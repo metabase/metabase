@@ -18,7 +18,10 @@
 
   In general, conversion functions in this namespace (i.e. those that convert various pieces from one form to the other)
   will be prefixed with either `db->norm` or `norm->db`, depending on which direction they implement.
-  "
+
+  TODO (Cam 2026-02-18) move this out of the `models` module, it should either go into its own
+  `visualization-settings` module or into `queries` (so it can live with Saved Questions and friends). See
+  also [[metabase.models.interface/normalize-visualization-settings]]."
   (:require
    #?@(:clj [[metabase.util.json :as json]])
    [clojure.set :as set]

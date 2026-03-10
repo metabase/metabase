@@ -53,7 +53,6 @@ export const useErrorInfo = (
       ? UtilApi.logs().catch(nullOnCatch)
       : Promise.resolve(null);
 
-    // @ts-expect-error non-standard error property
     const frontendErrors = console?.errorBuffer?.map?.((errArray) =>
       errArray
         .map((errLine: any) => JSON.stringify(errLine, maybeSerializeError))
@@ -86,18 +85,22 @@ export const useErrorInfo = (
     const filteredLogs = logs?.slice?.(0, 100);
     const backendErrors = logs?.filter?.((log: any) => log.level === "ERROR");
 
-    const userLogs = logs?.filter(
-      (log: any) =>
-        log?.msg?.includes?.(`{:metabase-user-id ${currentUser.id}}`) ||
-        log?.msg?.includes?.(` userID: ${currentUser.id} `),
-    );
+    const userLogs = currentUser
+      ? logs?.filter(
+          (log: any) =>
+            log?.msg?.includes?.(`{:metabase-user-id ${currentUser.id}}`) ||
+            log?.msg?.includes?.(` userID: ${currentUser.id} `),
+        )
+      : [];
 
     const browserInfo = getBrowserInfo();
 
     const payload: ErrorPayload = {
       reporter: {
-        name: `${currentUser.first_name} ${currentUser.last_name}`,
-        email: currentUser.email,
+        name: currentUser
+          ? `${currentUser.first_name} ${currentUser.last_name}`
+          : "",
+        email: currentUser ? currentUser.email : "",
       },
       url: location,
       entityInfo,

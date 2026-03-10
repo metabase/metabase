@@ -8,4 +8,4 @@ fi
 
 set -o xtrace
 
-claude --print "$(printf "%q " "$@")" --allowedTools "Bash(./bin/mage:*)" "Bash(clj-kondo:*)" "Bash(clojure:*)", "Bash(grep:*)" "Bash(ls:*)" "Bash(yarn lint:*)" "Bash(yarn test-unit:*)" "WebFetchTool(domain:github.com)" Edit
+claude --print "$(printf "%q " "$@")" --allowedTools "Bash(./bin/mage:*)" "Bash(clj-kondo:*)" "Bash(clojure:*)", "Bash(grep:*)" "Bash(ls:*)" "Bash(bun run lint:*)" "Bash(bun run test-unit:*)" "WebFetchTool(domain:github.com)" Edit

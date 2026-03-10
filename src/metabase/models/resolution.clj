@@ -73,6 +73,7 @@
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
     :model/PermissionsRevision               metabase.permissions.models.permissions-revision
     :model/PersistedInfo                     metabase.model-persistence.models.persisted-info
+    :model/PremiumFeaturesCache              metabase.premium-features.models.premium-features-cache
     :model/PythonLibrary                     metabase-enterprise.transforms-python.models.python-library
     :model/Pulse                             metabase.pulse.models.pulse
     :model/PulseCard                         metabase.pulse.models.pulse-card
@@ -101,19 +102,30 @@
     :model/Tenant                            metabase-enterprise.tenants.model
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
-    :model/Transform                         metabase-enterprise.transforms.models.transform
-    :model/TransformJob                      metabase-enterprise.transforms.models.transform-job
-    :model/TransformJobRun                   metabase-enterprise.transforms.models.job-run
-    :model/TransformJobTransformTag          metabase-enterprise.transforms.models.transform-job-transform-tag
-    :model/TransformRun                      metabase-enterprise.transforms.models.transform-run
-    :model/TransformRunCancelation           metabase-enterprise.transforms.models.transform-run-cancelation
-    :model/TransformTag                      metabase-enterprise.transforms.models.transform-tag
-    :model/TransformTransformTag             metabase-enterprise.transforms.models.transform-transform-tag
+    :model/Transform                         metabase.models.transforms.transform
+    :model/TransformJob                      metabase.models.transforms.transform-job
+    :model/TransformJobRun                   metabase.models.transforms.job-run
+    :model/TransformJobTransformTag          metabase.models.transforms.transform-job-transform-tag
+    :model/TransformRun                      metabase.models.transforms.transform-run
+    :model/TransformRunCancelation           metabase.models.transforms.transform-run-cancelation
+    :model/TransformTag                      metabase.models.transforms.transform-tag
+    :model/TransformTransformTag             metabase.models.transforms.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
-    :model/ViewLog                           metabase.view-log.models.view-log})
+    :model/ViewLog                           metabase.view-log.models.view-log
+    :model/Workspace                         metabase-enterprise.workspaces.models.workspace
+    :model/WorkspaceInput                    metabase-enterprise.workspaces.models.workspace-input
+    :model/WorkspaceInputExternal            metabase-enterprise.workspaces.models.workspace-input-external
+    :model/WorkspaceInputTransform           metabase-enterprise.workspaces.models.workspace-input-transform
+    :model/WorkspaceLog                      metabase-enterprise.workspaces.models.workspace-log
+    :model/WorkspaceMerge                    metabase-enterprise.workspaces.models.workspace-merge
+    :model/WorkspaceMergeTransform           metabase-enterprise.workspaces.models.workspace-merge-transform
+    :model/WorkspaceOutput                   metabase-enterprise.workspaces.models.workspace-output
+    :model/WorkspaceOutputExternal           metabase-enterprise.workspaces.models.workspace-output-external
+    :model/WorkspaceGraph                    metabase-enterprise.workspaces.models.workspace-graph
+    :model/WorkspaceTransform                metabase-enterprise.workspaces.models.workspace-transform})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!

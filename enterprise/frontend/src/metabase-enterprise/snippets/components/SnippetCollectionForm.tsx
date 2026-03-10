@@ -10,7 +10,7 @@ import { FormFooter } from "metabase/common/components/FormFooter";
 import { FormInput } from "metabase/common/components/FormInput";
 import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { FormTextArea } from "metabase/common/components/FormTextArea";
-import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Form, FormProvider } from "metabase/forms";
@@ -110,7 +110,7 @@ function SnippetCollectionForm({
   );
 
   const shouldDisableItem = useCallback(
-    (item: CollectionPickerItem) =>
+    (item: OmniPickerItem) =>
       isItemInCollectionOrItsDescendants(item, passedCollection.id),
     [passedCollection.id],
   );
@@ -138,9 +138,9 @@ function SnippetCollectionForm({
           <FormCollectionPicker
             name="parent_id"
             title={t`Folder this should be in`}
-            type="snippet-collections"
             collectionPickerModalProps={{
-              shouldDisableItem: shouldDisableItem,
+              isDisabledItem: shouldDisableItem,
+              namespaces: ["snippets"],
             }}
           />
           <FormFooter>

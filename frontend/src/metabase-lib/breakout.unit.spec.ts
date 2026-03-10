@@ -1,11 +1,34 @@
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
-import { columnFinder, createQuery, findTemporalBucket } from "./test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+} from "./test-helpers";
+
+const findTemporalBucket = (
+  query: Lib.Query,
+  column: Lib.ColumnMetadata,
+  bucketName: string,
+) => {
+  if (bucketName === "Don't bin") {
+    return null;
+  }
+
+  const buckets = Lib.availableTemporalBuckets(query, 0, column);
+  const bucket = buckets.find(
+    (bucket) => Lib.displayInfo(query, 0, bucket).displayName === bucketName,
+  );
+  if (!bucket) {
+    throw new Error(`Could not find temporal bucket ${bucketName}`);
+  }
+  return bucket;
+};
 
 describe("breakout", () => {
   describe("add breakout", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const findBreakoutableColumn = columnFinder(
       query,
       Lib.breakoutableColumns(query, 0),
@@ -27,7 +50,7 @@ describe("breakout", () => {
     });
 
     it("should preserve breakout positions between v1-v2 roundtrip", () => {
-      const query = createQuery();
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
       const taxColumn = findBreakoutableColumn("ORDERS", "TAX");
       const nextQuery = Lib.breakout(query, 0, taxColumn);
       const nextQueryColumns = Lib.breakoutableColumns(nextQuery, 0);
@@ -40,9 +63,10 @@ describe("breakout", () => {
         breakoutPositions: [0],
       });
 
-      const roundtripQuery = createQuery({
-        query: Lib.toJsQuery(nextQuery),
-      });
+      const roundtripQuery = Lib.fromJsQuery(
+        SAMPLE_PROVIDER,
+        Lib.toJsQuery(nextQuery),
+      );
       const roundtripQueryColumns = Lib.breakoutableColumns(roundtripQuery, 0);
       const roundtripTaxColumn = columnFinder(
         roundtripQuery,
@@ -98,7 +122,7 @@ describe("breakout", () => {
   });
 
   describe("replace breakout", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const findBreakoutableColumn = columnFinder(
       query,
       Lib.breakoutableColumns(query, 0),
@@ -127,7 +151,7 @@ describe("breakout", () => {
   });
 
   describe("remove breakout", () => {
-    const query = createQuery();
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     const findBreakoutableColumn = columnFinder(
       query,
       Lib.breakoutableColumns(query, 0),

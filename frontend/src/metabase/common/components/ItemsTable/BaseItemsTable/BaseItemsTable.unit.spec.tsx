@@ -13,7 +13,6 @@ import {
 import type { IconName } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
-import { SortDirection } from "metabase-types/api/sorting";
 
 import type { BaseItemsTableProps } from "./BaseItemsTable";
 import { BaseItemsTable } from "./BaseItemsTable";
@@ -66,7 +65,7 @@ describe("BaseItemsTable", () => {
             items={items}
             sortingOptions={{
               sort_column: "name",
-              sort_direction: SortDirection.Asc,
+              sort_direction: "asc",
             }}
             onSortingOptionsChange={jest.fn()}
             visibleColumnsMap={VISIBLE_COLUMNS_MAP}

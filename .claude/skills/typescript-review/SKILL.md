@@ -12,8 +12,9 @@ allowed-tools: Read, Grep, Bash, Glob
 
 Review pull requests with a focus on:
 
+- Readability and maintainability
+- Appropriate test coverage
 - Compliance with project coding standards and conventions
 - Code quality and best practices
-- Clear and correct JSDoc comments
 - Type safety and proper TypeScript usage
 - React best practices (when applicable)

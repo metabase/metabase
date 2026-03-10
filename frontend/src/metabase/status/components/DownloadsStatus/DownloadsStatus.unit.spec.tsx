@@ -134,11 +134,14 @@ describe("DownloadsStatus", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
 
     // Dismiss the error
-    userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    const dismissPromise = userEvent.click(
+      screen.getByRole("button", { name: "Dismiss" }),
+    );
 
     await waitFor(() =>
       expect(screen.queryByRole("status")).not.toBeInTheDocument(),
     );
+    await dismissPromise;
   });
 
   it("should collapse and expand", async () => {
@@ -163,7 +166,9 @@ describe("DownloadsStatus", () => {
 
     expect(screen.getByText("Results for test card")).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button", { name: "Collapse" }));
+    const collapsePromise = userEvent.click(
+      screen.getByRole("button", { name: "Collapse" }),
+    );
 
     // Shows smaller status without text
     await waitFor(() => {
@@ -171,6 +176,7 @@ describe("DownloadsStatus", () => {
         screen.queryByText("Results for test card"),
       ).not.toBeInTheDocument();
     });
+    await collapsePromise;
     expect(screen.getByRole("status")).toBeInTheDocument();
 
     act(() => {
@@ -182,9 +188,10 @@ describe("DownloadsStatus", () => {
     expect(screen.queryByText("test.csv")).not.toBeInTheDocument();
 
     // Expand by clicking on the smaller status
-    userEvent.click(screen.getByRole("status"));
+    const expandPromise = userEvent.click(screen.getByRole("status"));
 
     // Now status shows file names
     expect(await screen.findByText("test.csv")).toBeInTheDocument();
+    await expandPromise;
   });
 });

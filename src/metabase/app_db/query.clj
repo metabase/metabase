@@ -209,8 +209,9 @@
 
    In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
    To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
-  [model select-map update-fn]
-  (let [select-kvs (mapcat identity select-map)
+  [model select-map & [update-fn]]
+  (let [update-fn  (or update-fn (constantly select-map))
+        select-kvs (mapcat identity select-map)
         pks        (t2/primary-keys model)
         _          (assert (= 1 (count pks)) "This helper does not currently support compound keys")
         pk-key     (keyword (first pks))

@@ -38,7 +38,7 @@ const {
 } = USER_GROUPS;
 const { admin } = USERS;
 
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 
 describe("snapshots", () => {
   describe("default", () => {

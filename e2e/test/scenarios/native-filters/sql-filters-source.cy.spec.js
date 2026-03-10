@@ -51,7 +51,6 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.mapTo({ table: "Products", field: "Category" });
       H.setFilterQuestionSource({ question: "MBQL source", field: "Category" });
       H.saveQuestion("SQL filter", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -77,7 +76,6 @@ describe("scenarios > filters > sql filters > values source", () => {
       H.setDropdownFilterType();
       H.setFilterQuestionSource({ question: "MBQL source", field: "Category" });
       H.saveQuestion("SQL filter", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -138,7 +136,6 @@ describe("scenarios > filters > sql filters > values source", () => {
       checkFilterValueInList("A");
 
       H.saveQuestion("SQL filter", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
       FieldFilter.openEntryForm();
@@ -232,7 +229,6 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.setWidgetType("String");
       H.setFilterQuestionSource({ question: "SQL source", field: "EAN" });
       H.saveQuestion("SQL filter", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -317,7 +313,6 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.setWidgetType("String");
       H.setFilterListSource({ values: ["1018947080336", "7663515285824"] });
       H.saveQuestion("SQL filter", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -371,7 +366,6 @@ describe("scenarios > filters > sql filters > values source", () => {
         values: [["1018947080336", "Custom Label"], "7663515285824"],
       });
       H.saveQuestion("SQL filter", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -430,7 +424,6 @@ describe("scenarios > filters > sql filters > values source", () => {
         values: ["1018947080336", "7663515285824"],
       });
       H.saveQuestion("SQL filter", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -506,7 +499,6 @@ describe("scenarios > filters > sql filters > values source", () => {
         values: [["1018947080336", "Custom Label"], "7663515285824"],
       });
       H.saveQuestion("SQL filter", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -654,7 +646,6 @@ describe("scenarios > filters > sql filters > values source > number parameter",
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
       H.saveQuestion("SQL filter", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -719,7 +710,6 @@ describe("scenarios > filters > sql filters > values source > number parameter",
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
       H.saveQuestion("SQL filter", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -805,7 +795,6 @@ describe("scenarios > filters > sql filters > values source > number parameter",
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
       });
       H.saveQuestion("SQL filter", undefined, {
-        tab: "Browse",
         path: ["Our analytics"],
       });
 
@@ -875,7 +864,6 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     });
 
     H.saveQuestion("SQL filter", undefined, {
-      tab: "Browse",
       path: ["Our analytics"],
     });
 
@@ -893,7 +881,6 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       values: ["Foo", "Bar"],
     });
     H.saveQuestion("SQL filter", undefined, {
-      tab: "Browse",
       path: ["Our analytics"],
     });
 

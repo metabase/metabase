@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import type { ExpressionWidgetProps } from "./ExpressionWidget";
 import { ExpressionWidget } from "./ExpressionWidget";
@@ -164,7 +164,7 @@ describe("ExpressionWidget", () => {
 });
 
 async function setup(additionalProps?: Partial<ExpressionWidgetProps>) {
-  const query = createQuery();
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const stageIndex = 0;
   const availableColumns = Lib.expressionableColumns(query, stageIndex);
   const onChangeClause = jest.fn();

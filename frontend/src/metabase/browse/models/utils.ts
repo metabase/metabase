@@ -1,8 +1,11 @@
 import { t } from "ttag";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
-import type { RecentItem, SearchResult } from "metabase-types/api";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type {
+  RecentItem,
+  SearchResult,
+  SortingOptions,
+} from "metabase-types/api";
 
 import type { ModelResult, RecentModel, SortColumn } from "./types";
 
@@ -54,7 +57,7 @@ export function sortModels(
       result = compare(a2, b2);
     }
 
-    return sort_direction === SortDirection.Asc ? result : -result;
+    return sort_direction === "asc" ? result : -result;
   });
 }
 

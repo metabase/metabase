@@ -12,6 +12,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   beforeEach(() => {
     jest.resetModules();
     delete window.metabaseConfig;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- require after jest.resetModules
     require("./embed"); // we do things when the script is loaded
 
     document.body.innerHTML = "";
@@ -189,7 +190,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     }).not.toThrow();
   });
 
-  it("should include a counter as a query parameter in the iframe src for parallel loading", () => {
+  it("should include a component id as a query parameter in the iframe src for parallel loading", () => {
     defineMetabaseConfig({
       instanceUrl: "https://example.com",
     });
@@ -201,7 +202,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     const iframe = embed.querySelector("iframe");
     expect(iframe).not.toBeNull();
     expect(iframe?.src).toMatch(
-      /^https:\/\/example\.com\/embed\/sdk\/v1\?v=\d+$/,
+      /^https:\/\/example\.com\/embed\/sdk\/v1\?embed-js-identifier=\d+$/,
     );
   });
 });

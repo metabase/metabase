@@ -50,6 +50,7 @@ export function TreeTableHeader<TData extends TreeNodeData>({
             const isFirstColumn = index === 0;
 
             const columnStyle = {
+              padding: "0.75rem",
               ...getColumnStyle(columnWidths, column.id, isFirstColumn),
               ...styles?.headerCell,
             };
@@ -64,7 +65,6 @@ export function TreeTableHeader<TData extends TreeNodeData>({
                   key={header.id}
                   className={cx(S.cell, classNames?.headerCell)}
                   align="center"
-                  p="0.75rem"
                   style={columnStyle}
                 />
               );
@@ -77,7 +77,6 @@ export function TreeTableHeader<TData extends TreeNodeData>({
                 key={header.id}
                 className={cx(S.cell, classNames?.headerCell)}
                 align="center"
-                p="0.75rem"
                 style={columnStyle}
                 role={isSortable ? "columnheader" : undefined}
                 aria-sort={

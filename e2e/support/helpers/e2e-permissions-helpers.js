@@ -17,23 +17,27 @@ export function modifyPermission(
   item,
   permissionIndex,
   value,
-  shouldPropagate = null,
+  shouldPropagateToChildren = null,
 ) {
   selectPermissionRow(item, permissionIndex);
 
   popover()
     .should("have.length", 1)
     .within(() => {
-      if (shouldPropagate !== null) {
+      if (shouldPropagateToChildren !== null) {
         cy.findByRole("switch")
           .as("toggle")
           .then(($el) => {
-            if ($el.attr("aria-checked") !== shouldPropagate.toString()) {
+            if (
+              $el.attr("aria-checked") !== shouldPropagateToChildren.toString()
+            ) {
               cy.get("@toggle").click();
             }
           });
       }
-      value && cy.findByText(value).click();
+      if (value) {
+        cy.findByText(value).click();
+      }
     });
 }
 

@@ -1,6 +1,13 @@
 import dayjs from "dayjs";
 import type React from "react";
-import { createContext, useCallback, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import _ from "underscore";
 
 import { useStore } from "metabase/lib/redux";
@@ -14,9 +21,23 @@ import {
   canUserCreateQueries,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import type { MetabotChatContext } from "metabase-types/api";
+import type {
+  MetabotChatContext,
+  MetabotSuggestedTransform,
+  MetabotTransformInfo,
+  TaggedTransform,
+} from "metabase-types/api";
 
-export const defaultContext = {
+export type ApplySuggestionPayload = {
+  editorTransform: MetabotTransformInfo | undefined;
+  suggestedTransform: MetabotSuggestedTransform;
+};
+
+export type ApplySuggestionResult =
+  | { status: "applied" }
+  | { status: "error"; message: string };
+
+export const defaultContext: MetabotCtx = {
   prompt: "",
   setPrompt: () => {},
   promptInputRef: undefined,
@@ -28,6 +49,9 @@ export const defaultContext = {
       capabilities: [],
     }),
   registerChatContextProvider: () => () => {},
+
+  suggestionActions: null,
+  setSuggestionActions: () => {},
 };
 
 const mergeCtx = (
@@ -43,7 +67,38 @@ const mergeCtx = (
   };
 };
 
-export const MetabotContext = createContext<MetabotCtx>(defaultContext);
+export type MetabotSuggestionActions = {
+  openTransform: (transform: TaggedTransform) => void;
+  applySuggestion: (
+    payload: ApplySuggestionPayload,
+  ) => Promise<ApplySuggestionResult>;
+};
+
+interface EnterpriseMetabotContext
+  extends Omit<MetabotCtx, "suggestionActions" | "setSuggestionActions"> {
+  suggestionActions: MetabotSuggestionActions | null;
+  setSuggestionActions: (actions: MetabotSuggestionActions | null) => void;
+}
+
+export const MetabotContext = createContext<EnterpriseMetabotContext>(
+  defaultContext as EnterpriseMetabotContext,
+);
+
+export const useMetabotSuggestionActions = () => {
+  const { suggestionActions } = useContext(MetabotContext);
+  return suggestionActions;
+};
+
+export const useRegisterMetabotSuggestionActions = (
+  actions: MetabotSuggestionActions | null | undefined,
+) => {
+  const { setSuggestionActions } = useContext(MetabotContext);
+
+  useEffect(() => {
+    setSuggestionActions(actions ?? null);
+    return () => setSuggestionActions(null);
+  }, [actions, setSuggestionActions]);
+};
 
 export const MetabotProvider = ({
   children,
@@ -53,6 +108,8 @@ export const MetabotProvider = ({
   /* Metabot input */
   const [prompt, setPrompt] = useState("");
   const promptInputRef = useRef<MetabotPromptInputRef>(null);
+  const [suggestionActions, setSuggestionActions] =
+    useState<MetabotSuggestionActions | null>(null);
 
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());
@@ -107,6 +164,8 @@ export const MetabotProvider = ({
         promptInputRef,
         getChatContext,
         registerChatContextProvider,
+        suggestionActions,
+        setSuggestionActions,
       }}
     >
       {children}

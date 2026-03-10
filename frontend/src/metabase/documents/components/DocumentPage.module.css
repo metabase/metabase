@@ -98,25 +98,25 @@
   background-color: var(--mb-color-background-tertiary);
 }
 
+.metadataItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--mb-color-text-secondary);
+}
+
 .highlighted {
   animation: highlight 2s ease-out;
 }
 
 @keyframes highlight {
   0% {
-    background-color: var(--mb-color-brand-light);
-    box-shadow: 0 0 0 4px var(--mb-color-brand-light);
+    background-color: var(--mb-color-background-highlight);
+    box-shadow: 0 0 0 4px var(--mb-color-background-highlight);
   }
 
   100% {
     background-color: transparent;
     box-shadow: none;
   }
-}
-
-.metadataItem {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: var(--mb-color-text-secondary);
 }

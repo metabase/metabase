@@ -14,3 +14,7 @@ export function hasLimit(query: Query, stageIndex: number) {
   const limit = currentLimit(query, stageIndex);
   return typeof limit === "number" && limit > 0;
 }
+
+export function disableDefaultLimit(query: Query): Query {
+  return ML.disable_default_limit(query);
+}

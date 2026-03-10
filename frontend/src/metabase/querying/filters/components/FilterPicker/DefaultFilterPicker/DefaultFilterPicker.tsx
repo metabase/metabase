@@ -80,7 +80,7 @@ export function DefaultFilterPicker({
               <Radio
                 key={option.operator}
                 value={option.operator}
-                label={option.name}
+                label={option.displayName}
                 pb={6}
                 size="xs"
               />

@@ -163,7 +163,7 @@ describe("scenarios > admin > settings > API keys", () => {
     cy.findByLabelText("The API key").should("include.value", "mb_");
 
     cy.wait("@getKeys").then(({ response }) => {
-      const { created_at, updated_at } = response?.body[0];
+      const { created_at, updated_at } = response?.body?.[0] ?? {};
       // after regeneration, created_at and updated_at should be different
       // they're too close to check via UI though
       expect(created_at).to.not.equal(updated_at);

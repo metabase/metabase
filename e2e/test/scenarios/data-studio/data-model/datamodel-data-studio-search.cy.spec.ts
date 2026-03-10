@@ -188,7 +188,7 @@ describe("Search", () => {
 
     TablePicker.openFilterPopover();
     cy.findByTestId("table-picker-filter").within(() => {
-      TablePicker.selectFilterOption("Visibility type", "Bronze");
+      TablePicker.selectFilterOption("Visibility layer", "Internal");
       TablePicker.applyFilters();
     });
 
@@ -202,7 +202,7 @@ describe("Search", () => {
       "be.visible",
     );
 
-    TablePicker.selectFilterOption("Visibility type", "Gold");
+    TablePicker.selectFilterOption("Visibility layer", "Final");
     TablePicker.get().findByText("No tables found").should("be.visible");
     cy.findByRole("heading", { name: /2 tables selected/i }).should(
       "not.exist",

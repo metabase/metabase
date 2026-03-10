@@ -8,7 +8,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -111,6 +110,7 @@
       (lib/filter query segment)
       (throw (ex-info (tru "Segment with id {0} not found" segment-id)
                       {:agent-error? true
+                       :status-code 404
                        :segment-id segment-id})))
     ;; Standard field-based filter logic
     (let [{:keys [operation value values]} llm-filter
@@ -123,8 +123,7 @@
                                     (apply f expr values)
                                     (f expr value))))
           string-match (fn [match-fn]
-                         (-> (with-values-or-value match-fn)
-                             (lib.options/update-options assoc :case-sensitive false)))
+                         (-> match-fn with-values-or-value lib/ignore-case))
           filter
           (case operation
             :is-null                      (lib/is-null expr)
@@ -171,7 +170,8 @@
             :number-greater-than-or-equal (lib/>= expr value)
             :number-less-than             (lib/< expr value)
             :number-less-than-or-equal    (lib/<= expr value)
-            (throw (ex-info (str "unknown filter operation " operation) {:agent-error? true})))]
+            (throw (ex-info (str "unknown filter operation " operation)
+                            {:agent-error? true :status-code 400})))]
       (lib/filter query filter))))
 
 (defn- add-breakout
@@ -201,9 +201,9 @@
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
-    {:type :query
-     :query-id query-id
-     :query query
+    {:type           :query
+     :query-id       query-id
+     :query          query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
@@ -222,7 +222,7 @@
       {:output (str "Invalid metric_id " metric-id)})
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
-        {:output (str "No metric found with metric_id " metric-id)}
+        {:output (ex-message e) :status-code 404}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn- apply-aggregation-sort-order
@@ -244,18 +244,29 @@
             (lib/aggregate query measure)
             (throw (ex-info (tru "Measure with id {0} not found" measure-id)
                             {:agent-error? true
+                             :status-code 404
                              :measure-id measure-id})))
           ;; Field-based aggregation
-          (let [expr (bucketed-column aggregation)
-                agg-expr (case (:function aggregation)
-                           :count          (lib/count)
-                           :count-distinct (lib/distinct expr)
-                           :sum            (lib/sum expr)
-                           :min            (lib/min expr)
-                           :max            (lib/max expr)
-                           :avg            (lib/avg expr))]
+          (let [agg-expr (if (= :count (:function aggregation))
+                           (lib/count)
+                           (let [expr (bucketed-column aggregation)]
+                             (case (:function aggregation)
+                               :count-distinct (lib/distinct expr)
+                               :sum            (lib/sum expr)
+                               :min            (lib/min expr)
+                               :max            (lib/max expr)
+                               :avg            (lib/avg expr))))]
             (lib/aggregate query agg-expr)))]
     (apply-aggregation-sort-order query-with-aggregation sort-order)))
+
+(defn- resolve-aggregation-column
+  "Resolve the column for an aggregation, skipping measures and field-less counts."
+  [resolve-visible-column aggregation]
+  (if (or (:measure-id aggregation)
+          (and (= :count (:function aggregation))
+               (not (:field-id aggregation))))
+    aggregation
+    (resolve-visible-column aggregation)))
 
 (defn- expression?
   [expr-or-column]
@@ -298,8 +309,7 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        ;; Measures and segments don't require column resolution
-        resolved-aggregations (map #(if (:measure-id %) % (resolve-visible-column %)) aggregations)
+        resolved-aggregations (map (partial resolve-aggregation-column resolve-visible-column) aggregations)
         resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query
@@ -336,7 +346,7 @@
       {:output (str "Invalid model_id " model-id)})
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
-        {:output (str "No model found with model_id " model-id)}
+        {:output (ex-message e) :status-code 404}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn- resolve-datasource
@@ -345,13 +355,25 @@
   [{:keys [table-id model-id]}]
   (cond
     model-id
-    [(metabot-v3.tools.u/card-field-id-prefix model-id) (metabot-v3.tools.u/card-query model-id)]
+    (try
+      [(metabot-v3.tools.u/card-field-id-prefix model-id) (metabot-v3.tools.u/card-query model-id)]
+      (catch clojure.lang.ExceptionInfo e
+        (throw (if (= (:status-code (ex-data e)) 404)
+                 (ex-info (str "No model found with model_id " model-id)
+                          {:agent-error? true :status-code 404} e)
+                 e))))
 
     table-id
-    [(metabot-v3.tools.u/table-field-id-prefix table-id) (metabot-v3.tools.u/table-query table-id)]
+    (try
+      [(metabot-v3.tools.u/table-field-id-prefix table-id) (metabot-v3.tools.u/table-query table-id)]
+      (catch clojure.lang.ExceptionInfo e
+        (throw (if (= (:status-code (ex-data e)) 404)
+                 (ex-info (str "No table found with table_id " table-id)
+                          {:agent-error? true :status-code 404} e)
+                 e))))
 
     :else
-    (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true}))))
+    (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true :status-code 400}))))
 
 (defn- query-datasource*
   [{:keys [fields filters aggregations group-by order-by limit] :as arguments}]
@@ -365,8 +387,7 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        ;; Measures and segments don't require column resolution
-        all-aggregations (map #(if (:measure-id %) % (resolve-visible-column %)) aggregations)
+        all-aggregations (map (partial resolve-aggregation-column resolve-visible-column) aggregations)
         all-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query
@@ -382,9 +403,9 @@
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
-    {:type :query
-     :query-id query-id
-     :query query
+    {:type           :query
+     :query-id       query-id
+     :query          query
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
@@ -402,10 +423,7 @@
       :else           {:output "Either table_id or model_id must be provided"})
     (catch Exception e
       (if (= (:status-code (ex-data e)) 404)
-        {:output (cond
-                   table-id (str "No table found with table_id " table-id)
-                   model-id (str "No model found with model_id " model-id)
-                   :else "Resource not found")}
+        {:output (ex-message e) :status-code 404}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
 (defn- base-query
@@ -425,29 +443,29 @@
       model-id
       (if-let [model-query (metabot-v3.tools.u/card-query model-id)]
         [(metabot-v3.tools.u/card-field-id-prefix model-id) model-query]
-        (throw (ex-info (str "No table found with table_id " table-id) {:agent-error? true
-                                                                        :data-source data-source})))
+        (throw (ex-info (str "No model found with model_id " model-id)
+                        {:agent-error? true :status-code 404 :data-source data-source})))
 
       table-id
       (let [table-id (cond-> table-id
                        (string? table-id) parse-long)]
         (if-let [table-query (metabot-v3.tools.u/table-query table-id)]
           [(metabot-v3.tools.u/table-field-id-prefix table-id) table-query]
-          (throw (ex-info (str "No table found with table_id " table-id) {:agent-error? true
-                                                                          :data-source data-source}))))
+          (throw (ex-info (str "No table found with table_id " table-id)
+                          {:agent-error? true :status-code 404 :data-source data-source}))))
 
       report-id
       (if-let [query (metabot-v3.tools.u/card-query report-id)]
         [(metabot-v3.tools.u/card-field-id-prefix report-id) query]
-        (throw (ex-info (str "No report found with report_id " report-id) {:agent-error? true
-                                                                           :data-source data-source})))
+        (throw (ex-info (str "No report found with report_id " report-id)
+                        {:agent-error? true :status-code 404 :data-source data-source})))
 
       query
       (handle-query query query-id)
 
       :else
-      (throw (ex-info "Invalid data_source" {:agent-error? true
-                                             :data-source data-source})))))
+      (throw (ex-info "Invalid data_source"
+                      {:agent-error? true :status-code 400 :data-source data-source})))))
 
 (defn filter-records
   "Add `filters` to the query referenced by `data-source`"

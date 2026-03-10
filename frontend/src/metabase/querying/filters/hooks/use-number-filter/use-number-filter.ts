@@ -30,15 +30,10 @@ export function useNumberFilter({
     [query, stageIndex, filter],
   );
 
-  const availableOptions = useMemo(
-    () => getAvailableOptions(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
+  const availableOptions = useMemo(() => getAvailableOptions(column), [column]);
 
   const [operator, setOperator] = useState(() =>
-    filterParts
-      ? filterParts.operator
-      : getDefaultOperator(query, column, availableOptions),
+    filterParts ? filterParts.operator : getDefaultOperator(query, column),
   );
 
   const [values, setValues] = useState(() =>

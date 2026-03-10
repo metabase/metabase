@@ -16,7 +16,7 @@
    (style/font-style)
    {:font-size       (format "%spx" style/font-size)
     :font-weight     700
-    :color           style/color-text-dark
+    :color           style/color-text-primary
     :border-bottom   (str "2px solid " style/color-border)
     :border-right    0}))
 
@@ -24,9 +24,9 @@
   (merge
    (style/font-style)
    {:font-size      (format "%spx" style/font-size)
-    :font-weight    400
+    :font-weight    700
     :text-align     :left
-    :color          style/color-text-dark
+    :color          style/color-text-primary
     :border-bottom  (str "1px solid " style/color-border)
     :border-right   (str "1px solid " style/color-border)
     :padding        (format "%sem %sem" style/td-y-padding-em style/td-x-padding-em)}))

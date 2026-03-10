@@ -8,6 +8,7 @@
    [metabase.actions.settings :as actions.settings]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -178,33 +179,34 @@
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
    inputs    :- [:sequential :map]
    & {:as _opts}]
-  (lib-be/with-metadata-provider-cache
-    (let [invocation-id  (u/generate-nano-id)
-          context-before (-> (assoc ctx :invocation-id invocation-id)
-                             (update :invocation-stack u/conjv [action-kw invocation-id]))]
-      (log/debug "Started perform action")
-      (actions.events/publish-action-invocation! action-kw context-before inputs)
-      (try
-        (log/tracef "perform action inputs: %s" (pr-str inputs))
-        (u/prog1 (perform-action!* action-kw context-before inputs)
-          (let [{context-after :context, :keys [outputs]} <>]
-            (doseq [k [:invocation-id :invocation-stack :user-id]]
-              (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
-            ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
-            (handle-effects! context-after)
-            (log/debug "Action performed successfully")
-            (actions.events/publish-action-success! action-kw context-after outputs)))
-        ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
-        (catch Throwable e
-          (let [msg  (ex-message e)
-                ;; Can't be nil or adding metadata will NPE
-                info (or (ex-data e) {})
-                ;; TODO Why metadata? Not sure anything is reading this, and it'll get lost if we serialize error events.
-                info (with-meta info (merge (meta info) {:exception e}))]
-            ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
-            (actions.events/publish-action-failure! action-kw context-before msg info)
-            (log/error e "Failed to perform action")
-            (throw e)))))))
+  (driver.conn/with-write-connection
+    (lib-be/with-metadata-provider-cache
+      (let [invocation-id  (u/generate-nano-id)
+            context-before (-> (assoc ctx :invocation-id invocation-id)
+                               (update :invocation-stack u/conjv [action-kw invocation-id]))]
+        (log/debug "Started perform action")
+        (actions.events/publish-action-invocation! action-kw context-before inputs)
+        (try
+          (log/tracef "perform action inputs: %s" (pr-str inputs))
+          (u/prog1 (perform-action!* action-kw context-before inputs)
+            (let [{context-after :context, :keys [outputs]} <>]
+              (doseq [k [:invocation-id :invocation-stack :user-id]]
+                (assert (= (k context-before) (k context-after)) (format "Output context must not change %s" k)))
+              ;; We might in future want effects to propagate all the up to the root scope ¯\_(ツ)_/¯
+              (handle-effects! context-after)
+              (log/debug "Action performed successfully")
+              (actions.events/publish-action-success! action-kw context-after outputs)))
+          ;; Err on the side of visibility. We may want to handle Errors differently when we polish Internal Tools.
+          (catch Throwable e
+            (let [msg  (ex-message e)
+                  ;; Can't be nil or adding metadata will NPE
+                  info (or (ex-data e) {})
+                  ;; TODO Why metadata? Not sure anything is reading this, and it'll get lost if we serialize error events.
+                  info (with-meta info (merge (meta info) {:exception e}))]
+              ;; Need to think about how we learn about already performed effects this way, since we don't get a context.
+              (actions.events/publish-action-failure! action-kw context-before msg info)
+              (log/error e "Failed to perform action")
+              (throw e))))))))
 
 (defn perform-nested-action!
   "Similar to [[perform-action!]] but taking an existing context.

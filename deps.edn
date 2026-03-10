@@ -33,7 +33,7 @@
   com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
                                              :exclusions  [it.unimi.dsi/fastutil
                                                            org.slf4j/slf4j-api]}
-  com.clojure-goes-fast/jvm-alloc-rate-meter{:mvn/version "0.1.4"}              ; Monitor heap allocation rate.
+  com.clojure-goes-fast/jvm-alloc-rate-meter {:mvn/version "0.1.4"}              ; Monitor heap allocation rate.
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
                                              :exclusions [com.sun.mail/jakarta.mail]}
@@ -42,7 +42,7 @@
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
   com.github.blagerweij/liquibase-sessionlock {:mvn/version "1.6.9"}            ; session lock for liquibase migrations
   com.github.jknack/handlebars              ^:antq/exclude                      ; 4.4.0 requires java 17+
-                                            {:mvn/version "4.3.1"}              ; templating engine
+  {:mvn/version "4.3.1"}              ; templating engine
   com.github.oliyh/martian-clj-http         {:mvn/version "0.2.1"}             ; openapi client
   com.github.seancorfield/honeysql          {:mvn/version "2.7.1350"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:mvn/version "1.3.1070"}           ; Talk to JDBC DBs
@@ -50,12 +50,12 @@
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.5"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.guava/guava                    {:mvn/version "33.5.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
-                                            {:mvn/version "2.1.214"}            ; embedded SQL database
+  {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "78.1"}               ; Used to transliterate Unicode characters into Latin characters
   com.knuddels/jtokkit                      {:mvn/version "1.1.0"}              ; Java tokenizer library for OpenAI models, used for token counting in semantic search
-  com.mchange/c3p0                          {:mvn/version "0.11.2"}             ; DB connection pool
+  com.mchange/c3p0                          {:mvn/version "0.12.0"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
-                                            {:mvn/version "1.0.1"}              ; Snowplow analytics
+  {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
                                             {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
   com.taoensso/encore                       {:mvn/version "3.158.0"}            ; Utilities library (used by Nippy)
@@ -84,7 +84,7 @@
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.2.33"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.36"}             ; Parse native SQL queries
   io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
@@ -111,14 +111,17 @@
   net.sf.cssbox/cssbox                      {:mvn/version "5.0.2"               ; HTML / CSS rendering
                                              :exclusions  [org.slf4j/slf4j-api
                                                            junit/junit]}
-  net.thisptr/jackson-jq                    {:mvn/version "1.6.0"}              ; Java implementation of the JQ json query language
-  org.apache.commons/commons-compress       {:mvn/version "1.28.0"}             ; compression utils
-  org.apache.commons/commons-lang3          {:mvn/version "3.19.0"}             ; helper methods for working with java.lang stuff
-  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.25.3"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api        {:mvn/version "2.25.3"}             ; add compatibility with log4j 1.2
-  org.apache.logging.log4j/log4j-core       {:mvn/version "2.25.3"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.25.3"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.25.3"}             ; java.util.logging (JUL) -> Log4j2 adapter
+  net.thisptr/jackson-jq                        {:mvn/version "1.6.0"}              ; Java implementation of the JQ json query language
+  org.apache.commons/commons-compress           {:mvn/version "1.28.0"}             ; compression utils
+  org.apache.commons/commons-lang3              {:mvn/version "3.19.0"}             ; helper methods for working with java.lang stuff
+  org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.4.4"}              ; pinned: ClickHouse JDBC 0.9.7 needs httpcore5 5.3.4+; must pair with httpclient5 5.4.x
+  org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.3.4"}              ; pinned: ClickHouse JDBC 0.9.7 requires URIBuilder.optimize() added in 5.3
+  org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.3.4"}              ; pinned: must match httpcore5 version
+  org.apache.logging.log4j/log4j-1.2-api        {:mvn/version "2.25.3"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api            {:mvn/version "2.25.3"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-core           {:mvn/version "2.25.3"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-jcl            {:mvn/version "2.25.3"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-jul            {:mvn/version "2.25.3"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-layout-template-json
   {:mvn/version "2.25.2"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
@@ -165,6 +168,8 @@
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "25.0.1" :extension "pom"} ; JavaScript engine
   org.graalvm.polyglot/polyglot             {:mvn/version "25.0.1"}             ; GraalVM platform, required by JS engine
+  org.graalvm.polyglot/python               {:mvn/version "25.0.1"
+                                             :extension "pom"}
   org.jsoup/jsoup                           {:mvn/version "1.21.2"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.33.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
@@ -616,6 +621,9 @@
                                  :implicit-dependencies
                                  ;; too many false positives for now
                                  :unused-ret-vals
+                                 ;; hard to clear on for lib.util.match macros, and disabling the linter just there
+                                 ;; doesn't seem to work
+                                 :unused-meta-on-macro
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
                                  :wrong-arity
                                  ;; Kondo lints this for us anyway, and this isn't as easy to configure.
@@ -626,6 +634,29 @@
                ;; An issue has been filed here https://github.com/jonase/eastwood/issues/444
                ;; and a simple reproduction repo can be found here https://github.com/metabase/snowplow-eastwood-issue
                :exclude-namespaces [metabase.analytics.snowplow]}}
+
+  ;; Test counterpart of :eastwood. Starts with :reflection only; add more linters as we fix other eastwood
+  ;; issues in tests.
+  ;;
+  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+  :eastwood/test
+  {:exec-fn   metabase.linters.eastwood/eastwood
+   :exec-args {:source-paths ["test"
+                              "enterprise/backend/test"]
+               :linters      [:reflection]
+               :exclude-namespaces
+               [;; byte/1 dispatch value trips up Eastwood's reader
+                metabase.test.http-client
+                ;; Cookie/.getName qualified method trips up Eastwood's analyzer
+                metabase.server.middleware.settings-cache-test
+                ;; .cljc syntax error during Eastwood's analyze+eval phase
+                metabase.lib.query-test
+                ;; "count not supported on this type: Symbol" in Eastwood's analyzer
+                metabase.query-processor.parameters.temporal-units-test
+                ;; Syntax error compiling fn* in Eastwood's analyzer
+                metabase.sql-tools.macaw.references-test
+                ;; Method too large for Eastwood's analyzer
+                metabase.sql-tools.sqlglot.references-test]}}
 
   ;; clojure -T:whitespace-linter
   :whitespace-linter
@@ -758,7 +789,7 @@
   ;;
   ;; the various steps available are:
   ;;
-  ;;    :version :translations :frontend :licenses :drivers :uberjar
+  ;;    :version :translations :frontend :licenses :drivers :python :uberjar
   :build/all
   {:exec-fn build/build-cli}
 
@@ -892,8 +923,7 @@
   {:exec-args {:only ["enterprise/backend/test/metabase_enterprise/transforms"
                       "enterprise/backend/test/metabase_enterprise/transforms_python"]}}
 
-
-  ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
+;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql

@@ -1,11 +1,12 @@
 import type { HTMLAttributes, MouseEventHandler } from "react";
+import { t } from "ttag";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import { ActionIcon, type ActionIconProps, Icon } from "metabase/ui";
+import type { ActionIconProps } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
-import S from "./EditorButton.module.css";
+import { SdkActionIcon } from "../util/SdkActionIcon";
 
 /**
  * @interface
@@ -60,16 +61,13 @@ export const EditorButton = ({
       question,
       isActionListVisible: true,
     }) && (
-      <ActionIcon
+      <SdkActionIcon
+        tooltip={t`Edit question`}
+        icon="pencil_lines"
         data-testid="notebook-button"
-        size="lg"
-        className={S.EditorButton}
         data-active={isOpen}
-        variant="default"
         {...actionIconProps}
-      >
-        <Icon name="pencil_lines" />
-      </ActionIcon>
+      />
     )
   );
 };

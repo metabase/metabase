@@ -302,6 +302,13 @@
     (is (= "For realz"
            (db-fetch-setting :test-setting-2))))
 
+  (testing "unregistered settings should be silently skipped"
+    (setting/set-many! {:test-setting-1 "known value"
+                        :totally-fake-setting "unknown value"})
+    (is (= "known value"
+           (db-fetch-setting :test-setting-1)))
+    (is (not (setting/registered? :totally-fake-setting))))
+
   (testing "if one change fails, the entire set of changes should be reverted"
     (mt/with-temporary-setting-values [test-setting-1 "123"
                                        test-setting-2 "123"]

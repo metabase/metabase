@@ -1,4 +1,4 @@
-import { forwardRef, useEffect } from "react";
+import { forwardRef, useLayoutEffect } from "react";
 
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { isNumber } from "metabase/lib/types";
@@ -11,10 +11,10 @@ export interface ResponsiveEChartsRendererProps
   onResize?: (width: number, height: number) => void;
 }
 
-const _ResponsiveEChartsRenderer = forwardRef<
+const ResponsiveEChartsRendererInner = forwardRef<
   HTMLDivElement,
   ResponsiveEChartsRendererProps
->(function _ResponsiveEChartsRenderer(
+>(function ResponsiveEChartsRendererBase(
   {
     onResize,
     width,
@@ -24,7 +24,7 @@ const _ResponsiveEChartsRenderer = forwardRef<
   }: ResponsiveEChartsRendererProps,
   ref,
 ) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isNumber(width) && isNumber(height)) {
       onResize?.(width, height);
     }
@@ -51,4 +51,4 @@ export const ResponsiveEChartsRendererExplicitSize =
   ExplicitSize<ResponsiveEChartsRendererProps>({
     wrapped: true,
     refreshMode: "debounceLeading",
-  })(_ResponsiveEChartsRenderer);
+  })(ResponsiveEChartsRendererInner);

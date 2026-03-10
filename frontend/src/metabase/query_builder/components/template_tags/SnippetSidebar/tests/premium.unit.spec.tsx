@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, queryIcon, screen } from "__support__/ui";
+import { getIcon, screen } from "__support__/ui";
 // TODO remove this and use proper reset functions once
 // plugins initialization functions return proper teardown functions
 // eslint-disable-next-line no-restricted-imports
@@ -30,8 +30,9 @@ describe("SnippetSidebar (EE with token feature)", () => {
 
   it("should not display the `Change permissions` menu for non-admin users", async () => {
     await setup({ user: { is_superuser: false } });
+    await userEvent.click(getIcon("ellipsis"));
 
-    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+    expect(screen.queryByText("Change permissions")).not.toBeInTheDocument();
   });
 
   it("should display the `New snippet` and the `New folder` option", async () => {

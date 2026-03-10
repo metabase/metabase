@@ -2,7 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
-import { getIsEmbedding } from "metabase/selectors/embed";
+import { isEmbedding } from "metabase/embedding/config";
 import { getLocation } from "metabase/selectors/routing";
 import { Urls } from "metabase-enterprise/urls";
 import type { TransformId } from "metabase-types/api";
@@ -32,9 +32,8 @@ export const getActiveMetabotAgentIds = createSelector(
   (state) => Object.keys(state.conversations) as MetabotAgentId[],
 );
 
-export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
-  isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
-);
+export const getMetabotId = () =>
+  isEmbedding() ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT;
 
 export const getDebugMode = createSelector(
   getMetabotState,
@@ -185,13 +184,16 @@ export const getMetabotReqIdOverride = createSelector(
   (convo) => convo.experimental.metabotReqIdOverride,
 );
 
-export const getMetabotRequestId = createSelector(
-  getMetabotReqIdOverride,
-  getIsEmbedding,
-  (metabotReqIdOverride, isEmbedding) =>
+export const getMetabotRequestId = (
+  state: MetabotStoreState,
+  agentId: MetabotAgentId,
+) => {
+  const metabotReqIdOverride = getMetabotReqIdOverride(state, agentId);
+  return (
     metabotReqIdOverride ??
-    (isEmbedding ? METABOT_REQUEST_IDS.EMBEDDED : undefined),
-);
+    (isEmbedding() ? METABOT_REQUEST_IDS.EMBEDDED : undefined)
+  );
+};
 
 export const getProfileOverride = createSelector(
   getMetabotConversation,

@@ -10,6 +10,8 @@
    [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.client :as client]
    [metabase-enterprise.metabot-v3.client-test :as client-test]
+   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
+   [metabase-enterprise.metabot-v3.persistence :as persistence]
    [metabase-enterprise.metabot-v3.self :as self]
    [metabase-enterprise.metabot-v3.settings :as metabot.settings]
    [metabase-enterprise.metabot-v3.util :as metabot.u]
@@ -143,7 +145,7 @@
           (search.tu/with-index-disabled
             (mt/with-premium-features #{:metabot-v3}
               (with-redefs [client/ai-url                          (constantly ai-url)
-                            api/store-message!                     (fn [_conv-id _prof-id msgs]
+                            persistence/store-message!             (fn [_conv-id _prof-id msgs]
                                                                      (reset! messages msgs))
                             sr/async-cancellation-poll-interval-ms 5]
                 (testing "Closing body stream drops connection"
@@ -240,3 +242,82 @@
     (is (= [{:type :text, :text "solo"}]
            (into [] (#'api/combine-text-parts-xf)
                  [{:type :text, :text "solo"}])))))
+
+(deftest endpoints-require-authentication-test
+  (mt/with-premium-features #{:metabot-v3}
+    (testing "Metabot v3 endpoints require authentication"
+      (testing "/agent-streaming"
+        (is (= "Unauthenticated"
+               (mt/client :post 401 "ee/metabot-v3/agent-streaming"
+                          {:message "Test"
+                           :context {}
+                           :conversation_id (str (random-uuid))
+                           :history []
+                           :state {}}))))
+      (testing "/feedback"
+        (is (= "Unauthenticated"
+               (mt/client :post 401 "ee/metabot-v3/feedback"
+                          {:feedback {}})))))))
+
+(deftest metabot-enabled-setting-test
+  (mt/with-premium-features #{:metabot-v3}
+    (mt/with-temporary-setting-values [metabot.settings/use-native-agent false]
+      (let [mock-response   (client-test/make-mock-text-stream-response
+                             ["Hello"] {"m" {:prompt 1 :completion 1}})
+            conversation-id (str (random-uuid))
+            base-request    {:message         "Test"
+                             :context         {}
+                             :conversation_id conversation-id
+                             :history         []
+                             :state           {}}]
+        (mt/with-dynamic-fn-redefs [client/post! (fn [url opts]
+                                                   ((client-test/mock-post! mock-response) url opts))]
+          (testing "Regular metabot is blocked when metabot-enabled is false"
+            (mt/with-temporary-setting-values [metabot-enabled? false]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 403 "ee/metabot-v3/agent-streaming"
+                                      base-request))))
+
+          (testing "Regular metabot works when metabot-enabled is true"
+            (mt/with-temporary-setting-values [metabot-enabled? true]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                      (assoc base-request :conversation_id (str (random-uuid)))))))
+
+          (testing "Embedded metabot is blocked when embedded-metabot-enabled? is false"
+            (mt/with-temporary-setting-values [embedded-metabot-enabled? false]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 403 "ee/metabot-v3/agent-streaming"
+                                      (assoc base-request
+                                             :metabot_id metabot-v3.config/embedded-metabot-id
+                                             :conversation_id (str (random-uuid)))))))
+
+          (testing "Embedded metabot works when embedded-metabot-enabled? is true"
+            (mt/with-temporary-setting-values [embedded-metabot-enabled? true]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                      (assoc base-request
+                                             :metabot_id metabot-v3.config/embedded-metabot-id
+                                             :conversation_id (str (random-uuid)))))))
+
+          (testing "Regular metabot still works when only embedded is disabled"
+            (mt/with-temporary-setting-values [metabot-enabled?          true
+                                               embedded-metabot-enabled? false]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                      (assoc base-request :conversation_id (str (random-uuid)))))))
+
+          (testing "Embedded metabot still works when only regular is disabled"
+            (mt/with-temporary-setting-values [metabot-enabled?          false
+                                               embedded-metabot-enabled? true]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (mt/user-http-request :rasta :post 202 "ee/metabot-v3/agent-streaming"
+                                      (assoc base-request
+                                             :metabot_id metabot-v3.config/embedded-metabot-id
+                                             :conversation_id (str (random-uuid))))))))))))

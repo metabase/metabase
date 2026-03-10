@@ -59,7 +59,7 @@ export type SearchResponse<
 
 export type CollectionEssentials = Pick<
   Collection,
-  "id" | "name" | "authority_level" | "type"
+  "id" | "name" | "authority_level" | "type" | "archived"
 > &
   Partial<Pick<Collection, "effective_ancestors">>;
 

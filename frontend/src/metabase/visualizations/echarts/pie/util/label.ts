@@ -1,4 +1,4 @@
-export type Point = [number, number];
+import type { Point } from "metabase-types/api/dataset";
 
 /**
  * Calculates the length of a chord given the radius of a circle and the central angle.

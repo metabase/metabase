@@ -1,5 +1,6 @@
-import { CompactSign } from "jose"; // using jose because jsonwebtoken doesn't work on the web :-/
 import querystring from "querystring";
+
+import { CompactSign } from "jose"; // using jose because jsonwebtoken doesn't work on the web :-/
 
 import type {
   EmbedResource,

@@ -2,14 +2,15 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-python.base :as transforms-python.base]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms-python.init]
    [metabase-enterprise.transforms-python.python-runner :as transforms-python.python-runner]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! get-test-schema]]
    [metabase.driver :as driver]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! get-test-schema]]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -31,39 +32,39 @@
                           transform-payload {:name   "My beautiful python runner"
                                              :source {:type            "python"
                                                       :body            "print('hello world')"
-                                                      :source-tables   {}
+                                                      :source-tables   []
                                                       :source-database (mt/id)}
                                              :target {:type     "table"
                                                       :schema   schema
                                                       :name     "gadget_products"
                                                       :database (mt/id)}}]
-                      (mt/user-http-request :lucky :post "ee/transform"
+                      (mt/user-http-request :lucky :post "transform"
                                             transform-payload)))]
 
             (testing "without any feature flags"
               (mt/with-premium-features #{}
                 (testing "creating python transform without any features fails"
-                  (is (= "error-premium-feature-not-available"
-                         (:status (mt/user-http-request :lucky :post 402 "ee/transform"
-                                                        {:name   "My beautiful python runner"
-                                                         :source {:type            "python"
-                                                                  :body            "print('hello world')"
-                                                                  :source-tables   {}
-                                                                  :source-database (mt/id)}
-                                                         :target {:type     "table"
-                                                                  :schema   (get-test-schema)
-                                                                  :name     "gadget_products"
-                                                                  :database (mt/id)}})))))))
-
-            (testing "with only transforms feature flag (no transforms-python)"
-              (mt/with-premium-features #{:transforms}
-                (testing "creating python transform without transforms-python feature fails"
                   (is (= "Premium features required for this transform type are not enabled."
-                         (mt/user-http-request :lucky :post 402 "ee/transform"
+                         (mt/user-http-request :lucky :post 402 "transform"
                                                {:name   "My beautiful python runner"
                                                 :source {:type            "python"
                                                          :body            "print('hello world')"
-                                                         :source-tables   {}
+                                                         :source-tables   []
+                                                         :source-database (mt/id)}
+                                                :target {:type     "table"
+                                                         :schema   (get-test-schema)
+                                                         :name     "gadget_products"
+                                                         :database (mt/id)}}))))))
+
+            (testing "with only transforms-basic feature flag (no transforms-python)"
+              (mt/with-premium-features #{:transforms-basic}
+                (testing "creating python transform without transforms-python feature fails"
+                  (is (= "Premium features required for this transform type are not enabled."
+                         (mt/user-http-request :lucky :post 402 "transform"
+                                               {:name   "My beautiful python runner"
+                                                :source {:type            "python"
+                                                         :body            "print('hello world')"
+                                                         :source-tables   []
                                                          :source-database (mt/id)}
                                                 :target {:type     "table"
                                                          :schema   (get-test-schema)
@@ -71,15 +72,15 @@
                                                          :database (mt/id)}}))))))
 
             (testing "with transforms-python feature flag"
-              (mt/with-premium-features #{:transforms :transforms-python}
+              (mt/with-premium-features #{:transforms-basic :transforms-python}
                 (with-transform-cleanup! [table-name "gadget_products"]
                   (let [transform         (create-transform!)]
                     (is (= "print('hello chris')"
-                           (-> (mt/user-http-request :lucky :put 200 (format "ee/transform/%s" (:id transform))
+                           (-> (mt/user-http-request :lucky :put 200 (format "transform/%s" (:id transform))
                                                      {:name   "My beautiful python runner"
                                                       :source {:type            "python"
                                                                :body            "print('hello chris')"
-                                                               :source-tables   {}
+                                                               :source-tables   []
                                                                :source-database (mt/id)}
                                                       :target {:type     "table"
                                                                :schema   (get-test-schema)
@@ -88,14 +89,14 @@
                                :source :body)))))))))))))
 
 (deftest update-python-transform-feature-flag-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (testing "Updating a python transform requires both :transforms and :transforms-python features"
+      (testing "Updating a python transform requires both :transforms-basic and :transforms-python features"
         (mt/with-temp [:model/Transform {id :id
                                          :as transform} {:name   "Original Python Transform"
                                                          :source {:type            "python"
                                                                   :body            "print('original')"
-                                                                  :source-tables   {}
+                                                                  :source-tables   []
                                                                   :source-database (mt/id)}
                                                          :target {:type     "table"
                                                                   :schema   "scheam"
@@ -103,43 +104,43 @@
                                                                   :database (mt/id)}}]
           (mt/with-premium-features #{}
             (let [response (mt/user-http-request :crowberto :put
-                                                 (format "ee/transform/%d" id)
+                                                 (format "transform/%d" id)
                                                  (assoc-in transform [:source :body] "print('no features')"))]
-              (is (= "error-premium-feature-not-available" (:status response))
+              (is (= "You don't have permissions to do that." response)
                   "Should return 403 without any features"))))))))
 
 (deftest run-python-transform-feature-flag-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (testing "Running a python transform requires both :transforms and :transforms-python features"
-        (mt/with-premium-features #{:transforms :transforms-python}
+      (testing "Running a python transform requires both :transforms-basic and :transforms-python features"
+        (mt/with-premium-features #{:transforms-basic :transforms-python}
           (mt/dataset transforms-dataset/transforms-test
             (with-transform-cleanup! [table-name "test_run_python"]
               (let [schema (get-test-schema)
                     transform-payload {:name   "Test Run Python Transform"
                                        :source {:type            "python"
                                                 :body            "def transform():\n    pass"
-                                                :source-tables   {}
+                                                :source-tables   []
                                                 :source-database (mt/id)}
                                        :target {:type     "table"
                                                 :schema   schema
                                                 :name     table-name
                                                 :database (mt/id)}}
-                    created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+                    created (mt/user-http-request :crowberto :post 200 "transform" transform-payload)]
                 (mt/with-premium-features #{}
-                  (let [response (mt/user-http-request :crowberto :post 402
-                                                       (format "ee/transform/%d/run" (:id created)))]
-                    (is (= "error-premium-feature-not-available" (:status response)))))
-                (mt/with-premium-features #{:transforms}
+                  (let [response (mt/user-http-request :crowberto :post 403
+                                                       (format "transform/%d/run" (:id created)))]
+                    (is (= "You don't have permissions to do that." response))))
+                (mt/with-premium-features #{:transforms-basic}
                   (let [response (mt/user-http-request :crowberto :post
-                                                       (format "ee/transform/%d/run" (:id created)))]
-                    (is (= "Premium features required for this transform type are not enabled." response)
+                                                       (format "transform/%d/run" (:id created)))]
+                    (is (= "You don't have permissions to do that." response)
                         "Should return 403 without :transforms-python feature")))))))))))
 
 (deftest execute-python-transform-test
   (testing "transform execution with :transforms/table target"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/with-premium-features #{:transforms-basic :transforms-python}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
@@ -148,18 +149,17 @@
               (let [original           {:name   "Gadget Products"
                                         :source {:type  "python"
                                                  :source-database (mt/id)
-                                                 :source-tables {"transforms_customers" (mt/id :transforms_customers)}
+                                                 :source-tables [{:alias "transforms_customers" :table_id (mt/id :transforms_customers)}]
                                                  :body  (str "import pandas as pd\n"
                                                              "\n"
                                                              "def transform():\n"
                                                              "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
                                         :target  (assoc target :database (mt/id))}
-                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform" original)]
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform" original)]
                 (transforms.tu/test-run transform-id)
                 (transforms.tu/wait-for-table table-name 10000)
                 (is (true? (driver/table-exists? driver/*driver* (mt/db) target)))
-                (is (= [["Alice" 25] ["Bob" 30]]
-                       (transforms.tu/table-rows table-name)))))))))))
+                (is (= [["Alice" 25] ["Bob" 30]] (sort-by first (transforms.tu/table-rows table-name))))))))))))
 
 (defn- subsequence?
   "Returns true if sequence ys is a subsequence of xs:
@@ -173,7 +173,7 @@
     :else (recur (rest xs) ys)))
 
 (defn- get-last-run [transform-id]
-  (:last_run (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" transform-id))))
+  (:last_run (mt/user-http-request :crowberto :get 200 (format "transform/%d" transform-id))))
 
 (defn- open-message-value-observer
   "Polls the `:message` state of the last run and stores the value every time it is different to the last observation.
@@ -208,7 +208,7 @@
         (assert (not= :timeout (try (deref fut 1000 :timeout) (catch Throwable _))) "Observation thread did not exit!")))))
 
 (deftest python-transform-logging-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (letfn [(program->source [program]
               (->> (concat ["import pandas as pd"
                             "def transform():"]
@@ -218,12 +218,12 @@
 
             (create-transform [{:keys [program]} target]
               {:post [(integer? %)]}
-              (:id (mt/user-http-request :crowberto :post 200 "ee/transform"
+              (:id (mt/user-http-request :crowberto :post 200 "transform"
                                          {:name   "Python logging test"
                                           :source {:type            "python"
                                                    :body            (program->source program)
                                                    :source-database (mt/id)
-                                                   :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
+                                                   :source-tables   [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id))}]}
                                           :target (assoc target :database (mt/id))})))
 
             (block-on-run [{:keys [expect-status]} target transform-id]
@@ -238,9 +238,9 @@
 
             (run-scenario [scenario schema]
               (with-redefs [transforms-python.execute/python-message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)
-                            transforms-python.execute/transfer-file-to-db                (if-some [e (:writeback-ex scenario)]
+                            transforms-python.base/transfer-file-to-db                   (if-some [e (:writeback-ex scenario)]
                                                                                            (fn [& _] (throw e))
-                                                                                           @#'transforms-python.execute/transfer-file-to-db)]
+                                                                                           @#'transforms-python.base/transfer-file-to-db)]
                 (with-transform-cleanup! [target {:type   "table"
                                                   :schema schema
                                                   :name   "result"}]
@@ -290,7 +290,7 @@
         (mt/test-drivers (-> (mt/normal-drivers-with-feature :transforms/table)
                              ;; certain drivers are slow/unpredictable enough that the generous timings in this test are not enough
                              (disj :snowflake :redshift :bigquery-cloud-sdk))
-          (mt/with-premium-features #{:transforms :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
                 (doseq [{:keys [expected
@@ -318,8 +318,8 @@
                           (is (subsequence? (str/split-lines message) expected)))))))))))))))
 
 (deftest get-python-transform-with-different-target-database-test
-  (testing "GET /api/ee/transform/:id correctly fetches target table from different database"
-    (mt/with-premium-features #{:transforms :transforms-python}
+  (testing "GET /api/transform/:id correctly fetches target table from different database"
+    (mt/with-premium-features #{:transforms-basic :transforms-python}
       (mt/with-temp [:model/Database target-db {:engine :h2
                                                 :details {:db "mem:target-db"}}
                      :model/Table target-table {:db_id (:id target-db)
@@ -329,13 +329,13 @@
                      :model/Transform transform {:name "Python Transform Cross DB"
                                                  :source {:type "python"
                                                           :source-database (mt/id)
-                                                          :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                                                          :source-tables [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id))}]
                                                           :body "def transform():\n    pass"}
                                                  :target {:type "table"
                                                           :schema "PUBLIC"
                                                           :name "python_target_table"
                                                           :database (:id target-db)}}]
-        (let [response (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id transform)))]
+        (let [response (mt/user-http-request :crowberto :get 200 (format "transform/%s" (:id transform)))]
           (is (=? {:id     (:id target-table)
                    :name   "python_target_table"
                    :schema "PUBLIC"
@@ -348,12 +348,12 @@
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]} ; todo factor to maybe some private helpers or share test impl for multiple top-level tests
 (deftest python-cancellation-test
   (letfn [(create-transform [{:keys [desc program]} target]
-            (mt/user-http-request :crowberto :post 200 "ee/transform"
+            (mt/user-http-request :crowberto :post 200 "transform"
                                   {:name   (format "Python cancellation test: %s" desc)
                                    :source {:type            "python"
                                             :body            (str/join "\n" program)
                                             :source-database (mt/id)
-                                            :source-tables   {"transforms_customers" (mt/id :transforms_customers)}}
+                                            :source-tables   [{:alias "transforms_customers" :table_id (mt/id :transforms_customers)}]}
                                    :target (assoc target :database (mt/id))}))
 
           ;; using clojure-ey coordination with promises (I know j.u.c could be better here)
@@ -384,7 +384,7 @@
                  (fn [os fields-meta col-meta]
                    (rf-proxy ready-signal wait-signal (f os fields-meta col-meta)))})
               :write
-              (let [f-ref #'transforms-python.execute/transfer-file-to-db
+              (let [f-ref #'transforms-python.base/transfer-file-to-db
                     f     @f-ref]
                 {f-ref
                  (fn [& args]
@@ -411,7 +411,7 @@
                 (fn []
                   (let [{transform-id :id} (create-transform scenario target)]
                     (with-open [message-observer (open-message-value-observer transform-id)]
-                      (let [_          (mt/user-http-request :crowberto :post 202 (format "ee/transform/%d/run" transform-id))
+                      (let [_          (mt/user-http-request :crowberto :post 202 (format "transform/%d/run" transform-id))
                             ;; Cancellation currently overwrites the message, so we should wait for some log output if we expect it
                             ;; Ideally we would not use the message field for log output, or otherwise avoid having logs being lost on cancellation.
                             _          (when expect-script
@@ -421,7 +421,7 @@
                                                   :timeout-ms  5000}))
                             _          (when redefs (await-signal ready-signal))
                             _          (get-last-run transform-id)
-                            _          (mt/user-http-request :crowberto :post 204 (format "ee/transform/%d/cancel" transform-id))
+                            _          (mt/user-http-request :crowberto :post 204 (format "transform/%d/cancel" transform-id))
                             _          (deliver wait-signal true)
                             _          (await-signal finished-signal)
                             last-run   (get-last-run transform-id)]
@@ -468,7 +468,7 @@
         (mt/test-drivers (-> (mt/normal-drivers-with-feature :transforms/python)
                              ; these drivers cause timing issues, could be fixed if we change timeout / time variables in test
                              (disj :snowflake :bigquery-cloud-sdk :redshift :mongo))
-          (mt/with-premium-features #{:transforms :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
                 (with-redefs [transforms-python.execute/python-message-loop-sleep-duration (Duration/ofMillis fast-log-polling-ms)]
@@ -516,7 +516,7 @@
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/python)
                            ;; takes too long on CI
                            :bigquery-cloud-sdk)
-      (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/with-premium-features #{:transforms-basic :transforms-python}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (get-test-schema)]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
@@ -526,14 +526,14 @@
               (let [initial-transform {:name   "Schema Change Integration Test"
                                        :source {:type            "python"
                                                 :source-database (mt/id)
-                                                :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                                                :source-tables   [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id))}]
                                                 :body            (str "import pandas as pd\n"
                                                                       "\n"
                                                                       "def transform():\n"
                                                                       "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
                                        :target (assoc target :database (mt/id))}
                     ;; Create initial transform via API
-                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform" initial-transform)]
+                    {transform-id :id} (mt/user-http-request :crowberto :post 200 "transform" initial-transform)]
 
                 ;; Run initial transform and validate
                 (transforms.tu/test-run transform-id)
@@ -545,12 +545,12 @@
                 (let [updated-transform (assoc initial-transform
                                                :source {:type            "python"
                                                         :source-database (mt/id)
-                                                        :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                                                        :source-tables   [{:alias "test" :table_id (t2/select-one-pk :model/Table :db_id (mt/id))}]
                                                         :body            (str "import pandas as pd\n"
                                                                               "\n"
                                                                               "def transform():\n"
                                                                               "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'friend': ['Bob', 'Alice']})")})
-                      update-response (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" transform-id)
+                      update-response (mt/user-http-request :crowberto :put 200 (format "transform/%d" transform-id)
                                                             updated-transform)]
                   (is (some? update-response) "Transform update should succeed"))
 
@@ -567,22 +567,23 @@
 (deftest create-python-transform-with-table-ref-source-test
   (testing "Creating a Python transform with name-based source table refs is allowed"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms :transforms-python}
+      (mt/with-premium-features #{:transforms-basic :transforms-python}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target {:type   "table"
                                             :schema (get-test-schema)
                                             :name   "table_ref_test"}]
             (let [;; Use a name-based ref instead of table ID
-                  source-tables {"input" {:database_id (mt/id)
-                                          :schema      (get-test-schema)
-                                          :table       "transforms_products"}}
+                  source-tables [{:alias       "input"
+                                  :database_id (mt/id)
+                                  :schema      (get-test-schema)
+                                  :table       "transforms_products"}]
                   transform-payload {:name   "Transform with table ref"
                                      :source {:type            "python"
                                               :body            "def transform(input):\n    return input"
                                               :source-database (mt/id)
                                               :source-tables   source-tables}
                                      :target (assoc target :database (mt/id))}
-                  response (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+                  response (mt/user-http-request :crowberto :post 200 "transform" transform-payload)]
               (testing "Transform is created successfully"
                 (is (integer? (:id response)))
                 (is (= "python" (:source_type response))))

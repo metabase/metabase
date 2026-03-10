@@ -129,9 +129,6 @@ describe("Text", () => {
         ).toHaveTextContent(
           "You can connect widgets to {{variables}} in heading cards.",
         );
-        expect(screen.getByTestId("editing-dashboard-heading-container"))
-          .toHaveStyle(`border: 1px solid var(--mb-color-brand);
-                        color: var(--mb-color-text-tertiary);`);
       });
 
       it("should preview with text when it has content", () => {

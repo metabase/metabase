@@ -68,6 +68,8 @@ import bookmark_component from "./bookmark.svg?component";
 import bookmark_source from "./bookmark.svg?source";
 import bookmark_filled_component from "./bookmark_filled.svg?component";
 import bookmark_filled_source from "./bookmark_filled.svg?source";
+import boxplot_component from "./boxplot.svg?component";
+import boxplot_source from "./boxplot.svg?source";
 import breakout_component from "./breakout.svg?component";
 import breakout_source from "./breakout.svg?source";
 import broken_link_component from "./broken_link.svg?component";
@@ -126,6 +128,8 @@ import contract_component from "./contract.svg?component";
 import contract_source from "./contract.svg?source";
 import copy_component from "./copy.svg?component";
 import copy_source from "./copy.svg?source";
+import corner_up_right_component from "./corner_up_right.svg?component";
+import corner_up_right_source from "./corner_up_right.svg?source";
 import currency_component from "./currency.svg?component";
 import currency_source from "./currency.svg?source";
 import curve_component from "./curve.svg?component";
@@ -140,6 +144,8 @@ import data_studio_component from "./data_studio.svg?component";
 import data_studio_source from "./data_studio.svg?source";
 import database_component from "./database.svg?component";
 import database_source from "./database.svg?source";
+import database_routing_component from "./database_routing.svg?component";
+import database_routing_source from "./database_routing.svg?source";
 import dependencies_component from "./dependencies.svg?component";
 import dependencies_source from "./dependencies.svg?source";
 import document_component from "./document.svg?component";
@@ -266,6 +272,8 @@ import key_component from "./key.svg?component";
 import key_source from "./key.svg?source";
 import label_component from "./label.svg?component";
 import label_source from "./label.svg?source";
+import layout_grid_component from "./layout_grid.svg?component";
+import layout_grid_source from "./layout_grid.svg?source";
 import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
 import learn_component from "./learn.svg?component";
@@ -308,6 +316,8 @@ import metabot_sad_component from "./metabot_sad.svg?component";
 import metabot_sad_source from "./metabot_sad.svg?source";
 import metric_component from "./metric.svg?component";
 import metric_source from "./metric.svg?source";
+import mode_component from "./mode.svg?component";
+import mode_source from "./mode.svg?source";
 import model_component from "./model.svg?component";
 import model_source from "./model.svg?source";
 import model_with_badge_component from "./model_with_badge.svg?component";
@@ -368,6 +378,8 @@ import progress_component from "./progress.svg?component";
 import progress_source from "./progress.svg?source";
 import publish_component from "./publish.svg?component";
 import publish_source from "./publish.svg?source";
+import published_component from "./published.svg?component";
+import published_source from "./published.svg?source";
 import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
 import question_component from "./question.svg?component";
@@ -681,6 +693,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: bolt_filled_component,
       source: bolt_filled_source,
     },
+    boxplot: {
+      component: boxplot_component,
+      source: boxplot_source,
+    },
     breakout: {
       component: breakout_component,
       source: breakout_source,
@@ -789,6 +805,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: copy_component,
       source: copy_source,
     },
+    corner_up_right: {
+      component: corner_up_right_component,
+      source: corner_up_right_source,
+    },
     currency: {
       component: currency_component,
       source: currency_source,
@@ -800,6 +820,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     database: {
       component: database_component,
       source: database_source,
+    },
+    database_routing: {
+      component: database_routing_component,
+      source: database_routing_source,
     },
     dependencies: {
       component: dependencies_component,
@@ -1061,6 +1085,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: label_component,
       source: label_source,
     },
+    layout_grid: {
+      component: layout_grid_component,
+      source: layout_grid_source,
+    },
     ldap: {
       component: ldap_component,
       source: ldap_source,
@@ -1144,6 +1172,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     metric: {
       component: metric_component,
       source: metric_source,
+    },
+    mode: {
+      component: mode_component,
+      source: mode_source,
     },
     model: {
       component: model_component,
@@ -1260,6 +1292,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     publish: {
       component: publish_component,
       source: publish_source,
+    },
+    published: {
+      component: published_component,
+      source: published_source,
     },
     pulse: {
       component: pulse_component,
@@ -1692,6 +1728,7 @@ export type IconName =
   | "bookmark_filled"
   | "bolt"
   | "bolt_filled"
+  | "boxplot"
   | "breakout"
   | "bubble"
   | "broken_link"
@@ -1721,8 +1758,10 @@ export type IconName =
   | "connections"
   | "contract"
   | "copy"
+  | "corner_up_right"
   | "curved"
   | "database"
+  | "database_routing"
   | "dependencies"
   | "data_studio"
   | "dash"
@@ -1791,6 +1830,7 @@ export type IconName =
   | "index"
   | "key"
   | "label"
+  | "layout_grid"
   | "ldap"
   | "learn"
   | "lightbulb"
@@ -1812,6 +1852,7 @@ export type IconName =
   | "metabot"
   | "metabot_sad"
   | "metric"
+  | "mode"
   | "model"
   | "model_with_badge"
   | "moon"
@@ -1839,6 +1880,7 @@ export type IconName =
   | "popular"
   | "progress"
   | "publish"
+  | "published"
   | "pulse"
   | "receipt"
   | "recents"

@@ -75,8 +75,8 @@
   [query                                                             :- ::lib.schema/query
    stage-path                                                        :- ::lib.walk/path
    {param-type :type, param-value :value, target :target, :as param} :- ::lib.schema.parameter/parameter]
-  (let [a-ref (lib.util.match/match-one target
-                #{:field :expression}
+  (let [a-ref (lib.util.match/match-lite target
+                [#{:field :expression} & _]
                 (lib/->pMBQL &match))]
     (cond
       (params.ops/operator? param-type)
@@ -114,10 +114,10 @@
    target-column :- [:or ::lib.schema.id/field :string]
    temporal-unit :- ::lib.schema.temporal-bucketing/unit
    new-unit      :- ::lib.schema.temporal-bucketing/unit]
-  (lib.util.match/replace stage
-    [(tag :guard #{:field :expression})
-     (opts :guard #(= temporal-unit (:temporal-unit %)))
-     (_id-or-name :guard #(= target-column %))]
+  (lib.util.match/replace-lite stage
+    [#{:field :expression}
+     (opts :guard (= (:temporal-unit opts) temporal-unit))
+     (id-or-name :guard (= id-or-name target-column))]
     (lib/with-temporal-bucket &match new-unit)))
 
 (mu/defn- update-breakout-unit :- ::lib.schema/stage
@@ -152,7 +152,7 @@
 
         ;; ignore `:template-tag` parameters... these may be lying around if we had a source card that was native and
         ;; then replaced it with an MBQL source card.
-        (lib.util.match/match-one target :template-tag &match)
+        (lib.util.match/match-lite target [:template-tag & _] &match)
         (do
           (log/warnf "Ignoring :template-tag parameter %s because this is an MBQL stage (path = %s)"
                      (pr-str target)
@@ -168,7 +168,7 @@
             (and (sequential? param-value)
                  (every? nil? param-value)))
         (do
-          (log/debugf "Ignoring parameter %s because it has no value" (pr-str param-value))
+          (log/debugf "Ignoring parameter %s because it has no value" (pr-str param))
           (recur stage more-params))
 
         (= (:type param) :temporal-unit)

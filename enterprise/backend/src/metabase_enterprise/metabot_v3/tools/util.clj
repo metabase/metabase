@@ -9,18 +9,20 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
-  "Return an agent output for agent errors, re-throw `e` otherwise."
+  "Return an agent output for agent errors, re-throw `e` otherwise.
+   Preserves :status-code from ex-data for proper HTTP status codes in agent API."
   [e]
-  (if (-> e ex-data :agent-error?)
-    {:output (ex-message e)}
-    (throw e)))
+  (let [{:keys [agent-error? status-code]} (ex-data e)]
+    (if agent-error?
+      (cond-> {:output (ex-message e)}
+        status-code (assoc :status-code status-code))
+      (throw e))))
 
 (defn convert-field-type
   "Return tool type for `column`."
@@ -40,8 +42,9 @@
   (cond-> col
     (and (:fk-field-id col)
          (:table-id col))
-    (assoc :table-reference (-> (lib/display-name query (lib.metadata/field query (:fk-field-id col)))
-                                lib.util/strip-id))))
+    (assoc :table-reference (->> (lib.metadata/field query (:fk-field-id col))
+                                 (lib/display-name query)
+                                 lib/display-name-without-id))))
 
 (defn table-field-id-prefix
   "Return the field ID prefix for `table-id`."
@@ -133,20 +136,37 @@
                    :model-id model-id})
         (throw (ex-info (str "field " field-id " does not match expected prefix " expected-prefix)
                         {:agent-error? true
+                         :status-code 400
                          :field-id field-id
                          :expected-prefix expected-prefix})))
       (if-let [column (get columns field-index)]
         (assoc item :column column)
         (throw (ex-info (str "field " field-id " not found - no column at index " field-index)
                         {:agent-error? true
+                         :status-code 404
                          :field-id field-id
                          :model-tag model-tag
                          :model-id model-id
                          :field-index field-index
                          :available-columns-count (count columns)}))))
-    (throw (ex-info (str "invalid field_id format: " field-id)
+    (throw (ex-info (str "Invalid field_id format: " field-id)
                     {:agent-error? true
+                     :status-code 400
                      :field-id field-id}))))
+
+(defn schedule->schedule-map
+  "Convert a tool schedule map to the schedule-map format used by cron and pulse channels.
+  E.g. {:frequency :daily :hour 9} => {:schedule_type \"daily\" :schedule_hour 9 ...}"
+  [{:keys [frequency hour day-of-week day-of-month]}]
+  {:schedule_type  (name frequency)
+   :schedule_hour  hour
+   :schedule_day   (or (some-> day-of-week name (subs 0 3) u/lower-case-en)
+                       (some->> day-of-month
+                                name
+                                u/lower-case-en
+                                (re-find #"^(?:first|last)-(mon|tue|wed|thu|fri|sat|sun)")
+                                second))
+   :schedule_frame (some->> day-of-month name (re-find #"^(?:first|mid|last)"))})
 
 (defn get-database
   "Get the `fields` of the database with ID `id`."
@@ -157,7 +177,9 @@
 (defn get-table
   "Get the `fields` of the table with ID `id`."
   [id & fields]
-  (-> (t2/select-one (into [:model/Table :id] fields) id)
+  (-> (t2/select-one (into [:model/Table :id] fields)
+                     :id id
+                     :active true)
       api/read-check))
 
 (defn get-card

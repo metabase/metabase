@@ -99,6 +99,7 @@
   "Post-processing middleware. Limit the maximum number of rows that are returned in post-processing."
   [query :- ::lib.schema/query
    rff   :- ::qp.schema/rff]
-  (let [max-rows (determine-query-max-rows query)]
+  (if-let [max-rows (determine-query-max-rows query)]
     (fn limit-result-rows-rff* [metadata]
-      (limit-xform max-rows (rff metadata)))))
+      (limit-xform max-rows (rff metadata)))
+    rff))

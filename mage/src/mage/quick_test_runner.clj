@@ -58,13 +58,17 @@
        (str/join (repeat (:fail out-data) "❌"))
        (str/join (repeat (:error out-data) "⚠️"))))
 
+(defn- only-edn [test-dirs]
+  (str "'" (pr-str test-dirs)))
+
 (defn- run-tests-over-nrepl [test-dirs options]
   (let [start (u/start-timer)
         the-ns "mb.hawk.core"
+        only-arg (only-edn test-dirs)
         the-cmd (str "(do (require (quote metabase.test-runner)) "
                      "((requiring-resolve 'dev.reload/reload!)) "
                      "(metabase.test-runner/find-and-run-tests-repl "
-                     "{:only " (pr-str test-dirs) "}))")]
+                     "{:only " only-arg "}))")]
     (println "Running Code over nrepl:" (c/bold the-cmd))
     (bling/callout
      {:type :info
@@ -101,43 +105,39 @@
         (u/exit exit-code)))))
 
 ;; namespaces will be converted to their file paths, so this check will work.
+(def ^:private namespace-prefixes
+  ["metabase." "metabase-enterprise." "hooks."])
+
+(defn- namespace-like? [s]
+  (some #(str/starts-with? s %) namespace-prefixes))
+
 (defn- check-arg [arg]
-  (or (str/includes? arg ".clj") (str/includes? arg "/")))
+  (cond
+    (symbol? arg) true
+    (string? arg) (or (str/includes? arg ".clj")
+                      (str/includes? arg "/")
+                      (namespace-like? arg))
+    :else false))
 
-(defn- add-cljy-suffix-or-throw
-  "Given a namespace, we can't tell if it's a clj or cljc file without looking for the file itself."
-  [partial-file-path maybe-ns]
-  (or (first
-       (keep (fn [suffix]
-               (let [file-path (str partial-file-path suffix)]
-                 (cond
-                   ;; src/metabase/...
-                   (str/starts-with? maybe-ns "metabase.")
-                   (let [path (str "src/" file-path)]
-                     (and (fs/exists? (str u/project-root-directory "/" path)) path))
+(defn- normalize-test-arg [arg]
+  (cond
+    (symbol? arg)
+    arg
 
-                   ;; enterprise/backend/src/metabase_enterprise/...
-                   (str/starts-with? maybe-ns "metabase-enterprise.")
-                   (let [path (str "enterprise/backend/" file-path)]
-                     (and (fs/exists? (str u/project-root-directory "/" path)) path)))))
-             [".clj" ".cljc" ".bb"]))
-      (throw
-       (ex-info "" {:mage/error (str "Could not find a file for namespace: "
-                                     (c/yellow partial-file-path)
-                                     ". Tried appending .clj, .cljs, .cljc, and .bb -- is that a real namespace?")
-                    :babashka/exit 1}))))
+    (not (string? arg))
+    arg
 
-(defn- maybe-convert-ns-to-path [maybe-ns]
-  (if (or (str/starts-with? maybe-ns "metabase.")
-          (str/starts-with? maybe-ns "metabase-enterprise."))
-    (-> maybe-ns
-        str
-        (str/replace "." "/")
-        (str/replace "-" "_")
-        ;; Cannot tell from the namespace alone if it's a clj, or cljc file. :melty-face:
-        ;; Try to find the file by appending each suffix until we find one that exists:
-        (add-cljy-suffix-or-throw maybe-ns))
-    maybe-ns))
+    :else
+    (let [[ns-part test-name] (str/split arg #"/" 2)]
+      (cond
+        (and test-name (namespace-like? ns-part))
+        (symbol (str ns-part "/" test-name))
+
+        (namespace-like? arg)
+        (symbol arg)
+
+        :else
+        arg))))
 
 (defn- setup-test-files [arguments {:keys [selecting] :as _options}]
   (let [tests (if (seq arguments)
@@ -153,7 +153,7 @@
                                     "--header-border" "rounded"
                                     "--preview" (str "'" u/project-root-directory "/mage/cmd/fzf_preview.clj {}'")]))
                     str/split-lines))
-        test-dir-or-nss (mapv maybe-convert-ns-to-path tests)]
+        test-dir-or-nss (mapv normalize-test-arg tests)]
     (when-not (every? check-arg test-dir-or-nss)
       (throw (ex-info "" {:mage/error (str
                                        "When providing arguments, they must be file paths or directories, got: "

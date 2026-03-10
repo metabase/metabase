@@ -191,11 +191,9 @@ describe("scenarios > browse > metrics", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
       cy.visit("/browse/metrics");
 
-      const macOSX = Cypress.platform === "darwin";
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click({
-        metaKey: macOSX,
-        ctrlKey: !macOSX,
-      });
+      findMetric(ORDERS_SCALAR_METRIC.name)
+        .should("be.visible")
+        .click(H.holdMetaKey);
 
       cy.get("@open").should("have.been.calledOnce");
       cy.get("@open").should(

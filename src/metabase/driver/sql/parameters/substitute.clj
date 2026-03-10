@@ -23,7 +23,7 @@
           (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
       [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))
 
-(defn- substitute-card-query [[sql args missing] v]
+(defn- substitute-simple-query [[sql args missing] v]
   (let [{:keys [replacement-snippet prepared-statement-args]}
         (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
     [(str sql replacement-snippet) (concat args prepared-statement-args) missing]))
@@ -44,8 +44,9 @@
             (params/TemporalUnit? v))
         (substitute-field-param [sql args missing] in-optional? k v)
 
-        (params/ReferencedCardQuery? v)
-        (substitute-card-query [sql args missing] v)
+        (or (params/ReferencedCardQuery? v)
+            (params/ReferencedTableQuery? v))
+        (substitute-simple-query [sql args missing] v)
 
         (params/ReferencedQuerySnippet? v)
         (substitute-native-query-snippet param->value [sql args missing] in-optional? v)

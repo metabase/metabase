@@ -4,16 +4,16 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
-   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.transforms.test-dataset :as transforms-dataset]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (deftest get-library-path-test
   (testing "GET /api/ee/transforms-python/library/:path"
-    (mt/with-premium-features #{:transforms-python :transforms}
+    (mt/with-premium-features #{:transforms-python :transforms-basic}
       (testing "requires transform permissions"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 "ee/transforms-python/library/common"))))
@@ -36,7 +36,7 @@
 
 (deftest put-library-path-test
   (testing "PUT /api/ee/transforms-python/library/:path"
-    (mt/with-premium-features #{:transforms-python :transforms}
+    (mt/with-premium-features #{:transforms-python :transforms-basic}
       (testing "requires transform permissions"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 "ee/transforms-python/library/common"
@@ -88,7 +88,7 @@
                                                    {:source "def test(): pass"}))))))))))
 
 (deftest test-run-test
-  (mt/with-premium-features #{:transforms :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (let [program ["import pandas as pd"
                    "import sys"
                    "def transform():"
@@ -106,8 +106,8 @@
 (defn- test-run [& {:keys [program user features source-tables extra-opts]
                     :or   {program       ["import pandas as pd" "def transform():" "  return pd.DataFrame()"]
                            user          :crowberto
-                           source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
-                           features      #{:transforms :transforms-python}}}]
+                           source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id) :active true)}
+                           features      #{:transforms-basic :transforms-python}}}]
   (let [body (merge {:source_tables source-tables, :code (str/join "\n" program)} extra-opts)]
     (mt/with-premium-features features
       (mt/user-http-request-full-response user :post "ee/transforms-python/test-run" body))))
@@ -142,8 +142,8 @@
 (deftest test-run-feature-test
   (is (=? {:status 402} (test-run :features #{})))
   (testing "transforms alone is not enough"
-    (is (=? {:status 402} (test-run :features #{:transforms}))))
-  (is (=? {:status 200} (test-run :features #{:transforms :transforms-python}))))
+    (is (=? {:status 402} (test-run :features #{:transforms-basic}))))
+  (is (=? {:status 200} (test-run :features #{:transforms-basic :transforms-python}))))
 
 (deftest test-run-permissions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
@@ -154,12 +154,12 @@
           (is (=? {:status 200} (test-run :user :lucky))))))))
 
 (deftest test-run-input-limit-test
-  (testing "maximum"
-    (is (=? {:status 400} (test-run :extra-opts {:per_input_row_limit 10000}))))
-  (testing "minimum"
-    (is (=? {:status 400} (test-run :extra-opts {:per_input_row_limit 0}))))
-  (testing "truncates sources"
-    (mt/dataset transforms-dataset/transforms-test
+  (mt/dataset transforms-dataset/transforms-test
+    (testing "maximum"
+      (is (=? {:status 400} (test-run :extra-opts {:per_input_row_limit 10000}))))
+    (testing "minimum"
+      (is (=? {:status 400} (test-run :extra-opts {:per_input_row_limit 0}))))
+    (testing "truncates sources"
       (let [program       ["def transform(customers):" "  return customers"]
             source-tables {"customers" (mt/id :transforms_customers)}
             response      (test-run :program program :source-tables source-tables :extra-opts {:per_input_row_limit 2})]

@@ -13,10 +13,10 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
@@ -25,6 +25,16 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+;;; --------------------------------------------------- Defaults ------------------------------------------------------
+
+(def ^:private ^:const default-field-values-limit
+  "Default number of field values to return when no limit is specified."
+  30)
+
+(def ^:private ^:const default-query-row-limit
+  "Default row limit for table queries when no limit is specified."
+  100)
 
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
 
@@ -80,6 +90,14 @@
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]])
 
+(mr/def ::measure
+  "A reusable aggregation expression associated with a table. Reference via measure_id in the aggregations array."
+  [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:display_name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]])
+
 (mr/def ::related-table
   "A table related to the queried entity via foreign key. The related_by field indicates the FK field name."
   [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
@@ -88,7 +106,7 @@
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:database_id {:optional true} [:maybe :int]]
-   [:database_engine {:optional true} [:maybe :keyword]]
+   [:database_engine {:optional true} [:maybe :string]]
    [:database_schema {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:fields {:optional true} [:maybe [:sequential ::field]]]
@@ -102,12 +120,13 @@
    [:name :string]
    [:display_name :string]
    [:database_id :int]
-   [:database_engine :keyword]
+   [:database_engine :string]
    [:database_schema {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
    [:fields [:sequential ::field]]
    [:related_tables {:optional true} [:maybe [:sequential ::related-table]]]
    [:metrics {:optional true} [:maybe [:sequential ::metric-summary]]]
+   [:measures {:optional true} [:maybe [:sequential ::measure]]]
    [:segments {:optional true} [:maybe [:sequential ::segment]]]])
 
 (mr/def ::metric
@@ -145,8 +164,10 @@
   "Statistics and sample values for a specific field."
   [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:field_id {:optional true} [:maybe :string]]
-   [:statistics {:optional true} [:maybe ::statistics]]
-   [:values {:optional true} [:maybe [:sequential :any]]]])
+   [:value_metadata {:optional true}
+    [:maybe [:map {:encode/api #(update-keys % metabot-v3.u/safe->snake_case_en)}
+             [:statistics {:optional true} [:maybe ::statistics]]
+             [:field_values {:optional true} [:maybe [:sequential :any]]]]]]])
 
 (mr/def ::search-result-item
   "A table or metric returned from search."
@@ -172,14 +193,16 @@
 
 (api.macros/defendpoint :get "/v1/ping" :- [:map [:message :string]]
   "Health check endpoint for the Agent API."
+  {:scope :unchecked}
   []
   {:message "pong"})
 
 (api.macros/defendpoint :get "/v1/table/:id" :- ::table
   "Get details for a table by ID."
+  {:scope "agent:table:read"}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-fields with-field-values with-related-tables with-metrics with-measures with-segments]
-    :or   {with-fields true, with-field-values true, with-related-tables true,
+    :or   {with-fields true, with-field-values false, with-related-tables true,
            with-metrics true, with-measures false, with-segments false}}
    :- [:map
        [:with-field-values   {:optional true} [:maybe :boolean]]
@@ -200,6 +223,7 @@
 
 (api.macros/defendpoint :get "/v1/table/:id/field/:field-id/values" :- ::field-values
   "Get statistics and sample values for a table field."
+  {:scope "agent:table:read"}
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
                              [:field-id ms/NonBlankString]]]
@@ -208,13 +232,14 @@
     {:entity-type "table"
      :entity-id   id
      :field-id    field-id
-     :limit       (request/limit)})))
+     :limit       (or (request/limit) default-field-values-limit)})))
 
 (api.macros/defendpoint :get "/v1/metric/:id" :- ::metric
   "Get details for a metric by ID."
+  {:scope "agent:metric:read"}
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    {:keys [with-default-temporal-breakout with-field-values with-queryable-dimensions with-segments]
-    :or   {with-default-temporal-breakout true, with-field-values true,
+    :or   {with-default-temporal-breakout true, with-field-values false,
            with-queryable-dimensions true, with-segments false}}
    :- [:map
        [:with-default-temporal-breakout {:optional true} [:maybe :boolean]]
@@ -231,6 +256,7 @@
 
 (api.macros/defendpoint :get "/v1/metric/:id/field/:field-id/values" :- ::field-values
   "Get statistics and sample values for a metric field."
+  {:scope "agent:metric:read"}
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
                              [:field-id ms/NonBlankString]]]
@@ -239,13 +265,14 @@
     {:entity-type "metric"
      :entity-id   id
      :field-id    field-id
-     :limit       (request/limit)})))
+     :limit       (or (request/limit) default-field-values-limit)})))
 
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
   "Search for tables and metrics.
 
   Supports both term-based and semantic search queries. Results are ranked using
   Reciprocal Rank Fusion when both query types are provided."
+  {:scope "agent:search"}
   [_route-params
    _query-params
    {term-queries     :term_queries
@@ -312,7 +339,9 @@
 (defn- construct-table-query
   "Build a query from a table using the provided query components."
   [body]
-  (let [args (mc/encode ::construct-query-table-request body deftool/request-transformer)
+  (let [body (cond-> body
+               (not (:limit body)) (assoc :limit default-query-row-limit))
+        args (mc/encode ::construct-query-table-request body deftool/request-transformer)
         data (check-tool-result (metabot-filters/query-datasource args))]
     {:query (-> (:query data)
                 json/encode
@@ -334,6 +363,7 @@
 
   For tables, supports: filters, fields, aggregations, group_by, order_by, limit.
   For metrics, supports: filters, group_by (aggregation is defined by the metric)."
+  {:scope "agent:query:construct"}
   [_route-params
    _query-params
    body :- ::construct-query-request]
@@ -348,8 +378,29 @@
   [:map
    [:query ms/NonBlankString]])
 
+(mr/def ::column-metadata
+  "Metadata for a single result column."
+  [:map
+   [:name           :string]
+   [:base_type      :string]
+   [:effective_type {:optional true} [:maybe :string]]
+   [:display_name   :string]])
+
+(mr/def ::execute-query-response
+  "Response from query execution. The HTTP status is always 202 because results are streamed —
+   check the `status` field to determine success or failure."
+  [:map
+   [:status       [:enum :completed :failed]]
+   [:data         {:optional true}
+    [:map
+     [:cols [:sequential ::column-metadata]]
+     [:rows [:sequential [:sequential :any]]]]]
+   [:row_count    {:optional true} :int]
+   [:running_time {:optional true} :int]
+   [:error        {:optional true} :string]])
+
 (api.macros/defendpoint :post "/v1/execute"
-  :- (streaming-response/streaming-response-schema ::qp.schema/query-result)
+  :- (streaming-response/streaming-response-schema ::execute-query-response)
   "Execute an MBQL query and return results.
 
   Accepts a base64-encoded MBQL query (as returned by /v1/construct-query) and executes it,
@@ -360,17 +411,21 @@
   - On failure: {:status :failed :error \"message\" ...}
 
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
+  {:scope "agent:query:execute"}
   [_route-params
    _query-params
    {encoded-query :query} :- ::execute-query-request]
   (let [query (-> encoded-query
                   u/decode-base64
-                  json/decode+kw)]
+                  json/decode+kw)
+        info  {:executed-by api/*current-user-id*
+               :context     :agent}]
     (qp.streaming/streaming-response [rff :api]
       (qp/process-query
        (-> query
            (update-in [:middleware :js-int-to-string?] (fnil identity true))
-           qp/userland-query-with-default-constraints)
+           qp/userland-query-with-default-constraints
+           (update :info merge info))
        rff))))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
@@ -402,11 +457,14 @@
 ;;; -------------------------------------------- Stateless JWT Authentication --------------------------------------------
 
 (defn- authenticate-with-jwt
-  "Authenticate a request using a stateless JWT. Returns {:user <user>} on success,
-   or {:error <type> :message <msg>} on failure. Does NOT create a session.
+  "Authenticate a request using a stateless JWT. Returns `{:user <user>}` on success, or
+   `{:error <type> :message <msg>}` on failure. Does NOT create a session.
 
-   Uses auth-identity/authenticate to validate the JWT, which reuses the same
-   implementation as the /auth/sso endpoint and handles all settings validation."
+   Uses auth-identity/authenticate to validate the JWT, which reuses the same implementation as the /auth/sso endpoint
+   and handles all settings validation.
+
+   When the JWT contains a `\"scope\"` claim, the result includes `:scopes` — a parsed set of scope strings — so that
+   [[enforce-authentication]] can attach it to the request for downstream scope enforcement."
   [token]
   (let [result (auth-identity/authenticate :provider/jwt {:token token})]
     (if (:success? result)
@@ -414,7 +472,10 @@
       ;; The provider uses jwt-attribute-email setting to extract the email from claims
       (if-let [user (when-let [email (get-in result [:user-data :email])]
                       (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))]
-        {:user user}
+        (let [scope-entry (-> result :jwt-data (find :scope))]
+          (cond-> {:user user}
+            scope-entry
+            (assoc :scopes (or (scope/parse-scopes (val scope-entry)) #{}))))
         ;; Don't reveal whether the user exists or not - use same error as invalid JWT
         {:error   "invalid_jwt"
          :message "Invalid or expired JWT token."})
@@ -431,6 +492,10 @@
 (defn- enforce-authentication
   "Middleware that ensures requests are authenticated.
 
+   Always sets `:token-scopes` on authenticated requests — `#{::scope/unrestricted}` for unrestricted access
+   (session auth or unscoped JWTs), or the parsed scope set for scoped JWTs. This ensures downstream scope
+   enforcement never has to special-case nil within the agent API.
+
    Supports two authentication modes:
    - **Session-based**: Uses `X-Metabase-Session` header, validated by standard Metabase
      session middleware (which runs before this). If `:metabase-user-id` is set on the
@@ -442,7 +507,7 @@
     (cond
       ;; Already authenticated via X-Metabase-Session (standard middleware handled it)
       metabase-user-id
-      (handler request respond raise)
+      (handler (assoc request :token-scopes #{::scope/unrestricted}) respond raise)
 
       ;; Not authenticated via session - check for Bearer JWT
       :else
@@ -464,9 +529,9 @@
           (let [result (authenticate-with-jwt bearer-token)]
             (if-let [user (:user result)]
               (request/with-current-user (:id user)
-                (handler request respond raise))
+                (handler (assoc request :token-scopes (or (:scopes result) #{::scope/unrestricted}))
+                         respond raise))
               (respond (error-response (:error result) (:message result))))))))))
-
 (def ^:private +auth
   (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
 

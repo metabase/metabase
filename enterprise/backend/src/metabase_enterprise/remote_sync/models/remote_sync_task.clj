@@ -20,6 +20,9 @@
 
 (derive :model/RemoteSyncTask :metabase/model)
 
+(t2/deftransforms :model/RemoteSyncTask
+  {:conflicts mi/transform-json})
+
 (declare current-task)
 
 (t2/define-before-insert :model/RemoteSyncTask
@@ -208,6 +211,30 @@
        (t/< (:last_progress_report_at task)
             (t/minus (t/offset-date-time) (t/millis (settings/remote-sync-task-time-limit-ms))))))
 
+(defn conflict?
+  "Checks if a task ended with conflicts.
+
+  Takes a RemoteSyncTask instance.
+
+  Returns true if the task has conflicts stored, false otherwise."
+  [task]
+  (and (some? (:ended_at task))
+       (false? (:cancelled task))
+       (nil? (:error_message task))
+       (some? (:conflicts task))))
+
+(defn conflict-sync-task!
+  "Marks a sync task as having conflicts.
+
+  Takes the ID of the sync task and a collection of conflicts (vector of strings).
+  Conflicts are automatically serialized to JSON via the model transform.
+
+  Returns the number of rows updated (should be 1 if successful)."
+  [task-id conflicts]
+  (t2/update! :model/RemoteSyncTask task-id
+              {:ended_at (mi/now)
+               :conflicts conflicts}))
+
 ;;; ------------------------------------------- Hydration -------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/RemoteSyncTask :initiated_by_user]
@@ -222,6 +249,7 @@
   (for [task tasks]
     (assoc task :status (cond
                           (failed? task) :errored
+                          (conflict? task) :conflict
                           (successful? task) :successful
                           (cancelled? task) :cancelled
                           (timed-out? task) :timed-out

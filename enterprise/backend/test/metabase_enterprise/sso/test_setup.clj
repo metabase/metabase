@@ -40,13 +40,14 @@
         (t2/update! :model/User {:email "rasta@metabase.com"} {:first_name "Rasta" :last_name "Toucan" :sso_source nil})))))
 
 (defn do-with-other-sso-types-disabled!
-  "Execute `thunk` with LDAP, SAML, and JWT SSO types disabled.
+  "Execute `thunk` with LDAP, SAML, JWT, and Slack Connect SSO types disabled.
    Useful when testing a specific SSO provider in isolation."
   [thunk]
   (mt/with-temporary-setting-values
-    [ldap-enabled false
-     saml-enabled false
-     jwt-enabled  false]
+    [ldap-enabled          false
+     saml-enabled          false
+     jwt-enabled           false
+     slack-connect-enabled false]
     (thunk)))
 
 ;;; -------------------------------------------------- SAML Setup --------------------------------------------------
@@ -139,6 +140,42 @@
          site-url                               (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
         (mt/with-premium-features current-features
           (f))))))
+
+;;; -------------------------------------------------- OIDC (Generic) Setup --------------------------------------------------
+
+(def ^:private default-oidc-provider
+  {:key            "test-idp"
+   :login-prompt   "Test IdP"
+   :issuer-uri     "https://test.idp.example.com"
+   :client-id      "test-client-id"
+   :client-secret  "test-client-secret"
+   :scopes         ["openid" "email" "profile"]
+   :enabled        true})
+
+(defn call-with-default-oidc-config!
+  "Execute `f` with default OIDC configuration set up."
+  [f]
+  (let [current-features (token-check/*token-features*)]
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values
+        [oidc-providers [default-oidc-provider]
+         site-url       (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+        (mt/with-premium-features current-features
+          (f))))))
+
+(defmacro with-oidc-default-setup!
+  "Set up default OIDC configuration for tests."
+  [& body]
+  `(mt/test-helpers-set-global-values!
+     (mt/with-premium-features #{:audit-app}
+       (do-with-other-sso-types-disabled!
+        (fn []
+          (mt/with-additional-premium-features #{:sso-oidc}
+            (call-with-login-attributes-cleared!
+             (fn []
+               (call-with-default-oidc-config!
+                (fn []
+                  ~@body))))))))))
 
 (defmacro with-slack-default-setup!
   "Set up default Slack Connect configuration for tests.

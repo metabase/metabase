@@ -5,14 +5,13 @@
    Both the initial authorization request and the callback are handled via GET.
 
    Flow:
-   1. User accesses GET /auth/sso?preferred_method=slack-connect
+   1. User accesses GET /auth/sso/slack-connect
    2. Metabase redirects to Slack authorization endpoint
    3. User authenticates with Slack
-   4. Slack redirects back to GET /auth/sso?code=...&state=...
+   4. Slack redirects back to GET /auth/sso/slack-connect/callback?code=...&state=...
    5. Metabase exchanges code for tokens and creates session"
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
@@ -30,49 +29,64 @@
 (defn- slack-redirect-uri
   "Generate the redirect URI for Slack OIDC callback."
   []
-  (str (system/site-url) "/auth/sso"))
+  (str (system/site-url) "/auth/sso/slack-connect/callback"))
 
-(defmethod sso.i/sso-get :slack-connect
-  [{{:keys [code state redirect]} :params
-    :as request}]
-  ;; Check premium feature is available
+(defn- check-slack-connect-prereqs!
+  "Check that Slack Connect is available and enabled. Throws on failure."
+  []
   (premium-features/assert-has-feature :sso-slack (tru "Slack Connect authentication"))
-
   (when-not (sso-settings/slack-connect-enabled)
     (throw (ex-info (tru "Slack Connect is not enabled")
-                    {:status-code 400})))
+                    {:status-code 400}))))
 
-  (cond
-    ;; Case 1: Initial request (no code) - start auth flow
-    (not code)
-    (let [_ (when (and (= "link-only" (sso-settings/slack-connect-authentication-mode))
-                       (not api/*current-user-id*))
-              (throw (ex-info (tru "Account linking requires an authenticated session")
-                              {:status-code 401})))
-          redirect-url (if redirect
-                         (sso-utils/check-sso-redirect redirect)
-                         "/")
-          auth-result (auth-identity/authenticate :provider/slack-connect
-                                                  (assoc request
-                                                         :authenticated-user api/*current-user*
-                                                         :redirect-uri (slack-redirect-uri)
-                                                         :final-redirect redirect-url))]
+(defn sso-initiate
+  "Initiate Slack Connect SSO flow. Redirects to Slack authorization endpoint."
+  [request]
+  (check-slack-connect-prereqs!)
+  (log/infof "Slack Connect SSO initiate: auth-mode=%s, has-session-cookie=%s, current-user-id=%s, redirect-uri=%s"
+             (sso-settings/slack-connect-authentication-mode)
+             (boolean (get-in request [:cookies request/metabase-session-cookie :value]))
+             api/*current-user-id*
+             (slack-redirect-uri))
+  (let [{:keys [redirect]} (:params request)
+        _ (when (and (= "link-only" (sso-settings/slack-connect-authentication-mode))
+                     (not api/*current-user-id*))
+            (throw (ex-info (tru "Account linking requires an authenticated session")
+                            {:status-code 401})))
+        redirect-url (if redirect
+                       (sso-utils/check-sso-redirect redirect)
+                       "/")
+        auth-result (auth-identity/authenticate :provider/slack-connect
+                                                (assoc request
+                                                       :authenticated-user api/*current-user*
+                                                       :redirect-uri (slack-redirect-uri)
+                                                       :final-redirect redirect-url))]
+    (log/infof "Slack Connect SSO initiate auth result: success=%s, has-redirect-url=%s, browser-id=%s"
+               (:success? auth-result)
+               (boolean (:redirect-url auth-result))
+               (:browser-id request))
+    (cond
+      (= :redirect (:success? auth-result))
+      (sso/wrap-oidc-redirect auth-result
+                              request
+                              :slack-connect
+                              redirect-url
+                              {:browser-id (:browser-id request)})
+      :else
+      (throw (ex-info (or (:message auth-result) (tru "Failed to initiate Slack authentication"))
+                      {:status-code 500})))))
 
-      (cond
-        (= :redirect (:success? auth-result))
-        ;; Use encrypted cookie for state storage
-        (sso/wrap-oidc-redirect auth-result
-                                request
-                                :slack-connect
-                                redirect-url
-                                {:browser-id (:browser-id request)})
-        :else
-        (throw (ex-info (or (:message auth-result) (tru "Failed to initiate Slack authentication"))
-                        {:status-code 500}))))
-
-    ;; Case 2: Callback with code - complete authentication
-    ;; State validation happens inside login! via the OIDC provider
-    code
+(defn sso-callback
+  "Handle Slack Connect OIDC callback with authorization code."
+  [request]
+  (check-slack-connect-prereqs!)
+  (let [{:keys [code state error error_description]} (:params request)
+        oidc-state-cookie (get-in request [:cookies "metabase.OIDC_STATE" :value])]
+    (log/infof "Slack Connect SSO callback: has-code=%s, state=%s, oidc-state-cookie=%s, error=%s, error_description=%s"
+               (boolean code) state oidc-state-cookie error error_description)
+    (when-not oidc-state-cookie
+      (log/warnf "Slack Connect callback missing OIDC state cookie. Request cookies: %s"
+                 (keys (:cookies request))))
     (let [login-result (auth-identity/login! :provider/slack-connect
                                              (assoc request
                                                     :authenticated-user api/*current-user*
@@ -81,14 +95,19 @@
                                                     :oidc-provider :slack-connect
                                                     :redirect-uri (slack-redirect-uri)
                                                     :device-info (request/device-info request)))]
-
+      (log/infof "Slack Connect SSO callback login result: success=%s, has-session=%s, has-user=%s, redirect-url=%s"
+                 (:success? login-result)
+                 (boolean (:session login-result))
+                 (boolean (:user login-result))
+                 (:redirect-url login-result))
       (cond
         (:success? login-result)
         (let [final-redirect (or (:redirect-url login-result) "/")
               base-response (-> (response/redirect final-redirect)
                                 (sso/clear-oidc-state-cookie))]
-          (log/infof "Slack authentication successful for user %s" (get-in login-result [:user :email]))
-          ;; In link-only mode, there's no session to set - just return the redirect
+          (log/infof "Slack authentication successful for user %s, setting session cookie=%s"
+                     (get-in login-result [:user :email])
+                     (boolean (:session login-result)))
           (if-let [session (:session login-result)]
             (request/set-session-cookies request
                                          base-response
@@ -96,16 +115,7 @@
                                          (t/zoned-date-time (t/zone-id "GMT")))
             base-response))
 
-        ;; Login failed (includes state validation failures)
         :else
         (let [error-msg (or (:message login-result) (tru "Slack authentication failed"))]
-          (log/errorf "Slack authentication failed: %s" error-msg)
+          (log/errorf "Slack authentication failed: %s (full result: %s)" error-msg (pr-str login-result))
           (throw (ex-info error-msg {:status-code 401})))))))
-
-;; OIDC only uses GET requests, so POST should not be used.
-;; Return 405 Method Not Allowed.
-(defmethod sso.i/sso-post :slack-connect
-  [_request]
-  {:status 405
-   :headers {"Allow" "GET"}
-   :body (tru "POST not supported for OIDC authentication. Use GET instead.")})

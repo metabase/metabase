@@ -17,6 +17,7 @@ export const TransformSchema = new schema.Entity("transforms");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
+export const GroupSchema = new schema.Entity("groups");
 
 export const DatabaseSchema = new schema.Entity("databases");
 export const SchemaSchema = new schema.Entity("schemas");
@@ -158,20 +159,4 @@ export const QueryMetadataSchema = {
   snippets: [SnippetSchema],
   cards: [QuestionSchema],
   dashboards: [DashboardSchema],
-};
-
-export const EntitiesSchema = {
-  actions: [ActionSchema],
-  collections: [CollectionSchema],
-  dashboards: [DashboardSchema],
-  databases: [DatabaseSchema],
-  documents: [DocumentSchema],
-  schemas: [SchemaSchema],
-  tables: [TableSchema],
-  fields: [FieldSchema],
-  segments: [SegmentSchema],
-  measures: [MeasureSchema],
-  snippets: [SnippetSchema],
-  indexedEntities: [IndexedEntitySchema],
-  questions: [QuestionSchema],
 };

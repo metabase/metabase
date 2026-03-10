@@ -224,7 +224,25 @@
                 #"This alert will be sent\s+when this question meets its goal"]
                [:goal_below
                 #"This alert will be sent\s+when this question goes below its goal"]]]
-        (check send-condition condition-regex)))))
+        (check send-condition condition-regex))))
+
+  (notification.tu/with-notification-testing-setup!
+    (notification.tu/with-card-notification
+      [notification {:card              {:name "A Card"}
+                     :notification      {:creator_id (mt/user->id :rasta)}}]
+      (let [has-link? (fn [notification]
+                        (->> (notification.tu/with-captured-channel-send!
+                               (events/publish-event! :event/notification-create {:object notification
+                                                                                  :user-id (:id (mt/user->id :rasta))}))
+                             :channel/email first :message first :content
+                             (re-find #"href=")
+                             (= "href=")))]
+        (testing "test that disable_links: false will keep links in the alert confirmation email"
+          (is (true? (has-link? (assoc-in notification [:payload :disable_links] false)))))
+        (testing "test that disable_links: nil will keep links in the alert confirmation email"
+          (is (true? (has-link? (assoc-in notification [:payload :disable_links] nil)))))
+        (testing "test that disable_links: true will disable all links in the alert confirmation email"
+          (is (false? (has-link? (assoc-in notification [:payload :disable_links] true)))))))))
 
 (deftest slack-error-token-email-test
   (let [check (fn [recipients regexes]
@@ -243,7 +261,7 @@
         admin-emails (t2/select-fn-set :email :model/User :is_superuser true)]
     (testing "send to admins with a link to setting page"
       (check admin-emails [#"Your Slack connection stopped working"
-                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/notifications\"[^>]*>Go to settings</a>"]))
+                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/slack\"[^>]*>Go to settings</a>"]))
 
     (mt/with-temporary-setting-values
       [admin-email "it@metabase.com"]

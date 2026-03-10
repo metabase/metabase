@@ -334,6 +334,23 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
   });
 
+  it("should support trend lines (metabase #61197)", () => {
+    createDashboardWithVisualizerDashcards();
+    H.editDashboard();
+
+    H.showDashcardVisualizerModalSettings(0);
+
+    H.modal().within(() => {
+      cy.findByText("Trend line").click();
+      H.trendLine().should("have.length", 2);
+      cy.findByText("Save").click();
+    });
+
+    H.getDashboardCard(0).within(() => {
+      H.trendLine().should("have.length", 2);
+    });
+  });
+
   describe("timeseries breakout", () => {
     it("should automatically use new columns whenever possible", () => {
       const Q1_NAME = ORDERS_COUNT_BY_CREATED_AT.name;

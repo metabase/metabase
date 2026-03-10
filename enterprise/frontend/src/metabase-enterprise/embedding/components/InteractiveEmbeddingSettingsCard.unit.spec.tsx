@@ -73,7 +73,7 @@ describe("InteractiveEmbeddingSettingsCard", () => {
 
     const input = await screen.findByPlaceholderText("https://*.example.com");
     await userEvent.type(input, "https://*.foo.example.com");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     await screen.findByDisplayValue("https://*.foo.example.com");
 
     const puts = await findRequests("PUT");

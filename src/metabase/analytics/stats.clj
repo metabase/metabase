@@ -938,9 +938,9 @@
    {:name      :table-data-editing
     :available (premium-features/table-data-editing?)
     :enabled   (premium-features/table-data-editing?)}
-   {:name      :transforms
-    :available (premium-features/enable-transforms?)
-    :enabled   (premium-features/enable-transforms?)}
+   {:name      :transforms-basic
+    :available (premium-features/enable-basic-transforms?)
+    :enabled   (premium-features/enable-basic-transforms?)}
    {:name      :transforms-python
     :available (premium-features/enable-python-transforms?)
     :enabled   (premium-features/enable-python-transforms?)}
@@ -949,7 +949,13 @@
     :enabled   (premium-features/enable-dependencies?)}
    {:name      :support-users
     :available (premium-features/enable-support-users?)
-    :enabled   (premium-features/enable-support-users?)}])
+    :enabled   (premium-features/enable-support-users?)}
+   {:name      :workspaces
+    :available (premium-features/enable-workspaces?)
+    :enabled   (premium-features/enable-workspaces?)}
+   {:name      :writable-connection
+    :available (premium-features/enable-writable-connection?)
+    :enabled   (premium-features/enable-writable-connection?)}])
 
 (defn- snowplow-features
   []

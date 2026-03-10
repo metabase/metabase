@@ -1,11 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
 import * as Lib from "metabase-lib";
-import {
-  type ExpressionClauseOpts,
-  createQuery,
-  createQueryWithClauses,
-} from "metabase-lib/test-helpers";
+import { createMetadataProvider } from "metabase-lib/test-helpers";
 import {
   COMMON_DATABASE_FEATURES,
   createMockCard,
@@ -27,141 +23,280 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-const metadata = createMockMetadata({
-  databases: [
-    createSampleDatabase({
-      features: [
-        ...COMMON_DATABASE_FEATURES,
-        "expressions/date",
-        "expressions/integer",
-        "expressions/date",
+const database = createSampleDatabase({
+  features: [
+    ...COMMON_DATABASE_FEATURES,
+    "expressions/date",
+    "expressions/integer",
+    "expressions/date",
+  ],
+  tables: [
+    createPeopleTable(),
+    createProductsTable(),
+    createReviewsTable(),
+    createOrdersTable({
+      segments: [
+        createMockSegment({
+          id: getNextId(),
+          name: "Expensive Things",
+          table_id: ORDERS_ID,
+          definition: createMockStructuredDatasetQuery({
+            database: 1,
+            query: {
+              "source-table": ORDERS_ID,
+              filter: [">", ["field", ORDERS.TOTAL, null], 30],
+            },
+          }),
+        }),
       ],
-      tables: [
-        createPeopleTable(),
-        createProductsTable(),
-        createReviewsTable(),
-        createOrdersTable({
-          segments: [
-            createMockSegment({
-              id: getNextId(),
-              name: "Expensive Things",
-              table_id: ORDERS_ID,
-              definition: createMockStructuredDatasetQuery({
-                database: 1,
-                query: {
-                  "source-table": ORDERS_ID,
-                  filter: [">", ["field", ORDERS.TOTAL, null], 30],
-                },
-              }),
+      metrics: [
+        createMockCard({
+          id: getNextId(),
+          name: "Foo Metric",
+          type: "metric",
+          table_id: ORDERS_ID,
+          dataset_query: createMockStructuredDatasetQuery({
+            database: SAMPLE_DB_ID,
+            query: createMockStructuredQuery({
+              "source-table": ORDERS_ID,
+              aggregation: [["sum", ["field", ORDERS.TOTAL, {}]]],
             }),
-          ],
-          metrics: [
-            createMockCard({
-              id: getNextId(),
-              name: "Foo Metric",
-              type: "metric",
-              table_id: ORDERS_ID,
-              dataset_query: createMockStructuredDatasetQuery({
-                database: SAMPLE_DB_ID,
-                query: createMockStructuredQuery({
-                  "source-table": ORDERS_ID,
-                  aggregation: [["sum", ["field", ORDERS.TOTAL, {}]]],
-                }),
-              }),
-            }),
-          ],
-          measures: [
-            createMockMeasure({
-              id: getNextId(),
-              name: "Bar Measure",
-              table_id: ORDERS_ID,
-              definition: createMockStructuredDatasetQuery({
-                database: SAMPLE_DB_ID,
-                query: createMockStructuredQuery({
-                  "source-table": ORDERS_ID,
-                  aggregation: [["sum", ["field", ORDERS.TOTAL, {}]]],
-                }),
-              }),
-            }),
-          ],
+          }),
         }),
       ],
     }),
   ],
 });
 
-const exprs: ExpressionClauseOpts[] = [
-  {
-    name: "foo",
-    operator: "+",
-    args: [1, 2],
-  },
-  {
-    name: "bool",
-    operator: "=",
-    args: [1, 1],
-  },
-  {
-    name: "name with [brackets]",
-    operator: "+",
-    args: [1, 2],
-  },
-  {
-    name: "name with \\ slash",
-    operator: "+",
-    args: [1, 2],
-  },
-  {
-    name: "stringly",
-    operator: "concat",
-    args: ["foo", "bar"],
-  },
-  {
-    name: "bar",
-    operator: "+",
-    args: [1, 2],
-  },
-  {
-    name: "BAR",
-    operator: "+",
-    args: [1, 2],
-  },
-];
-
-export const query = createQueryWithClauses({
-  query: createQuery({
-    metadata,
-    query: createMockStructuredDatasetQuery({
-      database: SAMPLE_DB_ID,
-      query: createMockStructuredQuery({
-        "source-table": ORDERS_ID,
-        fields: [],
-      }),
-    }),
-  }),
-  expressions: exprs,
+let metadata = createMockMetadata({
+  databases: [database],
 });
 
-export const queryWithAggregation = createQueryWithClauses({
-  query: createQuery({
-    metadata,
-    query: createMockStructuredDatasetQuery({
-      database: SAMPLE_DB_ID,
-      query: createMockStructuredQuery({
-        "source-table": ORDERS_ID,
-        fields: [],
-        aggregation: [
-          [
-            "aggregation-options",
-            ["sum", ["field", ORDERS.TOTAL, null]],
-            { name: "Bar Aggregation", "display-name": "Bar Aggregation" },
+metadata = createMockMetadata({
+  databases: [database],
+
+  measures: [
+    createMockMeasure({
+      id: getNextId(),
+      name: "Bar Measure",
+      table_id: ORDERS_ID,
+      definition: Lib.toJsQuery(
+        Lib.createTestQuery(Lib.metadataProvider(SAMPLE_DB_ID, metadata), {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations: [
+                {
+                  type: "operator",
+                  operator: "sum",
+                  args: [
+                    {
+                      type: "column",
+                      name: "TOTAL",
+                      sourceName: "ORDERS",
+                    },
+                  ],
+                },
+              ],
+            },
           ],
-        ],
-      }),
+        }),
+      ),
     }),
-  }),
-  expressions: exprs,
+  ],
 });
+
+export const query = Lib.createTestQuery(
+  createMetadataProvider({ databaseId: SAMPLE_DB_ID, metadata }),
+  {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        fields: [],
+        expressions: [
+          {
+            name: "foo",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "bool",
+            value: {
+              type: "operator",
+              operator: "=",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 1 },
+              ],
+            },
+          },
+          {
+            name: "name with [brackets]",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "name with \\ slash",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "stringly",
+            value: {
+              type: "operator",
+              operator: "concat",
+              args: [
+                { type: "literal", value: "foo" },
+                { type: "literal", value: "bar" },
+              ],
+            },
+          },
+          {
+            name: "bar",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "BAR",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  },
+);
+
+export const queryWithAggregation = Lib.createTestQuery(
+  createMetadataProvider({ databaseId: SAMPLE_DB_ID, metadata }),
+  {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        fields: [],
+        aggregations: [
+          {
+            name: "Bar Aggregation",
+            value: {
+              type: "operator",
+              operator: "sum",
+              args: [{ type: "column", name: "TOTAL" }],
+            },
+          },
+        ],
+        expressions: [
+          {
+            name: "foo",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "bool",
+            value: {
+              type: "operator",
+              operator: "=",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 1 },
+              ],
+            },
+          },
+          {
+            name: "name with [brackets]",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "name with \\ slash",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "stringly",
+            value: {
+              type: "operator",
+              operator: "concat",
+              args: [
+                { type: "literal", value: "foo" },
+                { type: "literal", value: "bar" },
+              ],
+            },
+          },
+          {
+            name: "bar",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+          {
+            name: "BAR",
+            value: {
+              type: "operator",
+              operator: "+",
+              args: [
+                { type: "literal", value: 1 },
+                { type: "literal", value: 2 },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  },
+);
 
 export const stageIndex = -1;
 
@@ -285,3 +420,7 @@ export const { fields, expressions, segments, metrics, measures } =
   findDimensions(query);
 
 export const sharedMetadata = metadata;
+export const sharedProvider = createMetadataProvider({
+  databaseId: database.id,
+  metadata,
+});

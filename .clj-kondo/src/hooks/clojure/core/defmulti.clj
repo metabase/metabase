@@ -2,6 +2,7 @@
   (:require
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]
+   [hooks.clojure.core.def]
    [hooks.common]))
 
 (defn- check-arglists [report-node arglists]
@@ -49,4 +50,5 @@
 
 (defn lint-defmulti [x]
   (defmulti-check-for-arglists-metadata (:node x))
+  (hooks.clojure.core.def/lint-def* x)
   x)

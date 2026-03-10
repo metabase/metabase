@@ -34,12 +34,13 @@
   height: 3rem;
 
   &:hover {
-    background: linear-gradient(
-      to right,
-      var(--mb-color-icon-secondary) 3rem,
-      var(--mb-color-background-hover) 3rem
-    );
+    background-color: var(--mb-color-background-hover);
     color: var(--mb-color-brand);
+
+    .label,
+    .chevron {
+      color: var(--mb-color-brand);
+    }
   }
 
   [data-active="true"] & {

@@ -44,14 +44,44 @@ export function compactifyValue(
 
 const DEFAULT_COLOR = color("text-primary");
 
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
+const getSegmentBounds = ({ min, max }: ScalarSegment) => ({
+  min: isFiniteNumber(min) ? min : -Infinity,
+  max: isFiniteNumber(max) ? max : Infinity,
+});
+
+const formatSegmentRange = ({ min, max }: ScalarSegment) => {
+  const hasMin = isFiniteNumber(min);
+  const hasMax = isFiniteNumber(max);
+
+  if (hasMin && hasMax) {
+    return `${min} - ${max}`;
+  }
+
+  if (hasMin) {
+    return `≥ ${min}`;
+  }
+
+  if (hasMax) {
+    return `≤ ${max}`;
+  }
+
+  return "";
+};
+
 export function getColor(_value: RowValue, segments?: ScalarSegment[]) {
-  const value = parseInt(String(_value));
+  const value = parseFloat(String(_value));
 
   if (!segments || segments.length === 0 || Number.isNaN(value)) {
     return DEFAULT_COLOR;
   }
 
-  const segment = segments.find((s) => s.min <= value && value <= s.max);
+  const segment = segments.find((s) => {
+    const { min, max } = getSegmentBounds(s);
+    return min <= value && value <= max;
+  });
 
   if (!segment || !segment.color) {
     return DEFAULT_COLOR;
@@ -73,7 +103,9 @@ export function getTooltipContent(segments?: ScalarSegment[]) {
               <ColorPill color={color} pillSize="xsmall" />
             </td>
             <td>
-              <Text c="inherit" lh="md">{`${min} - ${max}`}</Text>
+              <Text c="inherit" lh="md">
+                {formatSegmentRange({ min, max, color, label })}
+              </Text>
             </td>
             <td>
               <Text c="inherit" lh="md">

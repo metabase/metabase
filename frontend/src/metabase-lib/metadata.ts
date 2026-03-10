@@ -59,6 +59,7 @@ export function metadataProvider(
   return ML.metadataProvider(databaseId, metadata);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,

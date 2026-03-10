@@ -7,7 +7,6 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -86,8 +85,8 @@
              rename-superfluous-options?
              ;; Once we've found it, rename superfluous options, unless disabled by the caller, because under normal
              ;; circumstances, you will not need them. On the off chance you do need them, they'll still be available.
-             (set/rename-keys {::lib.field/temporal-unit ::temporal-unit
-                               ::lib.field/binning       ::binning}))
+             (set/rename-keys {:lib/temporal-unit ::temporal-unit
+                               :lib/binning       ::binning}))
            (let [prev-cols (for [col (lib.metadata.calculation/returned-columns query -2 (lib.util/previous-stage query -1))]
                              (-> col
                                  lib.field.util/update-keys-for-col-from-previous-stage

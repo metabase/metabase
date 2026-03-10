@@ -31,11 +31,11 @@ describe("scenarios > alert", () => {
         cy.findByText("Set up Slack")
           .should("be.visible")
           .closest("a")
-          .should("have.attr", "href", "/admin/settings/notifications");
+          .should("have.attr", "href", "/admin/settings/slack");
         cy.findByText("Add a webhook")
           .should("be.visible")
           .closest("a")
-          .should("have.attr", "href", "/admin/settings/notifications");
+          .should("have.attr", "href", "/admin/settings/webhooks");
       });
     });
 
@@ -197,7 +197,7 @@ describe("scenarios > alert", () => {
 
       it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openSharingMenu("Subscriptions");
+        H.openDashboardMenu("Subscriptions");
 
         H.sidebar().within(() => {
           cy.findByText("Email it").click();
@@ -231,7 +231,7 @@ describe("scenarios > alert", () => {
         });
 
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openSharingMenu("Subscriptions");
+        H.openDashboardMenu("Subscriptions");
 
         H.sidebar().within(() => {
           addEmailRecipient(deniedEmail);

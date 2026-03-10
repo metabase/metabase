@@ -137,9 +137,9 @@
                        (driver/describe-database driver db))))
 
               (testing "timestamp column should exist"
-                (is (= {:name "timestamp_table"
-                        :schema nil
-                        :fields #{{:name                       "created_at"
+                (is (=? {:name "timestamp_table"
+                         :schema nil
+                         :fields [{:name                       "created_at"
                                    :database-type              "TIMESTAMP"
                                    :base-type                  :type/DateTime
                                    :database-position          0
@@ -147,8 +147,9 @@
                                    :json-unfolding             false
                                    :database-is-auto-increment false
                                    :database-is-nullable       true
-                                   :database-is-generated      false}}}
-                       (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))))))))))))
+                                   :database-is-generated      false}]}
+                        (-> (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))
+                            (update :fields (partial sort-by :name)))))))))))))
 
 (deftest select-query-datetime
   (mt/test-driver :sqlite

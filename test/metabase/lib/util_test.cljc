@@ -223,15 +223,6 @@
                                              :type     :native
                                              :native   {:query "SELECT * FROM venues;"}}))))
 
-(deftest ^:parallel join-strings-with-conjunction-test
-  (are [coll expected] (= expected
-                          (lib.util/join-strings-with-conjunction "and" coll))
-    []                nil
-    ["a"]             "a"
-    ["a" "b"]         "a and b"
-    ["a" "b" "c"]     "a, b, and c"
-    ["a" "b" "c" "d"] "a, b, c, and d"))
-
 (deftest ^:parallel strip-id-test
   (are [exp in] (= exp (lib.util/strip-id in))
     "foo"            "foo"

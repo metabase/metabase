@@ -353,9 +353,7 @@ describe("collection permissions", () => {
                   // Test will fail on this step first
                   cy.findByText("First collection").should("not.exist");
                   // This is the second step that makes sure not even search returns collections with read-only access
-                  cy.findByPlaceholderText(
-                    "Search this collection or everywhere…",
-                  ).type("third{Enter}");
+                  cy.findByPlaceholderText("Search…").type("third{Enter}");
 
                   cy.wait("@search");
                   cy.findByText(/Loading/i).should("not.exist");

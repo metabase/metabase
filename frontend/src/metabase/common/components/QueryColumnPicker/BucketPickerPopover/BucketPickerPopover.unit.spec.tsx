@@ -2,11 +2,15 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen, waitFor } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+} from "metabase-lib/test-helpers";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
 
-const query = createQuery();
+const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 const findColumn = columnFinder(query, Lib.breakoutableColumns(query, 0));
 const dateColumn = findColumn("ORDERS", "CREATED_AT");
 const numericColumn = findColumn("ORDERS", "TOTAL");

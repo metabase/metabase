@@ -7,7 +7,12 @@
    [metabase-enterprise.metabot-v3.reactions]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase-enterprise.metabot-v3.tools.create-alert
+    :as metabot-v3.tools.create-alert]
+   [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription
+    :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.deftool :refer [deftool]]
+   [metabase-enterprise.metabot-v3.tools.dependencies :as metabot-v3.tools.dependencies]
    [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.field-stats :as metabot-v3.tools.field-stats]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
@@ -95,10 +100,7 @@
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"       "not-equals"
                  "greater-than" "greater-than-or-equal"
-                 "less-than"    "less-than-or-equal"
-                 "date-equals"  "date-not-equals"
-                 "date-before"  "date-on-or-before"
-                 "date-after"   "date-on-or-after"]]
+                 "less-than"    "less-than-or-equal"]]
     [:value [:or :string :int]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
@@ -120,7 +122,6 @@
     [:field_id :string]
     [:operation [:enum {:encode/tool-api-request keyword}
                  "equals"             "not-equals"
-                 "string-equals"      "string-not-equals"
                  "string-contains"    "string-not-contains"
                  "string-starts-with" "string-ends-with"]]
     [:value :string]]
@@ -142,12 +143,9 @@
    [:map
     [:field_id :string]
     [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"              "not-equals"
-                 "greater-than"        "greater-than-or-equal"
-                 "less-than"           "less-than-or-equal"
-                 "number-equals"       "number-not-equals"
-                 "number-greater-than" "number-greater-than-or-equal"
-                 "number-less-than"    "number-less-than-or-equal"]]
+                 "equals"       "not-equals"
+                 "greater-than" "greater-than-or-equal"
+                 "less-than"    "less-than-or-equal"]]
     [:value [:or :int :double]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
@@ -156,8 +154,7 @@
    [:map
     [:field_id :string]
     [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"        "not-equals"
-                 "number-equals" "number-not-equals"]]
+                 "equals" "not-equals"]]
     [:values [:sequential [:or :int :double]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
@@ -186,20 +183,26 @@
               "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
-(mr/def ::field-aggregation
-  "Aggregation using a field and function.
+(mr/def ::count-aggregation
+  "Count aggregation — counts rows, no field_id needed.
+   Use sort_order to order results by this aggregation ('asc' or 'desc')."
+  [:and
+   [:map
+    [:function [:= {:encode/tool-api-request keyword} "count"]]
+    [:bucket {:optional true} ::bucket]
+    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
-   - field_id: Required. For 'count', any valid field_id can be provided (the value is ignored since count operates on rows).
-   - function: The aggregation function to apply.
-   - sort_order: Optional. Use this to order results by this aggregation ('asc' or 'desc').
-                 This is the correct way to sort by aggregation results - do NOT use order_by for aggregations."
+(mr/def ::field-aggregation
+  "Aggregation using a field and function. field_id is required.
+   Use sort_order to order results by this aggregation ('asc' or 'desc')."
   [:and
    [:map
     [:field_id :string]
     [:bucket {:optional true} ::bucket]
     [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
     [:function [:enum {:encode/tool-api-request keyword}
-                "avg" "count" "count-distinct" "max" "min" "sum"]]]
+                "avg" "count-distinct" "max" "min" "sum"]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::measure-aggregation
@@ -211,8 +214,8 @@
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (mr/def ::aggregation
-  "Aggregation - either field-based or measure-based."
-  [:or ::field-aggregation ::measure-aggregation])
+  "Aggregation — count (field optional), field-based (field required), or measure-based."
+  [:or ::count-aggregation ::field-aggregation ::measure-aggregation])
 
 (mr/def ::field
   [:and
@@ -338,7 +341,7 @@
    [:name :string]
    [:display_name :string]
    [:database_id :int]
-   [:database_engine :keyword]
+   [:database_engine :string]
    [:database_schema {:optional true} [:maybe :string]] ; Schema name, if applicable
    [:fields ::columns]
    [:related_tables {:optional true} [:sequential [:ref ::table-result]]]
@@ -470,6 +473,63 @@
    :args-optional? true
    :result-schema  ::search-result
    :handler        metabot-v3.tools.search/search-tool})
+
+;;; ----------------------------------------------------- Actions -----------------------------------------------------
+
+(mr/def ::subscription-schedule
+  (let [days ["sunday" "monday" "tuesday" "wednesday" "thursday" "friday" "saturday"]]
+    [:and
+     [:or
+      [:map
+       [:frequency [:= {:encode/tool-api-request keyword} "hourly"]]]
+      [:map
+       [:frequency [:= {:encode/tool-api-request keyword} "daily"]]
+       [:hour :int]]
+      [:map
+       [:frequency [:= {:encode/tool-api-request keyword} "weekly"]]
+       [:hour :int]
+       [:day_of_week (into [:enum {:encode/tool-api-request keyword}] days)]]
+      [:map
+       [:frequency [:= {:encode/tool-api-request keyword} "monthly"]]
+       [:hour :int]
+       [:day_of_month (into [:enum {:encode/tool-api-request keyword}
+                             "first-calendar-day" "middle-of-month" "last-calendar-day"]
+                            (for [fl ["first" "last"]
+                                  day days]
+                              (str fl "-" day)))]]]
+     [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]]))
+
+(mr/def ::create-dashboard-subscription-arguments
+  [:and
+   [:map
+    [:dashboard_id :int]
+    [:slack_channel :string]
+    [:schedule ::subscription-schedule]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(deftool "/create-dashboard-subscription"
+  "Create a dashboard subscription and send it to a slack channel."
+  {:args-schema   ::create-dashboard-subscription-arguments
+   :result-schema [:map [:error  {:optional true} :string
+                         :output {:optional true} :string]]
+   :handler       metabot-v3.tools.create-dashboard-subscription/create-dashboard-subscription})
+
+(mr/def ::create-alert-arguments
+  [:and
+   [:map
+    [:card_id :int]
+    [:send_condition [:enum {:encode/tool-api-request keyword} "has_result" "goal_above" "goal_below"]]
+    [:send_once {:optional true, :default false} :boolean]
+    [:schedule ::subscription-schedule]
+    [:slack_channel :string]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(deftool "/create-alert"
+  "Create an alert for a saved question."
+  {:args-schema   ::create-alert-arguments
+   :result-schema [:map [:error  {:optional true} :string
+                         :output {:optional true} :string]]
+   :handler       metabot-v3.tools.create-alert/create-alert})
 
 ;;; ---------------------------------------------------- Analytics ----------------------------------------------------
 
@@ -775,6 +835,41 @@
   {:args-schema   ::get-transform-python-library-details-arguments
    :result-schema ::get-transform-python-library-details-result
    :handler       metabot-v3.tools.transforms/get-transform-python-library-details})
+
+(mr/def ::check-transform-dependencies-arguments
+  [:and
+   [:map
+    [:transform_id :int]
+    [:source ::metabot-v3.tools.transforms/transform-source]]
+   [:map {:encode/tool-api-request
+          #(set/rename-keys % {:transform_id :id})}]])
+
+(mr/def ::broken-question
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]])
+
+(mr/def ::broken-transform
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]])
+
+(mr/def ::check-transform-dependencies-result
+  [:or
+   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+    [:structured_output [:map
+                         [:success :boolean]
+                         [:bad_transform_count :int]
+                         [:bad_transforms [:sequential ::broken-transform]]
+                         [:bad_question_count :int]
+                         [:bad_questions [:sequential ::broken-question]]]]]
+   [:map [:output :string]]])
+
+(deftool "/check-transform-dependencies"
+  "Check a proposed edit to a transform and return details of cards or transforms that would be broken by the change."
+  {:args-schema   ::check-transform-dependencies-arguments
+   :result-schema ::check-transform-dependencies-result
+   :handler       metabot-v3.tools.dependencies/check-transform-dependencies})
 
 ;;; ----------------------------------------------------- Querying ----------------------------------------------------
 

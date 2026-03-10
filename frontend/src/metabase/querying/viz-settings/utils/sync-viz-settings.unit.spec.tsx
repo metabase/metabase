@@ -1,10 +1,5 @@
 import * as Lib from "metabase-lib";
-import {
-  SAMPLE_METADATA,
-  columnFinder,
-  createQuery,
-  createQueryWithClauses,
-} from "metabase-lib/test-helpers";
+import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { Series } from "metabase-types/api";
 import {
   createMockCard,
@@ -13,7 +8,7 @@ import {
   createMockTableColumnOrderSetting,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
-import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
+import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import {
   type ColumnInfo,
@@ -434,19 +429,31 @@ describe("syncVizSettings", () => {
 describe("syncVizSettingsWithQuery", () => {
   describe("table.columns", () => {
     it("should handle adding new columns with column.name changes", () => {
-      const baseQuery = createQuery();
-      const stageIndex = -1;
-      const availableColumns = Lib.visibleColumns(baseQuery, stageIndex);
-      const findColumn = columnFinder(baseQuery, availableColumns);
-      const oldQuery = Lib.withFields(baseQuery, stageIndex, [
-        findColumn("ORDERS", "ID"),
-        findColumn("PEOPLE", "ID"),
-      ]);
-      const newQuery = Lib.withFields(baseQuery, stageIndex, [
-        findColumn("ORDERS", "ID"),
-        findColumn("PRODUCTS", "ID"),
-        findColumn("PEOPLE", "ID"),
-      ]);
+      const oldQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            fields: [
+              { type: "column", name: "ID", sourceName: "ORDERS" },
+              { type: "column", name: "ID", sourceName: "PEOPLE" },
+            ],
+          },
+        ],
+      });
+
+      const newQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            fields: [
+              { type: "column", name: "ID", sourceName: "ORDERS" },
+              { type: "column", name: "ID", sourceName: "PRODUCTS" },
+              { type: "column", name: "ID", sourceName: "PEOPLE" },
+            ],
+          },
+        ],
+      });
+
       const oldSettings = createMockVisualizationSettings({
         "table.columns": [
           createMockTableColumnOrderSetting({
@@ -477,18 +484,46 @@ describe("syncVizSettingsWithQuery", () => {
 
   describe("graph.metrics", () => {
     it("should handle adding new columns", () => {
-      const oldQuery = createQueryWithClauses({
-        aggregations: [
-          { operatorName: "sum", tableName: "ORDERS", columnName: "TOTAL" },
+      const oldQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
+              },
+            ],
+            breakouts: [
+              { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
+            ],
+          },
         ],
-        breakouts: [{ tableName: "ORDERS", columnName: "CREATED_AT" }],
       });
-      const newQuery = createQueryWithClauses({
-        aggregations: [
-          { operatorName: "sum", tableName: "ORDERS", columnName: "TOTAL" },
-          { operatorName: "sum", tableName: "ORDERS", columnName: "SUBTOTAL" },
+      const newQuery = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [
+              {
+                type: "operator",
+                operator: "sum",
+                args: [{ type: "column", name: "TOTAL", sourceName: "ORDERS" }],
+              },
+              {
+                type: "operator",
+                operator: "sum",
+                args: [
+                  { type: "column", name: "SUBTOTAL", sourceName: "ORDERS" },
+                ],
+              },
+            ],
+            breakouts: [
+              { type: "column", name: "CREATED_AT", sourceName: "ORDERS" },
+            ],
+          },
         ],
-        breakouts: [{ tableName: "ORDERS", columnName: "CREATED_AT" }],
       });
       const oldSettings = createMockVisualizationSettings({
         "graph.metrics": ["sum"],
