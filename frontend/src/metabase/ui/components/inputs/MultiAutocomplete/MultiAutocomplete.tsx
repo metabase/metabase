@@ -14,6 +14,7 @@ import {
   getParsedComboboxData,
   isOptionsGroup,
 } from "@mantine/core";
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
@@ -41,6 +42,10 @@ export type MultiAutocompleteProps = BoxProps &
     autoFocus?: boolean;
     rightSection?: ReactNode;
     nothingFoundMessage?: ReactNode;
+    classNames?: {
+      pill?: string;
+      input?: string;
+    };
     "aria-label"?: string;
     "data-testid"?: string;
     parseValue?: (rawValue: string) => string | null;
@@ -69,6 +74,7 @@ export function MultiAutocomplete({
   autoFocus,
   rightSection,
   nothingFoundMessage,
+  classNames,
   maxDropdownHeight,
   dropdownOpened,
   defaultDropdownOpened,
@@ -175,11 +181,12 @@ export function MultiAutocomplete({
         <Combobox.DropdownTarget>
           <PillsInput
             {...styleProps}
+            classNames={{ input: classNames?.input }}
             label={label}
             description={description}
             error={error}
             required={required}
-            rightSection={rightSection ?? infoIcon}
+            rightSection={rightSection === undefined ? infoIcon : rightSection}
             withAsterisk={withAsterisk}
             labelProps={labelProps}
             descriptionProps={descriptionProps}
@@ -194,7 +201,7 @@ export function MultiAutocomplete({
                 value !== null ? (
                   <Pill
                     key={valueIndex}
-                    className={S.pill}
+                    className={cx(S.pill, classNames?.pill)}
                     removeButtonProps={{ "aria-label": t`Remove` }}
                     withRemoveButton
                     onClick={(event) => handlePillClick(event, valueIndex)}

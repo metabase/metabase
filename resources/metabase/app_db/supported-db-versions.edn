@@ -1,0 +1,7 @@
+;; Minimum supported versions for Metabase application databases.
+;; Documentation reference:
+;; https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data
+{:h2       {:major 2 :minor 1 :patch 214}
+ :postgres {:major 12 :minor 0 :patch 0}
+ :mysql    {:major 8 :minor 0 :patch 17}
+ :mariadb  {:major 10 :minor 2 :patch 2}}

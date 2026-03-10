@@ -1,4 +1,3 @@
-
 import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
