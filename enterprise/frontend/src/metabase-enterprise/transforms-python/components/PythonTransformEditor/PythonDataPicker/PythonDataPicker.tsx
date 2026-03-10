@@ -64,7 +64,10 @@ export function PythonDataPicker({
 
   const handleChange = (selections: TableSelection[]) => {
     if (database) {
-      const tableAliases = selectionsToTableAliases(selections);
+      const tableAliases = selectionsToTableAliases(
+        selections,
+        tablesData ?? [],
+      );
       onChange(database, tableAliases, tablesData ?? []);
     }
   };

@@ -60,6 +60,8 @@ export type SuggestedTransform = Partial<Pick<Transform, "id">> &
 export type PythonTransformTableEntry = {
   alias: string;
   table: ConcreteTableId;
+  schema?: SchemaName | null;
+  database_id: DatabaseId;
 };
 
 export type PythonTransformTableAliases = PythonTransformTableEntry[];

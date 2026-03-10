@@ -155,20 +155,39 @@ export function isSameSource(
   return false;
 }
 
+type SourceTableReference = {
+  table: ConcreteTableId;
+  schema?: string | null;
+  database_id: DatabaseId;
+};
+
 /**
- * Extract a ConcreteTableId from a source-tables value, which may be either
- * a bare integer or a map with table_id (from backend normalization).
+ * Extract source table reference details from values that may be:
+ * - modern source-table entries ({ table, schema, database_id })
+ * - legacy backend refs ({ table_id, schema, database_id })
+ * - bare table IDs (number)
  */
-export function extractTableId(
+export function extractTableReference(
   value: ConcreteTableId | Record<string, unknown>,
-): ConcreteTableId | undefined {
+): SourceTableReference | undefined {
   if (typeof value === "number") {
-    return value;
+    return { table: value };
   }
   if (typeof value === "object" && value != null) {
-    const id = (value as Record<string, unknown>)["table_id"];
-    if (typeof id === "number") {
-      return id as ConcreteTableId;
+    const sourceTable = value as Record<string, unknown>;
+    const tableValue = sourceTable.table ?? sourceTable.table_id;
+    if (typeof tableValue === "number") {
+      return {
+        table: tableValue as ConcreteTableId,
+        schema:
+          typeof sourceTable.schema === "string" || sourceTable.schema == null
+            ? (sourceTable.schema as string | null | undefined)
+            : undefined,
+        database_id:
+          typeof sourceTable.database_id === "number"
+            ? (sourceTable.database_id as DatabaseId)
+            : undefined,
+      };
     }
   }
   return undefined;
@@ -180,29 +199,34 @@ const collapseCache = new WeakMap<
 >();
 
 /**
- * Collapse source-table references to plain { alias: tableId } form.
- * The backend may return map refs (with table_id, schema, etc.) instead of
- * bare integer IDs. Returns the original map unchanged if all values are
- * already plain integers. Results are memoized by object reference.
+ * Collapse backend source-tables map values into source-table entries array.
+ * Supports both modern entries and legacy map refs.
  */
 export function collapseSourceTableReferences(
-  tables: Record<string, unknown>,
+  tables: PythonTransformTableAliases | Record<string, unknown>,
 ): PythonTransformTableAliases {
+  if (Array.isArray(tables)) {
+    return tables;
+  }
+
   const cached = collapseCache.get(tables);
   if (cached) {
     return cached;
   }
-  const values = Object.values(tables);
-  if (values.every((v) => typeof v === "number")) {
-    return tables as PythonTransformTableAliases;
-  }
-  const result: PythonTransformTableAliases = {};
-  for (const [key, value] of Object.entries(tables)) {
-    const id = extractTableId(
+
+  const result: PythonTransformTableAliases = [];
+  for (const [alias, value] of Object.entries(tables)) {
+    const tableReference = extractTableReference(
       value as ConcreteTableId | Record<string, unknown>,
     );
-    if (id != null) {
-      result[key] = id;
+
+    if (tableReference != null) {
+      result.push({
+        alias,
+        table: tableReference.table,
+        schema: tableReference.schema ?? null,
+        database_id: tableReference.database_id,
+      });
     }
   }
   collapseCache.set(tables, result);
