@@ -287,31 +287,42 @@
         dim    {:node/type :ast/dimension :id uuid-1}
         mapping {:node/type    :ast/dimension-mapping
                  :dimension-id uuid-1
-                 :column       {:node/type :ast/column :id 1}}]
-    (testing "valid root AST"
+                 :column       {:node/type :ast/column :id 1}}
+        source-query-simple {:node/type  :ast/source-query
+                             :source     source
+                             :dimensions []
+                             :mappings   []}
+        source-query-full {:node/type  :ast/source-query
+                           :source     source
+                           :dimensions [dim]
+                           :mappings   [mapping]
+                           :filter     {:node/type :filter/comparison
+                                        :operator  :=
+                                        :dimension {:node/type :ast/dimension-ref :dimension-id uuid-1}
+                                        :values    ["test"]}
+                           :group-by   [{:node/type :ast/dimension-ref :dimension-id uuid-1}]}]
+    (testing "valid root AST with expression leaf"
       (are [node] (nil? (me/humanize (mr/explain ::ast.schema/ast node)))
         {:node/type  :ast/root
-         :source     source
-         :dimensions []
-         :mappings   []}
+         :expression {:node/type :expression/leaf
+                      :uuid      "test-uuid"
+                      :ast       source-query-simple}}
         {:node/type  :ast/root
-         :source     source
-         :dimensions [dim]
-         :mappings   [mapping]
-         :filter     nil
-         :group-by   []}
-        {:node/type  :ast/root
-         :source     source
-         :dimensions [dim]
-         :mappings   [mapping]
-         :filter     {:node/type :filter/comparison
-                      :operator  :=
-                      :dimension {:node/type :ast/dimension-ref :dimension-id uuid-1}
-                      :values    ["test"]}
-         :group-by   [{:node/type :ast/dimension-ref :dimension-id uuid-1}]}))
+         :expression {:node/type :expression/leaf
+                      :uuid      "test-uuid"
+                      :ast       source-query-full}}))
+    (testing "valid root AST with arithmetic expression"
+      (is (nil? (me/humanize (mr/explain ::ast.schema/ast
+                                         {:node/type  :ast/root
+                                          :expression {:node/type :expression/arithmetic
+                                                       :operator  :+
+                                                       :children  [{:node/type :expression/leaf
+                                                                    :uuid      "uuid-a"
+                                                                    :ast       source-query-simple}
+                                                                   {:node/type :expression/leaf
+                                                                    :uuid      "uuid-b"
+                                                                    :ast       source-query-simple}]}})))))
     (testing "invalid root AST"
-      (testing "missing source"
+      (testing "missing expression"
         (is (some? (me/humanize (mr/explain ::ast.schema/ast
-                                            {:node/type  :ast/root
-                                             :dimensions []
-                                             :mappings   []}))))))))
+                                            {:node/type :ast/root}))))))))

@@ -451,6 +451,7 @@
       (is (thrown? #?(:clj Exception :cljs js/Error)
                    (lib-metric.filter/exclude-date-filter-clause parts))))))
 
+
 (deftest ^:parallel exclude-date-filter-clause-null-test
   (testing "exclude-date-filter-clause creates null check clause"
     (let [dimension {:id "dim-date" :effective-type :type/DateTime}

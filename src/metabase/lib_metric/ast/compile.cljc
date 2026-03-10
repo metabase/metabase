@@ -234,7 +234,7 @@
      :stages   [stage-0 stage-1]}))
 
 (mu/defn compile-to-mbql
-  "Compile AST to MBQL query.
+  "Compile a source-query to MBQL query.
 
    Generates a two-stage query when the source has joins:
    - Stage 0: Data model (base table + joins + source filters)
@@ -242,11 +242,11 @@
 
    Options:
    - :limit - add limit to query"
-  [{:keys [source] :as ast} :- ::ast.schema/ast
+  [{:keys [source] :as source-query} :- ::ast.schema/source-query
    & {:as opts}]
   (if (has-joins? source)
-    (compile-two-stage-query ast opts)
-    (compile-single-stage-query ast opts)))
+    (compile-two-stage-query source-query opts)
+    (compile-single-stage-query source-query opts)))
 
 ;;; -------------------- Values Query Compilation (no aggregation) --------------------
 
@@ -297,15 +297,15 @@
      :stages   [stage-0 stage-1]}))
 
 (mu/defn compile-to-values-query
-  "Compile AST to MBQL query for fetching distinct values (no aggregation).
+  "Compile a source-query to MBQL query for fetching distinct values (no aggregation).
 
    Like [[compile-to-mbql]] but omits the aggregation clause, producing a query
    that returns distinct breakout values instead of aggregated results.
 
    Options:
    - :limit - add limit to query"
-  [{:keys [source] :as ast} :- ::ast.schema/ast
+  [{:keys [source] :as source-query} :- ::ast.schema/source-query
    & {:as opts}]
   (if (has-joins? source)
-    (compile-two-stage-values-query ast opts)
-    (compile-single-stage-values-query ast opts)))
+    (compile-two-stage-values-query source-query opts)
+    (compile-single-stage-values-query source-query opts)))

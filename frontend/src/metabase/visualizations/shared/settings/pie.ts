@@ -209,7 +209,7 @@ export function getColors(
   return Object.fromEntries(
     Object.entries(colors).map(([key, value]) => [
       key === "null" ? NULL_DISPLAY_VALUE : key,
-      getHexColor(value),
+      value,
     ]),
   );
 }

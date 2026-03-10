@@ -17,3 +17,8 @@
   "Like [[clojure.core/isa?]], but uses the lib-metric [[hierarchy]]."
   [tag parent]
   (clojure.core/isa? @hierarchy tag parent))
+
+(defn descendants
+  "Like [[clojure.core/descendants]], but uses the lib-metric [[hierarchy]]."
+  [tag]
+  (clojure.core/descendants @hierarchy tag))

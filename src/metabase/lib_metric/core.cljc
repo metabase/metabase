@@ -46,11 +46,12 @@
      filters
      from-measure-metadata
      from-metric-metadata
+     projection-valid?
      projections
      source-measure-id
      source-metric-id
-     ->mbql-query
-     ->values-query]
+     unprojected-sources
+     ->query-plan]
     [lib-metric.dimension
      dimension
      dimensionable-query

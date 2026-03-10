@@ -2,6 +2,7 @@
   "Malli schemas for metric dimensions, dimension-mappings, and dimension-references."
   (:refer-clojure :exclude [some])
   (:require
+   [metabase.lib-metric.operators :as operators]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -227,7 +228,8 @@
 
 (mr/def ::arithmetic-operator
   "Arithmetic operators for metric math."
-  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :+ :- :* :/])
+  (into [:enum {:decode/normalize lib.schema.common/normalize-keyword}]
+        (operators/arithmetic-operator-keywords)))
 
 (defn normalize-math-expression
   "Recursively normalize a metric math expression from API format.
@@ -261,7 +263,7 @@
      [:fn {:error/message "must be arithmetic expression [op opts expr expr ...] with at least 2 operands"}
       (fn [x]
         (and (>= (count x) 4)
-             (#{:+ :- :* :/} (first x))
+             (operators/arithmetic? (first x))
              (map? (second x))))]]]])
 
 ;;; ------------------------------------------------- Per-Instance Filters -------------------------------------------------

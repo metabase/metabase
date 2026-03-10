@@ -4,10 +4,12 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-metric.ast.plan :as ast.plan]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.server.core :as server]
@@ -179,6 +181,29 @@
      :projections       (or projections [])
      :metadata-provider provider}))
 
+(defn- execute-leaf-queries
+  "Execute all leaf queries in parallel, collecting results eagerly.
+   Must be called OUTSIDE streaming context to avoid JSON writer conflicts.
+   Returns {uuid -> qp-result}."
+  [leaves]
+  (let [uuid->future (into {}
+                           (map (fn [[uuid leaf-plan]]
+                                  [uuid (future (qp/process-query (qp/userland-query (:leaf/mbql leaf-plan))))]))
+                           leaves)]
+    (into {}
+          (map (fn [[uuid f]] [uuid @f]))
+          uuid->future)))
+
+(defn- stream-arithmetic-results
+  "Join leaf results and stream the computed output through the QP reduce pipeline.
+   Called INSIDE streaming context with the rff."
+  [{:keys [plan/expression plan/breakout-count]} uuid->result rff]
+  (let [{:keys [cols rows]} (ast.plan/join-and-compute expression uuid->result breakout-count)
+        reducible (reify clojure.lang.IReduceInit
+                    (reduce [_ rf init]
+                      (reduce rf init rows)))]
+    (qp.pipeline/*reduce* rff {:cols cols} reducible)))
+
 (api.macros/defendpoint :post "/dataset"
   :- (server/streaming-response-schema ::DatasetResponse)
   "Execute a metric or measure-based query and stream the results.
@@ -191,11 +216,15 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [query (-> (lib-metric/metadata-provider)
-                  (from-api-definition definition)
-                  (lib-metric/->mbql-query {:limit 10000}))]
-    (qp.streaming/streaming-response [rff :api]
-      (qp/process-query (qp/userland-query query) rff))))
+  (let [definition (from-api-definition (lib-metric/metadata-provider) definition)
+        plan       (lib-metric/->query-plan definition {:limit 10000})]
+    (if (= :leaf (:plan/type plan))
+      (qp.streaming/streaming-response [rff :api]
+        (qp/process-query (qp/userland-query (:plan/mbql plan)) rff))
+      ;; Arithmetic: execute leaf queries BEFORE streaming to avoid JSON writer conflicts
+      (let [uuid->result (execute-leaf-queries (:plan/leaves plan))]
+        (qp.streaming/streaming-response [rff :api]
+          (stream-arithmetic-results plan uuid->result rff))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Dimension Value Endpoints                                                |
@@ -213,12 +242,11 @@
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]
-  (let [query   (-> (lib-metric/metadata-provider)
-                    (from-api-definition definition)
-                    (lib-metric/->values-query {:limit 100}))
-        result  (qp/process-query (qp/userland-query query))
-        col     (first (get-in result [:data :cols]))
-        values  (mapv first (get-in result [:data :rows]))]
+  (let [definition (from-api-definition (lib-metric/metadata-provider) definition)
+        plan       (lib-metric/->query-plan definition {:limit 100 :values-only true})
+        result     (qp/process-query (qp/userland-query (:plan/mbql plan)))
+        col        (first (get-in result [:data :cols]))
+        values     (mapv first (get-in result [:data :rows]))]
     {:values values
      :col    (or col {})}))
 
