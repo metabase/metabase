@@ -10,29 +10,51 @@ import {
 import * as Lib from "metabase-lib";
 
 /**
- * Extract the field ID from a column using the legacy field reference.
- * Returns null if the column doesn't have a concrete field ID (e.g., derived columns).
+ * Get filterable numeric/temporal field options from the source table of a query.
+ * Returns SelectOption[] with field IDs as string values.
  */
-function extractFieldId(
+export function getSourceFieldOptions(
   query: Lib.Query,
-  stageIndex: number,
-  column: Lib.ColumnMetadata,
-): number | null {
-  try {
-    const legacyRef = Lib.legacyRef(query, stageIndex, column);
-    // Legacy field reference format: ["field", fieldId, options]
-    // We only want concrete field IDs (numbers), not string names
-    if (
-      Array.isArray(legacyRef) &&
-      legacyRef[0] === "field" &&
-      typeof legacyRef[1] === "number"
-    ) {
-      return legacyRef[1];
-    }
-    return null;
-  } catch {
-    return null;
+  opts?: { labelPrefix?: string; seenFieldIds?: Set<number> },
+): Array<SelectOption> {
+  const stageIndex = 0;
+  const filterableColumns = Lib.filterableColumns(query, stageIndex);
+
+  const groups = Lib.groupColumns(filterableColumns);
+  const sourceGroup = groups.find((group) => {
+    const groupInfo = Lib.displayInfo(query, stageIndex, group);
+    return groupInfo.isSourceTable;
+  });
+
+  if (!sourceGroup) {
+    return [];
   }
+
+  const sourceColumns = Lib.getColumnsFromColumnGroup(sourceGroup);
+  const seenFieldIds = opts?.seenFieldIds ?? new Set<number>();
+  const options: Array<SelectOption> = [];
+
+  for (const column of sourceColumns) {
+    if (!Lib.isNumeric(column) && !Lib.isTemporal(column)) {
+      continue;
+    }
+
+    const { fieldId } = Lib.fieldValuesSearchInfo(query, column);
+    if (fieldId == null || seenFieldIds.has(fieldId)) {
+      continue;
+    }
+
+    seenFieldIds.add(fieldId);
+
+    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    const label = opts?.labelPrefix
+      ? `${opts.labelPrefix}: ${columnInfo.displayName}`
+      : columnInfo.longDisplayName;
+
+    options.push({ value: String(fieldId), label });
+  }
+
+  return options;
 }
 
 type KeysetColumnSelectProps = {
@@ -62,55 +84,8 @@ export function KeysetColumnSelect({
     }
 
     try {
-      // Use -1 to get the last stage
-      const stageIndex = -1;
-
-      const returnedColumns = Lib.returnedColumns(query, stageIndex);
-      const filterableColumns = Lib.filterableColumns(query, stageIndex);
-
-      const filterableIdentifiers = new Set(
-        filterableColumns.map((col) => {
-          return Lib.columnKey(col);
-        }),
-      );
-
-      const numericFilterableColumns = returnedColumns.filter((column) => {
-        return (
-          filterableIdentifiers.has(Lib.columnKey(column)) &&
-          (Lib.isNumeric(column) || Lib.isTemporal(column))
-        );
-      });
-
-      // Convert to select options with field IDs
-      // Only include columns that have concrete field IDs (excludes derived/computed columns)
-      const seenFieldIds = new Set<number>();
-      const uniqueColumns: Array<SelectOption> = [];
-
-      numericFilterableColumns.forEach((column) => {
-        const fieldId = extractFieldId(query, stageIndex, column);
-
-        // Skip derived/computed columns that don't have field IDs
-        if (fieldId == null) {
-          return;
-        }
-
-        // Skip duplicates (can happen with joins)
-        if (seenFieldIds.has(fieldId)) {
-          return;
-        }
-
-        seenFieldIds.add(fieldId);
-
-        const columnInfo = Lib.displayInfo(query, stageIndex, column);
-        const label = columnInfo.longDisplayName;
-
-        // Mantine Select requires string values, so convert field ID to string
-        uniqueColumns.push({ value: String(fieldId), label });
-      });
-
-      return uniqueColumns;
+      return getSourceFieldOptions(query);
     } catch (error) {
-      // If we can't extract columns (e.g., invalid query), return empty array
       console.error(
         "KeysetColumnSelect: Error extracting columns from query:",
         error,

@@ -261,8 +261,8 @@
       (inject-filters-into-table-tag query source-range-params)
       ;; MBQL: add filter clauses
       (cond-> query
-        (:lo source-range-params) (lib/filter (lib/>  (:column source-range-params) (:value (:lo source-range-params))))
-        (:hi source-range-params) (lib/filter (lib/<= (:column source-range-params) (:value (:hi source-range-params))))))
+        (:lo source-range-params) (lib/filter 0 (lib/>  (:column source-range-params) (:value (:lo source-range-params))))
+        (:hi source-range-params) (lib/filter 0 (lib/<= (:column source-range-params) (:value (:hi source-range-params))))))
     ;; No range params - return unchanged
     query))
 

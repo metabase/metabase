@@ -15,6 +15,8 @@ import {
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { getSourceFieldOptions } from "./KeysetColumnSelect";
+
 type NativeQueryTableTagFieldSelectProps = {
   name: string;
   label: string;
@@ -121,7 +123,7 @@ export function NativeQueryTableTagFieldSelect({
     [tableQueries],
   );
 
-  // Extract field options from all tables
+  // Extract field options from all tables using shared logic
   const fieldOptions = useMemo((): Array<SelectOption> => {
     if (tables.length === 0) {
       return [];
@@ -142,55 +144,19 @@ export function NativeQueryTableTagFieldSelect({
           continue;
         }
 
-        const query = Lib.queryFromTableOrCardMetadata(
+        const tableQuery = Lib.queryFromTableOrCardMetadata(
           metadataProvider,
           tableMetadata,
         );
-        const stageIndex = -1;
 
-        // Get columns from this table
-        const returnedColumns = Lib.returnedColumns(query, stageIndex);
-        const filterableColumns = Lib.filterableColumns(query, stageIndex);
-
-        const filterableIdentifiers = new Set(
-          filterableColumns.map((col) => Lib.columnKey(col)),
-        );
-
-        // Filter to numeric/temporal columns with field IDs
-        const numericFilterableColumns = returnedColumns.filter((column) => {
-          return (
-            filterableIdentifiers.has(Lib.columnKey(column)) &&
-            (Lib.isNumeric(column) || Lib.isTemporal(column))
-          );
+        const options = getSourceFieldOptions(tableQuery, {
+          labelPrefix: showTablePrefix
+            ? table.display_name || table.name
+            : undefined,
+          seenFieldIds,
         });
 
-        for (const column of numericFilterableColumns) {
-          // Extract field ID from column
-          const legacyRef = Lib.legacyRef(query, stageIndex, column);
-          let fieldId: number | null = null;
-
-          if (
-            Array.isArray(legacyRef) &&
-            legacyRef[0] === "field" &&
-            typeof legacyRef[1] === "number"
-          ) {
-            fieldId = legacyRef[1];
-          }
-
-          if (fieldId == null || seenFieldIds.has(fieldId)) {
-            continue;
-          }
-
-          seenFieldIds.add(fieldId);
-
-          const columnInfo = Lib.displayInfo(query, stageIndex, column);
-          // When multiple tables, prepend table name for clarity
-          const label = showTablePrefix
-            ? `${table.display_name || table.name}: ${columnInfo.displayName}`
-            : columnInfo.displayName;
-
-          allOptions.push({ value: String(fieldId), label });
-        }
+        allOptions.push(...options);
       }
 
       return allOptions;
