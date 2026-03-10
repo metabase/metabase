@@ -362,6 +362,27 @@ describe("scenarios - embedding hub", () => {
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
 
+      cy.log("create an x-ray dashboard via the embedding setup guide");
+      cy.visit("/admin/embedding/setup-guide");
+
+      cy.findByTestId("admin-layout-content")
+        .findByText("Create a dashboard")
+        .click();
+
+      cy.log("select Orders table from the modal");
+      H.modal().within(() => {
+        H.pickEntity({
+          path: ["Databases", "Sample Database", "Orders"],
+        });
+      });
+
+      cy.log("wait for x-ray dashboard to generate and save it");
+      H.main()
+        .findByText("A look at", { exact: false, timeout: 30_000 })
+        .should("be.visible");
+      cy.button("Save this").click();
+      H.undoToast().should("contain", "Your dashboard was saved");
+
       cy.visit("/admin/embedding/setup-guide/permissions");
 
       cy.log("tenants should not be enabled");
@@ -399,12 +420,60 @@ describe("scenarios - embedding hub", () => {
         expect(response.body[0].name).to.equal("Shared collection");
       });
 
+      cy.log(
+        "dashboard picker should appear with the x-ray dashboard pre-selected",
+      );
+      H.main()
+        .findByText(
+          "Move a dashboard to the shared collection so tenant users can see it.",
+        )
+        .should("be.visible");
+
+      cy.log("x-ray dashboard should be pre-selected, move it");
+      H.main()
+        .findByRole("button", {
+          name: "Move to shared collection",
+          timeout: 10_000,
+        })
+        .should("be.enabled")
+        .click();
+
+      cy.log(
+        "x-rayed dashboard should have been moved to the shared collection",
+      );
+      cy.request(
+        "GET",
+        "/api/collection/tree?namespace=shared-tenant-collection",
+      ).then((response) => {
+        const sharedCollectionId = response.body[0].id;
+        cy.request(
+          "GET",
+          `/api/collection/${sharedCollectionId}/items?models=dashboard`,
+        ).then((itemsResponse) => {
+          const dashboards = itemsResponse.body.data;
+          expect(dashboards.length).to.be.greaterThan(0);
+          expect(
+            dashboards.some((d: { name: string }) =>
+              d.name.includes("A look at"),
+            ),
+          ).to.be.true;
+        });
+      });
+
       cy.log("enable-tenants step should be marked as completed");
       H.main()
         .findByRole("listitem", {
           name: "Enable multi-tenant user strategy",
 
           // the embedding checklist query takes time on CI
+          timeout: 10_000,
+        })
+        .should("have.attr", "data-completed", "true");
+
+      cy.log("move-dashboard step should be marked as completed");
+      H.main()
+        .findByRole("listitem", {
+          name: "Move a dashboard to the shared collection",
           timeout: 10_000,
         })
         .should("have.attr", "data-completed", "true");

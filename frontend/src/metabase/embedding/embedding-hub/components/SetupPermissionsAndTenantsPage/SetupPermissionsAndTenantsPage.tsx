@@ -19,6 +19,7 @@ import {
 } from "./DataSegregationStrategyPicker";
 import { DatabaseRoutingStepContent } from "./DatabaseRoutingStepContent";
 import { EnableTenantsStepContent } from "./EnableTenantsStepContent";
+import { MoveDashboardStepContent } from "./MoveDashboardStepContent";
 import type { RlsSelectionResult } from "./RlsDataSelector";
 import { RlsDataSelector } from "./RlsDataSelector";
 import S from "./SetupPermissionsAndTenantsPage.module.css";
@@ -48,6 +49,8 @@ export const SetupPermissionsAndTenantsPage = () => {
     columnName: null,
   });
 
+  const isMoveDashboardDone = checklist?.["move-dashboard-to-shared"] ?? false;
+
   // Prefer in-session UI state; fall back to backend detection for reloads
   const activeStrategy =
     selectedStrategy ?? checklistResponse?.["data-isolation-strategy"] ?? null;
@@ -67,6 +70,7 @@ export const SetupPermissionsAndTenantsPage = () => {
   const completedSteps = useMemo(() => {
     return {
       "enable-tenants": isTenantsEnabled,
+      "move-dashboard": isMoveDashboardDone,
       "data-segregation": isPickDataStrategyDone,
       "select-data": isDataSegregationSetupDone,
       "create-tenants": isTenantsCreated,
@@ -76,6 +80,7 @@ export const SetupPermissionsAndTenantsPage = () => {
     };
   }, [
     isTenantsEnabled,
+    isMoveDashboardDone,
     isPickDataStrategyDone,
     isDataSegregationSetupDone,
     isTenantsCreated,
@@ -125,6 +130,15 @@ export const SetupPermissionsAndTenantsPage = () => {
           title={t`Enable multi-tenant user strategy`}
         >
           <EnableTenantsStepContent isTenantsEnabled={isTenantsEnabled} />
+        </OnboardingStepper.Step>
+
+        <OnboardingStepper.Step
+          stepId="move-dashboard"
+          title={t`Move a dashboard to the shared collection`}
+        >
+          <MoveDashboardStepContent
+            onCompleted={() => stepperRef.current?.goToNextStep()}
+          />
         </OnboardingStepper.Step>
 
         <OnboardingStepper.Step
