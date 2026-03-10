@@ -10,6 +10,7 @@ import * as LibMetric from "metabase-lib/metric";
 import { MAX_AUTO_TABS } from "../constants";
 import type {
   MetricSourceId,
+  MetricsViewerDefinitionEntry,
   MetricsViewerTabState,
   MetricsViewerTabType,
   StoredMetricsViewerTab,
@@ -151,6 +152,38 @@ export function resolveCommonTabLabel(
   }
 
   return bestName;
+}
+
+export function resolveEffectiveTabLabels(
+  tabs: MetricsViewerTabState[],
+  definitions: MetricsViewerDefinitionEntry[],
+): MetricsViewerTabState[] {
+  const dimsBySource = new Map(
+    definitions
+      .filter((entry) => entry.definition != null)
+      .map(
+        (entry) =>
+          [entry.id, getDimensionsByType(entry.definition!)] as const,
+      ),
+  );
+
+  return tabs.map((tab) => {
+    const names: string[] = [];
+    for (const [sourceId, dimensionId] of getObjectEntries(
+      tab.dimensionMapping,
+    )) {
+      if (dimensionId == null) {
+        continue;
+      }
+      const sourceDimensions = dimsBySource.get(sourceId);
+      const dimensionInfo = sourceDimensions?.get(dimensionId);
+      if (dimensionInfo) {
+        names.push(dimensionInfo.displayName);
+      }
+    }
+    const label = resolveCommonTabLabel(names, tab.label);
+    return label !== tab.label ? { ...tab, label } : tab;
+  });
 }
 
 // ── Default tab computation ──

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { isNotNull } from "metabase/lib/types";
 import { Paper, Stack, Text } from "metabase/ui";
 import type { DimensionMetadata } from "metabase-lib/metric";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import { useDefinitionQueries } from "../../hooks/use-definition-queries";
 import type {
@@ -25,12 +26,15 @@ type MetricsViewerCardProps = {
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
-  onDimensionChange: (
+  onDimensionChange?: (
     definitionId: MetricSourceId,
     dimension: DimensionMetadata,
   ) => void;
-  onDimensionRemove: (definitionId: MetricSourceId) => void;
+  onDimensionRemove?: (definitionId: MetricSourceId) => void;
   sourceColors: SourceColorMap;
+  showDimensionPills?: boolean;
+  isInteractive?: boolean;
+  settingsOverrides?: VisualizationSettings;
 };
 
 export function MetricsViewerCard({
@@ -40,6 +44,9 @@ export function MetricsViewerCard({
   onDimensionChange,
   onDimensionRemove,
   sourceColors,
+  showDimensionPills = true,
+  isInteractive = true,
+  settingsOverrides,
 }: MetricsViewerCardProps) {
   const tabConfig = getTabConfig(tab.type);
 
@@ -57,6 +64,7 @@ export function MetricsViewerCard({
         resultsByDefinitionId,
         modifiedDefinitions,
         sourceColors,
+        settingsOverrides,
       ),
     [
       definitions,
@@ -65,6 +73,7 @@ export function MetricsViewerCard({
       resultsByDefinitionId,
       modifiedDefinitions,
       sourceColors,
+      settingsOverrides,
     ],
   );
 
@@ -117,13 +126,18 @@ export function MetricsViewerCard({
         <MetricsViewerVisualization
           className={S.visualization}
           rawSeries={rawSeries}
-          dimensionItems={dimensionItems}
-          onDimensionChange={onDimensionChange}
-          onDimensionRemove={dimensionRemoveHandler}
+          dimensionItems={showDimensionPills ? dimensionItems : []}
+          onDimensionChange={
+            showDimensionPills ? onDimensionChange : undefined
+          }
+          onDimensionRemove={
+            showDimensionPills ? dimensionRemoveHandler : undefined
+          }
           definitions={definitions}
           tab={tab}
           onTabUpdate={onTabUpdate}
           cardIdToDimensionId={cardIdToDimensionId}
+          isInteractive={isInteractive}
         />
       </Stack>
     </Paper>

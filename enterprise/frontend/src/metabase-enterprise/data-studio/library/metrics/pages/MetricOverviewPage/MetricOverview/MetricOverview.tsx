@@ -1,7 +1,8 @@
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
-import { OverviewVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
 import { Flex, Stack } from "metabase/ui";
 import type { Card } from "metabase-types/api";
+
+import { MetricDimensionGrid } from "../MetricDimensionGrid";
 
 import { DescriptionSection } from "./DescriptionSection";
 import S from "./MetricOverview.module.css";
@@ -14,8 +15,8 @@ type MetricOverviewProps = {
 export function MetricOverview({ card }: MetricOverviewProps) {
   return (
     <Flex className={S.root} flex={1}>
-      <Flex direction="column" flex={1} mah={700}>
-        <OverviewVisualization card={card} />
+      <Flex direction="column" flex={1}>
+        {card.id != null && <MetricDimensionGrid metricId={card.id} />}
       </Flex>
       <Stack w={300} ml="lg" gap="lg" className={S.sidebar}>
         <DescriptionSection card={card} />

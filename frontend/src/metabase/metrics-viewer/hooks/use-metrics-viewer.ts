@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
+import { objectFromEntries } from "metabase/lib/objects";
 import type {
   DimensionMetadata,
   MetricDefinition,
@@ -20,7 +20,6 @@ import type {
 import {
   applyProjection,
   buildBinnedBreakoutDefinition,
-  getDefinitionName,
 } from "../utils/definition-builder";
 import { applyDimensionFilter } from "../utils/dimension-filters";
 import {
@@ -33,7 +32,10 @@ import type {
   AvailableDimensionsResult,
   SourceDisplayInfo,
 } from "../utils/dimension-picker";
-import { getAvailableDimensionsForPicker } from "../utils/dimension-picker";
+import {
+  computeSourceDataById,
+  getAvailableDimensionsForPicker,
+} from "../utils/dimension-picker";
 import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
 import {
   createMeasureSourceId,
@@ -42,8 +44,7 @@ import {
 } from "../utils/source-ids";
 import {
   createTabFromDimension,
-  getDimensionsByType,
-  resolveCommonTabLabel,
+  resolveEffectiveTabLabels,
 } from "../utils/tabs";
 
 import { useDefinitionQueries } from "./use-definition-queries";
@@ -230,62 +231,20 @@ export function useMetricsViewer({
     [state.definitions],
   );
 
-  const sourceDataById = useMemo((): Record<
-    MetricSourceId,
-    SourceDisplayInfo
-  > => {
-    const result: Record<MetricSourceId, SourceDisplayInfo> = {};
-    for (const entry of state.definitions) {
-      const { definition } = entry;
-      if (!definition) {
-        continue;
-      }
-      const name = getDefinitionName(definition);
-      if (!name) {
-        continue;
-      }
-      if (LibMetric.sourceMetricId(definition) != null) {
-        result[entry.id] = { type: "metric", name };
-      } else if (LibMetric.sourceMeasureId(definition) != null) {
-        result[entry.id] = { type: "measure", name };
-      }
-    }
-    return result;
-  }, [state.definitions]);
+  const sourceDataById = useMemo(
+    () => computeSourceDataById(state.definitions),
+    [state.definitions],
+  );
 
   const existingTabIds = useMemo(
     () => new Set(state.tabs.map((tab) => tab.id)),
     [state.tabs],
   );
 
-  const effectiveTabs = useMemo(() => {
-    const dimsBySource = new Map(
-      state.definitions
-        .filter((entry) => entry.definition != null)
-        .map(
-          (entry) =>
-            [entry.id, getDimensionsByType(entry.definition!)] as const,
-        ),
-    );
-
-    return state.tabs.map((tab) => {
-      const names: string[] = [];
-      for (const [sourceId, dimensionId] of getObjectEntries(
-        tab.dimensionMapping,
-      )) {
-        if (dimensionId == null) {
-          continue;
-        }
-        const sourceDimensions = dimsBySource.get(sourceId);
-        const dimensionInfo = sourceDimensions?.get(dimensionId);
-        if (dimensionInfo) {
-          names.push(dimensionInfo.displayName);
-        }
-      }
-      const label = resolveCommonTabLabel(names, tab.label);
-      return label !== tab.label ? { ...tab, label } : tab;
-    });
-  }, [state.tabs, state.definitions]);
+  const effectiveTabs = useMemo(
+    () => resolveEffectiveTabLabels(state.tabs, state.definitions),
+    [state.tabs, state.definitions],
+  );
 
   const availableDimensions = useMemo(
     () =>

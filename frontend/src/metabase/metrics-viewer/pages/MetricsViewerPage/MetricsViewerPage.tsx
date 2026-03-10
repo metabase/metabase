@@ -1,6 +1,7 @@
 import type { Location } from "history";
 
 import { Box, Flex, Stack } from "metabase/ui";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import { BreakoutLegend } from "../../components/BreakoutLegend/BreakoutLegend";
 import {
@@ -15,6 +16,11 @@ import {
 import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
 
 import S from "./MetricsViewerPage.module.css";
+
+const METRICS_VIEWER_SETTINGS: VisualizationSettings = {
+  "graph.x_axis.labels_enabled": false,
+  "graph.y_axis.labels_enabled": false,
+};
 
 export type MetricsViewerPageProps = {
   location: Location;
@@ -113,6 +119,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   onDimensionRemove={(defId) =>
                     removeTabDimension(activeTab.id, defId)
                   }
+                  settingsOverrides={METRICS_VIEWER_SETTINGS}
                 />
               ) : hasLoadedDefinitions ? (
                 <MetricsViewerNoTabsEmptyState />

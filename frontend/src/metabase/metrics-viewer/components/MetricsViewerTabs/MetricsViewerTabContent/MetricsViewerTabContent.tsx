@@ -6,7 +6,11 @@ import { isNotNull } from "metabase/lib/types";
 import { Flex, Stack } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
-import type { Dataset, TemporalUnit } from "metabase-types/api";
+import type {
+  Dataset,
+  TemporalUnit,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import type {
   MetricSourceId,
@@ -40,6 +44,7 @@ type MetricsViewerTabContentProps = {
     dimension: DimensionMetadata,
   ) => void;
   onDimensionRemove: (definitionId: MetricSourceId) => void;
+  settingsOverrides?: VisualizationSettings;
 };
 
 export function MetricsViewerTabContent({
@@ -53,6 +58,7 @@ export function MetricsViewerTabContent({
   onTabUpdate,
   onDimensionChange,
   onDimensionRemove,
+  settingsOverrides,
 }: MetricsViewerTabContentProps) {
   const isLoading = useMemo(() => {
     return getObjectKeys(tab.dimensionMapping).some(isExecuting);
@@ -79,6 +85,7 @@ export function MetricsViewerTabContent({
         resultsByDefinitionId,
         modifiedDefinitions,
         sourceColors,
+        settingsOverrides,
       ),
     [
       definitions,
@@ -87,6 +94,7 @@ export function MetricsViewerTabContent({
       resultsByDefinitionId,
       modifiedDefinitions,
       sourceColors,
+      settingsOverrides,
     ],
   );
 

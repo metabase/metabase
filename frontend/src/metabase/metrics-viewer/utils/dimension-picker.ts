@@ -10,9 +10,11 @@ import * as LibMetric from "metabase-lib/metric";
 
 import type {
   MetricSourceId,
+  MetricsViewerDefinitionEntry,
   MetricsViewerTabType,
 } from "../types/viewer-state";
 
+import { getDefinitionName } from "./definition-builder";
 import { getDimensionIcon, getDimensionsByType } from "./tabs";
 
 // ── Dimension picker ──
@@ -159,6 +161,27 @@ export function getAvailableDimensionsForPicker(
 export interface SourceDisplayInfo {
   type: "metric" | "measure";
   name: string;
+}
+
+export function computeSourceDataById(
+  definitions: MetricsViewerDefinitionEntry[],
+): Record<MetricSourceId, SourceDisplayInfo> {
+  const result: Record<MetricSourceId, SourceDisplayInfo> = {};
+  for (const entry of definitions) {
+    if (!entry.definition) {
+      continue;
+    }
+    const name = getDefinitionName(entry.definition);
+    if (!name) {
+      continue;
+    }
+    if (LibMetric.sourceMetricId(entry.definition) != null) {
+      result[entry.id] = { type: "metric", name };
+    } else if (LibMetric.sourceMeasureId(entry.definition) != null) {
+      result[entry.id] = { type: "measure", name };
+    }
+  }
+  return result;
 }
 
 export function getSourceDisplayName(

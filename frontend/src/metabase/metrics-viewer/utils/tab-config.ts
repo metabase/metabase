@@ -158,8 +158,6 @@ function getChartSettings(
   const { dimensions, metrics } = getDimensionsAndMetrics(def, dimension);
 
   return {
-    "graph.x_axis.labels_enabled": false,
-    "graph.y_axis.labels_enabled": false,
     "graph.dimensions": dimensions,
     "graph.metrics": metrics,
   };
