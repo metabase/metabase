@@ -4,9 +4,7 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import {
-  skipToken,
   useCancelCurrentTransformRunMutation,
-  useGetFieldQuery,
   useRunTransformMutation,
   useUpdateTransformMutation,
 } from "metabase/api";
@@ -23,7 +21,6 @@ import {
   trackTransformRunTagsUpdated,
   trackTransformTriggerManualRun,
 } from "../../../analytics";
-import { CheckpointValue } from "../../../components/CheckpointValue";
 import { RunButton } from "../../../components/RunButton";
 import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
@@ -90,14 +87,6 @@ type RunStatusSectionProps = {
 function RunStatusSection({ transform }: RunStatusSectionProps) {
   const { id, last_run } = transform;
 
-  const checkpointFieldId =
-    transform.source?.["source-incremental-strategy"]?.[
-      "checkpoint-filter-field-id"
-    ];
-  const { data: checkpointField } = useGetFieldQuery(
-    checkpointFieldId ? { id: checkpointFieldId } : skipToken,
-  );
-
   const status = last_run?.status;
   const previousStatus = usePrevious(status);
 
@@ -124,22 +113,6 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
         }
       />
       {runExtra}
-      {transform.last_checkpoint_value != null && (
-        <Box
-          c="text-secondary"
-          fz="sm"
-          mt="xs"
-          ml="calc(1rem + var(--mantine-spacing-sm))"
-        >
-          {t`Current checkpoint`}:{" "}
-          <Box component="span" fw="bold" c="text-primary">
-            <CheckpointValue
-              value={transform.last_checkpoint_value}
-              baseType={checkpointField?.base_type}
-            />
-          </Box>
-        </Box>
-      )}
     </Stack>
   );
 }

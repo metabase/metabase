@@ -1,5 +1,6 @@
-import { useDisclosure } from "@mantine/hooks";
+import { useDebouncedCallback, useDisclosure } from "@mantine/hooks";
 import { useFormikContext } from "formik";
+import { useCallback, useRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,7 +10,8 @@ import {
   useResetCheckpointMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Form, FormInlineUpdater, FormProvider } from "metabase/forms";
+import { Form, FormProvider } from "metabase/forms";
+import { FormObserver } from "metabase/forms";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { CheckpointValue } from "metabase/transforms/components/CheckpointValue";
 import type { IncrementalSettingsFormValues } from "metabase/transforms/components/IncrementalTransform";
@@ -27,8 +29,7 @@ type UpdateIncrementalSettingsProps = {
 };
 
 function ResetCheckpointSection({ transform }: { transform: Transform }) {
-  const [isModalOpen, { open: openModal, close: closeModal }] =
-    useDisclosure();
+  const [isModalOpen, { open: openModal, close: closeModal }] = useDisclosure();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [resetCheckpoint, { isLoading }] = useResetCheckpointMutation();
 
@@ -112,18 +113,103 @@ const IncrementalTransformSettingsWrapper = ({
   );
 };
 
+/**
+ * A form observer that auto-saves on change, but intercepts checkpoint field
+ * changes to show a confirmation modal when a checkpoint value already exists.
+ */
+function ConfirmableInlineUpdater({
+  transform,
+  update,
+}: {
+  transform: Transform;
+  update: (values: IncrementalSettingsFormValues) => Promise<unknown>;
+}) {
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { initialValues, resetForm } =
+    useFormikContext<IncrementalSettingsFormValues>();
+  const [isModalOpen, { open: openModal, close: closeModal }] = useDisclosure();
+  const pendingValues = useRef<IncrementalSettingsFormValues | null>(null);
+  const updateInProgress = useRef(false);
+
+  const currentFieldId =
+    transform.source?.["source-incremental-strategy"]?.[
+      "checkpoint-filter-field-id"
+    ];
+
+  const processUpdate = useCallback(
+    async (values: IncrementalSettingsFormValues) => {
+      if (updateInProgress.current) {
+        return;
+      }
+      updateInProgress.current = true;
+      try {
+        await update(values);
+        sendSuccessToast(t`Incremental transformation settings updated`);
+      } catch {
+        sendErrorToast(t`Failed to update incremental transformation settings`);
+      } finally {
+        updateInProgress.current = false;
+      }
+    },
+    [update, sendSuccessToast, sendErrorToast],
+  );
+
+  const handleChange = useDebouncedCallback(
+    (values: IncrementalSettingsFormValues) => {
+      if (_.isEqual(values, initialValues)) {
+        return;
+      }
+
+      const fieldChanged =
+        currentFieldId != null &&
+        values.checkpointFilterFieldId != null &&
+        String(currentFieldId) !== values.checkpointFilterFieldId;
+
+      if (fieldChanged && transform.last_checkpoint_value != null) {
+        pendingValues.current = values;
+        openModal();
+        return;
+      }
+
+      processUpdate(values);
+    },
+    300,
+  );
+
+  const handleConfirm = async () => {
+    if (pendingValues.current == null) {
+      return;
+    }
+    const values = pendingValues.current;
+    pendingValues.current = null;
+    closeModal();
+    await processUpdate(values);
+  };
+
+  const handleCancel = () => {
+    pendingValues.current = null;
+    closeModal();
+    resetForm();
+  };
+
+  return (
+    <>
+      <FormObserver onChange={handleChange} skipInitialCall />
+      <ConfirmModal
+        title={t`Change checkpoint field?`}
+        message={t`Changing the checkpoint field will reset the stored checkpoint value. The next run will reprocess all data from scratch.`}
+        opened={isModalOpen}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+      />
+    </>
+  );
+}
+
 export const UpdateIncrementalSettings = ({
   transform,
   readOnly,
 }: UpdateIncrementalSettingsProps) => {
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
-  const showSuccessToast = () =>
-    sendSuccessToast(t`Incremental transformation settings updated`);
-
-  const showErrorToast = () =>
-    sendErrorToast(t`Failed to update incremental transformation settings`);
-
   const { initialValues, validationSchema, updateIncrementalSettings } =
     useUpdateIncrementalSettings(transform);
 
@@ -135,10 +221,9 @@ export const UpdateIncrementalSettings = ({
       enableReinitialize
     >
       <Form>
-        <FormInlineUpdater
+        <ConfirmableInlineUpdater
+          transform={transform}
           update={updateIncrementalSettings}
-          onSuccess={showSuccessToast}
-          onError={showErrorToast}
         />
         <IncrementalTransformSettingsWrapper
           transform={transform}
