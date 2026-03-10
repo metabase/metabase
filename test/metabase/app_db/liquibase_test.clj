@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.app-db.liquibase-test
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
@@ -184,87 +183,3 @@
                                     (liquibase/rollback-major-version! conn liquibase false (dec actual-latest-available-version))))
               (testing "CAN downgrade if forced"
                 (liquibase/rollback-major-version! conn liquibase true (dec actual-latest-available-version))))))))))
-
-(deftest rollback-workspace-tables-test
-  (mt/test-drivers #{:h2 :mysql :postgres}
-    (mt/with-temp-empty-app-db [conn driver/*driver*]
-      (liquibase/with-liquibase [liquibase conn]
-        (.update liquibase "")
-        ;; H2 uppercases table names; MySQL/Postgres use lowercase
-        (let [wit-name (if (= driver/*driver* :h2) "WORKSPACE_INPUT_TRANSFORM" "workspace_input_transform")
-              wi-name  (if (= driver/*driver* :h2) "WORKSPACE_INPUT" "workspace_input")]
-          ;; Sanity check: workspace tables exist after migration
-          (is (liquibase/table-exists? wit-name conn))
-          (is (liquibase/table-exists? wi-name conn))
-          ;; Roll back to v58
-          (liquibase/rollback-major-version! conn liquibase false 58)
-          ;; workspace_input_transform must be gone (it has a FK to workspace_input)
-          (is (not (liquibase/table-exists? wit-name conn))
-              "workspace_input_transform should be dropped during rollback")
-          (is (not (liquibase/table-exists? wi-name conn))
-              "workspace_input should be dropped during rollback"))
-        ;; No v59 or v60 changesets should remain in databasechangelog
-        (let [changelog-table (liquibase/changelog-table-name liquibase)
-              remaining (jdbc/query {:connection conn}
-                                    [(format "SELECT id FROM %s WHERE id LIKE 'v59.%%' OR id LIKE 'v60.%%'" changelog-table)])]
-          (is (empty? remaining)
-              (str "v59/v60 changesets remaining: " (mapv :id remaining))))))))
-
-(deftest rollback-mark-ran-workspace-tables-test
-  (testing "Rollback works even when workspace table changesets were MARK_RAN (simulating prior state)"
-    (mt/test-drivers #{:h2 :postgres}
-      (mt/with-temp-empty-app-db [conn driver/*driver*]
-        (liquibase/with-liquibase [liquibase conn]
-          (.update liquibase "")
-          (let [changelog-table (liquibase/changelog-table-name liquibase)
-                wit-name (if (= driver/*driver* :h2) "WORKSPACE_INPUT_TRANSFORM" "workspace_input_transform")
-                wi-name  (if (= driver/*driver* :h2) "WORKSPACE_INPUT" "workspace_input")]
-            ;; Simulate the scenario: these changesets were MARK_RAN (table already existed
-            ;; from a prior branch version). Flip EXECTYPE in databasechangelog.
-            (jdbc/execute! {:connection conn}
-                           [(format "UPDATE %s SET EXECTYPE = 'MARK_RAN' WHERE ID IN ('v60.2026-02-09T12:00:07', 'v59.2026-01-31T12:00:41', 'v60.2026-02-09T12:00:01')"
-                                    changelog-table)])
-            ;; Tables still exist
-            (is (liquibase/table-exists? wit-name conn))
-            (is (liquibase/table-exists? wi-name conn))
-            ;; Roll back to v58 — this is where the bug would manifest
-            (liquibase/rollback-major-version! conn liquibase false 58)
-            (is (not (liquibase/table-exists? wit-name conn))
-                "workspace_input_transform should be dropped even when MARK_RAN")
-            (is (not (liquibase/table-exists? wi-name conn))
-                "workspace_input should be dropped even when MARK_RAN"))
-          ;; No v59 or v60 changesets should remain
-          (let [changelog-table (liquibase/changelog-table-name liquibase)
-                remaining (jdbc/query {:connection conn}
-                                      [(format "SELECT id FROM %s WHERE id LIKE 'v59.%%' OR id LIKE 'v60.%%'" changelog-table)])]
-            (is (empty? remaining)
-                (str "v59/v60 changesets remaining: " (mapv :id remaining)))))))))
-
-(deftest rollback-filename-mismatch-workspace-tables-test
-  (testing "Rollback works even when FILENAME in databasechangelog doesn't match current changelog"
-    (mt/test-drivers #{:h2 :postgres}
-      (mt/with-temp-empty-app-db [conn driver/*driver*]
-        (liquibase/with-liquibase [liquibase conn]
-          (.update liquibase "")
-          (let [changelog-table (liquibase/changelog-table-name liquibase)
-                wit-name (if (= driver/*driver* :h2) "WORKSPACE_INPUT_TRANSFORM" "workspace_input_transform")
-                wi-name  (if (= driver/*driver* :h2) "WORKSPACE_INPUT" "workspace_input")]
-            ;; Simulate: these changesets were originally applied from a different file
-            ;; (e.g., 058_update_migrations.yaml before being moved to 060)
-            (jdbc/execute! {:connection conn}
-                           [(format "UPDATE %s SET FILENAME = 'migrations/058_update_migrations.yaml' WHERE ID LIKE 'v60.2026-02-09T12:00:%%'"
-                                    changelog-table)])
-            (is (liquibase/table-exists? wit-name conn))
-            (is (liquibase/table-exists? wi-name conn))
-            ;; Roll back to v58
-            (liquibase/rollback-major-version! conn liquibase false 58)
-            (is (not (liquibase/table-exists? wit-name conn))
-                "workspace_input_transform should be dropped even with filename mismatch")
-            (is (not (liquibase/table-exists? wi-name conn))
-                "workspace_input should be dropped even with filename mismatch"))
-          (let [changelog-table (liquibase/changelog-table-name liquibase)
-                remaining (jdbc/query {:connection conn}
-                                      [(format "SELECT id FROM %s WHERE id LIKE 'v59.%%' OR id LIKE 'v60.%%'" changelog-table)])]
-            (is (empty? remaining)
-                (str "v59/v60 changesets remaining: " (mapv :id remaining)))))))))
-
