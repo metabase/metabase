@@ -310,7 +310,7 @@ export function getCardAfterVisualizationClick<T extends Card | VirtualCard>(
           isMultiseriesQuestion
           ? previousCard.id
           : nextCard.id,
-      id: null as unknown as CardId, // id is not present when drilling through series / multiseries
+      id: null, // id is not present when drilling through series / multiseries
     };
   } else {
     // Even though the card is currently clean, we might still apply dashboard parameters to it,
