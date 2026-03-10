@@ -395,7 +395,7 @@ export const useDataGridInstance = <TData, TValue>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { measureGrid, rowVirtualizer, columnVirtualizer } = virtualGrid;
+  const { measureGrid } = virtualGrid;
   const prevColumnSizing = useRef<ColumnSizingState>();
   const prevWrappedColumns = useRef<string[]>();
 
@@ -451,35 +451,11 @@ export const useDataGridInstance = <TData, TValue>({
     onColumnReorder,
   );
 
-  // Scroll to a specific row/column in the virtualized grid
-  const { pinnedColumnsCount } = virtualGrid;
-  const scrollTo = useCallback(
-    ({
-      rowIndex,
-      columnIndex,
-    }: {
-      rowIndex?: number;
-      columnIndex?: number;
-    }) => {
-      if (rowIndex != null) {
-        rowVirtualizer.scrollToIndex(rowIndex);
-      }
-      if (columnIndex != null) {
-        const adjustedIndex = columnIndex - pinnedColumnsCount;
-        if (adjustedIndex >= 0) {
-          columnVirtualizer.scrollToIndex(adjustedIndex);
-        }
-      }
-    },
-    [rowVirtualizer, columnVirtualizer, pinnedColumnsCount],
-  );
-
-  // Setup cell selection functionality
   const selection = useCellSelection({
     gridRef,
     table,
     isEnabled: enableSelection,
-    scrollTo,
+    scrollTo: virtualGrid.scrollTo,
   });
 
   // Calculate total height of the grid based on rows
