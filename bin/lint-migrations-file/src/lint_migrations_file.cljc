@@ -295,8 +295,8 @@
   (require-primary-key-exists-has-table-name change-log)
   (let [{:keys [changeSet]
          :as all} (group-by only-key change-log)]
-    (when-not (set/subset? (set (keys all)) #{:property :objectQuotingStrategy :changeSet})
-      (throw (validation-error "Expected exactly one of :property, :objectQuotingStrategy, or :changeSet."
+    (when-not (set/subset? (set (keys all)) #{:property :objectQuotingStrategy :changeSet :logicalFilePath})
+      (throw (validation-error "Expected exactly one of :property, :objectQuotingStrategy, :logicalFilePath, or :changeSet."
                                {:keys (keys all)})))
     (doseq [{:keys [changeSet]} changeSet]
       (when-not (s/valid? ::changeSet changeSet)
