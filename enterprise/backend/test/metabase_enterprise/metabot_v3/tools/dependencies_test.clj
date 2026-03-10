@@ -47,7 +47,7 @@
        ~@body)))
 
 (deftest check-transform-dependencies-test
-  (mt/with-premium-features [:transforms]
+  (mt/with-premium-features [:transforms-basic]
     (testing "removing total field from transform1 breaks transform2"
       (mt/as-admin
         (with-dependent-transforms! [transform1-id transform2-id]
@@ -65,7 +65,7 @@
 
 (deftest check-transform-dependencies-limit-test
   (testing "max-reported-broken-transforms limit"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/as-admin
         (with-dependent-transforms! [transform1-id _]
           (mt/with-temp
@@ -98,7 +98,7 @@
 
 (deftest check-transform-dependencies-with-cards-test
   (testing "removing field from transform breaks dependent card"
-    (mt/with-premium-features [:transforms]
+    (mt/with-premium-features [:transforms-basic]
       (mt/as-admin
         (with-dependent-transforms! [transform1-id _]
           (mt/with-temp
@@ -126,7 +126,7 @@
                 (is (some? (:errors (first bad-questions))))))))))))
 
 (deftest check-transform-dependencies-card-limit-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (testing "max-reported-broken-transforms limit applies to cards"
       (mt/as-admin
         (with-dependent-transforms! [transform1-id _]
@@ -181,7 +181,7 @@
 
 (deftest check-transform-dependencies-permission-filtering-test
   (testing "Broken cards in inaccessible collections are filtered from results"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (with-dependent-transforms! [transform1-id _]
         (mt/with-temp
           [:model/Collection {restricted-collection-id :id} {:name "Restricted Collection"}
@@ -244,7 +244,7 @@
                     (is (not (contains? broken-question-ids restricted-card-id)))))))))))))
 
 (deftest check-transform-dependencies-python-bypass-test
-  (mt/with-premium-features #{:transforms :transforms-python}
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
     (testing "Python transforms bypass dependency checking"
       (mt/with-test-user :crowberto
         (mt/with-temp [:model/Transform {python-transform-id :id}

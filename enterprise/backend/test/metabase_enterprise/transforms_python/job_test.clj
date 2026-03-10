@@ -19,7 +19,7 @@
     (mt/with-temp-scheduler!
       (task/init! ::transforms.schedule/RunTransform)
       (mt/test-drivers #{:postgres}
-        (mt/with-premium-features #{:transforms-python :transforms}
+        (mt/with-premium-features #{:transforms-python :transforms-basic}
           (mt/dataset transforms-dataset/transforms-test
             (transforms.tu/with-transform-cleanup! [target {:type   "table"
                                                             :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
@@ -53,7 +53,7 @@
 
 (deftest run-transform-feature-flag-test
   (testing "Python transforms are skipped without :transforms-python feature"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (let [python-transform {:id 2
                               :source python-source
                               :name "Test Python Transform"}
