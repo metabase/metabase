@@ -1,10 +1,9 @@
-import { skipToken } from "@reduxjs/toolkit/query";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetTableQueryMetadataQuery } from "metabase/api";
+import { tableApi } from "metabase/api";
 import { FormSelect } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Alert,
@@ -13,6 +12,7 @@ import {
   Loader,
   type SelectOption,
 } from "metabase/ui";
+import type { Table } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 
 import { getSourceFieldOptions } from "./KeysetColumnSelect";
@@ -27,6 +27,41 @@ type NativeQueryTableTagFieldSelectProps = {
   disabled?: boolean;
 };
 
+const selectTableQueryMetadata =
+  tableApi.endpoints.getTableQueryMetadata.select;
+
+/**
+ * Hook that fetches table query metadata for a dynamic list of table IDs.
+ * Uses RTK Query's initiate/select pattern to avoid the "hooks in a loop" problem.
+ */
+function useTableQueryMetadataResults(tableIds: number[]) {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const subscriptions = tableIds.map((id) =>
+      dispatch(tableApi.endpoints.getTableQueryMetadata.initiate({ id })),
+    );
+    return () => {
+      subscriptions.forEach((sub) => sub.unsubscribe());
+    };
+  }, [dispatch, tableIds]);
+
+  const selectors = useMemo(
+    () => tableIds.map((id) => selectTableQueryMetadata({ id })),
+    [tableIds],
+  );
+
+  return useSelector((state) => {
+    const results = selectors.map((sel) => sel(state));
+    const isLoading = results.some((r) => r.isLoading);
+    const hasError = results.some((r) => r.isError);
+    const tables = results
+      .map((r) => r.data)
+      .filter((t): t is Table => t != null);
+    return { isLoading, hasError, tables };
+  });
+}
+
 export function NativeQueryTableTagFieldSelect({
   name,
   label,
@@ -38,92 +73,21 @@ export function NativeQueryTableTagFieldSelect({
 }: NativeQueryTableTagFieldSelectProps) {
   const metadata = useSelector(getMetadata);
 
-  // Extract table template tags from the native query
-  // Limit to 10 tables to keep hook calls manageable
   const tableIds = useMemo(() => {
     try {
       const templateTags = Lib.templateTags(query);
       const tableTags = Object.values(templateTags).filter(
         (tag) => tag.type === "table" && tag["table-id"] != null,
       );
-      return tableTags.map((tag) => tag["table-id"]!).slice(0, 10);
+      return tableTags.map((tag) => tag["table-id"]!);
     } catch {
       return [];
     }
   }, [query]);
 
-  // Fetch metadata for up to 10 tables (hooks must be called unconditionally)
-  const table0 = useGetTableQueryMetadataQuery(
-    tableIds[0] != null ? { id: tableIds[0] } : skipToken,
-  );
-  const table1 = useGetTableQueryMetadataQuery(
-    tableIds[1] != null ? { id: tableIds[1] } : skipToken,
-  );
-  const table2 = useGetTableQueryMetadataQuery(
-    tableIds[2] != null ? { id: tableIds[2] } : skipToken,
-  );
-  const table3 = useGetTableQueryMetadataQuery(
-    tableIds[3] != null ? { id: tableIds[3] } : skipToken,
-  );
-  const table4 = useGetTableQueryMetadataQuery(
-    tableIds[4] != null ? { id: tableIds[4] } : skipToken,
-  );
-  const table5 = useGetTableQueryMetadataQuery(
-    tableIds[5] != null ? { id: tableIds[5] } : skipToken,
-  );
-  const table6 = useGetTableQueryMetadataQuery(
-    tableIds[6] != null ? { id: tableIds[6] } : skipToken,
-  );
-  const table7 = useGetTableQueryMetadataQuery(
-    tableIds[7] != null ? { id: tableIds[7] } : skipToken,
-  );
-  const table8 = useGetTableQueryMetadataQuery(
-    tableIds[8] != null ? { id: tableIds[8] } : skipToken,
-  );
-  const table9 = useGetTableQueryMetadataQuery(
-    tableIds[9] != null ? { id: tableIds[9] } : skipToken,
-  );
+  const { isLoading, hasError, tables } =
+    useTableQueryMetadataResults(tableIds);
 
-  // Memoize the array to avoid recreating it on every render
-  const tableQueries = useMemo(
-    () => [
-      table0,
-      table1,
-      table2,
-      table3,
-      table4,
-      table5,
-      table6,
-      table7,
-      table8,
-      table9,
-    ],
-    [
-      table0,
-      table1,
-      table2,
-      table3,
-      table4,
-      table5,
-      table6,
-      table7,
-      table8,
-      table9,
-    ],
-  );
-
-  const isLoading = tableQueries.some((q) => q.isLoading);
-  const hasError = tableQueries.some((q) => q.isError);
-
-  const tables = useMemo(
-    () =>
-      tableQueries
-        .map((q) => q.data)
-        .filter((t): t is NonNullable<typeof t> => t != null),
-    [tableQueries],
-  );
-
-  // Extract field options from all tables using shared logic
   const fieldOptions = useMemo((): Array<SelectOption> => {
     if (tables.length === 0) {
       return [];
@@ -169,7 +133,6 @@ export function NativeQueryTableTagFieldSelect({
     }
   }, [tables, metadata]);
 
-  // Determine the message to show when no query can be built
   const noQueryMessage = useMemo(() => {
     if (tableIds.length === 0) {
       return t`Native queries must use at least one table template tag to enable incremental transforms`;
