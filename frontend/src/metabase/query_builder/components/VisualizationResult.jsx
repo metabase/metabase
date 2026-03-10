@@ -25,6 +25,8 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "mode",
   "renderEmptyMessage",
   "zoomedRowIndex",
+  // Legend
+  "hideLegend",
 ];
 
 export class VisualizationResult extends Component {

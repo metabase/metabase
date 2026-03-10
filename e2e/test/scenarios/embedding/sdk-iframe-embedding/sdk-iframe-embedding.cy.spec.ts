@@ -81,6 +81,57 @@ describe("scenarios > embedding > modular embedding", () => {
     });
   });
 
+  it("table visualization should span the full width of the container (metabase#69831)", () => {
+    cy.signInAsAdmin();
+    H.createQuestion({
+      name: "Narrow table question",
+      query: {
+        "source-table": ORDERS_TABLE_ID,
+        fields: [
+          ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+          ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }],
+        ],
+        limit: 5,
+      },
+    }).then(({ body: question }) => {
+      cy.signOut();
+
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-question",
+            attributes: {
+              questionId: question.id,
+            },
+          },
+        ],
+      });
+
+      cy.wait("@getCardQuery");
+
+      frame.within(() => {
+        // clientWidth excludes the scrollbar gutter, giving us the actual content area
+        H.tableInteractive()
+          .findByTestId("table-scroll-container")
+          .then(($scrollContainer) => {
+            const contentWidth = $scrollContainer[0].clientWidth;
+
+            const $headerCells = $scrollContainer.find(
+              '[data-testid="header-cell"]',
+            );
+            let totalHeaderWidth = 0;
+            $headerCells.each((_, el) => {
+              totalHeaderWidth += el.getBoundingClientRect().width;
+            });
+
+            expect(Math.round(totalHeaderWidth)).to.be.at.least(
+              Math.round(contentWidth),
+            );
+          });
+      });
+    });
+  });
+
   it("displays a dashboard using entity id", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
       elements: [
@@ -448,16 +499,42 @@ describe("scenarios > embedding > modular embedding", () => {
 
       cy.wait("@getDashCardQuery");
 
+      // Spy on the iframe's anchor clicks and window.open
+      // so we can check the default behavior is prevented
+      cy.get("iframe").then(($iframe) => {
+        const iframeWin: any = $iframe[0].contentWindow;
+        expect(iframeWin).to.not.be.null;
+
+        iframeWin.__blankLinkClicks = [];
+        iframeWin.__windowOpenCalls = [];
+
+        iframeWin.HTMLAnchorElement.prototype.click = function () {
+          iframeWin.__blankLinkClicks.push(this.href);
+        };
+
+        iframeWin.open = function (...args: unknown[]) {
+          iframeWin.__windowOpenCalls.push(args);
+        };
+      });
+
       frame.within(() => {
         cy.findByText("Order 448").click();
       });
 
-      // Verify handleLink was called with the correct URL
+      cy.log("Verify handleLink was called with the correct URL");
       cy.window()
         .its("handleLinkCalls")
         .should("have.length", 1)
         .its(0)
         .should("include", "https://example.org/order/448");
+
+      cy.log("Verify that no default navigation happened");
+      cy.get("iframe")
+        .its("0.contentWindow.__blankLinkClicks")
+        .should("have.length", 0);
+      cy.get("iframe")
+        .its("0.contentWindow.__windowOpenCalls")
+        .should("have.length", 0);
     });
   });
 

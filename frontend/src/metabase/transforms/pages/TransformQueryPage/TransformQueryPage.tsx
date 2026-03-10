@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { Route, RouteProps } from "react-router";
 import { push } from "react-router-redux";
 import { useLatest } from "react-use";
@@ -120,7 +120,16 @@ function TransformQueryPageBody({
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const isEditMode = !readOnly && !!route.path?.includes("/edit");
 
-  useRegisterMetabotTransformContext(transform, source);
+  const lastRunError = useMemo(() => {
+    if (!transform.last_run) {
+      return undefined;
+    }
+    return transform.last_run.status === "failed"
+      ? (transform.last_run.message ?? undefined)
+      : undefined;
+  }, [transform.last_run]);
+
+  useRegisterMetabotTransformContext(transform, source, lastRunError);
 
   const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
 

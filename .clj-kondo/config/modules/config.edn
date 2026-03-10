@@ -152,6 +152,7 @@
            metabase.api.docs
            metabase.api.init
            metabase.api.macros
+           metabase.api.macros.scope
            metabase.api.open-api
            metabase.api.response
            metabase.api.routes.common
@@ -275,6 +276,7 @@
            config
            events
            models
+           permissions
            premium-features
            request
            settings
@@ -548,7 +550,7 @@
            metabase.driver.common.parameters
            metabase.driver.common.parameters.parse
            metabase.driver.connection
-          metabase.driver.connection.workspaces
+           metabase.driver.connection.workspaces
            metabase.driver.ddl.interface
            metabase.driver.h2
            metabase.driver.impl
@@ -741,7 +743,6 @@
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.protocols
-           metabase.lib.options
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -784,6 +785,16 @@
    :uses #{lib
            models
            settings
+           util}}
+
+  lib-metric
+  {:team "UX West"
+   :api  #{metabase.lib-metric.core
+           metabase.lib-metric.schema}
+   :uses #{lib
+           lib-be
+           settings
+           types
            util}}
 
   llm
@@ -835,10 +846,27 @@
            events
            lib
            lib-be
+           metrics
            models
            permissions
            remote-sync
            search
+           util}}
+
+  metrics
+  {:team "UX West"
+   :api  #{metabase.metrics.api
+           metabase.metrics.core}
+   :uses #{api
+           collections
+           lib
+           lib-be
+           lib-metric
+           models
+           parameters
+           query-processor
+           request
+           server
            util}}
 
   model-persistence
@@ -1114,6 +1142,7 @@
            events
            lib
            lib-be
+           metrics
            models
            parameters
            permissions
@@ -2521,6 +2550,7 @@
            lib
            lib-be
            models
+           premium-features
            queries
            ;; NOTE: we will remove this once we get "pure transforms" module.
            query-processor
@@ -2531,7 +2561,12 @@
            transforms
            transforms-base
            util
-           enterprise/transforms-python}}}
+           enterprise/transforms-python}}
+
+  enterprise/writable-connection
+  {:team "Querying"
+   :api  #{}
+   :uses #{premium-features}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

@@ -53,7 +53,6 @@ export const useErrorInfo = (
       ? UtilApi.logs().catch(nullOnCatch)
       : Promise.resolve(null);
 
-    // @ts-expect-error non-standard error property
     const frontendErrors = console?.errorBuffer?.map?.((errArray) =>
       errArray
         .map((errLine: any) => JSON.stringify(errLine, maybeSerializeError))

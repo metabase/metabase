@@ -57,14 +57,7 @@
       (let [source-tables (:source-tables source)]
         (if (empty? source-tables)
           true
-          (let [table-ids (into []
-                                (comp (map val)
-                                      (map #(cond
-                                              (int? %) %
-                                              (map? %) (:table_id %)
-                                              :else nil))
-                                      (filter some?))
-                                source-tables)]
+          (let [table-ids (into [] (keep :table_id) source-tables)]
             (and (seq table-ids)
                  (every? (fn [table-id]
                            (when-let [table (t2/select-one :model/Table table-id)]

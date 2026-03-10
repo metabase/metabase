@@ -80,11 +80,12 @@
   enable-sso-saml?
   enable-sso-slack?
   enable-support-users?
-  enable-transforms?
+  enable-basic-transforms?
   enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
   enable-workspaces?
+  enable-writable-connection?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?
