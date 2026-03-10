@@ -21,7 +21,7 @@
                                                                 :minute)]
         hsql           {:delete-from [(t2/table-name :model/Session)]
                         :where       [:< :created_at oldest-allowed]}]
-    (tracing/with-span :tasks "task.session-cleanup.delete" {:db/statement (tracing/sanitize-sql hsql)}
+    (tracing/with-span :tasks "task.session-cleanup.delete" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/query-one hsql))))
 
 (def ^:private session-cleanup-job-key (jobs/key "metabase.task.session-cleanup.job"))

@@ -5,9 +5,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defn sanitize-sql
+(defn best-effort-sanitize-sql
   "Convert a HoneySQL map to a parameterized SQL string for trace attributes.
-   Values become ? placeholders — no private data leaks."
+   Values become ? placeholders. That is a best-effort sanitizing solution."
   [hsql-map]
   (try
     (first (sql/format hsql-map {:quoted false}))

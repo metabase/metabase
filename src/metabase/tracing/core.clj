@@ -36,7 +36,7 @@
 
 (p/import-vars
  [trace-attrs
-  sanitize-sql])
+  best-effort-sanitize-sql])
 
 ;;; ------------------------------------------------ Group Registry ------------------------------------------------
 

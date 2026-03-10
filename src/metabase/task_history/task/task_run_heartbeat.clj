@@ -52,7 +52,7 @@
                                    [:< :updated_at heartbeat-cutoff]
                                    [:< :started_at duration-cutoff]]]}
         orphaned-run-ids (tracing/with-span :tasks "task.heartbeat.mark-orphaned-runs"
-                           {:db/statement (tracing/sanitize-sql (assoc where-clause :select [:id] :from [:task_run]))}
+                           {:db/statement (tracing/best-effort-sanitize-sql (assoc where-clause :select [:id] :from [:task_run]))}
                            (t2/select-fn-set :id :model/TaskRun where-clause))]
     (when (seq orphaned-run-ids)
       (t2/update! :model/TaskRun {:id [:in orphaned-run-ids]}

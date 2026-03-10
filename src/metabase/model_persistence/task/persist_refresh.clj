@@ -180,7 +180,7 @@
                           [:= :c.archived true]
                           ;; card_id is set to null when the corresponding card is deleted
                           [:= :p.card_id nil]]}]
-    (tracing/with-span :tasks "task.persist.find-deletable" {:db/statement (tracing/sanitize-sql hsql)}
+    (tracing/with-span :tasks "task.persist.find-deletable" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/select :model/PersistedInfo hsql))))
 
 (defn- refreshable-models
@@ -194,7 +194,7 @@
                           [:in :p.state (persisted-info/refreshable-states)]
                           [:= :c.archived false]
                           [:= :c.type "model"]]}]
-    (tracing/with-span :tasks "task.persist.find-refreshable" {:db/id database-id :db/statement (tracing/sanitize-sql hsql)}
+    (tracing/with-span :tasks "task.persist.find-refreshable" {:db/id database-id :db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/select :model/PersistedInfo hsql))))
 
 (defn- prune-all-deletable!

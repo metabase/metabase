@@ -9,7 +9,7 @@ This skill helps you add OpenTelemetry (OTel) tracing spans to the Metabase back
 
 ## Reference Files
 
-- `src/metabase/tracing/core.clj` - `with-span` macro, group registry, SDK lifecycle, `sanitize-sql`, Pyroscope integration
+- `src/metabase/tracing/core.clj` - `with-span` macro, group registry, SDK lifecycle, `best-effort-sanitize-sql`, Pyroscope integration
 - `src/metabase/task/impl.clj` - `defjob` macro that wraps Quartz jobs with root spans
 - `.clj-kondo/config/modules/config.edn` - Module boundary configuration
 
@@ -19,14 +19,14 @@ The tracing module has a deliberately minimal API surface. **Only 2 namespaces a
 
 | Namespace | Role | Status |
 |---|---|---|
-| `tracing.core` | Primary API: `with-span`, groups, SDK lifecycle, Pyroscope, MDC, `sanitize-sql` | **Public API** |
+| `tracing.core` | Primary API: `with-span`, groups, SDK lifecycle, Pyroscope, MDC, `best-effort-sanitize-sql` | **Public API** |
 | `tracing.init` | Side-effect loader for `quartz` and `settings` | **Public API** (init convention) |
-| `tracing.attributes` | `sanitize-sql` implementation (re-exported via `tracing.core`) | Internal |
+| `tracing.attributes` | `best-effort-sanitize-sql` implementation (re-exported via `tracing.core`) | Internal |
 | `tracing.settings` | Setting definitions (`MB_TRACING_*` env vars) | Internal |
 | `tracing.quartz` | Quartz JDBC proxy + JobListener | Internal |
 
 **Rules:**
-- Only require `[metabase.tracing.core :as tracing]` from outside the module. `tracing/sanitize-sql` and all other public functions are available from this single namespace.
+- Only require `[metabase.tracing.core :as tracing]` from outside the module. `tracing/best-effort-sanitize-sql` and all other public functions are available from this single namespace.
 - Do not add new API namespaces. Add new public functions to `tracing.core` instead.
 - Do not require internal namespaces (`tracing.attributes`, `tracing.settings`, `tracing.quartz`) from outside the module.
 - `:uses :any` on the `core` module does NOT bypass the target module's `:api` check — internal namespaces are still enforced.
@@ -68,7 +68,7 @@ When adding tracing spans:
 - [ ] Group matches the domain (check `src/metabase/tracing/core.clj` for registered groups; add a new one if none fit)
 - [ ] Span name follows dot-notation convention (`"domain.subsystem.operation"`)
 - [ ] Attributes use namespaced keywords (`:search/query-length`, `:db/id`)
-- [ ] No sensitive data in attributes (use `sanitize-sql` for HoneySQL, never raw SQL)
+- [ ] No sensitive data in attributes (use `best-effort-sanitize-sql` for HoneySQL, never raw SQL)
 - [ ] No new tracing namespaces created (add to `tracing.core` instead)
 - [ ] No `DO_NOT_ADD_NEW_FILES_HERE.txt` violations in the target directory
 - [ ] Run `clj-kondo --lint <files>` to verify 0 errors, 0 warnings
@@ -122,7 +122,7 @@ Use namespaced keywords. The namespace groups related attributes:
 ```clojure
 :db/id              -- Database ID (integer)
 :db/engine          -- Database engine name (string)
-:db/statement       -- Sanitized SQL (string, via sanitize-sql)
+:db/statement       -- Sanitized SQL (string, via best-effort-sanitize-sql)
 :search/engine      -- Search engine name (string)
 :search/query-length -- Query string length (integer)
 :sync/table         -- Table name (string)
@@ -155,7 +155,7 @@ my-module
    [metabase.util :as u]))
 ```
 
-`sanitize-sql` is available from `tracing.core` — no additional require needed.
+`best-effort-sanitize-sql` is available from `tracing.core` — no additional require needed.
 
 ### 3. Identify the I/O boundary
 
@@ -197,7 +197,7 @@ Only wrap code at **meaningful I/O boundaries**:
 (let [hsql {:delete-from [(t2/table-name :model/Session)]
             :where [:< :created_at oldest-allowed]}]
   (tracing/with-span :tasks "task.session-cleanup.delete"
-                     {:db/statement (tracing/sanitize-sql hsql)}
+                     {:db/statement (tracing/best-effort-sanitize-sql hsql)}
     (t2/query-one hsql)))
 
 ;; Sub-spans breaking a function into I/O phases
@@ -254,20 +254,20 @@ Expect: all tests pass, 0 failures, 0 errors, no reflection warnings from your f
 
 ## Sanitizing SQL for Attributes
 
-When including SQL in span attributes, **always** use `tracing/sanitize-sql`. This converts HoneySQL maps to parameterized SQL strings where values become `?` placeholders -- no data leaks.
+When including SQL in span attributes, **always** use `tracing/best-effort-sanitize-sql`. This converts HoneySQL maps to parameterized SQL strings where values become `?` placeholders -- no data leaks.
 
 ```clojure
 (let [hsql {:delete-from [:core_session]
             :where [:< :created_at some-timestamp]}]
   (tracing/with-span :tasks "task.cleanup.delete"
-                     {:db/statement (tracing/sanitize-sql hsql)}
+                     {:db/statement (tracing/best-effort-sanitize-sql hsql)}
     (t2/query-one hsql)))
 ;; Trace attribute: db/statement = "DELETE FROM core_session WHERE created_at < ?"
 ```
 
 **Rules:**
 - Never put raw SQL strings or user-provided values in attributes
-- Use `sanitize-sql` only for app DB (HoneySQL) queries
+- Use `best-effort-sanitize-sql` only for app DB (HoneySQL) queries
 - For external/user DB queries, trace only timing and counts, not SQL content
 
 ## Defjob and Root Spans
