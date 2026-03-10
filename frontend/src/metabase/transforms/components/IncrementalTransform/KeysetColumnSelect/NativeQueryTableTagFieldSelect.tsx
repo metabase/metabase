@@ -12,8 +12,8 @@ import {
   Loader,
   type SelectOption,
 } from "metabase/ui";
-import type { Table } from "metabase-types/api";
 import * as Lib from "metabase-lib";
+import type { Table } from "metabase-types/api";
 
 import { getSourceFieldOptions } from "./KeysetColumnSelect";
 
