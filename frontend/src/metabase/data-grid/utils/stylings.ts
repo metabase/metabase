@@ -36,15 +36,6 @@ export const getRowPositionStyles = <TData>(
 export const getColumnPositionStyles = <TData>(
   column: DataGridColumn<TData>,
 ): React.CSSProperties => {
-  if (column.virtualItem) {
-    return {
-      position: "absolute",
-      left: column.virtualItem.start,
-      width: column.origin.getSize(),
-      top: 0,
-      bottom: 0,
-    };
-  }
   return {
     width: column.origin.getSize(),
   };

@@ -63,8 +63,15 @@ export const DataGrid = function DataGrid<TData>({
   tableFooterExtraButtons,
   rowsTruncated,
   sorting,
+  onHeaderCellClick,
+  isColumnReorderingDisabled,
 }: DataGridProps<TData>) {
-  const { rowVirtualizer, columnVirtualizer } = virtualGrid;
+  const {
+    rowVirtualizer,
+    columnVirtualizer,
+    virtualPaddingLeft,
+    virtualPaddingRight,
+  } = virtualGrid;
 
   const dndContextProps = useMemo(
     () => ({
@@ -145,12 +152,15 @@ export const DataGrid = function DataGrid<TData>({
     row: MaybeVirtualRow<TData>,
     columns: DataGridColumn<TData>[],
     key: string,
+    isVirtual?: boolean,
   ) => (
     <DataGridRow
       key={key}
       row={row}
       rowMeasureRef={rowMeasureRef}
       columns={columns}
+      virtualPaddingLeft={isVirtual ? virtualPaddingLeft : undefined}
+      virtualPaddingRight={isVirtual ? virtualPaddingRight : undefined}
       stickyElementsBackgroundColor={stickyElementsBackgroundColor}
       zoomedRowIndex={zoomedRowIndex}
       selection={selection}
@@ -163,7 +173,17 @@ export const DataGrid = function DataGrid<TData>({
   const renderHeader = (
     headerGroup: HeaderGroup<TData>,
     columns: DataGridColumn<TData>[],
-  ) => <DataGridHeader headerGroup={headerGroup} columns={columns} />;
+    isVirtual?: boolean,
+  ) => (
+    <DataGridHeader
+      headerGroup={headerGroup}
+      columns={columns}
+      virtualPaddingLeft={isVirtual ? virtualPaddingLeft : undefined}
+      virtualPaddingRight={isVirtual ? virtualPaddingRight : undefined}
+      onHeaderCellClick={onHeaderCellClick}
+      isColumnReorderingDisabled={isColumnReorderingDisabled}
+    />
+  );
 
   return (
     <DataGridThemeProvider theme={theme}>
@@ -220,7 +240,7 @@ export const DataGrid = function DataGrid<TData>({
                       backgroundColor,
                     }}
                   >
-                    {renderHeader(headerGroup, getCentralColumns())}
+                    {renderHeader(headerGroup, getCentralColumns(), true)}
                   </div>
                 </SortableContext>
               ))}
@@ -258,7 +278,7 @@ export const DataGrid = function DataGrid<TData>({
                 }}
               >
                 {getVisibleRows().map((row, index) =>
-                  renderRow(row, getCentralColumns(), `center-${index}`),
+                  renderRow(row, getCentralColumns(), `center-${index}`, true),
                 )}
               </div>
             </div>
