@@ -17,7 +17,6 @@ import type {
   NativeQuerySnippetId,
   SegmentId,
   TableId,
-
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -390,7 +389,6 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_BASED_METRIC_NAME,
         groupTitle: "1 metric",
         dependentItemTitle: METRIC_BASED_METRIC_NAME,
-      });
       });
     });
 
