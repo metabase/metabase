@@ -18,8 +18,8 @@ export const EditorEmptyStateContainer = styled.div`
 `;
 
 export const PermissionTableWrapper = styled.div`
-  position: relative;
   flex: 1;
-  overflow-x: auto;
+  min-height: 0;
+  overflow: auto;
   padding-bottom: 2rem;
 `;
