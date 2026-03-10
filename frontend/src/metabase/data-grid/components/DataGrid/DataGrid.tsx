@@ -217,6 +217,7 @@ export const DataGrid = function DataGrid<TData>({
                     className={S.centralSection}
                     style={{
                       width: `${columnVirtualizer.getTotalSize()}px`,
+                      backgroundColor,
                     }}
                   >
                     {renderHeader(headerGroup, getCentralColumns())}
