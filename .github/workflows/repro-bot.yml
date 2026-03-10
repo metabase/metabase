@@ -62,7 +62,7 @@ jobs:
 
       - name: Register MCP servers
         env:
-          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY_REPRO_BOT }}
         run: |
           UV_PATH="$(which uv)"
           jq -n \
@@ -98,7 +98,6 @@ jobs:
         env:
           CLAUDE_CODE_DEBUG_LOGS_DIR: /tmp/claude-debug-logs
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
-          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY_REPRO_BOT }}
           GITHUB_ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_REPRO_BOT }}
@@ -119,6 +118,7 @@ jobs:
             Bash(cd *)
             Bash(clj-nrepl-eval *)
             Bash(curl *)
+            Bash(diff *)
             Bash(echo *)
             Bash(find *)
             Bash(gh api repos/metabase/metabase/*)
@@ -211,6 +211,14 @@ jobs:
         with:
           name: repro-suggestions
           path: repro/*/SUGGESTIONS.md
+          if-no-files-found: ignore
+
+      - name: Upload Metabase logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metabase-logs
+          path: repro/*/metabase.log
           if-no-files-found: ignore
 
       - name: Upload Claude debug logs
