@@ -1,5 +1,9 @@
 import { slugify as toSlug } from "metabase/lib/formatting";
-import type { PythonTransformTableAliases, Table } from "metabase-types/api";
+import type {
+  PythonTransformTableAliases,
+  PythonTransformTableEntry,
+  Table,
+} from "metabase-types/api";
 
 import type { TableSelection } from "./types";
 
@@ -29,13 +33,17 @@ export function selectionsToTableAliases(
     .filter((s) => s.tableId !== undefined && s.alias !== "")
     .map((s) => {
       const table = tableInfo.find((tbl) => tbl.id === s.tableId);
+      if (!table || !s.tableId) {
+        return null;
+      }
       return {
         alias: s.alias,
-        table_id: s.tableId!,
-        schema: table?.schema ?? null,
-        database_id: table?.db_id,
-      };
-    });
+        table_id: s.tableId,
+        schema: table.schema,
+        database_id: table.db_id,
+      } satisfies PythonTransformTableEntry;
+    })
+    .filter((t) => t !== null);
 }
 
 export function slugify(
