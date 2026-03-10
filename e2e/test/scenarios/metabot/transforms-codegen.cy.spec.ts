@@ -169,7 +169,7 @@ describe(
               createMockPythonTransformJSON(
                 null,
                 WRITABLE_DB_ID,
-                [{ alias: "metabase_table_df", table: 152 }],
+                pythonSourceTables("metabase_table_df", 152),
                 "import pandas as pd\\n\\ndef transform(metabase_table_df):\\n    return pd.DataFrame({'value': [1]})",
               ),
             ),
@@ -195,7 +195,7 @@ describe(
               createMockPythonTransformJSON(
                 null,
                 WRITABLE_DB_ID,
-                [{ alias: "metabase_table_df", table: 152 }],
+                pythonSourceTables("metabase_table_df", 152),
                 "import pandas as pd\\n\\ndef transform(metabase_table_df):\\n    return pd.DataFrame({'value': [2]})",
               ),
             ),
@@ -229,7 +229,7 @@ describe(
               createMockPythonTransformJSON(
                 null,
                 WRITABLE_DB_ID,
-                [{ alias: "metabase_table_df", table: 152 }],
+                pythonSourceTables("metabase_table_df", 152),
                 "import pandas as pd\\n\\ndef transform(metabase_table_df):\\n    return pd.DataFrame({'value': [4]})",
               ),
             ),
@@ -385,7 +385,7 @@ describe(
                 def transform(foo):
                   return pd.DataFrame({'value': [1]})
               `,
-                sourceTables: [{ alias: "foo", table: tableId }],
+                sourceTables: pythonSourceTables("foo", Number(tableId)),
               }).then((transformId) => {
                 visitTransformListPage();
                 getMetabotButton().click();
@@ -398,7 +398,7 @@ describe(
                       createMockPythonTransformJSON(
                         Number(transformId),
                         WRITABLE_DB_ID,
-                        [{ alias: "foo", table: tableId }],
+                        pythonSourceTables("foo", Number(tableId)),
                         "import pandas as pd\\n\\ndef transform(foo):\\n    return pd.DataFrame({'value': [2]})",
                       ),
                     ),
@@ -441,7 +441,7 @@ describe(
                     createMockPythonTransformJSON(
                       Number(transformId),
                       WRITABLE_DB_ID,
-                      [{ alias: "metabase_table_df", table: 152 }],
+                      pythonSourceTables("metabase_table_df", 152),
                       "import pandas as pd\\n\\ndef transform(foo):\\n    return pd.DataFrame({'value': [4]})",
                     ),
                   ),
@@ -480,6 +480,22 @@ const createMockPythonTransformJSON = (
   body: string,
 ) =>
   `{"id":${id},"name":"A number","entity_id":null,"description":"","source":{"type":"python","source-database":${databaseId},"source-tables":${JSON.stringify(sourceTables)},"body":"${body}"},"target":{"type":"table","name":""},"created_at":null,"updated_at":null}`;
+
+function pythonSourceTables(
+  alias: string,
+  tableId: number,
+  schema = "Schema A",
+  databaseId = WRITABLE_DB_ID,
+): PythonTransformTableAliases {
+  return [
+    {
+      alias,
+      table_id: tableId,
+      database_id: databaseId,
+      schema,
+    },
+  ];
+}
 
 const createMockTransformSuggestionResponse = (
   text: string,
