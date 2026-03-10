@@ -1896,18 +1896,11 @@
             (is (= 0 (count @open-view-calls)))))))))
 
 (deftest handle-feedback-modal-submission-test
-  (testing "modal submission sends feedback to harbormaster and replaces buttons"
-    (let [harbormaster-calls (atom [])
-          update-calls       (atom [])
-          message-blocks     [{:type "section" :text "Hi"}
-                              {:type "actions" :block_id "metabot_feedback"}]]
+  (testing "modal submission sends feedback to harbormaster"
+    (let [harbormaster-calls (atom [])]
       (with-redefs [metabot-v3.feedback/submit-to-harbormaster! (fn [feedback]
                                                                   (swap! harbormaster-calls conj feedback)
-                                                                  true)
-                    slackbot.client/fetch-message               (constantly {:blocks message-blocks})
-                    slackbot.client/update-message               (fn [_ msg]
-                                                                   (swap! update-calls conj msg)
-                                                                   {:ok true})]
+                                                                  true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"
@@ -1924,20 +1917,13 @@
             (is (false? (get-in feedback [:feedback :positive])))
             (is (= "conv-123" (get-in feedback [:feedback :message_id])))
             (is (= "not-factual" (get-in feedback [:feedback :issue_type])))
-            (is (= "The answer was wrong" (get-in feedback [:feedback :freeform_feedback]))))
-          (testing "feedback buttons were replaced with thanks"
-            (is (= 1 (count @update-calls)))
-            (let [blocks (:blocks (first @update-calls))]
-              (is (not-any? #(= (:block_id %) "metabot_feedback") blocks))
-              (is (some #(= "Thanks for your feedback!" (get-in % [:elements 0 :text])) blocks))))))))
+            (is (= "The answer was wrong" (get-in feedback [:feedback :freeform_feedback]))))))))
 
   (testing "modal submission with only freeform text submits"
     (let [harbormaster-calls (atom [])]
       (with-redefs [metabot-v3.feedback/submit-to-harbormaster! (fn [feedback]
                                                                   (swap! harbormaster-calls conj feedback)
-                                                                  true)
-                    slackbot.client/fetch-message               (constantly {:blocks []})
-                    slackbot.client/update-message               (constantly {:ok true})]
+                                                                  true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"
@@ -1955,9 +1941,7 @@
     (let [harbormaster-calls (atom [])]
       (with-redefs [metabot-v3.feedback/submit-to-harbormaster! (fn [feedback]
                                                                   (swap! harbormaster-calls conj feedback)
-                                                                  true)
-                    slackbot.client/fetch-message               (constantly {:blocks []})
-                    slackbot.client/update-message               (constantly {:ok true})]
+                                                                  true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"
@@ -1975,9 +1959,7 @@
     (let [harbormaster-calls (atom [])]
       (with-redefs [metabot-v3.feedback/submit-to-harbormaster! (fn [feedback]
                                                                   (swap! harbormaster-calls conj feedback)
-                                                                  true)
-                    slackbot.client/fetch-message               (constantly {:blocks []})
-                    slackbot.client/update-message               (constantly {:ok true})]
+                                                                  true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"

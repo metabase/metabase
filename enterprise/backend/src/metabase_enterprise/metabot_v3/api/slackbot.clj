@@ -94,7 +94,7 @@
     (slackbot.client/post-message
      client
      (merge (slackbot.events/event->reply-context event)
-            { ;; DMs: always thread. Channels: only thread if already in a thread.
+            {;; DMs: always thread. Channels: only thread if already in a thread.
              :thread_ts (or (:thread_ts event) (:ts event))
              :text msg
              :blocks [{:type "section"
@@ -487,7 +487,7 @@
                                                   :text (if positive
                                                           "Tell us what you liked!"
                                                           "What could be improved about this response?")}}
-                         :label    {:type "plain_text" :text "Any details you'd like to share? (optional)"}}]
+                         :label    {:type "plain_text" :text "Any details you'd like to share?"}}]
      (if positive
        [freeform-block]
        [{:type     "input"
@@ -497,19 +497,8 @@
                     :action_id   "issue_type_select"
                     :placeholder {:type "plain_text" :text "Select issue type"}
                     :options     issue-type-options}
-         :label    {:type "plain_text" :text "What kind of issue are you reporting? (optional)"}}
+         :label    {:type "plain_text" :text "What kind of issue are you reporting?"}}
         freeform-block]))})
-
-(defn- replace-feedback-buttons-with-thanks
-  "Update the Slack message to replace the feedback buttons with a confirmation."
-  [client channel message-ts message-blocks]
-  (let [updated-blocks (-> (into [] (remove #(= (:block_id %) "metabot_feedback")) message-blocks)
-                           (conj {:type     "context"
-                                  :elements [{:type "mrkdwn"
-                                              :text "Thanks for your feedback!"}]}))]
-    (slackbot.client/update-message client {:channel channel
-                                            :ts      message-ts
-                                            :blocks  updated-blocks})))
 
 (defn- build-base-feedback
   "Build the common feedback payload fields."
@@ -562,12 +551,10 @@
       (log-ignored-delete-request (assoc authorization :source "action")))))
 
 (defn- handle-feedback-modal-submission
-  "Handle submission of the feedback details modal.
-   Always submits to Harbormaster (the modal opening already captured positive/negative),
-   then replaces the feedback buttons with a thanks message."
+  "Handle submission of the feedback details modal. Submits detailed feedback to Harbormaster."
   [payload]
   (let [private-metadata (json/decode (get-in payload [:view :private_metadata]) true)
-        {:keys [conversation_id positive user_id channel_id message_ts]} private-metadata
+        {:keys [conversation_id positive user_id]} private-metadata
         values           (get-in payload [:view :state :values])
         issue-type       (get-in values [:issue_type :issue_type_select :selected_option :value])
         freeform         (get-in values [:freeform_feedback :freeform_input :value])]
@@ -578,15 +565,7 @@
            true       (assoc-in [:feedback :freeform_feedback] (or freeform ""))
            issue-type (assoc-in [:feedback :issue_type] issue-type)))
         (catch Exception e
-          (log/error e "[slackbot] Error submitting feedback to Harbormaster")))
-      (try
-        (when (and channel_id message_ts)
-          (let [client  {:token (channel.settings/unobfuscated-slack-app-token)}
-                message (slackbot.client/fetch-message client channel_id message_ts)]
-            (when message
-              (replace-feedback-buttons-with-thanks client channel_id message_ts (:blocks message)))))
-        (catch Exception e
-          (log/error e "[slackbot] Error replacing feedback buttons"))))))
+          (log/error e "[slackbot] Error submitting feedback to Harbormaster"))))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/interactive"
