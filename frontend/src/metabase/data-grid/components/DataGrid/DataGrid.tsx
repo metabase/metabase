@@ -194,16 +194,14 @@ export const DataGrid = function DataGrid<TData>({
   const renderGridPanels = ({
     pinnedContent,
     centralContent,
-    showPinned = true,
     height,
   }: {
     pinnedContent: React.ReactNode;
     centralContent: React.ReactNode;
-    showPinned?: boolean;
     height?: string;
   }) => (
     <>
-      {showPinned && (
+      {hasPinnedColumns && (
         <div
           className={cx(S.pinnedSection, {
             [S.withSeparator]: hasSeparator,
@@ -291,7 +289,6 @@ export const DataGrid = function DataGrid<TData>({
                 centralContent: getVisibleRows().map((row, index) =>
                   renderRow(row, getCentralColumns(), `center-${index}`),
                 ),
-                showPinned: hasPinnedColumns,
                 height: `${totalHeight}px`,
               })}
             </div>
