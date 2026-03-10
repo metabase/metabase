@@ -139,47 +139,44 @@
 (mu/defn- swap-source-table-or-card :- ::lib.schema/stage
   "Swaps the source table or card in a stage if the stage uses the old source."
   [{:keys [source-table source-card], :as stage} :- ::lib.schema/stage
-   source-mapping :- ::lib-be.schema.source-swap/source-mapping]
-  (let [old-source (cond
-                     source-table [:table source-table]
-                     source-card  [:card source-card])
-        new-source (get source-mapping old-source)]
-    (if new-source
-      (-> stage
-          (dissoc :source-table :source-card)
-          (assoc (case (first new-source)
-                   :table :source-table
-                   :card :source-card)
-                 (second new-source)))
-      stage)))
+   [old-type old-id]                             :- ::lib-be.schema.source-swap/source
+   [new-type new-id]                             :- ::lib-be.schema.source-swap/source]
+  (if (or (and (= old-type :table) (= old-id source-table))
+          (and (= old-type :card) (= old-id source-card)))
+    (-> stage
+        (dissoc :source-table :source-card)
+        (assoc (case new-type :table :source-table :card :source-card) new-id))
+    stage))
 
 (mu/defn- swap-source-table-or-card-in-stage :- ::lib.schema/stage
   "Swaps the source table or card in a stage."
-  [stage          :- ::lib.schema/stage
-   source-mapping :- ::lib-be.schema.source-swap/source-mapping]
-  (-> (swap-source-table-or-card stage source-mapping)
+  [stage      :- ::lib.schema/stage
+   old-source :- ::lib-be.schema.source-swap/source
+   new-source :- ::lib-be.schema.source-swap/source]
+  (-> (swap-source-table-or-card stage old-source new-source)
       (m/update-existing :joins
                          (fn [joins]
                            (perf/mapv (fn [join]
                                         (m/update-existing join :stages
                                                            (fn [stages]
-                                                             (perf/mapv #(swap-source-table-or-card-in-stage % source-mapping) stages))))
+                                                             (perf/mapv #(swap-source-table-or-card-in-stage % old-source new-source) stages))))
                                       joins)))))
 
 (mu/defn- swap-source-table-or-card-in-query :- ::lib.schema/query
   "Swaps the source table or card in a query."
-  [query          :- ::lib.schema/query
-   source-mapping :- ::lib-be.schema.source-swap/source-mapping]
-  (update query :stages (fn [stages] (perf/mapv #(swap-source-table-or-card-in-stage % source-mapping) stages))))
+  [query      :- ::lib.schema/query
+   old-source :- ::lib-be.schema.source-swap/source
+   new-source :- ::lib-be.schema.source-swap/source]
+  (update query :stages (fn [stages] (perf/mapv #(swap-source-table-or-card-in-stage % old-source new-source) stages))))
 
 (mr/def ::field-id-mapping
   [:map-of ::lib.schema.id/field ::lib.schema.metadata/column])
 
-(mu/defn- build-field-id-mapping-for-source-entry :- ::field-id-mapping
+(mu/defn- build-field-id-mapping :- ::field-id-mapping
   "Builds a mapping of old field IDs to new columns."
-  [query      :- ::lib.schema/query
-   old-source :- ::lib-be.schema.source-swap/source
-   new-source :- ::lib-be.schema.source-swap/source]
+  [query                                         :- ::lib.schema/query
+   [old-source-type _old-id :as old-source]      :- ::lib-be.schema.source-swap/source
+   [new-source-type _new-id :as new-source]      :- ::lib-be.schema.source-swap/source]
   (let [old-columns       (lib-be.source-swap.util/source-columns query old-source)
         new-columns       (lib-be.source-swap.util/source-columns query new-source)
         new-column-by-key (m/index-by lib-be.source-swap.util/column-match-key new-columns)]
@@ -189,15 +186,6 @@
                     (when (:id old-column)
                       [(:id old-column) new-column]))))
           old-columns)))
-
-(mu/defn- build-field-id-mapping :- ::field-id-mapping
-  "Builds a mapping of old field IDs to new columns for all source pairs in the source mapping."
-  [query          :- ::lib.schema/query
-   source-mapping :- ::lib-be.schema.source-swap/source-mapping]
-  (into {}
-        (mapcat (fn [[old-source new-source]]
-                  (build-field-id-mapping-for-source-entry query old-source new-source)))
-        source-mapping))
 
 (mu/defn- swap-field-ref :- ::lib.schema.ref/ref
   "Swaps a field ref to reference the new source. Assumes that query has been upgraded to use alias-based field refs.
@@ -303,20 +291,22 @@
 
 (mu/defn swap-source-in-mbql-stages :- ::lib.schema/query
   "Updates the query to use the new source table or card."
-  [query          :- ::lib.schema/query
-   source-mapping :- ::lib-be.schema.source-swap/source-mapping]
-  (swap-field-refs-in-query (swap-source-table-or-card-in-query query source-mapping)
-                            (build-field-id-mapping query source-mapping)))
+  [query      :- ::lib.schema/query
+   old-source :- ::lib-be.schema.source-swap/source
+   new-source :- ::lib-be.schema.source-swap/source]
+  (swap-field-refs-in-query (swap-source-table-or-card-in-query query old-source new-source)
+                            (build-field-id-mapping query old-source new-source)))
 
 (mu/defn swap-source-in-parameter-mbql-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, swap it to reference the new source."
-  [query          :- ::lib.schema/query
-   target         :- ::lib.schema.parameter/target
-   source-mapping :- ::lib-be.schema.source-swap/source-mapping]
+  [query      :- ::lib.schema/query
+   target     :- ::lib.schema.parameter/target
+   old-source :- ::lib-be.schema.source-swap/source
+   new-source :- ::lib-be.schema.source-swap/source]
   (or (when (lib/parameter-target-field-ref target)
         (when-let [stage-number (parameter-target-stage-number query target)]
-          (let [new-query (swap-source-table-or-card-in-query query source-mapping)
-                field-id-mapping (build-field-id-mapping query source-mapping)]
+          (let [new-query (swap-source-table-or-card-in-query query old-source new-source)
+                field-id-mapping (build-field-id-mapping query old-source new-source)]
             (lib/update-parameter-target-field-ref
              target
              #(swap-field-ref new-query stage-number field-id-mapping %)))))
