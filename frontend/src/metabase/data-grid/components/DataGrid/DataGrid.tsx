@@ -1,11 +1,17 @@
 import { DndContext, pointerWithin } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import type { HeaderGroup } from "@tanstack/table-core/src/types";
 import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
+import { DataGridHeader } from "metabase/data-grid/components/DataGridHeader/DataGridHeader";
 
 import {
   DEFAULT_FONT_SIZE,
@@ -154,6 +160,11 @@ export const DataGrid = function DataGrid<TData>({
     />
   );
 
+  const renderHeader = (
+    headerGroup: HeaderGroup<TData>,
+    columns: DataGridColumn<TData>[],
+  ) => <DataGridHeader headerGroup={headerGroup} columns={columns} />;
+
   return (
     <DataGridThemeProvider theme={theme}>
       <DndContext {...dndContextProps}>
@@ -167,6 +178,40 @@ export const DataGrid = function DataGrid<TData>({
             ...styles?.root,
           }}
         >
+          <div
+            data-testid="table-header"
+            className={cx(S.headerContainer, classNames?.headerContainer)}
+            style={{
+              backgroundColor: stickyElementsBackgroundColor,
+              ...styles?.headerContainer,
+            }}
+          >
+            {table.getHeaderGroups().map((headerGroup) => (
+              <SortableContext
+                key={headerGroup.id}
+                items={table.getState().columnOrder}
+                strategy={horizontalListSortingStrategy}
+              >
+                <div
+                  className={cx(S.pinnedSection, {
+                    [S.withSeparator]: hasSeparator,
+                  })}
+                  style={{ width: pinnedPanelWidth }}
+                >
+                  {renderHeader(headerGroup, getPinnedColumns())}
+                </div>
+                <div
+                  className={S.centralSection}
+                  style={{
+                    width: `${columnVirtualizer.getTotalSize()}px`,
+                  }}
+                >
+                  {renderHeader(headerGroup, getCentralColumns())}
+                </div>
+              </SortableContext>
+            ))}
+          </div>
+
           <div
             ref={gridRef}
             data-testid="table-body"

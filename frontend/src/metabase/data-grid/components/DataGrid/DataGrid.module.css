@@ -45,8 +45,8 @@
 }
 
 .headerContainer {
-  position: sticky;
-  display: grid;
+  display: flex;
+  flex-direction: row;
   top: 0;
   z-index: 2;
   border-bottom: 1px solid var(--mb-color-border-subtle);
