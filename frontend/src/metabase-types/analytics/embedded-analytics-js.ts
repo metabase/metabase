@@ -3,7 +3,7 @@ export type EmbeddedAnalyticsJsEventSchema = {
   event: EVENTS;
   global: {
     auth_method: AUTH_TYPES;
-    locale_used: boolean; // NEW: EMB-1334
+    locale_used: boolean;
   };
   components: ComponentData[];
 };
@@ -39,8 +39,8 @@ export type DefaultValues = {
     withDownloads: boolean;
     withTitle: boolean;
     withSubscriptions: boolean;
-    autoRefreshInterval: boolean; // NEW: EMB-1334
-    enableEntityNavigation: boolean; // NEW: EMB-1334
+    autoRefreshInterval: boolean;
+    enableEntityNavigation: boolean;
   };
   question: {
     drills: boolean;
@@ -51,13 +51,12 @@ export type DefaultValues = {
   };
   exploration: {
     isSaveEnabled: boolean;
-    questionId: undefined; // NEW: EMB-1334
+    questionId: undefined;
   };
   browser: {
     readOnly: boolean;
-    enableEntityNavigation: boolean; // NEW: EMB-1334
+    enableEntityNavigation: boolean;
   };
-  // NEW: EMB-1334
   metabot: {
     layout: "auto" | "sidebar" | "stacked";
   };

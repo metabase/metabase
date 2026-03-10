@@ -27,9 +27,9 @@ const DEFAULT_VALUES: DefaultValues = {
      *
      * Unused, but documented for completeness.
      */
-    autoRefreshInterval: false, // NEW: EMB-1334
+    autoRefreshInterval: false,
     /** @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L175} */
-    enableEntityNavigation: false, // NEW: EMB-1334
+    enableEntityNavigation: false,
   },
   question: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L241} */
@@ -55,13 +55,13 @@ const DEFAULT_VALUES: DefaultValues = {
      *
      * Unused, but documented for completeness.
      */
-    questionId: undefined, // NEW: EMB-1334 - used to derive exploration id_new/id_new_native
+    questionId: undefined, // used to derive exploration id_new/id_new_native
   },
   browser: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/MetabaseBrowser.tsx#L39} */
     readOnly: true,
     /** @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embedding/embedding-iframe-sdk/types/embed.ts#L166} */
-    enableEntityNavigation: false, // NEW: EMB-1334
+    enableEntityNavigation: false,
   },
   // NEW: EMB-1334 - new component
   metabot: {
@@ -116,7 +116,7 @@ export function createEmbeddedAnalyticsJsUsage(
     event: "setup",
     global: {
       auth_method: getAuthMethod(firstEmbed),
-      locale_used: hasLocaleUsed(activeEmbeds), // NEW: EMB-1334
+      locale_used: hasLocaleUsed(activeEmbeds),
     },
     components: [],
   };
@@ -201,7 +201,7 @@ export function createEmbeddedAnalyticsJsUsage(
           }),
         },
         {
-          name: "auto_refresh_interval", // NEW: EMB-1334
+          name: "auto_refresh_interval",
           values: countPropertyValues({
             embeds: dashboardEmbeds,
             component: "dashboard",
@@ -212,7 +212,7 @@ export function createEmbeddedAnalyticsJsUsage(
           }),
         },
         {
-          name: "enable_entity_navigation", // NEW: EMB-1334
+          name: "enable_entity_navigation",
           values: countPropertyValues({
             embeds: dashboardEmbeds,
             component: "dashboard",
@@ -315,7 +315,7 @@ export function createEmbeddedAnalyticsJsUsage(
           }),
         },
         {
-          name: "id_new_native", // NEW: EMB-1334
+          name: "id_new_native",
           values: countPropertyValues({
             embeds: explorationEmbeds,
             component: "exploration",
@@ -325,7 +325,7 @@ export function createEmbeddedAnalyticsJsUsage(
           }),
         },
         {
-          name: "id_new", // NEW: EMB-1334
+          name: "id_new",
           values: countPropertyValues({
             embeds: explorationEmbeds,
             component: "exploration",
@@ -355,7 +355,7 @@ export function createEmbeddedAnalyticsJsUsage(
           }),
         },
         {
-          name: "enable_entity_navigation", // NEW: EMB-1334
+          name: "enable_entity_navigation",
           values: countPropertyValues({
             embeds: browserEmbeds,
             component: "browser",
@@ -372,7 +372,7 @@ export function createEmbeddedAnalyticsJsUsage(
     });
   }
 
-  // Build metabot component - NEW: EMB-1334
+  // Build metabot component
   if (metabotEmbeds.length > 0) {
     event.components.push({
       name: "metabot",
@@ -420,7 +420,6 @@ function getAuthMethod(firstEmbed: MetabaseEmbedElement): AUTH_TYPES {
     });
 }
 
-// NEW: EMB-1334 - check if any embed has locale configured
 function hasLocaleUsed(activeEmbeds: Set<MetabaseEmbedElement>): boolean {
   return Array.from(activeEmbeds).some(
     (embed) => embed.properties.locale != null,
