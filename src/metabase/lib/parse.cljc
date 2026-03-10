@@ -141,7 +141,7 @@
               (recur (apply conj acc parsed) more in-string?)))
 
           (:line-comment-begin :block-comment-begin)
-          (if (or comment-mode (pos? optional-level) in-string?)
+          (if (or comment-mode (pos? optional-level) (pos? param-level) in-string?)
             (recur (conj acc text) more in-string?)
             (let [[parsed more] (parse-tokens* opts more optional-level param-level in-string? token)]
               (recur (into acc (cons text parsed)) more in-string?)))

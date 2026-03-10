@@ -2,8 +2,13 @@ import { updateMetadata } from "metabase/lib/redux/metadata";
 import { MeasureSchema } from "metabase/schema";
 import type {
   CreateMeasureRequest,
+  FieldValue,
+  GetMeasureDimensionValuesRequest,
+  GetMeasureDimensionValuesResponse,
+  GetRemappedMeasureDimensionValueRequest,
   Measure,
   MeasureId,
+  SearchMeasureDimensionValuesRequest,
   UpdateMeasureRequest,
 } from "metabase-types/api";
 
@@ -12,6 +17,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideMeasureDimensionValuesTags,
   provideMeasureListTags,
   provideMeasureTags,
   tag,
@@ -42,6 +48,41 @@ export const measureApi = Api.injectEndpoints({
           dispatch(updateMetadata(data, MeasureSchema)),
         ),
     }),
+    getMeasureDimensionValues: builder.query<
+      GetMeasureDimensionValuesResponse,
+      GetMeasureDimensionValuesRequest
+    >({
+      query: ({ measureId, dimensionId }) => ({
+        method: "GET",
+        url: `/api/measure/${measureId}/dimension/${encodeURIComponent(dimensionId)}/values`,
+      }),
+      providesTags: (_, error, { measureId }) =>
+        provideMeasureDimensionValuesTags(measureId),
+    }),
+    searchMeasureDimensionValues: builder.query<
+      FieldValue[],
+      SearchMeasureDimensionValuesRequest
+    >({
+      query: ({ measureId, dimensionId, ...params }) => ({
+        method: "GET",
+        url: `/api/measure/${measureId}/dimension/${encodeURIComponent(dimensionId)}/search`,
+        params,
+      }),
+      providesTags: (_, error, { measureId }) =>
+        provideMeasureDimensionValuesTags(measureId),
+    }),
+    getRemappedMeasureDimensionValue: builder.query<
+      FieldValue,
+      GetRemappedMeasureDimensionValueRequest
+    >({
+      query: ({ measureId, dimensionId, value }) => ({
+        method: "GET",
+        url: `/api/measure/${measureId}/dimension/${encodeURIComponent(dimensionId)}/remapping`,
+        params: { value },
+      }),
+      providesTags: (_, error, { measureId }) =>
+        provideMeasureDimensionValuesTags(measureId),
+    }),
     createMeasure: builder.mutation<Measure, CreateMeasureRequest>({
       query: (body) => ({
         method: "POST",
@@ -70,6 +111,10 @@ export const measureApi = Api.injectEndpoints({
 export const {
   useListMeasuresQuery,
   useGetMeasureQuery,
+  useLazyGetMeasureQuery,
+  useGetMeasureDimensionValuesQuery,
+  useSearchMeasureDimensionValuesQuery,
+  useGetRemappedMeasureDimensionValueQuery,
   useCreateMeasureMutation,
   useUpdateMeasureMutation,
 } = measureApi;
