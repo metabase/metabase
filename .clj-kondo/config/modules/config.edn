@@ -1455,6 +1455,15 @@
            system
            util}}
 
+  source-swap
+  {:team "Graphy"
+   :api  #{metabase.source-swap.core
+           metabase.source-swap.schema}
+   :uses #{driver
+           lib
+           sql-tools
+           util}}
+
   sql-parsing
   {:team "DevEx"
    :api #{metabase.sql-parsing.core}
@@ -1470,15 +1479,6 @@
            lib
            settings
            sql-parsing
-           util}}
-
-  source-swap
-  {:team "Graphy"
-   :api  #{metabase.source-swap.core
-           metabase.source-swap.schema}
-   :uses #{driver
-           lib
-           sql-tools
            util}}
 
   sso
