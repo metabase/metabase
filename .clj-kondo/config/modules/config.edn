@@ -783,11 +783,9 @@
   {:team "Querying"
    :api  #{metabase.lib-be.core
            metabase.lib-be.init}
-   :uses #{driver
-           lib
+   :uses #{lib
            models
            settings
-           sql-tools
            util}}
 
   source-swap
