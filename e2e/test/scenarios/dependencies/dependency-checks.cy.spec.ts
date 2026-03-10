@@ -143,7 +143,6 @@ describe("scenarios > dependencies > dependency checks", () => {
       cy.wait("@updateCard");
     });
   });
-
 });
 
 function createMbqlQuestionWithDependentMbqlQuestions() {
@@ -214,7 +213,6 @@ function createMetricWithDependentMbqlQuestions() {
               ],
             },
           });
-
         });
       });
     },
