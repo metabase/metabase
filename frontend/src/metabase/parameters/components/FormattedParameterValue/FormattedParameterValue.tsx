@@ -2,11 +2,13 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useSetting } from "metabase/common/hooks";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { ParameterFieldWidgetValue } from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   getFields,
+  hasFields,
   isFieldFilterUiParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
@@ -41,6 +43,7 @@ function FormattedParameterValue({
   placeholder,
   isPopoverOpen = false,
 }: FormattedParameterValueProps) {
+  const tc = useTranslateContent();
   const formattingSettings = useSetting("custom-formatting");
 
   if (parameterHasNoDisplayValue(value)) {
@@ -60,6 +63,7 @@ function FormattedParameterValue({
   const renderContent = () => {
     if (
       isFieldFilterUiParameter(parameter) &&
+      hasFields(parameter) &&
       !isDateParameter(parameter) &&
       !isTemporalUnitParameter(parameter)
     ) {
@@ -78,7 +82,7 @@ function FormattedParameterValue({
     if (label) {
       return (
         <span>
-          {formatParameterValue(label, parameter, formattingSettings)}
+          {formatParameterValue(tc(label), parameter, formattingSettings)}
         </span>
       );
     }
