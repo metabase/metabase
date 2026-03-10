@@ -2014,7 +2014,7 @@
         {:cbs          cbs
          :append-calls append-calls}))))
 
-(deftest ^:parallel on-text-respects-batch-size-test
+(deftest on-text-respects-batch-size-test
   (testing "on-text does not flush until pending text reaches min-text-batch-size"
     (let [{:keys [cbs append-calls]} (make-test-callbacks)
           {:keys [on-text request-flush! slack-writer]} cbs
@@ -2033,7 +2033,7 @@
       (request-flush! true)
       (await slack-writer))))
 
-(deftest ^:parallel flush-throttle-test
+(deftest flush-throttle-test
   (testing "rapid flushes are throttled by min-flush-interval-ns"
     (let [{:keys [cbs append-calls]} (make-test-callbacks)
           {:keys [on-text request-flush! slack-writer]} cbs
@@ -2100,7 +2100,7 @@
       (with-slackbot-setup
         (with-slackbot-mocks
           {:ai-text "Hello!"}
-          (fn [{:keys [post-calls]}]
+          (fn [_]
             (with-redefs [slackbot.streaming/send-response (fn [& _] (throw (Exception. "boom")))]
               (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                         (slack-request-options base-dm-event)
