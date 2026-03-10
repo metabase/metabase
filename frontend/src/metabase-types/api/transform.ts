@@ -274,7 +274,7 @@ export type ListTransformRunsResponse = {
 
 export type TestPythonTransformRequest = {
   code: string;
-  source_tables: { alias: string; table_id: number }[];
+  source_tables: PythonTransformTableAliases;
 };
 
 export type TestPythonTransformResponse = {
