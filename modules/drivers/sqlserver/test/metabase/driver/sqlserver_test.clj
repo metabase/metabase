@@ -15,6 +15,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
@@ -647,53 +648,36 @@
 
 (deftest ^:parallel comparison-expression-in-custom-column-test
   (mt/test-driver :sqlserver
-    (testing "Comparison expressions in custom columns are wrapped in CASE statements (#53805)"
-      (testing "Greater than comparison between two fields"
-        (let [query (mt/mbql-query orders
-                      {:expressions {"subtotal-gt-total" [:> $subtotal $total]}
-                       :fields      [[:expression "subtotal-gt-total"]]
-                       :limit       1})]
-          (testing "Should generate CASE WHEN ... THEN 1 ELSE 0 END"
-            (is (= ["SELECT"
-                    "  TOP(1) CASE"
-                    "    WHEN dbo.orders.subtotal > dbo.orders.total THEN 1"
-                    "    ELSE 0"
-                    "  END AS subtotal - gt - total"
-                    "FROM"
-                    "  dbo.orders"]
-                   (pretty-sql (:query (qp.compile/compile query))))))
-          (testing "Should execute successfully and return integer results"
-            (let [result (qp/process-query query)
-                  rows   (mt/rows result)]
-              (tap> rows)
-              (is (every? #(contains? #{0 1} (first %)) rows))))))
-      (testing "Equality comparison between field and literal"
-        (let [query (mt/mbql-query orders
-                      {:expressions {"is-ten" [:= $product_id 10]}
-                       :fields      [[:expression "is-ten"]]
-                       :limit       1})]
-          (testing "Should generate CASE WHEN ... THEN 1 ELSE 0 END"
-            (is (= ["SELECT"
-                    "  TOP(1) CASE"
-                    "    WHEN dbo.orders.product_id = 10 THEN 1"
-                    "    ELSE 0"
-                    "  END AS is - ten"
-                    "FROM"
-                    "  dbo.orders"]
-                   (pretty-sql (:query (qp.compile/compile query))))))))
-      (testing "WHERE clause comparisons should NOT use CASE (just simple comparison)"
-        (let [query (mt/mbql-query orders
-                      {:filter [:> $product_id 10]
-                       :fields [$id]
-                       :limit  1})]
-          (testing "Should use simple comparison in WHERE"
-            (is (= ["SELECT"
-                    "  TOP(1) dbo.orders.id AS id"
-                    "FROM"
-                    "  dbo.orders"
-                    "WHERE"
-                    "  dbo.orders.product_id > 10"]
-                   (pretty-sql (:query (qp.compile/compile query)))))))))))
+    (let [mp    (mt/metadata-provider)]
+      (testing "comparison expression with >"
+        (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                        (lib/expression "total>subtotal"
+                                        (lib/> (lib.metadata/field mp (mt/id :orders :total))
+                                               (lib.metadata/field mp (mt/id :orders :subtotal))))
+                        (lib/limit 3))
+              query (lib/with-fields query [(lib.metadata/field mp (mt/id :orders :id))
+                                            (lib.metadata/field mp (mt/id :orders :total))
+                                            (lib.metadata/field mp (mt/id :orders :subtotal))
+                                            (lib.metadata/field mp (mt/id :orders :discount))
+                                            (lib/expression-ref query "total>subtotal")])]
+          (is (= [[1 39.72 37.65 nil true]
+                  [2 117.03 110.93 nil true]
+                  [3 49.2 52.72 6.42 false]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "comparison expression with contains"
+        (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                        (lib/expression "contains_get"
+                                        (lib/contains (lib.metadata/field mp (mt/id :products :category)) "get"))
+                        (lib/limit 5))
+              query (lib/with-fields query [(lib.metadata/field mp (mt/id :products :id))
+                                            (lib.metadata/field mp (mt/id :products :category))
+                                            (lib/expression-ref query "contains_get")])]
+          (is (= [[1 "Gizmo" false]
+                  [2 "Doohickey" false]
+                  [3 "Doohickey" false]
+                  [4 "Doohickey" false]
+                  [5 "Gadget" true]]
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest filter-by-datetime-fields-test
   (mt/test-driver :sqlserver
