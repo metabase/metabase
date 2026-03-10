@@ -1,0 +1,198 @@
+# workmux project configuration
+# For global settings, edit ~/.config/workmux/config.yaml
+# All options below are commented out - uncomment to override defaults.
+
+#-------------------------------------------------------------------------------
+# Appearance
+#-------------------------------------------------------------------------------
+
+# Color theme for the dashboard.
+# Options: dark (default), light
+# theme: dark
+
+#-------------------------------------------------------------------------------
+# Git
+#-------------------------------------------------------------------------------
+
+# The primary branch to merge into.
+# Default: Auto-detected from remote HEAD, falls back to main/master.
+# main_branch: main
+
+# Default merge strategy for `workmux merge`.
+# Options: merge (default), rebase, squash
+# CLI flags (--rebase, --squash) always override this.
+# merge_strategy: rebase
+
+#-------------------------------------------------------------------------------
+# Naming & Paths
+#-------------------------------------------------------------------------------
+
+# Directory where worktrees are created.
+# Can be relative to repo root or absolute.
+# Default: Sibling directory '<project>__worktrees'.
+# worktree_dir: .worktrees
+
+# Strategy for deriving names from branch names.
+# Options: full (default), basename (part after last '/').
+# worktree_naming: basename
+
+# Prefix added to worktree directories and tmux window names.
+# worktree_prefix: ""
+
+# Prefix for tmux window names.
+# Default: "wm-"
+# window_prefix: "wm-"
+
+#-------------------------------------------------------------------------------
+# Tmux
+#-------------------------------------------------------------------------------
+
+# Mode for tmux operations: window (default) or session.
+# - window: Create windows within the current tmux session
+# - session: Create new tmux sessions for each worktree (useful for session-per-project workflows)
+# mode: session
+
+# Custom tmux pane layout (mutually exclusive with 'windows').
+# Default: Two-pane layout with shell and clear command.
+panes:
+  - command: <agent>
+    focus: true
+  - command: 'nvim --cmd "let g:workmux=1"'
+    size: 80
+    split: horizontal
+  - command: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
+    split: vertical
+    size: 30
+  - command: MB_EDITION=ee bun run build-hot
+    split: vertical
+
+# Multiple windows per session (session mode only, mutually exclusive with 'panes').
+# Each window can have its own pane layout. Unnamed windows get tmux's
+# automatic naming based on the running command.
+# windows:
+#   - name: editor
+#     panes:
+#       - command: <agent>
+#         focus: true
+#       - split: horizontal
+#         size: 20
+#   - name: tests
+#     panes:
+#       - command: just test --watch
+#   - panes:
+#       - command: tail -f app.log
+
+# Auto-apply agent status icons to tmux window format.
+# Default: true
+# status_format: true
+
+# Custom icons for agent status display.
+# status_icons:
+#   working: "🤖"
+#   waiting: "💬"
+#   done: "✅"
+
+#-------------------------------------------------------------------------------
+# Agent & AI
+#-------------------------------------------------------------------------------
+
+# Agent command for '<agent>' placeholder in pane commands.
+# Default: "claude"
+# agent: claude
+
+# LLM-based branch name generation (`workmux add -A`).
+# auto_name:
+#   model: "gpt-4o-mini"
+#   system_prompt: "Generate a kebab-case git branch name."
+#   background: true  # Always run in background when using --auto-name
+
+#-------------------------------------------------------------------------------
+# Hooks
+#-------------------------------------------------------------------------------
+
+# Commands to run in new worktree before tmux window opens.
+# These block window creation - use for short tasks only.
+# Use "<global>" to inherit from global config.
+# Set to empty list to disable: `post_create: []`
+post_create:
+  - ./bin/mage dev-env --app-db postgres
+
+# Commands to run before merging (e.g., linting, tests).
+# Aborts the merge if any command fails.
+# Use "<global>" to inherit from global config.
+# Environment variables available:
+#   - WM_BRANCH_NAME: The name of the branch being merged
+#   - WM_TARGET_BRANCH: The name of the target branch (e.g., main)
+#   - WM_WORKTREE_PATH: Absolute path to the worktree
+#   - WM_PROJECT_ROOT: Absolute path of the main project directory
+#   - WM_HANDLE: The worktree handle/window name
+# pre_merge:
+#   - "<global>"
+#   - cargo test
+#   - cargo clippy -- -D warnings
+
+# Commands to run before worktree removal (during merge or remove).
+# Useful for backing up gitignored files before cleanup.
+# Default: Auto-detects Node.js projects and fast-deletes node_modules.
+# Set to empty list to disable: `pre_remove: []`
+# Environment variables available:
+#   - WM_HANDLE: The worktree handle (directory name)
+#   - WM_WORKTREE_PATH: Absolute path of the worktree being deleted
+#   - WM_PROJECT_ROOT: Absolute path of the main project directory
+pre_remove:
+  - ./bin/mage dev-env --down
+
+#-------------------------------------------------------------------------------
+# Files
+#-------------------------------------------------------------------------------
+
+# File operations when creating a worktree.
+# files:
+#   # Files to copy (useful for .env files that need to be unique).
+#   copy:
+#     - .env.local
+#
+#   # Files/directories to symlink (saves disk space, shares caches).
+#   # Default: None.
+#   # Use "<global>" to inherit from global config.
+#   symlink:
+#     - "<global>"
+#     - node_modules
+
+#-------------------------------------------------------------------------------
+# Dashboard
+#-------------------------------------------------------------------------------
+
+# Actions for dashboard keybindings (c = commit, m = merge).
+# Values are sent to the agent's pane. Use ! prefix for shell commands.
+# Preview size (10-90): larger = more preview, less table. Use +/- keys to adjust.
+# dashboard:
+#   commit: "Commit staged changes with a descriptive message"
+#   merge: "!workmux merge"
+#   preview_size: 60
+
+#-------------------------------------------------------------------------------
+# Sandbox
+#-------------------------------------------------------------------------------
+
+# sandbox:
+#   enabled: false
+#   backend: lima
+#   # host_commands: ["just", "cargo", "npm"]
+#   # container:
+#   #   runtime: docker          # docker | podman | apple-container
+#   # lima:
+#   #   isolation: project
+#   #   cpus: 4
+#   #   memory: 4GiB
+#   #   # Custom provision script (runs once on VM creation, as user).
+#   #   # Use sudo for system commands.
+#   #   # provision: |
+#   #   #   sudo apt-get install -y ripgrep fd-find jq
+#   # Extra mount points (read-only by default).
+#   # Supports simple paths or detailed specs with guest_path and writable.
+#   # extra_mounts:
+#   #   - ~/my-notes
+#   #   - host_path: ~/data
+#   #     guest_path: /mnt/data
+#   #     writable: true
