@@ -4,12 +4,9 @@
    This namespace contains functions that are used by both query and python transforms
    and do NOT require transform_run database access."
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -416,103 +413,6 @@
   (log/infof "Renaming tables: %s" (pr-str rename-map))
   (driver/rename-tables! driver database-id rename-map))
 
-;;; ------------------------------------------------- Secondary Index Management -------------------------------------------------
-
-(def ^:private metabase-index-prefix "mb_transform_idx_")
-
-(defn- incremental-filter-index-name [schema table-name filter-column-name]
-  (let [prefix metabase-index-prefix
-        suffix (codecs/bytes->hex (buddy-hash/md5 (str/join "|" [schema table-name filter-column-name])))]
-    (str prefix suffix)))
-
-(defn- should-index-incremental-filter-column? [driver database]
-  (and (driver.u/supports? driver :describe-indexes database)
-       (driver.u/supports? driver :transforms/index-ddl database)))
-
-(defn- metabase-owned-index? [index]
-  (str/starts-with? (:index-name index) metabase-index-prefix))
-
-(defn- metabase-incremental-filter-index [filter-column target]
-  (let [table-name  (:name target)
-        schema      (:schema target)
-        filter-name (:name filter-column)]
-    ;; match the schema used by describe-table-indexes (:value denotes the column name, assumed leading column if a composite index)
-    {:index-name (incremental-filter-index-name schema table-name filter-name)
-     :value      filter-name}))
-
-(defn- decide-secondary-index-ddl
-  "Decides which indexes should be dropped/created on the target table.
-
-  e.g. Indexing the incremental :filter-column to accelerate MAX(target.checkpoint) queries on OLTP databases.
-
-  Indexes are represented as maps with at least the keys :index-name, :value.
-  This matches the form used by [[metabase.driver/describe-table-indexes]].
-
-  Returns a map:
-  :drop   - a vector of indexes that are redundant and should be dropped.
-  :create - a vector of desirable indexes that do not exist and that should be created.
-
-  Notes:
-  - If user covering indexes exist they should be reused.
-  - Will never drop user indexes.
-  - Indexes we previously created and are no longer required are dropped."
-  [{:keys [filter-column indexes target database]}]
-  (let [[mb-indexes user-indexes] ((juxt filter remove) metabase-owned-index? indexes)
-        default-mb-index    (when filter-column (metabase-incremental-filter-index filter-column target))
-        column-name         (:name filter-column)
-        existing-user-index (first (filter #(= (:value %) column-name) user-indexes))
-        existing-mb-index   (first (filter #(= (:index-name %) (:index-name default-mb-index)) mb-indexes))
-        driver              (:engine database)
-        intended-index      (when (should-index-incremental-filter-column? driver database)
-                              ;; Prefer reuse to not create redundant indexes
-                              (or existing-user-index default-mb-index))
-        drop                (if intended-index
-                              (remove #(= (:index-name intended-index) (:index-name %)) mb-indexes)
-                              mb-indexes)
-        create              (when (and intended-index
-                                       (not= (:index-name intended-index) (:index-name existing-user-index))
-                                       (not= (:index-name intended-index) (:index-name existing-mb-index)))
-                              [intended-index])]
-    {:drop   (vec drop)
-     :create (vec create)}))
-
-(defn execute-secondary-index-ddl-if-required!
-  "If target table index modifications are required, executes those CREATE/DROP commands.
-  See [[decide-secondary-index-ddl]] for details.
-
-  `run-id` is optional - if nil, instrumentation/timing is skipped.
-  `with-stage-timing-fn` is optional - if provided, will be called as (with-stage-timing-fn run-id stage thunk).
-  `source-range-params` is optional - if nil, will be computed from the transform."
-  ([transform database target]
-   (execute-secondary-index-ddl-if-required! transform nil database target nil nil))
-  ([transform run-id database target with-stage-timing-fn]
-   (execute-secondary-index-ddl-if-required! transform run-id database target with-stage-timing-fn nil))
-  ([transform run-id database target with-stage-timing-fn source-range-params]
-   (when (driver.u/supports? (:engine database) :describe-indexes database)
-     (let [driver     (:engine database)
-           indexes    (driver/describe-table-indexes driver database target)
-           source-range-params (or source-range-params (get-source-range-params transform))
-           {:keys [drop create]}
-           (decide-secondary-index-ddl
-            {:filter-column (:column source-range-params)
-             :database      database
-             :target        target
-             :indexes       indexes})
-           maybe-timed (fn [stage thunk]
-                         (if (and run-id with-stage-timing-fn)
-                           (with-stage-timing-fn run-id stage thunk)
-                           (thunk)))]
-       (doseq [{:keys [index-name value]} drop]
-         (maybe-timed [:import :drop-incremental-filter-index]
-                      (fn []
-                        (log/infof "Dropping secondary index %s(%s) for target %s" index-name value (pr-str target))
-                        (driver/drop-index! driver (:id database) (:schema target) (:name target) index-name))))
-       (doseq [{:keys [index-name value]} create]
-         (maybe-timed [:import :create-incremental-filter-index]
-                      (fn []
-                        (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
-                        (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value]))))))))
-
 ;;; ------------------------------------------------- Post-Execution Completion -------------------------------------------------
 
 (defn complete-execution!
@@ -530,7 +430,7 @@
    to preserve the correct order of operations."
   [transform opts]
   (let [{:keys [target]} transform
-        {:keys [run-id with-stage-timing-fn publish-events? source-range-params]
+        {:keys [publish-events? source-range-params]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (t2/select-one :model/Database db-id)]
@@ -552,10 +452,7 @@
                                        :transform-id   (:id transform)
                                        :transform-type (keyword (:type target))
                                        :output-schema  (:schema target)
-                                       :output-table   (qualified-table-name (:engine database) target)}}))
-    ;; Create secondary indexes if needed
-    (execute-secondary-index-ddl-if-required!
-     transform run-id database target with-stage-timing-fn source-range-params)))
+                                       :output-table   (qualified-table-name (:engine database) target)}}))))
 
 ;;; ------------------------------------------------- Source Table Schemas -------------------------------------------------
 
