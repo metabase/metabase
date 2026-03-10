@@ -287,16 +287,10 @@
   [provider-and-model messages json-schema temperature max-tokens tracking-opts]
   (let [{:keys [provider stream-fn model]} (parse-provider-model provider-and-model)
         _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
-        raw-tools      [{:type     "function"
-                         :function {:name        "json"
-                                    :description "Respond with a JSON object"
-                                    :parameters  json-schema}}]
-        tool-choice    "required"
         tracking-opts  (assoc tracking-opts :model model)
         streaming-opts {:model       model
                         :input       messages
-                        :raw-tools   raw-tools
-                        :tool_choice tool-choice
+                        :schema      json-schema
                         :temperature temperature
                         :max-tokens  max-tokens}]
     (with-span :info {:name      :metabot-v3.agent/call-llm-structured
