@@ -12,6 +12,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.driver.connection.workspaces :as driver.w]
    [metabase.driver.util :as driver.u]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
@@ -91,6 +92,13 @@
   `(binding [*suppress-resolution-telemetry* true]
      ~@body))
 
+(defenterprise database-write-data-details
+  "Returns the `:write-data-details` for a database, or `nil` if the writable-connection feature is not available.
+   OSS implementation always returns `nil`."
+  metabase-enterprise.writable-connection.core
+  [_database]
+  nil)
+
 (defn effective-details
   "Returns the connection details map appropriate for the current context.
 
@@ -103,7 +111,7 @@
   [database]
   (when-let [database (some-> database driver.u/ensure-lib-database)]
     (let [write?        (= *connection-type* :write-data)
-          write-details (when write? (:write-data-details database))
+          write-details (when write? (database-write-data-details database))
           base          (merge (:details database) write-details)]
       ;; Track when write-data-details are genuinely used (not fallback, not workspace-swapped).
       ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
@@ -127,7 +135,7 @@
   (let [database (driver.u/ensure-lib-database database)]
     (case connection-type
       :default    (:details database)
-      :write-data (:write-data-details database))))
+      :write-data (database-write-data-details database))))
 
 (defn write-connection-requested?
   "True if currently executing within a [[with-write-connection]] scope."
@@ -144,7 +152,7 @@
    pools) when the requested type would resolve identically to `:default`."
   [database]
   (if (and (= *connection-type* :write-data)
-           (some? (:write-data-details (driver.u/ensure-lib-database database))))
+           (some? (database-write-data-details (driver.u/ensure-lib-database database))))
     :write-data
     :default))
 

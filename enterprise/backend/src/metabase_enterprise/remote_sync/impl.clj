@@ -91,11 +91,12 @@
   (doseq [[model-key model-spec] (spec/specs-for-deletion)
           :let [serdes-model (:model-type model-spec)
                 entity-ids (get by-entity-id serdes-model [])
-                spec-entity-id-condition (get-in model-spec [:conditions :entity_id])
+                removal-conds (spec/removal-conditions model-spec)
+                spec-entity-id-condition (get removal-conds :entity_id)
                 entity-id-where (build-entity-id-where-clause entity-ids spec-entity-id-condition)
                 scope-key (get-in model-spec [:removal :scope-key])
                 ;; Get non-entity_id conditions from spec
-                other-conditions (into [] cat (dissoc (:conditions model-spec) :entity_id))]]
+                other-conditions (into [] cat (dissoc removal-conds :entity_id))]]
     (if scope-key
       ;; Collection-scoped: delete only within synced collections
       (when (seq synced-collection-ids)
