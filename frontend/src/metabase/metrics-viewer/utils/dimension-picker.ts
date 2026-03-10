@@ -76,16 +76,16 @@ function collectAllDimensionEntries(
 
 function groupBySource(entries: DimensionEntry[]): DimensionEntry[][] {
   const groups: DimensionEntry[][] = [];
+  const groupKeys: DimensionEntry[] = [];
 
   for (const entry of entries) {
-    const match = groups.find((group) =>
-      group.some((existing) =>
-        LibMetric.isSameSource(existing.dimension, entry.dimension),
-      ),
+    const groupIndex = groupKeys.findIndex((key) =>
+      LibMetric.isSameSource(key.dimension, entry.dimension),
     );
-    if (match) {
-      match.push(entry);
+    if (groupIndex !== -1) {
+      groups[groupIndex].push(entry);
     } else {
+      groupKeys.push(entry);
       groups.push([entry]);
     }
   }
