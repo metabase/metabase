@@ -216,10 +216,6 @@
                             (-> (lib.options/update-options assoc :base-type (:base-type new-id-column))
                                 (lib.ref/with-field-ref-name (lib-be.source-swap.util/column-match-key new-id-column)))
 
-                            ;; implicit joins PK table field ID
-                            (and new-id-column (:id new-id-column) old-fk-id)
-                            (lib.ref/with-field-ref-id (:id new-id-column))
-
                             ;; implicit joins FK table field ID
                             (and new-fk-id-column (:id new-fk-id-column))
                             (lib.options/update-options assoc :source-field (:id new-fk-id-column)))]
