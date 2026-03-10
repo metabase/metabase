@@ -192,13 +192,14 @@
               (log/warnf "[slackbot] Failed to remove processing reaction: %s (channel=%s ts=%s name=%s)"
                          (:error res) (:channel reaction-target) (:ts reaction-target) (:name reaction-target)))))))))
 
-(def ^:private response-labels
-  (vec (for [source ["dm" "channel"]
-             result ["success" "error"]]
-         {:source source :result result})))
+(defmethod analytics/known-labels :metabase-slackbot/responses-generated [_]
+  [{:source "dm"      :result "success"}
+   {:source "dm"      :result "error"}
+   {:source "channel" :result "success"}
+   {:source "channel" :result "error"}])
 
-(defmethod analytics/known-labels :metabase-slackbot/responses-generated [_] response-labels)
-(defmethod analytics/known-labels :metabase-slackbot/file-uploads [_] [{:result "success"} {:result "error"}])
+(defmethod analytics/known-labels :metabase-slackbot/file-uploads [_]
+  [{:result "success"} {:result "error"}])
 
 (defn- event-source
   "Return the source label for a Slack event: \"dm\" or \"channel\"."
