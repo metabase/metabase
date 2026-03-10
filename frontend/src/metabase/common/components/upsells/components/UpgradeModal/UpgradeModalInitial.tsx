@@ -50,7 +50,8 @@ export function UpgradeModalInitial({
   const isTrial = flow === "trial";
   const title = isTrial
     ? t`Start your 14-day trial of Pro`
-    : t`Upgrade to Metabase Pro`;
+    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins
+      t`Upgrade to Metabase Pro`;
   const buttonText = isTrial ? t`Start your free trial` : t`Upgrade to Pro`;
   const proFeatures = [
     t`Whitelabeling`,
@@ -72,6 +73,7 @@ export function UpgradeModalInitial({
       >
         <Stack gap="md">
           <Flex justify="space-between" align="center">
+            {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins */}
             <Title order={4}>{t`Metabase Pro`}</Title>
             <ExternalLink href="https://www.metabase.com/pricing">
               <Anchor component="span">{t`See all features`}</Anchor>

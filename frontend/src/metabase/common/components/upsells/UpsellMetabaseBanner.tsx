@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { UpsellCard } from "metabase/common/components/UpsellCard";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 
+import { UpsellCard } from "./UpsellCard";
 import { UPGRADE_URL } from "./constants";
 
 export function UpsellMetabaseBanner() {
@@ -22,6 +22,7 @@ export function UpsellMetabaseBanner() {
       fullWidth
       onClick={triggerUpsellFlow}
     >
+      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell referencing the Metabase brand, only visible to admins */}
       {t`The “Powered by Metabase” banner appears on all guest embeds created with your current version. Upgrade to remove it (and customize a lot more)`}
     </UpsellCard>
   );

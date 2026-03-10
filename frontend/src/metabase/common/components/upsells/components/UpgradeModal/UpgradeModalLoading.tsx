@@ -27,7 +27,8 @@ export function UpgradeModalLoading({
   if (isSettingUp) {
     const title = isTrial
       ? t`Setting up your free trial, please wait`
-      : t`Setting up Metabase Pro, please wait`;
+      : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins
+        t`Setting up Metabase Pro, please wait`;
 
     return (
       <Stack align="center" gap="lg" py="xl">
@@ -54,7 +55,8 @@ export function UpgradeModalLoading({
   // Success state - feature has arrived
   const successTitle = isTrial
     ? t`Your free trial is ready`
-    : t`Metabase Pro is ready to use`;
+    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins
+      t`Metabase Pro is ready to use`;
 
   return (
     <Stack align="center" gap="lg" py="xl">
