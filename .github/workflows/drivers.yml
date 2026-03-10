@@ -138,14 +138,6 @@ jobs:
     if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' || needs.determine-driver-skips.outputs.bigquery-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        job:
-          - name: Driver Tests
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :fail-fast? true
     env:
       CI: 'true'
       DRIVERS: bigquery-cloud-sdk
@@ -156,7 +148,7 @@ jobs:
       MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
-    name: BigQuery ${{ matrix.job.name }}
+    name: BigQuery
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.bigquery-quarantine-conflict == 'true' }}
@@ -174,8 +166,9 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
-        test-args: ${{ matrix.job.test-args }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :fail-fast? true
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
