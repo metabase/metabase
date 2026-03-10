@@ -52,6 +52,11 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Set up Python (uv)
         uses: astral-sh/setup-uv@v4
 
