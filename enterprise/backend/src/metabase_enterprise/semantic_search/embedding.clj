@@ -45,7 +45,7 @@
   "Abbreviate long provider names for use in index names."
   [provider-name]
   (case provider-name
-    "embedding-service" "es"
+    "ai-service" "ais"
     (clean-provider-name provider-name)))
 
 ;;; Token Counting for OpenAI Models
@@ -176,7 +176,7 @@
 (defmethod get-embeddings-batch "ollama" [{:keys [model-name]} texts & {:as _opts}] (ollama-get-embeddings-batch model-name texts))
 (defmethod pull-model           "ollama" [{:keys [model-name]}]       (ollama-pull-model model-name))
 
-;;;; OpenAI-compatible embedding service impl (shared by "embedding-service" and "openai" providers)
+;;;; OpenAI-compatible embedding service impl (shared by "ai-service" and "openai" providers)
 
 (defn- supports-dimensions?
   "Check whether the model's API supports dimensions in request's body. At the time of writing supported on OpenAI's
@@ -188,9 +188,9 @@
 
 (defn- openai-compatible-get-embeddings-batch
   "Call an OpenAI-compatible /v1/embeddings endpoint. Shared implementation for both
-  the `embedding-service` and `openai` providers.
+  the `ai-service` and `openai` providers.
 
-  `provider`   — label for analytics (e.g. \"embedding-service\", \"openai\")
+  `provider`   — label for analytics (e.g. \"ai-service\", \"openai\")
   `endpoint`   — full URL including /v1/embeddings
   `api-key`    — Bearer token
   `model-name` — model identifier sent in the request body
@@ -257,20 +257,20 @@
                       {:setting "ee-embedding-service-api-key"})))
     [(str base-url "/v1/embeddings") api-key]))
 
-(defmethod get-embedding "embedding-service" [{:keys [model-name]} text & {:as opts}]
+(defmethod get-embedding "ai-service" [{:keys [model-name]} text & {:as opts}]
   (let [[endpoint api-key] (embedding-service-resolve-config!)]
     (first (openai-compatible-get-embeddings-batch
-            "embedding-service" endpoint api-key model-name [text]
+            "ai-service" endpoint api-key model-name [text]
             (assoc opts :snowplow? true)))))
 
-(defmethod get-embeddings-batch "embedding-service" [{:keys [model-name]} texts & {:as opts}]
+(defmethod get-embeddings-batch "ai-service" [{:keys [model-name]} texts & {:as opts}]
   (let [[endpoint api-key] (embedding-service-resolve-config!)]
     (openai-compatible-get-embeddings-batch
-     "embedding-service" endpoint api-key model-name texts
+     "ai-service" endpoint api-key model-name texts
      (assoc opts :snowplow? true))))
 
-(defmethod pull-model "embedding-service" [_]
-  (log/debug "Embedding-service provider does not require pulling a model"))
+(defmethod pull-model "ai-service" [_]
+  (log/debug "ai-service provider does not require pulling a model"))
 
 ;;;; OpenAI provider
 
@@ -351,11 +351,11 @@
 
 (comment
   ;; Configuration:
-  ;; MB_EE_EMBEDDING_PROVIDER:  "embedding-service" (default), "openai", or "ollama"
+  ;; MB_EE_EMBEDDING_PROVIDER:  "ai-service" (default), "openai", or "ollama"
   ;; MB_EE_EMBEDDING_MODEL: optional override (leave empty for provider defaults)
   ;;   - OpenAI default: "text-embedding-3-small"
   ;;   - Ollama default: "mxbai-embed-large"
-  ;; MB_EE_EMBEDDING_SERVICE_BASE_URL: URL of the embedding service (for embedding-service provider)
+  ;; MB_EE_EMBEDDING_SERVICE_BASE_URL: URL of the embedding service (for ai-service provider)
   ;; MB_EE_EMBEDDING_SERVICE_API_KEY: API key for the embedding service
   ;; MB_EE_OPENAI_API_KEY: your OpenAI API key (for openai provider)
   ;; MB_EE_EMBEDDING_MODEL_DIMENSIONS: defaults to 1024.
