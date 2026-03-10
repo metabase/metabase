@@ -154,7 +154,8 @@
 (defn- simple-event? [event]
   (-> event
       :data
-      (contains? "event")))
+      (get "event")
+      (some-> (str/starts-with? "metabot_"))))
 
 (deftest generate-sql-snowplow-success-test
   (testing "successful /generate-sql call tracks both token_usage and simple_event"
