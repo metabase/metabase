@@ -163,9 +163,9 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
 
     const DAY_OPTIONS = [
       { label: t`Calendar Day`, value: "" },
-      ...getDayOfWeekOptions().map((opt) => ({
-        label: opt.name,
-        value: opt.value,
+      ...getDayOfWeekOptions().map((dayOfWeekOption) => ({
+        label: dayOfWeekOption.name,
+        value: dayOfWeekOption.value,
       })),
     ];
 
@@ -184,9 +184,9 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
               value as ScheduleFrameType,
             )
           }
-          data={MONTH_DAY_OPTIONS.map((opt) => ({
-            label: opt.name,
-            value: opt.value,
+          data={MONTH_DAY_OPTIONS.map((monthDayOption) => ({
+            label: monthDayOption.name,
+            value: monthDayOption.value,
           }))}
         />
         {schedule.schedule_frame !== "mid" && (
@@ -223,9 +223,9 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
           onChange={(value) =>
             this.handleChangeProperty("schedule_day", value as ScheduleDayType)
           }
-          data={getDayOfWeekOptions().map((opt) => ({
-            label: opt.name,
-            value: opt.value,
+          data={getDayOfWeekOptions().map((dayOfWeekOption) => ({
+            label: dayOfWeekOption.name,
+            value: dayOfWeekOption.value,
           }))}
         />
       </PickerRow>
@@ -244,9 +244,9 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
           styles={SELECT_STYLE}
           className={CS.mr1}
           value={minuteOfHour.toString()}
-          data={MINUTE_OPTIONS.map((opt) => ({
-            label: opt.name,
-            value: opt.value.toString(),
+          data={MINUTE_OPTIONS.map((minuteOption) => ({
+            label: minuteOption.name,
+            value: minuteOption.value.toString(),
           }))}
           onChange={(value) =>
             this.handleChangeProperty(
@@ -278,9 +278,9 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
             styles={SELECT_STYLE}
             className={CS.mr1}
             value={hour.toString()}
-            data={HOUR_OPTIONS.map((opt) => ({
-              label: opt.name,
-              value: opt.value.toString(),
+            data={HOUR_OPTIONS.map((hourOption) => ({
+              label: hourOption.name,
+              value: hourOption.value.toString(),
             }))}
             onChange={(value) =>
               this.handleChangeProperty(
@@ -337,9 +337,11 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
             onChange={(value) =>
               this.handleChangeProperty("schedule_type", value as ScheduleType)
             }
-            data={scheduleOptions.map((o) => ({
-              label: optionNameTranslations[o] || capitalize(o),
-              value: o,
+            data={scheduleOptions.map((scheduleOption) => ({
+              label:
+                optionNameTranslations[scheduleOption] ||
+                capitalize(scheduleOption),
+              value: scheduleOption,
             }))}
           />
           {scheduleType === "weekly" && this.renderDayPicker()}
