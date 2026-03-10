@@ -25,7 +25,7 @@ interface LeafletChoroplethProps {
 }
 
 function isFeatureCollection(value: GeoJSONData): value is FeatureCollection {
-  return Array.isArray(value);
+  return value.type === "FeatureCollection";
 }
 
 export const LeafletChoropleth = ({
