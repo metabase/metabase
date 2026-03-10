@@ -263,19 +263,21 @@
                                        :type        :metric}
      :model/Segment  _                {:table_id table-id-2}
      :model/Transform _               {:name   "Source DB transform"
-                                       :source {:type :table
-                                                :source-tables [{:database db-id
-                                                                 :schema "PUBLIC"
-                                                                 :table "ORDERS"}]}
-                                       :target {:database db-id
+                                       :source {:type  :query
+                                                :query {:database db-id
+                                                        :type     :native
+                                                        :native   {:query "select 1"}}}
+                                       :target {:type     "table"
+                                                :database db-id
                                                 :schema "PUBLIC"
                                                 :name "source_db_transform_target"}}
      :model/Transform _               {:name   "Target DB transform"
-                                       :source {:type :table
-                                                :source-tables [{:database (mt/id)
-                                                                 :schema "PUBLIC"
-                                                                 :table "ORDERS"}]}
-                                       :target {:database db-id
+                                       :source {:type  :query
+                                                :query {:database db-id
+                                                        :type     :native
+                                                        :native   {:query "select 1"}}}
+                                       :target {:type     "table"
+                                                :database db-id
                                                 :schema "PUBLIC"
                                                 :name "target_db_transform_target"}}]
     (testing "should require admin"
