@@ -3365,6 +3365,47 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
 
+  - changeSet:
+      id: v59.2026-03-11T00:00:00
+      author: christruter
+      comment: >-
+        Clean up old v58 changeset rows from databasechangelog left behind when
+        migrations were moved to v59. These stale rows block downgrade to older versions.
+      changes:
+        - sql:
+            dbms: postgres,h2
+            sql: >-
+              DELETE FROM databasechangelog WHERE id IN (
+                'v58.2025-12-03T17:08:36',
+                'v58.2025-12-03T17:08:37',
+                'v58.2025-12-03T17:08:38',
+                'v58.2025-12-30T22:48:02',
+                'v58.2025-12-30T22:48:03',
+                'v58.2026-01-05T12:00:00',
+                'v58.2026-01-09T11:30:00',
+                'v58.2026-01-09T11:30:01',
+                'v58.2026-01-09T12:00:01',
+                'v58.2026-01-23T05:55:14',
+                'v58.2026-01-27T13:00:00'
+              );
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM DATABASECHANGELOG WHERE id IN (
+                'v58.2025-12-03T17:08:36',
+                'v58.2025-12-03T17:08:37',
+                'v58.2025-12-03T17:08:38',
+                'v58.2025-12-30T22:48:02',
+                'v58.2025-12-30T22:48:03',
+                'v58.2026-01-05T12:00:00',
+                'v58.2026-01-09T11:30:00',
+                'v58.2026-01-09T11:30:01',
+                'v58.2026-01-09T12:00:01',
+                'v58.2026-01-23T05:55:14',
+                'v58.2026-01-27T13:00:00'
+              );
+      rollback: # nothing to undo - these rows should not exist in v59
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
