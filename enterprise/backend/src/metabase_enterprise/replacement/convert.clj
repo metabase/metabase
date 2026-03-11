@@ -13,10 +13,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- scaled-progress
-  "Wraps a progress object to scale advances from [0,1] into [offset, 1.0].
-   Used to map the replacement runner's 0→1 progress onto the 0.3→1.0 range."
-  [base-progress run-id offset]
+(defn- relay-progress
+  "Wraps a progress object to relay runner advances to the run record as 0→1 progress.
+   Lifecycle methods are no-ops — the outer execute-async! harness handles those."
+  [base-progress run-id]
   (let [total*     (atom 1)
         completed* (atom 0)]
     (reify replacement.protocols/IRunnerProgress
@@ -27,14 +27,12 @@
               t        @total*
               fraction (if (pos? t)
                          (min 1.0 (double (/ c t)))
-                         0.0)
-              scaled   (+ offset (* fraction (- 1.0 offset)))]
-          (replacement-run/update-progress! run-id scaled)
+                         0.0)]
+          (replacement-run/update-progress! run-id fraction)
           (when (replacement.protocols/canceled? this)
             (throw (ex-info "Run canceled" {:run-id run-id})))))
       (canceled? [_]
         (replacement.protocols/canceled? base-progress))
-      ;; Lifecycle methods are no-ops — the outer execute-async! harness handles these
       (start-run! [_])
       (succeed-run! [_])
       (fail-run! [_ _]))))
@@ -43,9 +41,8 @@
   "Convert a model to a transform, execute it, and replace all usages of the model
    with the new output table.
 
-   Called as the work-fn inside execute-async!. Progress uses weighted milestones:
-   0.1 after creating transform, 0.2 after executing it, 0.3 after sync confirmation,
-   then 0.3→1.0 during source replacement.
+   Called as the work-fn inside execute-async!. Progress stays null during transform
+   creation/execution/sync, then tracks 0→1 during source replacement.
 
    Note: DB-polling cancellation differs from the transforms system's core.async
    cancellation, so a cancelled convert run may produce a \"failed\" transform_run.
@@ -60,7 +57,6 @@
                (throw (ex-info "Card is not a model" {:card-id card-id})))
 
         ;; --- Phase 1: Create transform ---
-        _          (replacement-run/update-progress! run-id 0.05)
         transform  (transforms/create-transform!
                     {:name        transform-name
                      :description (:description card)
@@ -68,11 +64,9 @@
                                    :query (:dataset_query card)}
                      :target      transform-target})
         _          (replacement-run/update-transform-id! run-id (:id transform))
-        _          (replacement-run/update-progress! run-id 0.1)
 
         ;; --- Phase 2: Execute transform (synchronous — also syncs the output table) ---
         _          (transforms/execute! transform {:run-method :manual})
-        _          (replacement-run/update-progress! run-id 0.2)
 
         ;; --- Phase 3: Confirm sync, get table ID ---
         target-db-id (transforms-base.i/target-db-id transform)
@@ -90,9 +84,8 @@
 
         ;; Record the actual target on the run
         _          (replacement-run/update-target! run-id :table table-id)
-        _          (replacement-run/update-progress! run-id 0.3)
 
-        ;; --- Phase 4: Replace all usages (0.3 → 1.0) ---
-        replace-prog (scaled-progress progress run-id 0.3)]
+        ;; --- Phase 4: Replace all usages (0 → 1) ---
+        replace-prog (relay-progress progress run-id)]
 
     (replacement.runner/run-swap [:card card-id] [:table table-id] replace-prog)))

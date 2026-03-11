@@ -176,4 +176,4 @@
           (replacement-run/start-run! (:id run))
           (let [result (mt/user-http-request :crowberto :get 200 (str "ee/replacement/runs/" (:id run)))]
             (is (= "convert-to-transform" (:run_type result)))
-            (is (= 0.0 (:progress result)))))))))
+            (is (nil? (:progress result)))))))))
