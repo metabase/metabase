@@ -58,7 +58,7 @@ jobs:
           node-version: 22
 
       - name: Set up Clojure CLI
-        uses: DeLaGuardo/setup-clojure@13.5
+        uses: DeLaGuardo/setup-clojure@13.5.2
         with:
           cli: 'latest'
 
