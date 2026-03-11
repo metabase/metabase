@@ -573,7 +573,8 @@
   [card dashcard data]
   (let [cols (:cols data)]
     (if (or (< (count cols) 2)
-            (not= :funnel (:display card)))
+            (and (not= :funnel (:display card))
+                 (not (render.util/is-visualizer-dashcard? dashcard))))
       data
       (let [dimension-col-name
             (if (render.util/is-visualizer-dashcard? dashcard)
@@ -595,7 +596,7 @@
 
 (mu/defmethod render :funnel_normal :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card dashcard data]
-  (let [{:keys [rows cols viz-settings]} #p (normalize-funnel-data card dashcard data)
+  (let [{:keys [rows cols viz-settings]} (normalize-funnel-data card dashcard data)
         funnel-viz    (:funnel.rows viz-settings)
         raw-rows      (map (juxt first second)
                            (formatter/row-preprocess first second rows))
