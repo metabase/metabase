@@ -17,7 +17,6 @@ describe("scenarios > dependencies > dependency checks", () => {
 
     cy.intercept("PUT", "/api/card/*").as("updateCard");
     cy.intercept("PUT", "/api/native-query-snippet/*").as("updateSnippet");
-    cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
   });
 
   afterEach(() => {
@@ -143,7 +142,7 @@ describe("scenarios > dependencies > dependency checks", () => {
 
   describe("metrics", () => {
     it("should be able to confirm or cancel breaking changes to a metric", () => {
-      createMetricWithDependentMbqlQuestionsAndTransforms();
+      createMetricWithDependentMbqlQuestions();
 
       cy.log("make breaking changes");
       cy.get<number>("@metricId").then(H.visitMetric);
@@ -159,9 +158,7 @@ describe("scenarios > dependencies > dependency checks", () => {
       cy.findByTestId("edit-bar").button("Save changes").click();
       H.modal().within(() => {
         cy.findByText("Question with 2 stages").should("be.visible");
-        cy.findByText("Transform with 2 stages").should("be.visible");
         cy.findByText("Question with 1 stage").should("not.exist");
-        cy.findByText("Transform with 1 stage").should("not.exist");
         cy.findByText("Base metric").should("not.exist");
         cy.button("Cancel").click();
       });
@@ -174,7 +171,7 @@ describe("scenarios > dependencies > dependency checks", () => {
     });
 
     it("should not show a warning when a change to a metric is backward-compatible with existing content", () => {
-      createMetricWithDependentMbqlQuestionsAndTransforms();
+      createMetricWithDependentMbqlQuestions();
       cy.get<number>("@metricId").then(H.visitMetric);
       H.openQuestionActions("Edit metric definition");
       H.getNotebookStep("summarize").findByText("Min of Score").click();
@@ -184,90 +181,9 @@ describe("scenarios > dependencies > dependency checks", () => {
     });
   });
 
-  describe("transforms", () => {
-    it("should be able to confirm or cancel breaking changes to a SQL transform after it was run", () => {
-      createSqlTransformWithDependentMbqlQuestions();
-
-      cy.log("make breaking changes");
-      cy.get<number>("@transformId").then(H.visitTransform);
-      cy.findByTestId("transform-page").findByText("Edit query").click();
-      H.NativeEditor.clear().type('SELECT name FROM "Schema A"."Animals"');
-
-      cy.log("cancel breaking changes");
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
-      H.modal().within(() => {
-        cy.findByText("Question with fields").should("be.visible");
-        cy.findByText("Question without fields").should("not.exist");
-        cy.findByText("Base transform").should("not.exist");
-        cy.button("Cancel").click();
-      });
-      cy.get("@updateTransform.all").should("have.length", 0);
-
-      cy.log("confirm breaking changes");
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
-      H.modal().within(() => {
-        cy.findByText("Question with fields").should("be.visible");
-        cy.findByText("Question without fields").should("not.exist");
-        cy.findByText("Base transform").should("not.exist");
-        cy.button("Save anyway").click();
-      });
-      cy.wait("@updateTransform");
-    });
-
-    it("should not show a confirmation if there are no breaking changes when updating a SQL transform after it was run", () => {
-      createSqlTransformWithDependentMbqlQuestions();
-      cy.get<number>("@transformId").then(H.visitTransform);
-      cy.findByTestId("transform-page").findByText("Edit query").click();
-      H.NativeEditor.clear().type(
-        'SELECT score, name FROM "Schema A"."Animals"',
-      );
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
-      cy.wait("@updateTransform");
-    });
-
-    it("should be able to confirm or cancel breaking changes to a MBQL transform before it was run", () => {
-      createMbqlTransformWithDependentSqlTransforms();
-
-      cy.log("make breaking changes");
-      cy.get<number>("@transformId").then(H.visitTransform);
-      cy.findByTestId("transform-page").findByText("Edit query").click();
-      H.getNotebookStep("data").findByLabelText("Pick columns").click();
-      H.popover().findByLabelText("Score").click();
-
-      cy.log("cancel breaking changes");
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
-      H.modal().within(() => {
-        cy.findByText("Score transform").should("be.visible");
-        cy.findByText("Name transform").should("not.exist");
-        cy.findByText("Base transform").should("not.exist");
-        cy.button("Cancel").click();
-      });
-      cy.get("@updateTransform.all").should("have.length", 0);
-
-      cy.log("confirm breaking changes");
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
-      H.modal().within(() => {
-        cy.findByText("Score transform").should("be.visible");
-        cy.findByText("Name transform").should("not.exist");
-        cy.button("Save anyway").click();
-      });
-      cy.wait("@updateTransform");
-    });
-
-    it("should not show a confirmation if there are no breaking changes when updating a MBQL transform before it was run", () => {
-      createMbqlTransformWithDependentSqlTransforms();
-      cy.get<number>("@transformId").then(H.visitTransform);
-      cy.findByTestId("transform-page").findByText("Edit query").click();
-      H.getNotebookStep("data").button("Sort").click();
-      H.popover().findByText("Score").click();
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
-      cy.wait("@updateTransform");
-    });
-  });
-
   describe("snippets", () => {
     it("should be able to confirm or cancel breaking changes to a snippet", () => {
-      createSnippetWithDependentQuestionsAndTransforms();
+      createSnippetWithDependentQuestions();
 
       cy.log("make breaking changes");
       startEditingSnippet();
@@ -280,7 +196,6 @@ describe("scenarios > dependencies > dependency checks", () => {
       H.modal().within(() => {
         cy.button("Save").click();
         cy.findByText("Question with snippet").should("be.visible");
-        cy.findByText("Transform with snippet").should("be.visible");
         cy.findByText("ScoreSnippet").should("not.exist");
         cy.button("Cancel").click();
       });
@@ -290,7 +205,6 @@ describe("scenarios > dependencies > dependency checks", () => {
       H.modal().within(() => {
         cy.button("Save").click();
         cy.findByText("Question with snippet").should("be.visible");
-        cy.findByText("Transform with snippet").should("be.visible");
         cy.findByText("ScoreSnippet").should("not.exist");
         cy.button("Save anyway").click();
       });
@@ -298,7 +212,7 @@ describe("scenarios > dependencies > dependency checks", () => {
     });
 
     it("should not warn if changes to a snippet are backward compatible", () => {
-      createSnippetWithDependentQuestionsAndTransforms();
+      createSnippetWithDependentQuestions();
       startEditingSnippet();
       H.modal().within(() => {
         cy.findByLabelText("Enter some SQL here so you can reuse it later")
@@ -388,7 +302,7 @@ function createSqlModelWithDependentSqlQuestions() {
   });
 }
 
-function createMetricWithDependentMbqlQuestionsAndTransforms() {
+function createMetricWithDependentMbqlQuestions() {
   H.getTableId({ databaseId: WRITABLE_DB_ID, name: "Animals" }).then(
     (tableId) => {
       H.getFieldId({ tableId, name: "score" }).then((fieldId) => {
@@ -426,186 +340,13 @@ function createMetricWithDependentMbqlQuestionsAndTransforms() {
               ],
             },
           });
-
-          H.createTransform({
-            name: "Transform with 1 stage",
-            source: {
-              type: "query",
-              query: {
-                database: WRITABLE_DB_ID,
-                type: "query",
-                query: {
-                  "source-table": tableId,
-                  aggregation: [["metric", metric.id]],
-                },
-              },
-            },
-            target: {
-              type: "table",
-              name: "transform_1_stage",
-              schema: "public",
-              database: WRITABLE_DB_ID,
-            },
-          });
-
-          H.createTransform({
-            name: "Transform with 2 stages",
-            source: {
-              type: "query",
-              query: {
-                database: WRITABLE_DB_ID,
-                type: "query",
-                query: {
-                  "source-query": {
-                    "source-table": tableId,
-                    aggregation: [["metric", metric.id]],
-                    breakout: [["field", fieldId, null]],
-                  },
-                  aggregation: [
-                    ["avg", ["field", "min", { "base-type": "type/Integer" }]],
-                  ],
-                },
-              },
-            },
-            target: {
-              type: "table",
-              name: "transform_2_stages",
-              schema: "public",
-              database: WRITABLE_DB_ID,
-            },
-          });
         });
       });
     },
   );
 }
 
-function createSqlTransformWithDependentMbqlQuestions() {
-  const transformTableName = "base_transform";
-
-  H.createTransform({
-    name: "Base transform",
-    source: {
-      type: "query",
-      query: {
-        database: WRITABLE_DB_ID,
-        type: "native",
-        native: {
-          query: 'SELECT name, score FROM "Schema A"."Animals"',
-          "template-tags": {},
-        },
-      },
-    },
-    target: {
-      type: "table",
-      name: transformTableName,
-      schema: "public",
-      database: WRITABLE_DB_ID,
-    },
-  }).then(({ body: transform }) => {
-    cy.wrap(transform.id).as("transformId");
-    cy.request("POST", `/api/ee/transform/${transform.id}/run`);
-    H.waitForSucceededTransformRuns();
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: transformTableName });
-
-    H.getTableId({ databaseId: WRITABLE_DB_ID, name: transformTableName }).then(
-      (tableId) => {
-        H.createQuestion({
-          name: "Question with fields",
-          database: WRITABLE_DB_ID,
-          query: {
-            "source-table": tableId,
-            filter: [
-              ">",
-              ["field", "score", { "base-type": "type/Integer" }],
-              1,
-            ],
-          },
-        });
-        H.createQuestion({
-          name: "Question without fields",
-          database: WRITABLE_DB_ID,
-          query: {
-            "source-table": tableId,
-          },
-        });
-      },
-    );
-  });
-}
-
-function createMbqlTransformWithDependentSqlTransforms() {
-  H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
-    (tableId) => {
-      H.createTransform(
-        {
-          name: "Base transform",
-          source: {
-            type: "query",
-            query: {
-              database: WRITABLE_DB_ID,
-              type: "query",
-              query: {
-                "source-table": tableId,
-              },
-            },
-          },
-          target: {
-            type: "table",
-            name: "base_transform",
-            schema: "public",
-            database: WRITABLE_DB_ID,
-          },
-        },
-        { wrapId: true },
-      );
-
-      H.createTransform({
-        name: "Name transform",
-        source: {
-          type: "query",
-          query: {
-            database: WRITABLE_DB_ID,
-            type: "native",
-            native: {
-              query: "SELECT name FROM base_transform",
-              "template-tags": {},
-            },
-          },
-        },
-        target: {
-          type: "table",
-          name: "name_transform",
-          schema: "public",
-          database: WRITABLE_DB_ID,
-        },
-      });
-
-      H.createTransform({
-        name: "Score transform",
-        source: {
-          type: "query",
-          query: {
-            database: WRITABLE_DB_ID,
-            type: "native",
-            native: {
-              query: "SELECT score FROM base_transform",
-              "template-tags": {},
-            },
-          },
-        },
-        target: {
-          type: "table",
-          name: "score_transform",
-          schema: "public",
-          database: WRITABLE_DB_ID,
-        },
-      });
-    },
-  );
-}
-
-function createSnippetWithDependentQuestionsAndTransforms() {
+function createSnippetWithDependentQuestions() {
   H.createSnippet({
     name: "ScoreSnippet",
     content: "score = 1",
@@ -628,37 +369,6 @@ function createSnippetWithDependentQuestionsAndTransforms() {
             "snippet-name": snippet.name,
           },
         },
-      },
-    });
-
-    H.createTransform({
-      name: "Transform with snippet",
-      source: {
-        type: "query",
-        query: {
-          database: WRITABLE_DB_ID,
-          type: "native",
-          native: {
-            query:
-              'SELECT * FROM "Schema A"."Animals" WHERE {{snippet:ScoreSnippet}}',
-            "template-tags": {
-              "snippet:ScoreSnippet": {
-                id: "4b77cc1f-ea70-4ef6-84db-58432fce6929",
-                name: "snippet:ScoreSnippet",
-                "display-name": "snippet:ScoreSnippet",
-                type: "snippet",
-                "snippet-id": snippet.id,
-                "snippet-name": snippet.name,
-              },
-            },
-          },
-        },
-      },
-      target: {
-        type: "table",
-        name: "transform_with_snippet",
-        schema: "public",
-        database: WRITABLE_DB_ID,
       },
     });
   });
