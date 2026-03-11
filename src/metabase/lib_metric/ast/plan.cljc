@@ -225,4 +225,3 @@
                              (assoc :name "expression" :display_name "Expression"))]
     {:cols (conj breakout-cols agg-col)
      :rows rows}))
-

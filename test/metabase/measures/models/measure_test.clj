@@ -339,4 +339,3 @@
       (is (false? (mi/can-create? :model/Measure {:name "Test Measure"
                                                   :table_id (mt/id :venues)
                                                   :definition (measure-definition (lib/count))}))))))
-
