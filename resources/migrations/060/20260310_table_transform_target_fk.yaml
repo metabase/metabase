@@ -1,0 +1,82 @@
+## Add target_table_id FK to transform and FKs on workspace_output table columns
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+  - changeSet:
+      id: v60.2026-03-10T00:00:00
+      author: christruter
+      comment: Add target_table_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: target_table_id
+                  type: int
+                  remarks: FK to metabase_table for the transform's target table
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: target_table_id
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:01
+      author: christruter
+      comment: Add FK from transform.target_table_id to metabase_table with RESTRICT
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_transform_target_table_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: target_table_id
+            constraintName: fk_transform_target_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:02
+      author: christruter
+      comment: Backfill transform.target_table_id from target JSON column
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.BackfillTransformTargetTableId
+      rollback:
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:03
+      author: christruter
+      comment: Add FK from workspace_output.global_table_id to metabase_table with RESTRICT
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_output_global_table_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output
+            baseColumnNames: global_table_id
+            constraintName: fk_workspace_output_global_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+
+  - changeSet:
+      id: v60.2026-03-10T00:00:04
+      author: christruter
+      comment: Add FK from workspace_output.isolated_table_id to metabase_table with RESTRICT
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_workspace_output_isolated_table_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_output
+            baseColumnNames: isolated_table_id
+            constraintName: fk_workspace_output_isolated_table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
