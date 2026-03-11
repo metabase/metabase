@@ -40,7 +40,6 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
-  PLUGIN_DATA_STUDIO,
   PLUGIN_LANDING_PAGE,
   PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
@@ -382,12 +381,12 @@ export const getRoutes = (store) => {
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
 
           {/* DATA STUDIO */}
-          {PLUGIN_DATA_STUDIO.getDataStudioRoutes(
+          {/* {PLUGIN_DATA_STUDIO.getDataStudioRoutes(
             store,
             CanAccessDataStudio,
             CanAccessDataModel,
             CanAccessTransforms,
-          )}
+          )} */}
         </Route>
       </Route>
 
