@@ -29,7 +29,8 @@
                                    (expression/comparable-expressions? (get argv i) (get argv j)))
                                  compared-position-pairs)))))]]))
 
-(def comparison-operators
+(def predicate-operators
+  "Set of predicate operators that can be user in filter clauses."
   #{:and :or :not := :!= :> :>= :< :<= :is-null :not-null :is-empty :not-empty :starts-with :ends-with :contains :does-not-contain :between :inside})
 
 (mr/def ::default-filter-operator

@@ -606,7 +606,7 @@
         ;; For comparison expressions (e.g. [:> field1 field2]), tell [[sql.qp/as]] to wrap it in a case statement
         ;; and then cast it to a :bit. See #53805 for more details.
         maybe-add-cast #(cond
-                          (sql.qp.boolean-to-comparison/comparison-expression-clause? %)
+                          (sql.qp.boolean-to-comparison/predicate-expression-clause? %)
                           (-> %
                               (driver-api/assoc-field-options ::sql.qp/wrap-in-case true)
                               (driver-api/assoc-field-options ::sql.qp/add-cast :bit))
