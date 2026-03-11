@@ -8,6 +8,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -371,6 +372,71 @@
                :slug "id"
                :default "1"
                :required true}]
+             (card/template-tag-parameters card))))))
+
+(defn- native-query-card
+  "Build a card map with a native query containing the given template tags.
+  Uses lib to construct a properly normalized pMBQL query."
+  [sql template-tags]
+  {:dataset_query (lib/with-template-tags
+                    (lib/native-query meta/metadata-provider sql)
+                    template-tags)})
+
+(deftest ^:parallel template-tag-parameters-text-tag-test
+  (testing ":text template tag without widget-type produces :string/= parameter type (QUE2-326)"
+    (let [card (native-query-card
+                "SELECT * FROM PEOPLE WHERE NAME = {{name}}"
+                {"name" {:id           "_NAME_"
+                         :name         "name"
+                         :display-name "Name"
+                         :type         :text
+                         :required     false
+                         :default      "Alice"}})]
+      (is (= [{:id       "_NAME_"
+               :type     :string/=
+               :target   [:variable [:template-tag "name"]]
+               :name     "Name"
+               :slug     "name"
+               :default  "Alice"
+               :required false}]
+             (card/template-tag-parameters card))))))
+
+(deftest ^:parallel template-tag-parameters-boolean-tag-test
+  (testing ":boolean template tag without widget-type produces :boolean/= parameter type (QUE2-326)"
+    (let [card (native-query-card
+                "SELECT 1 WHERE 1 = {{active}}"
+                {"active" {:id           "_ACTIVE_"
+                           :name         "active"
+                           :display-name "Is Active"
+                           :type         :boolean
+                           :required     false}})]
+      (is (= [{:id       "_ACTIVE_"
+               :type     :boolean/=
+               :target   [:variable [:template-tag "active"]]
+               :name     "Is Active"
+               :slug     "active"
+               :default  nil
+               :required false}]
+             (card/template-tag-parameters card))))))
+
+(deftest ^:parallel template-tag-parameters-dimension-category-widget-test
+  (testing ":dimension template tag with :category widget-type passes through widget-type (QUE2-326)"
+    (let [card (native-query-card
+                "SELECT * FROM PRODUCTS WHERE {{cat}}"
+                {"cat" {:id           "_CAT_"
+                        :name         "cat"
+                        :display-name "Category"
+                        :type         :dimension
+                        :dimension    [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                       (meta/id :products :category)]
+                        :widget-type  :category}})]
+      (is (= [{:id       "_CAT_"
+               :type     :category
+               :target   [:dimension [:template-tag "cat"]]
+               :name     "Category"
+               :slug     "cat"
+               :default  nil
+               :required false}]
              (card/template-tag-parameters card))))))
 
 (deftest validate-template-tag-field-ids-test
