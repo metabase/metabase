@@ -1,5 +1,4 @@
 import { useFormikContext } from "formik";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
@@ -12,7 +11,7 @@ import {
   SOURCE_STRATEGY_OPTIONS,
   TARGET_STRATEGY_OPTIONS,
 } from "metabase/transforms/constants";
-import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
+import { getLibQuery } from "metabase/transforms/utils";
 import {
   Anchor,
   Box,
@@ -32,6 +31,7 @@ import {
   PythonKeysetColumnSelect,
 } from "./KeysetColumnSelect";
 import type { IncrementalSettingsFormValues } from "./form";
+import { useHasCheckpointOptions } from "./hooks";
 
 type IncrementalTransformSettingsProps = {
   source: TransformSource;
@@ -56,19 +56,14 @@ export const IncrementalTransformSettings = ({
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
+  const { hasCheckpointOptions, hasNativeCheckpointOptions, transformType } =
+    useHasCheckpointOptions(source);
+
   // Check if this is a Python transform with exactly one source table
   // Incremental transforms are only supported for single-table Python transforms
   const isPythonTransform = source.type === "python";
   const isMultiTablePythonTransform =
     isPythonTransform && Object.keys(source["source-tables"]).length > 1;
-
-  const transformType = match({
-    isMbqlQuery: isMbqlQuery(source, metadata),
-    isPythonTransform,
-  })
-    .with({ isMbqlQuery: true }, () => "query" as const)
-    .with({ isPythonTransform: true }, () => "python" as const)
-    .otherwise(() => "native" as const);
 
   // Check if native query has table template tags
   // Incremental transforms for native queries require table template tags
@@ -80,6 +75,14 @@ export const IncrementalTransformSettings = ({
 
   const isNativeWithoutTableTags =
     transformType === "native" && !hasTableTemplateTags;
+
+  const isMissingCheckpointOptions =
+    (transformType === "query" || transformType === "python") &&
+    !hasCheckpointOptions;
+
+  const isMissingNativeCheckpointOptions =
+    transformType === "native" && !hasNativeCheckpointOptions;
+
   const { url: incrementalTransformsDocsUrl, showMetabaseLinks } = useDocsUrl(
     isPythonTransform
       ? "data-studio/transforms/python-transforms#incremental-python-transforms"
@@ -94,6 +97,9 @@ export const IncrementalTransformSettings = ({
       if (isNativeWithoutTableTags) {
         return t`Incremental transforms for native queries require at least one table template tag.`;
       }
+      if (isMissingCheckpointOptions || isMissingNativeCheckpointOptions) {
+        return t`Incremental transforms require at least one numeric or temporal source field.`;
+      }
       return t`Only process new and changed data`;
     };
 
@@ -103,7 +109,9 @@ export const IncrementalTransformSettings = ({
           readOnly ||
           isMultiTablePythonTransform ||
           isRemoteSyncReadOnly ||
-          isNativeWithoutTableTags
+          isNativeWithoutTableTags ||
+          isMissingCheckpointOptions ||
+          isMissingNativeCheckpointOptions
         }
         checked={incremental}
         size="sm"

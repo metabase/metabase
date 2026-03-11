@@ -9,7 +9,7 @@ import {
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { useAutoSelectFirstOption } from "./useAutoSelectFirstOption";
+import { useAutoSelectFirstOption } from "../useAutoSelectFirstOption";
 
 /**
  * Get filterable numeric/temporal field options from the source table of a query.

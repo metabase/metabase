@@ -1,23 +1,17 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import { tableApi } from "metabase/api";
 import { FormSelect } from "metabase/forms";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   Alert,
   type DataAttributes,
   type InputDescriptionProps,
   Loader,
-  type SelectOption,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import type { Table } from "metabase-types/api";
-import { isConcreteTableId } from "metabase-types/api/table";
+import type * as Lib from "metabase-lib";
 
-import { getSourceFieldOptions } from "./KeysetColumnSelect";
-import { useAutoSelectFirstOption } from "./useAutoSelectFirstOption";
+import { useAutoSelectFirstOption } from "../useAutoSelectFirstOption";
+import { useNativeCheckpointFieldOptions } from "../useNativeCheckpointFieldOptions";
 
 type NativeQueryTableTagFieldSelectProps = {
   name: string;
@@ -30,41 +24,6 @@ type NativeQueryTableTagFieldSelectProps = {
   autoSelectFirst?: boolean;
 };
 
-const selectTableQueryMetadata =
-  tableApi.endpoints.getTableQueryMetadata.select;
-
-/**
- * Hook that fetches table query metadata for a dynamic list of table IDs.
- * Uses RTK Query's initiate/select pattern to avoid the "hooks in a loop" problem.
- */
-function useTableQueryMetadataResults(tableIds: number[]) {
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    const subscriptions = tableIds.map((id) =>
-      dispatch(tableApi.endpoints.getTableQueryMetadata.initiate({ id })),
-    );
-    return () => {
-      subscriptions.forEach((sub) => sub.unsubscribe());
-    };
-  }, [dispatch, tableIds]);
-
-  const selectors = useMemo(
-    () => tableIds.map((id) => selectTableQueryMetadata({ id })),
-    [tableIds],
-  );
-
-  return useSelector((state) => {
-    const results = selectors.map((sel) => sel(state));
-    const isLoading = results.some((r) => r.isLoading);
-    const hasError = results.some((r) => r.isError);
-    const tables = results
-      .map((r) => r.data)
-      .filter((t): t is Table => t != null);
-    return { isLoading, hasError, tables };
-  });
-}
-
 export function NativeQueryTableTagFieldSelect({
   name,
   label,
@@ -75,67 +34,8 @@ export function NativeQueryTableTagFieldSelect({
   disabled,
   autoSelectFirst,
 }: NativeQueryTableTagFieldSelectProps) {
-  const metadata = useSelector(getMetadata);
-
-  const tableIds = useMemo(() => {
-    try {
-      const templateTags = Lib.templateTags(query);
-      const tableTags = Object.values(templateTags).filter(
-        (tag) => tag.type === "table" && tag["table-id"] != null,
-      );
-      return tableTags.map((tag) => tag["table-id"]).filter(isConcreteTableId);
-    } catch {
-      return [];
-    }
-  }, [query]);
-
-  const { isLoading, hasError, tables } =
-    useTableQueryMetadataResults(tableIds);
-
-  const fieldOptions = useMemo((): Array<SelectOption> => {
-    if (tables.length === 0) {
-      return [];
-    }
-
-    try {
-      const allOptions: Array<SelectOption> = [];
-      const seenFieldIds = new Set<number>();
-      const showTablePrefix = tables.length > 1;
-
-      for (const table of tables) {
-        const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
-        const tableMetadata = Lib.tableOrCardMetadata(
-          metadataProvider,
-          table.id,
-        );
-        if (!tableMetadata) {
-          continue;
-        }
-
-        const tableQuery = Lib.queryFromTableOrCardMetadata(
-          metadataProvider,
-          tableMetadata,
-        );
-
-        const options = getSourceFieldOptions(tableQuery, {
-          labelPrefix: showTablePrefix
-            ? table.display_name || table.name
-            : undefined,
-          seenFieldIds,
-        });
-
-        allOptions.push(...options);
-      }
-
-      return allOptions;
-    } catch (error) {
-      console.error(
-        "NativeQueryTableTagFieldSelect: Error extracting fields:",
-        error,
-      );
-      return [];
-    }
-  }, [tables, metadata]);
+  const { fieldOptions, isLoading, tableIds, hasError } =
+    useNativeCheckpointFieldOptions(query);
 
   const noQueryMessage = useMemo(() => {
     if (tableIds.length === 0) {
