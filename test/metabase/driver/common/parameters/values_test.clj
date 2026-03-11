@@ -24,7 +24,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
-   (metabase.driver.common.parameters ReferencedCardQuery)))
+   (metabase.driver.common.parameters ReferencedCardQuery ReferencedTableQuery)))
 
 (set! *warn-on-reflection* true)
 
@@ -609,6 +609,35 @@
                                                                      :snippet-id snippet-id}})]
         (is (= expected
                (query->params-map query)))))))
+
+(deftest ^:parallel table-tag-test
+  (testing "Table template tag produces a ReferencedTableQuery"
+    (is (instance? ReferencedTableQuery
+                   (#'params.values/value-for-tag
+                    {:name         "table-tag-test"
+                     :display-name "Table tag test"
+                     :type         :table
+                     :table-id     1}
+                    [])))
+    (is (=? {:table-id 1}
+            (value-for-tag {:name         "table-tag-test"
+                            :display-name "Table tag test"
+                            :type         :table
+                            :table-id     1}
+                           [])))))
+
+(deftest ^:parallel table-tag-with-source-filters-test
+  (testing "Table template tag with source-filters passes them through"
+    (let [filters [{:field-id 100 :op :> :value 10}
+                   {:field-id 100 :op :<= :value 50}]]
+      (is (= {:table-id       1
+              :source-filters filters}
+             (value-for-tag {:name           "table-tag-test"
+                             :display-name   "Table tag test"
+                             :type           :table
+                             :table-id       1
+                             :source-filters filters}
+                            []))))))
 
 (deftest ^:parallel invalid-param-test
   (testing "Should throw an Exception if we try to pass with a `:type` we don't understand"
