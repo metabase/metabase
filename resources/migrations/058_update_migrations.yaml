@@ -1302,12 +1302,44 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v58.2026-01-09T12:00:00
+      id: v58.2026-01-09T11:30:00
       author: johnswanson
-      comment: Create data-analyst magic permissions group
+      comment: |
+        Migration `v58.2026-01-09T12:00:00` had an issue for some customers (where a user-defined Data Analysts group
+        already existed). We need to replace this migration with a new one, but don't want the old migration to still
+        exist in the `databasechangelog`, to avoid incorrectly reporting that the latest migration is a `v58`
+        migration (if someone downgrades to v57).
       changes:
         - sql:
-            sql: INSERT INTO permissions_group (name, magic_group_type) VALUES ('Data Analysts', 'data-analyst')
+            dbms: postgres,h2
+            sql: >-
+              DELETE FROM databasechangelog WHERE id = 'v58.2026-01-09T12:00:00';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM DATABASECHANGELOG WHERE id = 'v58.2026-01-09T12:00:00';
+      rollback: # not needed
+
+  - changeSet:
+      id: v58.2026-01-09T11:30:01
+      author: johnswanson
+      comment: Create data-analyst magic permissions group, handling name conflicts
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM permissions_group WHERE magic_group_type = 'data-analyst'
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name, magic_group_type)
+              SELECT
+                CASE WHEN EXISTS (SELECT 1 FROM permissions_group WHERE name = 'Data Analysts')
+                THEN 'Metabase Data Analysts'
+                ELSE 'Data Analysts'
+                END,
+                'data-analyst'
       rollback:
         - sql:
             sql: DELETE FROM permissions_group WHERE magic_group_type = 'data-analyst';
