@@ -204,15 +204,11 @@ export const DataGrid = function DataGrid<TData>({
   );
 
   const centralSectionStyle: React.CSSProperties &
-    Record<`--${string}`, string | undefined> = {
+    Record<`--${string}`, string> = {
     width: `${columnVirtualizer.getTotalSize()}px`,
     backgroundColor,
-    "--virtual-padding-left": virtualPaddingLeft
-      ? `${virtualPaddingLeft}px`
-      : undefined,
-    "--virtual-padding-right": virtualPaddingRight
-      ? `${virtualPaddingRight}px`
-      : undefined,
+    "--virtual-padding-left": `${virtualPaddingLeft}px`,
+    "--virtual-padding-right": `${virtualPaddingRight}px`,
   };
 
   const renderGridPanels = ({
