@@ -1,5 +1,4 @@
-import { useFormikContext } from "formik";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 import { FormSelect } from "metabase/forms";
 import {
@@ -9,6 +8,8 @@ import {
   type SelectOption,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { useAutoSelectFirstOption } from "./useAutoSelectFirstOption";
 
 /**
  * Get filterable numeric/temporal field options from the source table of a query.
@@ -81,8 +82,6 @@ export function KeysetColumnSelect({
   isLoading,
   autoSelectFirst,
 }: KeysetColumnSelectProps) {
-  const { setFieldValue, values } =
-    useFormikContext<Record<string, string | null>>();
   const columnOptions = useMemo((): Array<SelectOption> => {
     if (!query) {
       return [];
@@ -99,35 +98,13 @@ export function KeysetColumnSelect({
     }
   }, [query]);
 
-  useEffect(() => {
-    if (
-      !autoSelectFirst ||
-      disabled ||
-      isLoading ||
-      columnOptions.length === 0
-    ) {
-      return;
-    }
-
-    const currentValue = values[name];
-    const hasValidCurrentValue =
-      currentValue != null &&
-      columnOptions.some((option) => option.value === currentValue);
-
-    if (hasValidCurrentValue) {
-      return;
-    }
-
-    setFieldValue(name, columnOptions[0].value);
-  }, [
-    autoSelectFirst,
-    columnOptions,
+  useAutoSelectFirstOption({
+    name,
+    options: columnOptions,
     disabled,
     isLoading,
-    name,
-    setFieldValue,
-    values,
-  ]);
+    autoSelectFirst,
+  });
 
   return (
     <FormSelect
