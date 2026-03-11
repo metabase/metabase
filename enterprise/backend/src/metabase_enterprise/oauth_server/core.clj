@@ -1,6 +1,7 @@
 (ns metabase-enterprise.oauth-server.core
   (:require
    [metabase-enterprise.oauth-server.settings :as oauth-settings]
+   [metabase-enterprise.oauth-server.store :as store]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
    [oidc-provider.core :as oidc]
@@ -44,7 +45,11 @@
      :signing-key                    signing-key
      :access-token-ttl-seconds       (oauth-settings/oauth-server-access-token-ttl)
      :id-token-ttl-seconds           (oauth-settings/oauth-server-id-token-ttl)
-     :authorization-code-ttl-seconds (oauth-settings/oauth-server-authorization-code-ttl)}))
+     :authorization-code-ttl-seconds (oauth-settings/oauth-server-authorization-code-ttl)
+     :client-store                   (store/create-client-store)
+     :code-store                     (store/create-authorization-code-store)
+     :token-store                    (store/create-token-store)
+     :claims-provider                (store/create-claims-provider)}))
 
 (defn create-provider!
   "Create and store the OIDC provider instance. Returns nil if the :metabot-v3 feature
