@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { LocationDescriptorObject } from "history";
 import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
@@ -1015,7 +1016,7 @@ export const setOrUnsetParameterValues =
   };
 
 export const setParameterValuesFromQueryParams =
-  (queryParams: Record<string, string | string[]>) =>
+  (queryParams: LocationDescriptorObject["query"] = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
     const parameters = getParameters(getState());
     const parameterValues = getParameterValuesByIdFromQueryParams(
