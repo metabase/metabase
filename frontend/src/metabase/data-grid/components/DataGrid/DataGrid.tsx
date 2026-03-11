@@ -73,15 +73,6 @@ export const DataGrid = function DataGrid<TData>({
     virtualPaddingRight,
   } = virtualGrid;
 
-  const dndContextProps = useMemo(
-    () => ({
-      collisionDetection: pointerWithin,
-      modifiers: [restrictToHorizontalAxis],
-      ...columnsReordering,
-    }),
-    [columnsReordering],
-  );
-
   const rowMeasureRef = useCallback(
     (element: HTMLElement | null) => {
       rowVirtualizer.measureElement(element);
@@ -143,6 +134,36 @@ export const DataGrid = function DataGrid<TData>({
   const isLastPinnedColumnRowId =
     lastPinnedColumn?.origin.id === ROW_ID_COLUMN_ID;
   const hasSeparator = lastPinnedColumn != null && !isLastPinnedColumnRowId;
+
+  const pinnedColumnIdSet = useMemo(
+    () => new Set(pinnedColumns.map((c) => c.origin.id)),
+    [pinnedColumns],
+  );
+
+  const collisionDetection = useCallback(
+    (args: Parameters<typeof pointerWithin>[0]) => {
+      const collisions = pointerWithin(args);
+      if (collisions.length <= 1) {
+        return collisions;
+      }
+
+      const pinnedCollisions = collisions.filter((c) =>
+        pinnedColumnIdSet.has(String(c.id)),
+      );
+
+      return pinnedCollisions.length > 0 ? pinnedCollisions : collisions;
+    },
+    [pinnedColumnIdSet],
+  );
+
+  const dndContextProps = useMemo(
+    () => ({
+      collisionDetection,
+      modifiers: [restrictToHorizontalAxis],
+      ...columnsReordering,
+    }),
+    [collisionDetection, columnsReordering],
+  );
 
   const pinnedColumnsWidth = table.getLeftTotalSize();
   const pinnedPanelWidth = hasSeparator

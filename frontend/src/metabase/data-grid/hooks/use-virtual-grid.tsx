@@ -7,7 +7,7 @@ import {
   useVirtualizer,
 } from "@tanstack/react-virtual";
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
 interface VirtualGridOptions<TData> {
   gridRef: React.RefObject<HTMLDivElement>;
@@ -50,6 +50,19 @@ export const useVirtualGrid = <TData,>({
     horizontal: true,
     overscan: 3,
   });
+
+  const centralColumnKey = useMemo(
+    () => centralColumns.map((c) => c.id).join(","),
+    [centralColumns],
+  );
+
+  const prevCentralColumnKey = useRef(centralColumnKey);
+  useLayoutEffect(() => {
+    if (prevCentralColumnKey.current !== centralColumnKey) {
+      prevCentralColumnKey.current = centralColumnKey;
+      columnVirtualizer.measure();
+    }
+  }, [centralColumnKey, columnVirtualizer]);
 
   const rowPinning = table.getState().rowPinning;
 
