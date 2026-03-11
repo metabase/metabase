@@ -260,7 +260,8 @@
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name :model/Field :table_id old-table-id :active true)
         new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
-        old-field-values   (t2/select :model/FieldValues :field_id [:in (set (keys old-field-id->name))])]
+        old-field-values (when-let [field-ids (seq (keys old-field-id->name))]
+                           (t2/select :model/FieldValues :field_id [:in (set field-ids)]))]
     (t2/insert! :model/FieldValues
                 (for [{old-field-id :field_id, :as field-values} old-field-values
                       :let                                       [field-name (get old-field-id->name old-field-id)]]
