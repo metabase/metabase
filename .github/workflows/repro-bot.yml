@@ -83,6 +83,32 @@ jobs:
           npm install -g @playwright/cli@latest
           playwright-cli install --skills
 
+      - name: Install bbin and clj-nrepl-eval
+        run: |
+          # Ensure bb is available via mage
+          git/metabase/bin/mage --help > /dev/null 2>&1 || true
+          BB_PATH="$(cd git/metabase && pwd)/bin/bb"
+          ln -sf "$BB_PATH" /usr/local/bin/bb
+
+          # Install bbin
+          mkdir -p ~/.bbin/bin
+          curl -sL https://raw.githubusercontent.com/babashka/bbin/main/bbin > ~/.bbin/bin/bbin
+          chmod +x ~/.bbin/bin/bbin
+          export PATH="$HOME/.bbin/bin:$PATH"
+          export BBIN_HOME="$HOME/.bbin"
+
+          # Install clj-nrepl-eval via bbin
+          bbin install https://github.com/bhauman/clojure-mcp-light.git \
+            --tag v0.2.1 \
+            --as clj-nrepl-eval \
+            --main-opts '["-m" "clojure-mcp-light.nrepl-eval"]'
+
+          # Add to PATH for the rest of the workflow
+          echo "$HOME/.bbin/bin" >> $GITHUB_PATH
+
+          # Verify
+          clj-nrepl-eval --help | head -3
+
       - name: Register MCP servers
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY_REPRO_BOT }}
@@ -177,6 +203,7 @@ jobs:
             Edit(//./**)
             Edit(repro/**)
             Read(//.claude/**)
+            Read(repro/**)
             Read(/tmp/**)
             Write(/tmp/**)
             Edit(/tmp/**)
@@ -203,6 +230,7 @@ jobs:
             mcp__metabase-repro__stop_appdb_tool
             mcp__metabase-repro__stop_metabase
             mcp__metabase-repro__cleanup
+            mcp__metabase-repro__browser_snapshot
             mcp__linear-server__create_attachment
             mcp__linear-server__get_issue
             mcp__linear-server__list_comments
