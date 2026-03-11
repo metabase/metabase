@@ -54,8 +54,8 @@
                     "http://192.0.2.0"                         true
                     ;; this following test flakes in CI for unknown reasons
                     ;;"http://0xc0000200"                        true
-                    ;; Resources (files on classpath) are no longer valid
-                    "c3p0.properties"                          false
+                    ;; Resources (files on classpath) are valid
+                    "c3p0.properties"                          true
                     ;; Other files are not
                     "./README.md"                              false
                     "file:///tmp"                              false

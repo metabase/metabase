@@ -1,11 +1,12 @@
 (ns metabase.geojson.settings
   (:require
+   [clojure.java.io :as io]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
-   (java.net InetAddress URI URL)))
+   (java.net InetAddress URL)))
 
 (set! *warn-on-reflection* true)
 
@@ -54,21 +55,17 @@
 (defn invalid-location-msg
   "Error message when a GeoJSON URL is invalid."
   []
-  (str (tru "Invalid GeoJSON file location: must start with http:// or https://.")
+  (str (tru "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath.")
        " "
        (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")))
 
 (def ^:private invalid-hosts
   #{"metadata.google.internal"}) ; internal metadata for GCP
 
-(defn- parse-url
-  [s]
-  (.toURL (URI. s)))
-
 (defn- valid-host?
   [^URL url]
   (let [host (.getHost url)
-        host->url (fn [host] (parse-url (str "http://" host)))
+        host->url (fn [host] (URL. (str "http://" host)))
         base-url  (host->url (.getHost url))]
     (and (not-any? (fn [invalid-url] (.equals ^URL base-url invalid-url))
                    (map host->url invalid-hosts))
@@ -81,7 +78,7 @@
 (defn- valid-url?
   [url-string]
   (try
-    (let [url (parse-url url-string)]
+    (let [url (URL. url-string)]
       (and (valid-protocol? url)
            (valid-host? url)))
     (catch Throwable e
@@ -90,7 +87,8 @@
 (defn valid-geojson-url?
   "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not."
   [url]
-  (valid-url? url))
+  (or (io/resource url)
+      (valid-url? url)))
 
 (defn- valid-geojson-urls?
   [geojson]
