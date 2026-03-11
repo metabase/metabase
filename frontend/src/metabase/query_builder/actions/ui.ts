@@ -54,43 +54,56 @@ export const setQueryBuilderMode =
     }
   };
 
-export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
-export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");
+export const ON_EDIT_SUMMARY = "metabase/qb/ON_EDIT_SUMMARY";
+export const onEditSummary = createAction(ON_EDIT_SUMMARY);
 
+export const ON_CLOSE_SUMMARY = "metabase/qb/ON_CLOSE_SUMMARY";
+export const onCloseSummary = createAction(ON_CLOSE_SUMMARY);
+
+export const OPEN_AI_QUESTION_ANALYSIS_SIDEBAR =
+  "metabase/qb/OPEN_AI_QUESTION_ANALYSIS_SIDEBAR";
 export const onOpenAIQuestionAnalysisSidebar = createAction(
-  "metabase/qb/OPEN_AI_QUESTION_ANALYSIS_SIDEBAR",
+  OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
 );
+
+export const CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR =
+  "metabase/qb/CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR";
 export const onCloseAIQuestionAnalysisSidebar = createAction(
-  "metabase/qb/CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR",
+  CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR,
 );
 
-export const onOpenChartSettings = createAction(
-  "metabase/qb/OPEN_CHART_SETTINGS",
-);
-export const onCloseChartSettings = createAction(
-  "metabase/qb/CLOSE_CHART_SETTINGS",
-);
-export const onOpenChartType = createAction("metabase/qb/OPEN_CHART_TYPE");
+export const OPEN_CHART_SETTINGS = "metabase/qb/OPEN_CHART_SETTINGS";
+export const onOpenChartSettings = createAction(OPEN_CHART_SETTINGS);
 
-export const onOpenQuestionInfo = createAction(
-  "metabase/qb/OPEN_QUESTION_INFO",
-);
-export const onCloseQuestionInfo = createAction(
-  "metabase/qb/CLOSE_QUESTION_INFO",
-);
+export const CLOSE_CHART_SETTINGS = "metabase/qb/CLOSE_CHART_SETTINGS";
+export const onCloseChartSettings = createAction(CLOSE_CHART_SETTINGS);
 
-export const onOpenQuestionSettings = createAction(
-  "metabase/qb/OPEN_QUESTION_SETTINGS",
-);
-export const onCloseQuestionSettings = createAction(
-  "metabase/qb/CLOSE_QUESTION_SETTINGS",
-);
+export const OPEN_CHART_TYPE = "metabase/qb/OPEN_CHART_TYPE";
+export const onOpenChartType = createAction(OPEN_CHART_TYPE);
 
-export const onOpenTimelines = createAction("metabase/qb/OPEN_TIMELINES");
-export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
+export const OPEN_QUESTION_INFO = "metabase/qb/OPEN_QUESTION_INFO";
+export const onOpenQuestionInfo = createAction(OPEN_QUESTION_INFO);
 
-export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
-export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
+export const CLOSE_QUESTION_INFO = "metabase/qb/CLOSE_QUESTION_INFO";
+export const onCloseQuestionInfo = createAction(CLOSE_QUESTION_INFO);
+
+export const OPEN_QUESTION_SETTINGS = "metabase/qb/OPEN_QUESTION_SETTINGS";
+export const onOpenQuestionSettings = createAction(OPEN_QUESTION_SETTINGS);
+
+export const CLOSE_QUESTION_SETTINGS = "metabase/qb/CLOSE_QUESTION_SETTINGS";
+export const onCloseQuestionSettings = createAction(CLOSE_QUESTION_SETTINGS);
+
+export const OPEN_TIMELINES = "metabase/qb/OPEN_TIMELINES";
+export const onOpenTimelines = createAction(OPEN_TIMELINES);
+
+export const CLOSE_TIMELINES = "metabase/qb/CLOSE_TIMELINES";
+export const onCloseTimelines = createAction(CLOSE_TIMELINES);
+
+export const CLOSE_CHART_TYPE = "metabase/qb/CLOSE_CHART_TYPE";
+export const onCloseChartType = createAction(CLOSE_CHART_TYPE);
+
+export const CLOSE_SIDEBARS = "metabase/qb/CLOSE_SIDEBARS";
+export const onCloseSidebars = createAction(CLOSE_SIDEBARS);
 
 export const SHOW_CHART_SETTINGS = "metabase/qb/SHOW_CHART_SETTINGS";
 export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
