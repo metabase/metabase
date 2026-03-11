@@ -775,6 +775,7 @@
    :friends #{legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
+              source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
               enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
               }}
 
@@ -1454,6 +1455,15 @@
            system
            util}}
 
+  source-swap
+  {:team "Graphy"
+   :api  #{metabase.source-swap.core
+           metabase.source-swap.schema}
+   :uses #{driver
+           lib
+           sql-tools
+           util}}
+
   sql-parsing
   {:team "DevEx"
    :api #{metabase.sql-parsing.core}
@@ -1967,7 +1977,9 @@
            request
            server
            util
-           enterprise/metabot-v3}}
+           enterprise/api
+           enterprise/metabot-v3
+           enterprise/workspaces}}
 
   enterprise/ai-entity-analysis
   {:team "Metabot"
@@ -2159,7 +2171,8 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
-           metabase-enterprise.dependencies.init}
+           metabase-enterprise.dependencies.init
+           metabase-enterprise.dependencies.models.dependency}
    :uses #{analyze
            api
            app-db
@@ -2341,6 +2354,21 @@
            util
            enterprise/serialization
            enterprise/transforms-python}}
+
+  enterprise/replacement
+  {:team "Graphy"
+   :api  #{metabase-enterprise.replacement.api}
+   :uses #{api
+           app-db
+           events
+           lib
+           lib-be
+           models
+           queries
+           source-swap
+           task
+           util
+           enterprise/dependencies}}
 
   enterprise/sandbox
   {:team "UX West"
@@ -2540,8 +2568,8 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
+   :friends #{enterprise/agent-api}
    :uses #{api
-           api-keys
            app-db
            config
            database-routing
