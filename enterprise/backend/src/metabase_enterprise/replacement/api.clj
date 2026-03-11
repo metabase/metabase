@@ -104,7 +104,7 @@
                                "Card is not a model")
         job-row (replacement-run/create-run!
                  :card card_id :card card_id
-                 api/*current-user-id* :convert_to_transform)
+                 api/*current-user-id* :convert-to-transform)
         progress (replacement-run/run-row->progress job-row)
         work-fn  (fn [_progress]
                    (convert/convert-card-to-transform! card_id (:id job-row)))]

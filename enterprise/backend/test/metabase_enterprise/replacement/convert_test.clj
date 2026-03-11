@@ -54,13 +54,13 @@
         (is (= :replace (:run_type run))))))
   (testing "6-arity accepts explicit run_type"
     (mt/with-model-cleanup [:model/ReplacementRun]
-      (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :convert_to_transform)]
-        (is (= :convert_to_transform (:run_type run)))))))
+      (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :convert-to-transform)]
+        (is (= :convert-to-transform (:run_type run)))))))
 
 (deftest list-runs-test
   (mt/with-model-cleanup [:model/ReplacementRun]
     (let [run1 (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto))
-          run2 (replacement-run/create-run! :card 3 :card 4 (mt/user->id :crowberto) :convert_to_transform)]
+          run2 (replacement-run/create-run! :card 3 :card 4 (mt/user->id :crowberto) :convert-to-transform)]
       ;; Start run2 so it's active
       (replacement-run/start-run! (:id run2))
       (testing "lists all runs"
@@ -76,7 +76,7 @@
 
 (deftest update-phase-progress-test
   (mt/with-model-cleanup [:model/ReplacementRun]
-    (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :convert_to_transform)]
+    (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :convert-to-transform)]
       (replacement-run/start-run! (:id run))
       (replacement-run/update-phase-progress! (:id run) :transform_progress 0.5)
       (replacement-run/update-phase-progress! (:id run) :sync_progress 1.0)
@@ -87,7 +87,7 @@
 
 (deftest update-target-test
   (mt/with-model-cleanup [:model/ReplacementRun]
-    (let [run (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert_to_transform)]
+    (let [run (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)]
       (replacement-run/update-target! (:id run) :table 42)
       (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
         (is (= :table (:target_entity_type updated)))
@@ -137,7 +137,7 @@
   (testing "GET /runs — lists runs"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/ReplacementRun]
-        (let [run  (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :convert_to_transform)
+        (let [run  (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :convert-to-transform)
               runs (mt/user-http-request :crowberto :get 200 "ee/replacement/runs")]
           (is (sequential? runs))
           (is (some #(= (:id run) (:id %)) runs))))))
@@ -154,11 +154,11 @@
   (testing "GET /runs/:id returns run_type and phase progress fields"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/ReplacementRun]
-        (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :convert_to_transform)]
+        (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :convert-to-transform)]
           (replacement-run/start-run! (:id run))
           (replacement-run/update-phase-progress! (:id run) :transform_progress 0.5)
           (let [result (mt/user-http-request :crowberto :get 200 (str "ee/replacement/runs/" (:id run)))]
-            (is (= "convert_to_transform" (:run_type result)))
+            (is (= "convert-to-transform" (:run_type result)))
             (is (= 0.5 (:transform_progress result)))
             (is (nil? (:sync_progress result)))
             (is (nil? (:replacement_progress result)))))))))
