@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
+   [metabase-enterprise.replacement.timeout :as replacement.timeout]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -43,6 +44,56 @@
       (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
         (is (= :table (:target_entity_type updated)))
         (is (= 42 (:target_entity_id updated)))))))
+
+(deftest update-transform-id-test
+  (mt/with-model-cleanup [:model/ReplacementRun]
+    (let [run (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)]
+      (is (nil? (:transform_id run)))
+      (replacement-run/update-transform-id! (:id run) 42)
+      (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
+        (is (= 42 (:transform_id updated)))))))
+
+(deftest failed-convert-runs-with-transforms-test
+  (mt/with-model-cleanup [:model/ReplacementRun]
+    (let [failed-convert (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)
+          failed-replace (replacement-run/create-run! :card 2 :card 3 (mt/user->id :crowberto))
+          ok-convert     (replacement-run/create-run! :card 4 :card 4 (mt/user->id :crowberto) :convert-to-transform)]
+      ;; Start and fail the convert run with a transform_id
+      (replacement-run/start-run! (:id failed-convert))
+      (replacement-run/update-transform-id! (:id failed-convert) 100)
+      (replacement-run/fail-run! (:id failed-convert) "boom")
+      ;; Start and fail the replace run (no transform_id)
+      (replacement-run/start-run! (:id failed-replace))
+      (replacement-run/fail-run! (:id failed-replace) "boom")
+      ;; Start and succeed the other convert run
+      (replacement-run/start-run! (:id ok-convert))
+      (replacement-run/update-transform-id! (:id ok-convert) 200)
+      (replacement-run/succeed-run! (:id ok-convert))
+      (testing "returns only failed convert runs with transform_id"
+        (let [runs (replacement-run/failed-convert-runs-with-transforms)]
+          (is (= 1 (count runs)))
+          (is (= (:id failed-convert) (:id (first runs))))
+          (is (= 100 (:transform_id (first runs)))))))))
+
+(deftest cleanup-failed-convert-runs-test
+  (testing "cleanup deletes orphaned transforms and clears transform_id on the run"
+    (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
+      (let [transform (t2/insert-returning-instance! :model/Transform
+                                                     {:name      "orphaned"
+                                                      :source    {:type "query" :query {}}
+                                                      :target    {:type "table" :name "t" :schema "s"}
+                                                      :creator_id (mt/user->id :crowberto)})
+            run       (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)]
+        (replacement-run/start-run! (:id run))
+        (replacement-run/update-transform-id! (:id run) (:id transform))
+        (replacement-run/fail-run! (:id run) "boom")
+        ;; Run cleanup
+        (#'replacement.timeout/cleanup-failed-convert-runs!)
+        ;; Transform should be deleted
+        (is (nil? (t2/select-one :model/Transform :id (:id transform))))
+        ;; Run should have transform_id cleared
+        (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
+          (is (nil? (:transform_id updated))))))))
 
 ;;; ------------------------------------------------ API endpoints ------------------------------------------------
 

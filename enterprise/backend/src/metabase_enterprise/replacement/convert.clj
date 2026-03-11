@@ -64,6 +64,7 @@
                      :source      {:type  "query"
                                    :query (:dataset_query card)}
                      :target      transform-target})
+        _          (replacement-run/update-transform-id! run-id (:id transform))
         _          (replacement-run/update-progress! run-id 0.1)
 
         ;; --- Phase 2: Execute transform (synchronous — also syncs the output table) ---

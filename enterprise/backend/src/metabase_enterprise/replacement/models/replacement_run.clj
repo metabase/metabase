@@ -108,6 +108,21 @@
     (t2/select :model/ReplacementRun :is_active true {:order-by [[:id :desc]]})
     (t2/select :model/ReplacementRun {:order-by [[:id :desc]]})))
 
+(defn update-transform-id!
+  "Record the transform ID on a convert-to-transform run."
+  [run-id transform-id]
+  (t2/update! :model/ReplacementRun
+              :id run-id
+              {:transform_id transform-id}))
+
+(defn failed-convert-runs-with-transforms
+  "Return failed/timed-out convert-to-transform runs that have a transform_id set."
+  []
+  (t2/select :model/ReplacementRun
+             :run_type :convert-to-transform
+             :status [:in [:failed :timeout]]
+             {:where [:not= :transform_id nil]}))
+
 (defn update-target!
   "Update the target entity type and ID on a run (for convert runs where target is determined mid-execution)."
   [run-id target-type target-id]

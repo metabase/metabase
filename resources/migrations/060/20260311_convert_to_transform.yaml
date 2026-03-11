@@ -1,11 +1,11 @@
-## Add run_type column for convert-to-transform runs
+## Add run_type and transform_id columns for convert-to-transform runs
 
 databaseChangeLog:
   - logicalFilePath: migrations/060_update_migrations.yaml
   - changeSet:
       id: v60.2026-03-11T12:00:00
       author: bcm
-      comment: Add run_type column for convert-to-transform runs
+      comment: Add run_type and transform_id columns for convert-to-transform runs
       changes:
         - addColumn:
             tableName: source_replacement_run
@@ -17,3 +17,9 @@ databaseChangeLog:
                   defaultValue: "replace"
                   constraints:
                     nullable: false
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: "ID of the transform created during a convert-to-transform run, null for replace runs"
+                  constraints:
+                    nullable: true
