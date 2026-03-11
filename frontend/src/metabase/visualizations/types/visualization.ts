@@ -435,6 +435,7 @@ export type VisualizationSettingsDefinitions<
   color?: SingleSeriesSettingDefinition<Value, Props>;
   column?: DatasetColumnSettingDefinition<Value, Props>;
   column_settings?: DatasetColumnSettingDefinition<Value, Props>;
+  column_title?: DatasetColumnSettingDefinition<Value, Props>;
   currency?: DatasetColumnSettingDefinition<Value, Props>;
   currency_in_header?: DatasetColumnSettingDefinition<Value, Props>;
   currency_style?: DatasetColumnSettingDefinition<Value, Props>;
