@@ -57,8 +57,10 @@ export const DataGrid = function DataGrid<TData>({
   getVisibleRows,
   getPinnedColumns,
   getCentralColumns,
+  emptyState,
   zoomedRowIndex,
   onBodyCellClick,
+  onWheel,
   tableFooterExtraButtons,
   rowsTruncated,
   sorting,
@@ -235,11 +237,13 @@ export const DataGrid = function DataGrid<TData>({
             ref={gridRef}
             data-testid="table-scroll-container"
             className={cx(S.tableGrid, classNames?.tableGrid)}
+            role="grid"
             style={{
               backgroundColor,
               color: theme?.cell?.textColor,
               ...styles?.tableGrid,
             }}
+            onWheel={onWheel}
           >
             <div
               data-testid="table-header"
@@ -262,6 +266,8 @@ export const DataGrid = function DataGrid<TData>({
                 </SortableContext>
               ))}
             </div>
+
+            {rowsCount === 0 && emptyState}
 
             <div
               data-testid="table-body"
