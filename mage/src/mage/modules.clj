@@ -131,6 +131,7 @@
      task
      task-history
      timeline
+     tracing
      types
      users
      util
