@@ -37,7 +37,7 @@ jobs:
           fi
 
       - name: Checkout repro-bot
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: metabase/repro-bot
           ref: ci-support
@@ -47,23 +47,23 @@ jobs:
         run: git clone --bare https://github.com/metabase/metabase.git git/metabase
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '21'
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
 
       - name: Set up Clojure CLI
-        uses: DeLaGuardo/setup-clojure@13.4
+        uses: DeLaGuardo/setup-clojure@13.5
         with:
           cli: 'latest'
 
       - name: Set up Python (uv)
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
 
       - name: Install playwright-cli
         run: |
@@ -95,7 +95,7 @@ jobs:
             }' > ~/.claude.json
 
       - name: Generate GitHub App Token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         id: claude-app-token
         with:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
@@ -109,6 +109,7 @@ jobs:
           CLAUDE_CODE_DEBUG_LOGS_DIR: /tmp/claude-debug-logs
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           GITHUB_ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        timeout-minutes: 30
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_REPRO_BOT }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
@@ -126,7 +127,6 @@ jobs:
             Bash(cat *)
             Bash(cd *)
             Bash(clj-nrepl-eval *)
-            Bash(curl *)
             Bash(diff *)
             Bash(echo *)
             Bash(find *)
@@ -186,6 +186,7 @@ jobs:
             mcp__metabase-repro__start_metabase
             mcp__metabase-repro__stop_appdb_tool
             mcp__metabase-repro__stop_metabase
+            mcp__metabase-repro__cleanup
             mcp__linear-server__create_attachment
             mcp__linear-server__get_issue
             mcp__linear-server__list_comments
@@ -194,6 +195,9 @@ jobs:
             mcp__linear-server__save_comment
             mcp__linear-server__save_issue
             mcp__metabase-repro__repl_eval
+            Bash(cp *)
+            Bash(mv *)
+            Skill(*)
           claude_args: '--disallowedTools "Bash(git push*),Bash(rm -rf /*)"'
 
       - name: Verify repro-bot completed successfully
@@ -217,7 +221,7 @@ jobs:
           echo "Repro-bot completed successfully and posted to Linear"
 
       - name: Upload repro-bot artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: repro-bot-${{ steps.issue.outputs.number }}
