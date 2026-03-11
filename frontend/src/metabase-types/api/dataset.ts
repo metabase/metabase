@@ -272,3 +272,5 @@ export type GetRemappedParameterValueRequest = {
   field_ids: FieldId[];
   value: ParameterValueOrArray;
 };
+
+export type Point = [number, number];

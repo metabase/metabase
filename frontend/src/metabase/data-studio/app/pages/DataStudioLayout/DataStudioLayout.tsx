@@ -194,7 +194,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             />
           ) : (
             <DataStudioTab
-              label={t`Set up git sync`}
+              label={t`Set up remote sync`}
               icon="gear"
               to={Urls.dataStudioGitSync()}
               isSelected={currentTab === "git-sync"}

@@ -454,7 +454,7 @@ describe("Remote Sync", () => {
         .clear()
         .type(LOCAL_GIT_URL);
       cy.findByTestId("admin-layout-content").findByText("Read-write").click();
-      cy.button("Set up Remote Sync").click();
+      cy.button("Set up remote sync").click();
 
       H.expectUnstructuredSnowplowEvent({
         event: "remote_sync_settings_changed",
@@ -488,7 +488,7 @@ describe("Remote Sync", () => {
         .type(LOCAL_GIT_URL);
 
       cy.findByTestId("admin-layout-content").findByText("Read-only").click();
-      cy.button("Set up Remote Sync").click();
+      cy.button("Set up remote sync").click();
       cy.findByTestId("admin-layout-content")
         .findByText("Success")
         .should("exist");
@@ -504,16 +504,16 @@ describe("Remote Sync", () => {
       });
     });
 
-    it("should disable 'Set up Remote Sync' button if git url is not set (#65653)", () => {
+    it("should disable 'Set up remote sync' button if git url is not set (#65653)", () => {
       cy.visit("/admin/settings/remote-sync");
-      cy.button("Set up Remote Sync").should("be.disabled");
+      cy.button("Set up remote sync").should("be.disabled");
 
       cy.findByRole("switch", { name: "Auto-sync with git" }).click({
         force: true,
       });
 
       // Trivial dirty state should not be enough to enable the button
-      cy.button("Set up Remote Sync").should("be.disabled");
+      cy.button("Set up remote sync").should("be.disabled");
 
       cy.findByLabelText(/Access Token/i)
         .should("be.visible")
@@ -521,7 +521,7 @@ describe("Remote Sync", () => {
         .clear()
         .type("SecretToken");
       // Still disabled - url is not set
-      cy.button("Set up Remote Sync").should("be.disabled");
+      cy.button("Set up remote sync").should("be.disabled");
 
       cy.findByLabelText(/repository url/i)
         .scrollIntoView()
@@ -531,7 +531,7 @@ describe("Remote Sync", () => {
         .type(LOCAL_GIT_URL);
 
       // Enabled now - url is set
-      cy.button("Set up Remote Sync").should("be.enabled");
+      cy.button("Set up remote sync").should("be.enabled");
     });
 
     it("shows an error if git settings are invalid", () => {
@@ -542,7 +542,7 @@ describe("Remote Sync", () => {
         .click()
         .clear()
         .type("file://invalid-path");
-      cy.button("Set up Remote Sync").click();
+      cy.button("Set up remote sync").click();
 
       cy.wait("@saveSettings").its("response.statusCode").should("eq", 400);
       cy.findByTestId("admin-layout-content")

@@ -133,7 +133,7 @@
            version}}
 
   analyze
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.analyze.core
            metabase.analyze.query-results}
    :uses #{config
@@ -275,6 +275,7 @@
            config
            events
            models
+           permissions
            premium-features
            request
            settings
@@ -693,7 +694,7 @@
            util}}
 
   graph
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.graph.core}
    :uses #{util}}
 
@@ -1463,7 +1464,7 @@
            util}}
 
   sync
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase.sync.api
            metabase.sync.core
            metabase.sync.init
@@ -2078,7 +2079,7 @@
            warehouses-rest}}
 
   enterprise/dependencies
-  {:team "Querying"
+  {:team "Graphy"
    :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
@@ -2476,7 +2477,12 @@
            system
            transforms
            util
-           enterprise/transforms-python}}}
+           enterprise/transforms-python}}
+
+  enterprise/writable-connection
+  {:team "Querying"
+   :api  #{}
+   :uses #{premium-features}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

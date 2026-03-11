@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
 import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -27,6 +28,9 @@ export function SegmentList({ table }: SegmentListProps) {
   const canCreateSegment = useSelector((state) =>
     getUserCanWriteSegments(state, table.is_published),
   );
+  const trackNewSegmentClickEvent = () => {
+    trackSegmentCreateStarted("data_studio_segments", Number(table.id));
+  };
 
   return (
     <Stack gap="md" data-testid="table-segments-page">
@@ -44,7 +48,11 @@ export function SegmentList({ table }: SegmentListProps) {
             py="xs"
             size="xs"
             leftSection={<Icon name="add" />}
-          >{t`New segment`}</Button>
+            onAuxClick={trackNewSegmentClickEvent}
+            onClickCapture={trackNewSegmentClickEvent}
+          >
+            {t`New segment`}
+          </Button>
         </Group>
       )}
 

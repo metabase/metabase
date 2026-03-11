@@ -72,6 +72,29 @@
                                    :analyzed_entity_id card-id
                                    :analyzed_entity_type :card))))))))
 
+(deftest ^:sequential does-not-report-errors-in-removable-refs-test-1-stage-fields
+  (testing ":fields lists have soft refs that the QP will remove, so they're not considered analysis findings"
+    (backfill-all-entity-analyses!)
+    (let [mp      (mt/metadata-provider)
+          orders  (lib.metadata/table mp (mt/id :orders))
+          base    (lib/query mp orders)
+          cols    (vec (take 5 (lib/returned-columns base orders)))
+          bad-col (-> (first cols)
+                      lib/ref
+                      (assoc 2 "bad_column"))
+          query   (lib/with-fields base (conj cols bad-col))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+          (is (= 1 (deps.findings/analyze-batch! :card 1)))
+          (is (= [models.analysis-finding/*current-analysis-finding-version* true]
+                 (t2/select-one-fn (juxt :analysis_version :result)
+                                   :model/AnalysisFinding
+                                   :analyzed_entity_id card-id
+                                   :analyzed_entity_type :card))))))))
+
+;; TODO: (bshepherdson, 2026-02-05) Add a test like does-not-report-errors-in-removable-refs-test-1-stage-fields for
+;; join clause :fields as well. See QUE-3081 and QUE-3044.
+
 (defn- stale-map
   "Returns a map of {entity-id stale?} for the given card IDs."
   [card-ids]

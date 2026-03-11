@@ -510,7 +510,7 @@
               (is (not= :archived (:status ws-after))))))))))
 
 (deftest merge-history-endpoint-test
-  (mt/with-premium-features #{:transforms :transforms-python :workspaces}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :workspaces}
     (testing "GET /api/transform/:id/merge-history"
       (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_history_test_table"}
                      :model/Transform x1     {:name        "Transform for history"
@@ -1453,14 +1453,14 @@
                   :not_run   []}
                  (run!))))))))
 
-(deftest dry-run-workspace-transform-test
+(deftest dry-run-workspace-transform-api-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/dry-run returns 404 if transform not in workspace"
     (ws.tu/with-workspaces! [ws1 {:name "Workspace 1"}
                              ws2 {:name "Workspace 2"}]
       (mt/with-temp [:model/Transform x1 {:name   "Transform in WS1"
                                           :source {:type  "query"
                                                    :query (mt/native-query
-                                                           {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world' ORDER BY 1"})}
+                                                           {:query "SELECT * FROM (SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world') t ORDER BY 1"})}
                                           :target {:type     "table"
                                                    :database (mt/id)
                                                    :schema   "public"
@@ -1713,7 +1713,7 @@
 
 (deftest external-transforms-test
   (testing "GET /api/ee/workspace/id/external/transform"
-    (mt/with-premium-features #{:transforms :workspaces}
+    (mt/with-premium-features #{:transforms-basic :workspaces}
       (let [db-1 (mt/id)]
         (ws.tu/with-workspaces! [ws1 {:name "Our Workspace"}
                                  ws2 {:name "Their Workspace"}]

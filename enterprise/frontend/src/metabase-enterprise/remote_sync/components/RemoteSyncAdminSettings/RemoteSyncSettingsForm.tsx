@@ -554,7 +554,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     label={
                       isRemoteSyncEnabled
                         ? t`Save changes`
-                        : t`Set up Remote Sync`
+                        : t`Set up remote sync`
                     }
                     variant="filled"
                     disabled={isRemoteSyncEnabled ? !dirty : !values?.[URL_KEY]}

@@ -12,7 +12,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { visitDatabase, waitForDbSync } from "./helpers/e2e-database-helpers";
 
 const { H } = cy;
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 describe(

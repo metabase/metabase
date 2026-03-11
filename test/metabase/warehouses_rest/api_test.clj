@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -2424,13 +2425,15 @@
           (is (= {:status "error"
                   :message "Failed to connect to Database"}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
-    (testing "connection-type passed and configured"
-      (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
-                                               :write_data_details {:host "write"}}]
-        (with-redefs [driver/available? (constantly true)
-                      driver/can-connect? (constantly true)]
-          (is (= {:status "ok"}
-                 (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))
+    (when config/ee-available?
+      (testing "connection-type passed and configured"
+        (mt/with-premium-features #{:writable-connection}
+          (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
+                                                   :write_data_details {:host "write"}}]
+            (with-redefs [driver/available? (constantly true)
+                          driver/can-connect? (constantly true)]
+              (is (= {:status "ok"}
+                     (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))))
     (testing "connection-type passed but not configured returns 400"
       (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}}]
         (with-redefs [driver/available? (constantly true)]
@@ -2714,7 +2717,7 @@
 (deftest update-database-write-data-details-test
   (testing "PUT /api/database/:id with write_data_details"
     (testing "Superusers can set write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
           (with-redefs [driver/can-connect? (constantly true)]
@@ -2728,7 +2731,7 @@
                 (is (= {:host "write-host" :password "write-pass" :write-data-connection true}
                        (:write_data_details db)))))))))
     (testing "Superusers can clear write_data_details by setting it to nil"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}
                                                     :write_data_details {:host "write-host"}}]
@@ -2738,7 +2741,7 @@
             (let [db (t2/select-one :model/Database :id db-id)]
               (is (nil? (:write_data_details db))))))))
     (testing "Sensitive fields are preserved when protected-password is sent"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}
                                                     :write_data_details {:host "write-host"
@@ -2751,7 +2754,7 @@
             (let [db (t2/select-one :model/Database :id db-id)]
               (is (= "new-write-host" (get-in db [:write_data_details :host])))
               (is (= "original-pass" (get-in db [:write_data_details :password]))))))))
-    (testing "Returns 402 without :advanced-permissions feature"
+    (testing "Returns 402 without :writable-connection feature"
       (with-redefs [premium-features/has-feature? (constantly false)]
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
@@ -2759,23 +2762,24 @@
                                 {:write_data_details {:host "write-host"}}))))))
 
 (deftest put-validates-write-data-details-connection-test
-  (testing "PUT /api/database/:id returns 400 when write connection test fails"
-    (mt/with-premium-features #{:advanced-permissions}
-      (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
-                                                  :details {:host "localhost"}}]
-        (with-redefs [driver/can-connect? (fn [_engine details]
-                                            (if (:write-data-connection details)
-                                              (throw (Exception. "Write connection failed"))
-                                              true))]
-          (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
-                                               {:write_data_details {:host "totally-bogus-host"
-                                                                     :write-data-connection true}})]
-            (is (= "Write connection failed" (:message response)))))))))
+  (when config/ee-available?
+    (testing "PUT /api/database/:id returns 400 when write connection test fails"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
+                                                    :details {:host "localhost"}}]
+          (with-redefs [driver/can-connect? (fn [_engine details]
+                                              (if (:write-data-connection details)
+                                                (throw (Exception. "Write connection failed"))
+                                                true))]
+            (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                                 {:write_data_details {:host "totally-bogus-host"
+                                                                       :write-data-connection true}})]
+              (is (= "Write connection failed" (:message response))))))))))
 
 (deftest write-data-details-guardrails-test
   (testing "PUT /api/database/:id write_data_details guardrails"
     (testing "write-data-connection must not be truthy in details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "write-data-connection must not be set in details"
@@ -2783,14 +2787,14 @@
                                        {:details {:host                  "localhost"
                                                   :write-data-connection true}}))))))
     (testing "write-data-connection must be truthy in write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "write-data-connection must be set in write_data_details"
                  (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
                                        {:write_data_details {:host "write-host"}}))))))
     (testing "Destination-database must be false in write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (= "destination-database must be false in write_data_details"
@@ -2799,7 +2803,7 @@
                                                              :write-data-connection true
                                                              :destination-database  true}}))))))
     (testing "Fields hidden for write connections must not be in write_data_details"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
           (is (str/includes?
@@ -2809,7 +2813,7 @@
                                                            :auto_run_queries      true}})
                "write_data_details must not contain fields hidden for write connections")))))
     (testing "Cannot set write_data_details on a destination database"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
                                                         :details {:host "localhost"}}
                        :model/Database {dest-id :id} {:engine             :h2
@@ -2820,7 +2824,7 @@
                                        {:write_data_details {:host                  "write-host"
                                                              :write-data-connection true}}))))))
     (testing "Cannot set write_data_details on a router database"
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
                                                         :details {:host "localhost"}}
                        :model/Database {_dest-id :id} {:engine :h2

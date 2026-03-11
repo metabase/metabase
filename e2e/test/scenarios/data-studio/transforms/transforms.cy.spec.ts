@@ -50,7 +50,7 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
-    cy.intercept("POST", "/api/ee/dependencies/check_transform").as(
+    cy.intercept("POST", "/api/ee/dependencies/check-transform").as(
       "checkTransformDependencies",
     );
   });
@@ -3225,7 +3225,7 @@ describe("scenarios > admin > transforms > runs", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
   });
 
   it("should be able to filter runs", () => {

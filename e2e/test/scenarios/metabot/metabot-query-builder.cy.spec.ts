@@ -45,6 +45,26 @@ describe("Metabot Query Builder", () => {
       cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
     });
 
+    it("should redirect to notebook when metabot-enabled? is false", () => {
+      H.updateSetting("metabot-enabled?", false);
+
+      cy.log(
+        "visiting '/question/ask' should redirect to notebook when metabot is disabled",
+      );
+      cy.visit("/question/ask");
+      cy.url().should("include", "/question#");
+      cy.findByTestId("metabot-send-message").should("not.exist");
+    });
+
+    it("should not show AI exploration in new button when metabot is disabled", () => {
+      H.updateSetting("metabot-enabled?", false);
+      cy.visit("/");
+
+      cy.log("'AI exploration' option should not appear in new button");
+      H.newButton().click();
+      H.popover().findByText("AI exploration").should("not.exist");
+    });
+
     it("should be able to successfully generate a notebook query", () => {
       // visit home page
       cy.visit("/");
@@ -147,6 +167,38 @@ describe("Metabot Query Builder", () => {
       // should be taken to /question/notebook with the sidebar open
       cy.url().should("include", "/question/notebook");
       H.assertChatVisibility("visible");
+    });
+
+    it("should not reuse the nlq profile after falling back to notebook chat", () => {
+      cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming", (req) => {
+        req.reply({
+          statusCode: 200,
+          body: mockTextOnlyResponse("ok"),
+          headers: {
+            "content-type": "text/event-stream; charset=utf-8",
+          },
+        });
+      }).as("metabotAgent");
+
+      cy.visit("/");
+      H.newButton("AI exploration").click();
+      cy.url().should("include", "/question/ask");
+
+      metabotPromptInput().type("Show me all orders");
+      cy.findByTestId("metabot-send-message").click();
+
+      cy.wait("@metabotAgent").then(({ request }) => {
+        expect(request.body.profile_id).to.eq("nlq");
+      });
+
+      cy.url().should("include", "/question/notebook");
+      H.assertChatVisibility("visible");
+
+      H.sendMetabotMessage("Try again");
+
+      cy.wait("@metabotAgent").then(({ request }) => {
+        expect(request.body.profile_id).to.be.undefined;
+      });
     });
 
     it("should cancel requests if the user leaves the page", () => {

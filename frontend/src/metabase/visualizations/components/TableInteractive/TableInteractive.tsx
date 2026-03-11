@@ -707,8 +707,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }, [height, settings]);
 
   const minGridWidth = useMemo(() => {
-    return isDashcardViewTable ? width : undefined;
-  }, [isDashcardViewTable, width]);
+    return isDashcardViewTable || isEmbeddingSdk ? width : undefined;
+  }, [isDashcardViewTable, isEmbeddingSdk, width]);
 
   const tableProps = useDataGridInstance({
     data: rows,

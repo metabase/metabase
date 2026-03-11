@@ -233,27 +233,27 @@ export type RunTransformResponse = {
 };
 
 export type ListTransformsRequest = {
-  last_run_start_time?: string;
-  last_run_statuses?: TransformRunStatus[];
-  tag_ids?: TransformTagId[];
+  "last-run-start-time"?: string;
+  "last-run-statuses"?: TransformRunStatus[];
+  "tag-ids"?: TransformTagId[];
 };
 
 export type ListTransformJobsRequest = {
-  last_run_start_time?: string;
-  last_run_statuses?: TransformRunStatus[];
-  next_run_start_time?: string;
-  tag_ids?: TransformTagId[];
+  "last-run-start-time"?: string;
+  "last-run-statuses"?: TransformRunStatus[];
+  "next-run-start-time"?: string;
+  "tag-ids"?: TransformTagId[];
 };
 
 export type ListTransformRunsRequest = {
   statuses?: TransformRunStatus[];
-  transform_ids?: TransformId[];
-  transform_tag_ids?: TransformTagId[];
-  start_time?: string;
-  end_time?: string;
-  run_methods?: TransformRunMethod[];
-  sort_column?: TransformRunSortColumn;
-  sort_direction?: SortDirection;
+  "transform-ids"?: TransformId[];
+  "transform-tag-ids"?: TransformTagId[];
+  "start-time"?: string;
+  "end-time"?: string;
+  "run-methods"?: TransformRunMethod[];
+  "sort-column"?: TransformRunSortColumn;
+  "sort-direction"?: SortDirection;
 } & PaginationRequest;
 
 export type ListTransformRunsResponse = {

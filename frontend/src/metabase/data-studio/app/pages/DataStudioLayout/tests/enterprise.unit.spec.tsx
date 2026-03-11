@@ -20,18 +20,18 @@ describe("DataStudioLayout", () => {
     jest.restoreAllMocks();
   });
 
-  describe("Set up git sync button", () => {
-    it("should show Set up git sync button when git settings is visible", async () => {
+  describe("Set up remote sync button", () => {
+    it("should show Set up remote sync button when git settings is visible", async () => {
       setup({ remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByLabelText("Set up git sync")).toBeInTheDocument();
+      expect(screen.getByLabelText("Set up remote sync")).toBeInTheDocument();
     });
 
-    it("should hide Set up git sync button when git settings is not visible", async () => {
+    it("should hide Set up remote sync button when git settings is not visible", async () => {
       setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: true });
 
       await waitFor(() => {
@@ -39,18 +39,18 @@ describe("DataStudioLayout", () => {
       });
 
       expect(
-        screen.queryByLabelText("Set up git sync"),
+        screen.queryByLabelText("Set up remote sync"),
       ).not.toBeInTheDocument();
     });
 
-    it("should open modal when Set up git sync button is clicked", async () => {
+    it("should open modal when Set up remote sync button is clicked", async () => {
       setup({ ...DEFAULT_EE_SETTINGS, remoteSyncEnabled: false });
 
       await waitFor(() => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      const gitSettingsButton = screen.getByLabelText("Set up git sync");
+      const gitSettingsButton = screen.getByLabelText("Set up remote sync");
       await userEvent.click(gitSettingsButton);
 
       await waitFor(() => {
@@ -68,7 +68,7 @@ describe("DataStudioLayout", () => {
       });
 
       // Open the modal
-      const gitSettingsButton = screen.getByLabelText("Set up git sync");
+      const gitSettingsButton = screen.getByLabelText("Set up remote sync");
       await userEvent.click(gitSettingsButton);
 
       await waitFor(() => {
@@ -87,7 +87,7 @@ describe("DataStudioLayout", () => {
       });
     });
 
-    it("should show Set up git sync text when sidebar is expanded", async () => {
+    it("should show Set up remote sync text when sidebar is expanded", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncEnabled: false,
@@ -98,7 +98,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Set up git sync")).toBeInTheDocument();
+      expect(screen.getByText("Set up remote sync")).toBeInTheDocument();
     });
   });
 

@@ -10,6 +10,7 @@ import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
 import { Segments } from "metabase/entities/segments";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -25,6 +26,9 @@ class SegmentListAppInner extends Component {
       isAdmin,
       isRemoteSyncReadOnly,
     } = this.props;
+    const trackSegmentCreateClick = () => {
+      trackSegmentCreateStarted("admin_datamodel_segments");
+    };
 
     return (
       <div
@@ -34,7 +38,12 @@ class SegmentListAppInner extends Component {
         <div className={cx(CS.flex, CS.py2)}>
           {tableSelector}
           {isAdmin && (
-            <Link to={Urls.newDataModelSegment()} className={CS.mlAuto}>
+            <Link
+              className={CS.mlAuto}
+              onAuxClick={trackSegmentCreateClick}
+              onClickCapture={trackSegmentCreateClick}
+              to={Urls.newDataModelSegment()}
+            >
               <Button primary>{t`New segment`}</Button>
             </Link>
           )}
