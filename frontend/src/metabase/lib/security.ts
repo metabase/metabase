@@ -7,8 +7,14 @@ const DIGITS = "0123456789";
 const SPECIAL = "!@#$%^&*()-_+=";
 const ALL = LOWER + UPPER + DIGITS + SPECIAL;
 
+function randomIndex(max: number): number {
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return array[0] % max;
+}
+
 function randomChar(charset: string): string {
-  return charset[Math.floor(Math.random() * charset.length)];
+  return charset[randomIndex(charset.length)];
 }
 
 // generate a password that satisfies `complexity` requirements, by default the ones that come back in the
@@ -46,7 +52,7 @@ export const generatePassword = (
 
   // Fisher-Yates shuffle to avoid required chars clustering at the start
   for (let i = chars.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = randomIndex(i + 1);
     [chars[i], chars[j]] = [chars[j], chars[i]];
   }
 
