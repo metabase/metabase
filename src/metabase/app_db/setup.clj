@@ -225,6 +225,10 @@
             latest-applied   (liquibase/latest-applied-major-version conn (.getDatabase liquibase))]
         ;; `latest-applied` will be `nil` for fresh installs
         (when (and latest-applied (< latest-available latest-applied))
+          (let [later-changesets (liquibase/changesets-from-later-version conn (.getDatabase liquibase) latest-available latest-applied)]
+            (log/warn (u/format-color 'red "The following changesets from a later version were found (in execution order):"))
+            (doseq [cs later-changesets]
+              (log/warn (u/format-color 'red "  - %s" cs))))
           (throw (ex-info
                   (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
                        "\n\n"
