@@ -17,6 +17,7 @@ export interface CustomVizPluginRuntime {
   id: number;
   identifier: string;
   display_name: string;
+  icon: string | null;
   bundle_url: string;
 }
 

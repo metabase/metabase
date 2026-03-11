@@ -33,6 +33,7 @@
    [:id           ms/PositiveInt]
    [:identifier   ms/NonBlankString]
    [:display_name ms/NonBlankString]
+   [:icon         {:optional true} [:maybe :string]]
    [:bundle_url   ms/NonBlankString]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
@@ -51,10 +52,11 @@
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
-  [{:keys [id identifier display_name]}]
+  [{:keys [id identifier display_name icon]}]
   {:id           id
    :identifier   identifier
    :display_name display_name
+   :icon         icon
    :bundle_url   (format "/api/custom-viz-plugin/%d/bundle" id)})
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
@@ -93,7 +95,7 @@
   "List active and enabled custom visualization plugins. Available to any authenticated user."
   []
   (map plugin->runtime-response
-       (t2/select [:model/CustomVizPlugin :id :identifier :display_name]
+       (t2/select [:model/CustomVizPlugin :id :identifier :display_name :icon]
                   :status :active
                   :enabled true
                   {:order-by [[:display_name :asc]]})))
