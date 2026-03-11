@@ -1,6 +1,10 @@
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import registerVisualizations from "metabase/visualizations/register";
 import { TYPE } from "metabase-lib/v1/types/constants";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
 registerVisualizations();
 
@@ -22,20 +26,32 @@ describe("visualization.lib.timeseries", () => {
     const NOT_DATES = ["100", "100 %", "scanner 005", 99999999];
 
     it("should detect Date column as timeseries", () => {
-      expect(dimensionIsTimeseries({ cols: [{ base_type: TYPE.Date }] })).toBe(
-        true,
-      );
+      expect(
+        dimensionIsTimeseries(
+          createMockDatasetData({
+            cols: [createMockColumn({ base_type: TYPE.Date })],
+          }),
+        ),
+      ).toBe(true);
     });
 
     it("should detect Time column as timeseries", () => {
-      expect(dimensionIsTimeseries({ cols: [{ base_type: TYPE.Time }] })).toBe(
-        true,
-      );
+      expect(
+        dimensionIsTimeseries(
+          createMockDatasetData({
+            cols: [createMockColumn({ base_type: TYPE.Time })],
+          }),
+        ),
+      ).toBe(true);
     });
 
     it("should detect DateTime column as timeseries", () => {
       expect(
-        dimensionIsTimeseries({ cols: [{ base_type: TYPE.DateTime }] }),
+        dimensionIsTimeseries(
+          createMockDatasetData({
+            cols: [createMockColumn({ base_type: TYPE.DateTime })],
+          }),
+        ),
       ).toBe(true);
     });
 
@@ -46,10 +62,12 @@ describe("visualization.lib.timeseries", () => {
           "' as timeseries",
         () => {
           expect(
-            dimensionIsTimeseries({
-              cols: [{ base_type: TYPE.Text }],
-              rows: [[isoDate]],
-            }),
+            dimensionIsTimeseries(
+              createMockDatasetData({
+                cols: [createMockColumn({ base_type: TYPE.Text })],
+                rows: [[isoDate]],
+              }),
+            ),
           ).toBe(true);
         },
       );
@@ -57,29 +75,35 @@ describe("visualization.lib.timeseries", () => {
     NOT_DATES.forEach((notDate) => {
       it("should not detect value '" + notDate + "' as timeseries", () => {
         expect(
-          dimensionIsTimeseries({
-            cols: [{ base_type: TYPE.Text }],
-            rows: [[notDate]],
-          }),
+          dimensionIsTimeseries(
+            createMockDatasetData({
+              cols: [createMockColumn({ base_type: TYPE.Text })],
+              rows: [[notDate]],
+            }),
+          ),
         ).toBe(false);
       });
     });
 
     it("should detect integer values in YYYYMMDD format as timeseries", () => {
       expect(
-        dimensionIsTimeseries({
-          cols: [{ base_type: TYPE.Integer }],
-          rows: [[19210413], [20210413]],
-        }),
+        dimensionIsTimeseries(
+          createMockDatasetData({
+            cols: [createMockColumn({ base_type: TYPE.Integer })],
+            rows: [[19210413], [20210413]],
+          }),
+        ),
       ).toBe(true);
     });
 
     it("should not detect integer values that are not valid dates as timeseries", () => {
       expect(
-        dimensionIsTimeseries({
-          cols: [{ base_type: TYPE.Integer }],
-          rows: [[99999999], [12345678]],
-        }),
+        dimensionIsTimeseries(
+          createMockDatasetData({
+            cols: [createMockColumn({ base_type: TYPE.Integer })],
+            rows: [[99999999], [12345678]],
+          }),
+        ),
       ).toBe(false);
     });
   });
