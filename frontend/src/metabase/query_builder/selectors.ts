@@ -39,6 +39,7 @@ import {
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+import type { State } from "metabase-types/store";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { createRawSeries, getWritableColumnProperties } from "./utils";
@@ -49,22 +50,22 @@ import {
 } from "./utils/question";
 
 // This selector can be called from public questions / dashboards, which do not have state.qb
-export const getUiControls = (state) => state.qb?.uiControls;
-export const getQueryStatus = (state) => state.qb.queryStatus;
-export const getLoadingControls = (state) => state.qb.loadingControls;
+export const getUiControls = (state: State) => state.qb?.uiControls;
+export const getQueryStatus = (state: State) => state.qb.queryStatus;
+export const getLoadingControls = (state: State) => state.qb.loadingControls;
 
-export const getIsShowingTemplateTagsEditor = (state) =>
+export const getIsShowingTemplateTagsEditor = (state: State) =>
   getUiControls(state).isShowingTemplateTagsEditor;
-export const getIsShowingSnippetSidebar = (state) =>
+export const getIsShowingSnippetSidebar = (state: State) =>
   getUiControls(state).isShowingSnippetSidebar;
-export const getIsShowingDataReference = (state) =>
+export const getIsShowingDataReference = (state: State) =>
   getUiControls(state).isShowingDataReference;
-export const getHighlightedNativeQueryLineNumbers = (state) =>
+export const getHighlightedNativeQueryLineNumbers = (state: State) =>
   getUiControls(state).highlightedNativeQueryLineNumbers;
 
 // This selector can be called from public questions / dashboards, which do not
 // have state.qb
-export const getIsShowingRawTable = (state) =>
+export const getIsShowingRawTable = (state: State) =>
   !!state.qb?.uiControls.isShowingRawTable;
 
 const SIDEBARS = [
@@ -86,29 +87,29 @@ export const getIsAnySidebarOpen = createSelector(
   (uiControls) => SIDEBARS.some((sidebar) => uiControls[sidebar]),
 );
 
-export const getIsRunning = (state) => getUiControls(state).isRunning;
-export const getIsLoadingComplete = (state) =>
+export const getIsRunning = (state: State) => getUiControls(state).isRunning;
+export const getIsLoadingComplete = (state: State) =>
   getQueryStatus(state) === "complete";
 
-export const getCard = (state) => state.qb.card;
-export const getOriginalCard = (state) => state.qb.originalCard;
-export const getLastRunCard = (state) => state.qb.lastRunCard;
+export const getCard = (state: State) => state.qb.card;
+export const getOriginalCard = (state: State) => state.qb.originalCard;
+export const getLastRunCard = (state: State) => state.qb.lastRunCard;
 
-export const getParameterValues = (state) => state.qb.parameterValues;
-export const getParameterValuesSearchCache = (state) =>
+export const getParameterValues = (state: State) => state.qb.parameterValues;
+export const getParameterValuesSearchCache = (state: State) =>
   state.qb.parameterValuesSearchCache;
 
-export const getMetadataDiff = (state) => state.qb.metadataDiff;
+export const getMetadataDiff = (state: State) => state.qb.metadataDiff;
 
-export const getEntities = (state) => state.entities;
-export const getVisibleTimelineEventIds = (state) =>
+export const getEntities = (state: State) => state.entities;
+export const getVisibleTimelineEventIds = (state: State) =>
   state.qb.visibleTimelineEventIds;
-export const getSelectedTimelineEventIds = (state) =>
+export const getSelectedTimelineEventIds = (state: State) =>
   state.qb.selectedTimelineEventIds;
 
-const getRawQueryResults = (state) => state.qb.queryResults;
+const getRawQueryResults = (state: State) => state.qb.queryResults;
 
-export const getIsBookmarked = (state, props) =>
+export const getIsBookmarked = (state: State, props) =>
   props.bookmarks.some(
     (bookmark) =>
       bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
@@ -119,18 +120,18 @@ export const getQueryBuilderMode = createSelector(
   (uiControls) => uiControls.queryBuilderMode,
 );
 
-export const getQueryStartTime = (state) => state.qb.queryStartTime;
+export const getQueryStartTime = (state: State) => state.qb.queryStartTime;
 
 export const getDatabaseId = createSelector(
   [getCard],
   (card) => card && card.dataset_query && card.dataset_query.database,
 );
 
-export const getTableForeignKeyReferences = (state) =>
+export const getTableForeignKeyReferences = (state: State) =>
   state.qb.tableForeignKeyReferences;
 
 const getDatabasesListDefaultValue = [];
-export const getDatabasesList = (state) =>
+export const getDatabasesList = (state: State) =>
   Databases.selectors.getList(state, {
     entityQuery: { include: "tables", saved: true },
   }) || getDatabasesListDefaultValue;
@@ -513,7 +514,7 @@ export const getIsResultDirty = createSelector(
   },
 );
 
-export const getZoomedObjectId = (state) => state.qb.zoomedRowObjectId;
+export const getZoomedObjectId = (state: State) => state.qb.zoomedRowObjectId;
 
 export const getZoomedObjectRowIndex = createSelector(
   [getPKRowIndexMap, getZoomedObjectId],
@@ -1022,14 +1023,14 @@ export const getDataReferenceStack = createSelector(
         : [],
 );
 
-export const getIsEditingInDashboard = (state) => {
+export const getIsEditingInDashboard = (state: State) => {
   return (
     state.qb.parentEntity.model === "dashboard" &&
     state.qb.parentEntity.isEditing
   );
 };
 
-export const getParentEntity = (state) => {
+export const getParentEntity = (state: State) => {
   return state.qb.parentEntity;
 };
 
@@ -1044,7 +1045,7 @@ export const getEmbeddingParameters = createSelector([getCard], (card) => {
 // Embeddings might be published without passing embedding_params to the server,
 // in which case it's an empty object. We should treat such situations with
 // caution, assuming that an absent parameter is "disabled".
-export function getEmbeddedParameterVisibility(state, slug) {
+export function getEmbeddedParameterVisibility(state: State, slug: string) {
   const card = getCard(state);
   if (!card?.enable_embedding) {
     return null;
@@ -1054,7 +1055,7 @@ export function getEmbeddedParameterVisibility(state, slug) {
   return embeddingParams[slug] ?? "disabled";
 }
 
-export const getSubmittableQuestion = (state, question) => {
+export const getSubmittableQuestion = (state: State, question: Question) => {
   const rawSeries = createRawSeries({
     card: getCard(state),
     queryResult: getFirstQueryResult(state),
@@ -1089,7 +1090,7 @@ export const getSubmittableQuestion = (state, question) => {
   return submittableQuestion;
 };
 
-export const getNotebookNativePreviewSidebarWidth = (state) =>
+export const getNotebookNativePreviewSidebarWidth = (state: State) =>
   getSetting(state, "notebook-native-preview-sidebar-width");
 
 export const getIsListViewConfigurationShown = createSelector(

@@ -269,7 +269,9 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         !didTrackFirstNonTableChartGeneratedRef.current &&
         isNonTable
       ) {
-        setDidFirstNonTableChartRender(card);
+        if (card) {
+          setDidFirstNonTableChartRender(card);
+        }
         didTrackFirstNonTableChartGeneratedRef.current = true;
       }
     },

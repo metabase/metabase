@@ -72,7 +72,7 @@ describe("getQuestion", () => {
   });
 
   it("should return question instance correctly", () => {
-    const card = {
+    const card = createMockCard({
       id: 5,
       dataset_query: {
         database: 1,
@@ -81,16 +81,16 @@ describe("getQuestion", () => {
           "source-table": 1,
         },
       },
-    };
+    });
 
     const question = getQuestion(getBaseState({ card }));
 
     expect(question).toBeInstanceOf(Question);
-    expect(question._doNotCallSerializableCard()).toEqual(card);
+    expect(question?._doNotCallSerializableCard()).toEqual(card);
   });
 
   it("should return composed dataset when dataset is open", () => {
-    const card = {
+    const card = createMockCard({
       id: 1,
       type: "model",
       dataset_query: {
@@ -100,11 +100,13 @@ describe("getQuestion", () => {
           "source-table": ORDERS_ID,
         },
       },
-    };
+    });
 
     const question = getQuestion(getBaseState({ card }));
 
-    expect(Lib.sourceTableOrCardId(question.query())).toBe("card__1");
+    expect(question && Lib.sourceTableOrCardId(question.query())).toBe(
+      "card__1",
+    );
   });
 
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {
