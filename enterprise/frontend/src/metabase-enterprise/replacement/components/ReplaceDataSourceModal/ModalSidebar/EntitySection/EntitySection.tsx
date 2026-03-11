@@ -23,7 +23,7 @@ export function EntitySection({ icon, error, children }: EntitySectionProps) {
         <Box p="sm" bg="background-brand" bdrs="md">
           <FixedSizeIcon c="brand" name={icon} />
         </Box>
-        <Stack gap="sm">
+        <Stack gap="sm" miw={0}>
           {children}
           {error && (
             <Text c="error" size="sm">
