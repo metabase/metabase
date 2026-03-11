@@ -643,7 +643,7 @@ describe("scenarios > metrics > explorer", () => {
 
       H.popover().findByText("Doohickey").click();
 
-      H.popover().findByRole("button", { name: "Update filter" }).click();
+      H.popover().findByRole("button", { name: "Add filter" }).click();
       H.MetricsViewer.getMetricVisualization().should(
         "not.contain.text",
         "Doohickey",
