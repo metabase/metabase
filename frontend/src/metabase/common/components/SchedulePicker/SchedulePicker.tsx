@@ -13,13 +13,21 @@ import {
 import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, type BoxProps, SegmentedControl, Select } from "metabase/ui";
+import {
+  Box,
+  type BoxProps,
+  SegmentedControl,
+  Select,
+  type SelectOption,
+} from "metabase/ui";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
   ScheduleSettings,
   ScheduleType,
 } from "metabase-types/api";
+
+import type { SelectOption as LegacySelectOption } from "../Select";
 
 import {
   PickerRow,
@@ -81,6 +89,16 @@ function getSelectDayStyles(schedule: ScheduleSettings) {
   return {
     wrapper: { width: 110 },
   };
+}
+
+/**
+ * Transforms legacy Select data format to Mantine Select data format
+ */
+function toMantineData(options: LegacySelectOption[]): SelectOption[] {
+  return options.map((option) => ({
+    label: option.name ?? "",
+    value: option.value.toString(),
+  }));
 }
 
 /**
@@ -163,10 +181,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
 
     const DAY_OPTIONS = [
       { label: t`Calendar Day`, value: "" },
-      ...getDayOfWeekOptions().map((dayOfWeekOption) => ({
-        label: dayOfWeekOption.name,
-        value: dayOfWeekOption.value,
-      })),
+      ...toMantineData(getDayOfWeekOptions()),
     ];
 
     return (
@@ -184,10 +199,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
               value as ScheduleFrameType,
             )
           }
-          data={MONTH_DAY_OPTIONS.map((monthDayOption) => ({
-            label: monthDayOption.name,
-            value: monthDayOption.value,
-          }))}
+          data={toMantineData(MONTH_DAY_OPTIONS)}
         />
         {schedule.schedule_frame !== "mid" && (
           <span className={CS.mx1}>
@@ -223,10 +235,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
           onChange={(value) =>
             this.handleChangeProperty("schedule_day", value as ScheduleDayType)
           }
-          data={getDayOfWeekOptions().map((dayOfWeekOption) => ({
-            label: dayOfWeekOption.name,
-            value: dayOfWeekOption.value,
-          }))}
+          data={toMantineData(getDayOfWeekOptions())}
         />
       </PickerRow>
     );
@@ -244,10 +253,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
           styles={SELECT_STYLE}
           className={CS.mr1}
           value={minuteOfHour.toString()}
-          data={MINUTE_OPTIONS.map((minuteOption) => ({
-            label: minuteOption.name,
-            value: minuteOption.value.toString(),
-          }))}
+          data={toMantineData(MINUTE_OPTIONS)}
           onChange={(value) =>
             this.handleChangeProperty(
               "schedule_minute",
@@ -278,10 +284,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
             styles={SELECT_STYLE}
             className={CS.mr1}
             value={hour.toString()}
-            data={HOUR_OPTIONS.map((hourOption) => ({
-              label: hourOption.name,
-              value: hourOption.value.toString(),
-            }))}
+            data={toMantineData(HOUR_OPTIONS)}
             onChange={(value) =>
               this.handleChangeProperty(
                 "schedule_hour",
