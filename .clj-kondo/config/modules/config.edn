@@ -275,6 +275,7 @@
            config
            events
            models
+           permissions
            premium-features
            request
            settings

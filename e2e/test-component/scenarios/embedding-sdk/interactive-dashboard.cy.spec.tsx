@@ -1,4 +1,5 @@
 const { H } = cy;
+
 import {
   InteractiveDashboard,
   InteractiveQuestion,
@@ -16,7 +17,6 @@ import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-tes
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { defer } from "metabase/lib/promise";
-import { Stack } from "metabase/ui";
 import type {
   ConcreteFieldReference,
   DashboardCard,
@@ -86,11 +86,11 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
         <InteractiveDashboard
           dashboardId={dashboardId}
           renderDrillThroughQuestion={() => (
-            <Stack>
+            <div style={{ display: "flex", flexDirection: "column" }}>
               <InteractiveQuestion.Title />
               <InteractiveQuestion.QuestionVisualization />
               <div>This is a custom question layout.</div>
-            </Stack>
+            </div>
           )}
         />,
       );

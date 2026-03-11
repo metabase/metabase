@@ -292,9 +292,9 @@
   "Does this instance support remote syncing collections."
   :remote-sync)
 
-(define-premium-feature ^{:added "0.57.0"} enable-transforms?
-  "Should we allow users to use transforms?"
-  :transforms)
+(define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
+  "Should we allow users to use transforms? Replacement for transforms"
+  :transforms-basic)
 
 (define-premium-feature ^{:added "0.57.0"} enable-python-transforms?
   "Should we allow users to use Python transforms?"
@@ -372,7 +372,7 @@
    :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
    :tenants                        (enable-tenants?)
-   :transforms                     (enable-transforms?)
+   :transforms-basic               (enable-basic-transforms?)
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
