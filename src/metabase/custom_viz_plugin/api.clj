@@ -120,10 +120,17 @@
             [:access_token  {:optional true} [:maybe :string]]
             [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
-  (let [updates (into {} (filter (fn [[_ v]] (some? v))) body)]
+  (let [existing    (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+        ;; select-keys preserves nil values (meaning "clear this field"),
+        ;; while absent keys are simply not included.
+        updates    (select-keys body [:enabled :display_name :icon :access_token :pinned_version])]
     (when (seq updates)
-      (t2/update! :model/CustomVizPlugin id updates)))
+      (t2/update! :model/CustomVizPlugin id updates))
+    (when (and (contains? updates :pinned_version)
+               (not= (:pinned_version updates) (:pinned_version existing)))
+      (let [updated-plugin (t2/select-one :model/CustomVizPlugin :id id)]
+        (cache/evict! id)
+        (cache/fetch-and-cache! updated-plugin {:force? true}))))
   (plugin->response (t2/select-one :model/CustomVizPlugin :id id)))
 
 (api.macros/defendpoint :get "/:id/bundle"

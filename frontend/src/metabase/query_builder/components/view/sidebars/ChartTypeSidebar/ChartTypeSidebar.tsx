@@ -18,10 +18,16 @@ import {
   getSensibleVisualizations,
   useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
-import { useCustomVizPlugins } from "metabase/visualizations/custom-viz-plugins";
+import {
+  loadCustomVizPlugin,
+  useCustomVizPlugins,
+} from "metabase/visualizations/custom-viz-plugins";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { CardDisplayType, CustomVizPluginRuntime } from "metabase-types/api";
+import type {
+  CardDisplayType,
+  CustomVizPluginRuntime,
+} from "metabase-types/api";
 
 export type ChartTypeSidebarProps = Pick<
   UseQuestionVisualizationStateProps,
@@ -63,8 +69,8 @@ export const ChartTypeSidebar = ({
   };
 
   const handleSelectCustomVizPlugin = useCallback(
-    (_plugin: CustomVizPluginRuntime) => {
-      // TODO: implement custom viz rendering — for now this is a no-op placeholder
+    (plugin: CustomVizPluginRuntime) => {
+      void loadCustomVizPlugin(plugin);
     },
     [],
   );

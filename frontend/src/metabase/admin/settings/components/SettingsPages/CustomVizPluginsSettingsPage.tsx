@@ -130,14 +130,14 @@ function PluginForm({
           display_name: values.display_name,
           icon,
           access_token: values.access_token || undefined,
-          pinned_version: values.pinned_version || undefined,
+          pinned_version: values.pinned_version || null,
         }).unwrap();
       } else {
         await createPlugin({
           repo_url: values.repo_url,
           display_name: values.display_name,
           access_token: values.access_token || undefined,
-          pinned_version: values.pinned_version || undefined,
+          pinned_version: values.pinned_version || null,
         }).unwrap();
       }
       onClose();
