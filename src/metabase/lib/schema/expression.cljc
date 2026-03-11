@@ -127,8 +127,9 @@
 
   2. expression's [[type-of]] isa? `base-type`
 
-   Returns a user-facing type description if the expression does not match the schema."
-  [base-type type-desc]
+   Returns a zero-arg function that returns a translated string describing the expected type
+   if the expression does not match the schema. This is done to avoid premature i18n lookups at compile time."
+  [base-type type-desc-fn]
   [:and
    ;; vector = MBQL clause, anything else = not an MBQL clause
    [:multi
@@ -136,45 +137,45 @@
     [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
     [false [:ref :metabase.lib.schema.literal/literal]]]
    [:fn
-    {:error/message (str "expression returning " type-desc)
-     :error/type-description type-desc}
+    {:error/message #(str "expression returning " (type-desc-fn))
+     :error/type-description type-desc-fn}
     #(and (not (non-expression-clause? %))
           (or *suppress-expression-type-check?*
               (type-of? % base-type)))]])
 
 (mr/def ::boolean
-  (expression-schema :type/Boolean (i18n/tru "a boolean")))
+  (expression-schema :type/Boolean #(i18n/tru "a boolean")))
 
 (mr/def ::string
-  (expression-schema :type/Text (i18n/tru "a string")))
+  (expression-schema :type/Text #(i18n/tru "a string")))
 
 (mr/def ::integer
-  (expression-schema :type/Integer (i18n/tru "an integer")))
+  (expression-schema :type/Integer #(i18n/tru "an integer")))
 
 (mr/def ::non-integer-real
-  (expression-schema :type/Float (i18n/tru "a non-integer real number")))
+  (expression-schema :type/Float #(i18n/tru "a non-integer real number")))
 
 (mr/def ::number
-  (expression-schema :type/Number (i18n/tru "a number")))
+  (expression-schema :type/Number #(i18n/tru "a number")))
 
 (mr/def ::date
-  (expression-schema :type/Date (i18n/tru "a date")))
+  (expression-schema :type/Date #(i18n/tru "a date")))
 
 (mr/def ::time
-  (expression-schema :type/Time (i18n/tru "a time")))
+  (expression-schema :type/Time #(i18n/tru "a time")))
 
 (mr/def ::datetime
-  (expression-schema :type/DateTime (i18n/tru "a date time")))
+  (expression-schema :type/DateTime #(i18n/tru "a date time")))
 
 (mr/def ::temporal
-  (expression-schema :type/Temporal (i18n/tru "a temporal value")))
+  (expression-schema :type/Temporal #(i18n/tru "a temporal value")))
 
 (def orderable-types
   "Set of base types that are orderable."
   #{:type/Text :type/Number :type/Temporal :type/Boolean :type/MongoBSONID})
 
 (mr/def ::orderable
-  (expression-schema orderable-types (i18n/tru "an orderable type (e.g. number, string, temporal)")))
+  (expression-schema orderable-types #(i18n/tru "an orderable type (e.g. number, string, temporal)")))
 
 (defn comparable-expressions?
   "Returns whether expressions `x` and `y` can be compared.
@@ -196,7 +197,7 @@
 (derive :type/MongoBSONID ::emptyable)
 
 (mr/def ::emptyable
-  (expression-schema ::emptyable (i18n/tru "an emptyable type (e.g. string, BSON ID))")))
+  (expression-schema ::emptyable #(i18n/tru "an emptyable type (e.g. string, BSON ID))")))
 
 (def equality-comparable-types
   "Set of base types that can be compared with equality."
@@ -210,11 +211,11 @@
 
 (mr/def ::equality-comparable
   [:maybe
-   (expression-schema equality-comparable-types (i18n/tru "an equality comparable type (e.g. number, string, boolean)"))])
+   (expression-schema equality-comparable-types #(i18n/tru "an equality comparable type (e.g. number, string, boolean)"))])
 
 ;;; any type of expression.
 (mr/def ::expression
-  [:maybe (expression-schema :type/* "any type")])
+  [:maybe (expression-schema :type/* #(i18n/tru "any type"))])
 
 (mr/def ::expression.definition
   [:and

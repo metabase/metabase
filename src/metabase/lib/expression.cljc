@@ -639,9 +639,12 @@
           (let [schema (:schema error)
                 props (or (mc/properties schema)
                           (mc/type-properties schema))
-                type-desc (:error/type-description props)]
+                type-desc-msg-or-fn (:error/type-description props)
+                type-desc (if (fn? type-desc-msg-or-fn)
+                            (type-desc-msg-or-fn)
+                            type-desc-msg-or-fn)]
             (when type-desc
-              [type-desc (:in error)])))
+              [(str type-desc) (:in error)])))
         (:errors explanation)))
 
 (defn- parent-operator-name
