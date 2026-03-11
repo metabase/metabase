@@ -5,7 +5,10 @@ import type {
   DataKey,
   SeriesModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { getDashboardAdjustedSettings } from "metabase/visualizations/shared/settings-adjustments";
 import type { HoveredObject } from "metabase/visualizations/types";
+
+export { getDashboardAdjustedSettings };
 
 export const getHoveredSeriesDataKey = (
   seriesModels: SeriesModel[],

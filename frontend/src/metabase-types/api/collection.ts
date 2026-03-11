@@ -15,7 +15,6 @@ import type { DatabaseId } from "./database";
 import type { SortingOptions } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
-
 export type CollectionNamespace =
   | null
   | "snippets"
@@ -83,7 +82,7 @@ export interface Collection {
   can_write: boolean;
   can_restore: boolean;
   can_delete: boolean;
-  archived: boolean;
+  archived?: boolean;
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;

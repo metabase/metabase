@@ -22,7 +22,10 @@ describe("scenarios > visualizations > maps", () => {
     // switch to a pin map visualization
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
-    cy.icon("pinmap").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("pinmap").click();
+    });
     cy.findByTestId("Map-container").within(() => {
       cy.icon("gear").click();
     });
@@ -76,9 +79,8 @@ describe("scenarios > visualizations > maps", () => {
     );
 
     cy.button("Visualization").click();
-    cy.findByTestId("display-options-sensible").as("sensibleOptions");
 
-    cy.get("@sensibleOptions").within(() => {
+    cy.findByTestId("chart-type-settings").within(() => {
       cy.findByText("Map").should("be.visible");
     });
   });
@@ -352,10 +354,7 @@ describe("scenarios > visualizations > maps", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
 
-    // Ensure the Map visualization is sensible
-    cy.findByTestId("display-options-sensible").as("sensibleOptions");
-
-    cy.get("@sensibleOptions").within(() => {
+    cy.findByTestId("chart-type-settings").within(() => {
       cy.findByTestId("Map-button").should("be.visible");
     });
   });

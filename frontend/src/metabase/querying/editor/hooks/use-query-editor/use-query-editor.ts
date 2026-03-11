@@ -26,12 +26,13 @@ export function useQueryEditor({
   onChangeUiState,
   onRunQueryStart,
 }: UseQueryEditorProps) {
-  const { question, proposedQuestion, setQuestion } = useQueryQuestion(
-    query,
-    proposedQuery,
-    uiOptions,
-    onChangeQuery,
-  );
+  const {
+    question,
+    proposedQuestion,
+    setQuestion,
+    setParameterValues,
+    parameterValues,
+  } = useQueryQuestion(query, proposedQuery, uiOptions, onChangeQuery);
   const { isLoading, error } = useQueryMetadata(question);
   const {
     result,
@@ -53,6 +54,7 @@ export function useQueryEditor({
     toggleDataReferenceSidebar,
     toggleSnippetSidebar,
     toggleNativeQuerySidebar,
+    toggleTemplateTagsSidebar,
     togglePreviewQueryModal,
   } = useQueryControls(question, uiState, setQuestion, onChangeUiState);
   const { isNative } = Lib.queryDisplayInfo(question.query());
@@ -70,17 +72,20 @@ export function useQueryEditor({
     isRunning,
     isResultDirty,
     setQuestion,
+    setParameterValues,
     runQuery,
     cancelQuery,
     openModal,
     setSelectionRange,
     setModalSnippet,
     openSnippetModalWithSelectedText,
+    parameterValues,
     insertSnippet,
     convertToNative,
     toggleDataReferenceSidebar,
     toggleSnippetSidebar,
     togglePreviewQueryModal,
     toggleNativeQuerySidebar,
+    toggleTemplateTagsSidebar,
   };
 }

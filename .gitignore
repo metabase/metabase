@@ -16,6 +16,7 @@
 .nrepl-port
 .portal
 .vscode
+/.zed
 /*.h2.db
 /*.lock.db
 /*.mv.db
@@ -24,6 +25,7 @@
 /.env*
 !/.env.example
 /.envrc
+/.workmux.yaml
 /.lein-env
 /.lein-failures
 /.lein-plugins
@@ -43,6 +45,7 @@ cypress.env.json
 /docs/**/package.json
 /docs/**/yarn.lock
 /docs/embedding/sdk/api/
+/docs/embedding/eajs/snippets/
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*
@@ -63,6 +66,7 @@ cypress.env.json
 /resources/frontend_client/app/embed.js
 /resources/frontend_client/app/embedding-sdk.js
 /resources/frontend_client/app/embedding-sdk.js.map
+/resources/frontend_client/app/embedding-sdk/
 /resources/frontend_client/tmp-*/
 /resources/frontend_client/embed.html
 /resources/frontend_client/embed-sdk.html
@@ -73,6 +77,7 @@ cypress.env.json
 /resources/instance_analytics.zip
 /resources/license-backend-third-party.txt
 /resources/license-frontend-third-party.txt
+/resources/metabase/config/modules.edn
 /resources/namespaces.edn
 /resources/sample-dataset.db.trace.db
 /resources/version.properties
@@ -121,13 +126,13 @@ modules/drivers/*/.lsp/*
 **/.clj-kondo/.cache
 
 # clj-kondo: ignore all except our defined config
-.clj-kondo/*
-!.clj-kondo/README.md
-!.clj-kondo/config.edn
-!.clj-kondo/config/
-!.clj-kondo/src/
-!.clj-kondo/test/
-!.clj-kondo/macros/
+**/.clj-kondo/*
+!**/.clj-kondo/README.md
+!**/.clj-kondo/config.edn
+!**/.clj-kondo/config/
+!**/.clj-kondo/src/
+!**/.clj-kondo/test/
+!**/.clj-kondo/macros/
 
 # Editor- or environment-specific local files
 *.code-workspace
@@ -165,3 +170,8 @@ CLAUDE.local.md
 /logs
 /.clojure-mcp
 
+# Python dependencies (pip-installed, not committed)
+/resources/python-sources/sqlglot/
+/resources/python-sources/sqlglot-*.dist-info/
+/resources/python-sources/.lock
+__pycache__/

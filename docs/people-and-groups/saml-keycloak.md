@@ -26,7 +26,7 @@ For more information, check out our guide for [authenticating with SAML](./authe
    - **Client type**: Select `SAML` from the dropdown.
    - Click **Next**.
    - **Valid Redirect URIs**: The URL where you are hosting your Metabase instance followed by a slash (/) and an asterisk (_). For example, if you are hosting Metabase locally at `http://localhost:3000`, the URL would be `http://localhost:3000/_`.
-   - **Home URL**: In your Metabase, go to **Admin settings** > **Authentication** > **SAML**. You'll find your Home URL in the field **URL the IdP should redirect back to**.
+   - **Home URL**: In your Metabase, go to **Admin** > **Settings** > **Authentication** > **SAML**. You'll find your Home URL in the field **URL the IdP should redirect back to**.
    - Click **Save**.
 
 5. (Optional, but recommended on test environments) Disable key signing for SSO client. See [settings for signing SSO requests](./authenticating-with-saml.md#settings-for-signing-sso-requests-optional).
@@ -46,7 +46,7 @@ For more information, check out our guide for [authenticating with SAML](./authe
 
 ## Mapping fields from Keycloak to Metabase
 
-1. Go to your Metabase **Admin settings** > **Authentication** > **SAML**.
+1. Go to your Metabase **Admin** > **Settings** > **Authentication** > **SAML**.
 2. From the XML file from Step 7 above:
    - **SAML Identity Provider URL**: Insert the URL that appears right after the following string: `Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location=`
    - **SAML Identity Provider Issuer**: Insert the URL that appears right after `entityID=`.
@@ -67,7 +67,7 @@ Let's say we want email, name, and surname to be passed between the client (Meta
    - **SAML Attribute Name**: the name that Metabase expects to receive.
    - **SAML Attribute NameFormat**: select “Basic” from the dropdown menu.
 
-You can edit the attribute values from your Metabase **Admin settings** > **Authentication** > **SAML** > **Attributes**.
+You can edit the attribute values from your Metabase **Admin** > **Settings** > **Authentication** > **SAML** > **Attributes**.
 
 ## Configure group mappings between Keycloak and Metabase
 
@@ -87,7 +87,7 @@ In your Keycloak client:
 
 ### Set up group mapping in Metabase
 
-1. In Admin settings, go to **Authentication > SAML**.
+1. In Admin, go to **Authentication > SAML**.
 2. In SAML settings, toggle on **Synchronize Group Memberships**
 3. For each of the Keycloak groups, set up a new mapping to a Metabase group.
 

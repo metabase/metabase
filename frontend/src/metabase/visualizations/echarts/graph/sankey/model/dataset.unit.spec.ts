@@ -222,4 +222,47 @@ describe("getSankeyData", () => {
     expect(result.links[2].sourceNode).toBe(nodeA);
     expect(result.links[2].targetNode).toBe(nodeC);
   });
+
+  it("should use untranslatedRows for node and link keys when present", () => {
+    const rawSeries = [
+      {
+        card: createMockCard({
+          name: "Sankey card",
+          display: "sankey",
+        }),
+        data: createMockDatasetData({
+          rows: [
+            ["Source Translated", "Target Translated", 10, 100],
+            ["Source Translated", "Target Translated", 1, 10],
+            ["Target Translated", "Sink Translated", 20, 200],
+          ],
+          cols: columns,
+          untranslatedRows: [
+            ["A", "B", 10, 100],
+            ["A", "B", 1, 10],
+            ["B", "C", 20, 200],
+          ],
+        }),
+      },
+    ];
+
+    const result = getSankeyData(rawSeries, sankeyColumns);
+
+    expect(result.nodes).toHaveLength(3);
+    expect(result.nodes[0].rawName).toBe("A");
+    expect(result.nodes[1].rawName).toBe("B");
+    expect(result.nodes[2].rawName).toBe("C");
+
+    expect(result.links).toHaveLength(2);
+    expect(result.links[0]).toMatchObject({
+      source: "A",
+      target: "B",
+      value: 11,
+    });
+    expect(result.links[1]).toMatchObject({
+      source: "B",
+      target: "C",
+      value: 20,
+    });
+  });
 });

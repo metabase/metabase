@@ -3,8 +3,9 @@
    [clojure.set :as set]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.lib.core :as lib]
+   [metabase.parameters.field-values :as params.field-values]
+   [metabase.request.core :as request]
    [metabase.sync.core :as sync]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (defn- build-field-statistics [fvs fp limit]
@@ -18,14 +19,15 @@
 
 (defn- get-or-create-fingerprint! [{:keys [id fingerprint] :as field}]
   (or fingerprint
-      (and (pos? (:updated-fingerprints (sync/refingerprint-field! field)))
+      ;; Run with admin perms to match behavior during normal sync.
+      (and (pos? (:updated-fingerprints (request/as-admin (sync/refingerprint-field! field))))
            (t2/select-one-fn :fingerprint :model/Field :id id))))
 
 (defn- field-statistics
   [{:keys [id fingerprint]} limit]
   (if id
     (let [field (t2/select-one :model/Field :id id)
-          fvs (field-values/get-or-create-full-field-values! field)
+          fvs (params.field-values/get-or-create-field-values! field)
           fp (or fingerprint (get-or-create-fingerprint! field))]
       (build-field-statistics fvs fp limit))
     (build-field-statistics nil fingerprint limit)))

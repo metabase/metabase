@@ -7,6 +7,7 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -78,7 +79,7 @@
   [query stage-number _key]
   (when-let [filters (perf/not-empty (:filters (lib.util/query-stage query stage-number)))]
     (i18n/tru "Filtered by {0}"
-              (lib.util/join-strings-with-conjunction
+              (i18n/join-strings-with-conjunction
                (i18n/tru "and")
                (for [filter filters]
                  (lib.metadata.calculation/display-name query stage-number filter :long))))))
@@ -95,7 +96,7 @@
 
 (defmethod lib.metadata.calculation/display-name-method ::compound
   [query stage-number [tag _opts & subclauses] style]
-  (lib.util/join-strings-with-conjunction
+  (i18n/join-strings-with-conjunction
    (conjunction-word tag)
    (for [clause subclauses]
      (lib.metadata.calculation/display-name query stage-number clause style))))
@@ -399,7 +400,8 @@
   "Add a new filter clause to a `stage`, ignoring it if it is a duplicate clause (ignoring :lib/uuid)."
   [stage      :- ::lib.schema/stage
    new-filter :- [:maybe ::lib.schema.expression/boolean]]
-  (if-not new-filter
+  ;; Use nil? instead of if-not because `false` is a valid boolean filter literal
+  (if (nil? new-filter)
     stage
     (let [existing-filter? (some (fn [existing-filter]
                                    (lib.equality/= existing-filter new-filter))
@@ -454,7 +456,12 @@
    (if (clojure.core/= (lib.dispatch/dispatch-value boolean-expression) :metadata/segment)
      (recur query stage-number (lib.ref/ref boolean-expression))
      (let [stage-number (clojure.core/or stage-number -1)
-           new-filter (lib.common/->op-arg boolean-expression)]
+           new-filter   (let [op-arg (lib.common/->op-arg boolean-expression)]
+                          ;; Raw booleans like `false` need wrapping in a :value clause so they have
+                          ;; a :lib/uuid and can be properly identified for removal/replacement.
+                          (if (boolean? op-arg)
+                            (lib.expression/value op-arg)
+                            op-arg))]
        (lib.util/update-query-stage query stage-number add-filter-to-stage new-filter)))))
 
 (mu/defn filters :- [:maybe [:ref ::lib.schema/filters]]
@@ -620,7 +627,7 @@
 
 (defn compound-filter-conjunctions
   "Returns conjunction strings used in compound filter display names,
-   derived from [[lib.util/join-strings-with-conjunction]] output.
+   derived from [[i18n/join-strings-with-conjunction]] output.
    Longest strings first so greedy matching works correctly."
   []
   (let [conjunctions (mapv conjunction-word [:and :or])
@@ -628,11 +635,11 @@
         ;; with marker strings and seeing what appears between them.
         two-item    (fn [conj-word]
                       ;; "A and B" => " and " is between A and B
-                      (let [result (lib.util/join-strings-with-conjunction conj-word ["A" "B"])]
+                      (let [result (i18n/join-strings-with-conjunction conj-word ["A" "B"])]
                         (subs result 1 (dec (count result)))))
         three-item  (fn [conj-word]
                       ;; "A, B, and C" => ", " between A and B, ", and " between B and C
-                      (let [result (lib.util/join-strings-with-conjunction conj-word ["A" "B" "C"])
+                      (let [result (i18n/join-strings-with-conjunction conj-word ["A" "B" "C"])
                             ;; Find the separators around "B"
                             b-idx  (str/index-of result "B")]
                         [(subs result 1 b-idx)

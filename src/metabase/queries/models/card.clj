@@ -17,15 +17,14 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.types.isa :as lib.types]
+   [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
@@ -100,6 +99,17 @@
   (fn [_card target-schema-version]
     target-schema-version))
 
+;;; ------------------------------------------------- Dimension Transforms -------------------------------------------------
+
+;;; ------------------------------------------------- Metric Dimension Persistence --------------------------------------------------
+
+(defmethod metrics/save-dimensions! :metadata/metric
+  [metric dimensions dimension-mappings]
+  (when-let [metric-id (:id metric)]
+    (t2/update! :model/Card metric-id
+                {:dimensions         dimensions
+                 :dimension_mappings dimension-mappings})))
+
 (t2/deftransforms :model/Card
   {:dataset_query          lib-be/transform-query
    :display                mi/transform-keyword
@@ -109,7 +119,9 @@
    :visualization_settings mi/transform-visualization-settings
    :parameters             parameters/transform-parameters
    :parameter_mappings     parameters/transform-parameter-mappings
-   :type                   mi/transform-keyword})
+   :type                   mi/transform-keyword
+   :dimensions             metrics/transform-dimensions
+   :dimension_mappings     metrics/transform-dimension-mappings})
 
 (doto :model/Card
   (derive :metabase/model)
@@ -203,7 +215,7 @@
 
 (mu/defn- source-card-id :- [:maybe ::lib.schema.id/card]
   [query :- [:maybe ::queries.schema/query]]
-  (some-> query not-empty lib/source-card-id))
+  (some-> query not-empty lib/primary-source-card-id))
 
 (mu/defn- card->integer-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
   "Return integer source table ids for card's :dataset_query."
@@ -377,10 +389,14 @@
                                            (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
                                                (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
     {:id       (:id tag)
-     :type     (or widget-type (cond (= tag-type :date)   :date/single
-                                     (= tag-type :string) :string/=
-                                     (= tag-type :number) :number/=
-                                     :else                :category))
+     :type     (or widget-type (case tag-type
+                                 :date    :date/single
+                                 :text    :string/=
+                                 :number  :number/=
+                                 :boolean :boolean/=
+                                ;; fallback; should be unreachable since :when filters
+                                ;; to raw-value-template-tag-types
+                                 :string/=))
      :target   (if (= tag-type :dimension)
                  [:dimension [:template-tag (:name tag)]]
                  [:variable  [:template-tag (:name tag)]])
@@ -738,8 +754,8 @@
              (pr-str (dissoc post-cleaning-query :lib/metadata))
              (:legacy_query untransformed-card)))
 
-;; Dynamically binds [[lib.convert/*card-clean-hook*]] to a function that logs the impact of cleaning,
-;; during `transform-out`, so that we can log whenever a card gets converted and [[lib.convert/clean]] makes material
+;; Uses [[lib/with-card-clean-hook]] to bind a callback which logs the impact of the cleaning process during
+;; `transform-out`, so that we can log whenever a card gets converted and [[lib.convert/clean]] makes material
 ;; changes, which likely indicates a bug.
 (methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Card]
   [query-type model]
@@ -751,7 +767,7 @@
           ([acc]
            (rf' acc))
           ([acc card]
-           (binding [lib.convert/*card-clean-hook* (partial mbql5-conversion-clean-callback card)]
+           (lib/with-card-clean-hook (partial mbql5-conversion-clean-callback card)
              (rf' acc card))))))))
 
 (t2/define-after-select :model/Card
@@ -811,7 +827,7 @@
             (not verified-result-metadata?)
             (contains? (t2/changes card) :type))
         (card.metadata/populate-result-metadata changes))
-      (m/update-existing :result_metadata #(some->> % (lib.normalize/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
+      (m/update-existing :result_metadata #(some->> % (lib/normalize [:sequential ::lib.schema.metadata/lib-or-legacy-column])))))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -1286,6 +1302,8 @@
           :cache_ttl
           ;; dependencies aren't serialized, so the version of dependency analysis done shouldn't be serialized
           :dependency_analysis_version
+          ;; dimensions are computed from the query and reconciled on read, not serialized
+          :dimensions :dimension_mappings
           ;; temporary column to power rollback from v57 to v56; we can remove it in v58
           :legacy_query]
    :transform

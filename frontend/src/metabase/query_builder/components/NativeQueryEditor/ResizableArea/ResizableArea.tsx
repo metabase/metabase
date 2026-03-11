@@ -68,6 +68,11 @@ export function ResizableArea(props: {
     setHeight(initialHeight);
   }
 
+  const handleDragHandleMouseDown = useCallback((event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+
   const dragHandle = (
     <div className={S.dragHandleContainer} data-testid="drag-handle">
       <div className={S.dragHandle} />
@@ -90,6 +95,7 @@ export function ResizableArea(props: {
       axis="y"
       handle={dragHandle}
       resizeHandles={resizable ? ["s"] : []}
+      draggableOpts={{ onMouseDown: handleDragHandleMouseDown }}
       onResize={handleResize}
       onResizeStop={handleResize}
     >

@@ -68,6 +68,8 @@ import bookmark_component from "./bookmark.svg?component";
 import bookmark_source from "./bookmark.svg?source";
 import bookmark_filled_component from "./bookmark_filled.svg?component";
 import bookmark_filled_source from "./bookmark_filled.svg?source";
+import boxplot_component from "./boxplot.svg?component";
+import boxplot_source from "./boxplot.svg?source";
 import breakout_component from "./breakout.svg?component";
 import breakout_source from "./breakout.svg?source";
 import broken_link_component from "./broken_link.svg?component";
@@ -126,6 +128,8 @@ import contract_component from "./contract.svg?component";
 import contract_source from "./contract.svg?source";
 import copy_component from "./copy.svg?component";
 import copy_source from "./copy.svg?source";
+import corner_up_right_component from "./corner_up_right.svg?component";
+import corner_up_right_source from "./corner_up_right.svg?source";
 import currency_component from "./currency.svg?component";
 import currency_source from "./currency.svg?source";
 import curve_component from "./curve.svg?component";
@@ -140,6 +144,8 @@ import data_studio_component from "./data_studio.svg?component";
 import data_studio_source from "./data_studio.svg?source";
 import database_component from "./database.svg?component";
 import database_source from "./database.svg?source";
+import database_routing_component from "./database_routing.svg?component";
+import database_routing_source from "./database_routing.svg?source";
 import dependencies_component from "./dependencies.svg?component";
 import dependencies_source from "./dependencies.svg?source";
 import document_component from "./document.svg?component";
@@ -190,6 +196,8 @@ import filter_component from "./filter.svg?component";
 import filter_source from "./filter.svg?source";
 import filter_plus_component from "./filter_plus.svg?component";
 import filter_plus_source from "./filter_plus.svg?source";
+import find_replace_component from "./find_replace.svg?component";
+import find_replace_source from "./find_replace.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
 import folder_database_component from "./folder_database.svg?component";
@@ -232,6 +240,8 @@ import grabber_component from "./grabber.svg?component";
 import grabber_source from "./grabber.svg?source";
 import grid_component from "./grid.svg?component";
 import grid_source from "./grid.svg?source";
+import grid_2x2_component from "./grid_2x2.svg?component";
+import grid_2x2_source from "./grid_2x2.svg?source";
 import group_component from "./group.svg?component";
 import group_source from "./group.svg?source";
 import history_component from "./history.svg?component";
@@ -266,6 +276,8 @@ import key_component from "./key.svg?component";
 import key_source from "./key.svg?source";
 import label_component from "./label.svg?component";
 import label_source from "./label.svg?source";
+import layout_grid_component from "./layout_grid.svg?component";
+import layout_grid_source from "./layout_grid.svg?source";
 import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
 import learn_component from "./learn.svg?component";
@@ -685,6 +697,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: bolt_filled_component,
       source: bolt_filled_source,
     },
+    boxplot: {
+      component: boxplot_component,
+      source: boxplot_source,
+    },
     breakout: {
       component: breakout_component,
       source: breakout_source,
@@ -793,6 +809,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: copy_component,
       source: copy_source,
     },
+    corner_up_right: {
+      component: corner_up_right_component,
+      source: corner_up_right_source,
+    },
     currency: {
       component: currency_component,
       source: currency_source,
@@ -804,6 +824,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     database: {
       component: database_component,
       source: database_source,
+    },
+    database_routing: {
+      component: database_routing_component,
+      source: database_routing_source,
     },
     dependencies: {
       component: dependencies_component,
@@ -909,6 +933,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: filter_plus_component,
       source: filter_plus_source,
     },
+    find_replace: {
+      component: find_replace_component,
+      source: find_replace_source,
+    },
     bug: {
       component: bug_component,
       source: bug_source,
@@ -984,6 +1012,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     grid: {
       component: grid_component,
       source: grid_source,
+    },
+    grid_2x2: {
+      component: grid_2x2_component,
+      source: grid_2x2_source,
     },
     group: {
       component: group_component,
@@ -1064,6 +1096,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     label: {
       component: label_component,
       source: label_source,
+    },
+    layout_grid: {
+      component: layout_grid_component,
+      source: layout_grid_source,
     },
     ldap: {
       component: ldap_component,
@@ -1704,6 +1740,7 @@ export type IconName =
   | "bookmark_filled"
   | "bolt"
   | "bolt_filled"
+  | "boxplot"
   | "breakout"
   | "bubble"
   | "broken_link"
@@ -1733,8 +1770,10 @@ export type IconName =
   | "connections"
   | "contract"
   | "copy"
+  | "corner_up_right"
   | "curved"
   | "database"
+  | "database_routing"
   | "dependencies"
   | "data_studio"
   | "dash"
@@ -1764,6 +1803,7 @@ export type IconName =
   | "fields"
   | "filter"
   | "filter_plus"
+  | "find_replace"
   | "bug"
   | "format_code"
   | "formula"
@@ -1783,6 +1823,7 @@ export type IconName =
   | "git_branch"
   | "grabber"
   | "grid"
+  | "grid_2x2"
   | "group"
   | "google"
   | "google_drive"
@@ -1803,6 +1844,7 @@ export type IconName =
   | "index"
   | "key"
   | "label"
+  | "layout_grid"
   | "ldap"
   | "learn"
   | "lightbulb"

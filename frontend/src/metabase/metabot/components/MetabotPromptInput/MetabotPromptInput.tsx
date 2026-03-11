@@ -12,19 +12,20 @@ import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import type { MetabotPromptInputRef } from "metabase/metabot";
-import { createMentionSuggestion } from "metabase/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
   MetabotMentionExtension,
   MetabotMentionPluginKey,
 } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
+import { createMetabotMentionSuggestionNew } from "metabase/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestionNew";
 import { SmartLink } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
-import type { EntitySearchOptions } from "metabase/rich_text_editing/tiptap/extensions/shared/useEntitySearch";
-import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
+import { createBareSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
+import type { DatabaseId } from "metabase-types/api";
 
 import S from "./MetabotPromptInput.module.css";
 import {
+  parseClipboardTextAsParagraphs,
   parseMetabotMessageToTiptapDoc,
   serializeTiptapToMetabotMessage,
 } from "./utils";
@@ -39,7 +40,7 @@ export interface MetabotPromptInputProps {
   onStop: () => void;
   suggestionConfig: {
     suggestionModels: SuggestionModel[];
-    searchOptions?: EntitySearchOptions;
+    onlyDatabaseId?: DatabaseId;
   };
 }
 export const MetabotPromptInput = forwardRef<
@@ -49,7 +50,7 @@ export const MetabotPromptInput = forwardRef<
   (
     {
       value,
-      placeholder = t`Tell me to do something, or ask a question`,
+      placeholder = t`How can I help? Type @ to mention items.`,
       autoFocus,
       disabled,
       suggestionConfig,
@@ -75,12 +76,10 @@ export const MetabotPromptInput = forwardRef<
       }),
       MetabotMentionExtension.configure({
         suggestion: {
-          render: createSuggestionRenderer(
-            createMentionSuggestion({
+          render: createBareSuggestionRenderer(
+            createMetabotMentionSuggestionNew({
               searchModels: suggestionConfig.suggestionModels,
-              searchOptions: suggestionConfig.searchOptions,
-              canFilterSearchModels: true,
-              canBrowseAll: false,
+              onlyDatabaseId: suggestionConfig.onlyDatabaseId,
             }),
           ),
         },
@@ -131,13 +130,15 @@ export const MetabotPromptInput = forwardRef<
           },
         },
         handleKeyDown: (view, event) => {
-          if (event.key === "Enter") {
+          if (event.key === "Escape" || event.key === "Enter") {
             // Defer enter handling to mention UI if open
             const mentionState = MetabotMentionPluginKey.getState(view.state);
             if (mentionState?.active) {
               return false; // Let the suggestion system handle it
             }
+          }
 
+          if (event.key === "Enter") {
             // Check for any modifier keys (shift, ctrl, meta, alt)
             const isModifiedKeyPress =
               event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
@@ -150,6 +151,11 @@ export const MetabotPromptInput = forwardRef<
           }
 
           if (event.key === "Escape") {
+            const mentionState = MetabotMentionPluginKey.getState(view.state);
+            if (mentionState?.active) {
+              return false;
+            }
+
             event.preventDefault();
             onStop();
             return true;
@@ -160,6 +166,7 @@ export const MetabotPromptInput = forwardRef<
         clipboardTextSerializer: (content) => {
           return serializeTiptapToMetabotMessage(content.toJSON());
         },
+        clipboardTextParser: parseClipboardTextAsParagraphs,
       },
     });
 

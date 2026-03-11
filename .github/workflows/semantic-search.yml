@@ -15,7 +15,7 @@ jobs:
   semantic-search-tests-h2:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -46,6 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
@@ -64,18 +65,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   semantic-search-tests-mariadb:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         version:
-          - name: MariaDB 10.2 with pgvector pg17
-            junit-name: semantic-search-tests-mariadb-10-2
-            mariadb-image: circleci/mariadb:10.2.23
+          - name: MariaDB 10.6 with pgvector pg17
+            junit-name: semantic-search-tests-mariadb-10-6
+            mariadb-image: circleci/mariadb:10.6
             pgvector-image: pgvector/pgvector:pg17
           - name: MariaDB Latest with pgvector pg17
             junit-name: semantic-search-tests-mariadb-latest
@@ -118,6 +120,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
@@ -136,18 +139,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   semantic-search-tests-mysql:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         version:
-          - name: MySQL 8.0 with pgvector pg17
-            junit-name: semantic-search-tests-mysql-8-0
-            mysql-image: cimg/mysql:8.0
+          - name: MySQL 8.4 with pgvector pg17
+            junit-name: semantic-search-tests-mysql-8-4
+            mysql-image: cimg/mysql:8.4
             pgvector-image: pgvector/pgvector:pg17
           - name: MySQL Latest with pgvector pg17
             junit-name: semantic-search-tests-mysql-latest
@@ -190,6 +194,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
@@ -208,18 +213,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   semantic-search-tests-postgres:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         version:
-          - name: Postgres 12.x with pgvector pg17
-            junit-name: semantic-search-tests-postgres-12
-            postgres-image: postgres:12-alpine
+          - name: Postgres 14.x with pgvector pg17
+            junit-name: semantic-search-tests-postgres-14
+            postgres-image: postgres:14-alpine
             pgvector-image: pgvector/pgvector:pg17
           - name: Postgres Latest with pgvector pg17
             junit-name: semantic-search-tests-postgres-latest
@@ -263,6 +269,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
@@ -281,6 +288,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   semantic-search-tests-result:
     needs:

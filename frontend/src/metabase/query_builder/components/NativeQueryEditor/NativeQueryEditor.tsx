@@ -12,6 +12,8 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_METABOT, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
@@ -165,9 +167,12 @@ export const NativeQueryEditor = forwardRef<
     },
     toggleDataReference,
     toggleSnippetSidebar,
+    toggleTemplateTagsEditor,
     topBarInnerContent,
   } = props;
-
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
   const { data: snippets = [] } = useListSnippetsQuery();
   const { data: snippetCollections = [] } = useListCollectionsQuery({
     namespace: "snippets",
@@ -176,9 +181,9 @@ export const NativeQueryEditor = forwardRef<
   const editorRef = useRef<CodeMirrorEditorRef>(null);
   const { ref: topBarRef, height: topBarHeight } = useElementSize();
 
-  const canSaveSnippets = snippetCollections.some(
-    (collection) => collection.can_write,
-  );
+  const canSaveSnippets =
+    !isRemoteSyncReadOnly &&
+    snippetCollections.some((collection) => collection.can_write);
 
   const canToggleEditor = typeof setIsNativeEditorOpen === "function";
   const shouldShowEditor = isNativeEditorOpen || !canToggleEditor;
@@ -188,7 +193,11 @@ export const NativeQueryEditor = forwardRef<
 
   // do not show reference sidebar on small screens automatically
   const screenSize = useNotebookScreenSize();
-  const shouldOpenDataReference = screenSize !== "small";
+  const isMetabotSidebarOpen = useSelector((state) =>
+    PLUGIN_METABOT.getMetabotVisible(state, "omnibot"),
+  );
+  const shouldOpenDataReference =
+    screenSize !== "small" && !isMetabotSidebarOpen;
 
   useMount(() => {
     setIsNativeEditorOpen?.(
@@ -304,6 +313,7 @@ export const NativeQueryEditor = forwardRef<
           toggleEditor={toggleEditor}
           toggleDataReference={toggleDataReference}
           toggleSnippetSidebar={toggleSnippetSidebar}
+          toggleTemplateTagsEditor={toggleTemplateTagsEditor}
           setParameterValue={setParameterValue}
           setDatasetQuery={setDatasetQuery}
           onFormatQuery={handleFormatQuery}

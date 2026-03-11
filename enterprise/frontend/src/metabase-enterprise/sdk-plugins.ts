@@ -1,5 +1,7 @@
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
+import { initializeHandleLinkPlugin } from "../embedding-sdk-ee/handle-link/handle-link";
+
 // SETTINGS OVERRIDES:
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
@@ -32,6 +34,7 @@ export function initializePlugins() {
   initializeContentTranslation?.();
   initializeNotifications();
   initializeSharing();
+  initializeHandleLinkPlugin();
 }
 
 // "SDK EE-plugins", that are specific to the embedding sdk.

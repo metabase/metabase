@@ -10,7 +10,6 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Box } from "metabase/ui";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -236,9 +235,9 @@ function getColorDifferencePercentage(color1: string, color2: string) {
 function setupInteractiveQuestionWithTheme(theme: MetabaseTheme) {
   cy.get<number>("@questionId").then((questionId) => {
     mountSdkContent(
-      <Box bg={theme.colors?.background} h="100vh">
+      <div style={{ background: theme.colors?.background, height: "100vh" }}>
         <InteractiveQuestion questionId={questionId} />
-      </Box>,
+      </div>,
       { sdkProviderProps: { theme } },
     );
   });

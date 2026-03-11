@@ -4,5 +4,5 @@ export type PaneHeaderTab = {
   label: string;
   to: string;
   icon?: IconName;
-  isSelected?: boolean;
+  isSelected?: boolean | ((pathname: string) => boolean);
 };

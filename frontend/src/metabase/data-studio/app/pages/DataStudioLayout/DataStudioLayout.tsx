@@ -3,8 +3,8 @@ import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { isMac } from "metabase/lib/browser";
@@ -194,7 +194,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             />
           ) : (
             <DataStudioTab
-              label={t`Set up git sync`}
+              label={t`Set up remote sync`}
               icon="gear"
               to={Urls.dataStudioGitSync()}
               isSelected={currentTab === "git-sync"}
@@ -220,12 +220,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               showLabel={isNavbarOpened}
             />
           )}
-          <DataStudioTab
-            label={t`Exit`}
-            icon="exit"
-            to={"/"}
-            showLabel={isNavbarOpened}
-          />
         </Stack>
         <PLUGIN_REMOTE_SYNC.GitSettingsModal
           isOpen={isGitSettingsOpen}

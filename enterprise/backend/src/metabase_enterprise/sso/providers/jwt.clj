@@ -160,18 +160,8 @@
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
   [group-names]
   (if-let [name-mappings (not-empty (sso-settings/jwt-group-mappings))]
-    (set
-     (mapcat name-mappings
-             (map keyword group-names)))
+    (sso-utils/group-names->ids group-names name-mappings)
     (t2/select-pks-set :model/PermissionsGroup :name [:in group-names])))
-
-(defn- all-mapped-group-ids
-  "Returns the set of all MB group IDs that have configured mappings"
-  []
-  (-> (sso-settings/jwt-group-mappings)
-      vals
-      flatten
-      set))
 
 (methodical/defmethod auth-identity/login! :after :provider/jwt
   "Sync JWT group memberships after successful login.
@@ -190,4 +180,4 @@
               (sso/sync-group-memberships! user (group-names->ids group-names))
               (sso/sync-group-memberships! user
                                            (group-names->ids group-names)
-                                           (all-mapped-group-ids)))))))))
+                                           (sso-utils/all-mapped-group-ids (sso-settings/jwt-group-mappings))))))))))

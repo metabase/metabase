@@ -45,8 +45,8 @@ export type SnippetFormModalProps = {
 
 export type SnippetCollectionMenuProps = {
   collection: Collection;
-  onEditDetails: (collection: Collection) => void;
-  onChangePermissions: (collectionId: CollectionId) => void;
+  onEditDetails?: (collection: Collection) => void;
+  onChangePermissions?: (collectionId: CollectionId) => void;
 };
 
 export type SnippetCollectionPermissionsModalProps = {
@@ -68,7 +68,7 @@ export type SnippetFoldersPlugin = {
   MoveSnippetModal: ComponentType<MoveSnippetModalProps>;
 };
 
-export const getDefaultPluiginSnippetFolders = () => ({
+export const getDefaultPluginSnippetFolders = () => ({
   isEnabled: false,
   CollectionPickerModal:
     PluginPlaceholder as ComponentType<SnippetCollectionPickerModalProps>,
@@ -81,8 +81,8 @@ export const getDefaultPluiginSnippetFolders = () => ({
   MoveSnippetModal: PluginPlaceholder as ComponentType<MoveSnippetModalProps>,
 });
 
-export const PLUGIN_SNIPPET_FOLDERS = getDefaultPluiginSnippetFolders();
+export const PLUGIN_SNIPPET_FOLDERS = getDefaultPluginSnippetFolders();
 
 export function reinitialize() {
-  Object.assign(PLUGIN_SNIPPET_FOLDERS, getDefaultPluiginSnippetFolders());
+  Object.assign(PLUGIN_SNIPPET_FOLDERS, getDefaultPluginSnippetFolders());
 }

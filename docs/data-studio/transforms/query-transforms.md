@@ -5,9 +5,11 @@ summary: Create Metabase questions and SQL queries to transform your data and wr
 
 # Query-based transforms
 
-> On Metabase Cloud, you need the Transforms add-on to run query-based transforms.
+> On Metabase Cloud, you need the **Transforms** add-on to run query-based transforms.
 
 With query-based transforms, you can write a query in SQL or Metabase's query builder, and then write the results of the query back into the database on schedule.
+
+![Query transform](../images/sql-transform.png)
 
 For general information about Metabase transforms, see [Transforms](transforms-overview.md).
 
@@ -21,11 +23,13 @@ For general information about Metabase transforms, see [Transforms](transforms-o
 
 ## Create a query-based transform
 
-Currently, you can't convert between different transform types (like converting a query builder transform to a SQL-based transform, or a SQL transform into a Python transform). If you want to change your transform built with the query builder into a SQL transform, you'll need to create a new transform with the same target and tags, and delete the old transform.
+On Metabase Cloud, you need the **Transforms** add-on to create query-based transforms.
 
 1. Go to **Data studio > Transforms**.
 
 2. Click **+ New** and pick "Query builder", "SQL", or "Copy of existing question".
+
+   Currently, you can't convert between different transform types (like converting a query builder transform to a SQL-based transform, or a SQL transform into a Python transform). If you want to change your transform built with the query builder into a SQL transform, you'll need to create a new transform with the same target and tags, and delete the old transform.
 
 3. Write your transform query as you would normally write a query in Metabase. See [Query builder](../../questions/query-builder/editor.md) and [SQL editor](../../questions/native-editor/writing-sql.md) documentation for more information.
 
@@ -44,6 +48,44 @@ Currently, you can't convert between different transform types (like converting 
    - **Incremental transformation** (optional): see [Incremental query transforms](#incremental-query-transforms)
 
 6. Optionally, assign tags to your transforms. Tags are used by [jobs](jobs-and-runs.md) to run transforms on schedule.
+
+## Variables in SQL transforms
+
+SQL transforms support [variables](../../questions/native-editor/sql-parameters.md) (`{% raw %}{{my_variable}} {% endraw %}`), which are only useful when combined with [snippets](../../questions/native-editor/snippets.md).
+
+For (a really simple) example, let's say you want to count rows per week across several tables. You could create a snippet called "rows per week" containing the full query with a `{% raw %}{{table}}{% endraw %}` variable:
+
+```sql
+{% raw %}
+SELECT
+  date_trunc('week', created_at) AS week,
+  count(*) AS row_count
+FROM {{table}}
+GROUP BY week
+ORDER BY week
+{% endraw %}
+```
+
+That way you can use the snippet to create multiple transforms, each sourced from different tables. Each transform's entire SQL is just:
+
+```sql
+{% raw %}{{snippet: rows per week}}{% endraw %}
+```
+
+In each transform's variable panel, set the default value of `table` to the target table (e.g., `orders`, `returns`, `subscriptions`). See [table variables](../../questions/native-editor/table-variables.md).
+
+If you ever need to change the query (say, to switch from weekly to daily granularity), you update the snippet once and every transform picks up the change on its next run.
+
+### Transform variable must be optional, or have a default value
+
+Parameters in transforms must either:
+
+- Wrap the variable in optional blocks (`[[ ]]`).
+- Supply a default value.
+
+The reason transform variables must have a default value (or be optional) is that transforms run on a schedule, so there's no way to pass a value to the variable when the job runs the transform.
+
+The incremental `{%raw%}[[WHERE id > {{checkpoint}}]]{% endraw %}` pattern shown in [Incremental query transforms](#incremental-query-transforms) is an example of this an optional variable in practice. See also [optional variables](../../questions/native-editor/optional-variables.md).
 
 ## Run a query transform
 

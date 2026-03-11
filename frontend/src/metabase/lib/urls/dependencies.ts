@@ -31,7 +31,7 @@ export function dependencyDiagnostics() {
   return DIAGNOSTICS_URL;
 }
 
-export type DependencyListParams = {
+export type DependencyDiagnosticsParams = {
   page?: number;
   query?: string;
   groupTypes?: DependencyGroupType[];
@@ -40,14 +40,14 @@ export type DependencyListParams = {
   sortDirection?: SortDirection;
 };
 
-function dependencyListQueryString({
+function dependencyDiagnosticsQueryString({
   page,
   query,
   groupTypes,
   includePersonalCollections,
   sortColumn,
   sortDirection,
-}: DependencyListParams = {}) {
+}: DependencyDiagnosticsParams = {}) {
   const searchParams = new URLSearchParams();
 
   if (page != null) {
@@ -78,10 +78,10 @@ function dependencyListQueryString({
   return queryString.length > 0 ? `?${queryString}` : "";
 }
 
-export function brokenDependencies(params?: DependencyListParams) {
-  return `${dependencyDiagnostics()}/broken${dependencyListQueryString(params)}`;
+export function brokenDependencies(params?: DependencyDiagnosticsParams) {
+  return `${dependencyDiagnostics()}/broken${dependencyDiagnosticsQueryString(params)}`;
 }
 
-export function unreferencedDependencies(params?: DependencyListParams) {
-  return `${dependencyDiagnostics()}/unreferenced${dependencyListQueryString(params)}`;
+export function unreferencedDependencies(params?: DependencyDiagnosticsParams) {
+  return `${dependencyDiagnostics()}/unreferenced${dependencyDiagnosticsQueryString(params)}`;
 }

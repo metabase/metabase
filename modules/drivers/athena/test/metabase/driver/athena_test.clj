@@ -423,8 +423,8 @@
                                {:database (mt/id)
                                 :type     :query
                                 :query    {:filter [:and
-                                                    [:= a-str [:field "a_dt_tz_text" {:base-type :type/DateTime}]]
-                                                    [:= b-str [:field "b_dt_tz_text" {:base-type :type/DateTime}]]]
+                                                    [:= a-str [:field "a_dt_tz_text" {:base-type :type/Text}]]
+                                                    [:= b-str [:field "b_dt_tz_text" {:base-type :type/Text}]]]
                                            :expressions  (into {}
                                                                (for [unit units]
                                                                  [(name unit) [:datetime-diff
@@ -445,7 +445,8 @@
                                         [true? {:dbname nil}]
                                         [true? {:dbname ""}]
                                         [false? {:dbname "db_name"}]]]
-    (is (schemas-supported? (driver/database-supports? :athena :schemas {:details details})))))
+    (is (schemas-supported? (driver/database-supports? :athena :schemas {:lib/type :metadata/database
+                                                                         :details  details})))))
 
 (deftest ^:parallel athena-describe-database
   (mt/test-driver :athena

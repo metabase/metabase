@@ -734,7 +734,7 @@
 (mu/defn join-condition-parts :- [:maybe JoinConditionParts]
   "Destructures a join condition created by [[join-condition-clause]]."
   [join-condition :- ::lib.schema.join/condition]
-  (lib.util.match/match-one join-condition
+  (lib.util.match/match-lite join-condition
     [(op :guard lib.schema.join/condition-operators) _ lhs rhs]
     {:operator op, :lhs-expression lhs, :rhs-expression rhs}
 
@@ -742,9 +742,12 @@
     _ nil))
 
 (mu/defn join-condition-lhs-or-rhs-literal? :- :boolean
-  "Whether this LHS or RHS expression is a `:value` clause."
+  "Whether this LHS or RHS expression is a literal value (either a `:value` clause or a raw literal)."
   [lhs-or-rhs :- [:maybe ::lib.schema.expression/expression]]
-  (lib.util/clause-of-type? lhs-or-rhs :value))
+  (or (lib.util/clause-of-type? lhs-or-rhs :value)
+      (number? lhs-or-rhs)
+      (string? lhs-or-rhs)
+      (boolean? lhs-or-rhs)))
 
 (mu/defn join-condition-lhs-or-rhs-column? :- :boolean
   "Whether this LHS or RHS expression is a `:field` or `:expression` reference."

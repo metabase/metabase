@@ -97,6 +97,7 @@
    "PermissionsGroupMembership"
    "PermissionsRevision"
    "PersistedInfo"
+   "PremiumFeaturesCache"
    "Pulse"
    "PulseCard"
    "PulseChannel"
@@ -108,6 +109,7 @@
    "QueryField"
    "QueryTable"
    "RecentViews"
+   "ReplacementRun"
    "RemoteSyncObject"
    "RemoteSyncTask"
    "Revision"
@@ -133,6 +135,7 @@
    ;; serialization, hence we should revisit this later in the project.
    "WorkspaceInput"
    "WorkspaceInputExternal"
+   "WorkspaceInputTransform"
    "WorkspaceLog"
    "WorkspaceMerge"
    "WorkspaceMergeTransform"

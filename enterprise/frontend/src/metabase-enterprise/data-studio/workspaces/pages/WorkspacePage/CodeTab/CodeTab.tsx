@@ -1,32 +1,26 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { skipToken, useLazyGetTransformQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Stack, Text } from "metabase/ui";
-import {
-  useGetExternalTransformsQuery,
-  useLazyGetWorkspaceTransformQuery,
-} from "metabase-enterprise/api";
+import { Flex, Skeleton, Stack, Text } from "metabase/ui";
+import { useGetExternalTransformsQuery } from "metabase-enterprise/api";
 import { getCheckoutDisabledMessage } from "metabase-enterprise/data-studio/workspaces/utils";
 import type {
   DatabaseId,
   ExternalTransform,
-  TaggedTransform,
   UnsavedTransform,
   WorkspaceId,
-  WorkspaceTransform,
   WorkspaceTransformListItem,
 } from "metabase-types/api";
 import { isUnsavedTransform } from "metabase-types/api";
 
-import { useWorkspace } from "../WorkspaceProvider";
-
 import {
-  TransformListItem,
-  TransformListItemSkeleton,
-} from "./TransformListItem";
+  type AnyWorkspaceTransformRef,
+  useWorkspace,
+} from "../WorkspaceProvider";
+
+import { TransformListItem } from "./TransformListItem";
 import { TransformListItemMenu } from "./TransformListItemMenu";
 
 /** Item that can be displayed in the workspace transforms list */
@@ -48,9 +42,7 @@ type CodeTabProps = {
   workspaceTransforms: WorkspaceTransformItem[];
   isLoadingWorkspaceTransforms?: boolean;
   readOnly: boolean;
-  onTransformClick: (
-    transform: TaggedTransform | WorkspaceTransform | UnsavedTransform,
-  ) => void;
+  onTransformClick: (transformRef: AnyWorkspaceTransformRef) => void;
 };
 
 export const CodeTab = ({
@@ -63,7 +55,6 @@ export const CodeTab = ({
   onTransformClick,
 }: CodeTabProps) => {
   const { editedTransforms } = useWorkspace();
-  const { sendErrorToast } = useMetadataToasts();
 
   const {
     data: availableTransforms,
@@ -73,59 +64,38 @@ export const CodeTab = ({
     databaseId ? { workspaceId, databaseId } : skipToken,
   );
 
-  const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
-  const [fetchTransform] = useLazyGetTransformQuery();
-
   const handleExternalTransformClick = useCallback(
     async (externalTransform: ExternalTransform) => {
       if (externalTransform.checkout_disabled) {
         return;
       }
 
-      const { data: transform, error } = await fetchTransform(
-        externalTransform.id,
-        true,
-      );
-
-      if (error) {
-        sendErrorToast(t`Failed to fetch transform`);
-      } else if (transform) {
-        const taggedTransform: TaggedTransform = {
-          ...transform,
-          type: "transform",
-        };
-        onTransformClick(taggedTransform);
-      }
+      onTransformClick({
+        type: "transform",
+        id: externalTransform.id,
+        name: externalTransform.name,
+      });
     },
-    [fetchTransform, onTransformClick, sendErrorToast],
+    [onTransformClick],
   );
 
   const handleWorkspaceTransformItemClick = useCallback(
     async (item: WorkspaceTransformItem) => {
-      // Unsaved transforms are stored locally.
-      // They should open directly without API fetch.
       if (isUnsavedTransform(item)) {
-        // Unsaved transforms should already be opened via the provider
-        // This path shouldn't normally be hit, but if it is, we can't
-        // call onTransformClick because we don't have a full transform
-        return onTransformClick(item);
-      }
-
-      const { data: transform, error } = await fetchWorkspaceTransform(
-        {
-          workspaceId,
-          transformId: item.ref_id,
-        },
-        true,
-      );
-
-      if (error) {
-        sendErrorToast(t`Failed to fetch transform`);
-      } else if (transform) {
-        onTransformClick(transform);
+        onTransformClick({
+          type: "unsaved-transform",
+          id: item.id,
+          name: item.name,
+        });
+      } else {
+        onTransformClick({
+          type: "workspace-transform",
+          ref_id: item.ref_id,
+          name: item.name,
+        });
       }
     },
-    [fetchWorkspaceTransform, workspaceId, onTransformClick, sendErrorToast],
+    [onTransformClick],
   );
 
   return (
@@ -141,11 +111,7 @@ export const CodeTab = ({
         <Stack gap={0}>
           <Text fw={600}>{t`Workspace transforms`}</Text>
           {isLoadingWorkspaceTransforms ? (
-            <>
-              <TransformListItemSkeleton />
-              <TransformListItemSkeleton />
-              <TransformListItemSkeleton />
-            </>
+            <LoadingSkeleton />
           ) : (
             workspaceTransforms.map((item) => {
               const itemId = getWorkspaceTransformItemId(item);
@@ -189,11 +155,7 @@ export const CodeTab = ({
         <Text fw={600} mt="sm">{t`Available transforms`}</Text>
 
         {isLoading ? (
-          <>
-            <TransformListItemSkeleton />
-            <TransformListItemSkeleton />
-            <TransformListItemSkeleton />
-          </>
+          <LoadingSkeleton />
         ) : error ? (
           <Text c="error" size="sm">{t`Failed to load transforms`}</Text>
         ) : (
@@ -223,3 +185,22 @@ export const CodeTab = ({
     </Stack>
   );
 };
+
+function LoadingSkeleton() {
+  return (
+    <Stack data-testid="loading-indicator" gap="md" py="sm">
+      <TransformListItemSkeleton />
+      <TransformListItemSkeleton />
+      <TransformListItemSkeleton />
+    </Stack>
+  );
+}
+
+function TransformListItemSkeleton() {
+  return (
+    <Flex align="center" gap="sm" px="md">
+      <Skeleton h={14} w={14} circle />
+      <Skeleton h={14} w="70%" />
+    </Flex>
+  );
+}

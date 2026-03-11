@@ -10,6 +10,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.search.core :as search]
@@ -27,7 +28,7 @@
 
 (deftest transform-event-creates-sync-object-when-setting-enabled-test
   (testing "Creating a transform creates a RemoteSyncObject entry when remote-sync-transforms is enabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
@@ -40,7 +41,7 @@
 
 (deftest transform-event-ignored-when-setting-disabled-test
   (testing "Transform events are ignored when remote-sync-transforms is disabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
@@ -53,7 +54,7 @@
 
 (deftest transform-event-updates-sync-object-test
   (testing "Updating a transform updates the RemoteSyncObject entry when setting is enabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
@@ -73,7 +74,7 @@
 
 (deftest transform-tag-event-creates-sync-object-test
   (testing "Creating a transform tag creates a RemoteSyncObject entry when transform sync is enabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/TransformTag tag {:name "Test Tag"}]
@@ -85,7 +86,7 @@
 
 (deftest transform-tag-event-ignored-when-disabled-test
   (testing "TransformTag events are ignored when transform sync is disabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/TransformTag tag {:name "Test Tag"}]
@@ -97,7 +98,7 @@
 
 (deftest transforms-namespace-collection-tracked-when-setting-enabled-test
   (testing "Transforms-namespace collection creates RemoteSyncObject entry when setting is enabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection coll {:name "Transforms Collection" :namespace collection/transforms-ns :location "/"}]
@@ -109,7 +110,7 @@
 
 (deftest transforms-namespace-collection-ignored-when-setting-disabled-test
   (testing "Transforms-namespace collection is NOT tracked when setting is disabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection coll {:name "Transforms Collection" :namespace collection/transforms-ns :location "/"}]
@@ -121,7 +122,7 @@
 
 (deftest enable-transform-sync-marks-all-transforms-test
   (testing "Enabling transform sync creates a single Transforms RSO with model_id=-1 and status 'create'"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         ;; Clean up any existing Transforms root RSO first
         (t2/delete! :model/RemoteSyncObject
@@ -148,7 +149,7 @@
 
 (deftest disable-transform-sync-removes-all-tracking-test
   (testing "Disabling transform sync creates a Transforms RSO with status 'delete'"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
@@ -169,7 +170,7 @@
 
 (deftest transforms-included-in-dirty-check-when-enabled-test
   (testing "Transforms are included in dirty check when setting is enabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
@@ -184,7 +185,7 @@
 
 (deftest transforms-excluded-from-dirty-check-when-disabled-test
   (testing "Transforms are excluded from dirty check when setting is disabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection" :namespace collection/transforms-ns}
@@ -199,7 +200,7 @@
 
 (deftest transform-tags-included-in-dirty-check-when-enabled-test
   (testing "TransformTags are included in dirty check when transform sync is enabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/TransformTag tag {:name "Dirty Tag"}
@@ -213,7 +214,7 @@
 
 (deftest transform-tags-excluded-from-dirty-check-when-disabled-test
   (testing "TransformTags are excluded from dirty check when transform sync is disabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/TransformTag tag {:name "Dirty Tag"}
@@ -227,7 +228,7 @@
 
 (deftest export-includes-transforms-namespace-collections-test
   (testing "Export includes transforms-namespace collections when setting is enabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-type :read-write
                                          remote-sync-transforms true
                                          remote-sync-enabled true]
@@ -256,7 +257,7 @@
 
 (deftest export-excludes-transforms-when-setting-disabled-test
   (testing "Export excludes transforms when setting is disabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-type :read-write
                                          remote-sync-transforms false
                                          remote-sync-enabled true]
@@ -307,7 +308,7 @@ is_sample: false
 
 (deftest import-transforms-from-transforms-namespace-collection-test
   (testing "Import brings in transforms located inside a transforms-namespace collection"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-enabled true]
         (mt/with-model-cleanup [:model/Transform :model/Collection]
           (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
@@ -325,9 +326,42 @@ is_sample: false
             (is (t2/exists? :model/Transform :entity_id transform-entity-id)
                 "Transform should be imported from transforms-namespace collection")))))))
 
+(deftest import-python-transform-with-legacy-map-source-tables-test
+  (testing "Import of a python transform with old map-format source-tables converts to vec format"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/Transform :model/Collection]
+          (let [task-id             (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                coll-entity-id      "xforms-coll-legacy-01"
+                transform-entity-id "python-legacy-fmt-01x"
+                ;; Use old map format: {alias: table_id} — this is how pre-unification exports look
+                source-tables-yaml  (format "{orders: %d}" (mt/id :orders))
+                test-files {"main" {(str "collections/" coll-entity-id "_transforms/" coll-entity-id "_transforms.yaml")
+                                    (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms")
+                                    (str "collections/" coll-entity-id "_transforms/transforms/" transform-entity-id "_python_transform.yaml")
+                                    (test-helpers/generate-python-transform-yaml transform-entity-id "Python Transform"
+                                                                                 "test-data (h2)" source-tables-yaml
+                                                                                 :collection-id coll-entity-id)}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)
+                result      (impl/import! (source.p/snapshot mock-source) task-id)]
+            (is (= :success (:status result))
+                (str "Import should succeed. Result: " result))
+            (when-let [transform (t2/select-one :model/Transform :entity_id transform-entity-id)]
+              (let [source-tables (get-in transform [:source :source-tables])]
+                (testing "source-tables is stored as vec format after import"
+                  (is (sequential? source-tables)))
+                (testing "entry has correct alias and table_id"
+                  (let [entry (first source-tables)]
+                    (is (= "orders" (:alias entry)))
+                    (is (= (mt/id :orders) (:table_id entry)))))
+                (testing "entry is enriched with table metadata"
+                  (let [entry (first source-tables)]
+                    (is (= (mt/id) (:database_id entry)))
+                    (is (some? (:table entry)))))))))))))
+
 (deftest archived-transforms-namespace-collection-excluded-from-export-test
   (testing "When a transforms-namespace collection is archived, it and its children are excluded from export"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-type :read-write
                                          remote-sync-transforms true
                                          remote-sync-enabled true]
@@ -387,7 +421,7 @@ is_sample: false
 
 (deftest transforms-collections-included-in-all-syncable-collection-ids-test
   (testing "Transforms collections are included in all-syncable-collection-ids when setting is enabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {transforms-coll-id :id} {:name "Transforms Collection"
@@ -397,7 +431,7 @@ is_sample: false
               "Transforms-namespace collection should be included when setting is enabled")))))
 
   (testing "Transforms collections are NOT included when setting is disabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-temp [:model/Collection {transforms-coll-id :id} {:name "Transforms Collection"
@@ -408,7 +442,7 @@ is_sample: false
 
 (deftest import-removes-empty-transforms-collection-not-on-remote-test
   (testing "Import removes empty transforms-namespace collections that don't exist on the remote"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Collection]
@@ -433,7 +467,7 @@ is_sample: false
 
 (deftest import-removes-transform-not-on-remote-test
   (testing "Import removes transforms that don't exist on the remote but keeps the collection"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
@@ -454,10 +488,11 @@ is_sample: false
                                         (generate-transforms-namespace-collection-yaml coll-entity-id "Transforms Collection")
                                         (str "collections/" coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")
                                         (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id coll-entity-id)}}
-                    mock-source (test-helpers/create-mock-source :initial-files test-files)
-                    result (impl/import! (source.p/snapshot mock-source) task-id)]
-                (is (= :success (:status result))
-                    (str "Import should succeed. Result: " result))
+                    mock-source (test-helpers/create-mock-source :initial-files test-files)]
+                (testing "fails with `conflict` status because local transforms will be deleted"
+                  (is (= :conflict (:status (impl/import! (source.p/snapshot mock-source) task-id)))))
+                (testing "passing `force? true` allows overriding the conflict."
+                  (is (= :success (:status (impl/import! (source.p/snapshot mock-source) task-id :force? true)))))
                 (is (t2/exists? :model/Collection :id coll-id)
                     "Transforms collection should still exist")
                 (is (not (t2/exists? :model/Transform :id local-transform-id))
@@ -467,7 +502,7 @@ is_sample: false
 
 (deftest import-removes-transforms-and-collection-not-on-remote-test
   (testing "Import removes transforms and their collection when neither exist on remote"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Collection]
@@ -487,7 +522,7 @@ is_sample: false
               (let [test-files {"main" {(str "collections/" remote-coll-entity-id "_remote_transforms/" remote-coll-entity-id "_remote_transforms.yaml")
                                         (generate-transforms-namespace-collection-yaml remote-coll-entity-id "Remote Transforms")}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
-                    result (impl/import! (source.p/snapshot mock-source) task-id)]
+                    result (impl/import! (source.p/snapshot mock-source) task-id :force? true)]
                 (is (= :success (:status result))
                     (str "Import should succeed. Result: " result))
                 (is (not (t2/exists? :model/Transform :id local-transform-id))
@@ -516,154 +551,150 @@ serdes/meta:
           entity-id
           entity-id))
 
-(defn- with-clean-python-library
-  "Ensures PythonLibrary table is clean before and after running the test function.
-   Saves and restores any existing entries."
-  [f]
-  (let [existing (t2/select :model/PythonLibrary)]
-    (try
-      (t2/delete! :model/PythonLibrary)
-      (f)
-      (finally
-        (t2/delete! :model/PythonLibrary)
-        (when (seq existing)
-          (t2/insert! :model/PythonLibrary existing))))))
-
 (deftest python-library-event-creates-sync-object-when-setting-enabled-test
   (testing "Creating a PythonLibrary creates a RemoteSyncObject entry when remote-sync-transforms is enabled"
-    (with-clean-python-library
-      (fn []
-        (mt/with-premium-features #{:transforms}
-          (mt/with-temporary-setting-values [remote-sync-transforms true
-                                             remote-sync-enabled true]
-            (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
-              (is (t2/exists? :model/RemoteSyncObject
-                              :model_type "PythonLibrary"
-                              :model_id (:id library))
-                  "PythonLibrary should be tracked when remote-sync-transforms is enabled"))))))))
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
+          (is (t2/exists? :model/RemoteSyncObject
+                          :model_type "PythonLibrary"
+                          :model_id (:id library))
+              "PythonLibrary should be tracked when remote-sync-transforms is enabled"))))))
 
 (deftest python-library-event-ignored-when-setting-disabled-test
   (testing "PythonLibrary events are ignored when remote-sync-transforms is disabled"
-    (with-clean-python-library
-      (fn []
-        (mt/with-premium-features #{:transforms}
-          (mt/with-temporary-setting-values [remote-sync-transforms false
-                                             remote-sync-enabled true]
-            (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
-              (is (not (t2/exists? :model/RemoteSyncObject
-                                   :model_type "PythonLibrary"
-                                   :model_id (:id library)))
-                  "PythonLibrary should NOT be tracked when remote-sync-transforms is disabled"))))))))
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms false
+                                         remote-sync-enabled true]
+        (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
+          (is (not (t2/exists? :model/RemoteSyncObject
+                               :model_type "PythonLibrary"
+                               :model_id (:id library)))
+              "PythonLibrary should NOT be tracked when remote-sync-transforms is disabled"))))))
 
 (deftest python-library-event-updates-sync-object-test
   (testing "Updating a PythonLibrary updates the RemoteSyncObject entry when setting is enabled"
-    (with-clean-python-library
-      (fn []
-        (mt/with-premium-features #{:transforms}
-          (mt/with-temporary-setting-values [remote-sync-transforms true
-                                             remote-sync-enabled true]
-            (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
-              (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
-                          {:status "synced"})
-              (t2/update! :model/PythonLibrary (:id library) {:source "# updated"})
-              (let [entry (t2/select-one :model/RemoteSyncObject
-                                         :model_type "PythonLibrary"
-                                         :model_id (:id library))]
-                (is (= "update" (:status entry))
-                    "PythonLibrary should have 'update' status after modification")))))))))
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
+          (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
+                      {:status "synced"})
+          (t2/update! :model/PythonLibrary (:id library) {:source "# updated"})
+          (let [entry (t2/select-one :model/RemoteSyncObject
+                                     :model_type "PythonLibrary"
+                                     :model_id (:id library))]
+            (is (= "update" (:status entry))
+                "PythonLibrary should have 'update' status after modification")))))))
 
 (deftest export-includes-python-library-when-setting-enabled-test
   (testing "Export includes PythonLibrary when remote-sync-transforms is enabled"
-    (with-clean-python-library
-      (fn []
-        (mt/with-premium-features #{:transforms}
-          (mt/with-temporary-setting-values [remote-sync-type :read-write
-                                             remote-sync-transforms true
-                                             remote-sync-enabled true]
-            (mt/with-model-cleanup [:model/RemoteSyncTask]
-              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
-                    library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# shared code"})]
-                (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
-                            {:status "create"})
-                (let [mock-source (test-helpers/create-mock-source)
-                      result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
-                  (is (= :success (:status result))
-                      (str "Export should succeed. Result: " result))
-                  (let [files-after-export (get @(:files-atom mock-source) "main")]
-                    (is (some #(str/includes? % "python-libraries/") (keys files-after-export))
-                        "Export should include the PythonLibrary file")))))))))))
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                         remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
+                library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# shared code"})]
+            (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
+                        {:status "create"})
+            (let [mock-source (test-helpers/create-mock-source)
+                  result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
+              (is (= :success (:status result))
+                  (str "Export should succeed. Result: " result))
+              (let [files-after-export (get @(:files-atom mock-source) "main")]
+                (is (some #(str/includes? % "python-libraries/") (keys files-after-export))
+                    "Export should include the PythonLibrary file")))))))))
 
 (deftest import-python-library-from-yaml-test
   (testing "Import brings in PythonLibrary from YAML files"
-    (with-clean-python-library
-      (fn []
-        (mt/with-premium-features #{:transforms}
-          (mt/with-temporary-setting-values [remote-sync-transforms true
-                                             remote-sync-enabled true]
-            (mt/with-model-cleanup [:model/RemoteSyncTask]
-              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                    lib-entity-id (u/generate-nano-id)
-                    test-files {"main" {(str "python-libraries/" lib-entity-id ".yaml")
-                                        (generate-python-library-yaml lib-entity-id "common.py" "def shared_func():\n    return 42")}}
-                    mock-source (test-helpers/create-mock-source :initial-files test-files)
-                    result (impl/import! (source.p/snapshot mock-source) task-id)]
-                (is (= :success (:status result))
-                    (str "Import should succeed. Result: " result))
-                (is (t2/exists? :model/PythonLibrary :path "common.py")
-                    "PythonLibrary should be imported")
-                (when-let [library (t2/select-one :model/PythonLibrary :path "common.py")]
-                  (is (str/includes? (:source library) "def shared_func()")
-                      "PythonLibrary source should be imported correctly"))))))))))
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                lib-entity-id (u/generate-nano-id)
+                test-files {"main" {(str "python-libraries/" lib-entity-id ".yaml")
+                                    (generate-python-library-yaml lib-entity-id "common.py" "def shared_func():\n    return 42")}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)
+                snapshot (source.p/snapshot mock-source)
+                result (impl/import! snapshot task-id)]
+            (is (= :success (:status result))
+                (str "Import should succeed. Result: " result))
+            (is (t2/exists? :model/PythonLibrary :path "common.py")
+                "PythonLibrary should be imported")
+            (when-let [library (t2/select-one :model/PythonLibrary :path "common.py")]
+              (is (str/includes? (:source library) "def shared_func()")
+                  "PythonLibrary source should be imported correctly"))))))))
 
 (deftest import-removes-python-library-not-on-remote-test
   (testing "Import removes local PythonLibrary that doesn't exist on the remote"
-    (with-clean-python-library
-      (fn []
-        (mt/with-premium-features #{:transforms}
-          (mt/with-temporary-setting-values [remote-sync-transforms true
-                                             remote-sync-enabled true]
-            (mt/with-model-cleanup [:model/RemoteSyncTask]
-              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                    local-library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# local only"})]
-                (is (t2/exists? :model/PythonLibrary :id (:id local-library))
-                    "Local PythonLibrary should exist before import")
-                (let [test-files {"main" {}}
-                      mock-source (test-helpers/create-mock-source :initial-files test-files)
-                      result (impl/import! (source.p/snapshot mock-source) task-id)]
-                  (is (= :success (:status result))
-                      (str "Import should succeed. Result: " result))
-                  (is (not (t2/exists? :model/PythonLibrary :id (:id local-library)))
-                      "Local PythonLibrary should be deleted after import since it wasn't on remote"))))))))))
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                local-library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# local only"})]
+            (is (t2/exists? :model/PythonLibrary :id (:id local-library))
+                "Local PythonLibrary should exist before import")
+            (let [test-files {"main" {}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)
+                  result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result))
+                  (str "Import should succeed. Result: " result))
+              (is (not (t2/exists? :model/PythonLibrary :id (:id local-library)))
+                  "Local PythonLibrary should be deleted after import since it wasn't on remote"))))))))
+
+(deftest import-preserves-builtin-python-library-test
+  (testing "Import does NOT delete the built-in PythonLibrary even when it's not on remote"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+            ;; Create the builtin library explicitly (fixture cleans PythonLibrary before test)
+            (t2/insert-returning-instance! :model/PythonLibrary
+                                           {:path "common.py"
+                                            :source "# builtin"
+                                            :entity_id transforms-python/builtin-entity-id})
+            (is (t2/exists? :model/PythonLibrary :entity_id transforms-python/builtin-entity-id)
+                "Built-in PythonLibrary should exist before import")
+            (let [test-files {"main" {}}  ;; Empty remote - no python libraries
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)
+                  result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result))
+                  (str "Import should succeed. Result: " result))
+              (is (t2/exists? :model/PythonLibrary :entity_id transforms-python/builtin-entity-id)
+                  "Built-in PythonLibrary should NOT be deleted after import"))))))))
 
 (deftest import-replaces-python-library-with-remote-version-test
   (testing "Import updates local PythonLibrary when remote has same entity_id"
-    (with-clean-python-library
-      (fn []
-        (mt/with-premium-features #{:transforms}
-          (mt/with-temporary-setting-values [remote-sync-transforms true
-                                             remote-sync-enabled true]
-            (mt/with-model-cleanup [:model/RemoteSyncTask]
-              (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
-                    local-library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# local version"})
-                    local-entity-id (:entity_id local-library)]
-                (is (t2/exists? :model/PythonLibrary :path "common.py")
-                    "Local PythonLibrary should exist before import")
-                (let [test-files {"main" {(str "python-libraries/" local-entity-id ".yaml")
-                                          (generate-python-library-yaml local-entity-id "common.py" "# remote version\ndef new_func():\n    pass")}}
-                      mock-source (test-helpers/create-mock-source :initial-files test-files)
-                      result (impl/import! (source.p/snapshot mock-source) task-id)]
-                  (is (= :success (:status result))
-                      (str "Import should succeed. Result: " result))
-                  (let [library (t2/select-one :model/PythonLibrary :path "common.py")]
-                    (is (some? library) "PythonLibrary should still exist")
-                    (is (str/includes? (:source library) "# remote version")
-                        "PythonLibrary source should be updated with remote version")))))))))))
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-model-cleanup [:model/RemoteSyncTask]
+          (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+                local-library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# local version"})
+                local-entity-id (:entity_id local-library)]
+            (is (t2/exists? :model/PythonLibrary :path "common.py")
+                "Local PythonLibrary should exist before import")
+            (let [test-files {"main" {(str "python-libraries/" local-entity-id ".yaml")
+                                      (generate-python-library-yaml local-entity-id "common.py" "# remote version\ndef new_func():\n    pass")}}
+                  mock-source (test-helpers/create-mock-source :initial-files test-files)
+                  result (impl/import! (source.p/snapshot mock-source) task-id)]
+              (is (= :success (:status result))
+                  (str "Import should succeed. Result: " result))
+              (let [library (t2/select-one :model/PythonLibrary :path "common.py")]
+                (is (some? library) "PythonLibrary should still exist")
+                (is (str/includes? (:source library) "# remote version")
+                    "PythonLibrary source should be updated with remote version")))))))))
 
 ;;; ------------------------------------------- Transform Sync Behavior Tests -------------------------------------------
 
 (deftest import-preserves-local-transforms-when-setting-disabled-and-remote-has-none-test
   (testing "When remote-sync-transforms is disabled and remote has no transforms, local transforms are preserved"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform :model/TransformTag]
@@ -700,7 +731,7 @@ serdes/meta:
 
 (deftest import-replaces-local-transforms-when-remote-has-transforms-test
   (testing "When remote has transforms, local transforms are replaced with remote content (setting auto-enabled)"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform :model/TransformTag]
@@ -726,7 +757,9 @@ serdes/meta:
                                         (str "collections/" remote-coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")
                                         (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id remote-coll-entity-id)}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
-                    result (impl/import! (source.p/snapshot mock-source) task-id)]
+                    result-without-force (impl/import! (source.p/snapshot mock-source) task-id)
+                    result (impl/import! (source.p/snapshot mock-source) task-id {:force? true})]
+                (is (= :conflict (:status result-without-force)))
                 (is (= :success (:status result))
                     (str "Import should succeed. Result: " result))
                 (is (settings/remote-sync-transforms)
@@ -744,7 +777,7 @@ serdes/meta:
 
 (deftest import-removes-all-local-transforms-when-setting-enabled-and-remote-has-none-test
   (testing "When remote-sync-transforms is enabled and remote has no transforms, all local transforms are removed"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform :model/TransformTag]
@@ -782,7 +815,7 @@ serdes/meta:
 
 (deftest import-auto-enables-setting-when-remote-has-transforms-test
   (testing "When setting is disabled and remote has transforms, setting is auto-enabled and transforms are synced"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms false
                                          remote-sync-enabled true]
         (mt/with-model-cleanup [:model/RemoteSyncTask :model/Transform]
@@ -805,7 +838,7 @@ serdes/meta:
                                         (str "collections/" remote-coll-entity-id "_transforms/transforms/" remote-transform-entity-id "_remote_transform.yaml")
                                         (test-helpers/generate-transform-yaml remote-transform-entity-id "Remote Transform" :collection-id remote-coll-entity-id)}}
                     mock-source (test-helpers/create-mock-source :initial-files test-files)
-                    result (impl/import! (source.p/snapshot mock-source) task-id)]
+                    result (impl/import! (source.p/snapshot mock-source) task-id :force? true)]
                 (is (= :success (:status result))
                     (str "Import should succeed. Result: " result))
                 (is (settings/remote-sync-transforms)
@@ -819,44 +852,42 @@ serdes/meta:
 
 (deftest build-all-removal-paths-includes-all-transforms-on-setting-disable-test
   (testing "build-all-removal-paths returns paths for all transforms content when sentinel RSO has 'delete' status"
-    (with-clean-python-library
-      (fn []
-        (mt/with-premium-features #{:transforms}
-          (mt/with-temporary-setting-values [remote-sync-transforms true
-                                             remote-sync-enabled true]
-            (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
-                                                            :namespace collection/transforms-ns
-                                                            :location "/"}
-                           :model/Transform {transform-id :id transform-eid :entity_id} {:name "Test Transform"
-                                                                                         :collection_id coll-id}
-                           :model/TransformTag {tag-id :id tag-eid :entity_id} {:name "Test Tag"
-                                                                                :built_in_type nil}]
-              (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})
-                    lib-eid (:entity_id library)]
-                (is (t2/exists? :model/Transform :id transform-id))
-                (is (t2/exists? :model/TransformTag :id tag-id))
-                (is (t2/exists? :model/PythonLibrary :id (:id library)))
-                (let [paths-before (spec/build-all-removal-paths)]
-                  (is (not (some #(str/includes? % transform-eid) paths-before))
-                      "Transform should not be in removal paths before setting is disabled"))
-                (settings/sync-transform-tracking! true)
-                (settings/sync-transform-tracking! false)
-                (is (t2/exists? :model/RemoteSyncObject
-                                :model_type "Collection"
-                                :model_id settings/transforms-root-id
-                                :status "delete")
-                    "Sentinel RSO should exist with 'delete' status")
-                (let [paths-after (spec/build-all-removal-paths)]
-                  (is (some #(str/includes? % transform-eid) paths-after)
-                      "Transform should be in removal paths after setting is disabled")
-                  (is (some #(str/includes? % tag-eid) paths-after)
-                      "TransformTag should be in removal paths after setting is disabled")
-                  (is (some #(str/includes? % lib-eid) paths-after)
-                      "PythonLibrary should be in removal paths after setting is disabled"))))))))))
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
+                                                        :namespace collection/transforms-ns
+                                                        :location "/"}
+                       :model/Transform {transform-id :id transform-eid :entity_id} {:name "Test Transform"
+                                                                                     :collection_id coll-id}
+                       :model/TransformTag {tag-id :id tag-eid :entity_id} {:name "Test Tag"
+                                                                            :built_in_type nil}]
+          (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})
+                lib-eid (:entity_id library)]
+            (is (t2/exists? :model/Transform :id transform-id))
+            (is (t2/exists? :model/TransformTag :id tag-id))
+            (is (t2/exists? :model/PythonLibrary :id (:id library)))
+            (let [paths-before (spec/build-all-removal-paths)]
+              (is (not (some #(str/includes? % transform-eid) paths-before))
+                  "Transform should not be in removal paths before setting is disabled"))
+            (settings/sync-transform-tracking! true)
+            (settings/sync-transform-tracking! false)
+            (is (t2/exists? :model/RemoteSyncObject
+                            :model_type "Collection"
+                            :model_id settings/transforms-root-id
+                            :status "delete")
+                "Sentinel RSO should exist with 'delete' status")
+            (let [paths-after (spec/build-all-removal-paths)]
+              (is (some #(str/includes? % transform-eid) paths-after)
+                  "Transform should be in removal paths after setting is disabled")
+              (is (some #(str/includes? % tag-eid) paths-after)
+                  "TransformTag should be in removal paths after setting is disabled")
+              (is (some #(str/includes? % lib-eid) paths-after)
+                  "PythonLibrary should be in removal paths after setting is disabled"))))))))
 
 (deftest build-all-removal-paths-excludes-builtin-transform-tags-test
   (testing "build-all-removal-paths respects :conditions and excludes built-in tags"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/TransformTag {custom-tag-id :id custom-tag-eid :entity_id} {:name "Custom Tag"
@@ -880,7 +911,7 @@ serdes/meta:
 
 (deftest export-excludes-builtin-transform-tags-test
   (testing "Export excludes built-in transform tags based on :conditions"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temporary-setting-values [remote-sync-transforms true
                                          remote-sync-enabled true]
         (mt/with-temp [:model/TransformTag {custom-tag-id :id} {:name "Custom Tag"
@@ -896,3 +927,39 @@ serdes/meta:
                 "Custom tag (built_in_type nil) should be in export roots")
             (is (not (contains? exported-ids builtin-tag-id))
                 "Built-in tag should NOT be in export roots")))))))
+
+(deftest export-includes-builtin-python-library-test
+  (testing "Export includes built-in PythonLibrary (common.py) since it has no export-conditions"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-temp [:model/PythonLibrary builtin-lib {:path "common.py"
+                                                         :source "# builtin"
+                                                         :entity_id transforms-python/builtin-entity-id}
+                       :model/PythonLibrary custom-lib {:path "custom.py"
+                                                        :source "# custom"}]
+          (let [python-lib-spec (spec/spec-for-model-key :model/PythonLibrary)
+                export-roots (spec/query-export-roots python-lib-spec)
+                exported-ids (set (map second export-roots))]
+            (is (contains? exported-ids (:id builtin-lib))
+                "Built-in PythonLibrary should be in export roots")
+            (is (contains? exported-ids (:id custom-lib))
+                "Custom PythonLibrary should be in export roots")))))))
+
+(deftest build-all-removal-paths-excludes-builtin-python-library-test
+  (testing "build-all-removal-paths excludes built-in PythonLibrary via :removal-conditions"
+    (mt/with-premium-features #{:transforms}
+      (mt/with-temporary-setting-values [remote-sync-transforms true
+                                         remote-sync-enabled true]
+        (mt/with-temp [:model/PythonLibrary _ {:path "common.py"
+                                               :source "# builtin"
+                                               :entity_id transforms-python/builtin-entity-id}
+                       :model/PythonLibrary custom-lib {:path "custom.py"
+                                                        :source "# custom"}]
+          (settings/sync-transform-tracking! true)
+          (settings/sync-transform-tracking! false)
+          (let [paths (spec/build-all-removal-paths)]
+            (is (some #(str/includes? % (:entity_id custom-lib)) paths)
+                "Custom PythonLibrary should be in removal paths")
+            (is (not (some #(str/includes? % transforms-python/builtin-entity-id) paths))
+                "Built-in PythonLibrary should NOT be in removal paths")))))))

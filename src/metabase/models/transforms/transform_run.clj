@@ -185,31 +185,31 @@
 
 (defn- paged-runs-join-clause
   "Returns a `:left-join` clause for transform runs sort columns that require joining other tables."
-  [{:keys [sort_column]}]
-  (case (keyword sort_column)
+  [{:keys [sort-column]}]
+  (case (keyword sort-column)
     :transform-name [:transform [:= :transform_run.transform_id :transform.id]]
     nil))
 
 (defn- paged-runs-where-clause
   "Builds a `:where` clause for transform runs from the given filter parameters."
-  [{:keys [start_time end_time run_methods transform_ids transform_tag_ids statuses]}]
+  [{:keys [start-time end-time run-methods transform-ids transform-tag-ids statuses]}]
   (let [where-cond (cond-> []
-                     (some? start_time)
-                     (conj (timestamp-constraint :start_time start_time))
+                     (some? start-time)
+                     (conj (timestamp-constraint :start_time start-time))
 
-                     (some? end_time)
-                     (conj (timestamp-constraint :end_time end_time))
+                     (some? end-time)
+                     (conj (timestamp-constraint :end_time end-time))
 
-                     (seq run_methods)
-                     (conj [:in :run_method (set run_methods)])
+                     (seq run-methods)
+                     (conj [:in :run_method (set run-methods)])
 
-                     (seq transform_ids)
-                     (conj [:in :transform_id transform_ids])
+                     (seq transform-ids)
+                     (conj [:in :transform_id transform-ids])
 
-                     (seq transform_tag_ids)
+                     (seq transform-tag-ids)
                      (conj [:in :transform_id {:select [:transform_id]
                                                :from   [:transform_transform_tag]
-                                               :where  [:in :tag_id transform_tag_ids]}])
+                                               :where  [:in :tag_id transform-tag-ids]}])
 
                      (seq statuses)
                      (conj [:in :status (set statuses)])
@@ -268,9 +268,9 @@
 
 (defn- paged-runs-order-by-clause
   "Builds a HoneySQL `:order-by` clause for transform runs, translating display values for sortable columns."
-  [{:keys [sort_column sort_direction]}]
-  (let [sort-column    (or (keyword sort_column) :start-time)
-        sort-direction (or (keyword sort_direction) :desc)
+  [{:keys [sort-column sort-direction]}]
+  (let [sort-column    (or (keyword sort-column) :start-time)
+        sort-direction (or (keyword sort-direction) :desc)
         nulls-sort     (if (= sort-direction :asc)
                          :nulls-last
                          :nulls-first)]

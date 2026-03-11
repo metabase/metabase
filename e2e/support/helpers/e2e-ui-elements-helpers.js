@@ -689,8 +689,10 @@ export function getUniqueTableColumnValues(columnName) {
 
 export function ensureParameterColumnValue({ columnName, columnValue }) {
   tableInteractiveBody().within(() => {
-    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
-      cy.wrap(cell).should("have.text", columnValue);
+    cy.get(`[data-column-id="${columnName}"]`).should(($cells) => {
+      $cells.each((i, cell) => {
+        expect(cell).to.have.text(columnValue);
+      });
     });
   });
 }

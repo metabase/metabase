@@ -5,9 +5,9 @@ import { getIframeDomainName } from "metabase/visualizations/visualizations/IFra
 import type {
   DashCardId,
   Dashboard,
+  DashboardCard,
   DashboardId,
   DashboardTabId,
-  QuestionDashboardCard,
 } from "metabase-types/api";
 import type { StoreDashboard, StoreDashcard } from "metabase-types/store";
 
@@ -36,8 +36,8 @@ export function getExistingDashCards(
 }
 
 export function hasDashboardChanged(
-  dashboard: Dashboard,
-  dashboardBeforeEditing: Dashboard,
+  dashboard: Dashboard | { dashcards: DashboardCard[] },
+  dashboardBeforeEditing: Dashboard | { dashcards: DashboardCard[] },
 ) {
   return !_.isEqual(
     { ...dashboard, dashcards: dashboard.dashcards.length },
@@ -51,8 +51,8 @@ export function hasDashboardChanged(
 // sometimes the cards objects change order but all the cards themselves are the same
 // this should not trigger a save
 export function haveDashboardCardsChanged(
-  newCards: QuestionDashboardCard[],
-  oldCards: QuestionDashboardCard[],
+  newCards: DashboardCard[],
+  oldCards: DashboardCard[],
 ) {
   return (
     newCards.length !== oldCards.length ||

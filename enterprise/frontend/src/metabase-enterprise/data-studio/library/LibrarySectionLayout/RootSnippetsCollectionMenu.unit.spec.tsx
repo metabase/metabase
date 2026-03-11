@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { dataStudioArchivedSnippets } from "metabase/lib/urls";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks/state";
@@ -24,11 +26,23 @@ const setup = ({ isSuperuser = true, remoteSyncType }: SetupOptions = {}) => {
     currentUser: createMockUser({ is_superuser: isSuperuser }),
   });
   return renderWithProviders(
-    <RootSnippetsCollectionMenu
-      setPermissionsCollectionId={setPermissionsCollectionId}
-    />,
+    <>
+      <Route
+        path="/"
+        component={() => (
+          <RootSnippetsCollectionMenu
+            setPermissionsCollectionId={setPermissionsCollectionId}
+          />
+        )}
+      />
+      <Route
+        path={dataStudioArchivedSnippets()}
+        component={() => <div data-testid="archived-snippets" />}
+      />
+    </>,
     {
       storeInitialState: state,
+      withRouter: true,
     },
   );
 };
@@ -45,21 +59,29 @@ describe("RootSnippetsCollectionMenu", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders nothing if user is not a superuser", () => {
+  it("does not render 'change permissions' option if user is not a superuser", async () => {
     setup({ isSuperuser: false });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Snippet collection options" }),
+    );
     expect(
-      screen.queryByRole("button", { name: "Snippet collection options" }),
+      screen.queryByRole("menuitem", { name: /Change permissions/ }),
     ).not.toBeInTheDocument();
   });
 
-  it("renders nothing if remote sync is set to read-only", () => {
+  it("does not render 'change permissions' option if remote sync is set to read-only", async () => {
     setup({ remoteSyncType: "read-only" });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Snippet collection options" }),
+    );
     expect(
-      screen.queryByRole("button", { name: "Snippet collection options" }),
+      screen.queryByRole("menuitem", { name: /Change permissions/ }),
     ).not.toBeInTheDocument();
   });
 
-  describe("show permissions options", () => {
+  describe("show permissions option", () => {
     it("is rendered on menu click", async () => {
       setup();
       await userEvent.click(
@@ -79,6 +101,21 @@ describe("RootSnippetsCollectionMenu", () => {
         screen.getByRole("menuitem", { name: /Change permissions/ }),
       );
       expect(setPermissionsCollectionId).toHaveBeenCalledWith("root");
+    });
+  });
+
+  describe("view archived snippets option", () => {
+    it("navigates to archived snippets page", async () => {
+      const { history } = setup();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Snippet collection options" }),
+      );
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: /View archived snippets/ }),
+      );
+      expect(history?.getCurrentLocation()?.pathname).toMatch(
+        /\/snippets\/archived/,
+      );
     });
   });
 });

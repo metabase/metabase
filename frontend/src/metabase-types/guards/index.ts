@@ -4,5 +4,7 @@ export * from "./common";
 export * from "./dom";
 export * from "./parameters";
 export * from "./react";
+export * from "./revision";
 export * from "./settings";
+export * from "./visualization";
 export * from "./workspace";

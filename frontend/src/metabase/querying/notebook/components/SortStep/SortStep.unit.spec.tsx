@@ -7,17 +7,33 @@ import {
   screen,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep } from "../../test-utils";
 
 import { SortStep } from "./SortStep";
 
 function createQueryWithOrderBy(direction: Lib.OrderByDirection = "asc") {
-  const initialQuery = createQuery();
-  const [column] = Lib.orderableColumns(initialQuery, 0);
-  const query = Lib.orderBy(initialQuery, 0, column, direction);
-  return { query, columnInfo: Lib.displayInfo(query, 0, column) };
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        orderBys: [
+          {
+            type: "column",
+            sourceName: "ORDERS",
+            name: "CREATED_AT",
+            direction,
+          },
+        ],
+      },
+    ],
+  });
+  const [orderBy] = Lib.orderBys(query, 0);
+  const columnInfo = Lib.displayInfo(query, 0, orderBy);
+
+  return { query, columnInfo };
 }
 
 function setup(step = createMockNotebookStep()) {

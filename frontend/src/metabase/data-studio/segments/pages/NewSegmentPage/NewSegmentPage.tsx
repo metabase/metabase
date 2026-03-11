@@ -6,11 +6,12 @@ import { t } from "ttag";
 
 import { useCreateSegmentMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { trackSegmentCreated } from "metabase/data-studio/analytics";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, Table } from "metabase-types/api";
@@ -34,7 +35,7 @@ export function NewSegmentPage({
   getSuccessUrl,
 }: NewSegmentPageProps) {
   const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
+  const metadata = useSelector(getMetadataWithHiddenTables);
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [name, setName] = useState("");
@@ -78,8 +79,10 @@ export function NewSegmentPage({
     });
 
     if (error) {
+      trackSegmentCreated("failure", "data_studio_segments");
       sendErrorToast(t`Failed to create segment`);
     } else if (segment) {
+      trackSegmentCreated("success", "data_studio_segments", segment.id);
       setSavedSegment(segment);
       sendSuccessToast(t`Segment created`);
     }

@@ -1,0 +1,639 @@
+(ns metabase.lib.js.metadata
+  (:refer-clojure :exclude [keywordize-keys])
+  (:require
+   #?@(:clj  (#_{:clj-kondo/ignore [:discouraged-namespace]}
+              [metabase.legacy-mbql.normalize :as legacy-mbql.normalize])
+       :cljs ([goog]
+              [goog.object :as gobject]
+              [metabase.lib.cache :as lib.cache]))
+   [clojure.core.protocols]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf]))
+
+;;; metabase-lib/metadata/Metadata comes in an object like
+;;;
+;;;    {
+;;;      databases: {},
+;;;      tables: {},
+;;;      fields: {},
+;;;      metrics: {},
+;;;      segments: {},
+;;;      questions: {},
+;;;    }
+;;;
+;;; where keys are a map of String ID => metadata
+
+(defn- object-get [obj k]
+  #?(:cljs (when (and obj (js-in k obj))
+             (gobject/get obj k))
+     :clj  (when (and obj (contains? obj k))
+             (get obj k))))
+
+(defn- obj->clj
+  "Convert a JS object of *any* class to a ClojureScript object."
+  ([xform obj]
+   (obj->clj xform obj {}))
+  ([xform obj {:keys [use-plain-object? skip-keys]
+               :or   {use-plain-object? true
+                      skip-keys         #{}}}]
+   (if (map? obj)
+     ;; already a ClojureScript object.
+     (into {} xform (m/remove-keys skip-keys obj))
+     ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
+     #?(:cljs (if-let [plain-object (when use-plain-object?
+                                      (some-> (object-get obj "_plainObject")
+                                              js->clj
+                                              not-empty))]
+                (into {} xform (m/remove-keys skip-keys plain-object))
+                ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
+                ;; arbitrary classes other than `Object`)
+                (into {}
+                      (comp
+                       (remove (set skip-keys))
+                       (map (fn [k]
+                              [k (object-get obj k)]))
+                        ;; ignore values that are functions
+                       (remove (fn [[_k v]]
+                                 (js-fn? v)))
+                       xform)
+                      (js-keys obj)))
+        :clj (when obj
+               (comment use-plain-object?) ; Touch this binding to make linting happy.
+               (throw (ex-info "_plainObject classy nesting not supported in CLJ" {:obj obj})))))))
+
+;;; this intentionally does not use the lib hierarchy since it's not dealing with MBQL/lib keys
+(defmulti ^:private excluded-keys
+  {:arglists '([object-type])}
+  keyword)
+
+(defmethod excluded-keys :default
+  [_]
+  nil)
+
+;;; yes, the multimethod could dispatch on object-type AND k and get called for every object, but that would be slow,
+;;; by doing it this way we only need to do it once.
+(defmulti ^:private parse-field-fn
+  "Return a function with the signature
+
+    (f k v) => v'
+
+  For parsing an individual field."
+  {:arglists '([object-type])}
+  keyword)
+
+(defmethod parse-field-fn :default
+  [_object-type]
+  nil)
+
+(defmulti ^:private lib-type
+  "The metadata type that should be attached the sorts of metadatas with the `:lib/type` key, e.g. `:metadata/table`."
+  {:arglists '([object-type])}
+  keyword)
+
+(defmulti ^:private rename-key-fn
+  "Returns a function of the keys, either renaming each one or preserving it.
+  If this function returns nil for a given key, the original key is preserved.
+  Use [[excluded-keys]] to drop keys from the input.
+
+  Defaults to nil, which means no renaming is done."
+  {:arglists '([object-type])}
+  identity)
+
+(defmethod rename-key-fn :default [_]
+  nil)
+
+(defn- parse-object-xform [object-type]
+  (let [excluded-keys-set (excluded-keys object-type)
+        parse-field       (parse-field-fn object-type)
+        rename-key        (rename-key-fn object-type)]
+    (comp
+     ;; convert keys to kebab-case keywords
+     (map (fn [[k v]]
+            [(cond-> (keyword (u/->kebab-case-en k))
+               rename-key (#(or (rename-key %) %)))
+             v]))
+     ;; remove [[excluded-keys]]
+     (if (perf/empty? excluded-keys-set)
+       identity
+       (remove (fn [[k _v]]
+                 (contains? excluded-keys-set k))))
+     ;; parse each key with its [[parse-field-fn]]
+     (if-not parse-field
+       identity
+       (map (fn [[k v]]
+              [k (parse-field k v)]))))))
+
+(defmulti ^:private parse-object-fn*
+  {:arglists '([object-type opts])}
+  (fn
+    [object-type _opts]
+    object-type))
+
+(defn- parse-object-fn
+  ([object-type]      (parse-object-fn* object-type {}))
+  ([object-type opts] (parse-object-fn* object-type opts)))
+
+(defmethod parse-object-fn* :default
+  [object-type opts]
+  (let [xform         (parse-object-xform object-type)
+        lib-type-name (lib-type object-type)]
+    (fn [object]
+      (try
+        (let [parsed (assoc (obj->clj xform object opts) :lib/type lib-type-name)]
+          (log/debugf "Parsed metadata %s %s\n%s" object-type (:id parsed) (u/pprint-to-str parsed))
+          parsed)
+        (catch #?(:cljs js/Error :clj Exception) e
+          (log/errorf e "Error parsing %s %s: %s" object-type (pr-str object) (ex-message e))
+          nil)))))
+
+(defmulti ^:private parse-objects
+  {:arglists '([object-type metadata])}
+  (fn [object-type _metadata]
+    (keyword object-type)))
+
+(defmulti ^:private parse-objects-default-key
+  "Key to use to get unparsed objects of this type from the metadata, if you're using the default implementation
+  of [[parse-objects]]."
+  {:arglists '([object-type])}
+  keyword)
+
+(defmethod parse-objects :default
+  [object-type metadata]
+  (let [parse-object (parse-object-fn object-type)]
+    (obj->clj (map (fn [[k v]]
+                     [(parse-long k) (delay (parse-object v))]))
+              (object-get metadata (parse-objects-default-key object-type)))))
+
+(defmethod lib-type :database
+  [_object-type]
+  :metadata/database)
+
+(defmethod excluded-keys :database
+  [_object-type]
+  #{:tables :fields})
+
+(defmethod parse-field-fn :database
+  [_object-type]
+  (fn [k v]
+    (case k
+      :dbms-version       #?(:cljs (js->clj v :keywordize-keys true)
+                             :clj  (perf/keywordize-keys v))
+      :engine             (keyword v)
+      :features           (into #{} (map keyword) v)
+      :native-permissions (keyword v)
+      :settings           #?(:cljs (js->clj v :keywordize-keys true)
+                             :clj  (perf/keywordize-keys v))
+      v)))
+
+(defmethod parse-objects-default-key :database
+  [_object-type]
+  "databases")
+
+(defmethod lib-type :table
+  [_object-type]
+  :metadata/table)
+
+(defmethod excluded-keys :table
+  [_object-type]
+  #{:database :fields :segments :metrics})
+
+(defmethod parse-field-fn :table
+  [_object-type]
+  (fn [k v]
+    (case k
+      :entity-type         (keyword v)
+      :field-order         (keyword v)
+      :initial-sync-status (keyword v)
+      :visibility-type     (keyword v)
+      v)))
+
+(defmethod parse-objects :table
+  [object-type metadata]
+  (let [parse-table (parse-object-fn object-type)]
+    (obj->clj (comp (remove (fn [[k _v]]
+                              (str/starts-with? k "card__")))
+                    (map (fn [[k v]]
+                           [(parse-long k) (delay (parse-table v))])))
+              (object-get metadata "tables"))))
+
+(defmethod lib-type :field
+  [_object-type]
+  :metadata/column)
+
+(defmethod excluded-keys :field
+  [_object-type]
+  #{:_comesFromEndpoint
+    :database
+    :metrics
+    :table})
+
+(defmethod rename-key-fn :field
+  [_object-type]
+  {:source          :lib/source
+   :unit            :lib/temporal-unit
+   :expression-name :lib/expression-name
+   :binning-info    :lib/binning
+   :dimensions      ::dimension
+   :values          ::field-values})
+
+(defn- parse-field-id
+  [id]
+  (cond-> id
+    ;; sometimes instead of an ID we get a field reference
+    ;; with the name of the column in the second position
+    (vector? id) second))
+
+(defn- parse-binning-info
+  [m]
+  (obj->clj
+   (map (fn [[k v]]
+          (let [k (keyword (u/->kebab-case-en k))
+                k (if (= k :binning-strategy)
+                    :strategy
+                    k)
+                v (if (= k :strategy)
+                    (keyword v)
+                    v)]
+            [k v])))
+   m))
+
+(defn- parse-field-values [field-values]
+  (when (= (object-get field-values "type") "full")
+    {:values                (#?(:cljs js->clj :clj identity) (object-get field-values "values"))
+     :human-readable-values (#?(:cljs js->clj :clj identity) (object-get field-values "human_readable_values"))}))
+
+(defn- parse-dimension
+  "`:dimensions` comes in as an array for historical reasons, even tho a Field can only have one. So it should never
+  have more than one element. See #27054. Anyways just to be safe let's make sure it's either `:external` or
+  `:internal`."
+  [dimensions]
+  (when-let [dimension (m/find-first (fn [dimension]
+                                       (#{"external" "internal"} (get dimension "type")))
+                                     dimensions)]
+    (let [dimension-type (keyword (get dimension "type"))]
+      (merge
+       {:id   (get dimension "id")
+        :name (get dimension "name")}
+       (case dimension-type
+         ;; external = mapped to a different column
+         :external
+         {:lib/type :metadata.column.remapping/external
+          :field-id (get dimension "human_readable_field_id")}
+
+         ;; internal = mapped to FieldValues
+         :internal
+         {:lib/type :metadata.column.remapping/internal})))))
+
+(defmethod parse-field-fn :field
+  [_object-type]
+  (fn [k v]
+    (case k
+      :base-type                        (keyword v)
+      :coercion-strategy                (keyword v)
+      :effective-type                   (keyword v)
+      :fingerprint                      (if (map? v)
+                                          (perf/keywordize-keys v)
+                                          #?(:cljs (js->clj v :keywordize-keys true)
+                                             :clj  v))
+      :has-field-values                 (keyword v)
+
+      ;; Field refs are JS arrays, which we do not alter but do need to clone.
+      ;; Why? Come sit by the fire, it's story time:
+      ;; Sometimes in the FE the input `DatasetColumn` object is coming from the Redux store, where it has been deeply
+      ;; frozen (Object.freeze()) by the immer library.
+      ;; `:metadata/column` values (which contain such a :field-ref) are sometimes used as a map key, which calls
+      ;; [[cljs.core/hash]], which for a vanilla JS array uses goog.getUid() to mutate a uid number onto the array with
+      ;; a key like `closure_uid_123456789` (the number is randomized at load time).
+      ;; If the array has been frozen, that mutation will throw. So we clone the `:field-ref` array on its way into CLJS
+      ;; land, and avoid the issue.
+      :field-ref                        #?(:cljs (to-array v) :clj (legacy-mbql.normalize/normalize v))
+      :lib/source                       (case v
+                                          ;; These are the legacy values from the "source" key
+                                          "aggregation" :source/aggregations
+                                          ;; TODO (Cam 7/1/25) -- if we wanted to be smarter we could use `source =
+                                          ;; breakout` to populate `:lib/breakout?` but I don't really think that's
+                                          ;; super necessary.
+                                          "breakout"    nil
+                                          "fields"      nil
+                                          ;; For other values: if already prefixed with "source/" (from the modern
+                                          ;; "lib/source" key), just keywordize it directly. Otherwise add the prefix.
+                                          (if (str/starts-with? v "source/")
+                                            (keyword v)
+                                            (keyword "source" v)))
+      :lib/temporal-unit (keyword v)
+      :inherited-temporal-unit          (keyword v)
+      :semantic-type                    (keyword v)
+      :visibility-type                  (keyword v)
+      :id                               (parse-field-id v)
+      :lib/binning       (parse-binning-info v)
+      :lib/original-binning             (parse-binning-info v)
+      ::field-values                    (parse-field-values v)
+      ::dimension                       (parse-dimension v)
+      :settings                         #?(:cljs (js->clj v :keywordize-keys true)
+                                           :clj  (perf/keywordize-keys v))
+      v)))
+
+(defmethod parse-object-fn* :field
+  [object-type opts]
+  (let [default-impl (get-method parse-object-fn* :default)]
+    (fn [unparsed]
+      (let [;; If the JS object has both "source" and "lib/source" keys, the default parsing would
+            ;; rename "source" -> :lib/source and process both, with last-one-wins semantics.
+            ;; Since the key ordering in the JS object is non-deterministic, this causes flaky behavior.
+            ;; When "lib/source" exists, we skip the legacy "source" key entirely.
+            ;; See issue #66721 for details. Will be resolved by QUE-1404.
+            opts (if (object-get unparsed "lib/source")
+                   (update opts :skip-keys (fnil conj #{}) "source")
+                   opts)
+            f (default-impl object-type opts)
+            {{dimension-type :lib/type, :as dimension} ::dimension, ::keys [field-values], :as parsed} (f unparsed)]
+        (-> (case dimension-type
+              :metadata.column.remapping/external
+              (assoc parsed :lib/external-remap dimension)
+
+              :metadata.column.remapping/internal
+              (assoc parsed :lib/internal-remap (merge dimension field-values))
+
+              parsed)
+            (dissoc ::dimension ::field-values))))))
+
+(defmethod parse-objects :field
+  [object-type metadata]
+  (let [parse-object    (parse-object-fn object-type)
+        unparsed-fields (object-get metadata "fields")]
+    (obj->clj (keep (fn [[k v]]
+                      ;; Sometimes fields coming from saved questions are only present with their ID
+                      ;; prefixed with "card__<card-id>:". For such keys we parse the field ID from
+                      ;; the suffix and use the entry unless the ID is present in the metadata without
+                      ;; prefix. (The assumption being that the data under the two keys are mostly the
+                      ;; same but the one under the plain key is to be preferred.)
+                      (when-let [field-id (or (parse-long k)
+                                              (when-let [[_ id-str] (re-matches #"card__\d+:(\d+)" k)]
+                                                (and (nil? (object-get unparsed-fields id-str))
+                                                     (parse-long id-str))))]
+                        [field-id (delay (parse-object v))])))
+              unparsed-fields)))
+
+(defmethod lib-type :card
+  [_object-type]
+  :metadata/card)
+
+(defmethod excluded-keys :card
+  [_object-type]
+  (-> #{:database
+        :db
+        :fks
+        :metadata
+        :metrics
+        :plain-object
+        :segments
+        :schema
+        :schema-name
+        :table}
+      #?(:cljs identity :clj (conj :fields))))
+
+(defn- parse-fields [fields]
+  (perf/mapv (parse-object-fn :field) fields))
+
+(defmethod parse-field-fn :card
+  [_object-type]
+  (fn [k v]
+    (case k
+      :result-metadata (if (#?(:cljs (some-fn sequential? array?)
+                               :clj  sequential?) v)
+                         (parse-fields v)
+                         #?(:cljs (js->clj v :keywordize-keys true)
+                            :clj  (perf/keywordize-keys v)))
+      :fields          #?(:cljs (parse-fields v)
+                          :clj  (throw (ex-info ":fields" {})))
+      :visibility-type (keyword v)
+      :dataset-query   #?(:cljs (js->clj v :keywordize-keys true)
+                          :clj  (perf/keywordize-keys v))
+      :type            (keyword v)
+      ;; this is not complete, add more stuff as needed.
+      v)))
+
+(defn- unwrap-card
+  "Sometimes a card is stored in the metadata as some sort of weird object where the thing we actually want is under the
+  key `_card` (not sure why), but if it is just unwrap it and then parse it normally."
+  [obj]
+  (or (object-get obj "_card")
+      obj))
+
+(defn- assemble-card
+  [metadata id]
+  (let [parse-card-ignoring-plain-object (parse-object-fn :card {:use-plain-object? false})
+        parse-card (parse-object-fn :card)]
+    ;; The question objects might not contain the fields so we merge them
+    ;; in from the table metadata.
+    (merge
+     (-> metadata
+         (object-get "tables")
+         (object-get (str "card__" id))
+         ;; _plainObject can contain field names in the field property
+         ;; instead of the field objects themselves.  Ignoring this
+         ;; property makes sure we parse the real fields.
+         parse-card-ignoring-plain-object
+         (assoc :id id))
+     (-> metadata
+         (object-get "questions")
+         (object-get (str id))
+         unwrap-card
+         parse-card))))
+
+(defmethod parse-objects :card
+  [_object-type metadata]
+  (into {}
+        (map (fn [id]
+               [id (delay (assemble-card metadata id))]))
+        (-> #{}
+            (into (keep lib.util/legacy-string-table-id->card-id)
+                  (#?(:cljs js-keys :clj keys) (object-get metadata "tables")))
+            (into (map parse-long)
+                  (#?(:cljs js-keys :clj keys) (object-get metadata "questions"))))))
+
+(defmethod lib-type :metric
+  [_object-type]
+  :metadata/metric)
+
+(defmethod excluded-keys :metric
+  [_object-type]
+  #{:database :table})
+
+(defmethod parse-field-fn :metric
+  [_object-type]
+  (fn [_k v]
+    v))
+
+(defmethod parse-objects-default-key :metric
+  [_object-type]
+  "metrics")
+
+(defmethod lib-type :segment
+  [_object-type]
+  :metadata/segment)
+
+(defmethod excluded-keys :segment
+  [_object-type]
+  #{:database :table})
+
+(defmethod parse-field-fn :segment
+  [_object-type]
+  (fn [_k v]
+    v))
+
+(defmethod parse-objects-default-key :segment
+  [_object-type]
+  "segments")
+
+(defmethod lib-type :measure
+  [_object-type]
+  :metadata/measure)
+
+(defmethod excluded-keys :measure
+  [_object-type]
+  #{:database :table})
+
+(defmethod parse-field-fn :measure
+  [_object-type]
+  (fn [_k v]
+    v))
+
+(defmethod parse-objects-default-key :measure
+  [_object-type]
+  "measures")
+
+(defmethod lib-type :snippet
+  [_object-type]
+  :metadata/native-query-snippet)
+
+(defmethod parse-objects-default-key :snippet
+  [_object-type]
+  "snippets")
+
+(defmethod parse-field-fn :snippet
+  [_object-type]
+  (fn [k v]
+    (case k
+      :template-tags (lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map
+                                              #?(:cljs (js->clj v)
+                                                 :clj  v))
+      v)))
+
+(defn- parse-objects-delay [object-type metadata]
+  (delay
+    (try
+      (parse-objects object-type metadata)
+      (catch #?(:cljs js/Error :clj Exception) e
+        (log/errorf e "Error parsing %s objects: %s" object-type (ex-message e))
+        nil))))
+
+(defn- card->metric-card
+  [card]
+  (-> card
+      (perf/select-keys [:id :table-id :name :description :archived :dataset-query :source-card-id :type])
+      (assoc :lib/type :metadata/metric)))
+
+(defn- metric-cards
+  [delayed-cards]
+  (when-let [cards @delayed-cards]
+    (into {}
+          (keep (fn [[id card]]
+                  (when (and card (= (:type @card) :metric) (not (:archived @card)))
+                    (let [card @card]
+                      [id (-> card card->metric-card delay)]))))
+          cards)))
+
+(defn- metadata-property [metadata-type]
+  (case metadata-type
+    :metadata/table                :tables
+    :metadata/column               :fields
+    :metadata/card                 :cards
+    :metadata/measure              :measures
+    :metadata/metric               :metrics
+    :metadata/segment              :segments
+    :metadata/native-query-snippet :snippets))
+
+(defn- parse-metadata [metadata]
+  (let [delayed-cards (parse-objects-delay :card metadata)]
+    {:databases (parse-objects-delay :database metadata)
+     :tables    (parse-objects-delay :table    metadata)
+     :fields    (parse-objects-delay :field    metadata)
+     :snippets  (parse-objects-delay :snippet  metadata)
+     :cards     delayed-cards
+     :measures  (parse-objects-delay :measure  metadata)
+     :metrics   (delay (metric-cards delayed-cards))
+     :segments  (parse-objects-delay :segment  metadata)}))
+
+(defn- database [metadata database-id]
+  (some-> metadata :databases deref (get database-id) deref))
+
+(defn- metadatas [metadata database-id {metadata-type :lib/type, id-set :id, :as metadata-spec}]
+  (let [k      (metadata-property metadata-type)
+        delays (let [id->dlay (some-> metadata k deref)]
+                 (if id-set
+                   (keep id->dlay id-set)
+                   (vals id->dlay)))]
+    (into []
+          (comp (keep deref)
+                (if (= metadata-type :metadata/table)
+                  (filter #(= (:db-id %) database-id))
+                  identity)
+                (lib.metadata.protocols/default-spec-filter-xform metadata-spec)
+                (distinct))
+          delays)))
+
+(defn- setting [#?(:cljs ^js unparsed-metadata :clj unparsed-metadata) setting-key]
+  (-> unparsed-metadata
+      (object-get "settings")
+      (object-get (name setting-key))))
+
+(defn- metadata-provider*
+  "Inner implementation for [[metadata-provider]], which wraps this with a cache."
+  [database-id unparsed-metadata]
+  ;; TODO (Cam 9/11/25) -- it should go without saying that database ID is required, but adding this ended up breaking
+  ;; a lot of evil FE unit tests that hand-roll MBQL queries with no `database`... Need to turn this back on and then
+  ;; hunt down and fix all the tests.
+  #_{:pre [(pos-int? database-id)]}
+  (let [metadata (parse-metadata unparsed-metadata)]
+    (log/debug "Created metadata provider for metadata")
+    (lib.metadata.cached-provider/cached-metadata-provider
+     (reify lib.metadata.protocols/MetadataProvider
+       (database [_this]
+         (database metadata database-id))
+       (metadatas [_this metadata-spec]
+         (metadatas metadata database-id metadata-spec))
+       (setting [_this setting-key]
+         (get (:settings (database metadata database-id))
+              setting-key
+              (setting unparsed-metadata setting-key)))
+
+      ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
+      ;; thing at once.
+       clojure.core.protocols/Datafiable
+       (datafy [_this]
+         (perf/postwalk
+          (fn [form]
+            (if (delay? form)
+              (deref form)
+              form))
+          metadata))))))
+
+(defn metadata-provider
+  "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."
+  [database-id unparsed-metadata]
+  #?(:cljs (lib.cache/side-channel-cache (str database-id) unparsed-metadata
+                                         (partial metadata-provider* database-id)
+                                         true #_force?)
+     :clj  (metadata-provider* database-id unparsed-metadata)))
+
+(def parse-column
+  "Parses a JS column provided by the FE into a :metadata/column value for use in MLv2."
+  (parse-object-fn :field))

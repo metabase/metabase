@@ -76,7 +76,7 @@ function generateIds(entityId: string) {
     wrongEntityId:
       entityId.slice(0, -1) +
       String.fromCharCode((entityId.at(-1)?.charCodeAt(0) || ZERO_CODE) + 1),
-    numberId: 12,
+    numberId: 1,
     wrongNumberId: 99999999,
   };
 }

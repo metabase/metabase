@@ -108,7 +108,7 @@ function LinkVizInner({
         dashcard,
         dashboard,
         parameterValues,
-        text: url,
+        text: url ?? "",
         urlEncode: true,
       }),
     [dashboard, dashcard, parameterValues, url],

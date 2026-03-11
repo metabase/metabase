@@ -11,6 +11,7 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
+import type { Collection, Dashboard } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDashboard,
@@ -125,7 +126,7 @@ describe("CreateDashboardModal", () => {
     expect(onCreate).toHaveBeenLastCalledWith(mockResponseDashboard);
   });
 
-  it('should support "isOpen" prop', async () => {
+  it("should support `isOpen` prop", async () => {
     const { rerender } = setup({
       props: {
         isOpen: false,
@@ -140,20 +141,146 @@ describe("CreateDashboardModal", () => {
       expect(screen.getByText("New dashboard")).toBeInTheDocument();
     });
   });
+
+  it("should set the starting collection to the user's personal collection when not passing `initialCollectionId`", async () => {
+    setup();
+
+    await waitFor(() => {
+      expect(screen.getByText("New dashboard")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("collection-picker-button")).toHaveTextContent(
+      PERSONAL_COLLECTION.name,
+    );
+  });
+
+  it("should set the starting collection from `initialCollectionId` prop", async () => {
+    const anotherCollection = createMockCollection({
+      id: getNextId(),
+      name: "Another collection",
+      can_write: true,
+    });
+
+    setup({
+      props: {
+        initialCollectionId: anotherCollection.id,
+      },
+      collections: [...COLLECTIONS, anotherCollection],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("New dashboard")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("collection-picker-button")).toHaveTextContent(
+      anotherCollection.name,
+    );
+  });
+
+  it("should hide the collection picker when passing `targetCollection`", async () => {
+    const anotherCollection = createMockCollection({
+      id: getNextId(),
+      name: "Another collection",
+      can_write: true,
+    });
+
+    const expectedDashboard = {
+      name: "My awesome dashboard title",
+    } satisfies Partial<Dashboard>;
+    setupDashboardCreateEndpoint(expectedDashboard);
+
+    setup({
+      props: {
+        // Should prioritize `targetCollection` over `initialCollectionId`
+        initialCollectionId: PERSONAL_COLLECTION.id,
+        targetCollection: anotherCollection.id,
+      },
+      collections: [...COLLECTIONS, anotherCollection],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("New dashboard")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId("collection-picker-button"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByPlaceholderText("What is the name of your dashboard?"),
+      expectedDashboard.name,
+    );
+
+    await userEvent.click(screen.getByText("Create"));
+
+    // api called with typed form input
+    const createDashboardCall = fetchMock.callHistory.lastCall(
+      `path:/api/dashboard`,
+      {
+        method: "POST",
+      },
+    );
+    expect(await createDashboardCall?.request?.json()).toMatchObject({
+      name: expectedDashboard.name,
+      collection_id: anotherCollection.id,
+    });
+  });
+
+  it("should resolve special collection name like `root` when passing `targetCollection`", async () => {
+    const expectedDashboard = {
+      name: "My awesome dashboard title",
+    } satisfies Partial<Dashboard>;
+    setupDashboardCreateEndpoint(expectedDashboard);
+
+    setup({
+      props: {
+        targetCollection: "root",
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("New dashboard")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId("collection-picker-button"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByPlaceholderText("What is the name of your dashboard?"),
+      expectedDashboard.name,
+    );
+
+    await userEvent.click(screen.getByText("Create"));
+
+    // api called with typed form input
+    const createDashboardCall = fetchMock.callHistory.lastCall(
+      `path:/api/dashboard`,
+      {
+        method: "POST",
+      },
+    );
+    expect(await createDashboardCall?.request?.json()).toMatchObject({
+      name: expectedDashboard.name,
+      collection_id: null,
+    });
+  });
 });
 
-function setup(
-  {
-    isLocaleLoading,
-    props,
-  }: {
-    isLocaleLoading?: boolean;
-    props?: Partial<CreateDashboardModalProps>;
-  } = { isLocaleLoading: false, props: {} },
-) {
+interface SetupOpts {
+  isLocaleLoading?: boolean;
+  props?: Partial<CreateDashboardModalProps>;
+  collections?: Collection[];
+}
+
+function setup({
+  isLocaleLoading = false,
+  props = {},
+  collections = COLLECTIONS,
+}: SetupOpts = {}) {
   useLocaleMock.mockReturnValue({ isLocaleLoading });
 
-  setupCollectionByIdEndpoint({ collections: COLLECTIONS });
+  setupCollectionByIdEndpoint({ collections });
 
   // Mock the "personal" collection endpoint since the component now passes string IDs directly
   fetchMock.get("path:/api/collection/personal", PERSONAL_COLLECTION);

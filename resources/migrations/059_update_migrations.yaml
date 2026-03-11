@@ -229,7 +229,6 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: An optional email address of the owner of this transform (for external owners), exclusive with owner_user_id
 
-
   - changeSet:
       id: v59.2026-01-06T10:00:02
       author: gantoreno
@@ -281,7 +280,6 @@ databaseChangeLog:
                   type: int
                   remarks: The user ID who triggered this run (owner for scheduled runs, current user for manual runs)
 
-
   - changeSet:
       id: v59.2026-01-06T10:00:06
       author: gantoreno
@@ -306,7 +304,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_transform_run_user_id
             onDelete: SET NULL
-
 
   - changeSet:
       id: v59.2026-01-07T00:00:01
@@ -878,7 +875,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_transform_run_transform_id
             onDelete: SET NULL
-
 
   - changeSet:
       id: v59.2026-01-27T12:00:00
@@ -2873,7 +2869,6 @@ databaseChangeLog:
                     nullable: true
       rollback:
 
-
   - changeSet:
       id: v59.2026-01-31T12:01:23
       author: christruter
@@ -2970,6 +2965,83 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_metabase_table_transform_id
             onDelete: SET NULL
+
+  - changeSet:
+      id: v59.2026-02-05T12:00:00
+      author: edpaget
+      comment: Add conflicts column to remote_sync_task table
+      changes:
+        - addColumn:
+            tableName: remote_sync_task
+            columns:
+              - column:
+                  name: conflicts
+                  type: ${text.type}
+                  remarks: JSON serialized list of conflicts detected during import
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v59.2026-02-07T17:00:00
+      author: johnswanson
+      comment: Create premium_features_token_cache table for cross-instance token cache
+      changes:
+        - createTable:
+            tableName: premium_features_token_cache
+            remarks: Caches premium features token check results, shared across instances
+            columns:
+              - column:
+                  name: token_hash
+                  type: varchar(64)
+                  remarks: SHA-256 hex hash of the premium token
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: token_status_hash
+                  type: varchar(64)
+                  remarks: SHA-256 hex hash of the JSON-encoded token status
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When this cache entry was last refreshed
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v59.2026-02-16T18:00:00
+      author: galdre
+      comment: Add write_data_details column to metabase_database for PRO-86 separate write connections
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: write_data_details
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: write_data_details
+                  type: ${text.type}
+                  remarks: Encrypted JSON containing connection details for write operations (transforms, etc.)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: write_data_details
+
+  - changeSet:
+      id: v59.2026-03-04T00:00:00
+      author: rileythompson
+      comment: Fix ClickHouse upload DB schema name and models
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

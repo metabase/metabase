@@ -283,4 +283,16 @@ describe("NewSegmentPage", () => {
     // The "Discard your changes?" modal should NOT appear after a successful save
     expect(screen.queryByText("Discard your changes?")).not.toBeInTheDocument();
   });
+
+  it("shows filter editor even if table is hidden (UXW-2889)", async () => {
+    setup({
+      table: {
+        ...TEST_TABLE,
+        visibility_type: "hidden",
+      },
+    });
+    expect(
+      screen.getByText("Add filters to narrow your answer"),
+    ).toBeInTheDocument();
+  });
 });

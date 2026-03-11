@@ -52,6 +52,24 @@
       (is (false? (:should-run result)))
       (is (= "driver is quarantined" (:reason result))))))
 
+(deftest quarantine-config-names-are-translated
+  (testing "Config names from ci-test-config.json are translated to internal driver keywords via driver-directory->drivers"
+    (testing "directory names are translated to internal keywords"
+      ;; bigquery-cloud-sdk -> :bigquery (via driver-directory->drivers mapping)
+      (let [result (mage.modules/driver-decision :bigquery
+                                                 (make-ctx {:is-master-or-release true})
+                                                 false
+                                                 #{:bigquery} ; as if translated from "bigquery-cloud-sdk"
+                                                 #{})]
+        (is (false? (:should-run result)))
+        (is (= "driver is quarantined" (:reason result)))))
+    (testing "the driver-directory->drivers mapping contains expected translations"
+      ;; Verify the mapping exists and has expected entries
+      (is (= [:bigquery] (get @#'mage.modules/driver-directory->drivers "bigquery-cloud-sdk"))
+          "bigquery-cloud-sdk should map to [:bigquery]")
+      (is (= [:mongo :mongo-ssl :mongo-sharded-cluster] (get @#'mage.modules/driver-directory->drivers "mongo"))
+          "mongo should map to multiple test jobs"))))
+
 ;;; =============================================================================
 ;;; Priority 1: Global skip
 ;;; =============================================================================
@@ -251,9 +269,20 @@
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
             Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
     (let [modules-triggering-drivers (modules-affecting-drivers)
-          ;; This count was 33 as of 2026-01-20. Update this number ONLY if you
-          ;; intentionally want more modules to trigger driver tests.
-          max-allowed-count 36]
+          ;; This is a ratchet: it prevents accidental expansion of which modules
+          ;; trigger driver tests. When a module transitively depends on driver code,
+          ;; changes to that module cause ALL driver tests to run in CI, which is
+          ;; expensive. If this test fails, either:
+          ;;   1. Your module legitimately affects drivers -- bump max-allowed-count
+          ;;   2. Your module is infrastructure/gating, not driver logic
+          ;;      -- add it to driver-affecting-overrides in mage.modules
+          ;;
+          ;; History:
+          ;; 2026-02-06 Initial count: 37
+          ;; 2026-02-10 Bumped to 38 for sql-tools + sql-parsing
+          ;; 2026-03-10 Bumped to 40 for lib-metric + metrics (Metrics Explorer #68961)
+          ;;            Added premium-features to driver-affecting-overrides (#69561)
+          max-allowed-count 40]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s

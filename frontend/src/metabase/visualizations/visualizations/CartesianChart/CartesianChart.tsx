@@ -22,12 +22,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
-
-const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 360;
-const HIDE_X_AXIS_LABEL_HEIGHT_THRESHOLD = 200;
-
-const HIDE_Y_AXIS_HEIGHT_THRESHOLD = 150;
-const INTERPOLATE_LINE_THRESHOLD = 150;
+import { getDashboardAdjustedSettings } from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,8 +34,10 @@ function CartesianChartInner(props: VisualizationProps) {
 
   const {
     showAllLegendItems,
+    hideLegend,
     rawSeries,
     settings: originalSettings,
+    autoAdjustSettings = false,
     card,
     getHref,
     width: outerWidth,
@@ -61,30 +58,17 @@ function CartesianChartInner(props: VisualizationProps) {
     titleMenuItems,
   } = props;
 
-  const settings = useMemo(() => {
-    const settings = { ...originalSettings };
-    if (isDashboard) {
-      if (
-        outerWidth <= INTERPOLATE_LINE_THRESHOLD ||
-        outerHeight <= INTERPOLATE_LINE_THRESHOLD
-      ) {
-        settings["line.interpolate"] = "cardinal";
-      }
-
-      if (outerWidth <= HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD) {
-        settings["graph.y_axis.labels_enabled"] = false;
-      }
-
-      if (outerHeight <= HIDE_X_AXIS_LABEL_HEIGHT_THRESHOLD) {
-        settings["graph.x_axis.labels_enabled"] = false;
-      }
-
-      if (outerHeight <= HIDE_Y_AXIS_HEIGHT_THRESHOLD) {
-        settings["graph.y_axis.axis_enabled"] = false;
-      }
-    }
-    return settings;
-  }, [originalSettings, isDashboard, outerWidth, outerHeight]);
+  const settings = useMemo(
+    () =>
+      autoAdjustSettings
+        ? getDashboardAdjustedSettings?.({
+            settings: originalSettings,
+            height: outerHeight,
+            width: outerWidth,
+          })
+        : originalSettings,
+    [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
+  );
 
   const { chartModel, timelineEventsModel, option } = useModelsAndOption(
     {
@@ -106,7 +90,7 @@ function CartesianChartInner(props: VisualizationProps) {
     () => getLegendItems(chartModel.seriesModels, showAllLegendItems),
     [chartModel, showAllLegendItems],
   );
-  const hasLegend = legendItems.length > 0;
+  const hasLegend = !hideLegend && legendItems.length > 0;
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
@@ -163,7 +147,10 @@ function CartesianChartInner(props: VisualizationProps) {
   useCloseTooltipOnScroll(chartRef);
 
   return (
-    <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
+    <CartesianChartRoot
+      isQueryBuilder={isQueryBuilder}
+      className="CardVisualization"
+    >
       {showTitle && (
         <LegendCaption
           title={settings["card.title"] ?? card.name}

@@ -31,7 +31,10 @@
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database
       (try
-        (driver/drop-transform-target! driver (mt/db) target)
+        (driver/drop-transform-target! driver (mt/db) (update target :type (fn [target-type]
+                                                                             (if (string? target-type)
+                                                                               (keyword target-type)
+                                                                               target-type))))
         (catch Exception e
           (log/warnf e "Failed to drop transform target table %s.%s for driver %s"
                      (:schema target) (:name target) driver)))
@@ -156,7 +159,9 @@
   []
   (or (when (get-method driver.sql/default-schema driver/*driver*)
         (driver.sql/default-schema driver/*driver*))
-      "public"))
+      (if (= :bigquery-cloud-sdk driver/*driver*)
+        (t2/select-one-fn :schema :model/Table :db_id (mt/id))
+        "public")))
 
 (defmulti delete-schema!
   "Deletes a schema."

@@ -7,14 +7,17 @@ import CS from "metabase/css/core/index.css";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Icon } from "metabase/ui";
 
-import CollectionOptionsButton from "./CollectionOptionsButton";
+import { SnippetCollectionMenu } from "./SnippetCollectionMenu";
 
 const ICON_SIZE = 16;
 
 class CollectionRow extends Component {
   render() {
-    const { snippetCollection: collection, setSnippetCollectionId } =
-      this.props;
+    const {
+      snippetCollection: collection,
+      setSnippetCollectionId,
+      setSidebarState,
+    } = this.props;
     const onSelectCollection = () => {
       if (setSnippetCollectionId) {
         setSnippetCollectionId(collection.id);
@@ -44,10 +47,15 @@ class CollectionRow extends Component {
         <Ellipsified className={cx(CS.flexFull, CS.ml1, CS.textBold)} flex={1}>
           {collection.name}
         </Ellipsified>
-        <CollectionOptionsButton
-          {...this.props}
-          collection={collection}
+        <SnippetCollectionMenu
           className={CS.flexNoShrink}
+          collection={collection}
+          onEditDetails={() => {
+            setSidebarState({ modalSnippetCollection: collection });
+          }}
+          onChangePermissions={() => {
+            setSidebarState({ permissionsModalCollectionId: collection.id });
+          }}
         />
       </div>
     );

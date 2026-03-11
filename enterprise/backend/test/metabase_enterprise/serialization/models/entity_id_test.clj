@@ -72,6 +72,7 @@
     :model/PermissionsGroupMembership
     :model/PermissionsRevision
     :model/PersistedInfo
+    :model/PremiumFeaturesCache
     :model/Pulse
     :model/PulseCard
     :model/PulseChannel
@@ -82,6 +83,7 @@
     :model/QueryField
     :model/QueryTable
     :model/RecentViews
+    :model/ReplacementRun
     :model/RemoteSyncObject
     :model/RemoteSyncTask
     :model/Revision
@@ -115,6 +117,7 @@
     :model/Workspace
     :model/WorkspaceInput
     :model/WorkspaceInputExternal
+    :model/WorkspaceInputTransform
     :model/WorkspaceLog
     :model/WorkspaceMerge
     :model/WorkspaceMergeTransform

@@ -7,6 +7,7 @@ import {
   useGetSettingsQuery,
   useListCollectionItemsQuery,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
@@ -19,7 +20,7 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
@@ -40,6 +41,9 @@ import {
   useGetRemoteSyncChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api/remote-sync";
+import { useGitSyncVisible } from "metabase-enterprise/remote_sync/hooks/use-git-sync-visible";
+import { getSyncConflictVariant } from "metabase-enterprise/remote_sync/selectors";
+import { syncConflictVariantUpdated } from "metabase-enterprise/remote_sync/sync-task-slice";
 import type {
   RemoteSyncConfigurationSettings,
   SettingDefinition,
@@ -63,6 +67,7 @@ import {
   URL_KEY,
 } from "../../constants";
 import { SharedTenantCollectionsList } from "../SharedTenantCollectionsList";
+import { SyncConflictModal } from "../SyncConflictModal";
 import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
 import { PullChangesButton } from "./PullChangesButton";
@@ -94,7 +99,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
   const pendingConfirmationSettingsRef =
     useRef<RemoteSyncConfigurationSettings | null>(null);
 
-  const isRemoteSyncEnabled = useSetting(REMOTE_SYNC_KEY);
+  const isRemoteSyncEnabled = !!useSetting(REMOTE_SYNC_KEY);
   const useTenants = useSetting("use-tenants");
   const applicationName = useSelector(getApplicationName);
 
@@ -117,6 +122,9 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     libraryCollectionData && "name" in libraryCollectionData
       ? libraryCollectionData
       : undefined;
+  const dispatch = useDispatch();
+  const conflictVariant = useSelector(getSyncConflictVariant);
+  const { currentBranch } = useGitSyncVisible();
 
   // Fetch tenant collections to build initial sync state
   const { data: tenantCollectionsData } = useListCollectionItemsQuery(
@@ -137,141 +145,6 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     show: showDisableConfirmation,
     modalContent: disableConfirmationModal,
   } = useConfirmation();
-
-  const handleSubmit = useCallback(
-    async (values: RemoteSyncSettingsFormState) => {
-      const didBranchChange =
-        values[BRANCH_KEY] !== settingValues?.[BRANCH_KEY];
-
-      const collectionsMap: Record<number, boolean> = {
-        ...values[COLLECTIONS_KEY],
-      };
-
-      // If user wants to sync library but it doesn't exist yet, create it first
-      const wantsSyncLibrary = values[SYNC_LIBRARY_PENDING_KEY];
-      if (isModalVariant && !libraryCollection && wantsSyncLibrary) {
-        try {
-          const newLibrary = await createLibrary().unwrap();
-          // Cast to number since the newly created library will have a numeric ID
-          collectionsMap[newLibrary.id as number] = true;
-        } catch (error) {
-          sendToast({
-            message: t`Failed to create Library`,
-            icon: "warning",
-          });
-          throw error;
-        }
-      }
-
-      // Don't send collections when in read-only mode
-      // Also filter out the sync-library-pending key as it's not a real setting
-      const isReadOnly = values[TYPE_KEY] === "read-only";
-      const settingsToSave: RemoteSyncConfigurationSettings = {
-        [REMOTE_SYNC_KEY]: values[REMOTE_SYNC_KEY],
-        [URL_KEY]: values[URL_KEY],
-        [TOKEN_KEY]: values[TOKEN_KEY],
-        [TYPE_KEY]: values[TYPE_KEY],
-        [BRANCH_KEY]: values[BRANCH_KEY],
-        [AUTO_IMPORT_KEY]: values[AUTO_IMPORT_KEY],
-        [TRANSFORMS_KEY]: values[TRANSFORMS_KEY],
-        ...(isReadOnly
-          ? {}
-          : {
-              [COLLECTIONS_KEY]: collectionsMap,
-            }),
-      };
-
-      const saveSettings = async (
-        settings: RemoteSyncConfigurationSettings,
-      ) => {
-        try {
-          await updateRemoteSyncSettings(settings).unwrap();
-
-          trackRemoteSyncSettingsChanged({
-            triggeredFrom: isModalVariant ? "data-studio" : "admin-settings",
-          });
-
-          if (
-            didBranchChange &&
-            settingValues?.[BRANCH_KEY] &&
-            values[BRANCH_KEY]
-          ) {
-            trackBranchSwitched({
-              triggeredFrom: "admin-settings",
-            });
-          }
-
-          sendToast({ message: t`Settings saved successfully`, icon: "check" });
-          onSaveSuccess?.();
-        } catch (error) {
-          sendToast({
-            message: t`Settings could not be saved`,
-            icon: "warning",
-          });
-          throw error;
-        }
-      };
-
-      if (didBranchChange) {
-        pendingConfirmationSettingsRef.current = settingsToSave;
-        showChangeBranchConfirmation({
-          title: t`Switch branches?`,
-          message: t`The synced collection will update to match the new branch. Questions that exist in the current branch but not the new one will be removed from any dashboards or content that reference them permanently, even if you switch back.`,
-          confirmButtonText: t`Continue`,
-          confirmButtonProps: {
-            variant: "filled",
-            color: "danger",
-          },
-          onConfirm: async () => {
-            if (pendingConfirmationSettingsRef.current) {
-              await saveSettings(pendingConfirmationSettingsRef.current);
-              pendingConfirmationSettingsRef.current = null;
-            }
-          },
-          onCancel: () => {
-            pendingConfirmationSettingsRef.current = null;
-          },
-        });
-        return;
-      }
-      await saveSettings(settingsToSave);
-    },
-    [
-      settingValues,
-      updateRemoteSyncSettings,
-      isModalVariant,
-      libraryCollection,
-      createLibrary,
-      sendToast,
-      onSaveSuccess,
-      showChangeBranchConfirmation,
-    ],
-  );
-
-  const handleDisable = useCallback(async () => {
-    showDisableConfirmation({
-      title: t`Disable Remote Sync?`,
-      message: t`This will clear all remote sync settings. Any changes made to the Library collection after disabling can be overwritten if you enable sync again.`,
-      confirmButtonText: t`Disable`,
-      confirmButtonProps: {
-        variant: "filled",
-        color: "danger",
-      },
-      onConfirm: async () => {
-        try {
-          await updateRemoteSyncSettings({ [URL_KEY]: "" }).unwrap();
-          trackRemoteSyncDeactivated();
-          sendToast({ message: t`Remote Sync disabled`, icon: "check" });
-        } catch (error) {
-          console.error(error);
-          sendToast({
-            message: t`Failed to disable Remote Sync`,
-            icon: "warning",
-          });
-        }
-      },
-    });
-  }, [updateRemoteSyncSettings, sendToast, showDisableConfirmation]);
 
   const initialValues = useMemo(() => {
     const values = REMOTE_SYNC_SCHEMA.cast(settingValues, {
@@ -327,6 +200,153 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     isRemoteSyncEnabled,
   ]);
 
+  const handleSubmit = useCallback(
+    async (values: RemoteSyncSettingsFormState) => {
+      const didBranchChange =
+        values[BRANCH_KEY] !== settingValues?.[BRANCH_KEY];
+
+      const collectionsMap: Record<number, boolean> = {
+        ...values[COLLECTIONS_KEY],
+      };
+
+      // If user wants to sync library but it doesn't exist yet, create it first
+      const wantsSyncLibrary = values[SYNC_LIBRARY_PENDING_KEY];
+      if (isModalVariant && !libraryCollection && wantsSyncLibrary) {
+        try {
+          const newLibrary = await createLibrary().unwrap();
+          // Cast to number since the newly created library will have a numeric ID
+          collectionsMap[newLibrary.id as number] = true;
+        } catch (error) {
+          sendToast({
+            message: t`Failed to create Library`,
+            icon: "warning",
+          });
+          throw error;
+        }
+      }
+
+      // Only include collections whose sync state actually changed
+      const initialCollections = initialValues[COLLECTIONS_KEY] ?? {};
+      const changedCollections: Record<number, boolean> = {};
+      for (const [idStr, desired] of Object.entries(collectionsMap)) {
+        const id = Number(idStr);
+        if (initialCollections[id] !== desired) {
+          changedCollections[id] = desired;
+        }
+      }
+      const hasCollectionChanges = Object.keys(changedCollections).length > 0;
+
+      // Don't send collections when in read-only mode or when nothing changed
+      // Also filter out the sync-library-pending key as it's not a real setting
+      const isReadOnly = values[TYPE_KEY] === "read-only";
+      const settingsToSave: RemoteSyncConfigurationSettings = {
+        [REMOTE_SYNC_KEY]: values[REMOTE_SYNC_KEY],
+        [URL_KEY]: values[URL_KEY],
+        [TOKEN_KEY]: values[TOKEN_KEY],
+        [TYPE_KEY]: values[TYPE_KEY],
+        [BRANCH_KEY]: values[BRANCH_KEY],
+        [AUTO_IMPORT_KEY]: values[AUTO_IMPORT_KEY],
+        [TRANSFORMS_KEY]: values[TRANSFORMS_KEY],
+        ...(isReadOnly || !hasCollectionChanges
+          ? {}
+          : {
+              [COLLECTIONS_KEY]: changedCollections,
+            }),
+      };
+
+      const saveSettings = async (
+        settings: RemoteSyncConfigurationSettings,
+      ) => {
+        try {
+          await updateRemoteSyncSettings(settings).unwrap();
+
+          trackRemoteSyncSettingsChanged({
+            triggeredFrom: isModalVariant ? "data-studio" : "admin-settings",
+          });
+
+          if (
+            didBranchChange &&
+            settingValues?.[BRANCH_KEY] &&
+            values[BRANCH_KEY]
+          ) {
+            trackBranchSwitched({
+              triggeredFrom: "admin-settings",
+            });
+          }
+
+          sendToast({ message: t`Settings saved successfully`, icon: "check" });
+          onSaveSuccess?.();
+        } catch (error) {
+          sendToast({
+            message: getErrorMessage(error, t`Settings could not be saved`),
+            icon: "warning",
+          });
+          throw error;
+        }
+      };
+
+      if (didBranchChange) {
+        pendingConfirmationSettingsRef.current = settingsToSave;
+        showChangeBranchConfirmation({
+          title: t`Switch branches?`,
+          message: t`The synced collection will update to match the new branch. Questions that exist in the current branch but not the new one will be removed from any dashboards or content that reference them permanently, even if you switch back.`,
+          confirmButtonText: t`Continue`,
+          confirmButtonProps: {
+            variant: "filled",
+            color: "danger",
+          },
+          onConfirm: async () => {
+            if (pendingConfirmationSettingsRef.current) {
+              await saveSettings(pendingConfirmationSettingsRef.current);
+              pendingConfirmationSettingsRef.current = null;
+            }
+          },
+          onCancel: () => {
+            pendingConfirmationSettingsRef.current = null;
+          },
+        });
+        return;
+      }
+      await saveSettings(settingsToSave);
+    },
+    [
+      settingValues,
+      initialValues,
+      updateRemoteSyncSettings,
+      isModalVariant,
+      libraryCollection,
+      createLibrary,
+      sendToast,
+      onSaveSuccess,
+      showChangeBranchConfirmation,
+    ],
+  );
+
+  const handleDisable = useCallback(async () => {
+    showDisableConfirmation({
+      title: t`Disable Remote Sync?`,
+      message: t`This will clear all remote sync settings. Any changes made to the Library collection after disabling can be overwritten if you enable sync again.`,
+      confirmButtonText: t`Disable`,
+      confirmButtonProps: {
+        variant: "filled",
+        color: "danger",
+      },
+      onConfirm: async () => {
+        try {
+          await updateRemoteSyncSettings({ [URL_KEY]: "" }).unwrap();
+          trackRemoteSyncDeactivated();
+          sendToast({ message: t`Remote Sync disabled`, icon: "check" });
+        } catch (error) {
+          console.error(error);
+          sendToast({
+            message: t`Failed to disable Remote Sync`,
+            icon: "warning",
+          });
+        }
+      },
+    });
+  }, [updateRemoteSyncSettings, sendToast, showDisableConfirmation]);
+
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins.
   const { url: docsUrl } = useDocsUrl(
     "installation-and-operation/remote-sync",
@@ -335,7 +355,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
     },
   );
 
-  const hasUnsyncedChanges = !!dirtyData?.dirty?.length;
+  const hasUnsyncedChanges = !!dirtyData?.dirty?.length && isRemoteSyncEnabled;
 
   return (
     <>
@@ -367,7 +387,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                 <FormTextInput
                   name={URL_KEY}
                   label={t`Repository URL`}
-                  placeholder="https://github.com/yourcompany/metabase-library.git"
+                  placeholder="https://git-host.example.com/yourcompany/repo.git"
                   labelProps={{ mb: "0.75rem" }}
                   {...getEnvSettingProps(settingDetails?.[URL_KEY])}
                 />
@@ -535,7 +555,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     label={
                       isRemoteSyncEnabled
                         ? t`Save changes`
-                        : t`Set up Remote Sync`
+                        : t`Set up remote sync`
                     }
                     variant="filled"
                     disabled={isRemoteSyncEnabled ? !dirty : !values?.[URL_KEY]}
@@ -550,6 +570,16 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
 
       {changeBranchConfirmationModal}
       {disableConfirmationModal}
+
+      {!!conflictVariant && !!currentBranch && (
+        <SyncConflictModal
+          currentBranch={currentBranch}
+          onClose={() => {
+            dispatch(syncConflictVariantUpdated(null));
+          }}
+          variant={conflictVariant}
+        />
+      )}
     </>
   );
 };

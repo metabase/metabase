@@ -13,34 +13,17 @@ Questions in Metabase are queries, their results, and their visualization. Quest
 
 ## Creating a new question
 
-You can create a new question from scratch, or build off of an existing question. To create a question from scratch, you can click on **+ New** and select how you want to query your data: either with the graphical query builder, or the SQL/native editor:
+You can create a new question from scratch, or build off of an existing question. To create a question from scratch click on **+ New** and select how you want to query your data:
 
-You can also use [Metabot](../ai/metabot.md) to create questions using natural language. Just ask Metabot what you want to know about your data, and it can generate charts and queries for you.
+- **+ New > Question** to create a question using the graphicalcquery builder. See [Query builder](../questions/query-builder/editor.md).
+  ![Query builder editor](./images/editor.png)
 
-### Query builder
+- **+ New >SQl/Native query** to create a question using the native/SQL query editor. See [Native editor](../questions/native-editor/writing-sql.md).
 
-![Query builder editor](./images/editor.png)
+  ![Native editor](./images/native-editor.png)
 
-Selecting **Question** will take you to the [editor in the graphical query builder](./query-builder/editor.md).
-
-### Native editor
-
-![Native editor](./images/native-editor.png)
-
-Selecting **SQL/native code** will open the [native code editor](./native-editor/writing-sql.md).
-
-Even if you know SQL, you should still check out the [graphical query builder](./query-builder/editor.md), as you can use it to build [interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
-
-### From an existing question
-
-You can also build a new question from an existing question. You won't overwrite the existing question, so feel free to play around. You can use either the [query builder](./query-builder/editor.md) or the [native code editor](./native-editor/referencing-saved-questions-in-queries.md).
-
-Some kinds of saved questions, however, can't be used as source data:
-
-- Druid questions
-- Mongo questions
-- Questions that use `Cumulative Sum` or `Cumulative Count` aggregations
-- Questions that have columns that are named the same or similar thing, like `Count` and `Count 2`
+  Even if you know SQL, you should still check out the [graphical query builder](./query-builder/editor.md), as you can use it to build [interactive charts](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through).
+  You can also use [Metabot](../ai/metabot.md) to create questions using natural language. Just ask Metabot what you want to know about your data, and it can generate charts and queries for you.
 
 ## Saving questions
 

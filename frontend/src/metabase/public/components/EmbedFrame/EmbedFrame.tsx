@@ -253,7 +253,7 @@ export const EmbedFrame = ({
         {/* show floating header buttons if there is no title */}
         {headerButtons && !titled ? headerButtons : null}
 
-        <span ref={parameterPanelRef} />
+        <span ref={parameterPanelRef} style={{ position: "relative" }} />
         {hasVisibleParameters && (
           <FullWidthContainer
             className={cx(EmbedFrameS.ParameterPanel, {

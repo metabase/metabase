@@ -46,8 +46,12 @@ export function DependencyGraphPage({ location }: DependencyGraphPageProps) {
         error={error}
         getGraphUrl={(entry) => Urls.dependencyGraph({ entry, baseUrl })}
         withEntryPicker={withEntryPicker}
+        headerRightSide={
+          baseUrl === undefined ? (
+            <AppSwitcher className={S.appSwitcher} />
+          ) : null
+        }
       />
-      {baseUrl === undefined && <AppSwitcher className={S.ProfileLink} />}
     </Stack>
   );
 }

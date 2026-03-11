@@ -8,9 +8,12 @@ import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CollectionNamespace,
+  ConcreteTableId,
   Database,
   DatabaseId,
   DraftTransformSource,
+  PythonTransformTableAliases,
+  TemplateTag,
   Transform,
   TransformRun,
   TransformRunMethod,
@@ -134,9 +137,76 @@ export function isSameSource(
     return Lib.areLegacyQueriesEqual(source1.query, source2.query);
   }
   if (source1.type === "python" && source2.type === "python") {
-    return _.isEqual(source1, source2);
+    return _.isEqual(
+      {
+        ...source1,
+        "source-tables": collapseSourceTableReferences(
+          source1["source-tables"],
+        ),
+      },
+      {
+        ...source2,
+        "source-tables": collapseSourceTableReferences(
+          source2["source-tables"],
+        ),
+      },
+    );
   }
   return false;
+}
+
+/**
+ * Extract a ConcreteTableId from a source-tables value, which may be either
+ * a bare integer or a map with table_id (from backend normalization).
+ */
+export function extractTableId(
+  value: ConcreteTableId | Record<string, unknown>,
+): ConcreteTableId | undefined {
+  if (typeof value === "number") {
+    return value;
+  }
+  if (typeof value === "object" && value != null) {
+    const id = (value as Record<string, unknown>)["table_id"];
+    if (typeof id === "number") {
+      return id as ConcreteTableId;
+    }
+  }
+  return undefined;
+}
+
+const collapseCache = new WeakMap<
+  Record<string, unknown>,
+  PythonTransformTableAliases
+>();
+
+/**
+ * Collapse source-table references to plain { alias: tableId } form.
+ * The backend may return map refs (with table_id, schema, etc.) instead of
+ * bare integer IDs. Returns the original map unchanged if all values are
+ * already plain integers. Results are memoized by object reference.
+ */
+export function collapseSourceTableReferences(
+  tables: Record<string, unknown>,
+): PythonTransformTableAliases {
+  const cached = collapseCache.get(tables);
+  if (cached) {
+    return cached;
+  }
+  const values = Object.values(tables);
+  if (values.every((v) => typeof v === "number")) {
+    return tables as PythonTransformTableAliases;
+  }
+  const result: PythonTransformTableAliases = {};
+  for (const [key, value] of Object.entries(tables)) {
+    const id = extractTableId(
+      value as ConcreteTableId | Record<string, unknown>,
+    );
+    if (id != null) {
+      result[key] = id;
+    }
+  }
+  collapseCache.set(tables, result);
+  return result;
 }
 
 export function isSourceEmpty(
@@ -166,8 +236,6 @@ export function isCompleteSource(
   return source.type !== "python" || source["source-database"] != null;
 }
 
-const ALLOWED_TRANSFORM_VARIABLES = [CHECKPOINT_TEMPLATE_TAG];
-
 export type ValidationResult = {
   isValid: boolean;
   errorMessage?: string;
@@ -177,22 +245,41 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
     const tags = Object.values(Lib.templateTags(query));
-    // Allow snippets, cards, and the special transform variables ({checkpoint})
-    const hasInvalidTags = tags.some(
-      (t) =>
-        t.type !== "card" &&
-        t.type !== "snippet" &&
-        !ALLOWED_TRANSFORM_VARIABLES.includes(t.name),
-    );
-    if (hasInvalidTags) {
-      return {
-        isValid: false,
-        errorMessage: t`In transforms, you can use snippets and question or model references, but not variables.`,
-      };
+
+    const invalidResults = tags
+      .map(validateTemplateTag)
+      .filter((result) => !result.isValid);
+
+    if (invalidResults.length > 0) {
+      return invalidResults[0];
     }
   }
 
   return { isValid: Lib.canSave(query, "question") };
+}
+
+const ALLOWED_TEMPLATE_TYPES = new Set([
+  "card",
+  "snippet",
+  CHECKPOINT_TEMPLATE_TAG,
+]);
+
+function validateTemplateTag(tag: TemplateTag): ValidationResult {
+  // Allow snippets, cards, and the special transform variables ({checkpoint})
+  if (ALLOWED_TEMPLATE_TYPES.has(tag.type)) {
+    return { isValid: true };
+  }
+
+  // Variable template tags need to be either optional in the query text
+  // or have a default value.
+  if (Lib.isVariableTemplateTag(tag) && tag.required && tag.default == null) {
+    return {
+      isValid: false,
+      errorMessage: t`Variables in transforms must either be optional or have a default value.`,
+    };
+  }
+
+  return { isValid: true };
 }
 
 export const getLibQuery = (

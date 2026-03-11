@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.spec :as spec]
+   [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -53,8 +54,8 @@
             "events :prefix should be a keyword")
         (is (vector? (get-in spec [:events :types]))
             "events :types should be a vector")
-        (is (every? #{:create :update :delete} (get-in spec [:events :types]))
-            "events :types should only contain :create, :update, :delete")))))
+        (is (every? #{:create :update :delete :publish :unpublish} (get-in spec [:events :types]))
+            "events :types should only contain :create, :update, :delete, :publish, :unpublish")))))
 
 (deftest all-specs-have-valid-tracking-test
   (testing "Every spec has valid tracking configuration"
@@ -77,6 +78,27 @@
         (when-let [scope-key (get-in spec [:removal :scope-key])]
           (is (keyword? scope-key)
               "removal :scope-key should be a keyword when present"))))))
+
+(deftest parent-fk-specs-are-valid-test
+  (testing "Every spec with :parent-model and :parent-fk has a keyword :parent-fk"
+    (doseq [[model-key spec] spec/remote-sync-specs
+            :when (and (:parent-model spec)
+                       (:parent-fk spec))]
+      (testing (str "Spec for " model-key)
+        (is (keyword? (:parent-fk spec))
+            ":parent-fk should be a keyword")
+        (when-let [cf (:cascade-filter spec)]
+          (is (map? cf)
+              ":cascade-filter should be a map when present")))))
+
+  (testing "children-specs derives the correct children for Table"
+    (let [children (spec/children-specs :model/Table)]
+      (is (= 1 (count children)))
+      (is (= #{:model/Field}
+             (into #{} (map :model-key) children)))))
+
+  (testing "children-specs returns empty for models with no children"
+    (is (empty? (spec/children-specs :model/Card)))))
 
 ;;; ------------------------------------------------ Helper Function Tests ---------------------------------------------
 
@@ -436,3 +458,62 @@
           (let [instances [{:id 1} {:id 2} {:id 3}]
                 result (spec/batch-model-editable? :model/NativeQuerySnippet instances)]
             (is (= {1 true, 2 true, 3 true} result))))))))
+
+;;; ------------------------------------------ Condition Helper Tests ----------------------------------------------
+
+(deftest export-conditions-test
+  (testing "export-conditions returns :export-conditions when present"
+    (is (= {:foo :bar}
+           (spec/export-conditions {:export-conditions {:foo :bar}
+                                    :conditions {:baz :qux}}))))
+
+  (testing "export-conditions falls back to :conditions when :export-conditions absent"
+    (is (= {:baz :qux}
+           (spec/export-conditions {:conditions {:baz :qux}}))))
+
+  (testing "export-conditions returns nil when neither key present"
+    (is (nil? (spec/export-conditions {})))))
+
+(deftest removal-conditions-test
+  (testing "removal-conditions returns :removal-conditions when present"
+    (is (= {:foo :bar}
+           (spec/removal-conditions {:removal-conditions {:foo :bar}
+                                     :conditions {:baz :qux}}))))
+
+  (testing "removal-conditions falls back to :conditions when :removal-conditions absent"
+    (is (= {:baz :qux}
+           (spec/removal-conditions {:conditions {:baz :qux}}))))
+
+  (testing "removal-conditions returns nil when neither key present"
+    (is (nil? (spec/removal-conditions {})))))
+
+(deftest python-library-spec-conditions-test
+  (testing "PythonLibrary spec has :removal-conditions but no :conditions or :export-conditions"
+    (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
+      (is (nil? (:conditions spec))
+          "PythonLibrary should have no :conditions")
+      (is (nil? (:export-conditions spec))
+          "PythonLibrary should have no :export-conditions")
+      (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
+             (:removal-conditions spec))
+          "PythonLibrary should have :removal-conditions protecting builtin entity")))
+
+  (testing "export-conditions returns nil for PythonLibrary (no export filtering)"
+    (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
+      (is (nil? (spec/export-conditions spec)))))
+
+  (testing "removal-conditions returns the builtin protection for PythonLibrary"
+    (let [spec (spec/spec-for-model-key :model/PythonLibrary)]
+      (is (= {:entity_id [:not= transforms-python/builtin-entity-id]}
+             (spec/removal-conditions spec))))))
+
+(deftest transform-tag-spec-uses-conditions-test
+  (testing "TransformTag spec still uses :conditions (not split)"
+    (let [spec (spec/spec-for-model-key :model/TransformTag)]
+      (is (= {:built_in_type nil} (:conditions spec)))
+      (is (nil? (:export-conditions spec)))
+      (is (nil? (:removal-conditions spec)))
+      (is (= {:built_in_type nil} (spec/export-conditions spec))
+          "export-conditions falls back to :conditions for TransformTag")
+      (is (= {:built_in_type nil} (spec/removal-conditions spec))
+          "removal-conditions falls back to :conditions for TransformTag"))))

@@ -276,26 +276,6 @@ is_sample: false
           name entity-id (str/replace (u/lower-case-en name) #"\s+" "_")
           entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
 
-(defn- generate-snippet-yaml
-  "Generates YAML content for a NativeQuerySnippet."
-  [entity-id name content & {:keys [collection-id]}]
-  (format "name: %s
-description: null
-entity_id: %s
-content: '%s'
-archived: false
-template_tags: null
-created_at: '2024-08-28T09:46:18.671622Z'
-creator_id: rasta@metabase.com
-collection_id: %s
-serdes/meta:
-- id: %s
-  label: %s
-  model: NativeQuerySnippet
-"
-          name entity-id content (or collection-id "null")
-          entity-id (str/replace (u/lower-case-en name) #"\s+" "_")))
-
 (deftest export-includes-snippets-when-library-synced-test
   (testing "Export includes snippets when Library is synced"
     (collections.tu/with-library-synced
@@ -345,7 +325,7 @@ serdes/meta:
                   test-files {"main" {(str "collections/" coll-entity-id "_snippets_collection/" coll-entity-id "_snippets_collection.yaml")
                                       (generate-snippets-namespace-collection-yaml coll-entity-id "Snippets Collection")
                                       (str "snippets/" coll-entity-id "_snippets_collection/" snippet-entity-id "_test_snippet.yaml")
-                                      (generate-snippet-yaml snippet-entity-id "Test Snippet" "SELECT 42" :collection-id coll-entity-id)}}
+                                      (test-helpers/generate-snippet-yaml snippet-entity-id "Test Snippet" "SELECT 42" :collection-id coll-entity-id)}}
                   mock-source (test-helpers/create-mock-source :initial-files test-files)
                   result (impl/import! (source.p/snapshot mock-source) task-id)]
               (is (= :success (:status result))
@@ -430,7 +410,7 @@ serdes/meta:
                     snippet-removal-path (first (filter #(str/includes? % snippet-eid) removal-paths))
                     _ (is (some? snippet-removal-path) "Should have a removal path for the archived snippet")
                     initial-files {"main" {(str snippet-removal-path ".yaml")
-                                           (generate-snippet-yaml snippet-eid "Archived Snippet" "SELECT 1" :collection-id coll-eid)}}
+                                           (test-helpers/generate-snippet-yaml snippet-eid "Archived Snippet" "SELECT 1" :collection-id coll-eid)}}
                     mock-source (test-helpers/create-mock-source :initial-files initial-files)
                     result (impl/export! (source.p/snapshot mock-source) task-id "Test export")]
                 (is (= :success (:status result))

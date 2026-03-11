@@ -10,7 +10,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -53,7 +52,7 @@
                            :group-by []})
                   actual-query (get-in result [:structured-output :query])
                   expected-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                     (lib/aggregate (lib.options/ensure-uuid [:metric {} metric-id])))]
+                                     (lib/aggregate (lib/ensure-uuid [:metric {} metric-id])))]
               (is (= :query (get-in result [:structured-output :type])))
               (is (string? (get-in result [:structured-output :query-id])))
               (is (tools.tu/query= expected-query actual-query))))
