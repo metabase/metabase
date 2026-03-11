@@ -257,8 +257,17 @@
                  :type              qp.error-type/invalid-parameter}
                 e))))))
 
+(def ^:private allowed-source-filter-ops
+  #{:> :>= :< :<= := :!=})
+
 (mu/defmethod parse-tag :table :- ReferencedTableQuery
-  [{:keys [table-id source-filters]} _params]
+  [{:keys [table-id source-filters]} :- ::mbql.s/TemplateTag _params]
+  (when (seq source-filters)
+    (doseq [{:keys [op]} source-filters]
+      (when-not (allowed-source-filter-ops op)
+        (throw (ex-info (tru "Invalid source-filter operator: {0}. Allowed operators: {1}"
+                             (pr-str op) (pr-str allowed-source-filter-ops))
+                        {:op op :allowed-ops allowed-source-filter-ops})))))
   (params/map->ReferencedTableQuery
    (cond-> {:table-id table-id}
      (seq source-filters) (assoc :source-filters source-filters))))

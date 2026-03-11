@@ -1543,13 +1543,21 @@
 ;;     :display-name "#1635"
 ;;     :type         :table
 ;;     :table-id     2}
+(mr/def ::TemplateTag.SourceFilter
+  "Schema for a single source-filter applied to a table template tag."
+  [:map
+   [:field-id ::lib.schema.id/field]
+   [:op       [:enum :> :>= :< :<= := :!=]]
+   [:value    :any]])
+
 (mr/def ::TemplateTag.SourceTable
   "Schema for a source query template tag."
   [:merge
    ::TemplateTag.Common
    [:map
     [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
-    [:table-id              ::lib.schema.id/table]]])
+    [:table-id              ::lib.schema.id/table]
+    [:source-filters        {:optional true} [:sequential [:ref ::TemplateTag.SourceFilter]]]]])
 
 (mr/def ::TemplateTag.Value.Common
   "Stuff shared between the Field filter and raw value template tag schemas."

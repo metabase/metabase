@@ -413,28 +413,21 @@
 
 (defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
   [driver {:keys [table-id source-filters]}]
-  (let [mp    (driver-api/metadata-provider)
-        table (driver-api/table mp table-id)]
+  (let [mp        (driver-api/metadata-provider)
+        ->sql     (fn [x] (->> x (sql.qp/->honeysql driver) (sql.qp/format-honeysql driver) first))
+        table-sql (->sql (driver-api/table mp table-id))]
     (if (seq source-filters)
-      (let [prepared   (mapv (fn [{:keys [field-id op value]}]
-                               (let [field    (driver-api/field mp field-id)
-                                     [col-sql] (sql.qp/format-honeysql driver
-                                                                       (sql.qp/->honeysql driver (h2x/identifier :field (:name field))))
-                                     sub      (->prepared-substitution driver value)]
-                                 {:col-sql col-sql
-                                  :op-sql  (name op)
-                                  :sub     sub}))
-                             source-filters)
-            [table-sql] (sql.qp/format-honeysql driver (sql.qp/->honeysql driver table))
-            where-sql   (str/join " AND " (map (fn [{:keys [col-sql op-sql sub]}]
-                                                 (str col-sql " " op-sql " " (:sql-string sub)))
-                                               prepared))
-            args        (into [] (mapcat (comp :param-values :sub)) prepared)]
+      (let [prepared  (mapv (fn [{:keys [field-id op value]}]
+                              (let [field (driver-api/field mp field-id)]
+                                {:col-sql (->sql (h2x/identifier :field (:name field)))
+                                 :op-sql  (name op)
+                                 :sub     (->prepared-substitution driver value)}))
+                            source-filters)
+            where-sql (str/join " AND " (map (fn [{:keys [col-sql op-sql sub]}]
+                                               (str col-sql " " op-sql " " (:sql-string sub)))
+                                             prepared))
+            args      (into [] (mapcat (comp :param-values :sub)) prepared)]
         {:replacement-snippet     (str "(SELECT * FROM " table-sql " WHERE " where-sql ")")
          :prepared-statement-args args})
-      (let [alias (->> table
-                       (sql.qp/->honeysql driver)
-                       (sql.qp/format-honeysql driver)
-                       first)]
-        {:prepared-statement-args []
-         :replacement-snippet     alias}))))
+      {:prepared-statement-args []
+       :replacement-snippet     table-sql})))
