@@ -5,7 +5,7 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 

@@ -16,7 +16,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
    [metabase.query-processor.store :as qp.store]

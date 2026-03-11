@@ -6,7 +6,7 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]

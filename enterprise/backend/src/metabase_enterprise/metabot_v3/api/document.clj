@@ -7,7 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]))
 

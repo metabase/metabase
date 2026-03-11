@@ -1200,6 +1200,7 @@
            metabase.query-processor.api
            metabase.query-processor.card
            metabase.query-processor.compile
+           metabase.query-processor.core
            metabase.query-processor.dashboard
            metabase.query-processor.debug
            metabase.query-processor.error-type
