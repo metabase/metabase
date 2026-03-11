@@ -62,6 +62,14 @@ jobs:
         with:
           cli: 'latest'
 
+      - name: Cache Maven/Clojure dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+          key: ${{ runner.os }}-clj-dev-deps-v1
+
       - name: Set up Python (uv)
         uses: astral-sh/setup-uv@v7
 
