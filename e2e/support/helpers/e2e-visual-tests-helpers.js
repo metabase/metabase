@@ -276,3 +276,10 @@ export const BoxPlot = {
     return echartsContainer().find(`path[d="${DIAMOND_PATH}"]`);
   },
 };
+
+export function applyBrush(left, right) {
+  echartsContainer()
+    .trigger("mousedown", left, 100)
+    .trigger("mousemove", left, 100)
+    .trigger("mouseup", right, 100);
+}

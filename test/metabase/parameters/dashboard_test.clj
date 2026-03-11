@@ -23,7 +23,12 @@
           (is (=? [{:op := :options nil}]
                   (#'parameters.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_NAME_"]))))
           (is (=? [{:op :contains :options {:case-sensitive false}}]
-                  (#'parameters.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_CONTAINS_"])))))))))
+                  (#'parameters.dashboard/param->fields (get-in dashboard [:resolved-params "_CATEGORY_CONTAINS_"])))))
+        (testing "op-override forces the op regardless of param type (QUE2-326)"
+          (is (=? [{:op := :options {:case-sensitive false}}]
+                  (#'parameters.dashboard/param->fields
+                   (get-in dashboard [:resolved-params "_CATEGORY_CONTAINS_"])
+                   :op-override :=))))))))
 
 (deftest ^:parallel chain-filter-constraints-test
   (testing "chain-filter-constraints"

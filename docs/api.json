@@ -5220,6 +5220,179 @@
         },
         "required" : [ "model-type", "model-id", "decision", "segment", "message", "data", "suggestions" ]
       },
+      "metabase-enterprise.replacement.schema.check-replace-source-response" : {
+        "type" : "object",
+        "properties" : {
+          "column_mappings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.column-mapping"
+            }
+          },
+          "errors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.error-type"
+            }
+          },
+          "success" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "success" ]
+      },
+      "metabase-enterprise.replacement.schema.column" : {
+        "type" : "object",
+        "properties" : {
+          "base_type" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "effective_type" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "semantic_type" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "name", "display_name", "base_type", "effective_type", "semantic_type" ]
+      },
+      "metabase-enterprise.replacement.schema.column-mapping" : {
+        "type" : "object",
+        "properties" : {
+          "errors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.source-swap.schema.column-error"
+            }
+          },
+          "source" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.column"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "target" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.column"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase-enterprise.replacement.schema.error-type" : {
+        "type" : "string",
+        "enum" : [ "cycle-detected", "database-mismatch", "incompatible-implicit-joins" ]
+      },
+      "metabase-enterprise.replacement.schema.run" : {
+        "type" : "object",
+        "properties" : {
+          "message" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "target_entity_id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-id"
+          },
+          "user_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "progress" : {
+            "oneOf" : [ {
+              "type" : "number"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "target_entity_type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-type"
+          },
+          "is_active" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.run-id"
+          },
+          "source_entity_type" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-type"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.run-status"
+          },
+          "source_entity_id" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-id"
+          },
+          "end_time" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "format" : "date-time"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "start_time" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "id", "status", "is_active", "source_entity_type", "source_entity_id", "target_entity_type", "target_entity_id", "progress", "message", "user_id", "start_time", "end_time" ]
+      },
+      "metabase-enterprise.replacement.schema.run-id" : {
+        "type" : "integer",
+        "minimum" : 1
+      },
+      "metabase-enterprise.replacement.schema.run-status" : {
+        "type" : "string",
+        "enum" : [ "pending", "started", "succeeded", "failed", "canceled", "timeout" ]
+      },
+      "metabase-enterprise.replacement.schema.source-entity-id" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+        } ]
+      },
+      "metabase-enterprise.replacement.schema.source-entity-type" : {
+        "type" : "string",
+        "enum" : [ "card", "table" ]
+      },
       "metabase-enterprise.sandbox.schema.attribute-remappings" : {
         "description" : "value must be a valid attribute remappings map (attribute name -> remapped name)",
         "oneOf" : [ {
@@ -5556,9 +5729,19 @@
               "type" : "integer"
             },
             "source-tables" : {
-              "type" : "object",
-              "additionalProperties" : {
-                "type" : "integer"
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "alias" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "table_id" : {
+                    "type" : "integer"
+                  }
+                },
+                "required" : [ "alias", "table_id" ]
               }
             },
             "type" : {
@@ -6337,6 +6520,141 @@
         "required" : [ "type", "multiplier", "min_duration_ms" ],
         "additionalProperties" : false
       },
+      "metabase.cache.api.cache-config-item" : {
+        "type" : "object",
+        "properties" : {
+          "collection" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "authority_level" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "id" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                },
+                "name" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "type" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              },
+              "required" : [ "id", "name" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "model" : {
+            "type" : "string",
+            "enum" : [ "root", "database", "dashboard", "question" ]
+          },
+          "model_id" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "strategy" : {
+            "type" : "object",
+            "properties" : {
+              "type" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "type" ]
+          }
+        },
+        "required" : [ "model", "model_id", "strategy" ]
+      },
+      "metabase.cache.api.cache-config-list-response" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.cache.api.cache-config-item"
+            }
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "data" ]
+      },
+      "metabase.cache.api.cache-config-store-response" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "id" ]
+      },
+      "metabase.cache.api.cache-invalidate-response" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "object",
+            "properties" : {
+              "count" : {
+                "type" : "integer"
+              },
+              "message" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "count", "message" ]
+          },
+          "status" : {
+            "type" : "integer",
+            "enum" : [ 200, 404 ]
+          }
+        },
+        "required" : [ "status", "body" ]
+      },
       "metabase.cache.api.cache-strategy" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ee"
@@ -6420,6 +6738,38 @@
           },
           "required" : [ "type", "subject", "body" ]
         } ]
+      },
+      "metabase.channel.models.channel.ChannelTemplateEmailDetailsUserProvided" : {
+        "description" : "Email template details schema for API-provided templates. Only handlebars-text is allowed;\n  handlebars-resource is restricted to internal use only.",
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string"
+          },
+          "recipient-type" : {
+            "enum" : [ "cc", "bcc", "cc", "bcc" ]
+          },
+          "subject" : {
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "email/handlebars-text", "email/handlebars-text" ]
+          }
+        },
+        "required" : [ "type", "subject", "body" ]
+      },
+      "metabase.channel.models.channel.ChannelTemplateUserProvided" : {
+        "description" : "Channel Template schema for API-provided templates. Does not allow handlebars-resource.",
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "channel_type" : { },
+            "details" : {
+              "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateEmailDetailsUserProvided"
+            }
+          },
+          "required" : [ "channel_type", "details" ]
+        }, { } ]
       },
       "metabase.collections-rest.api.DashboardQuestionCandidate" : {
         "type" : "object",
@@ -7202,6 +7552,13 @@
       "metabase.legacy-mbql.schema..legacy-column-metadata.qualified-keys" : {
         "type" : "object",
         "properties" : {
+          "qp.pivot/pivot-grouping?" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "metabase.lib.metadata.result-metadata/field-ref" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -7921,6 +8278,13 @@
             "default" : { },
             "type" : "object",
             "properties" : {
+              "qp.pivot/pivot-grouping?" : {
+                "oneOf" : [ {
+                  "type" : "boolean"
+                }, {
+                  "type" : "null"
+                } ]
+              },
               "binning" : {
                 "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
               },
@@ -8892,6 +9256,13 @@
         "allOf" : [ {
           "type" : "object",
           "properties" : {
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "metabase.lib.metadata.result-metadata/field-ref" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -9421,6 +9792,214 @@
       "metabase.legacy-mbql.schema.value" : {
         "description" : "schema for a valid MBQL 4 :value clause",
         "allOf" : [ ]
+      },
+      "metabase.lib-metric.schema..dimension-reference.options" : {
+        "description" : "Options map for dimension references.",
+        "type" : "object",
+        "properties" : {
+          "binning" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib-metric.schema.binning"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display-name" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "effective-type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "semantic-type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "temporal-unit" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
+      "metabase.lib-metric.schema.binning" : {
+        "description" : "Schema for `:binning` options passed to a `:dimension` clause.",
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "strategy" : {
+              "$ref" : "#/components/schemas/metabase.lib-metric.schema.binning-strategy"
+            }
+          },
+          "required" : [ "strategy" ]
+        }, {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "strategy" : {
+                "const" : "default"
+              }
+            },
+            "required" : [ "strategy" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "bin-width" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.positive-number"
+              },
+              "strategy" : {
+                "const" : "bin-width"
+              }
+            },
+            "required" : [ "strategy", "bin-width" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "num-bins" : {
+                "type" : "integer",
+                "minimum" : 1
+              },
+              "strategy" : {
+                "const" : "num-bins"
+              }
+            },
+            "required" : [ "strategy", "num-bins" ]
+          } ]
+        } ]
+      },
+      "metabase.lib-metric.schema.binning-strategy" : {
+        "type" : "string",
+        "enum" : [ "bin-width", "default", "num-bins" ]
+      },
+      "metabase.lib-metric.schema.dimension-id" : {
+        "description" : "UUID string identifying a dimension.",
+        "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+      },
+      "metabase.lib-metric.schema.dimension-reference" : {
+        "description" : "Dimension reference clause [:dimension opts uuid].\n   Handles normalization from JSON where the tag arrives as a string.",
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "dimension"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib-metric.schema..dimension-reference.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib-metric.schema.dimension-id"
+        } ]
+      },
+      "metabase.lib-metric.schema.expression-leaf" : {
+        "description" : "A leaf node in a metric math expression: either a metric or measure reference.",
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib-metric.schema.metric-expression-ref"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib-metric.schema.measure-expression-ref"
+        } ]
+      },
+      "metabase.lib-metric.schema.filter-clause" : {
+        "description" : "MBQL filter clause with normalization for API input.\n   Handles string operators and dimension references."
+      },
+      "metabase.lib-metric.schema.instance-filter" : {
+        "description" : "A filter associated with a specific expression instance via lib/uuid.",
+        "type" : "object",
+        "properties" : {
+          "filter" : {
+            "$ref" : "#/components/schemas/metabase.lib-metric.schema.filter-clause"
+          },
+          "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        },
+        "required" : [ "lib/uuid", "filter" ]
+      },
+      "metabase.lib-metric.schema.instance-filters" : {
+        "description" : "A sequence of per-instance filters.",
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.lib-metric.schema.instance-filter"
+        }
+      },
+      "metabase.lib-metric.schema.measure-expression-ref" : {
+        "description" : "A measure reference in an expression: [:measure {:lib/uuid uuid} measure-id].",
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "measure"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "lib/uuid" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }
+          },
+          "required" : [ "lib/uuid" ]
+        }, {
+          "type" : "integer",
+          "minimum" : 1
+        } ]
+      },
+      "metabase.lib-metric.schema.metric-expression-ref" : {
+        "description" : "A metric reference in an expression: [:metric {:lib/uuid uuid} card-id].",
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "metric"
+        }, {
+          "type" : "object",
+          "properties" : {
+            "lib/uuid" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            }
+          },
+          "required" : [ "lib/uuid" ]
+        }, {
+          "type" : "integer",
+          "minimum" : 1
+        } ]
+      },
+      "metabase.lib-metric.schema.metric-math-expression" : {
+        "description" : "A recursive metric math expression tree.\n   Can be a leaf (metric/measure ref) or an arithmetic expression [op opts expr expr ...]\n   with at least 2 operands.\n   Note: uses :fn validator for arithmetic to avoid Malli's recursive seqex limitation.",
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib-metric.schema.expression-leaf"
+        }, {
+          "type" : "array"
+        } ]
+      },
+      "metabase.lib-metric.schema.typed-projection" : {
+        "description" : "A projection associated with a specific source type and ID.",
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "projection" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib-metric.schema.dimension-reference"
+            }
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "metric", "measure" ]
+          }
+        },
+        "required" : [ "type", "id", "projection" ]
+      },
+      "metabase.lib-metric.schema.typed-projections" : {
+        "description" : "A sequence of typed projections.",
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.lib-metric.schema.typed-projection"
+        }
       },
       "metabase.lib.metadata.protocols.metadata-provider" : {
         "description" : "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
@@ -10733,6 +11312,13 @@
                 "type" : "null"
               } ]
             },
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "metabase.lib.metadata.result-metadata/field-ref" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Reference"
@@ -11233,6 +11819,13 @@
               "fk-join-alias" : {
                 "oneOf" : [ {
                   "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "qp.pivot/pivot-grouping?" : {
+                "oneOf" : [ {
+                  "type" : "boolean"
                 }, {
                   "type" : "null"
                 } ]
@@ -11920,6 +12513,13 @@
           "default" : { },
           "type" : "object",
           "properties" : {
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "binning" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
             },
@@ -12002,6 +12602,13 @@
           "default" : { },
           "type" : "object",
           "properties" : {
+            "qp.pivot/pivot-grouping?" : {
+              "oneOf" : [ {
+                "type" : "boolean"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "binning" : {
               "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
             },
@@ -12490,11 +13097,41 @@
         "type" : "string",
         "enum" : [ "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds" ]
       },
+      "metabase.measures.api.RemappedValueResponse" : {
+        "description" : "Response schema for dimension remapping endpoint.\n   Returns [value] if no remapping, or [value, display-name] if remapped.",
+        "anyOf" : [ {
+          "type" : "array",
+          "prefixItems" : [ { } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ { }, {
+            "type" : "string"
+          } ]
+        } ]
+      },
       "metabase.measures.api.measure" : {
         "description" : "Schema for a Measure entity as returned from the API.",
         "type" : "object",
         "properties" : {
+          "dimension_mappings" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
           "entity_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "result_column_name" : {
             "oneOf" : [ {
               "type" : "string"
             }, {
@@ -12521,6 +13158,17 @@
           "archived" : {
             "type" : "boolean"
           },
+          "dimensions" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
           "updated_at" : { },
           "table_id" : {
             "description" : "value must be an integer greater than zero.",
@@ -12546,6 +13194,769 @@
           }
         },
         "required" : [ "id", "name", "table_id", "definition", "archived", "creator_id", "created_at", "updated_at" ]
+      },
+      "metabase.metrics.api.BreakoutValuesResponse" : {
+        "type" : "object",
+        "properties" : {
+          "col" : {
+            "type" : "object",
+            "properties" : { }
+          },
+          "values" : {
+            "type" : "array",
+            "items" : { }
+          }
+        },
+        "required" : [ "values", "col" ]
+      },
+      "metabase.metrics.api.DatasetRequest" : {
+        "description" : "Schema for POST /dataset request body.",
+        "type" : "object",
+        "properties" : {
+          "definition" : {
+            "$ref" : "#/components/schemas/metabase.metrics.api.Definition"
+          }
+        },
+        "required" : [ "definition" ]
+      },
+      "metabase.metrics.api.DatasetResponse" : {
+        "description" : "Schema for POST /dataset response.",
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "object",
+            "properties" : {
+              "cols" : {
+                "type" : "array",
+                "items" : { }
+              },
+              "rows" : {
+                "type" : "array",
+                "items" : { }
+              }
+            },
+            "required" : [ "cols", "rows" ]
+          },
+          "row_count" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "status" : {
+            "enum" : [ "completed", "completed" ]
+          }
+        },
+        "required" : [ "status", "data", "row_count" ]
+      },
+      "metabase.metrics.api.Definition" : {
+        "description" : "Schema for the definition object within a dataset request.\n   Uses expression-based contract for metric math support.",
+        "type" : "object",
+        "properties" : {
+          "expression" : {
+            "$ref" : "#/components/schemas/metabase.lib-metric.schema.metric-math-expression"
+          },
+          "filters" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib-metric.schema.instance-filters"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "projections" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib-metric.schema.typed-projections"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "expression" ]
+      },
+      "metabase.metrics.api.Metric" : {
+        "description" : "Schema for a Metric in list responses (without hydrated dimensions).",
+        "type" : "object",
+        "properties" : {
+          "collection" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "id" : {
+                  "oneOf" : [ {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "name" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "id", "name" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "description", "collection_id" ]
+      },
+      "metabase.metrics.api.MetricWithDimensions" : {
+        "description" : "Schema for a Metric in list responses (without hydrated dimensions).",
+        "type" : "object",
+        "properties" : {
+          "dimension_mappings" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "id" : {
+                  "oneOf" : [ {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "name" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "id", "name" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dataset_query" : {
+            "type" : "object",
+            "properties" : { }
+          },
+          "result_column_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "dimensions" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "collection_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "name", "description", "collection_id" ]
+      },
+      "metabase.metrics.api.RemappedValueResponse" : {
+        "description" : "Response schema for dimension remapping endpoint.\n   Returns [value] if no remapping, or [value, display-name] if remapped.",
+        "anyOf" : [ {
+          "type" : "array",
+          "prefixItems" : [ { } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ { }, {
+            "type" : "string"
+          } ]
+        } ]
+      },
+      "metabase.notification.api.notification.NotificationApiInput" : {
+        "description" : "Notification schema for API input. Like FullyHydratedNotification but restricts templates\n  to user-provided types only (no handlebars-resource).",
+        "oneOf" : [ {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationCard"
+              },
+              "payload_id" : {
+                "type" : "null"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type", "payload" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload_id" : {
+                "type" : "null"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type" ]
+          } ]
+        }, {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "creator_id" : {
+                "type" : "integer"
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationCard"
+              },
+              "payload_id" : {
+                "type" : "integer"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type", "payload" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "creator_id" : {
+                "type" : "integer"
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload_id" : {
+                "type" : "integer"
+              },
+              "payload_type" : {
+                "type" : "string",
+                "enum" : [ "notification/dashboard", "notification/system-event", "notification/testing", "notification/card" ]
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload_type" ]
+          } ]
+        }, {
+          "oneOf" : [ {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "payload" : {
+                "$ref" : "#/components/schemas/metabase.notification.models.NotificationCard"
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            },
+            "required" : [ "payload" ]
+          }, {
+            "type" : "object",
+            "properties" : {
+              "creator" : {
+                "oneOf" : [ {
+                  "type" : "object",
+                  "properties" : { }
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "handlers" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : {
+                    "active" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.Channel"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "channel_type" : { },
+                    "notification_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "recipients" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.notification.models.NotificationRecipient"
+                      }
+                    },
+                    "template" : {
+                      "oneOf" : [ {
+                        "$ref" : "#/components/schemas/metabase.channel.models.channel.ChannelTemplateUserProvided"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "template_id" : {
+                      "oneOf" : [ {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "channel_type" ]
+                }
+              },
+              "subscriptions" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.notification.models.NotificationSubscription"
+                }
+              }
+            }
+          } ]
+        } ]
       },
       "metabase.notification.models.FullyHydratedNotification" : {
         "description" : "Fully hydrated notification.",
@@ -13751,6 +15162,10 @@
         },
         "required" : [ "status", "row_count" ]
       },
+      "metabase.source-swap.schema.column-error" : {
+        "type" : "string",
+        "enum" : [ "column-type-mismatch", "missing-primary-key", "missing-foreign-key", "foreign-key-mismatch" ]
+      },
       "metabase.sync.schedules.ExpandedSchedulesMap" : {
         "description" : "value must be a valid map of schedule maps for a DB.",
         "type" : "object",
@@ -14034,6 +15449,36 @@
       "metabase.timeline.api.timeline.include" : {
         "type" : "string",
         "enum" : [ "events" ]
+      },
+      "metabase.transforms-base.util.source-table-entry" : {
+        "description" : "A source table entry in the array format. Combines alias with table reference.",
+        "type" : "object",
+        "properties" : {
+          "alias" : {
+            "type" : "string"
+          },
+          "database_id" : {
+            "type" : "integer"
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "alias" ]
       },
       "metabase.transforms-inspector.schema.alert-trigger" : {
         "description" : "Definition for conditional alerts.\n   FE evaluates condition against card results and shows alert if triggered.",
@@ -14576,41 +16021,6 @@
           "$ref" : "#/components/schemas/metabase.transforms.schema.checkpoint-strategy"
         } ]
       },
-      "metabase.transforms.schema.source-table-ref" : {
-        "description" : "A reference to a source table by name, for cases where table_id may not exist yet.\n  Also saves querying metadata in situations where we'll need the name.",
-        "type" : "object",
-        "properties" : {
-          "database_id" : {
-            "type" : "integer"
-          },
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "table" : {
-            "type" : "string"
-          },
-          "table_id" : {
-            "oneOf" : [ {
-              "type" : "integer"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "database_id", "table" ]
-      },
-      "metabase.transforms.schema.source-table-value" : {
-        "description" : "Either a table ID (int) or a reference map.",
-        "anyOf" : [ {
-          "type" : "integer"
-        }, {
-          "$ref" : "#/components/schemas/metabase.transforms.schema.source-table-ref"
-        } ]
-      },
       "metabase.transforms.schema.table-incremental-target" : {
         "type" : "object",
         "properties" : {
@@ -14718,9 +16128,9 @@
               "$ref" : "#/components/schemas/metabase.transforms.schema.source-incremental-strategy"
             },
             "source-tables" : {
-              "type" : "object",
-              "additionalProperties" : {
-                "$ref" : "#/components/schemas/metabase.transforms.schema.source-table-value"
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.transforms-base.util.source-table-entry"
               }
             },
             "type" : {
@@ -17051,7 +18461,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.cache.api.cache-config-list-response"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -17069,7 +18486,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.cache.api.cache-config-store-response"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -17111,7 +18535,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -17218,7 +18649,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.cache.api.cache-invalidate-response"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -26024,7 +27462,69 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "checklist" : {
+                      "type" : "object",
+                      "properties" : {
+                        "enable-tenants" : {
+                          "type" : "boolean"
+                        },
+                        "create-models" : {
+                          "type" : "boolean"
+                        },
+                        "sso-configured" : {
+                          "type" : "boolean"
+                        },
+                        "configure-row-column-security" : {
+                          "type" : "boolean"
+                        },
+                        "create-test-embed" : {
+                          "type" : "boolean"
+                        },
+                        "data-permissions-and-enable-tenants" : {
+                          "type" : "boolean"
+                        },
+                        "embed-production" : {
+                          "type" : "boolean"
+                        },
+                        "create-dashboard" : {
+                          "type" : "boolean"
+                        },
+                        "setup-data-segregation-strategy" : {
+                          "type" : "boolean"
+                        },
+                        "create-tenants" : {
+                          "type" : "boolean"
+                        },
+                        "add-data" : {
+                          "type" : "boolean"
+                        },
+                        "sso-auth-manual-tested" : {
+                          "type" : "boolean"
+                        }
+                      },
+                      "required" : [ "add-data", "create-dashboard", "create-models", "configure-row-column-security", "create-test-embed", "embed-production", "sso-configured", "data-permissions-and-enable-tenants", "enable-tenants", "create-tenants", "setup-data-segregation-strategy", "sso-auth-manual-tested" ],
+                      "additionalProperties" : false
+                    },
+                    "data-isolation-strategy" : {
+                      "oneOf" : [ {
+                        "type" : "string",
+                        "enum" : [ "row-column-level-security", "connection-impersonation", "database-routing" ]
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "checklist", "data-isolation-strategy" ],
+                  "additionalProperties" : false
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -29200,6 +30700,198 @@
           }
         },
         "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/replacement/check-replace-source" : {
+      "post" : {
+        "operationId" : "post-api-ee-replacement-check-replace-source",
+        "summary" : "POST /api/ee/replacement/check-replace-source",
+        "description" : "Check whether a source entity can be replaced by a target entity. Returns compatibility\n  errors describing column mismatches, type mismatches, primary key mismatches, and foreign\n  key mismatches.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.check-replace-source-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "source_entity_id" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-id"
+                  },
+                  "source_entity_type" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-type"
+                  },
+                  "target_entity_id" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-id"
+                  },
+                  "target_entity_type" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-type"
+                  }
+                },
+                "required" : [ "source_entity_id", "source_entity_type", "target_entity_id", "target_entity_type" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/replacement" ]
+      }
+    },
+    "/api/ee/replacement/replace-source" : {
+      "post" : {
+        "operationId" : "post-api-ee-replacement-replace-source",
+        "summary" : "POST /api/ee/replacement/replace-source",
+        "description" : "Replace all usages of a source entity with a target entity asynchronously.\n   Returns 202 with a run_id for polling. Returns 409 if a replacement is already running.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : {
+                      "type" : "object",
+                      "properties" : {
+                        "run_id" : {
+                          "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.run-id"
+                        }
+                      },
+                      "required" : [ "run_id" ],
+                      "additionalProperties" : false
+                    },
+                    "status" : {
+                      "const" : 202
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "source_entity_id" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-id"
+                  },
+                  "source_entity_type" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-type"
+                  },
+                  "target_entity_id" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-id"
+                  },
+                  "target_entity_type" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.source-entity-type"
+                  }
+                },
+                "required" : [ "source_entity_id", "source_entity_type", "target_entity_id", "target_entity_type" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/replacement" ]
+      }
+    },
+    "/api/ee/replacement/runs/{id}" : {
+      "get" : {
+        "operationId" : "get-api-ee-replacement-runs-id",
+        "summary" : "GET /api/ee/replacement/runs/{id}",
+        "description" : "Get the status of a source replacement run.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.run-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.run"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/replacement" ]
+      }
+    },
+    "/api/ee/replacement/runs/{id}/cancel" : {
+      "post" : {
+        "operationId" : "post-api-ee-replacement-runs-id-cancel",
+        "summary" : "POST /api/ee/replacement/runs/{id}/cancel",
+        "description" : "Cancel a running source replacement.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.replacement.schema.run-id"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "success" : {
+                      "type" : "boolean"
+                    }
+                  },
+                  "required" : [ "success" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/replacement" ]
       }
     },
     "/api/ee/scim/api_key" : {
@@ -35531,6 +37223,517 @@
         "tags" : [ "/api/measure" ]
       }
     },
+    "/api/measure/{id}/dimension/{dimension-key}/remapping" : {
+      "get" : {
+        "operationId" : "get-api-measure-id-dimension-dimension-key-remapping",
+        "summary" : "GET /api/measure/{id}/dimension/{dimension-key}/remapping",
+        "description" : "Fetch remapped value for a specific dimension value.\n\n   Returns a pair [value, display-name] if remapping exists, or [value] otherwise.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "query",
+          "name" : "value",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.measures.api.RemappedValueResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/measure" ]
+      }
+    },
+    "/api/measure/{id}/dimension/{dimension-key}/search" : {
+      "get" : {
+        "operationId" : "get-api-measure-id-dimension-dimension-key-search",
+        "summary" : "GET /api/measure/{id}/dimension/{dimension-key}/search",
+        "description" : "Search for values of a dimension that contain the query string.\n\n   Returns field values matching the search query in the same format as the field values API.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/measure" ]
+      }
+    },
+    "/api/measure/{id}/dimension/{dimension-key}/values" : {
+      "get" : {
+        "operationId" : "get-api-measure-id-dimension-dimension-key-values",
+        "summary" : "GET /api/measure/{id}/dimension/{dimension-key}/values",
+        "description" : "Fetch values for a dimension of a measure.\n\n   Returns field values in the same format as the field values API:\n   - values: list of [value] or [value, display-name] tuples\n   - field_id: the underlying field ID\n   - has_more_values: boolean indicating if there are more values",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "has_more_values" : {
+                      "type" : "boolean"
+                    },
+                    "values" : {
+                      "type" : "array",
+                      "items" : {
+                        "anyOf" : [ {
+                          "type" : "array",
+                          "prefixItems" : [ { }, {
+                            "type" : "string"
+                          } ]
+                        }, {
+                          "type" : "array",
+                          "prefixItems" : [ { } ]
+                        } ]
+                      }
+                    }
+                  },
+                  "required" : [ "has_more_values", "values" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/measure" ]
+      }
+    },
+    "/api/metric" : {
+      "get" : {
+        "operationId" : "get-api-metric",
+        "summary" : "GET /api/metric",
+        "description" : "Get a list of metrics.\n\n  Returns metrics (Cards with type='metric') that the current user has read access to,\n  filtered by collection visibility permissions.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "$ref" : "#/components/schemas/metabase.metrics.api.Metric"
+                      }
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "offset" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "total" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    }
+                  },
+                  "required" : [ "total", "limit", "offset", "data" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/breakout-values" : {
+      "post" : {
+        "operationId" : "post-api-metric-breakout-values",
+        "summary" : "POST /api/metric/breakout-values",
+        "description" : "Fetch distinct breakout dimension values for a metric or measure definition.\n   Accepts the same definition format as POST /dataset.\n   Returns extracted values and column metadata for the breakout dimension.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.metrics.api.BreakoutValuesResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.metrics.api.DatasetRequest"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/dataset" : {
+      "post" : {
+        "operationId" : "post-api-metric-dataset",
+        "summary" : "POST /api/metric/dataset",
+        "description" : "Execute a metric or measure-based query and stream the results.\n\n   Request body requires a `definition` object containing:\n   - expression: A metric math expression tree (leaf reference or arithmetic)\n     Examples: [:metric {:lib/uuid \"a\"} 42], [:- {} [:metric {:lib/uuid \"a\"} 1] [:metric {:lib/uuid \"b\"} 2]]\n   - filters (optional): Per-instance filters keyed by :lib/uuid from the expression\n   - projections (optional): Typed projections keyed by source type and ID",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.metrics.api.DatasetResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.metrics.api.DatasetRequest"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}" : {
+      "get" : {
+        "operationId" : "get-api-metric-id",
+        "summary" : "GET /api/metric/{id}",
+        "description" : "Fetch a `Metric` with ID.\n\n  Returns the metric with hydrated dimensions and dimension mappings.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.metrics.api.MetricWithDimensions"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension/{dimension-key}/remapping" : {
+      "get" : {
+        "operationId" : "get-api-metric-id-dimension-dimension-key-remapping",
+        "summary" : "GET /api/metric/{id}/dimension/{dimension-key}/remapping",
+        "description" : "Fetch remapped value for a specific dimension value.\n\n   Returns a pair [value, display-name] if remapping exists, or [value] otherwise.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "query",
+          "name" : "value",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.metrics.api.RemappedValueResponse"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension/{dimension-key}/search" : {
+      "get" : {
+        "operationId" : "get-api-metric-id-dimension-dimension-key-search",
+        "summary" : "GET /api/metric/{id}/dimension/{dimension-key}/search",
+        "description" : "Search for values of a dimension that contain the query string.\n\n   Returns field values matching the search query in the same format as the field values API.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
+    "/api/metric/{id}/dimension/{dimension-key}/values" : {
+      "get" : {
+        "operationId" : "get-api-metric-id-dimension-dimension-key-values",
+        "summary" : "GET /api/metric/{id}/dimension/{dimension-key}/values",
+        "description" : "Fetch values for a dimension of a metric.\n\n   Returns field values in the same format as the field values API:\n   - values: list of [value] or [value, display-name] tuples\n   - field_id: the underlying field ID\n   - has_more_values: boolean indicating if there are more values",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "dimension-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "has_more_values" : {
+                      "type" : "boolean"
+                    },
+                    "values" : {
+                      "type" : "array",
+                      "items" : {
+                        "anyOf" : [ {
+                          "type" : "array",
+                          "prefixItems" : [ { }, {
+                            "type" : "string"
+                          } ]
+                        }, {
+                          "type" : "array",
+                          "prefixItems" : [ { } ]
+                        } ]
+                      }
+                    }
+                  },
+                  "required" : [ "has_more_values", "values" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/metric" ]
+      }
+    },
     "/api/model-index" : {
       "post" : {
         "operationId" : "post-api-model-index",
@@ -36313,7 +38516,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.FullyHydratedNotification"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
               }
             }
           }
@@ -36342,7 +38545,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.FullyHydratedNotification"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
               }
             }
           }
@@ -36493,7 +38696,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/metabase.notification.models.FullyHydratedNotification"
+                "$ref" : "#/components/schemas/metabase.notification.api.notification.NotificationApiInput"
               }
             }
           }
