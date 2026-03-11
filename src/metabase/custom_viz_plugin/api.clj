@@ -66,11 +66,12 @@
    Validates by fetching index.js from the repo."
   [_route-params
    _query-params
-   {:keys [repo_url display_name access_token pinned_version]} :- [:map
-                                                                   [:repo_url      ms/NonBlankString]
-                                                                   [:display_name  ms/NonBlankString]
-                                                                   [:access_token  {:optional true} [:maybe :string]]
-                                                                   [:pinned_version {:optional true} [:maybe :string]]]]
+   {:keys [repo_url display_name icon access_token pinned_version]} :- [:map
+                                                                        [:repo_url       ms/NonBlankString]
+                                                                        [:display_name   ms/NonBlankString]
+                                                                        [:icon           {:optional true} [:maybe :string]]
+                                                                        [:access_token   {:optional true} [:maybe :string]]
+                                                                        [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (let [identifier (git/parse-repo-name repo_url)
         plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
@@ -78,6 +79,7 @@
                                                           :access_token    access_token
                                                           :display_name    display_name
                                                           :identifier      identifier
+                                                          :icon            icon
                                                           :status          :pending
                                                           :pinned_version  pinned_version))]
     ;; fetch bundle synchronously — validates the repo is accessible
