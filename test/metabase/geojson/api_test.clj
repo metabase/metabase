@@ -79,21 +79,20 @@
                  (mt/user-http-request :crowberto :put 204 "setting/custom-geojson" {:value test-custom-geojson})
                  (mt/user-http-request :crowberto :get 200 "setting/custom-geojson"))))))
     (testing "passing in an invalid URL" ; see above validation test
-      (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath. "
+      (is (= (str "Invalid GeoJSON file location: must start with http:// or https://. "
                   "URLs referring to hosts that supply internal hosting metadata are prohibited.")
              (mt/user-http-request :crowberto :put 400 "setting/custom-geojson"
                                    {:value {:mordor (assoc (first (vals test-custom-geojson))
                                                            :url "ftp://example.com")}}))))
-    (testing "it accepts resources"
+    (testing "it rejects classpath resources"
       (let [resource-geojson {(first (keys test-custom-geojson))
                               (assoc (first (vals test-custom-geojson))
                                      :url "c3p0.properties")}]
-        (is (= (merge (@#'geojson.settings/builtin-geojson) resource-geojson)
-               (u/auto-retry 3
-                 (mt/with-temporary-setting-values [custom-geojson nil]
-                   (mt/user-http-request :crowberto :put 204 "setting/custom-geojson"
-                                         {:value resource-geojson})
-                   (mt/user-http-request :crowberto :get 200 "setting/custom-geojson")))))))))
+        (is (= (str "Invalid GeoJSON file location: must start with http:// or https://. "
+                    "URLs referring to hosts that supply internal hosting metadata are prohibited.")
+               (mt/with-temporary-setting-values [custom-geojson nil]
+                 (mt/user-http-request :crowberto :put 400 "setting/custom-geojson"
+                                       {:value resource-geojson}))))))))
 
 (deftest ^:parallel url-proxy-endpoint-test
   (with-geojson-mocks
@@ -107,9 +106,8 @@
                (mt/user-http-request :crowberto :get 400 "geojson"
                                      :url test-broken-geojson-url))))
       (testing "error is returned if URL is invalid"
-        (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
-                    "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
-                    "prohibited.")
+        (is (= (str "Invalid GeoJSON file location: must start with http:// or https://. "
+                    "URLs referring to hosts that supply internal hosting metadata are prohibited.")
                (mt/user-http-request :crowberto :get 400 "geojson" :url "file://tmp"))))
       (testing "error is returned if response is not JSON"
         (is (= "GeoJSON URL returned invalid content-type"
@@ -201,7 +199,6 @@
                                                   (.add "metabase.com"
                                                         (into-array [(InetAddress/getByAddress (byte-array [1 1 1 1]))
                                                                      (InetAddress/getByAddress (byte-array [169 254 169 254]))])))]
-      (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
-                  "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
-                  "prohibited.")
+      (is (= (str "Invalid GeoJSON file location: must start with http:// or https://. "
+                  "URLs referring to hosts that supply internal hosting metadata are prohibited.")
              (mt/user-http-request :crowberto :get 400 "geojson" :url test-geojson-url))))))
