@@ -273,6 +273,10 @@ export function dataStudioMetric(cardId: CardId) {
   return `${dataStudioLibrary()}/metrics/${cardId}`;
 }
 
+export function dataStudioMetricOverview(cardId: CardId) {
+  return `${dataStudioMetric(cardId)}/overview`;
+}
+
 export function dataStudioMetricQuery(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/query`;
 }

@@ -26,8 +26,12 @@ export function MetricTabs({ card }: MetricTabsProps) {
 function getTabs(card: Card, metadata: Metadata): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [
     {
-      label: t`Overview`,
+      label: t`About`,
       to: Urls.dataStudioMetric(card.id),
+    },
+    {
+      label: t`Overview`,
+      to: Urls.dataStudioMetricOverview(card.id),
     },
   ];
 

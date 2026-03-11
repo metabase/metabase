@@ -34,9 +34,7 @@ export function useMetricDimensionCards(metricId: MetricId) {
   const [cards, setCards] = useState<MetricsViewerTabState[] | null>(null);
 
   if (definition && cards === null) {
-    setCards(
-      computeDefaultTabs({ [sourceId]: definition }, [sourceId]),
-    );
+    setCards(computeDefaultTabs({ [sourceId]: definition }, [sourceId]));
   }
 
   const resolvedCards = useMemo(() => cards ?? [], [cards]);

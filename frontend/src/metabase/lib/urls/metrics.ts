@@ -1,5 +1,8 @@
+import slugg from "slugg";
+
 import type { CardOrSearchResult } from "./models";
 import { question } from "./questions";
+import { appendSlug } from "./utils";
 
 const METRICS_VIEWER_ROOT = "/explore";
 
@@ -16,11 +19,14 @@ export function exploreMetric(metricId: number): string {
 
 export function metric(card: CardOrSearchResult): string {
   const id = card.card_id ?? card.id;
-  const numericId = typeof id === "number" ? id : parseInt(String(id), 10);
-  if (!isNaN(numericId)) {
-    return exploreMetric(numericId);
+  if (id == null) {
+    return "/metric";
   }
-  return question(card);
+  let path = `/metric/${id}`;
+  if (card.name) {
+    path = appendSlug(path, slugg(card.name));
+  }
+  return path;
 }
 
 export function metricQuestionUrl(card: CardOrSearchResult): string {

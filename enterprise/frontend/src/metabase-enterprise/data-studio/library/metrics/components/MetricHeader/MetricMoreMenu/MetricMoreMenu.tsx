@@ -52,7 +52,7 @@ function MetricMenu({ card, onOpenModal }: MetricMenuProps) {
       key="view"
       leftSection={<Icon name="external" />}
       component={ForwardRefLink}
-      to={Urls.exploreMetric(card.id)}
+      to={Urls.metric(card)}
       target="_blank"
     >
       {c("A verb, not a noun").t`View`}
