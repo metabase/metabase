@@ -34,7 +34,7 @@
                                    :run_type           run-type
                                    :status             :pending
                                    :is_active          false
-                                   :progress           0.0})))
+                                   :progress           (when (= run-type :replace) 0.0)})))
 
 (defn start-run!
   "Mark the active run as started."
