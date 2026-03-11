@@ -258,8 +258,10 @@
                 e))))))
 
 (mu/defmethod parse-tag :table :- ReferencedTableQuery
-  [{:keys [table-id]} _params]
-  (params/map->ReferencedTableQuery {:table-id table-id}))
+  [{:keys [table-id source-filters]} _params]
+  (params/map->ReferencedTableQuery
+   (cond-> {:table-id table-id}
+     (seq source-filters) (assoc :source-filters source-filters))))
 
 (mu/defmethod parse-tag :snippet :- ReferencedQuerySnippet
   [{:keys [snippet-name snippet-id], :as tag} :- ::mbql.s/TemplateTag
