@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { Global } from "@emotion/react";
-import { type JSX, memo, useEffect, useId, useRef } from "react";
+import { type JSX, memo, useEffect, useId, useRef, useState } from "react";
 
 import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
@@ -40,6 +40,12 @@ export type ComponentProviderInternalProps = ComponentProviderProps & {
 let hasInitializedPlugins = false;
 
 function useInitPlugins() {
+  // If plugins are already initialized (e.g. EAJS, or a second SDK component
+  // mounting after the first), we are ready immediately.
+  const [pluginsReady, setPluginsReady] = useState(
+    () => isEmbeddingEajs() || hasInitializedPlugins,
+  );
+
   const tokenFeatures = useSelector(
     (state) => state.settings.values["token-features"],
   );
@@ -55,7 +61,10 @@ function useInitPlugins() {
     hasInitializedPlugins = true;
 
     initializePlugins();
+    setPluginsReady(true);
   }, [tokenFeatures]);
+
+  return pluginsReady;
 }
 
 export const ComponentProviderInternal = (
@@ -88,7 +97,7 @@ export const ComponentProviderInternal = (
     isLocalHost,
   });
 
-  useInitPlugins();
+  const pluginsReady = useInitPlugins();
 
   useSdkCustomLoader();
 
@@ -128,7 +137,7 @@ export const ComponentProviderInternal = (
           {({ isInstanceToRender }) => (
             <>
               <LocaleProvider locale={locale || instanceLocale}>
-                {children}
+                {pluginsReady && children}
 
                 {isInstanceToRender && <ContentTranslationsProvider />}
               </LocaleProvider>
