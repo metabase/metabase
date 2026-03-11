@@ -108,14 +108,6 @@
     (t2/select :model/ReplacementRun :is_active true {:order-by [[:id :desc]]})
     (t2/select :model/ReplacementRun {:order-by [[:id :desc]]})))
 
-(defn update-phase-progress!
-  "Update a specific phase progress column on the active run."
-  [run-id column progress-value]
-  (t2/update! :model/ReplacementRun
-              :id run-id
-              :is_active true
-              {column progress-value}))
-
 (defn update-target!
   "Update the target entity type and ID on a run (for convert runs where target is determined mid-execution)."
   [run-id target-type target-id]

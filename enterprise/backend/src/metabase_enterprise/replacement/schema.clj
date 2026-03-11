@@ -33,9 +33,6 @@
    [:target_entity_type ::source-entity-type]
    [:target_entity_id ::source-entity-id]
    [:progress [:maybe number?]]
-   [:transform_progress [:maybe number?]]
-   [:sync_progress [:maybe number?]]
-   [:replacement_progress [:maybe number?]]
    [:message [:maybe :string]]
    [:user_id [:maybe ::lib.schema.id/user]]
    [:start_time ms/TemporalInstant]
@@ -58,6 +55,18 @@
    [:source {:optional true} [:maybe ::column]]
    [:target {:optional true} [:maybe ::column]]
    [:errors {:optional true} [:sequential ::source-swap.schema/column-error]]])
+
+(mr/def ::transform-target
+  [:map
+   [:type   [:= "table"]]
+   [:name   ms/NonBlankString]
+   [:schema {:optional true} [:maybe ms/NonBlankString]]])
+
+(mr/def ::convert-card-to-transform-request
+  [:map
+   [:card_id          ::lib.schema.id/card]
+   [:transform_name   ms/NonBlankString]
+   [:transform_target ::transform-target]])
 
 (mr/def ::check-replace-source-response
   [:map

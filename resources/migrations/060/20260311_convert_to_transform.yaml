@@ -1,11 +1,11 @@
-## Add run_type and per-phase progress columns for convert-to-transform runs
+## Add run_type column for convert-to-transform runs
 
 databaseChangeLog:
   - logicalFilePath: migrations/060_update_migrations.yaml
   - changeSet:
       id: v60.2026-03-11T12:00:00
       author: bcm
-      comment: Add run_type and per-phase progress columns for convert-to-transform runs
+      comment: Add run_type column for convert-to-transform runs
       changes:
         - addColumn:
             tableName: source_replacement_run
@@ -13,25 +13,7 @@ databaseChangeLog:
               - column:
                   name: run_type
                   type: varchar(50)
-                  remarks: "Type of run: replace or convert_to_transform"
+                  remarks: "Type of run: replace or convert-to-transform"
                   defaultValue: "replace"
                   constraints:
                     nullable: false
-              - column:
-                  name: transform_progress
-                  type: float
-                  remarks: "Progress of transform creation+execution phase (0.0 to 1.0), null for replace runs"
-                  constraints:
-                    nullable: true
-              - column:
-                  name: sync_progress
-                  type: float
-                  remarks: "Progress of table sync phase (0.0 to 1.0), null for replace runs"
-                  constraints:
-                    nullable: true
-              - column:
-                  name: replacement_progress
-                  type: float
-                  remarks: "Progress of source replacement phase (0.0 to 1.0), null for replace runs"
-                  constraints:
-                    nullable: true
