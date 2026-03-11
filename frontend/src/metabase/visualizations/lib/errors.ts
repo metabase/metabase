@@ -1,19 +1,20 @@
 import { msgid, ngettext, t } from "ttag";
 
 export class MinColumnsError extends Error {
-  constructor(minColumns, actualColumns) {
+  constructor(minColumns: number) {
     super(
-      t`Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least ${actualColumns} ${ngettext(
+      t`Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least ${minColumns} ${ngettext(
         msgid`column`,
         `columns`,
-        actualColumns,
+        minColumns,
       )} of data.`,
     );
+    this.name = "MinColumnsError";
   }
 }
 
 export class MinRowsError extends Error {
-  constructor(minRows, actualRows) {
+  constructor(actualRows: number) {
     super(
       t`No dice. We have ${actualRows} data ${ngettext(
         msgid`point`,
@@ -21,6 +22,7 @@ export class MinRowsError extends Error {
         actualRows,
       )} to show and that's not enough for this visualization.`,
     );
+    this.name = "MinRowsError";
   }
 }
 
@@ -29,6 +31,7 @@ export class LatitudeLongitudeError extends Error {
     super(
       t`Bummer. We can't actually do a pin map for this data because we require both a latitude and longitude column.`,
     );
+    this.name = "LatitudeLongitudeError";
   }
 }
 
@@ -38,11 +41,16 @@ export class LatitudeLongitudeError extends Error {
  * to determine whether or not to display the empty visuzalization state.
  */
 export class ChartSettingsError extends Error {
-  initial;
-  buttonText;
+  initial?: { section: string };
+  buttonText: string;
 
-  constructor(message, initial, buttonText) {
+  constructor(
+    message?: string,
+    initial?: { section: string },
+    buttonText?: string,
+  ) {
     super(message || t`Please configure this chart in the chart settings`);
+    this.name = "ChartSettingsError";
     this.initial = initial;
     this.buttonText = buttonText || t`Edit Settings`;
   }
