@@ -1,35 +1,37 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
 import { useMemo, useState } from "react";
-import { Link, type Route } from "react-router";
+import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { EditableText } from "metabase/common/components/EditableText";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import {
-  PaneHeader,
-  PaneHeaderActions,
-  PaneHeaderInput,
-} from "metabase/data-studio/common/components/PaneHeader";
 import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
+import { getValidationResult } from "metabase/metrics/utils/validation";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Card,
+  FixedSizeIcon,
+  Group,
+  Stack,
+  Tooltip,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card as CardType } from "metabase-types/api";
 
-import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
-import { getValidationResult } from "metabase/metrics/utils/validation";
+import { CreateMetricModal } from "./CreateMetricModal";
+import { getInitialQuery, getQuery } from "./utils";
 
-import { NAME_MAX_LENGTH } from "../../constants";
-
-import { CreateMetricModal } from "metabase/metrics/pages/NewMetricPage/CreateMetricModal";
-import { getInitialQuery, getQuery } from "metabase/metrics/pages/NewMetricPage/utils";
+const NAME_MAX_LENGTH = 254;
 
 type NewMetricPageQuery = {
   collectionId?: string;
@@ -80,7 +82,7 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
   );
 
   const handleCreate = (card: CardType) => {
-    dispatch(push(Urls.dataStudioMetric(card.id)));
+    dispatch(push(Urls.metric(card)));
   };
 
   const handleChangeQuery = (query: Lib.Query) => {
@@ -88,39 +90,48 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
   };
 
   const handleCancel = () => {
-    dispatch(push(Urls.dataStudioLibrary()));
+    dispatch(push("/"));
   };
+
+  const canSave = validationResult.isValid;
 
   return (
     <>
-      <PageContainer pos="relative" data-testid="metric-query-editor">
-        <PaneHeader
-          title={
-            <PaneHeaderInput
-              initialValue={name}
-              placeholder={t`New metric`}
-              maxLength={NAME_MAX_LENGTH}
-              isOptional
-              onChange={setName}
-            />
-          }
-          icon="metric"
-          actions={
-            <PaneHeaderActions
-              errorMessage={validationResult.errorMessage}
-              isValid={validationResult.isValid}
-              isDirty
-              onSave={openModal}
-              onCancel={handleCancel}
-            />
-          }
-          breadcrumbs={
-            <DataStudioBreadcrumbs>
-              <Link to={Urls.dataStudioLibrary()}>{t`Library`}</Link>
-              {t`New Metric`}
-            </DataStudioBreadcrumbs>
-          }
-        />
+      <PageContainer pos="relative" data-testid="new-metric-page">
+        <Stack gap={0} pt="xs">
+          <Box mb="lg" mt="md" />
+          <Group gap="sm" justify="space-between" wrap="nowrap">
+            <Group align="center" gap="sm" wrap="nowrap">
+              <FixedSizeIcon name="metric" c="brand" size={20} />
+              <EditableText
+                initialValue={name}
+                placeholder={t`New metric`}
+                maxLength={NAME_MAX_LENGTH}
+                p={0}
+                fw="bold"
+                fz="h3"
+                lh="h3"
+                isOptional
+                onChange={setName}
+              />
+            </Group>
+            <Group wrap="nowrap">
+              <Button onClick={handleCancel}>{t`Cancel`}</Button>
+              <Tooltip
+                label={validationResult.errorMessage}
+                disabled={validationResult.errorMessage == null}
+              >
+                <Button
+                  variant="filled"
+                  disabled={!canSave}
+                  onClick={openModal}
+                >
+                  {t`Save`}
+                </Button>
+              </Tooltip>
+            </Group>
+          </Group>
+        </Stack>
         <Card withBorder p={0} flex={1}>
           <MetricQueryEditor
             query={query}
@@ -134,7 +145,7 @@ export function NewMetricPage({ location, route }: NewMetricPageProps) {
         <CreateMetricModal
           query={query}
           defaultValues={defaultValues}
-          triggeredFrom="data_studio"
+          triggeredFrom="main_app"
           onCreate={handleCreate}
           onClose={closeModal}
         />

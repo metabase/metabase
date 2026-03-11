@@ -38,6 +38,7 @@ import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
 import { MetricHomePage } from "metabase/metrics/pages/MetricHomePage";
+import { NewMetricPage } from "metabase/metrics/pages/NewMetricPage";
 import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
@@ -292,11 +293,13 @@ export const getRoutes = (store) => {
           {/* METRICS V2 */}
           <Route path="/metric">
             <IndexRoute component={QueryBuilder} />
+            <Route path="new" component={NewMetricPage} />
             <Route path="notebook" component={QueryBuilder} />
             <Route path="query" component={QueryBuilder} />
             <Route path=":slug" component={MetricHomePage}>
               <IndexRoute />
               <Route path="overview" />
+              <Route path="definition" />
             </Route>
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/query" component={QueryBuilder} />

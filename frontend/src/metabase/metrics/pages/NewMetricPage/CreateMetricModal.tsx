@@ -18,7 +18,7 @@ import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card, CreateCardRequest } from "metabase-types/api";
 
-import type { NewMetricValues } from "../types";
+import type { NewMetricValues } from "./types";
 
 const NEW_METRIC_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
@@ -29,6 +29,7 @@ const NEW_METRIC_SCHEMA = Yup.object({
 type CreateMetricModalProps = {
   query: Lib.Query;
   defaultValues: Partial<NewMetricValues>;
+  triggeredFrom: "data_studio" | "main_app";
   onCreate: (card: Card) => void;
   onClose: () => void;
 };
@@ -36,34 +37,10 @@ type CreateMetricModalProps = {
 export function CreateMetricModal({
   query,
   defaultValues,
+  triggeredFrom,
   onCreate,
   onClose,
 }: CreateMetricModalProps) {
-  return (
-    <Modal title={t`Save your metric`} opened padding="xl" onClose={onClose}>
-      <CreateMetricForm
-        query={query}
-        defaultValues={defaultValues}
-        onCreate={onCreate}
-        onClose={onClose}
-      />
-    </Modal>
-  );
-}
-
-type CreateMetricFormProps = {
-  query: Lib.Query;
-  defaultValues: Partial<NewMetricValues>;
-  onCreate: (card: Card) => void;
-  onClose: () => void;
-};
-
-function CreateMetricForm({
-  query,
-  defaultValues,
-  onCreate,
-  onClose,
-}: CreateMetricFormProps) {
   const [createCard] = useCreateCardMutation();
 
   const initialValues: NewMetricValues = useMemo(
@@ -75,50 +52,52 @@ function CreateMetricForm({
     try {
       const request = getCreateRequest(query, values);
       const card = await createCard(request).unwrap();
-      trackMetricCreated("success", "data_studio", card.id);
+      trackMetricCreated("success", triggeredFrom, card.id);
       onCreate(card);
     } catch (error) {
-      trackMetricCreated("failure", "data_studio", null);
+      trackMetricCreated("failure", triggeredFrom, null);
       throw error;
     }
   };
 
   return (
-    <FormProvider
-      initialValues={initialValues}
-      validationSchema={NEW_METRIC_SCHEMA}
-      onSubmit={handleSubmit}
-    >
-      <Form>
-        <Stack gap="lg">
-          <FormTextInput
-            name="name"
-            label={t`Name`}
-            placeholder={t`My Great Metric`}
-            data-autofocus
-          />
-          <FormTextarea
-            name="description"
-            label={t`Description`}
-            placeholder={t`This is optional, but helpful`}
-            minRows={4}
-            maxRows={10}
-          />
-          <FormCollectionPicker
-            name="collection_id"
-            title={t`Where do you want to save this?`}
-            entityType="metric"
-          />
-          <Group>
-            <Box flex={1}>
-              <FormErrorMessage />
-            </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
-            <FormSubmitButton label={t`Save`} variant="filled" />
-          </Group>
-        </Stack>
-      </Form>
-    </FormProvider>
+    <Modal title={t`Save your metric`} opened padding="xl" onClose={onClose}>
+      <FormProvider
+        initialValues={initialValues}
+        validationSchema={NEW_METRIC_SCHEMA}
+        onSubmit={handleSubmit}
+      >
+        <Form>
+          <Stack gap="lg">
+            <FormTextInput
+              name="name"
+              label={t`Name`}
+              placeholder={t`My Great Metric`}
+              data-autofocus
+            />
+            <FormTextarea
+              name="description"
+              label={t`Description`}
+              placeholder={t`This is optional, but helpful`}
+              minRows={4}
+              maxRows={10}
+            />
+            <FormCollectionPicker
+              name="collection_id"
+              title={t`Where do you want to save this?`}
+              entityType="metric"
+            />
+            <Group>
+              <Box flex={1}>
+                <FormErrorMessage />
+              </Box>
+              <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
+              <FormSubmitButton label={t`Save`} variant="filled" />
+            </Group>
+          </Stack>
+        </Form>
+      </FormProvider>
+    </Modal>
   );
 }
 

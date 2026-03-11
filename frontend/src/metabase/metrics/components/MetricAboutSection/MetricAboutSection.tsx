@@ -5,13 +5,13 @@ import { QuerySourceSection } from "metabase/metrics/components/QuerySourceSecti
 import { Flex, Stack } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
-import S from "./MetricHomePage.module.css";
+import S from "./MetricAboutSection.module.css";
 
-type MetricHomeAboutProps = {
+type MetricAboutSectionProps = {
   card: Card;
 };
 
-export function MetricHomeAbout({ card }: MetricHomeAboutProps) {
+export function MetricAboutSection({ card }: MetricAboutSectionProps) {
   return (
     <Flex className={S.root} flex={1}>
       <Flex direction="column" flex={1} mah={700}>

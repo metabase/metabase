@@ -1,11 +1,19 @@
+import { useCallback, useState } from "react";
+import type { Route } from "react-router";
+
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
 import * as Urls from "metabase/lib/urls";
-import { Center, Stack } from "metabase/ui";
+import { MetricAboutSection } from "metabase/metrics/components/MetricAboutSection";
+import {
+  type DefinitionState,
+  MetricDefinitionSection,
+} from "metabase/metrics/components/MetricDefinitionSection";
+import { MetricDimensionGrid } from "metabase/metrics/components/MetricDimensionGrid";
+import { Center } from "metabase/ui";
 
-import { MetricHomeAbout } from "./MetricHomeAbout";
 import { MetricHomeHeader } from "./MetricHomeHeader";
-import { MetricHomeOverview } from "./MetricHomeOverview";
 
 type MetricHomePageParams = {
   slug: string;
@@ -14,11 +22,31 @@ type MetricHomePageParams = {
 type MetricHomePageProps = {
   params: MetricHomePageParams;
   routes: Array<{ path?: string }>;
+  route: Route;
 };
 
-export function MetricHomePage({ params, routes }: MetricHomePageProps) {
+function getActiveTab(routes: Array<{ path?: string }>): string {
+  if (routes.some((route) => route.path === "overview")) {
+    return "overview";
+  }
+  if (routes.some((route) => route.path === "definition")) {
+    return "definition";
+  }
+  return "about";
+}
+
+export function MetricHomePage({ params, routes, route }: MetricHomePageProps) {
   const cardId = Urls.extractEntityId(params.slug);
   const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
+  const [definitionState, setDefinitionState] =
+    useState<DefinitionState | null>(null);
+
+  const handleDefinitionStateChange = useCallback(
+    (state: DefinitionState) => {
+      setDefinitionState(state);
+    },
+    [],
+  );
 
   if (isLoading || error != null || card == null) {
     return (
@@ -28,23 +56,25 @@ export function MetricHomePage({ params, routes }: MetricHomePageProps) {
     );
   }
 
-  const isOverviewTab = routes.some((route) => route.path === "overview");
+  const activeTab = getActiveTab(routes);
 
   return (
-    <Stack
-      bg="background-secondary"
-      h="100%"
-      pb="2rem"
-      px="3.5rem"
-      gap="xl"
-      style={{ overflow: "auto" }}
-    >
-      <MetricHomeHeader card={card} />
-      {isOverviewTab ? (
-        <MetricHomeOverview card={card} />
-      ) : (
-        <MetricHomeAbout card={card} />
+    <PageContainer data-testid="metric-home-page">
+      <MetricHomeHeader
+        card={card}
+        definitionState={activeTab === "definition" ? definitionState : null}
+      />
+      {activeTab === "overview" && card.id != null && (
+        <MetricDimensionGrid metricId={card.id} />
       )}
-    </Stack>
+      {activeTab === "definition" && (
+        <MetricDefinitionSection
+          card={card}
+          route={route}
+          onStateChange={handleDefinitionStateChange}
+        />
+      )}
+      {activeTab === "about" && <MetricAboutSection card={card} />}
+    </PageContainer>
   );
 }
