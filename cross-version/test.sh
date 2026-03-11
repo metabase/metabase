@@ -358,7 +358,7 @@ main() {
 
     # Try starting again
     log ""
-    log "Step 5: Starting TARGET version after migrate down..."
+    log "Step 5: Starting TARGET version ($TARGET_VERSION) after migrate down..."
     start_metabase "$target_image"
 
     if ! wait_for_health "$HEALTH_TIMEOUT"; then
