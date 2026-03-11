@@ -103,15 +103,18 @@ export const IncrementalTransformSettings = ({
       return t`Only process new and changed data`;
     };
 
+    const transformHasIssues =
+      isNativeWithoutTableTags ||
+      isMissingCheckpointOptions ||
+      isMissingNativeCheckpointOptions ||
+      isMultiTablePythonTransform;
+
     const switchContent = (
       <Switch
         disabled={
           readOnly ||
-          isMultiTablePythonTransform ||
           isRemoteSyncReadOnly ||
-          isNativeWithoutTableTags ||
-          isMissingCheckpointOptions ||
-          isMissingNativeCheckpointOptions
+          (!incremental && transformHasIssues)
         }
         checked={incremental}
         size="sm"
