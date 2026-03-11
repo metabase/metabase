@@ -150,6 +150,124 @@
             (is (= (* 2 single-val) (get double-rows dim-val))
                 (str "Value for " dim-val " should be doubled"))))))))
 
+(deftest arithmetic-nested-values-test
+  (testing "POST /api/metric/dataset nested (A + A) * 2 returns 4N per row"
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+      (let [metric-response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+            dim-uuid        (:id (first (:dimensions metric-response)))
+            projections     [{:type :metric :id (:id metric)
+                              :projection [[:dimension {} dim-uuid]]}]
+            baseline        (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                                  {:definition
+                                                   {:expression   [:metric {:lib/uuid "x"} (:id metric)]
+                                                    :projections  projections}})
+            response        (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                                  {:definition
+                                                   {:expression   [:* {}
+                                                                   [:+ {}
+                                                                    [:metric {:lib/uuid "a"} (:id metric)]
+                                                                    [:metric {:lib/uuid "b"} (:id metric)]]
+                                                                   2]
+                                                    :projections  projections}})]
+        (is (= "completed" (:status response)))
+        (is (pos? (:row_count response)))
+        (let [base-rows   (into {} (map (fn [[k v]] [k v]) (get-in baseline [:data :rows])))
+              nested-rows (into {} (map (fn [[k v]] [k v]) (get-in response [:data :rows])))]
+          (doseq [[dim-val base-val] base-rows]
+            (is (= (* 4 base-val) (get nested-rows dim-val))
+                (str "Value for " dim-val " should be 4N"))))))))
+
+(deftest arithmetic-associativity-test
+  (testing "POST /api/metric/dataset nesting position affects result"
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+      (let [metric-response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+            dim-uuid        (:id (first (:dimensions metric-response)))
+            projections     [{:type :metric :id (:id metric)
+                              :projection [[:dimension {} dim-uuid]]}]
+            ;; A / (A / 2) = N / (N/2) = 2.0
+            response-a      (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                                  {:definition
+                                                   {:expression   [:/ {}
+                                                                   [:metric {:lib/uuid "a"} (:id metric)]
+                                                                   [:/ {}
+                                                                    [:metric {:lib/uuid "b"} (:id metric)]
+                                                                    2]]
+                                                    :projections  projections}})
+            ;; (A / A) / 2 = (N/N) / 2 = 0.5
+            response-b      (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                                  {:definition
+                                                   {:expression   [:/ {}
+                                                                   [:/ {}
+                                                                    [:metric {:lib/uuid "a"} (:id metric)]
+                                                                    [:metric {:lib/uuid "b"} (:id metric)]]
+                                                                   2]
+                                                    :projections  projections}})]
+        (is (= "completed" (:status response-a)))
+        (is (= "completed" (:status response-b)))
+        (let [rows-a (into {} (map (fn [[k v]] [k (double v)]) (get-in response-a [:data :rows])))
+              rows-b (into {} (map (fn [[k v]] [k (double v)]) (get-in response-b [:data :rows])))]
+          (doseq [[dim-val val-a] rows-a]
+            (is (= 2.0 val-a) (str "A/(A/2) should be 2.0 for " dim-val))
+            (is (= 0.5 (get rows-b dim-val)) (str "(A/A)/2 should be 0.5 for " dim-val))))))))
+
+(deftest arithmetic-deeply-nested-test
+  (testing "POST /api/metric/dataset with 3-level nesting ((A + A) * A) / 2 = N²"
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+      (let [metric-response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+            dim-uuid        (:id (first (:dimensions metric-response)))
+            projections     [{:type :metric :id (:id metric)
+                              :projection [[:dimension {} dim-uuid]]}]
+            baseline        (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                                  {:definition
+                                                   {:expression   [:metric {:lib/uuid "x"} (:id metric)]
+                                                    :projections  projections}})
+            response        (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                                  {:definition
+                                                   {:expression   [:/ {}
+                                                                   [:* {}
+                                                                    [:+ {}
+                                                                     [:metric {:lib/uuid "a"} (:id metric)]
+                                                                     [:metric {:lib/uuid "b"} (:id metric)]]
+                                                                    [:metric {:lib/uuid "c"} (:id metric)]]
+                                                                   2]
+                                                    :projections  projections}})]
+        (is (= "completed" (:status response)))
+        (is (pos? (:row_count response)))
+        (let [base-rows (into {} (map (fn [[k v]] [k v]) (get-in baseline [:data :rows])))
+              deep-rows (into {} (map (fn [[k v]] [k v]) (get-in response [:data :rows])))]
+          (doseq [[dim-val base-val] base-rows]
+            (is (= (* base-val base-val) (get deep-rows dim-val))
+                (str "((A+A)*A)/2 should be N² for " dim-val))))))))
+
+(deftest arithmetic-nested-division-by-zero-test
+  (testing "POST /api/metric/dataset A / (A - A) returns 0 rows (zero guard)"
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+      (let [metric-response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+            dim-uuid        (:id (first (:dimensions metric-response)))
+            response        (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                                  {:definition
+                                                   {:expression   [:/ {}
+                                                                   [:metric {:lib/uuid "a"} (:id metric)]
+                                                                   [:- {}
+                                                                    [:metric {:lib/uuid "b"} (:id metric)]
+                                                                    [:metric {:lib/uuid "c"} (:id metric)]]]
+                                                    :projections  [{:type :metric :id (:id metric)
+                                                                    :projection [[:dimension {} dim-uuid]]}]}})]
+        (is (= "completed" (:status response)))
+        (is (zero? (:row_count response)))))))
+
 (deftest arithmetic-mixed-metric-measure-test
   (testing "POST /api/metric/dataset with metric + measure arithmetic"
     (let [mp             (mt/metadata-provider)

@@ -17,6 +17,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (mr/def ::Metric
   "Schema for a Metric in list responses (without hydrated dimensions)."
   [:map

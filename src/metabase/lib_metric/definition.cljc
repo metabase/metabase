@@ -5,7 +5,8 @@
    [metabase.lib-metric.ast.plan :as ast.plan]
    [metabase.lib-metric.ast.schema :as ast.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]))
 
 (comment ast.schema/keep-me)
 
@@ -105,15 +106,15 @@
   [definition]
   (let [leaves      (expression-leaves (:expression definition))
         projections (or (:projections definition) [])]
-    (every? (fn [leaf]
-              (let [leaf-type (expression-leaf-type leaf)
-                    leaf-id   (expression-leaf-id leaf)]
-                (some (fn [tp]
-                        (and (= leaf-type (:type tp))
-                             (= leaf-id (:id tp))
-                             (seq (:projection tp))))
-                      projections)))
-            leaves)))
+    (perf/every? (fn [leaf]
+                   (let [leaf-type (expression-leaf-type leaf)
+                         leaf-id   (expression-leaf-id leaf)]
+                     (perf/some (fn [tp]
+                                  (and (= leaf-type (:type tp))
+                                       (= leaf-id (:id tp))
+                                       (seq (:projection tp))))
+                                projections)))
+                 leaves)))
 
 (defn unprojected-sources
   "Returns a vector of expression leaves that are missing projections."
@@ -123,11 +124,11 @@
         projected?  (fn [leaf]
                       (let [leaf-type (expression-leaf-type leaf)
                             leaf-id   (expression-leaf-id leaf)]
-                        (some (fn [tp]
-                                (and (= leaf-type (:type tp))
-                                     (= leaf-id (:id tp))
-                                     (seq (:projection tp))))
-                              projections)))]
+                        (perf/some (fn [tp]
+                                     (and (= leaf-type (:type tp))
+                                          (= leaf-id (:id tp))
+                                          (seq (:projection tp))))
+                                   projections)))]
     (into [] (remove projected?) leaves)))
 
 (defn filters

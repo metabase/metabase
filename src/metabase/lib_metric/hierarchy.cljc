@@ -2,7 +2,7 @@
   "Shared keyword hierarchy for lib-metric dispatch.
    Provides a hierarchy that can be used for multimethod dispatch and
    operator categorization throughout the lib-metric system."
-  (:refer-clojure :exclude [derive isa?]))
+  (:refer-clojure :exclude [derive isa? descendants]))
 
 (defonce ^{:doc "Hierarchy for lib-metric dispatch."} hierarchy
   (atom (make-hierarchy)))

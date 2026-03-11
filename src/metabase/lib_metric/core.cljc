@@ -11,11 +11,11 @@
    or column aliases. Dimension refs `[:dimension {} \"uuid\"]` are resolved to
    concrete field refs when the definition is converted to an executable MBQL query."
   (:require
-   #?@(:clj [[metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
+   #?@(:clj [[metabase.lib-metric.ast.plan :as ast.plan]
+             [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
              [metabase.lib-metric.metadata.jvm :as lib-metric.metadata.jvm]
              [potemkin :as p]]
        :cljs [[metabase.lib-metric.metadata.js :as lib-metric.metadata.js]])
-   [metabase.lib-metric.ast.plan :as ast.plan]
    [metabase.lib-metric.clause :as lib-metric.clause]
    [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.dimension :as lib-metric.dimension]

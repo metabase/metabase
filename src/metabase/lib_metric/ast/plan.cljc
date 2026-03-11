@@ -6,7 +6,8 @@
    [clojure.set :as set]
    [metabase.lib-metric.ast.compile :as ast.compile]
    [metabase.lib-metric.ast.walk :as ast.walk]
-   [metabase.lib-metric.operators :as operators]))
+   [metabase.lib-metric.operators :as operators]
+   [metabase.util.performance :as perf]))
 
 ;;; -------------------- Plan Data Structures --------------------
 ;;;
@@ -30,7 +31,7 @@
   [dim-ref sub-ast]
   (let [dim-id      (:dimension-id dim-ref)
         ;; Look up the dimension node to get effective-type
-        dim-node    (some #(when (= dim-id (:id %)) %) (:dimensions sub-ast))
+        dim-node    (perf/some #(when (= dim-id (:id %)) %) (:dimensions sub-ast))
         ;; Get bucketing/binning from the ref options
         ref-options (:options dim-ref)]
     {:effective-type (:effective-type dim-node)
@@ -43,14 +44,14 @@
    and :signatures (a vector of dimension signatures in group-by order)."
   [expression-node]
   (let [leaves (ast.walk/collect #(= :expression/leaf (:node/type %)) expression-node)]
-    (mapv (fn [leaf]
-            (let [sub-ast  (:ast leaf)
-                  group-by (:group-by sub-ast)]
-              {:uuid           (:uuid leaf)
-               :has-group-by   (boolean (seq group-by))
-               :breakout-count (count group-by)
-               :signatures     (mapv #(dimension-signature % sub-ast) group-by)}))
-          leaves)))
+    (perf/mapv (fn [leaf]
+                 (let [sub-ast  (:ast leaf)
+                       group-by (:group-by sub-ast)]
+                   {:uuid           (:uuid leaf)
+                    :has-group-by   (boolean (seq group-by))
+                    :breakout-count (count group-by)
+                    :signatures     (perf/mapv #(dimension-signature % sub-ast) group-by)}))
+               leaves)))
 
 (defn- signatures-compatible?
   "Check if two dimension signatures are compatible for joining.
@@ -71,11 +72,11 @@
   "Check that all leaves' signature vectors are pairwise compatible at each position."
   [sig-vecs]
   (let [positions (count (first sig-vecs))]
-    (every? (fn [pos]
-              (let [sigs-at-pos (map #(nth % pos) sig-vecs)]
-                (every? #(signatures-compatible? (first sigs-at-pos) %)
-                        (rest sigs-at-pos))))
-            (range positions))))
+    (perf/every? (fn [pos]
+                   (let [sigs-at-pos (map #(nth % pos) sig-vecs)]
+                     (perf/every? #(signatures-compatible? (first sigs-at-pos) %)
+                                  (rest sigs-at-pos))))
+                 (range positions))))
 
 (defn validate-arithmetic-ast!
   "Validate that an arithmetic expression AST has consistent group-by dimensions.
@@ -85,7 +86,7 @@
    Throws ex-info with :status-code 400 on validation failure."
   [expression-node]
   (let [leaf-infos (collect-leaf-group-bys expression-node)]
-    (when (some #(not (:has-group-by %)) leaf-infos)
+    (when (perf/some #(not (:has-group-by %)) leaf-infos)
       (throw (ex-info "Arithmetic expressions require projections (group-by) on all leaves"
                       {:status-code 400
                        :leaves-missing-projections
@@ -167,12 +168,12 @@
 
     :expression/arithmetic
     (let [{:keys [operator children]} expression-node
-          child-vals (mapv #(evaluate-expression % uuid->value) children)]
-      (when (every? some? child-vals)
+          child-vals (perf/mapv #(evaluate-expression % uuid->value) children)]
+      (when (perf/every? some? child-vals)
         (let [f              (operators/eval-fn operator)
               [init & rest-vals] child-vals]
           (when-not (and (operators/zero-guard? operator)
-                         (some zero? rest-vals))
+                         (perf/some zero? rest-vals))
             (reduce f init rest-vals)))))))
 
 ;;; -------------------- Result Joining --------------------
@@ -181,7 +182,7 @@
   "Index QP result rows as {dim-value-tuple -> agg-value}.
    The first `breakout-count` columns are dimension values, the rest is the aggregate."
   [result breakout-count]
-  (let [rows (get-in result [:data :rows])]
+  (let [rows (perf/get-in result [:data :rows])]
     (into {}
           (map (fn [row]
                  [(vec (take breakout-count row))
@@ -217,7 +218,7 @@
                    (sort all-dim-tuples))
         ;; Build column metadata from the first leaf's result
         first-result     (val (first leaf-results))
-        source-cols      (get-in first-result [:data :cols])
+        source-cols      (perf/get-in first-result [:data :cols])
         breakout-cols    (vec (take breakout-count source-cols))
         ;; Use the last col (aggregate) with a generic name for the computed result
         agg-col          (-> (last source-cols)
