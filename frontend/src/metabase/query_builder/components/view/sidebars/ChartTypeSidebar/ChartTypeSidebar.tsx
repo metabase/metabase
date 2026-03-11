@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
@@ -18,9 +18,16 @@ import {
   getSensibleVisualizations,
   useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
+import {
+  loadCustomVizPlugin,
+  useCustomVizPlugins,
+} from "metabase/visualizations/custom-viz-plugins";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { CardDisplayType } from "metabase-types/api";
+import type {
+  CardDisplayType,
+  CustomVizPluginRuntime,
+} from "metabase-types/api";
 
 export type ChartTypeSidebarProps = Pick<
   UseQuestionVisualizationStateProps,
@@ -33,6 +40,7 @@ export const ChartTypeSidebar = ({
   result,
 }: ChartTypeSidebarProps) => {
   const dispatch = useDispatch();
+  const customVizPlugins = useCustomVizPlugins();
 
   const onUpdateQuestion = (newQuestion: Question) => {
     if (question) {
@@ -60,6 +68,13 @@ export const ChartTypeSidebar = ({
     updateQuestionVisualization(display);
   };
 
+  const handleSelectCustomVizPlugin = useCallback(
+    (plugin: CustomVizPluginRuntime) => {
+      void loadCustomVizPlugin(plugin);
+    },
+    [],
+  );
+
   const onOpenVizSettings = () => {
     dispatch(
       onOpenChartSettings({
@@ -80,6 +95,8 @@ export const ChartTypeSidebar = ({
         onSelectVisualization={handleSelectVisualization}
         sensibleVisualizations={sensibleVisualizations}
         nonSensibleVisualizations={nonSensibleVisualizations}
+        customVizPlugins={customVizPlugins}
+        onSelectCustomVizPlugin={handleSelectCustomVizPlugin}
         onOpenSettings={onOpenVizSettings}
         gap={0}
         w="100%"
