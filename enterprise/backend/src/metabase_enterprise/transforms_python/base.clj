@@ -232,6 +232,7 @@
                                                                :source              (assoc source :source-tables resolved-source-tables)
                                                                :cancel-chan          cancel-chan
                                                                :limit               (:limit source)
+                                                               :transform-id        (:id transform)
                                                                :source-range-params source-range-params})
             _               (start-cancellation-process! server-url run-id cancel-chan)
             {:keys [status body] :as response}
