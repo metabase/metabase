@@ -50,7 +50,8 @@ const completeTableSearchResult = createMockSearchResult({
 });
 
 const defaultProps: DatabasePaneProps = {
-  database,
+  type: "database",
+  id: database.id,
   onBack: jest.fn(),
   onClose: jest.fn(),
   onItemClick: jest.fn(),
@@ -161,7 +162,7 @@ describe("DatabasePane", () => {
         initial_sync_status: "complete",
       });
 
-      setup({ database: singleSchemaDatabase });
+      setup({ id: singleSchemaDatabase.id });
       setupDatabaseEndpoints(singleSchemaDb);
       setupSearchEndpoints([table1]);
 
@@ -211,7 +212,7 @@ describe("DatabasePane", () => {
         initial_sync_status: "complete",
       });
 
-      setup({ database: multiSchemaDatabase });
+      setup({ id: multiSchemaDatabase.id });
       setupDatabaseEndpoints(multiSchemaDb);
       setupSearchEndpoints([table1, table2]);
 
@@ -232,7 +233,7 @@ describe("DatabasePane", () => {
         emptySchemasMetadata.database(emptySchemasDb.id),
       );
 
-      setup({ database: emptySchemasDatabase });
+      setup({ id: emptySchemasDatabase.id });
       setupDatabaseEndpoints(emptySchemasDb);
       setupSearchEndpoints([]);
 
@@ -314,7 +315,7 @@ describe("DatabasePane", () => {
         initial_sync_status: "complete",
       });
 
-      setup({ database: multiSchemaDatabase });
+      setup({ id: multiSchemaDatabase.id });
       setupDatabaseEndpoints(multiSchemaDb);
       setupSearchEndpoints([table1, table2]);
 
