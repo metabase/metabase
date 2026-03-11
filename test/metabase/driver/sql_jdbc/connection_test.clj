@@ -997,7 +997,7 @@
 
 (defmethod has-default-port? :default [_driver] true)
 
-(doseq [driver [:h2 :athena :databricks :snowflake :sqlserver]]
+(doseq [driver [:h2 :athena :databricks :snowflake :sqlite :sqlserver]]
   (defmethod has-default-port? driver [_driver] false))
 
 (deftest ^:parallel default-ssh-tunnel-target-port-test
