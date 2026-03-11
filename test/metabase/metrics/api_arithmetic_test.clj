@@ -242,8 +242,8 @@
                                                     :projections  projections}})]
         (is (= "completed" (:status response)))
         (is (pos? (:row_count response)))
-        (let [base-rows (into {} (map (fn [[k v]] [k v]) (get-in baseline [:data :rows])))
-              deep-rows (into {} (map (fn [[k v]] [k v]) (get-in response [:data :rows])))]
+        (let [base-rows (into {} (map (fn [[k v]] [k (double v)]) (get-in baseline [:data :rows])))
+              deep-rows (into {} (map (fn [[k v]] [k (double v)]) (get-in response [:data :rows])))]
           (doseq [[dim-val base-val] base-rows]
             (is (= (* base-val base-val) (get deep-rows dim-val))
                 (str "((A+A)*A)/2 should be N² for " dim-val))))))))
