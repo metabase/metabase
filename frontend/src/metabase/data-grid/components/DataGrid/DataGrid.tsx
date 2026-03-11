@@ -203,14 +203,6 @@ export const DataGrid = function DataGrid<TData>({
     />
   );
 
-  const centralSectionStyle: React.CSSProperties &
-    Record<`--${string}`, string> = {
-    width: `${columnVirtualizer.getTotalSize()}px`,
-    backgroundColor,
-    "--virtual-padding-left": `${virtualPaddingLeft}px`,
-    "--virtual-padding-right": `${virtualPaddingRight}px`,
-  };
-
   const renderGridPanels = ({
     pinnedContent,
     centralContent,
@@ -237,7 +229,15 @@ export const DataGrid = function DataGrid<TData>({
       )}
       <div
         className={S.centralSection}
-        style={{ ...centralSectionStyle, height }}
+        style={{
+          height,
+          width: `${columnVirtualizer.getTotalSize()}px`,
+          backgroundColor,
+          ...({
+            "--virtual-padding-left": `${virtualPaddingLeft}px`,
+            "--virtual-padding-right": `${virtualPaddingRight}px`,
+          } as React.CSSProperties),
+        }}
       >
         {centralContent}
       </div>
