@@ -6337,6 +6337,141 @@
         "required" : [ "type", "multiplier", "min_duration_ms" ],
         "additionalProperties" : false
       },
+      "metabase.cache.api.cache-config-item" : {
+        "type" : "object",
+        "properties" : {
+          "collection" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : {
+                "authority_level" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "id" : {
+                  "description" : "value must be an integer greater than zero.",
+                  "type" : "integer",
+                  "minimum" : 1
+                },
+                "name" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
+                "type" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                }
+              },
+              "required" : [ "id", "name" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "model" : {
+            "type" : "string",
+            "enum" : [ "root", "database", "dashboard", "question" ]
+          },
+          "model_id" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "strategy" : {
+            "type" : "object",
+            "properties" : {
+              "type" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "type" ]
+          }
+        },
+        "required" : [ "model", "model_id", "strategy" ]
+      },
+      "metabase.cache.api.cache-config-list-response" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.cache.api.cache-config-item"
+            }
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "data" ]
+      },
+      "metabase.cache.api.cache-config-store-response" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "id" ]
+      },
+      "metabase.cache.api.cache-invalidate-response" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "object",
+            "properties" : {
+              "count" : {
+                "type" : "integer"
+              },
+              "message" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "count", "message" ]
+          },
+          "status" : {
+            "type" : "integer",
+            "enum" : [ 200, 404 ]
+          }
+        },
+        "required" : [ "status", "body" ]
+      },
       "metabase.cache.api.cache-strategy" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.ee"
@@ -17059,7 +17194,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.cache.api.cache-config-list-response"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -17077,7 +17219,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.cache.api.cache-config-store-response"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -17119,7 +17268,14 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -17226,7 +17382,14 @@
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.cache.api.cache-invalidate-response"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
