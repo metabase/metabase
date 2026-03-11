@@ -85,10 +85,11 @@ jobs:
 
       - name: Install bbin and clj-nrepl-eval
         run: |
-          # Ensure bb is available via mage
-          git/metabase/bin/mage --help > /dev/null 2>&1 || true
-          BB_PATH="$(cd git/metabase && pwd)/bin/bb"
-          ln -sf "$BB_PATH" /usr/local/bin/bb
+          # Install babashka
+          curl -sLO https://raw.githubusercontent.com/babashka/babashka/master/install
+          chmod +x install
+          sudo ./install
+          rm install
 
           # Install bbin
           mkdir -p ~/.bbin/bin
