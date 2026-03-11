@@ -1,12 +1,11 @@
 (ns metabase-enterprise.dependencies.erd
-  "Entity Relationship Diagram (ERD) logic: resolving focal tables,
-   BFS subgraph expansion, and response building."
+  "Entity Relationship Diagram (ERD) logic: given a set of focal tables,
+   fetch their immediate FK neighbors and build a nodes+edges response."
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -49,56 +48,9 @@
 (mr/def ::erd-request
   [:map
    [:database-id ms/PositiveInt]
-   [:table-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-   [:schema {:optional true} [:maybe :string]]
-   [:hops {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]])
+   [:table-ids (ms/QueryVectorOf ms/PositiveInt)]])
 
-;;; ---------------------------------------- Phase 1: Resolve focal tables ----------------------------------------
-
-(def ^:private auto-focal-table-count
-  "Number of tables to auto-select as focal when none are specified."
-  3)
-
-(def ^:private ^{:doc "Columns needed for mi/can-read? permission checks on Table."}
-  table-perm-columns
-  [:id :db_id :is_published :collection_id])
-
-(defn- auto-discover-focal-table-ids
-  "Find the top N tables by FK relationship count using a SQL aggregate query.
-   Only considers readable tables. Returns a set of table IDs."
-  [database-id schema]
-  (let [readable-ids (->> (t2/select :model/Table
-                                     {:select table-perm-columns
-                                      :where  (cond-> [:and
-                                                       [:= :db_id database-id]
-                                                       [:= :active true]]
-                                                schema (conj [:= :schema schema]))})
-                          (filter mi/can-read?)
-                          (map :id)
-                          set)]
-    (when (empty? readable-ids)
-      (throw (ex-info (tru "No tables found in the specified database/schema")
-                      {:status-code 404
-                       :database-id database-id
-                       :schema      schema})))
-    (let [fk-counts (t2/query {:select   [[:f.table_id :tid]
-                                          [:%count.* :cnt]]
-                               :from     [[:metabase_field :f]]
-                               :where    [:and
-                                          [:in :f.table_id readable-ids]
-                                          [:not= :f.fk_target_field_id nil]
-                                          [:= :f.active true]
-                                          [:not= :f.visibility_type "retired"]]
-                               :group-by [:f.table_id]
-                               :order-by [[:cnt :desc]]
-                               :limit    auto-focal-table-count})
-          top-ids   (set (map :tid fk-counts))]
-      ;; If no tables have FKs, just pick the first N readable IDs
-      (if (empty? top-ids)
-        (set (take auto-focal-table-count readable-ids))
-        top-ids))))
-
-;;; ---------------------------------------- Phase 2: Lazy BFS fetch ----------------------------------------
+;;; ---------------------------------------- Fetching tables and fields ----------------------------------------
 
 (defn- fetch-readable-tables
   "Fetch tables by IDs, filtering to only those the user can read.
@@ -144,33 +96,32 @@
         (set/difference table-ids known-table-ids)))))
 
 (defn- fetch-erd-subgraph
-  "Iteratively expand from focal tables by following FK relationships for n hops.
-   Each hop fetches only newly-discovered tables and their fields.
+  "Fetch focal tables and their immediate (1-hop) FK neighbors.
    Returns {:tables-by-id, :fields-by-table, :field-by-id, :all-table-ids}."
-  [focal-table-ids hops]
-  (loop [tables-by-id    {}
-         fields-by-table {}
-         field-by-id     {}
-         frontier        focal-table-ids
-         remaining-hops  (inc hops)] ;; inc because hop 0 = loading the focal tables themselves
-    (if (or (zero? remaining-hops) (empty? frontier))
-      {:tables-by-id   tables-by-id
-       :fields-by-table fields-by-table
-       :field-by-id    field-by-id
-       :all-table-ids  (set (keys tables-by-id))}
-      (let [{new-tables-by-id :tables-by-id
-             new-table-ids    :table-ids}  (or (fetch-readable-tables frontier)
-                                               {:tables-by-id {} :table-ids #{}})
-            new-fields                     (fetch-fields-for-tables new-table-ids)
-            new-fields-by-table            (group-by :table_id new-fields)
-            new-field-by-id                (into {} (map (fn [f] [(:id f) f])) new-fields)
-            ;; Merge into accumulated state
-            tables-by-id'                  (merge tables-by-id new-tables-by-id)
-            fields-by-table'               (merge fields-by-table new-fields-by-table)
-            field-by-id'                   (merge field-by-id new-field-by-id)
-            ;; Discover next frontier: tables reachable via FKs not yet loaded
-            next-frontier                  (discover-fk-targets new-fields (set (keys tables-by-id')) field-by-id')]
-        (recur tables-by-id' fields-by-table' field-by-id' next-frontier (dec remaining-hops))))))
+  [focal-table-ids]
+  (let [;; Load focal tables
+        {focal-tables :tables-by-id
+         focal-ids    :table-ids}  (or (fetch-readable-tables focal-table-ids)
+                                       {:tables-by-id {} :table-ids #{}})
+        focal-fields               (fetch-fields-for-tables focal-ids)
+        focal-fields-by-table      (group-by :table_id focal-fields)
+        focal-field-by-id          (into {} (map (fn [f] [(:id f) f])) focal-fields)
+        ;; Discover 1-hop FK neighbors
+        neighbor-ids               (discover-fk-targets focal-fields focal-ids focal-field-by-id)
+        {nbr-tables :tables-by-id
+         nbr-ids    :table-ids}    (or (fetch-readable-tables neighbor-ids)
+                                       {:tables-by-id {} :table-ids #{}})
+        nbr-fields                 (fetch-fields-for-tables nbr-ids)
+        nbr-fields-by-table        (group-by :table_id nbr-fields)
+        nbr-field-by-id            (into {} (map (fn [f] [(:id f) f])) nbr-fields)
+        ;; Merge
+        tables-by-id               (merge focal-tables nbr-tables)
+        fields-by-table            (merge focal-fields-by-table nbr-fields-by-table)
+        field-by-id                (merge focal-field-by-id nbr-field-by-id)]
+    {:tables-by-id   tables-by-id
+     :fields-by-table fields-by-table
+     :field-by-id    field-by-id
+     :all-table-ids  (set (keys tables-by-id))}))
 
 ;;; ---------------------------------------- Phase 3: Build response ----------------------------------------
 
@@ -237,19 +188,12 @@
 
 ;;; ---------------------------------------- Main entry point ----------------------------------------
 
-(def ^:private max-hops 5)
-(def ^:private default-hops 2)
-
 (defn erd
-  "Return an ERD for the given database, optionally scoped to specific tables/schema.
-   When `table-ids` is provided, those tables are the focal points.
-   When only `database-id` is provided, auto-selects the most connected tables.
-   The `hops` parameter controls how many FK hops to traverse (default: 2, max: 5)."
-  [{:keys [database-id table-ids schema hops]}]
+  "Return an ERD for the given focal tables and their immediate FK connections.
+   `table-ids` is required — each table becomes a focal point, and all their
+   1-hop FK neighbors are included in the response."
+  [{:keys [database-id table-ids]}]
   (api/read-check :model/Database database-id)
-  (let [hops            (min (or hops default-hops) max-hops)
-        focal-table-ids (if (seq table-ids)
-                          (set table-ids)
-                          (auto-discover-focal-table-ids database-id schema))
-        subgraph        (fetch-erd-subgraph focal-table-ids hops)]
+  (let [focal-table-ids (set table-ids)
+        subgraph        (fetch-erd-subgraph focal-table-ids)]
     (build-erd-response subgraph focal-table-ids)))
