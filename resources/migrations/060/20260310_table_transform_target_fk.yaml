@@ -24,7 +24,7 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-03-10T00:00:01
       author: christruter
-      comment: Add FK from transform.target_table_id to metabase_table with RESTRICT
+      comment: Add FK from transform.target_table_id to metabase_table with SET NULL
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -37,6 +37,7 @@ databaseChangeLog:
             constraintName: fk_transform_target_table_id
             referencedTableName: metabase_table
             referencedColumnNames: id
+            onDelete: SET NULL
 
   - changeSet:
       id: v60.2026-03-10T00:00:02
@@ -50,7 +51,7 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-03-10T00:00:03
       author: christruter
-      comment: Add FK from workspace_output.global_table_id to metabase_table with RESTRICT
+      comment: Add FK from workspace_output.global_table_id to metabase_table with SET NULL
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -63,11 +64,12 @@ databaseChangeLog:
             constraintName: fk_workspace_output_global_table_id
             referencedTableName: metabase_table
             referencedColumnNames: id
+            onDelete: SET NULL
 
   - changeSet:
       id: v60.2026-03-10T00:00:04
       author: christruter
-      comment: Add FK from workspace_output.isolated_table_id to metabase_table with RESTRICT
+      comment: Add FK from workspace_output.isolated_table_id to metabase_table with SET NULL
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -80,3 +82,4 @@ databaseChangeLog:
             constraintName: fk_workspace_output_isolated_table_id
             referencedTableName: metabase_table
             referencedColumnNames: id
+            onDelete: SET NULL
