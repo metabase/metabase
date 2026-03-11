@@ -15,6 +15,7 @@ import {
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Table } from "metabase-types/api";
+import { isConcreteTableId } from "metabase-types/api/table";
 
 import { getSourceFieldOptions } from "./KeysetColumnSelect";
 
@@ -84,7 +85,7 @@ export function NativeQueryTableTagFieldSelect({
       const tableTags = Object.values(templateTags).filter(
         (tag) => tag.type === "table" && tag["table-id"] != null,
       );
-      return tableTags.map((tag) => tag["table-id"]!);
+      return tableTags.map((tag) => tag["table-id"]).filter(isConcreteTableId);
     } catch {
       return [];
     }
