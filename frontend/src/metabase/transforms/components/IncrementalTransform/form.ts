@@ -1,5 +1,6 @@
 import * as Yup from "yup";
 
+import * as Errors from "metabase/lib/errors";
 import type {
   Transform,
   TransformSource,
@@ -17,7 +18,15 @@ export type IncrementalSettingsFormValues = {
 export const VALIDATION_SCHEMA = Yup.object({
   incremental: Yup.boolean().required(),
   sourceStrategy: Yup.mixed<"checkpoint">().oneOf(["checkpoint"]).required(),
-  checkpointFilterFieldId: Yup.string().nullable().defined(),
+  checkpointFilterFieldId: Yup.string()
+    .nullable()
+    .defined()
+    .when(["incremental", "sourceStrategy"], {
+      is: (incremental: boolean, sourceStrategy: "checkpoint") =>
+        incremental && sourceStrategy === "checkpoint",
+      then: (schema) => schema.required(Errors.required),
+      otherwise: (schema) => schema.nullable().defined(),
+    }),
   targetStrategy: Yup.mixed<"append">().oneOf(["append"]).required(),
 });
 
