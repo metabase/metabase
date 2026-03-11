@@ -27,7 +27,10 @@ runs:
           echo "::warning::Clojure install attempt $attempt failed, retrying in 10s..."
           sleep 10
         done
-        clojure --version
+        if ! clojure --version; then
+          echo "::error::Clojure CLI installation failed after 3 attempts"
+          exit 1
+        fi
 
     - name: Get M2 cache key
       uses: ./.github/actions/get-cache-keys
