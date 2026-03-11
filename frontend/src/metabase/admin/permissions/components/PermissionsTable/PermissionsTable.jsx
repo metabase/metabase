@@ -32,6 +32,7 @@ const propTypes = {
   onSelect: PropTypes.func,
   onChange: PropTypes.func,
   onAction: PropTypes.func,
+  scrollElement: PropTypes.instanceOf(Element),
 };
 
 const ROW_HEIGHT = 40;
@@ -228,5 +229,12 @@ const EntityRow = memo(function EntityRow({
     </PermissionsTableRow>
   );
 });
+
+EntityRow.propTypes = {
+  entity: PropTypes.object.isRequired,
+  onChange: PropTypes.func.isRequired,
+  onSelect: PropTypes.func,
+  onAction: PropTypes.func,
+};
 
 PermissionsTable.propTypes = propTypes;
