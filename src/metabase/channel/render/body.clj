@@ -535,58 +535,70 @@
                              [k value])) funnel-viz raw-rows)]
       (remove nil? rows-data))))
 
-(defn- numeric-col?
-  "Check if a column is numeric (can be used as a metric)."
+(defn- summable-col?
+  "Check if a column is summable (numeric but not temporal, location, or entity).
+   Works with snake_case column keys from result metadata."
   [col]
-  (isa? (:base_type col) :type/Number))
+  (let [effective-type (or (:effective_type col) (:base_type col))
+        semantic-type  (:semantic_type col)]
+    (and (isa? effective-type :type/Number)
+         (not (isa? effective-type :type/Temporal))
+         (not (isa? semantic-type :type/Address))
+         (not (isa? semantic-type :type/FK))
+         (not (isa? semantic-type :type/PK))
+         (not (isa? semantic-type :type/Name)))))
 
-(defn- get-funnel-axis-fns
-  "Return [x-axis-fn y-axis-fn] tuple for indexing into the funnel data for the appropriate axis' data"
+(defn- metric-col?
+  "Check if a column should be treated as a metric, matching frontend isMetric logic.
+   A metric is summable, not from breakout, not named like an ID, and not binned."
+  [col]
+  (and (not= (:source col) "breakout")
+       (summable-col? col)
+       (not (:binning_info col))
+       (let [col-name (some-> (:name col) u/lower-case-en)]
+         (not (or (= col-name "id")
+                  (str/ends-with? col-name "_id")
+                  (str/ends-with? col-name "-id"))))))
+
+(defn- swap-first-two-cols
+  "Swap the first two columns in data, reordering both :cols and :rows."
+  [data]
+  (-> data
+      (update :cols (fn [cs] (vec (cons (second cs) (cons (first cs) (drop 2 cs))))))
+      (update :rows (fn [rs] (mapv (fn [r] (let [v (vec r)] (into [(v 1) (v 0)] (subvec v 2)))) rs)))))
+
+(defn- normalize-funnel-data
+  "Ensure funnel data has dimension column first and metric column second.
+   Reorders both :cols and :rows if needed."
   [card dashcard data]
-  (if (render.util/is-visualizer-dashcard? dashcard)
-    ;; x-axis looks for :funnel.dimension
-    ;; y-axis looks for :funnel.metric
-    (let [x-axis-is-first (= (:name (first (:cols data))) (get-in data [:viz-settings :funnel.dimension]))]
-      (if x-axis-is-first
-        [first second]
-        [second first]))
-    ;; For regular cards, check funnel.dimension/funnel.metric settings first (#28568)
-    (let [funnel-dimension (get-in card [:visualization_settings :funnel.dimension])
-          cols             (:cols data)]
-      (cond
-        ;; If funnel.dimension is explicitly set, use it
-        funnel-dimension
-        (let [x-axis-is-first (= (:name (first cols)) funnel-dimension)]
-          (if x-axis-is-first
-            [first second]
-            [second first]))
+  (let [cols (:cols data)]
+    (if (or (< (count cols) 2)
+            (not= :funnel (:display card)))
+      data
+      (let [dimension-col-name
+            (if (render.util/is-visualizer-dashcard? dashcard)
+              (get-in data [:viz-settings :funnel.dimension])
+              (get-in card [:visualization_settings :funnel.dimension]))]
+        (cond
+          ;; Explicit funnel.dimension: ensure that column is first
+          dimension-col-name
+          (if (= (:name (first cols)) dimension-col-name)
+            data
+            (swap-first-two-cols data))
 
-        ;; For funnel charts with 2 columns, auto-detect based on column types:
-        ;; The numeric column should be the metric (y-axis), non-numeric is dimension (x-axis)
-        (and (= (count cols) 2)
-             (= :funnel (:display card)))
-        (let [[col1 col2] cols
-              col1-numeric? (numeric-col? col1)
-              col2-numeric? (numeric-col? col2)]
-          (cond
-            ;; First col is dimension (non-numeric), second is metric (numeric) - standard order
-            (and (not col1-numeric?) col2-numeric?) [first second]
-            ;; First col is metric (numeric), second is dimension (non-numeric) - swap!
-            (and col1-numeric? (not col2-numeric?)) [second first]
-            ;; Both numeric or both non-numeric - fall back to default
-            :else [first second]))
-
-        ;; Fall back to graph.dimensions/graph.metrics for other chart types
-        :else
-        (formatter/graphing-column-row-fns card data)))))
+          ;; Auto-detect: metric col should be second, non-metric col should be first
+          :else
+          (let [[col1 col2] cols]
+            (if (and (metric-col? col1) (not (metric-col? col2)))
+              (swap-first-two-cols data)
+              data)))))))
 
 (mu/defmethod render :funnel_normal :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]
-  (let [[x-axis-rowfn
-         y-axis-rowfn] (get-funnel-axis-fns card dashcard data)
+  [_chart-type render-type _timezone-id card dashcard data]
+  (let [{:keys [rows cols viz-settings]} #p (normalize-funnel-data card dashcard data)
         funnel-viz    (:funnel.rows viz-settings)
-        raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
-                            (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
+        raw-rows      (map (juxt first second)
+                           (formatter/row-preprocess first second rows))
         rows          (if (and funnel-viz (all-unique? funnel-viz))
                         (funnel-rows funnel-viz raw-rows)
                         raw-rows)

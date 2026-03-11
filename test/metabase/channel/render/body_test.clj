@@ -556,25 +556,48 @@
     funnel-numeric-first-rows]])
 
 (deftest render-funnel-with-numeric-first-column-test
-  (testing "Static-viz Funnel Chart auto-detects dimension/metric"
+  (testing "Static-viz Funnel Chart auto-detects dimension/metric when metric column is first (#28568)"
     (mt/dataset funnel-numeric-first-data
-      (let [;; Query with numeric column first, text column second (like SELECT 100 as val, 'step 1' as step)
-            funnel-query {:database (mt/id)
+      (let [funnel-query {:database (mt/id)
                           :type     :query
                           :query
                           {:source-table (mt/id :stages)
                            :fields       [[:field (mt/id :stages :val)]
                                           [:field (mt/id :stages :step)]]}}
-            ;; No explicit funnel.dimension setting - backend should auto-detect from column types
             funnel-card  {:display       :funnel
                           :dataset_query funnel-query
                           :visualization_settings {}}]
         (mt/with-temp [:model/Card {card-id :id} funnel-card]
-          (let [doc        (render.tu/render-card-as-hickory! card-id)
-                pulse-body (hik.s/select
-                            (hik.s/class "pulse-body")
-                            doc)]
-            (is (not (render-error? pulse-body)))))))))
+          (let [row-names  (into #{} (map second funnel-numeric-first-rows))
+                doc        (render.tu/render-card-as-hickory! card-id)
+                pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+                labels     (->> doc
+                                (hik.s/select (hik.s/tag :tspan))
+                                (mapv (comp first :content))
+                                (filter row-names))]
+            (is (not (render-error? pulse-body)))
+            (is (seq labels) "Dimension labels (step names) should appear in the rendered funnel"))))))
+  (testing "Explicit funnel.dimension setting is honored even when metric is first"
+    (mt/dataset funnel-numeric-first-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           :fields       [[:field (mt/id :stages :val)]
+                                          [:field (mt/id :stages :step)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings {:funnel.dimension "step"}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names  (into #{} (map second funnel-numeric-first-rows))
+                doc        (render.tu/render-card-as-hickory! card-id)
+                pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+                labels     (->> doc
+                                (hik.s/select (hik.s/tag :tspan))
+                                (mapv (comp first :content))
+                                (filter row-names))]
+            (is (not (render-error? pulse-body)))
+            (is (seq labels) "Dimension labels should appear when funnel.dimension is set")))))))
 
 (deftest render-pie-chart-test
   (testing "The static-viz pie chart renders correctly."
