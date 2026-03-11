@@ -78,8 +78,6 @@
   [^URL url]
   (#{"http" "https"} (.getProtocol url)))
 
-(.toURL (URI. "http://localhost"))
-
 (defn- valid-url?
   [url-string]
   (try
