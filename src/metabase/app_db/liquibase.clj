@@ -29,7 +29,7 @@
    (liquibase.changelog.filter AlreadyRanChangeSetFilter ChangeSetFilter ChangeSetFilterResult DbmsChangeSetFilter IgnoreChangeSetFilter)
    (liquibase.changelog.visitor AbstractChangeExecListener ChangeExecListener UpdateVisitor)
    (liquibase.command.core AbstractRollbackCommandStep)
-   (liquibase.database Database DatabaseFactory)
+   (liquibase.database Database DatabaseFactory ObjectQuotingStrategy)
    (liquibase.database.jvm JdbcConnection)
    (liquibase.exception LockException)
    (liquibase.lockservice LockService LockServiceFactory)
@@ -122,10 +122,11 @@
     (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)))
 
 (defn- liquibase ^Liquibase [^Connection conn ^Database database]
-  (Liquibase.
-   ^String (decide-liquibase-file conn database)
-   (ClassLoaderResourceAccessor. (classloader/the-classloader))
-   database))
+  (u/prog1 (Liquibase.
+            ^String (decide-liquibase-file conn database)
+            (ClassLoaderResourceAccessor. (classloader/the-classloader))
+            database)
+    (.setObjectQuotingStrategy (.getDatabaseChangeLog <>) ObjectQuotingStrategy/QUOTE_ALL_OBJECTS)))
 
 (mu/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."
@@ -455,6 +456,10 @@
   Previously migrations where stored in many small files which added seconds per file to the startup time because
   liquibase was checking the jar signature for each file. This function is required to correct the liquibase tables to
   reflect that these migrations were grouped into 2 files.
+
+  NOTE: we are going back to more granular changelog files in v60, but should not as many as before.
+  If we do end up seeing a performance issue similar to what caused a need for this file, we can do a similar
+  (but different) consolidation function for the v60+ changelogs.
 
   See https://github.com/metabase/metabase/issues/3715
   Also see https://github.com/metabase/metabase/pull/34400"
