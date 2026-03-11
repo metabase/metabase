@@ -209,7 +209,7 @@ export function getColors(
   return Object.fromEntries(
     Object.entries(colors).map(([key, value]) => [
       key === "null" ? NULL_DISPLAY_VALUE : key,
-      value,
+      getHexColor(value),
     ]),
   );
 }
@@ -247,7 +247,7 @@ export function getPieRows(
       return NULL_DISPLAY_VALUE;
     }
 
-    return formatter(value, dimensionColSettings);
+    return formatter(value, dimensionColSettings) ?? NULL_DISPLAY_VALUE;
   };
 
   const colors = getColors(rawSeries, settings);
