@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib-metric.ast.plan :as ast.plan]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.metrics.core :as metrics]
@@ -201,7 +200,7 @@
   "Join leaf results and stream the computed output through the QP reduce pipeline.
    Called INSIDE streaming context with the rff."
   [{:keys [plan/expression plan/breakout-count]} uuid->result rff]
-  (let [{:keys [cols rows]} (ast.plan/join-and-compute expression uuid->result breakout-count)
+  (let [{:keys [cols rows]} (lib-metric/join-and-compute expression uuid->result breakout-count)
         reducible (reify clojure.lang.IReduceInit
                     (reduce [_ rf init]
                       (reduce rf init rows)))]

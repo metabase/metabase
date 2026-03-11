@@ -15,6 +15,7 @@
              [metabase.lib-metric.metadata.jvm :as lib-metric.metadata.jvm]
              [potemkin :as p]]
        :cljs [[metabase.lib-metric.metadata.js :as lib-metric.metadata.js]])
+   [metabase.lib-metric.ast.plan :as ast.plan]
    [metabase.lib-metric.clause :as lib-metric.clause]
    [metabase.lib-metric.definition :as lib-metric.definition]
    [metabase.lib-metric.dimension :as lib-metric.dimension]
@@ -38,6 +39,8 @@
      remove-clause
      replace-clause
      swap-clauses]
+    [ast.plan
+     join-and-compute]
     [lib-metric.definition
      expression-leaf-id
      expression-leaf-type

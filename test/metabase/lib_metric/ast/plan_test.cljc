@@ -83,7 +83,7 @@
   (testing "division of two leaves"
     (let [expr (make-expression-arithmetic :/ [(make-expression-leaf uuid-a [])
                                                (make-expression-leaf uuid-b [])])]
-      (is (= #?(:clj 1/2 :cljs 0.5) (ast.plan/evaluate-expression expr {uuid-a 10 uuid-b 20}))))))
+      (is (= 0.5 (ast.plan/evaluate-expression expr {uuid-a 10 uuid-b 20}))))))
 
 (deftest ^:parallel evaluate-expression-nested-test
   (testing "nested expression (a + b) * c"
