@@ -5,6 +5,7 @@ import { FormSelect } from "metabase/forms";
 import {
   Alert,
   type DataAttributes,
+  Icon,
   type InputDescriptionProps,
   Loader,
 } from "metabase/ui";
@@ -57,7 +58,7 @@ export function NativeQueryTableTagFieldSelect({
 
   if (noQueryMessage) {
     return (
-      <Alert variant="warning" mb="md">
+      <Alert icon={<Icon name="warning" size={16} />} color="warning">
         {noQueryMessage}
       </Alert>
     );
