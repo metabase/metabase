@@ -64,21 +64,24 @@
   "Prefixes allowed for classpath GeoJSON resources."
   #{"geojson/custom/" "app/assets/geojson/"})
 
+(defn- normalize-path
+  [path]
+  (str (.normalize (Paths/get path (into-array String [])))))
+
 (defn allowed-classpath-resource?
   "Checks if a classpath resource path is allowed. The path must be under one of the [[allowed-classpath-prefixes]]
    with no path traversal, and the resource must exist."
   [path]
-  (let [normalized (str (.normalize (Paths/get path (into-array String []))))]
+  (let [normalized (normalize-path path)]
     (and (not (str/includes? normalized ".."))
          (some #(str/starts-with? normalized %) allowed-classpath-prefixes)
          (some? (io/resource normalized)))))
 
-(defn- valid-classpath-resource?
+(defn- valid-geojson-classpath-resource?
   "Checks if a URL string is a valid classpath resource for custom GeoJSON.
-   Only allowed when MB_ALLOW_CLASSPATH_GEOJSON is set to true.
    Must be under the geojson/custom/ prefix with no path traversal."
   [url]
-  (let [normalized (str (.normalize (Paths/get url (into-array String []))))]
+  (let [normalized (normalize-path url)]
     (and (str/starts-with? normalized "geojson/custom/")
          (not (str/includes? normalized ".."))
          (some? (io/resource normalized)))))
@@ -118,15 +121,14 @@
     (let [url (parse-url url-string)]
       (and (valid-protocol? url)
            (valid-host? url)))
-    (catch Throwable e
-      (throw (ex-info (invalid-location-msg) {:status-code 400, :url url-string} e)))))
+    (catch Throwable _ false)))
 
 (defn valid-geojson-url?
   "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not.
    Classpath resources are only allowed when MB_ALLOW_CLASSPATH_GEOJSON is true, and must be under `geojson/custom/`."
   [url]
   (or (and (allow-classpath-geojson?)
-           (valid-classpath-resource? url))
+           (valid-geojson-classpath-resource? url))
       (valid-url? url)))
 
 (defn- valid-geojson-urls?
