@@ -1,10 +1,11 @@
 import { useCallback, useMemo } from "react";
 
-import { Api, useListPermissionsGroupsQuery } from "metabase/api";
+import { Api, databaseApi, useListPermissionsGroupsQuery } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { PermissionsApi } from "metabase/services";
+import type { DatabaseId } from "metabase-types/api";
 
 import {
   type UpdateTenantDataAccessOptions,
@@ -62,12 +63,32 @@ export function useUpdateAllTenantUsersGroupPermissions(): UseUpdateAllTenantUse
         return;
       }
 
+      // Fetch all schemas for each database so we can block schemas without selected tables
+      const uniqueDbIds = [
+        ...new Set(sandboxedTables.map((t) => t.databaseId)),
+      ];
+      const allDatabaseSchemas: Record<DatabaseId, string[]> = {};
+      await Promise.all(
+        uniqueDbIds.map(async (dbId) => {
+          const { data: schemas } = await dispatch(
+            databaseApi.endpoints.listDatabaseSchemas.initiate({ id: dbId }),
+          );
+          if (schemas) {
+            allDatabaseSchemas[dbId] = schemas;
+          }
+        }),
+      );
+
       // get the revision number of the graph
       const graph = await PermissionsApi.graphForGroup({
         groupId: allTenantUsersGroupId,
       });
 
-      const groups = buildPermissionsGraph(allTenantUsersGroupId, options);
+      const groups = buildPermissionsGraph(
+        allTenantUsersGroupId,
+        options,
+        allDatabaseSchemas,
+      );
       const sandboxes = buildSandboxPolicies(
         allTenantUsersGroupId,
         sandboxedTables,

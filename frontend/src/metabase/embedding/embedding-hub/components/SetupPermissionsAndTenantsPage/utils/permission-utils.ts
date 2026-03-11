@@ -35,7 +35,7 @@ type SandboxedTableConfig = {
 
 type DatabasePermissionGraph = Record<
   string,
-  string | Record<string, Record<TableId, string>>
+  string | Record<string, string | Record<TableId, string>>
 >;
 
 /**
@@ -44,6 +44,7 @@ type DatabasePermissionGraph = Record<
 export function buildPermissionsGraph(
   groupId: GroupId,
   options: UpdateTenantDataAccessOptions,
+  allDatabaseSchemas?: Record<DatabaseId, string[]>,
 ): Record<GroupId, Record<DatabaseId, DatabasePermissionGraph>> {
   const { impersonatedDatabaseIds = [], sandboxedTables = [] } = options;
 
@@ -73,14 +74,39 @@ export function buildPermissionsGraph(
 
     const viewData = dbPerms["view-data"] as Record<
       string,
-      Record<TableId, string>
+      string | Record<TableId, string>
     >;
 
     if (!viewData[schema]) {
       viewData[schema] = {};
     }
 
-    viewData[schema][tableId as TableId] = "sandboxed";
+    (viewData[schema] as Record<TableId, string>)[tableId as TableId] =
+      "sandboxed";
+  }
+
+  // Block schemas that don't have any selected tables
+  if (allDatabaseSchemas) {
+    for (const [dbIdStr, schemas] of Object.entries(allDatabaseSchemas)) {
+      const databaseId = Number(dbIdStr) as DatabaseId;
+
+      if (!groupGraph[databaseId]) {
+        continue;
+      }
+
+      const dbPerms = groupGraph[databaseId];
+      if (!dbPerms["view-data"] || typeof dbPerms["view-data"] === "string") {
+        continue;
+      }
+
+      const viewData = dbPerms["view-data"];
+
+      for (const schema of schemas) {
+        if (!viewData[schema]) {
+          viewData[schema] = "blocked";
+        }
+      }
+    }
   }
 
   return { [groupId]: groupGraph };

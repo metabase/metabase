@@ -1,4 +1,4 @@
-import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
+import { SAMPLE_DB_TABLES, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { ALL_EXTERNAL_USERS_GROUP_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
@@ -1098,6 +1098,119 @@ describe("scenarios - embedding hub", () => {
         .icon("check")
         .should("exist");
     });
+
+    it(
+      "should block schemas without selected tables in RLS setup",
+      { tags: ["@external"] },
+      () => {
+        H.restore("postgres-writable");
+        cy.signInAsAdmin();
+        H.activateToken("bleeding-edge");
+
+        cy.log(
+          'reset "multi_schema" fixture: creates Domestic and Wild schemas, each with tables',
+        );
+        H.resetTestTable({ type: "postgres", table: "multi_schema" });
+        H.resyncDatabase({ dbId: WRITABLE_DB_ID });
+
+        cy.intercept("PUT", "/api/permissions/graph").as(
+          "updatePermissionsGraph",
+        );
+
+        cy.visit("/admin/embedding/setup-guide/permissions");
+
+        cy.log("enable tenants and create shared collection");
+        H.main()
+          .findByRole("button", {
+            name: "Enable tenants and create shared collection",
+          })
+          .click();
+
+        cy.log("wait for tenants to be enabled");
+        H.main()
+          .findByRole("listitem", {
+            name: "Enable multi-tenant user strategy",
+            timeout: 10_000,
+          })
+          .icon("check")
+          .should("exist");
+
+        cy.log("select RLS strategy");
+        H.main()
+          .findByRole("radio", { name: /Row and column level security/ })
+          .scrollIntoView()
+          .click();
+
+        H.main()
+          .findByRole("button", {
+            name: "Use row and column level security",
+          })
+          .scrollIntoView()
+          .click();
+
+        cy.log(
+          "pick a table from the Domestic schema of the Postgres database",
+        );
+
+        H.main().findByText("Pick a table").click();
+        H.miniPicker().findByText("Writable Postgres12").click();
+        H.miniPicker().findByText("Domestic").click();
+        H.miniPicker().findByText("Animals").click();
+
+        cy.log("pick Score column as the tenant filter field");
+        H.main().findByPlaceholderText("Pick a column").click();
+        H.popover().findByText("Score").click();
+
+        cy.log("create sandbox");
+        H.main().findByRole("button", { name: "Next" }).click();
+
+        cy.log("wait for sandbox creation to complete");
+        cy.wait("@updatePermissionsGraph");
+
+        cy.log("no error toast should appear");
+        H.undoToast().should("not.exist");
+
+        cy.log("verify schemas without selected tables are blocked");
+        cy.request(
+          "GET",
+          `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
+        ).then((response) => {
+          const graph = response.body;
+
+          const permissions =
+            graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][WRITABLE_DB_ID];
+          expect(permissions).to.exist;
+
+          const viewData = permissions["view-data"];
+          expect(viewData).to.exist;
+
+          // Domestic schema should have granular per-table permissions
+          expect(viewData["Domestic"]).to.be.an("object");
+          const domesticTableIds = Object.keys(viewData["Domestic"]);
+          expect(domesticTableIds.length).to.be.at.least(1);
+          expect(viewData["Domestic"][domesticTableIds[0]]).to.equal(
+            "sandboxed",
+          );
+
+          // Wild schema should be blocked (it has no selected tables)
+          expect(viewData["Wild"]).to.equal("blocked");
+
+          // create-queries should allow query-builder for Domestic,
+          // and be "no" for Wild (cascaded from blocked view-data)
+          const createQueries = permissions["create-queries"];
+          expect(createQueries["Domestic"]).to.equal("query-builder");
+          expect(createQueries["Wild"]).to.equal("no");
+        });
+
+        H.main()
+          .findByRole("listitem", {
+            name: "Select data to make available",
+            timeout: 10_000,
+          })
+          .icon("check")
+          .should("exist");
+      },
+    );
 
     it("locks the production embed step when JWT is not enabled", () => {
       cy.visit("/admin/embedding/setup-guide");
