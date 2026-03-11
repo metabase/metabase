@@ -32,7 +32,8 @@ export function useUpgradeAction({
   }, [dispatch]);
 
   const shouldUseModal =
-    isHosted && (url.includes(UPGRADE_URL) || url === DATA_STUDIO_UPGRADE_URL);
+    isHosted &&
+    (url.startsWith(UPGRADE_URL) || url === DATA_STUDIO_UPGRADE_URL);
 
   if (shouldUseModal) {
     return {
