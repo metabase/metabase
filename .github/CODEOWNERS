@@ -1,7 +1,7 @@
 # Before changing this file, make sure you have read how we use it:
 # https://www.notion.so/metabase/Pull-Request-Code-Review-Guide-374f05df889748b69d67af753f9bc9b8?pvs=4#36550c04ceab40b5a8b8bee6264b090c
 
-#  @metabase/core-backend-querying-platform
+# @metabase/core-backend-querying-platform
 src/metabase/lib @metabase/core-backend-querying-platform
 src/metabase/lib_be @metabase/core-backend-querying-platform
 src/metabase/query_processor @metabase/core-backend-querying-platform
@@ -25,7 +25,6 @@ docs/developers-guide # exclude from tech-writer ownership
 
 # @metabase/devexp
 .github @metabase/devexp
-.clj-kondo @metabase/devexp
 
 # @metabase/cloud-ops
 src/metabase/analytics/prometheus.clj @metabase/cloud-ops
