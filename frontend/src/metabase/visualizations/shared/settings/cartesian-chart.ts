@@ -553,7 +553,7 @@ export function getDefaultBoxplotDimensions(
     return dimensions;
   }
   const { cols, rows } = series[0].data;
-  let lowestDimension: string | undefined;
+  let lowestDimension: string | null = null;
   let lowestCardinality = Infinity;
   for (const dimension of dimensions) {
     const index = cols.findIndex((col) => col.name === dimension);
@@ -566,7 +566,7 @@ export function getDefaultBoxplotDimensions(
       lowestCardinality = cardinality;
     }
   }
-  if (lowestDimension === undefined) {
+  if (lowestDimension == null) {
     return [];
   }
   return [lowestDimension];
