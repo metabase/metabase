@@ -29,40 +29,16 @@
 
 (deftest supported-app-db-version?-test
   (testing "Should be able to check if an app DB is a supported version"
-    (testing "for H2"
-      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 1 :patch 214})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 3 :minor 1 :patch 214})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 2 :patch 0})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :h2 {:major 3 :minor 0 :patch 0})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 1 :patch 213})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 2 :minor 0 :patch 214})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :h2 {:major 1 :minor 1 :patch 214}))))
-    (testing "for postgres"
-      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 0 :patch 0})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 13 :minor 0 :patch 0})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 1 :patch 0})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 1 :patch 1})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 11 :minor 0 :patch 0})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor -1 :patch 0})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :postgres {:major 12 :minor 0 :patch -1}))))
+    (letfn [(test-supported-versions [db expected-min-version]
+              (doseq [diff [nil {:major 1} {:minor 1} {:patch 1}]]
+                (is (true? (#'mdb.setup/supported-app-db-version? db (merge-with + expected-min-version diff)))))
+              (doseq [diff [{:major -1} {:minor -1} {:patch -1}]]
+                (is (false? (#'mdb.setup/supported-app-db-version? db (merge-with + expected-min-version diff))))))]
 
-    (testing "for mysql"
-      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 17})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 9 :minor 0 :patch 17})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 1 :patch 17})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 18})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 7 :minor 0 :patch 17})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor -1 :patch 17})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mysql {:major 8 :minor 0 :patch 16}))))
-
-    (testing "for mariadb"
-      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 2 :patch 2})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 11 :minor 2 :patch 2})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 3 :patch 2})))
-      (is (true? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 2 :patch 3})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 9 :minor 2 :patch 2})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 1 :patch 2})))
-      (is (false? (#'mdb.setup/supported-app-db-version? :mariadb {:major 10 :minor 2 :patch 1}))))))
+      (test-supported-versions :h2 {:major 2 :minor 1 :patch 214})
+      (test-supported-versions :postgres {:major 14 :minor 0 :patch 0})
+      (test-supported-versions :mysql {:major 8 :minor 4 :patch 0})
+      (test-supported-versions :mariadb {:major 10 :minor 6 :patch 0}))))
 
 (deftest parse-db-version-test
   (testing "Can parse H2 version strings"
@@ -176,17 +152,43 @@
 
       ;; the latest changeSet in `000_legacy_migrations.yaml` is `v44.00-044`. We can simulate a downgrade to that
       ;; version by telling Liquibase that's the migrations file.
-      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]
+      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
         (is (thrown-with-msg?
              Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 45."
              (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
 
       ;; check that the error correctly reports the version to run `downgrade` from
       (update-to-changelog-id "v46.00-001" conn)
-      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "migrations/000_legacy_migrations.yaml")]
+      (with-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
         (is (thrown-with-msg?
              Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 46."
              (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))
+
+(deftest changesets-from-later-version-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      ;; Run all real migrations first so the changelog table exists
+      (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true false)
+      (liquibase/with-liquibase [liquibase conn]
+        (let [table    (liquibase/changelog-table-name liquibase)
+              db-conn  {:connection conn}
+              fake-ids ["v998.00-001" "v998.00-002" "v999.00-001"]]
+          ;; Insert fake changelog entries for versions 998 and 999
+          (doseq [[i id] (map-indexed vector fake-ids)]
+            (jdbc/execute! db-conn
+                           [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum)
+                                     VALUES (?, 'test', 'test.yaml', CURRENT_TIMESTAMP, ?, 'EXECUTED', 'fake')"
+                                    table)
+                            id (+ 99990 i)]))
+          (try
+            (let [later (liquibase/changesets-from-later-version conn (.getDatabase liquibase) 997 999)]
+              (testing "returns exactly the fake changeset IDs in execution order"
+                (is (= fake-ids later))))
+            (finally
+              ;; Clean up fake rows
+              (doseq [id fake-ids]
+                (jdbc/execute! db-conn
+                               [(format "DELETE FROM %s WHERE id = ?" table) id])))))))))
 
 ;; `delete!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
