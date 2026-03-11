@@ -10,7 +10,6 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api.common :as api]
    [metabase.driver.sql :as driver.sql]
-   [metabase.driver.sql.util :as sql.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.table :as table]
