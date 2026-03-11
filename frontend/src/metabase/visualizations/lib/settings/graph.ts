@@ -25,6 +25,7 @@ import {
   getAvailableAdditionalColumns,
   getAvailableXAxisScales,
   getComputedAdditionalColumnsValue,
+  getDefaultBoxplotDimensions,
   getDefaultColumns,
   getDefaultDataLabelsFrequency,
   getDefaultDimensionFilter,
@@ -1136,8 +1137,6 @@ export const BOXPLOT_DATA_SETTINGS: VisualizationSettingsDefinitions = {
   ...GRAPH_DATA_SETTINGS,
   "graph.dimensions": {
     ...GRAPH_DATA_SETTINGS["graph.dimensions"],
-    getDefault: (series, vizSettings) =>
-      // As BoxPlot needs unaggregated data, we only default to one dimension even if there are multiple dimensions available
-      getDefaultDimensions(series, vizSettings).slice(0, 1),
+    getDefault: getDefaultBoxplotDimensions,
   },
 };

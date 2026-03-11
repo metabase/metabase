@@ -152,6 +152,7 @@
            metabase.api.docs
            metabase.api.init
            metabase.api.macros
+           metabase.api.macros.scope
            metabase.api.open-api
            metabase.api.response
            metabase.api.routes.common
@@ -275,6 +276,7 @@
            config
            events
            models
+           permissions
            premium-features
            request
            settings
@@ -773,6 +775,7 @@
    :friends #{legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
+              source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
               enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
               }}
 
@@ -783,6 +786,16 @@
    :uses #{lib
            models
            settings
+           util}}
+
+  lib-metric
+  {:team "UX West"
+   :api  #{metabase.lib-metric.core
+           metabase.lib-metric.schema}
+   :uses #{lib
+           lib-be
+           settings
+           types
            util}}
 
   llm
@@ -834,10 +847,27 @@
            events
            lib
            lib-be
+           metrics
            models
            permissions
            remote-sync
            search
+           util}}
+
+  metrics
+  {:team "UX West"
+   :api  #{metabase.metrics.api
+           metabase.metrics.core}
+   :uses #{api
+           collections
+           lib
+           lib-be
+           lib-metric
+           models
+           parameters
+           query-processor
+           request
+           server
            util}}
 
   model-persistence
@@ -1113,6 +1143,7 @@
            events
            lib
            lib-be
+           metrics
            models
            parameters
            permissions
@@ -1422,6 +1453,15 @@
            settings
            setup
            system
+           util}}
+
+  source-swap
+  {:team "Graphy"
+   :api  #{metabase.source-swap.core
+           metabase.source-swap.schema}
+   :uses #{driver
+           lib
+           sql-tools
            util}}
 
   sql-parsing
@@ -1937,7 +1977,9 @@
            request
            server
            util
-           enterprise/metabot-v3}}
+           enterprise/api
+           enterprise/metabot-v3
+           enterprise/workspaces}}
 
   enterprise/ai-entity-analysis
   {:team "Metabot"
@@ -2129,7 +2171,8 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
-           metabase-enterprise.dependencies.init}
+           metabase-enterprise.dependencies.init
+           metabase-enterprise.dependencies.models.dependency}
    :uses #{analyze
            api
            app-db
@@ -2311,6 +2354,21 @@
            util
            enterprise/serialization
            enterprise/transforms-python}}
+
+  enterprise/replacement
+  {:team "Graphy"
+   :api  #{metabase-enterprise.replacement.api}
+   :uses #{api
+           app-db
+           events
+           lib
+           lib-be
+           models
+           queries
+           source-swap
+           task
+           util
+           enterprise/dependencies}}
 
   enterprise/sandbox
   {:team "UX West"
@@ -2510,8 +2568,8 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
+   :friends #{enterprise/agent-api}
    :uses #{api
-           api-keys
            app-db
            config
            database-routing
@@ -2520,6 +2578,7 @@
            lib
            lib-be
            models
+           premium-features
            queries
            ;; NOTE: we will remove this once we get "pure transforms" module.
            query-processor
