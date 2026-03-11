@@ -60,4 +60,5 @@
    [:status [:enum :succeeded :failed :cancelled :timeout]]
    [:result {:optional true} :any]
    [:error {:optional true} [:maybe (ms/InstanceOfClass Throwable)]]
-   [:logs {:optional true} [:maybe :string]]])
+   [:logs {:optional true} [:maybe :string]]
+   [:source-range-params {:optional true} [:maybe :map]]])

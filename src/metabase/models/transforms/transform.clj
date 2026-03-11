@@ -88,10 +88,10 @@
       mi/json-in))
 
 (t2/deftransforms :model/Transform
-  {:source_type          mi/transform-keyword
-   :source               {:out transform-source-out, :in transform-source-in}
-   :target               mi/transform-json
-   :run_trigger          mi/transform-keyword})
+  {:source_type mi/transform-keyword
+   :source      {:out transform-source-out, :in transform-source-in}
+   :target      mi/transform-json
+   :run_trigger mi/transform-keyword})
 
 (defmethod collection/allowed-namespaces :model/Transform
   [_]

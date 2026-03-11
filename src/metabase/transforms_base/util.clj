@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.add-remaps :as remap]
@@ -204,7 +205,9 @@
         filters   (cond-> []
                     lo (conj {:field-id checkpoint-filter-field-id :op :> :value (:value lo)})
                     hi (conj {:field-id checkpoint-filter-field-id :op :<= :value (:value hi)}))]
-    (assoc-in query [:stages 0 :template-tags tag-name :source-filters] filters)))
+    (lib.util/update-query-stage
+     query 0
+     #(assoc-in % [:template-tags tag-name :source-filters] filters))))
 
 (defn get-source-range-params
   "Returns information on the incremental range filters that ought to be applied to a source query.
