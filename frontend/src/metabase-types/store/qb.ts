@@ -41,7 +41,7 @@ export interface QueryBuilderUIControls {
   initialChartSetting: InitialChartSettingState;
   isShowingRawTable: boolean;
   queryBuilderMode: QueryBuilderMode | false;
-  previousQueryBuilderMode: boolean;
+  previousQueryBuilderMode: QueryBuilderMode | false;
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
