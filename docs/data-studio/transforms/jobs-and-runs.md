@@ -11,6 +11,8 @@ Jobs are scheduled runs of transforms based on the transform's tags.
 
 ## Transform tags
 
+![Transform tags](../images/tags.png)
+
 Add tags to transforms so that you can use jobs to run the transforms on a schedule. For example, you could add a "Nightly" tag to a transform, and have a job that runs all the transforms with the "Nightly" tag at midnight every day.
 
 To add a tag to a transform:
@@ -23,11 +25,11 @@ By default, Metabase comes with hourly, daily, weekly, and monthly tags and jobs
 
 Once you've tagged a transform, you can create a job that uses that tag to run the transform on the job's schedule.
 
-Job can use multiple tags, and will run all transforms that have _any_ of those tags. For example, you can have a job "Weekend job" that is scheduled run at noon on Saturdays and Sundays that picks up all transforms tagged either "Saturday", "Sunday", or "Weekend".
-
 ## Jobs
 
 _Data Studio > Jobs_
+
+![Transform jobs](../images/jobs.png)
 
 Jobs run one or more transforms on schedule based on transform tags.
 
@@ -40,6 +42,8 @@ Jobs have two components: schedule and tags.
 - **Schedule** determines when the job will be executed: daily, hourly, etc. You can specify a custom cron schedule (e.g. "Every weekday at 9:05 AM"). The times are given in your Metabase's system timezone.
 - **Tags** determine _which_ transforms a job runs, not when the job runs. For example, you can create a `Weekdays` tag, add that tag to a few transforms, then create a job that runs all the transforms with the `Weekdays` tag every weekday at 9:05AM.
 
+Job can use multiple tags, and will run all transforms that have _any_ of those tags. For example, you can have a job "Weekend job" that is scheduled run at noon on Saturdays and Sundays that picks up all transforms tagged either "Saturday", "Sunday", or "Weekend".
+
 ## Jobs will run all dependent transforms
 
 If one transform depends on another, Metabase will run the dependency first, even if that transform isn't tagged in the job. So if transform B depends on A, Metabase will first run A, even if A doesn't have a tag.
@@ -49,6 +53,8 @@ This means that you can explicitly tag transform A to run daily, and transform B
 You can see which transforms a job will run (and in which order) on the job's page in **Data Studio > Jobs**.
 
 ## Runs
+
+![Transform runs](../images/runs.png)
 
 You can see all past and current transform runs (both manual and scheduled) by going to **Data Studio** and clicking on **Runs** at the bottom of the left sidebar. The transform run times will be given in Greenwich Mean Time (GMT).
 

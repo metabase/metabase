@@ -1,3 +1,4 @@
+import type { CurrencyStyle } from "metabase/lib/formatting";
 import type {
   EmbeddingParameters,
   EmbeddingType,
@@ -6,6 +7,7 @@ import type { IconName } from "metabase/ui";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
+import type { ClickBehavior } from "./click-behavior";
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
   DashCardId,
@@ -14,6 +16,7 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
+import type { RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
@@ -89,6 +92,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   view_count?: number;
 
   download_perms?: DownloadPermission;
+  displayIsLocked?: boolean;
 }
 
 export interface PublicCard {
@@ -122,13 +126,14 @@ export type SeriesSettings = {
   title?: string;
   color?: string;
   show_series_values?: boolean;
-  display?: string;
+  display?: VisualizationDisplay;
   axis?: string;
   "line.size"?: LineSize;
   "line.style"?: "solid" | "dashed" | "dotted";
   "line.interpolate"?: string;
   "line.marker_enabled"?: boolean;
   "line.missing"?: string;
+  show_series_trendline?: boolean;
 };
 
 export type SeriesOrderSetting = {
@@ -167,7 +172,7 @@ export type ColumnSingleFormattingSetting = {
   operator: ColumnFormattingOperator;
   color: string;
   highlight_row: boolean;
-  value: string | number;
+  value: RowValue;
 };
 export type ColumnRangeFormattingSetting = {
   columns: string[];
@@ -239,6 +244,8 @@ export interface ColumnSettings {
   column_title?: string;
   number_separators?: string;
   currency?: string;
+  currency_style?: CurrencyStyle;
+  click_behavior?: ClickBehavior;
 
   // some options are untyped
   [key: string]: any;
@@ -366,7 +373,10 @@ export type EmbedVisualizationSettings = {
   iframe?: string;
 };
 
-export type VisualizationSettingKey = keyof VisualizationSettings;
+export type VisualizationSettingKey = Exclude<
+  keyof VisualizationSettings,
+  number // TS infers number because of `[key: string]: any` in VisualizationSettings
+>;
 
 export type CardId = number;
 

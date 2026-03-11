@@ -86,20 +86,17 @@
    ;; everything else can't be used with raw value template tags -- they can only be used with Dashboard parameters
    ;; for MBQL queries or Field filters in native queries
 
-   ;; `:id` and `:category` conceptually aren't types in a "the parameter value is of this type" sense, but they are
-   ;; widget types. They have something to do with telling the frontend to show FieldValues list/search widgets or
-   ;; something like that.
+   ;; LEGACY PARAMETER TYPES -- do not create new parameters with these types.
+   ;; Use :number/=, :string/=, :boolean/=, etc. instead.
    ;;
-   ;; Apparently the frontend might still pass in parameters with these types, in which case we're supposed to infer
-   ;; the actual type of the parameter based on the Field we're filtering on. Or something like that. Parameters with
-   ;; these types are only allowed if the widget type matches exactly, but you can also pass in something like a
-   ;; `:number/=` for a parameter with widget type `:category`.
+   ;; :id and :category are widget-types that were historically misused as parameter types.
+   ;; As parameter types they mean "infer the value type from the target field." The QP
+   ;; handles this in parse-param-value-for-type (mbql.clj).
    ;;
-   ;; TODO FIXME -- actually, it turns out the the FE client passes parameter type `:category` for parameters in
-   ;; public Cards. Who knows why! For now, we'll continue allowing it. But we should fix it soon. See
-   ;; [[metabase.public-sharing-rest.api-test/execute-public-card-with-parameters-test]]
+   ;; These remain valid for backward compatibility (dashboard/card parameters already in the app DB).
+   ;; See QUE2-326 for history.
    :id       {:allowed-for #{:id}}
-   :category {:allowed-for #{:category #_FIXME :number :text :date :boolean}}
+   :category {:allowed-for #{:category :number :text :date :boolean}}
 
    ;; Like `:id` and `:category`, the `:location/*` types are primarily widget types. They don't really have a meaning
    ;; as a parameter type, so in an ideal world they wouldn't be allowed; however it seems like the FE still passed

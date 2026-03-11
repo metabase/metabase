@@ -81,8 +81,6 @@ export class Map extends Component {
             },
             value: "pin",
           },
-          // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-          // { name: "Heat map", value: "heat" },
           { name: "Grid map", value: "grid" },
         ],
       },
@@ -108,9 +106,6 @@ export class Map extends Component {
                 longitudeColumn.binning_info
               ) {
                 return "grid";
-                // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-                // } else if (settings["map.metric_column"]) {
-                //   return "heat";
               } else {
                 return "pin";
               }
@@ -144,8 +139,6 @@ export class Map extends Component {
             },
             value: "markers",
           },
-          // NOTE tlrobinson 4/13/18: Heat maps disabled until we can compute leaflet-heat options better
-          // { name: "Heat", value: "heat" },
           { name: "Grid", value: "grid" },
         ],
       },

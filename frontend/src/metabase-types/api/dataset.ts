@@ -6,7 +6,7 @@ import type {
   VisualizerColumnValueSource,
 } from "metabase-types/api";
 
-import type { Card } from "./card";
+import type { Card, ColumnSettings } from "./card";
 import type { DatabaseId } from "./database";
 import type {
   Field,
@@ -80,11 +80,13 @@ export interface DatasetColumn {
   remapped_to?: string;
   effective_type?: string;
   binning_info?: BinningMetadata | null;
-  settings?: Record<string, any>;
+  settings?: ColumnSettings;
   fingerprint?: FieldFingerprint | null;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+
+  remapping?: Map<RowValue, string | number>;
 }
 
 export interface ResultsMetadata {
@@ -109,6 +111,8 @@ export interface DatasetData {
     "show-column-totals"?: boolean;
   };
   untranslatedRows?: RowValues[];
+
+  sourceRows?: (number | null)[][]; // present in pivoted data
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -272,3 +276,5 @@ export type GetRemappedParameterValueRequest = {
   field_ids: FieldId[];
   value: ParameterValueOrArray;
 };
+
+export type Point = [number, number];

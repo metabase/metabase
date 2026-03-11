@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { PricingSummary } from "./PricingSummary";
@@ -18,6 +18,7 @@ describe("PricingSummary", () => {
   beforeEach(() => {
     fetchMock.post("path:/api/ee/cloud-add-ons/transforms-advanced", 200);
     fetchMock.post("path:/api/ee/cloud-add-ons/transforms-basic", 200);
+    fetchMock.post("path:/api/premium-features/token/refresh", 200);
     setupPropertiesEndpoints(createMockSettings());
   });
 
@@ -69,6 +70,30 @@ describe("PricingSummary", () => {
       expect(
         screen.getByText("Setting up Python transforms, please wait"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("purchase flow", () => {
+    it("closes setting up modal on error without redirecting", async () => {
+      fetchMock.removeRoutes();
+      fetchMock.post("path:/api/ee/cloud-add-ons/transforms-basic", 500);
+      fetchMock.post("path:/api/premium-features/token/refresh", 200);
+      setupPropertiesEndpoints(createMockSettings());
+
+      renderWithProviders(
+        <PricingSummary {...defaultProps} selectedTier="basic" />,
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Confirm purchase" }),
+      );
+
+      // Setting up modal should be dismissed after error
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Setting up transforms, please wait"),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 });

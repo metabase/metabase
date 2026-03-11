@@ -21,13 +21,32 @@ Database routing is useful for:
 
 ## Database routing limitations
 
-> Database routing is **not supported** on ClickHouse, Oracle, Spark SQL, and Vertica.
+### Driver limitations
+
+Database routing is **not supported** on:
+
+- ClickHouse
+- Oracle
+- Spark SQL
+- Vertica.
 
 Different database have different setups, so _what_ you can route between (database, schema, data catalog, etc.) will differ slightly depending on which data warehouse you're using.
 
-- [Athena](../databases/connections/athena.md): Only routing between different connections is supported (e.g., different buckets, roles, or catalogs).
-- [BigQuery](../databases/connections/bigquery.md): Only routing between databases in different projects is supported.
-- [Databricks](../databases/connections/databricks.md): When multi-catalog is not enabled, you can route between catalogs on the same host. If multi-catalog is enabled, then you can only route between databases on separate hosts.
+- Athena: Only routing between different connections is supported (e.g., different buckets, roles, or catalogs).
+- BigQuery: Only routing between databases in different projects is supported.
+- Databricks: When multi-catalog is not enabled, you can route between catalogs on the same host. If multi-catalog is enabled, then you can only route between databases on separate hosts.
+
+### Functionality limitations
+
+Database routing **can't be used** on databases with:
+
+- [Writeable connections](../databases/writeable-connection.md)
+- [Editable tables](../data-modeling/editable-tables.md)
+- [Actions](../actions/introduction.md)
+- [CSV uploads](../databases/uploads.md)
+- [Model persistence](../data-modeling/model-persistence.md)
+
+With **guest embedding**, database queries will always be routed to the router database. This is because guest embed users don't have Metabase accounts, so there are no user attributes available to determine which destination database to route to.
 
 ## How database routing works
 

@@ -19,10 +19,18 @@ runs:
         distribution: "temurin"
     - name: Install Clojure CLI
       shell: bash
-      continue-on-error: true
       run: |
-        curl -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh &&
-        sudo bash ./linux-install-${{ inputs.clojure-version }}.sh
+        for attempt in 1 2 3; do
+          curl --retry 3 --retry-delay 5 --fail -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh \
+            && sudo bash ./linux-install-${{ inputs.clojure-version }}.sh \
+            && break
+          echo "::warning::Clojure install attempt $attempt failed, retrying in 10s..."
+          sleep 10
+        done
+        if ! clojure --version; then
+          echo "::error::Clojure CLI installation failed after 3 attempts"
+          exit 1
+        fi
 
     - name: Get M2 cache key
       uses: ./.github/actions/get-cache-keys
@@ -42,3 +50,5 @@ runs:
           ~/.m2
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
+        restore-keys: |
+          ${{ steps.get-cache-keys.outputs.m2-restore-key }}

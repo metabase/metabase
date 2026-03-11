@@ -416,9 +416,17 @@
     ;;
     ;; this SHOULD NOT get propagated to subsequent stages!
     [:lib/breakout? {:optional true} [:maybe :boolean]]
-
-    ;; ID of the Card this came from, if this came from Card results metadata. Mostly used for creating column groups.
+    ;;
+    ;; ID of the Card this came from, if this column originally came from a Card (Saved Question or Model). Mostly
+    ;; used for creating column groups. AFAIK this should get propagated indefinitely -- Cam
     [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
+    ;;
+    ;; Whether this column originally was introduced by a Model. Model metadata has special rules, for example because
+    ;; `:display-name` can be user-edited we should be careful not to recalculate it unnecessarily. See for
+    ;; example [[metabase.query-processor.model-test/preserve-model-display-names-test]].
+    ;;
+    ;; This key should get propagated indefinitely.
+    [:lib/from-model? {:optional true} [:maybe :boolean]]
     ;;
     ;; this stuff is adapted from [[metabase.query-processor.util.add-alias-info]]. It is included in
     ;; the [[metabase.lib.metadata.calculation/metadata]]
@@ -508,7 +516,18 @@
     ;; stage. [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] uses this to know to force Field
     ;; ID refs for QP `:field_ref` in results metadata to preserve historic behavior to avoid breaking legacy viz
     ;; settings that use it as a key.
-    [:qp/implicit-field? {:optional true} [:maybe :boolean]]]
+    [:qp/implicit-field? {:optional true} [:maybe :boolean]]
+    ;;
+    ;; Whether this is the special `pivot-grouping` column added by the Pivot QP
+    ;; in [[metabase.query-processor.pivot/add-pivot-group-breakout]]. In `OVER` window function `GROUP BY` and `ORDER
+    ;; BY` this should be "optimized out" since some databases like Redshift don't allow constant expressions there.
+    ;; See also [[metabase.driver.sql.query-processor/pivot-query-group-constant-expression?]] (where this is used by
+    ;; the SQL QP) and [[metabase.query-processor.pivot-test/offset-pivot-test]] (a test that will fail if this key is
+    ;; removed)
+    ;;
+    ;; This should be propagated as-is to subsequent stages and copied into ref option maps, and from ref option maps
+    ;; into calculated metadata.
+    [:qp.pivot/pivot-grouping? {:optional true} [:maybe :boolean]]]
    ;;
    ;; Additional constraints
    ;;

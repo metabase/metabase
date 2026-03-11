@@ -6,8 +6,11 @@ import {
   findRequests,
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
+  setupPropertiesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupRootCollectionItemsEndpoint,
+  setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import {
   setupMetabotPromptSuggestionsEndpoint,
@@ -20,6 +23,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { waitForRequest } from "__support__/utils";
 import {
   FIXED_METABOT_ENTITY_IDS,
   FIXED_METABOT_IDS,
@@ -29,6 +33,7 @@ import type { MetabotId, RecentItem } from "metabase-types/api";
 import {
   createMockCollection,
   createMockMetabotInfo,
+  createMockSettings,
 } from "metabase-types/api/mocks";
 
 import { MetabotAdminPage } from "./MetabotAdminPage";
@@ -95,9 +100,12 @@ const setup = async (
   metabots = defaultMetabots,
   seedCollections = defaultSeedCollections,
   error = false,
+  settings = createMockSettings(),
 ) => {
   mockGetBoundingClientRect();
   mockPathParam(initialPathParam);
+  setupPropertiesEndpoints(settings);
+  setupSettingsEndpoints([]);
   setupMetabotsEndpoints(metabots, error ? 500 : undefined);
   setupCollectionByIdEndpoint({
     collections: seedCollections.map((c: any) => ({ id: c.model_id, ...c })),
@@ -106,6 +114,7 @@ const setup = async (
   setupCollectionsEndpoints({ collections: [] });
 
   setupRecentViewsAndSelectionsEndpoints(seedCollections as RecentItem[]);
+  setupUpdateSettingEndpoint();
 
   metabots.forEach((mb) =>
     setupMetabotPromptSuggestionsEndpoint({
@@ -132,10 +141,32 @@ const setup = async (
   }
 };
 
+const enabledToggle = () => screen.findByTestId("metabot-enabled-toggle");
+
+const getLastSettingUpdateCall = (settingKey: string) =>
+  fetchMock.callHistory.lastCall(
+    `path:/api/setting/${encodeURIComponent(settingKey)}`,
+  );
+
 describe("MetabotAdminPage", () => {
   it("should render the page", async () => {
     await setup();
     expect(screen.getByText(/Configure Metabot/)).toBeInTheDocument();
+  });
+
+  it("should toggle default metabot enabled state", async () => {
+    await setup();
+
+    expect(await screen.findByText("Enable Metabot")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Metabot is Metabase's AI assistant/),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Metabot is enabled")).toBeInTheDocument();
+
+    await userEvent.click(await enabledToggle());
+    await waitForRequest(() => getLastSettingUpdateCall("metabot-enabled?"));
+    const call = getLastSettingUpdateCall("metabot-enabled?");
+    expect(call?.options?.body).toBe(JSON.stringify({ value: false }));
   });
 
   it("should render the metabots list", async () => {
@@ -222,6 +253,26 @@ describe("MetabotAdminPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("should toggle embedded metabot enabled state", async () => {
+    await setup(FIXED_METABOT_IDS.EMBEDDED);
+
+    // Shows title but NOT description for embedded
+    expect(
+      await screen.findByText("Enable Embedded Metabot"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Metabot is Metabase's AI assistant/),
+    ).not.toBeInTheDocument();
+
+    // Toggle calls correct setting
+    await userEvent.click(await enabledToggle());
+    await waitForRequest(() =>
+      getLastSettingUpdateCall("embedded-metabot-enabled?"),
+    );
+    const call = getLastSettingUpdateCall("embedded-metabot-enabled?");
+    expect(call?.options?.body).toBe(JSON.stringify({ value: false }));
+  });
+
   it("should show an error message when a request fails", async () => {
     await setup(404, defaultMetabots, defaultSeedCollections, true);
 
@@ -230,69 +281,67 @@ describe("MetabotAdminPage", () => {
     ).toBeInTheDocument();
   });
 
-  describe("MetabotVerifiedContentConfigurationPane", () => {
-    const mockContentVerificationEnabled = (enabled: boolean) => {
-      mockHasPremiumFeature.mockImplementation((feature) => {
-        if (feature === "content_verification") {
-          return enabled;
-        }
-        return true; // Mock other features as enabled by default
-      });
-    };
-
-    it("should not show verification switch without content_verification feature", async () => {
-      mockContentVerificationEnabled(false);
-
-      await setup();
-
-      // First ensure the page has loaded
-      await screen.findByText(/Configure Metabot/);
-
-      expect(screen.queryByText("Verified content")).not.toBeInTheDocument();
-      expect(
-        screen.queryByText("Only use Verified content"),
-      ).not.toBeInTheDocument();
+  const mockContentVerificationEnabled = (enabled: boolean) => {
+    mockHasPremiumFeature.mockImplementation((feature) => {
+      if (feature === "content_verification") {
+        return enabled;
+      }
+      return true; // Mock other features as enabled by default
     });
+  };
 
-    it("should show verification switch with content_verification feature", async () => {
-      mockContentVerificationEnabled(true);
+  it("should not show verification switch without content_verification feature", async () => {
+    mockContentVerificationEnabled(false);
 
-      await setup();
+    await setup();
 
-      expect(await screen.findByText("Verified content")).toBeInTheDocument();
-      expect(
-        await screen.findByText("Only use Verified content"),
-      ).toBeInTheDocument();
-      expect(
-        await screen.findByRole("switch", {
-          name: "Only use Verified content",
-        }),
-      ).toBeInTheDocument();
-    });
+    // First ensure the page has loaded
+    await screen.findByText(/Configure Metabot/);
 
-    it("should allow enabling/disabling verified switch affecting use_verified_content", async () => {
-      mockContentVerificationEnabled(true);
+    expect(screen.queryByText("Verified content")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Only use Verified content"),
+    ).not.toBeInTheDocument();
+  });
 
-      await setup();
+  it("should show verification switch with content_verification feature", async () => {
+    mockContentVerificationEnabled(true);
 
-      const verifiedSwitch = await screen.findByRole("switch", {
+    await setup();
+
+    expect(await screen.findByText("Verified content")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Only use Verified content"),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("switch", {
         name: "Only use Verified content",
-      });
+      }),
+    ).toBeInTheDocument();
+  });
 
-      // Verify switch is initially unchecked (default metabot has use_verified_content: false)
-      expect(verifiedSwitch).not.toBeChecked();
+  it("should allow enabling/disabling verified switch affecting use_verified_content", async () => {
+    mockContentVerificationEnabled(true);
 
-      // Click to enable
-      await userEvent.click(verifiedSwitch);
+    await setup();
 
-      // Verify API call was made with correct payload
-      await waitFor(async () => {
-        const putRequests = await findRequests("PUT");
-        expect(putRequests.length).toBe(1);
-      });
-
-      const putRequests = await findRequests("PUT");
-      expect(putRequests[0].body).toEqual({ use_verified_content: true });
+    const verifiedSwitch = await screen.findByRole("switch", {
+      name: "Only use Verified content",
     });
+
+    // Verify switch is initially unchecked (default metabot has use_verified_content: false)
+    expect(verifiedSwitch).not.toBeChecked();
+
+    // Click to enable
+    await userEvent.click(verifiedSwitch);
+
+    // Verify API call was made with correct payload
+    await waitFor(async () => {
+      const putRequests = await findRequests("PUT");
+      expect(putRequests.length).toBe(1);
+    });
+
+    const putRequests = await findRequests("PUT");
+    expect(putRequests[0].body).toEqual({ use_verified_content: true });
   });
 });

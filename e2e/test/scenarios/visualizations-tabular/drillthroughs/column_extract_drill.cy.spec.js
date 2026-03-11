@@ -92,7 +92,7 @@ const DATE_QUESTION = {
   },
 };
 
-describe("extract action", () => {
+describe("extract action", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -256,7 +256,7 @@ describe("extract action", () => {
     });
 
     EMAIL_CASES.forEach(({ option, value, example }) => {
-      it(option, { viewportWidth: 1600 }, () => {
+      it(option, () => {
         H.openPeopleTable({ limit: 1 });
         extractColumnAndCheck({
           column: "Email",
@@ -395,7 +395,7 @@ function extractColumnAndCheck({
   }
 }
 
-describe("extract action", () => {
+describe("extract action", { viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

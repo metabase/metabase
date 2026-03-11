@@ -175,6 +175,9 @@ describe("issue 32037", () => {
   it("should show unsaved changes modal and allow to discard changes when editing a metric (metabase#32037)", () => {
     cy.visit("/browse/metrics");
     cy.findByLabelText("Metric 32037").click();
+
+    H.MetricsViewer.openMetricHomePage("Metric 32037");
+
     H.cartesianChartCircle().should("be.visible");
     cy.location("pathname").as("metricPathname");
     H.openQuestionActions("Edit metric definition");

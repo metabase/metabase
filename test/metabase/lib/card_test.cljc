@@ -719,13 +719,13 @@
                          :semantic-type :type/Quantity)]
     (testing "result-cols only, no model-cols"
       (is (= [result-col]
-             (lib.card/merge-model-metadata [result-col] [] false))))
+             (lib.card/merge-model-metadata [result-col] []))))
     (testing "model-cols only, no result-cols"
       (is (= [model-col]
-             (lib.card/merge-model-metadata [] [model-col] false))))
+             (lib.card/merge-model-metadata [] [model-col]))))
     (testing "both present — model metadata merged onto result"
       (is (=? [model-col]
-              (lib.card/merge-model-metadata [result-col] [model-col] false))))))
+              (lib.card/merge-model-metadata [result-col] [model-col]))))))
 
 (deftest ^:parallel merge-model-metadata-temporal-and-aggregation-test
   (let [result-col {:lib/type :metadata/column
@@ -738,19 +738,32 @@
         model-col (assoc result-col
                          :display-name "Custom Foo"
                          :semantic-type :type/Quantity)]
-    (testing "temporal unit appended to display name"
+    (testing "temporal unit appended to display name for outer queries"
       (let [temporal-result (assoc result-col
                                    :base-type :type/Date
                                    :effective-type :type/Date
                                    :lib/temporal-unit :month)]
         (is (=? [{:display-name "Custom Foo: Month"}]
-                (lib.card/merge-model-metadata [temporal-result] [model-col] false)))))
-    (testing "aggregation source columns are not overridden by model metadata"
+                (lib.card/merge-model-metadata [temporal-result] [model-col])))))
+    (testing "temporal unit NOT appended for model's own query"
+      (let [temporal-result (assoc result-col
+                                   :base-type :type/Date
+                                   :effective-type :type/Date
+                                   :lib/temporal-unit :month)]
+        (is (=? [{:display-name "Custom Foo"}]
+                (lib.card/merge-model-metadata [temporal-result] [model-col] {:own-model-query? true})))))
+    (testing "aggregation source columns are not overridden by model metadata (outer query)"
       (let [agg-result (assoc result-col
                               :display-name "Sum of Foo"
                               :lib/source :source/aggregations)]
         (is (=? [{:display-name "Sum of Foo"}]
-                (lib.card/merge-model-metadata [agg-result] [model-col] false)))))))
+                (lib.card/merge-model-metadata [agg-result] [model-col])))))
+    (testing "aggregation source columns are merged when own-model-query?"
+      (let [agg-result (assoc result-col
+                              :display-name "Sum of Foo"
+                              :lib/source :source/aggregations)]
+        (is (=? [{:display-name "Custom Foo"}]
+                (lib.card/merge-model-metadata [agg-result] [model-col] {:own-model-query? true})))))))
 
 (deftest ^:parallel merge-model-metadata-binning-test
   (let [result-col {:lib/type :metadata/column
@@ -764,10 +777,13 @@
         model-col (assoc result-col
                          :display-name "Custom Foo"
                          :semantic-type :type/Quantity)]
-    (testing "binning appended to display name"
+    (testing "binning appended to display name for outer queries"
       (is (=? [{:display-name "Custom Foo: 10 bins"}]
-              (lib.card/merge-model-metadata [result-col] [model-col] false)))))
-  (testing "bin-width with coordinate semantic type includes degree symbol"
+              (lib.card/merge-model-metadata [result-col] [model-col]))))
+    (testing "binning NOT appended for model's own query"
+      (is (=? [{:display-name "Custom Foo"}]
+              (lib.card/merge-model-metadata [result-col] [model-col] {:own-model-query? true})))))
+  (testing "bin-width with coordinate semantic type"
     (let [result-col {:lib/type :metadata/column
                       :name "LAT"
                       :base-type :type/Float
@@ -779,8 +795,12 @@
                       :lib/binning {:strategy :bin-width :bin-width 1.0}}
           model-col (assoc result-col
                            :display-name "Custom Lat")]
-      (is (=? [{:display-name "Custom Lat: 1°"}]
-              (lib.card/merge-model-metadata [result-col] [model-col] false))))))
+      (testing "appended for outer queries"
+        (is (=? [{:display-name "Custom Lat: 1°"}]
+                (lib.card/merge-model-metadata [result-col] [model-col]))))
+      (testing "NOT appended for model's own query"
+        (is (=? [{:display-name "Custom Lat"}]
+                (lib.card/merge-model-metadata [result-col] [model-col] {:own-model-query? true})))))))
 
 (deftest ^:parallel merge-model-metadata-preserved-keys-test
   (let [result-col {:lib/type :metadata/column
@@ -804,13 +824,13 @@
                 :visibility-type :details-only
                 :fk-target-field-id 42
                 :lib/source-display-name "Original Foo"}]
-              (lib.card/merge-model-metadata [result-col] [model-col] false))))
+              (lib.card/merge-model-metadata [result-col] [model-col]))))
     (testing "native model also preserves :id"
       (is (=? [{:id 200}]
-              (lib.card/merge-model-metadata [result-col] [model-col] true))))
+              (lib.card/merge-model-metadata [result-col] [model-col] {:native-model? true}))))
     (testing "non-native model does not override :id"
       (is (=? [{:id 100}]
-              (lib.card/merge-model-metadata [result-col] [model-col] false))))))
+              (lib.card/merge-model-metadata [result-col] [model-col]))))))
 
 (deftest ^:parallel fallback-display-name-test
   (is (= "Question 42" (lib.card/fallback-display-name 42)))

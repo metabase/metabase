@@ -114,7 +114,7 @@ export const MetabotInlineSQLPrompt = ({
           onStop={handleClose}
           suggestionConfig={{
             suggestionModels,
-            searchOptions: databaseId ? { table_db_id: databaseId } : undefined,
+            onlyDatabaseId: databaseId ?? undefined,
           }}
         />
       </Box>

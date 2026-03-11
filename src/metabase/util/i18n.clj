@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.util.i18n.common :as i18n.common]
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -16,6 +17,8 @@
 (set! *warn-on-reflection* true)
 
 (p/import-vars
+ [i18n.common
+  join-strings-with-conjunction]
  [i18n.impl
   available-locale?
   fallback-locale

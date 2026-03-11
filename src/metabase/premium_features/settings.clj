@@ -297,9 +297,9 @@
   "Does this instance support remote syncing collections."
   :remote-sync)
 
-(define-premium-feature ^{:added "0.57.0"} enable-transforms?
-  "Should we allow users to use transforms?"
-  :transforms)
+(define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
+  "Should we allow users to use transforms? Replacement for transforms"
+  :transforms-basic)
 
 (define-premium-feature ^{:added "0.57.0"} enable-python-transforms?
   "Should we allow users to use Python transforms?"
@@ -324,6 +324,10 @@
 (define-premium-feature ^{:added "0.59.0"} enable-workspaces?
   "Should we allow users to use workspaces?"
   :workspaces)
+
+(define-premium-feature enable-writable-connection?
+  "Should we allow admins to configure separate write connection credentials?"
+  :writable-connection)
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
@@ -374,11 +378,12 @@
    :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
    :tenants                        (enable-tenants?)
-   :transforms                     (enable-transforms?)
+   :transforms-basic               (enable-basic-transforms?)
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
-   :workspaces                     (enable-workspaces?)})
+   :workspaces                     (enable-workspaces?)
+   :writable_connection            (enable-writable-connection?)})
 
 (defsetting token-features
   "Features registered for this instance's token"

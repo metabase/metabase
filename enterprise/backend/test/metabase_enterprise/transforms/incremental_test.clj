@@ -15,10 +15,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
-   [metabase.transforms.util :as transforms.u]
    [next.jdbc :as next.jdbc]
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2]))
@@ -153,7 +153,7 @@
                       :source-incremental-strategy {:type "checkpoint"
                                                     :checkpoint-filter-unique-key lib-column-key}}
                :python {:type "python"
-                        :source-tables {"transforms_products" (mt/id :transforms_products)}
+                        :source-tables [{:alias "transforms_products" :table_id (mt/id :transforms_products)}]
                         :limit 10
                         :body incremental-python-body
                         :source-incremental-strategy {:type "checkpoint"
@@ -183,8 +183,8 @@
     (some-> result :data :rows first first bigint)))
 
 (defn get-checkpoint-value [transform]
-  (#'transforms.u/next-checkpoint-value
-   (transforms.u/next-checkpoint transform)))
+  (#'transforms-base.u/next-checkpoint-value
+   (transforms-base.u/next-checkpoint transform)))
 
 (defn- compare-checkpoint-values
   "Compare two checkpoint values with type-appropriate logic. "
@@ -192,7 +192,7 @@
   (case checkpoint-type
     :integer (= (bigint expected) (bigint actual))
     :float (and (number? actual)
-                (< (Math/abs (- expected actual)) 0.01))
+                (< (Math/abs (double (- expected actual))) 0.01))
     :temporal (and (string? actual)
                    (str/starts-with? actual expected))))
 
@@ -246,7 +246,7 @@
             :let [transform-type :native]]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
-          (mt/with-premium-features #{:transforms}
+          (mt/with-premium-features #{:transforms-basic}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "incremental_test")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -281,7 +281,7 @@
             :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
-          (mt/with-premium-features #{:transforms :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "incremental_twice")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -317,8 +317,8 @@
             transform-type [:native :mbql :python]
             :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
-        (mt/test-drivers (disj (test-drivers) :bigquery-cloud-sdk) ; will follow up with a fix via GDGT-1777
-          (mt/with-premium-features #{:transforms :transforms-python}
+        (mt/test-drivers (test-drivers)
+          (mt/with-premium-features #{:transforms-basic :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_incr_to_non_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -374,7 +374,7 @@
             :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
-          (mt/with-premium-features #{:transforms :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_non_incr_to_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -437,7 +437,7 @@
     (doseq [checkpoint-type [:integer :float :temporal]]
       (testing (format "with %s checkpoint" (name checkpoint-type))
         (mt/test-drivers (test-drivers)
-          (mt/with-premium-features #{:transforms}
+          (mt/with-premium-features #{:transforms-basic}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "native_no_template")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -490,7 +490,7 @@
 (deftest unsupported-checkpoint-column-type-test
   (testing "Transform fails at runtime with unsupported checkpoint column type"
     (mt/test-drivers #{:h2 :postgres}
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table "unsupported_type_test"]
             (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
@@ -514,7 +514,7 @@
   (testing "Native query with temporal checkpoint"
     ;; we test only in postgres because it's easy to cast to ::timestamp
     (mt/test-drivers [:postgres]
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table (target-table-gen "native_temporal_cast")]
             (let [checkpoint-config (get checkpoint-configs :temporal)
@@ -588,7 +588,7 @@
 
 (deftest empty-table-test
   (mt/test-drivers #{:postgres}                             ; no db specifics
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (with-transform-cleanup! [target-table "empty_table_target"]
         (let [db-id   (mt/id)
               db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
@@ -609,11 +609,11 @@
             (testing "sync has picked up table"
               (is (=? {:name target-table, :fields [{:name "id"}]} (-> (t2/select-one :model/Table :name target-table) (t2/hydrate :fields)))))
             (testing "checkpoint is recognized"
-              (is (some? (transforms.u/next-checkpoint transform))))))))))
+              (is (some? (transforms-base.u/next-checkpoint transform))))))))))
 
 (deftest checkpoint-field-does-not-exist-test
   (mt/test-drivers #{:postgres}                             ; no db specifics
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (with-transform-cleanup! [target-table "missing_field_target"]
         (let [db-id   (mt/id)
               db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
@@ -636,7 +636,7 @@
             (testing "target table has expected data"
               (is (= [{:id 42}] (pg-table-rows db-spec target-table))))
             (testing "checkpoint is not recognized, so transform acts as if no checkpoint"
-              (is (nil? (transforms.u/next-checkpoint transform))))
+              (is (nil? (transforms-base.u/next-checkpoint transform))))
             ;; Maybe this is unrealistic - you cannot select a column that does not exist
             ;; But the source tables schema can change, e.g. rename: you change event_time to event_ts or something
             ;; so one would have to be careful to disable or delete transforms ahead of a schema change like this
@@ -647,7 +647,7 @@
 
 (deftest changing-query-keeps-checkpoint-test
   (mt/test-drivers #{:postgres}                             ; no db specifics
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (with-transform-cleanup! [target-table "change_table_target"]
         (let [db-id   (mt/id)
               db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
@@ -686,7 +686,7 @@
             :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (set/intersection (test-drivers) (mt/normal-drivers-with-feature :transforms/index-ddl))
-          (mt/with-premium-features #{:transforms :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "incremental_index")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
@@ -718,7 +718,7 @@
             :when (valid-checkpoint-transform-combo? checkpoint-type transform-type)]
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (set/intersection (test-drivers) (mt/normal-drivers-with-feature :transforms/index-ddl))
-          (mt/with-premium-features #{:transforms :transforms-python}
+          (mt/with-premium-features #{:transforms-basic :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "index_cleanup_non_incr")]
                 (let [checkpoint-config   (get checkpoint-configs checkpoint-type)
@@ -746,7 +746,7 @@
 (deftest index-cleanup-on-checkpoint-column-change-test
   (testing "Changing checkpoint column removes old index and creates new one"
     (mt/test-drivers (set/intersection (test-drivers) (mt/normal-drivers-with-feature :transforms/index-ddl))
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-cleanup! [target-table (target-table-gen "icchange")]
             (let [integer-config  (get checkpoint-configs :integer)

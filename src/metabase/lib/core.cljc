@@ -41,7 +41,7 @@
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.options]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.page]
    [metabase.lib.parameters]
@@ -52,6 +52,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
@@ -104,7 +105,7 @@
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
-         metabase.lib.options/keep-me
+         lib.options/keep-me
          lib.order-by/keep-me
          metabase.lib.parameters/keep-me
          lib.parse/keep-me
@@ -177,6 +178,7 @@
   ->legacy-MBQL
   ->pMBQL
   legacy-default-join-alias
+  with-aggregation-list
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -403,7 +405,7 @@
   with-native-extras
   with-native-query
   with-template-tags]
- [metabase.lib.options
+ [lib.options
   ensure-uuid
   options
   update-options]
@@ -429,8 +431,10 @@
   parameter-target-field-options
   parameter-target-field-ref
   parameter-target-is-dimension?
+  parameter-target-stage-number
   parameter-target-template-tag-name
-  update-parameter-target-dimension-options]
+  update-parameter-target-dimension-options
+  update-parameter-target-field-ref]
  [lib.parameters.parse
   match-and-normalize-tag-name]
  [lib.parse
@@ -524,6 +528,7 @@
   validation-exception-error]
  [metabase.lib.walk.util
   all-field-ids
+  all-referenced-entity-ids
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids
@@ -574,3 +579,19 @@
   **Code Health:** Discouraged; there are few legitimate use cases for working with raw card IDs outside lib."
   [a-query :- :metabase.lib.schema/query]
   (lib.util/source-card-id a-query))
+
+(mu/defn display-name-without-id :- :string
+  "Given a display name like `\"Something ID\"`, remove the \"ID\" portion and trim whitespace.
+
+  Useful to turn a FK field's name into a pseudo table name, when doing an implicit join.
+
+  **Code Health:** Healthy."
+  [field-display-name :- :string]
+  (lib.util/strip-id field-display-name))
+
+(mu/defn ignore-case :- ::lib.schema.expression/boolean
+  "Given a boolean expression on strings, sets the options to ignore case.
+
+  Prefer this over setting the `:case-sensitive false` option directly."
+  [boolean-expression :- ::lib.schema.expression/boolean]
+  (lib.options/update-options boolean-expression assoc :case-sensitive false))

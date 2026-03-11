@@ -41,10 +41,10 @@ const getSeriesModelsWithTrends = (
 ): [SeriesModel, TrendFn][] => {
   return seriesModels
     .map((seriesModel) => {
-      if (
-        settings.series(seriesModel.legacySeriesSettingsObjectKey)
-          .show_series_trendline === false
-      ) {
+      const seriesSetting = settings.series?.(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+      if (seriesSetting?.show_series_trendline === false) {
         return null;
       }
       // Breakout series do not support trend lines because the data grouping happens on the client

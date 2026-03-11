@@ -10,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -42,7 +41,7 @@
   usually a `:field` clause; we use this info to wrap `rhs` if it's a raw value e.g. `1`."
   [query path clause]
   (merge
-   (when (lib.util/clause-of-type? clause :field)
+   (when (lib/clause-of-type? clause :field)
      (type-info-from-col (lib.walk/apply-f-for-stage-at-path lib/metadata query path clause)))
    (let [expr-type (lib.walk/apply-f-for-stage-at-path lib/type-of query path clause)
          [_ {:keys [base-type]}] clause]
@@ -224,7 +223,7 @@
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
-(def ^:private raw-value? (complement lib.util/clause?))
+(def ^:private raw-value? (complement lib/clause?))
 
 (defn- wrap-value-literals-in-clause
   [query path clause]
@@ -294,7 +293,7 @@
   [clause]
   (let [expr-type (lib.schema.expression/type-of-resolved clause)]
     (merge
-     (when (and (lib.util/clause-of-type? clause :field)
+     (when (and (lib/clause-of-type? clause :field)
                 (qp.store/initialized?))
        (let [[_tag _opts id-or-name] clause]
          (when (pos-int? id-or-name)
