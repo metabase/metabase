@@ -5,6 +5,7 @@ import { Box, Button, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
 import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
+import type { ExpressionToken } from "../../types/operators";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -33,6 +34,7 @@ type MetricSearchPanelProps = {
     id: MetricSourceId,
     definition: MetricDefinition,
   ) => void;
+  onExpressionChange?: (tokens: ExpressionToken[]) => void;
 };
 
 export function MetricSearchPanel({
@@ -44,6 +46,7 @@ export function MetricSearchPanel({
   onSwapMetric,
   onSetBreakout,
   onUpdateDefinition,
+  onExpressionChange,
 }: MetricSearchPanelProps) {
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
@@ -72,7 +75,7 @@ export function MetricSearchPanel({
 
   return (
     <Stack gap="sm">
-      <Flex align="center" justify="space-between">
+      <Flex align="center" justify="space-between" mih="1.875rem">
         <Text fw={700} size="lg">{t`Explore`}</Text>
         {hasDefinitions && (
           <FilterPopover
@@ -129,6 +132,7 @@ export function MetricSearchPanel({
             onRemoveMetric={onRemoveMetric}
             onSwapMetric={onSwapMetric}
             onSetBreakout={onSetBreakout}
+            onExpressionChange={onExpressionChange}
           />
         </Box>
         {hasFilters && isFilterPillsExpanded && (

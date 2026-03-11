@@ -1,4 +1,5 @@
 import type { Location } from "history";
+import { useMemo, useState } from "react";
 
 import { Box, Flex, Stack } from "metabase/ui";
 
@@ -13,6 +14,7 @@ import {
   MetricsViewerTabs,
 } from "../../components/MetricsViewerTabs";
 import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
+import type { ExpressionToken } from "../../types/operators";
 
 import S from "./MetricsViewerPage.module.css";
 
@@ -21,6 +23,8 @@ export type MetricsViewerPageProps = {
 };
 
 export function MetricsViewerPage(props: MetricsViewerPageProps) {
+  const [tokens, setTokens] = useState<ExpressionToken[]>([]);
+
   const {
     definitions,
     tabs,
@@ -36,6 +40,9 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     sourceDataById,
     availableDimensions,
     isExecuting,
+    arithmeticResult,
+    arithmeticIsExecuting,
+    arithmeticError,
     addMetric,
     swapMetric,
     removeMetric,
@@ -47,7 +54,29 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     removeTabDimension,
     updateDefinition,
     setBreakoutDimension,
-  } = useMetricsViewer(props);
+  } = useMetricsViewer(props, tokens);
+
+  const expressionName = useMemo(() => {
+    const metricCount = tokens.filter((t) => t.type === "metric").length;
+    const opCount = tokens.filter((t) => t.type === "operator").length;
+    if (metricCount < 2 || opCount === 0) {
+      return null;
+    }
+    return tokens
+      .map((token) => {
+        if (token.type === "open-paren") {
+          return "(";
+        }
+        if (token.type === "close-paren") {
+          return ")";
+        }
+        if (token.type === "operator") {
+          return token.op;
+        }
+        return selectedMetrics[token.metricIndex]?.name ?? "...";
+      })
+      .join(" ");
+  }, [tokens, selectedMetrics]);
 
   const hasDefinitions = definitions.length > 0;
   const hasLoadedDefinitions = definitions.some(
@@ -66,6 +95,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
           onSwapMetric={swapMetric}
           onSetBreakout={setBreakoutDimension}
           onUpdateDefinition={updateDefinition}
+          onExpressionChange={setTokens}
         />
       </Box>
       <Flex flex="1 1 auto" mih={0}>
@@ -106,6 +136,10 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   modifiedDefinitions={modifiedDefinitions}
                   sourceColors={sourceColors}
                   isExecuting={isExecuting}
+                  arithmeticResult={arithmeticResult}
+                  arithmeticIsExecuting={arithmeticIsExecuting}
+                  arithmeticError={arithmeticError}
+                  expressionName={expressionName}
                   onTabUpdate={updateActiveTab}
                   onDimensionChange={(defId, dim) =>
                     changeTabDimension(activeTab.id, defId, dim)

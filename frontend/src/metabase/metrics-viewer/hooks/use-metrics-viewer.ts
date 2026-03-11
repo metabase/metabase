@@ -10,6 +10,7 @@ import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
+import type { ExpressionToken } from "../types/operators";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -61,6 +62,10 @@ export interface UseMetricsViewerResult {
   errorsByDefinitionId: Map<MetricSourceId, string>;
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
   isExecuting: (id: MetricSourceId) => boolean;
+
+  arithmeticResult: Dataset | null;
+  arithmeticIsExecuting: boolean;
+  arithmeticError: string | null;
 
   sourceColors: SourceColorMap;
   breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
@@ -149,9 +154,10 @@ function buildUrlRestoreTransform(
   };
 }
 
-export function useMetricsViewer({
-  location,
-}: MetricsViewerPageProps): UseMetricsViewerResult {
+export function useMetricsViewer(
+  { location }: MetricsViewerPageProps,
+  tokens: ExpressionToken[] = [],
+): UseMetricsViewerResult {
   const {
     state,
     loadingIds,
@@ -205,7 +211,10 @@ export function useMetricsViewer({
     modifiedDefinitions,
     breakoutValuesBySourceId,
     isExecuting,
-  } = useDefinitionQueries(state.definitions, activeTab);
+    arithmeticResult,
+    arithmeticIsExecuting,
+    arithmeticError,
+  } = useDefinitionQueries(state.definitions, activeTab, tokens);
 
   const selectedMetrics = useMemo(
     () => getSelectedMetricsInfo(state.definitions, loadingIds),
@@ -372,6 +381,10 @@ export function useMetricsViewer({
     errorsByDefinitionId,
     modifiedDefinitions,
     isExecuting,
+
+    arithmeticResult,
+    arithmeticIsExecuting,
+    arithmeticError,
 
     sourceColors,
     breakoutValuesBySourceId,

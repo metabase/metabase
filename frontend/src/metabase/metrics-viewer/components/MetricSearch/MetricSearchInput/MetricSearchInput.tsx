@@ -1,9 +1,15 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Flex, Popover, TextInput } from "metabase/ui";
+import { Box, Flex, Group, Popover, TextInput } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 
+import {
+  type ExpressionToken,
+  MATH_OPERATORS,
+  type MathOperator,
+  isMathOperator,
+} from "../../../types/operators";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -20,6 +26,57 @@ import { getSelectedMeasureIds, getSelectedMetricIds } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
 
+type OperatorPillProps = {
+  operator: MathOperator;
+  onChange: (op: MathOperator) => void;
+};
+
+function OperatorPill({ operator, onChange }: OperatorPillProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Popover
+      opened={isOpen}
+      onChange={setIsOpen}
+      position="bottom"
+      shadow="md"
+      withinPortal
+    >
+      <Popover.Target>
+        <Box
+          component="button"
+          className={S.operatorPill}
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            setIsOpen((o) => !o);
+          }}
+          aria-label={t`Change operator`}
+        >
+          {operator}
+        </Box>
+      </Popover.Target>
+      <Popover.Dropdown p="xs">
+        <Group gap="xs">
+          {MATH_OPERATORS.map((op) => (
+            <Box
+              key={op}
+              component="button"
+              className={`${S.operatorChoice} ${op === operator ? S.operatorChoiceActive : ""}`}
+              onClick={() => {
+                onChange(op);
+                setIsOpen(false);
+              }}
+              aria-label={op}
+            >
+              {op}
+            </Box>
+          ))}
+        </Group>
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
 type MetricSearchInputProps = {
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
@@ -31,6 +88,7 @@ type MetricSearchInputProps = {
     id: MetricSourceId,
     dimension: ProjectionClause | undefined,
   ) => void;
+  onExpressionChange?: (tokens: ExpressionToken[]) => void;
 };
 
 export function MetricSearchInput({
@@ -41,10 +99,31 @@ export function MetricSearchInput({
   onRemoveMetric,
   onSwapMetric,
   onSetBreakout,
+  onExpressionChange,
 }: MetricSearchInputProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  // Full expression token stream (committed tokens only)
+  const [tokens, setTokens] = useState<ExpressionToken[]>([]);
+  const [pendingOperator, setPendingOperator] = useState<MathOperator | null>(
+    null,
+  );
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    onExpressionChange?.(tokens);
+  }, [tokens, onExpressionChange]);
+
+  // Safety net: drop any metric tokens whose index is out of range
+  useEffect(() => {
+    const maxIdx = selectedMetrics.length - 1;
+    setTokens((prev) => {
+      const filtered = prev.filter(
+        (t) => t.type !== "metric" || t.metricIndex <= maxIdx,
+      );
+      return filtered.length === prev.length ? prev : filtered;
+    });
+  }, [selectedMetrics.length]);
 
   const selectedMetricIds = useMemo(
     () => getSelectedMetricIds(selectedMetrics),
@@ -61,27 +140,172 @@ export function MetricSearchInput({
     [definitions],
   );
 
+  // Derived state from tokens
+  const openParenCount = useMemo(
+    () => tokens.filter((t) => t.type === "open-paren").length,
+    [tokens],
+  );
+  const closeParenCount = useMemo(
+    () => tokens.filter((t) => t.type === "close-paren").length,
+    [tokens],
+  );
+  const hasUnclosedParen = openParenCount > closeParenCount;
+  const lastToken = tokens[tokens.length - 1] ?? null;
+
+  // Whether we can insert a close-paren
+  const canCloseParen =
+    hasUnclosedParen &&
+    pendingOperator === null &&
+    (lastToken?.type === "metric" || lastToken?.type === "close-paren");
+
+  // Whether we can insert an open-paren
+  const canOpenParen =
+    pendingOperator !== null ||
+    tokens.length === 0 ||
+    lastToken?.type === "open-paren" ||
+    lastToken?.type === "operator";
+
+  const handleRemoveMetric = useCallback(
+    (id: number, sourceType: "metric" | "measure") => {
+      const index = selectedMetrics.findIndex(
+        (m) => m.id === id && m.sourceType === sourceType,
+      );
+      if (index !== -1) {
+        setTokens((prev) => {
+          const tokenIdx = prev.findIndex(
+            (t) => t.type === "metric" && t.metricIndex === index,
+          );
+          if (tokenIdx === -1) {
+            return prev;
+          }
+          const next = [...prev];
+          next.splice(tokenIdx, 1); // remove metric token
+
+          // Remove adjacent operator (prefer before, then after)
+          const before = next[tokenIdx - 1];
+          const after = next[tokenIdx];
+          if (before?.type === "operator") {
+            next.splice(tokenIdx - 1, 1);
+          } else if (after?.type === "operator") {
+            next.splice(tokenIdx, 1);
+          }
+
+          // Decrement metricIndex for all subsequent metric tokens
+          return next.map((t) =>
+            t.type === "metric" && t.metricIndex > index
+              ? { ...t, metricIndex: t.metricIndex - 1 }
+              : t,
+          );
+        });
+      }
+      onRemoveMetric(id, sourceType);
+    },
+    [selectedMetrics, onRemoveMetric],
+  );
+
   const handleSelect = useCallback(
     (metric: SelectedMetric) => {
+      const newMetricIndex = selectedMetrics.length; // will be appended at this index
       onAddMetric(metric);
+      setTokens((prev) => [
+        ...prev,
+        ...(pendingOperator !== null
+          ? [{ type: "operator" as const, op: pendingOperator }]
+          : []),
+        { type: "metric" as const, metricIndex: newMetricIndex },
+      ]);
+      setPendingOperator(null);
       setSearchText("");
       setIsOpen(false);
     },
-    [onAddMetric],
+    [onAddMetric, pendingOperator, selectedMetrics.length],
   );
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
-      if (
-        event.key === "Backspace" &&
-        searchText === "" &&
-        selectedMetrics.length > 0
-      ) {
-        const last = selectedMetrics[selectedMetrics.length - 1];
-        onRemoveMetric(last.id, last.sourceType);
+      if (searchText === "") {
+        // Operator keys
+        if (
+          isMathOperator(event.key) &&
+          (lastToken?.type === "metric" || lastToken?.type === "close-paren")
+        ) {
+          event.preventDefault();
+          setPendingOperator(event.key);
+          setIsOpen(true);
+          return;
+        }
+
+        // Open paren
+        if (event.key === "(" && canOpenParen) {
+          event.preventDefault();
+          setTokens((prev) => [
+            ...prev,
+            ...(pendingOperator !== null
+              ? [{ type: "operator" as const, op: pendingOperator }]
+              : []),
+            { type: "open-paren" as const },
+          ]);
+          setPendingOperator(null);
+          setIsOpen(true);
+          return;
+        }
+
+        // Close paren
+        if (event.key === ")" && canCloseParen) {
+          event.preventDefault();
+          setTokens((prev) => [...prev, { type: "close-paren" as const }]);
+          return;
+        }
+
+        // Backspace
+        if (event.key === "Backspace") {
+          if (pendingOperator !== null) {
+            setPendingOperator(null);
+            return;
+          }
+          if (!lastToken) {
+            return;
+          }
+          if (
+            lastToken.type === "close-paren" ||
+            lastToken.type === "open-paren" ||
+            lastToken.type === "operator"
+          ) {
+            setTokens((prev) => prev.slice(0, -1));
+            return;
+          }
+          if (lastToken.type === "metric") {
+            const metricIdx = lastToken.metricIndex;
+            const metric = selectedMetrics[metricIdx];
+            setTokens((prev) => {
+              let next = prev.slice(0, -1);
+              const prevToken = next[next.length - 1];
+              if (prevToken?.type === "operator") {
+                next = next.slice(0, -1);
+              }
+              return next.map((t) =>
+                t.type === "metric" && t.metricIndex > metricIdx
+                  ? { ...t, metricIndex: t.metricIndex - 1 }
+                  : t,
+              );
+            });
+            if (metric) {
+              onRemoveMetric(metric.id, metric.sourceType);
+            }
+            return;
+          }
+        }
       }
     },
-    [searchText, selectedMetrics, onRemoveMetric],
+    [
+      searchText,
+      selectedMetrics,
+      pendingOperator,
+      lastToken,
+      canOpenParen,
+      canCloseParen,
+      onRemoveMetric,
+    ],
   );
 
   const handleContainerClick = useCallback(() => {
@@ -91,6 +315,17 @@ export function MetricSearchInput({
   const handleInputClick = useCallback(() => {
     setIsOpen(true);
   }, []);
+
+  const handleChangeOperator = useCallback(
+    (tokenIndex: number, newOp: MathOperator) => {
+      setTokens((prev) =>
+        prev.map((t, i) =>
+          i === tokenIndex && t.type === "operator" ? { ...t, op: newOp } : t,
+        ),
+      );
+    },
+    [],
+  );
 
   return (
     <Flex
@@ -103,30 +338,68 @@ export function MetricSearchInput({
       onClick={handleContainerClick}
     >
       <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.25rem">
-        {selectedMetrics.map((metric) => {
-          const sid =
-            metric.sourceType === "metric"
-              ? createMetricSourceId(metric.id)
-              : createMeasureSourceId(metric.id);
-          const entry = definitionsBySourceId.get(sid);
-          if (!entry) {
-            return null;
+        {tokens.map((token, i) => {
+          if (token.type === "open-paren") {
+            return (
+              <span key={i} className={S.parenToken}>
+                (
+              </span>
+            );
           }
-          return (
-            <MetricPill
-              key={`${metric.sourceType}-${metric.id}`}
-              metric={metric}
-              colors={metricColors[sid]}
-              definitionEntry={entry}
-              selectedMetricIds={selectedMetricIds}
-              selectedMeasureIds={selectedMeasureIds}
-              onSwap={onSwapMetric}
-              onRemove={onRemoveMetric}
-              onSetBreakout={(dimension) => onSetBreakout(sid, dimension)}
-              onOpen={() => setIsOpen(false)}
-            />
-          );
+          if (token.type === "close-paren") {
+            return (
+              <span key={i} className={S.parenToken}>
+                )
+              </span>
+            );
+          }
+          if (token.type === "operator") {
+            return (
+              <OperatorPill
+                key={i}
+                operator={token.op}
+                onChange={(op) => handleChangeOperator(i, op)}
+              />
+            );
+          }
+          if (token.type === "metric") {
+            const metric = selectedMetrics[token.metricIndex];
+            if (!metric) {
+              return null;
+            }
+            const sid =
+              metric.sourceType === "metric"
+                ? createMetricSourceId(metric.id)
+                : createMeasureSourceId(metric.id);
+            const entry = definitionsBySourceId.get(sid);
+            if (!entry) {
+              return null;
+            }
+            return (
+              <MetricPill
+                key={`${metric.sourceType}-${metric.id}`}
+                metric={metric}
+                colors={metricColors[sid]}
+                definitionEntry={entry}
+                selectedMetricIds={selectedMetricIds}
+                selectedMeasureIds={selectedMeasureIds}
+                onSwap={onSwapMetric}
+                onRemove={handleRemoveMetric}
+                onSetBreakout={(dimension) => onSetBreakout(sid, dimension)}
+                onOpen={() => setIsOpen(false)}
+              />
+            );
+          }
+          return null;
         })}
+        {pendingOperator !== null && (
+          <Box
+            component="span"
+            className={`${S.operatorPill} ${S.operatorPillPending}`}
+          >
+            {pendingOperator}
+          </Box>
+        )}
         <Popover
           opened={isOpen}
           onChange={setIsOpen}

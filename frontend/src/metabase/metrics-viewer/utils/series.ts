@@ -40,6 +40,76 @@ import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
 
+export function buildArithmeticSeriesFromResult(
+  definitions: MetricsViewerDefinitionEntry[],
+  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
+  display: MetricsViewerDisplayType,
+  arithmeticResult: Dataset,
+  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
+  expressionName: string,
+): SingleSeries[] {
+  if (!arithmeticResult.data?.cols?.length) {
+    return [];
+  }
+
+  const firstSettingsEntry = definitions.reduce<{
+    def: MetricDefinition;
+    dimension: DimensionMetadata;
+  } | null>((found, entry) => {
+    if (found) {
+      return found;
+    }
+    const dimensionId = dimensionMapping[entry.id];
+    if (!dimensionId || !entry.definition) {
+      return null;
+    }
+    const dimension = findDimensionById(entry.definition, dimensionId);
+    if (!dimension) {
+      return null;
+    }
+    const def = modifiedDefinitions.get(entry.id);
+    if (!def) {
+      return null;
+    }
+    return { def, dimension };
+  }, null);
+
+  if (!firstSettingsEntry) {
+    return [];
+  }
+
+  const vizSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
+    firstSettingsEntry.def,
+    firstSettingsEntry.dimension,
+  );
+
+  const cardId = nextSyntheticCardId();
+  const cols = arithmeticResult.data.cols;
+  const metricCol = cols[cols.length - 1];
+  const seriesKey = getSeriesVizSettingsKey(
+    metricCol,
+    false,
+    true,
+    1,
+    null,
+    expressionName,
+  );
+
+  return [
+    {
+      card: createSeriesCard(cardId, expressionName, display, {
+        ...vizSettings,
+        ...computeColorVizSettings({
+          displayType: display,
+          seriesKey,
+          color: undefined,
+        }),
+      }),
+      data: arithmeticResult.data,
+    },
+  ];
+}
+
 function getDefinitionCardId(def: MetricDefinition): number | null {
   const metricId = LibMetric.sourceMetricId(def);
   if (metricId != null) {

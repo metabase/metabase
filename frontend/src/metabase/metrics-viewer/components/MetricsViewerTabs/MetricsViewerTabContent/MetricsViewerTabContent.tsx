@@ -19,6 +19,7 @@ import type {
 import { getProjectionInfo } from "../../../utils/definition-builder";
 import type { DimensionFilterValue } from "../../../utils/dimension-filters";
 import {
+  buildArithmeticSeriesFromResult,
   buildDimensionItemsFromDefinitions,
   buildRawSeriesFromDefinitions,
 } from "../../../utils/series";
@@ -34,6 +35,10 @@ type MetricsViewerTabContentProps = {
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
   sourceColors: SourceColorMap;
   isExecuting: (id: MetricSourceId) => boolean;
+  arithmeticResult?: Dataset | null;
+  arithmeticIsExecuting?: boolean;
+  arithmeticError?: string | null;
+  expressionName?: string | null;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   onDimensionChange: (
     definitionId: MetricSourceId,
@@ -50,15 +55,35 @@ export function MetricsViewerTabContent({
   modifiedDefinitions,
   sourceColors,
   isExecuting,
+  arithmeticResult,
+  arithmeticIsExecuting,
+  arithmeticError,
+  expressionName,
   onTabUpdate,
   onDimensionChange,
   onDimensionRemove,
 }: MetricsViewerTabContentProps) {
+  const isArithmeticMode =
+    arithmeticResult != null ||
+    arithmeticIsExecuting === true ||
+    arithmeticError != null;
+
   const isLoading = useMemo(() => {
+    if (isArithmeticMode) {
+      return arithmeticIsExecuting === true;
+    }
     return getObjectKeys(tab.dimensionMapping).some(isExecuting);
-  }, [tab.dimensionMapping, isExecuting]);
+  }, [
+    isArithmeticMode,
+    arithmeticIsExecuting,
+    tab.dimensionMapping,
+    isExecuting,
+  ]);
 
   const firstError = useMemo(() => {
+    if (isArithmeticMode) {
+      return arithmeticError ?? null;
+    }
     for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
       const err = errorsByDefinitionId.get(sourceId);
       if (err) {
@@ -66,29 +91,46 @@ export function MetricsViewerTabContent({
       }
     }
     return null;
-  }, [tab.dimensionMapping, errorsByDefinitionId]);
+  }, [
+    isArithmeticMode,
+    arithmeticError,
+    tab.dimensionMapping,
+    errorsByDefinitionId,
+  ]);
 
   const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
 
-  const { series: rawSeries, cardIdToDimensionId } = useMemo(
-    () =>
-      buildRawSeriesFromDefinitions(
+  const { series: rawSeries, cardIdToDimensionId } = useMemo(() => {
+    if (isArithmeticMode && arithmeticResult && expressionName) {
+      const series = buildArithmeticSeriesFromResult(
         definitions,
         tab.dimensionMapping,
         tab.display,
-        resultsByDefinitionId,
+        arithmeticResult,
         modifiedDefinitions,
-        sourceColors,
-      ),
-    [
+        expressionName,
+      );
+      return { series, cardIdToDimensionId: {} };
+    }
+    return buildRawSeriesFromDefinitions(
       definitions,
       tab.dimensionMapping,
       tab.display,
       resultsByDefinitionId,
       modifiedDefinitions,
       sourceColors,
-    ],
-  );
+    );
+  }, [
+    isArithmeticMode,
+    arithmeticResult,
+    expressionName,
+    definitions,
+    tab.dimensionMapping,
+    tab.display,
+    resultsByDefinitionId,
+    modifiedDefinitions,
+    sourceColors,
+  ]);
 
   const dimensionItems = useMemo(
     () =>
