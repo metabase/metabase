@@ -988,3 +988,9 @@
               (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
                 (is (= 1 @create-count) "Pool should be reused, not recreated")
                 (is (identical? pool-1 pool-2) "Should be the same pool instance")))))))))
+
+(deftest ^:parallel default-ssh-tunnel-target-port-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :+conn-props ["port"]})
+    (is (integer? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*))))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :-conn-props ["port"]})
+    (is (nil? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*)))))
