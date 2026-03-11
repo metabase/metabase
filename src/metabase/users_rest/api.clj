@@ -624,12 +624,11 @@
 ;;; |                    Password Reset URL -- POST /api/user/:id/password-reset-url                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(api.macros/defendpoint :post "/:id/password-reset-url"
+(api.macros/defendpoint :post "/:id/password-reset-url" :- [:map [:password_reset_url :string]]
   "Generate a password reset URL for a user. Admins can share this URL directly with the user.
   The link expires in 48 hours."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  :- [:map [:password_reset_url :string]]
   (api/check-superuser)
   (let [user (api/check-404 (t2/select-one [:model/User :id :is_active :type] :id id))]
     (api/check-404 (:is_active user))
