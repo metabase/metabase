@@ -17,7 +17,7 @@ import "metabase/lib/i18n-debug";
 import "metabase/lib/i18n";
 
 // NOTE: why do we need to load this here?
-import "metabase/lib/colors";
+import "metabase/ui/colors";
 
 // NOTE: this loads all builtin plugins
 import "metabase/plugins/builtin";

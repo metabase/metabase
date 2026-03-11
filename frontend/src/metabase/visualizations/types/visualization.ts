@@ -2,6 +2,7 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
+import type { ColorGetter } from "metabase/ui/colors/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
@@ -62,8 +63,6 @@ export type Formatter = (
   options?: OptionsType,
 ) => string | null;
 export type TableCellFormatter = (value: RowValue) => ReactNode;
-
-export type ColorGetter = (colorName: string) => string;
 
 export type Extent = [number, number];
 
