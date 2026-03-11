@@ -54,7 +54,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     removeTabDimension,
     updateDefinition,
     setBreakoutDimension,
-  } = useMetricsViewer(props, tokens);
+  } = useMetricsViewer(props, tokens, setTokens);
 
   const expressionName = useMemo(() => {
     const metricCount = tokens.filter((t) => t.type === "metric").length;
@@ -87,6 +87,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     <Stack h="100%" gap={0} className={S.root}>
       <Box px="lg" pt="md" flex="0 0 auto">
         <MetricSearchPanel
+          tokens={tokens}
+          onTokensChange={setTokens}
           selectedMetrics={selectedMetrics}
           metricColors={sourceColors}
           definitions={definitions}
@@ -95,7 +97,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
           onSwapMetric={swapMetric}
           onSetBreakout={setBreakoutDimension}
           onUpdateDefinition={updateDefinition}
-          onExpressionChange={setTokens}
         />
       </Box>
       <Flex flex="1 1 auto" mih={0}>

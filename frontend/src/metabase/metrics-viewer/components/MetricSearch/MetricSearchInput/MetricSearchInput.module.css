@@ -61,9 +61,8 @@
 }
 
 .operatorChoiceActive {
-  background: var(--mb-color-background-inverse);
-  color: var(--mb-color-text-white);
-  border-color: var(--mb-color-background-inverse);
+  background: var(--mb-color-background-hover);
+  border-color: var(--mb-color-brand);
 }
 
 .parenToken {

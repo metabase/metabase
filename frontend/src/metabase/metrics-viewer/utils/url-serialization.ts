@@ -4,6 +4,7 @@ import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
+import type { ExpressionToken, MathOperator } from "../types/operators";
 import type {
   MetricSourceId,
   MetricsViewerDisplayType,
@@ -37,6 +38,12 @@ function reviveFilter(filter: DimensionFilterValue): DimensionFilterValue {
 }
 
 // ── Serialized types (internal, URL-facing) ──
+
+interface SerializedExpressionToken {
+  type: "metric" | "operator" | "open-paren" | "close-paren";
+  metricIndex?: number;
+  op?: MathOperator;
+}
 
 interface SerializedUrlFilter {
   dimensionId: string;
@@ -76,6 +83,37 @@ export interface SerializedMetricsViewerPageState {
   sources: SerializedSource[];
   tabs: SerializedTab[];
   selectedTabId: string | null;
+  expression: SerializedExpressionToken[];
+}
+
+// ── Expression token helpers ──
+
+function serializeToken(token: ExpressionToken): SerializedExpressionToken {
+  if (token.type === "metric") {
+    return { type: "metric", metricIndex: token.metricIndex };
+  }
+  if (token.type === "operator") {
+    return { type: "operator", op: token.op };
+  }
+  return { type: token.type };
+}
+
+export function deserializeExpression(
+  tokens: SerializedExpressionToken[],
+): ExpressionToken[] {
+  const result: ExpressionToken[] = [];
+  for (const token of tokens) {
+    if (token.type === "metric" && token.metricIndex !== undefined) {
+      result.push({ type: "metric", metricIndex: token.metricIndex });
+    } else if (token.type === "operator" && token.op) {
+      result.push({ type: "operator", op: token.op });
+    } else if (token.type === "open-paren") {
+      result.push({ type: "open-paren" });
+    } else if (token.type === "close-paren") {
+      result.push({ type: "close-paren" });
+    }
+  }
+  return result;
 }
 
 // ── Conversion functions ──
@@ -145,8 +183,10 @@ export function deserializeTab(
 
 export function stateToSerializedState(
   state: MetricsViewerPageState,
+  tokens: ExpressionToken[] = [],
 ): SerializedMetricsViewerPageState {
   return {
+    expression: tokens.map(serializeToken),
     sources: state.definitions.flatMap((entry) => {
       if (!entry.definition) {
         return [];
@@ -215,6 +255,12 @@ export function stateToSerializedState(
 
 // ── Compact schemas ──
 
+const expressionTokenSchema = defineCompactSchema<SerializedExpressionToken>({
+  type: "t",
+  metricIndex: { key: "i", optional: true },
+  op: { key: "o", optional: true },
+});
+
 const sourceFilterSchema = defineCompactSchema<SerializedUrlFilter>({
   dimensionId: "d",
   value: { key: "v" },
@@ -257,12 +303,13 @@ const rootSchema = defineCompactSchema<SerializedMetricsViewerPageState>({
   sources: { key: "s", schema: sourceSchema, default: [] },
   tabs: { key: "t", schema: tabSchema, default: [] },
   selectedTabId: { key: "a", default: null },
+  expression: { key: "e", schema: expressionTokenSchema, default: [] },
 });
 
 // ── Encode / decode ──
 
 function emptyState(): SerializedMetricsViewerPageState {
-  return { sources: [], tabs: [], selectedTabId: null };
+  return { sources: [], tabs: [], selectedTabId: null, expression: [] };
 }
 
 // After JSON.parse, Date values are ISO strings. Walk the decoded state and revive them.

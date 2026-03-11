@@ -20,6 +20,8 @@ import { MetricsFilterPills } from "../MetricsFilterPills";
 import S from "./MetricSearchPanel.module.css";
 
 type MetricSearchPanelProps = {
+  tokens: ExpressionToken[];
+  onTokensChange: (tokens: ExpressionToken[]) => void;
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
   definitions: MetricsViewerDefinitionEntry[];
@@ -34,10 +36,11 @@ type MetricSearchPanelProps = {
     id: MetricSourceId,
     definition: MetricDefinition,
   ) => void;
-  onExpressionChange?: (tokens: ExpressionToken[]) => void;
 };
 
 export function MetricSearchPanel({
+  tokens,
+  onTokensChange,
   selectedMetrics,
   metricColors,
   definitions,
@@ -46,7 +49,6 @@ export function MetricSearchPanel({
   onSwapMetric,
   onSetBreakout,
   onUpdateDefinition,
-  onExpressionChange,
 }: MetricSearchPanelProps) {
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
@@ -125,6 +127,8 @@ export function MetricSearchPanel({
       <Box className={S.container}>
         <Box>
           <MetricSearch
+            tokens={tokens}
+            onTokensChange={onTokensChange}
             selectedMetrics={selectedMetrics}
             metricColors={metricColors}
             definitions={definitions}
@@ -132,7 +136,6 @@ export function MetricSearchPanel({
             onRemoveMetric={onRemoveMetric}
             onSwapMetric={onSwapMetric}
             onSetBreakout={onSetBreakout}
-            onExpressionChange={onExpressionChange}
           />
         </Box>
         {hasFilters && isFilterPillsExpanded && (

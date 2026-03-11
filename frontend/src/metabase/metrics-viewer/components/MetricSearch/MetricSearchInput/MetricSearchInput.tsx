@@ -22,9 +22,16 @@ import {
 } from "../../../utils/source-ids";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
-import { getSelectedMeasureIds, getSelectedMetricIds } from "../utils";
+import {
+  cleanupParens,
+  getSelectedMeasureIds,
+  getSelectedMetricIds,
+} from "../utils";
 
 import S from "./MetricSearchInput.module.css";
+
+// Metrics in the expression input can be used multiple times, so nothing is filtered out
+const EMPTY_SET = new Set<number>();
 
 type OperatorPillProps = {
   operator: MathOperator;
@@ -78,6 +85,8 @@ function OperatorPill({ operator, onChange }: OperatorPillProps) {
 }
 
 type MetricSearchInputProps = {
+  tokens: ExpressionToken[];
+  onTokensChange: (tokens: ExpressionToken[]) => void;
   selectedMetrics: SelectedMetric[];
   metricColors: SourceColorMap;
   definitions: MetricsViewerDefinitionEntry[];
@@ -88,10 +97,11 @@ type MetricSearchInputProps = {
     id: MetricSourceId,
     dimension: ProjectionClause | undefined,
   ) => void;
-  onExpressionChange?: (tokens: ExpressionToken[]) => void;
 };
 
 export function MetricSearchInput({
+  tokens,
+  onTokensChange,
   selectedMetrics,
   metricColors,
   definitions,
@@ -99,31 +109,32 @@ export function MetricSearchInput({
   onRemoveMetric,
   onSwapMetric,
   onSetBreakout,
-  onExpressionChange,
 }: MetricSearchInputProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  // Full expression token stream (committed tokens only)
-  const [tokens, setTokens] = useState<ExpressionToken[]>([]);
   const [pendingOperator, setPendingOperator] = useState<MathOperator | null>(
     null,
   );
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Remove unnecessary parentheses: empty parens or parens around a single metric
   useEffect(() => {
-    onExpressionChange?.(tokens);
-  }, [tokens, onExpressionChange]);
+    const cleaned = cleanupParens(tokens);
+    if (cleaned !== tokens) {
+      onTokensChange(cleaned);
+    }
+  }, [tokens, onTokensChange]);
 
   // Safety net: drop any metric tokens whose index is out of range
   useEffect(() => {
     const maxIdx = selectedMetrics.length - 1;
-    setTokens((prev) => {
-      const filtered = prev.filter(
-        (t) => t.type !== "metric" || t.metricIndex <= maxIdx,
-      );
-      return filtered.length === prev.length ? prev : filtered;
-    });
-  }, [selectedMetrics.length]);
+    const filtered = tokens.filter(
+      (t) => t.type !== "metric" || t.metricIndex <= maxIdx,
+    );
+    if (filtered.length !== tokens.length) {
+      onTokensChange(filtered);
+    }
+  }, [selectedMetrics.length, tokens, onTokensChange]);
 
   const selectedMetricIds = useMemo(
     () => getSelectedMetricIds(selectedMetrics),
@@ -171,14 +182,16 @@ export function MetricSearchInput({
         (m) => m.id === id && m.sourceType === sourceType,
       );
       if (index !== -1) {
-        setTokens((prev) => {
-          const tokenIdx = prev.findIndex(
-            (t) => t.type === "metric" && t.metricIndex === index,
-          );
-          if (tokenIdx === -1) {
-            return prev;
-          }
-          const next = [...prev];
+        // Only remove from selectedMetrics when this is the last token referencing it
+        const isLastReference =
+          tokens.filter((t) => t.type === "metric" && t.metricIndex === index)
+            .length <= 1;
+
+        const tokenIdx = tokens.findIndex(
+          (t) => t.type === "metric" && t.metricIndex === index,
+        );
+        if (tokenIdx !== -1) {
+          const next = [...tokens];
           next.splice(tokenIdx, 1); // remove metric token
 
           // Remove adjacent operator (prefer before, then after)
@@ -190,35 +203,47 @@ export function MetricSearchInput({
             next.splice(tokenIdx, 1);
           }
 
-          // Decrement metricIndex for all subsequent metric tokens
-          return next.map((t) =>
-            t.type === "metric" && t.metricIndex > index
-              ? { ...t, metricIndex: t.metricIndex - 1 }
-              : t,
+          onTokensChange(
+            isLastReference
+              ? next.map((t) =>
+                  t.type === "metric" && t.metricIndex > index
+                    ? { ...t, metricIndex: t.metricIndex - 1 }
+                    : t,
+                )
+              : next,
           );
-        });
+        }
+
+        if (isLastReference) {
+          onRemoveMetric(id, sourceType);
+        }
       }
-      onRemoveMetric(id, sourceType);
     },
-    [selectedMetrics, onRemoveMetric],
+    [selectedMetrics, tokens, onRemoveMetric, onTokensChange],
   );
 
   const handleSelect = useCallback(
     (metric: SelectedMetric) => {
-      const newMetricIndex = selectedMetrics.length; // will be appended at this index
+      // Reuse the existing index if this metric is already in selectedMetrics
+      // (addMetric is a no-op for duplicates, so length won't grow)
+      const existingIndex = selectedMetrics.findIndex(
+        (m) => m.id === metric.id && m.sourceType === metric.sourceType,
+      );
+      const metricIndex =
+        existingIndex !== -1 ? existingIndex : selectedMetrics.length;
       onAddMetric(metric);
-      setTokens((prev) => [
-        ...prev,
+      onTokensChange([
+        ...tokens,
         ...(pendingOperator !== null
           ? [{ type: "operator" as const, op: pendingOperator }]
           : []),
-        { type: "metric" as const, metricIndex: newMetricIndex },
+        { type: "metric" as const, metricIndex },
       ]);
       setPendingOperator(null);
       setSearchText("");
       setIsOpen(false);
     },
-    [onAddMetric, pendingOperator, selectedMetrics.length],
+    [onAddMetric, onTokensChange, pendingOperator, selectedMetrics, tokens],
   );
 
   const handleKeyDown = useCallback(
@@ -238,8 +263,8 @@ export function MetricSearchInput({
         // Open paren
         if (event.key === "(" && canOpenParen) {
           event.preventDefault();
-          setTokens((prev) => [
-            ...prev,
+          onTokensChange([
+            ...tokens,
             ...(pendingOperator !== null
               ? [{ type: "operator" as const, op: pendingOperator }]
               : []),
@@ -253,7 +278,7 @@ export function MetricSearchInput({
         // Close paren
         if (event.key === ")" && canCloseParen) {
           event.preventDefault();
-          setTokens((prev) => [...prev, { type: "close-paren" as const }]);
+          onTokensChange([...tokens, { type: "close-paren" as const }]);
           return;
         }
 
@@ -271,25 +296,31 @@ export function MetricSearchInput({
             lastToken.type === "open-paren" ||
             lastToken.type === "operator"
           ) {
-            setTokens((prev) => prev.slice(0, -1));
+            onTokensChange(tokens.slice(0, -1));
             return;
           }
           if (lastToken.type === "metric") {
             const metricIdx = lastToken.metricIndex;
             const metric = selectedMetrics[metricIdx];
-            setTokens((prev) => {
-              let next = prev.slice(0, -1);
-              const prevToken = next[next.length - 1];
-              if (prevToken?.type === "operator") {
-                next = next.slice(0, -1);
-              }
-              return next.map((t) =>
-                t.type === "metric" && t.metricIndex > metricIdx
-                  ? { ...t, metricIndex: t.metricIndex - 1 }
-                  : t,
-              );
-            });
-            if (metric) {
+            const isLastReference =
+              tokens.filter(
+                (t) => t.type === "metric" && t.metricIndex === metricIdx,
+              ).length <= 1;
+            let next = tokens.slice(0, -1);
+            const prevToken = next[next.length - 1];
+            if (prevToken?.type === "operator") {
+              next = next.slice(0, -1);
+            }
+            onTokensChange(
+              isLastReference
+                ? next.map((t) =>
+                    t.type === "metric" && t.metricIndex > metricIdx
+                      ? { ...t, metricIndex: t.metricIndex - 1 }
+                      : t,
+                  )
+                : next,
+            );
+            if (metric && isLastReference) {
               onRemoveMetric(metric.id, metric.sourceType);
             }
             return;
@@ -299,12 +330,14 @@ export function MetricSearchInput({
     },
     [
       searchText,
+      tokens,
       selectedMetrics,
       pendingOperator,
       lastToken,
       canOpenParen,
       canCloseParen,
       onRemoveMetric,
+      onTokensChange,
     ],
   );
 
@@ -318,13 +351,13 @@ export function MetricSearchInput({
 
   const handleChangeOperator = useCallback(
     (tokenIndex: number, newOp: MathOperator) => {
-      setTokens((prev) =>
-        prev.map((t, i) =>
+      onTokensChange(
+        tokens.map((t, i) =>
           i === tokenIndex && t.type === "operator" ? { ...t, op: newOp } : t,
         ),
       );
     },
-    [],
+    [tokens, onTokensChange],
   );
 
   return (
@@ -377,7 +410,7 @@ export function MetricSearchInput({
             }
             return (
               <MetricPill
-                key={`${metric.sourceType}-${metric.id}`}
+                key={i}
                 metric={metric}
                 colors={metricColors[sid]}
                 definitionEntry={entry}
@@ -431,8 +464,8 @@ export function MetricSearchInput({
           <Popover.Dropdown p={0} miw="19rem" maw="25rem">
             {isOpen && (
               <MetricSearchDropdown
-                selectedMetricIds={selectedMetricIds}
-                selectedMeasureIds={selectedMeasureIds}
+                selectedMetricIds={EMPTY_SET}
+                selectedMeasureIds={EMPTY_SET}
                 onSelect={handleSelect}
                 externalSearchText={searchText}
               />

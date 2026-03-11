@@ -1,6 +1,8 @@
+import type { ExpressionToken } from "../../types/operators";
 import type { SelectedMetric } from "../../types/viewer-state";
 
 import {
+  cleanupParens,
   filterSearchResults,
   getSelectedMeasureIds,
   getSelectedMetricIds,
@@ -121,5 +123,68 @@ describe("filterSearchResults", () => {
     expect(filtered.map((r) => ({ id: r.id, model: r.model }))).toEqual([
       { id: 20, model: "measure" },
     ]);
+  });
+});
+
+describe("cleanupParens", () => {
+  const m = (metricIndex: number): ExpressionToken => ({
+    type: "metric",
+    metricIndex,
+  });
+  const op = (o: "+" | "-" | "*" | "/"): ExpressionToken => ({
+    type: "operator",
+    op: o,
+  });
+  const open: ExpressionToken = { type: "open-paren" };
+  const close: ExpressionToken = { type: "close-paren" };
+
+  it("returns empty array unchanged", () => {
+    expect(cleanupParens([])).toEqual([]);
+  });
+
+  it("returns same reference when no cleanup needed", () => {
+    const tokens: ExpressionToken[] = [m(0), op("+"), m(1)];
+    expect(cleanupParens(tokens)).toBe(tokens);
+  });
+
+  it("removes empty parentheses", () => {
+    expect(cleanupParens([open, close])).toEqual([]);
+  });
+
+  it("removes parentheses around a single metric", () => {
+    expect(cleanupParens([open, m(0), close])).toEqual([m(0)]);
+  });
+
+  it("keeps parentheses around multiple metrics", () => {
+    const tokens = [open, m(0), op("+"), m(1), close];
+    expect(cleanupParens(tokens)).toEqual(tokens);
+  });
+
+  it("removes nested single-metric parens", () => {
+    // ((A)) → A
+    expect(cleanupParens([open, open, m(0), close, close])).toEqual([m(0)]);
+  });
+
+  it("removes inner single-metric parens but keeps outer multi-metric parens", () => {
+    // (A + (B)) → (A + B)
+    expect(
+      cleanupParens([open, m(0), op("+"), open, m(1), close, close]),
+    ).toEqual([open, m(0), op("+"), m(1), close]);
+  });
+
+  it("removes single-metric parens in a larger expression", () => {
+    // (A) + B → A + B
+    expect(cleanupParens([open, m(0), close, op("+"), m(1)])).toEqual([
+      m(0),
+      op("+"),
+      m(1),
+    ]);
+  });
+
+  it("removes multiple independent single-metric paren groups", () => {
+    // (A) + (B) → A + B
+    expect(
+      cleanupParens([open, m(0), close, op("+"), open, m(1), close]),
+    ).toEqual([m(0), op("+"), m(1)]);
   });
 });

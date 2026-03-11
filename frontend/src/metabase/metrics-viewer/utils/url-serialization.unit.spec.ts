@@ -2,6 +2,7 @@ import type { DimensionFilterValue } from "./dimension-filters";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,
+  deserializeExpression,
   encodeState,
 } from "./url-serialization";
 
@@ -36,6 +37,7 @@ describe("url-serialization", () => {
           },
         ],
         selectedTabId: "tab-1",
+        expression: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -55,6 +57,7 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
+        expression: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -74,6 +77,7 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
+        expression: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -94,6 +98,7 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
+        expression: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -106,6 +111,7 @@ describe("url-serialization", () => {
         sources: [],
         tabs: [],
         selectedTabId: null,
+        expression: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -134,6 +140,78 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
+        expression: [],
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("round-trips a non-empty expression", () => {
+      const state: SerializedMetricsViewerPageState = {
+        sources: [
+          { type: "metric", id: 1 },
+          { type: "metric", id: 2 },
+        ],
+        tabs: [],
+        selectedTabId: null,
+        expression: [
+          { type: "metric", metricIndex: 0 },
+          { type: "operator", op: "+" },
+          { type: "metric", metricIndex: 1 },
+        ],
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("round-trips an expression with parentheses", () => {
+      const state: SerializedMetricsViewerPageState = {
+        sources: [
+          { type: "metric", id: 1 },
+          { type: "metric", id: 2 },
+          { type: "metric", id: 3 },
+        ],
+        tabs: [],
+        selectedTabId: null,
+        expression: [
+          { type: "open-paren" },
+          { type: "metric", metricIndex: 0 },
+          { type: "operator", op: "+" },
+          { type: "metric", metricIndex: 1 },
+          { type: "close-paren" },
+          { type: "operator", op: "*" },
+          { type: "metric", metricIndex: 2 },
+        ],
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("round-trips an expression with all operator types", () => {
+      const state: SerializedMetricsViewerPageState = {
+        sources: [
+          { type: "metric", id: 1 },
+          { type: "metric", id: 2 },
+          { type: "metric", id: 3 },
+          { type: "metric", id: 4 },
+        ],
+        tabs: [],
+        selectedTabId: null,
+        expression: [
+          { type: "metric", metricIndex: 0 },
+          { type: "operator", op: "+" },
+          { type: "metric", metricIndex: 1 },
+          { type: "operator", op: "-" },
+          { type: "metric", metricIndex: 2 },
+          { type: "operator", op: "*" },
+          { type: "metric", metricIndex: 3 },
+        ],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -148,6 +226,7 @@ describe("url-serialization", () => {
         sources: [],
         tabs: [],
         selectedTabId: null,
+        expression: [],
       });
     });
 
@@ -156,6 +235,7 @@ describe("url-serialization", () => {
         sources: [],
         tabs: [],
         selectedTabId: null,
+        expression: [],
       });
     });
 
@@ -165,6 +245,7 @@ describe("url-serialization", () => {
         sources: [],
         tabs: [],
         selectedTabId: null,
+        expression: [],
       });
     });
 
@@ -189,6 +270,7 @@ describe("url-serialization", () => {
           },
         ],
         selectedTabId: "tab-1",
+        expression: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -209,6 +291,7 @@ describe("url-serialization", () => {
           },
         ],
         selectedTabId: null,
+        expression: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -229,6 +312,7 @@ describe("url-serialization", () => {
           },
         ],
         selectedTabId: null,
+        expression: [],
       };
 
       const hash = encodeStateOrThrow(state);
@@ -249,6 +333,7 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
+        expression: [],
       };
       return decodeState(encodeStateOrThrow(state)).sources[0].filters![0]
         .value;
@@ -320,6 +405,7 @@ describe("url-serialization", () => {
         ],
         tabs: [],
         selectedTabId: null,
+        expression: [],
       };
 
       const decoded = decodeState(encodeStateOrThrow(state));
@@ -334,6 +420,55 @@ describe("url-serialization", () => {
       expect(first).not.toBe(second);
       expect(first.sources).not.toBe(second.sources);
       expect(first.tabs).not.toBe(second.tabs);
+    });
+  });
+
+  describe("deserializeExpression", () => {
+    it("returns empty array for empty input", () => {
+      expect(deserializeExpression([])).toEqual([]);
+    });
+
+    it("deserializes metric tokens", () => {
+      expect(
+        deserializeExpression([{ type: "metric", metricIndex: 0 }]),
+      ).toEqual([{ type: "metric", metricIndex: 0 }]);
+    });
+
+    it("deserializes operator tokens", () => {
+      expect(deserializeExpression([{ type: "operator", op: "+" }])).toEqual([
+        { type: "operator", op: "+" },
+      ]);
+    });
+
+    it("deserializes open-paren and close-paren tokens", () => {
+      expect(
+        deserializeExpression([
+          { type: "open-paren" },
+          { type: "close-paren" },
+        ]),
+      ).toEqual([{ type: "open-paren" }, { type: "close-paren" }]);
+    });
+
+    it("skips metric tokens with missing metricIndex", () => {
+      expect(deserializeExpression([{ type: "metric" }])).toEqual([]);
+    });
+
+    it("skips operator tokens with missing op", () => {
+      expect(deserializeExpression([{ type: "operator" }])).toEqual([]);
+    });
+
+    it("deserializes a full expression", () => {
+      expect(
+        deserializeExpression([
+          { type: "metric", metricIndex: 0 },
+          { type: "operator", op: "+" },
+          { type: "metric", metricIndex: 1 },
+        ]),
+      ).toEqual([
+        { type: "metric", metricIndex: 0 },
+        { type: "operator", op: "+" },
+        { type: "metric", metricIndex: 1 },
+      ]);
     });
   });
 });

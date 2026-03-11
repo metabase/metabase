@@ -7,6 +7,7 @@ import * as Urls from "metabase/lib/urls";
 import type { MeasureId, TemporalUnit } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
+import type { ExpressionToken } from "../types/operators";
 import type {
   MetricSourceId,
   MetricsViewerPageState,
@@ -17,6 +18,7 @@ import { createSourceId } from "../utils/source-ids";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,
+  deserializeExpression,
   deserializeTab,
   encodeState,
   stateToSerializedState,
@@ -40,6 +42,8 @@ export function useViewerUrl(
   initialize: (state: MetricsViewerPageState) => void,
   onLoadSources: (request: LoadSourcesRequest) => void,
   location: Location,
+  tokens: ExpressionToken[],
+  onTokensRestored: (tokens: ExpressionToken[]) => void,
 ): void {
   const dispatch = useDispatch();
   const lastHashRef = useRef<string | null>(null);
@@ -57,6 +61,7 @@ export function useViewerUrl(
           sources: [{ type: "metric", id: parseInt(metricId, 10) }],
           tabs: [],
           selectedTabId: null,
+          expression: [],
         };
         const encodedHash = encodeState(serializedState);
         if (encodedHash === undefined) {
@@ -123,7 +128,26 @@ export function useViewerUrl(
         filtersBySourceId: hasFilters ? filtersBySourceId : undefined,
       });
     }
-  }, [location, dispatch, initialize, onLoadSources]);
+
+    const restoredExpression = deserializeExpression(
+      serializedState.expression ?? [],
+    );
+
+    // When there is no saved expression (e.g. legacy URLs, ?metricId= entry point),
+    // generate default tokens so every source appears as a pill in the formula input.
+    if (restoredExpression.length === 0 && serializedState.sources.length > 0) {
+      const defaultTokens: ExpressionToken[] = [];
+      for (let i = 0; i < serializedState.sources.length; i++) {
+        if (i > 0) {
+          defaultTokens.push({ type: "operator", op: "+" });
+        }
+        defaultTokens.push({ type: "metric", metricIndex: i });
+      }
+      onTokensRestored(defaultTokens);
+    } else {
+      onTokensRestored(restoredExpression);
+    }
+  }, [location, dispatch, initialize, onLoadSources, onTokensRestored]);
 
   // sync state to URL
   useEffect(() => {
@@ -134,7 +158,7 @@ export function useViewerUrl(
       return;
     }
 
-    const serializedState = stateToSerializedState(state);
+    const serializedState = stateToSerializedState(state, tokens);
     const hash = encodeState(serializedState);
     if (hash !== undefined && hash !== lastHashRef.current) {
       lastHashRef.current = hash;
@@ -145,5 +169,5 @@ export function useViewerUrl(
         dispatch(push(url));
       }
     }
-  }, [state, dispatch]);
+  }, [state, tokens, dispatch]);
 }

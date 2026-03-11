@@ -157,6 +157,7 @@ function buildUrlRestoreTransform(
 export function useMetricsViewer(
   { location }: MetricsViewerPageProps,
   tokens: ExpressionToken[] = [],
+  onTokensRestored: (tokens: ExpressionToken[]) => void = () => {},
 ): UseMetricsViewerResult {
   const {
     state,
@@ -194,7 +195,14 @@ export function useMetricsViewer(
     [loadAndAddMetric, loadAndAddMeasure],
   );
 
-  useViewerUrl(state, initialize, handleLoadSources, location);
+  useViewerUrl(
+    state,
+    initialize,
+    handleLoadSources,
+    location,
+    tokens,
+    onTokensRestored,
+  );
 
   const activeTab = useMemo((): MetricsViewerTabState | null => {
     if (state.tabs.length === 0) {
