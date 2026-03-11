@@ -139,30 +139,30 @@
   (when raw-name
     (str "\"" (str/replace raw-name "\"" "\"\"") "\"")))
 
+(def ^:private snowflake-url-prefix "jdbc:snowflake://")
+
 (defn connection-str->parameters
   "Get map of parameters from Snowflake `conn-str`, where keys are uppercase string parameter names and values
   are strings. Returns nil when string is invalid.
-   This is based on the implementation of SnowflakeConnectString.parse in https://github.com/snowflakedb/snowflake-jdbc"
+  This is based on the implementation of SnowflakeConnectString.parse in https://github.com/snowflakedb/snowflake-jdbc"
   [conn-str]
-  (when conn-str
-    (let [prefix "jdbc:snowflake://"
-          pos (str/index-of conn-str prefix)]
-      (when (= 0 pos)
-        (let [afterPrefix (subs conn-str (+ pos (count prefix)))
-              afterPrefix' (if (or (str/starts-with? afterPrefix "http://")
-                                   (str/starts-with? afterPrefix "https://"))
-                             afterPrefix
-                             (subs conn-str (str/index-of conn-str "snowflake:")))
-              uri (URI. afterPrefix')]
-          (when-let [queryData (.getRawQuery uri)]
-            (into {}
-                  (keep (fn [param]
-                          (let [key-val (str/split param #"=")]
-                            (when (= 2 (count key-val))
-                              (let [[k v] key-val]
-                                [(u/upper-case-en (URLDecoder/decode ^String k "UTF-8"))
-                                 (URLDecoder/decode ^String v "UTF-8")]))))
-                        (str/split queryData #"&")))))))))
+  (when (and conn-str (str/starts-with? conn-str snowflake-url-prefix))
+    (let [after-prefix (subs conn-str (count snowflake-url-prefix))
+          after-prefix' (if (or (str/starts-with? after-prefix "http://")
+                                (str/starts-with? after-prefix "https://"))
+                          after-prefix
+                          (subs conn-str (str/index-of conn-str "snowflake:")))
+          uri (URI. after-prefix')]
+      (when-let [query-data (not-empty (.getRawQuery uri))]
+        (into {}
+              (keep (fn [param]
+                      (let [key-val (str/split param #"=")]
+                        (if-not (= 2 (count key-val))
+                          (log/warnf "Invalid Snowflake connection URI parameter: '%s'" param)
+                          (let [[k v] key-val]
+                            [(u/upper-case-en (URLDecoder/decode ^String k "UTF-8"))
+                             (URLDecoder/decode ^String v "UTF-8")]))))
+                    (str/split query-data #"&")))))))
 
 (defn- maybe-add-role-to-spec-url
   "Maybe add role to `spec`'s `:connection-uri`. This is necessary for rsa auth to work, because at the time of writing

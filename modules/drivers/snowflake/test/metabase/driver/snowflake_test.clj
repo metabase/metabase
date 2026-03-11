@@ -1022,11 +1022,11 @@
       nil "" "asdf" "snowflake:jdbc://x")))
 
 (deftest ^:parallel connection-str->parameters-test-2
-  (testing "Returns nil or an empty map for valid strings of no parameters"
+  (testing "Returns nil for valid strings of no parameters"
     (are [conn-str exp] (= exp (driver.snowflake/connection-str->parameters conn-str))
       "jdbc:snowflake://x.snowflakecomputing.com" nil
       "jdbc:snowflake://x.snowflakecomputing.com/" nil
-      "jdbc:snowflake://x.snowflakecomputing.com/?" {})))
+      "jdbc:snowflake://x.snowflakecomputing.com/?" nil)))
 
 (deftest ^:parallel connection-str->parameters-test-3
   (testing "Returns decoded parameters"
