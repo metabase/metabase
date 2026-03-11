@@ -150,7 +150,7 @@ export const GdriveAddDataPanel = ({
   const folderUrl = folder?.url;
 
   const NO_STORAGE_SUBTITLE = t`To work with spreadsheets, you can add storage to your instance.`;
-  // eslint-disable-next-line no-literal-metabase-strings -- admin only
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only
   const ERROR_MESSAGE = t`Please check that the folder is shared with the Metabase Service Account.`;
 
   if (!isAdmin) {
@@ -214,7 +214,7 @@ export const GdriveAddDataPanel = ({
     return (
       <PanelWrapper subtitle={NO_STORAGE_SUBTITLE}>
         <ErrorAlert
-          // eslint-disable-next-line no-literal-metabase-strings -- admin only
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only
           error={t`Metabase Storage is full. Add more storage to continue syncing.`}
         >
           <Group gap="sm" mt="sm" align="center">

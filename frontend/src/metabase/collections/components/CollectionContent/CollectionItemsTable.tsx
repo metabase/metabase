@@ -35,8 +35,8 @@ import type {
   CollectionItemModel,
   ListCollectionItemsRequest,
   ListCollectionItemsSortColumn,
+  SortingOptions,
 } from "metabase-types/api";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 import type { State } from "metabase-types/store";
 
 import {
@@ -50,11 +50,11 @@ const getDefaultSortingOptions = (
   return isRootTrashCollection(collection)
     ? {
         sort_column: "last_edited_at",
-        sort_direction: SortDirection.Desc,
+        sort_direction: "desc",
       }
     : {
         sort_column: "name",
-        sort_direction: SortDirection.Asc,
+        sort_direction: "asc",
       };
 };
 

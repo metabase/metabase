@@ -36,10 +36,15 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
 
   if (params.dataType === "node") {
     node = chartModel.data.nodes.find((node) => node.rawName === data.rawName)!;
-    header = formatters.node(node);
+    header = !node.hasOutputs
+      ? formatters.target(node.displayName)
+      : formatters.source(node.displayName);
   } else if (params.dataType === "edge") {
     node = chartModel.data.nodes.find((node) => node.rawName === data.source)!;
-    header = `${formatters.source(data.source)} → ${formatters.target(data.target)}`;
+    const targetNode = chartModel.data.nodes.find(
+      (node) => node.rawName === data.target,
+    );
+    header = `${formatters.source(node.displayName)} → ${formatters.target(targetNode?.displayName ?? data.target)}`;
   }
 
   if (!node) {
@@ -58,7 +63,7 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
     const isFocused = params.dataType === "edge" && data.target === link.target;
     return {
       isFocused,
-      name: formatters.target(link.target),
+      name: formatters.target(link.targetNode.displayName),
       values: [
         formatters.value(link.value),
         formatPercent(getPercent(nodeValue, link.value) ?? 0),
@@ -71,7 +76,7 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
   if (isEndNode) {
     rows = [
       {
-        name: formatters.target(node.rawName),
+        name: formatters.target(node.displayName),
         markerColorClass: getMarkerColorClass(
           chartModel.nodeColors[String(node.rawName)],
         ),

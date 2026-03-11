@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import { LegendLabel } from "metabase/visualizations/components/legend/LegendCaption/LegendCaption.styled";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";

@@ -24,7 +24,9 @@ const CHANNELS_CONFIG: {
     link: "/admin/settings/notifications",
   },
   {
-    title: "Add a webhook",
+    get title() {
+      return t`Add a webhook`;
+    },
     icon: "webhook",
     link: "/admin/settings/notifications",
     testId: "alerts-channel-create-webhook",

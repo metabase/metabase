@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { useStoreUrl } from "metabase/common/hooks";
 import {
   Form,

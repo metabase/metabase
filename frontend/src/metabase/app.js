@@ -24,7 +24,7 @@ import "metabase/plugins/builtin";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
-// Set nonce for mantine v6 deps
+// Set CSP nonce for dynamic style injection (e.g. CodeMirror)
 import "metabase/lib/csp";
 
 import { createHistory } from "history";

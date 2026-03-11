@@ -3,8 +3,8 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/common/components/Link";
-import Markdown from "metabase/common/components/Markdown";
+import { Link } from "metabase/common/components/Link";
+import { Markdown } from "metabase/common/components/Markdown";
 import { Icon } from "metabase/ui";
 
 export const CardIcon = styled(Icon)`

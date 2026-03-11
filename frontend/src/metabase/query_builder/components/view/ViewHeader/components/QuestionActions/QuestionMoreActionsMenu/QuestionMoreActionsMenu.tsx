@@ -15,17 +15,14 @@ import {
   turnQuestionIntoModel,
 } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
-import DatasetMetadataStrengthIndicator from "metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
+import { DatasetMetadataStrengthIndicator } from "metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import {
   MODAL_TYPES,
   type QueryModalType,
 } from "metabase/query_builder/constants";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
-import {
-  canManageSubscriptions as canManageSubscriptionsSelector,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -62,7 +59,6 @@ export const QuestionMoreActionsMenu = ({
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
 
   const dispatch = useDispatch();
-  const isAdmin = useSelector(getUserIsAdmin);
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   const isQuestion = question.type() === "question";
@@ -128,7 +124,7 @@ export const QuestionMoreActionsMenu = ({
         {t`Add to dashboard`}
       </Menu.Item>
     ),
-    (isAdmin || canManageSubscriptions) && !isModel && !isAnalytics && (
+    canManageSubscriptions && !isModel && !isAnalytics && (
       <QuestionAlertsMenuItem
         key="alerts"
         question={question}

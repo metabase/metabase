@@ -1,5 +1,6 @@
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
+import { createMockColumn } from "metabase-types/api/mocks";
 
 export function makeCard(card) {
   return {
@@ -18,11 +19,12 @@ export function makeData(cols, rows) {
   };
 }
 
-export const Column = (col = {}) => ({
-  ...col,
-  name: col.name || "column_name",
-  display_name: col.display_name || col.name || "column_display_name",
-});
+export const Column = (col = {}) =>
+  createMockColumn({
+    ...col,
+    name: col.name || "column_name",
+    display_name: col.display_name || col.name || "column_display_name",
+  });
 
 export const BooleanColumn = (col = {}) =>
   Column({ base_type: "type/Boolean", semantic_type: null, ...col });

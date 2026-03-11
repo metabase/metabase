@@ -359,7 +359,7 @@ export function checkSavedToCollectionQuestionToast(addToDashboard) {
 
 export function saveQuestionToCollection(
   name,
-  pickEntityOptions = { tab: "Browse", path: ["Our analytics"] },
+  pickEntityOptions = { path: ["Our analytics"] },
   reqInfo,
 ) {
   saveQuestion(name, reqInfo, pickEntityOptions);

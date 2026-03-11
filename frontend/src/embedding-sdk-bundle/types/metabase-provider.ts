@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 
 import type { MetabaseAuthConfig } from "./auth-config";
 import type { SdkEventHandlersConfig } from "./events";
@@ -32,7 +32,7 @@ export interface MetabaseProviderProps {
   /**
    * See [Appearance](https://www.metabase.com/docs/latest/embedding/sdk/appearance).
    */
-  theme?: MetabaseTheme;
+  theme?: MetabaseEmbeddingTheme;
 
   /**
    * See [Plugins](https://www.metabase.com/docs/latest/embedding/sdk/plugins).
@@ -66,4 +66,13 @@ export interface MetabaseProviderProps {
    * Whether to allow logging to the DevTools console. Defaults to true.
    **/
   allowConsoleLog?: boolean;
+
+  /**
+   * Whether to load the full SDK bundle directly as a single file (legacy behavior),
+   * instead of the optimized bootstrap that loads chunks in parallel and starts
+   * authentication early.
+   *
+   * Defaults to false (uses the optimized bootstrap loader).
+   **/
+  useLegacyMonolithicBundle?: boolean;
 }

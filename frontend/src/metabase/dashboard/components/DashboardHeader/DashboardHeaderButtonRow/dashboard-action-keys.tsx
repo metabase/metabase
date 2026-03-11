@@ -19,6 +19,7 @@ export const DASHBOARD_ACTION = {
   DOWNLOAD_PDF: "DOWNLOAD_PDF",
   // Modular embeddings (modular embedding, modular embedding SDK)
   DASHBOARD_SUBSCRIPTIONS: "DASHBOARD_SUBSCRIPTIONS",
+  REFRESH_INDICATOR: "REFRESH_INDICATOR",
 } as const;
 
 type DashboardActionKey = keyof typeof DASHBOARD_ACTION;

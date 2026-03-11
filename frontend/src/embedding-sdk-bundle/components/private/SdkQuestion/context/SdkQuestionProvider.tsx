@@ -1,11 +1,20 @@
-import { createContext, useContext, useEffect, useMemo } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+} from "react";
 import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
+import { SdkQuestionAlertListModal } from "embedding-sdk-bundle/components/private/notifications/SdkQuestionAlertListModal";
+import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
-import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
 import {
   getError,
   getIsGuestEmbed,
@@ -20,7 +29,7 @@ import {
   useCreateQuestion,
 } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
-import { setEntityTypes } from "metabase/redux/embedding-data-picker";
+import { EmbeddingDataPickerContextProvider } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -53,10 +62,12 @@ export const SdkQuestionProvider = ({
   onRun,
   isSaveEnabled = true,
   entityTypes,
+  dataPicker,
   targetCollection,
   initialSqlParameters,
   hiddenParameters,
   withDownloads,
+  withAlerts,
   targetDashboardId,
   backToDashboard,
   getClickActionMode: userGetClickActionMode,
@@ -64,6 +75,7 @@ export const SdkQuestionProvider = ({
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+  const navigation = useSdkInternalNavigationOptional();
 
   const {
     resourceId: questionId,
@@ -77,7 +89,7 @@ export const SdkQuestionProvider = ({
 
   useSetupContentTranslations({ token });
 
-  const isNewQuestion = questionId === "new";
+  const isNewQuestion = questionId === "new" || questionId === "new-native";
 
   const error = useSdkSelector(getError);
 
@@ -167,6 +179,26 @@ export const SdkQuestionProvider = ({
 
   const mode = (question && getClickActionMode({ question })) ?? null;
 
+  // Wrap navigateToNewCard to push the virtual entry for the internal navigation system
+  const navigateToNewCardWithSdkInternalNavigation = useCallback(
+    async (params: Parameters<NonNullable<typeof navigateToNewCard>>[0]) => {
+      // This actually changes what gets rendered
+      await navigateToNewCard?.(params);
+
+      // Push virtual entry if last entry is NOT already a question drill
+      const currentEntry = navigation?.stack.at(-1);
+      if (currentEntry?.type !== "question-drill") {
+        navigation?.push({
+          type: "question-drill",
+          virtual: true,
+          name: question?.displayName() ?? t`Question`,
+          onPop: () => loadAndQueryQuestion(),
+        });
+      }
+    },
+    [navigateToNewCard, navigation, question, loadAndQueryQuestion],
+  );
+
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
     token,
@@ -181,8 +213,8 @@ export const SdkQuestionProvider = ({
     updateParameterValues,
     navigateToNewCard:
       userNavigateToNewCard !== undefined
-        ? userNavigateToNewCard
-        : navigateToNewCard,
+        ? navigateToNewCard
+        : navigateToNewCardWithSdkInternalNavigation,
     plugins,
     question,
     originalQuestion,
@@ -194,6 +226,7 @@ export const SdkQuestionProvider = ({
     isSaveEnabled,
     targetCollection,
     withDownloads,
+    withAlerts,
     onRun,
     backToDashboard,
     hiddenParameters,
@@ -208,11 +241,22 @@ export const SdkQuestionProvider = ({
     loadAndQueryQuestion();
   }, [loadAndQueryQuestion, tokenError]);
 
-  const dispatch = useSdkDispatch();
-
+  // Push the question name to the stack if the stack is empty (ie: this is the root question)
+  // We need to wait for the question to load to have the name
   useEffect(() => {
-    dispatch(setEntityTypes(entityTypes));
-  }, [dispatch, entityTypes]);
+    if (
+      question &&
+      !!questionId &&
+      navigation &&
+      navigation.stack.length === 0
+    ) {
+      navigation.push({
+        type: "question",
+        id: questionId,
+        name: question.displayName() || t`Question`,
+      });
+    }
+  }, [questionId, question, navigation]);
 
   if (isGuestEmbed && isNewQuestion) {
     return (
@@ -233,7 +277,15 @@ export const SdkQuestionProvider = ({
   return (
     <SdkQuestionContext.Provider value={questionContext}>
       <EmbeddingEntityContextProvider uuid={null} token={token}>
-        {children}
+        <QuestionAlertModalProvider>
+          <EmbeddingDataPickerContextProvider
+            dataPicker={dataPicker}
+            entityTypes={entityTypes}
+          >
+            {children}
+          </EmbeddingDataPickerContextProvider>
+          <SdkQuestionAlertListModal />
+        </QuestionAlertModalProvider>
       </EmbeddingEntityContextProvider>
     </SdkQuestionContext.Provider>
   );

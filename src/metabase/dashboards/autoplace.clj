@@ -7,7 +7,7 @@
 
 (def ^:constant default-grid-width
   "The default grid width."
-  dashboard.constants/GRID_WIDTH)
+  dashboard.constants/grid-width)
 
 (defn- intersects? [a b]
   (not (or

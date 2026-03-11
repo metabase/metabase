@@ -2,6 +2,7 @@ import type { CollectionItemModel } from "metabase-types/api";
 
 export const COLLECTION_PAGE_SIZE = 25;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
 const COLLECTION_CONTENT_COLUMNS = [
   "type",
   "name",

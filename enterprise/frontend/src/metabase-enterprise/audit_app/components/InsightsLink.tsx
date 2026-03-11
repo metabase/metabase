@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import * as Urls from "metabase/lib/urls";
 import type { InsightsLinkProps } from "metabase/plugins";

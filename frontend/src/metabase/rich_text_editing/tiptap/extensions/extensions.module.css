@@ -13,7 +13,7 @@
     top: calc(-1 * var(--padding) / 2);
     width: calc(100% + var(--padding));
     height: calc(100% + var(--padding));
-    background-color: var(--mb-color-brand-alpha-04);
+    background-color: var(--mb-color-background-highlight);
     border-radius: 8px;
     pointer-events: none;
   }

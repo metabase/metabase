@@ -9,7 +9,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import Button, { type ButtonProps } from "metabase/common/components/Button";
+import { Button, type ButtonProps } from "metabase/common/components/Button";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { Center, Group, Icon, Loader } from "metabase/ui";
@@ -33,7 +33,7 @@ export type ActionButtonHandle = {
   resetState: () => void;
 };
 
-const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
+export const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
   function ActionButtonInner(
     {
       normalText = t`Save`,
@@ -57,7 +57,9 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     const isMountedRef = useRef(true);
 
     const resetTimeout = () => {
-      timeout.current && clearTimeout(timeout.current);
+      if (timeout.current) {
+        clearTimeout(timeout.current);
+      }
     };
 
     useEffect(() => {
@@ -146,6 +148,3 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
     );
   },
 );
-
-// eslint-disable-next-line import/no-default-export -- legacy usage
-export default ActionButton;

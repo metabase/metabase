@@ -399,7 +399,7 @@ describe("scenarios > table-editing", () => {
           cy.get('select[data-am-pm="true"]').as("ampmSelect");
           cy.get("@ampmSelect").select("AM");
           // It's safe to click the last button because we're in the popover
-          // eslint-disable-next-line no-unsafe-element-filtering
+          // eslint-disable-next-line metabase/no-unsafe-element-filtering
           cy.findAllByRole("button").last().click();
         });
 

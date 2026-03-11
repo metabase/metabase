@@ -2,18 +2,21 @@
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [toucan2.core :as t2]))
 
 (defsetting enable-query-caching
   (deferred-tru "Allow caching results of queries that take a long time to run.")
   :type       :boolean
   :default    true
   :visibility :authenticated
-  :audit      :getter)
+  :audit      :getter
+  :getter     #(t2/exists? :model/CacheConfig)
+  :setter     :none)
 
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
-  MySQL) we are not curretly setup to deal with data of that size. The datatypes we are using will hold this data in
+  MySQL) we are not currently setup to deal with data of that size. The datatypes we are using will hold this data in
   memory and will not truly be streaming. This is a global max in order to prevent our users from setting the caching
   value so high it becomes a performance issue. The value below represents 200MB"
   (* 200 1024))

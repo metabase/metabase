@@ -10,7 +10,7 @@ import {
 } from "metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.styled";
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
-import Link from "metabase/common/components/Link/Link";
+import { Link } from "metabase/common/components/Link/Link";
 import {
   canArchive,
   formatNotificationSchedule,

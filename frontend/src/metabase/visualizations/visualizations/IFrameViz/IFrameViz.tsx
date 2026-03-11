@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getParameterValues } from "metabase/dashboard/selectors";
@@ -77,7 +77,7 @@ export function IFrameViz({
         dashcard,
         dashboard,
         parameterValues,
-        text: allowedIframeAttributes?.src,
+        text: allowedIframeAttributes?.src ?? "",
         urlEncode: true,
       }),
     [dashcard, dashboard, parameterValues, allowedIframeAttributes?.src],

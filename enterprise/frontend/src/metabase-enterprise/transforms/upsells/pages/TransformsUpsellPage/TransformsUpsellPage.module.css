@@ -1,0 +1,28 @@
+.container {
+  display: flex;
+  flex-direction: row;
+  margin: 0 auto;
+  max-width: 900px;
+  padding: 0;
+
+  &.singleColumn {
+    max-width: 500px;
+  }
+}
+
+.leftColumn {
+  flex: 1;
+}
+
+.rightColumn {
+  flex: 1;
+  background-color: var(--mb-color-background-secondary);
+  padding-left: 2.5rem;
+}
+
+@media (max-height: 600px) {
+  .UpsellPageContent {
+    height: 100%;
+    overflow-y: auto;
+  }
+}

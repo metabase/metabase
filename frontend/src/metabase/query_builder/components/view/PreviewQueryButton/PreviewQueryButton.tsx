@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { Icon, Tooltip } from "metabase/ui";

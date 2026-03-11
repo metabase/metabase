@@ -49,11 +49,13 @@
 (mu/defn permitted-tables-clause
   "Build the WHERE clause and optional CTEs for table permission filtering.
    Returns a map with :clause (WHERE clause fragment) and :with (optional CTE definitions)."
-  [{:keys [current-user-id is-superuser?]} :- SearchContext table-id-col :- [:or :keyword [:vector :keyword]]]
+  [{:keys [current-user-id is-superuser? is-data-analyst?]} :- SearchContext table-id-col :- [:or :keyword [:vector :keyword]]]
   (mi/visible-filter-clause
    :model/Table
    table-id-col
    {:user-id current-user-id
-    :is-superuser? is-superuser?}
+    :is-superuser? is-superuser?
+    :is-data-analyst? is-data-analyst?}
    {:perms/view-data :unrestricted
-    :perms/create-queries :query-builder}))
+    :perms/create-queries :query-builder}
+   {:include-published-via-collection? true}))

@@ -7,7 +7,7 @@
   (deferred-tru "The OpenAI Model (e.g. ''gpt-4'', ''gpt-3.5-turbo'')")
   :encryption :no
   :visibility :settings-manager
-  :default "gpt-4-turbo-preview"
+  :default "gpt-4.1-mini"
   :export? false
   :doc false)
 
@@ -21,7 +21,14 @@
 
 (defsetting ee-openai-api-key
   (deferred-tru "The OpenAI API Key used in Metabase Enterprise.")
-  :encryption :no
+  :encryption :when-encryption-key-set
+  :visibility :settings-manager
+  :export? false
+  :doc false)
+
+(defsetting ee-anthropic-api-key
+  (deferred-tru "The Anthropic API Key used in Metabase Enterprise.")
+  :encryption :when-encryption-key-set
   :visibility :settings-manager
   :export? false
   :doc false)

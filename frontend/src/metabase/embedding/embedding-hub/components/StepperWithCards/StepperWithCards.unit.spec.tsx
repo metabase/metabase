@@ -108,7 +108,7 @@ describe("StepperWithCards", () => {
     );
   });
 
-  it("should disable locked cards", () => {
+  it("should disable locked cards", async () => {
     const mockClickAction = jest.fn();
     const steps = createMockSteps([
       {
@@ -137,7 +137,7 @@ describe("StepperWithCards", () => {
     expect(lockedCard).toBeDisabled();
 
     // Clicking the disabled card should not trigger the action
-    userEvent.click(lockedCard);
+    await userEvent.click(lockedCard);
     expect(mockClickAction).not.toHaveBeenCalled();
 
     // The step should not be marked as done

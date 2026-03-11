@@ -2,14 +2,16 @@ import { useMemo } from "react";
 import { c, t } from "ttag";
 
 import { Box, Radio, Stack, Text } from "metabase/ui";
+import type { RemoteSyncConflictVariant } from "metabase-types/api";
 
-import type { OptionValue, SyncConflictVariant } from "./utils";
+import type { OptionValue } from "./utils";
 
 interface BranchSwitchOptionsProps {
   currentBranch: string;
   handleOptionChange: (value: OptionValue) => void;
+  isRemoteSyncReadOnly: boolean;
   optionValue?: OptionValue;
-  variant: SyncConflictVariant;
+  variant: RemoteSyncConflictVariant;
 }
 
 interface OutOfSyncOption {
@@ -18,37 +20,49 @@ interface OutOfSyncOption {
 }
 
 export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
-  const { currentBranch, handleOptionChange, optionValue, variant } = props;
+  const {
+    currentBranch,
+    handleOptionChange,
+    isRemoteSyncReadOnly,
+    optionValue,
+    variant,
+  } = props;
+
   const options = useMemo<OutOfSyncOption[]>(() => {
     const newBranchOption: OutOfSyncOption = {
       value: "new-branch",
       label: t`Create a new branch and push changes there`,
     };
+    const pushOption: OutOfSyncOption = {
+      value: "push",
+      label: c("{0} is the current GitHub branch name")
+        .t`Push changes to the current branch, ${currentBranch}`,
+    };
+    const forcePushOption: OutOfSyncOption = {
+      value: "force-push",
+      label: c("{0} is the current GitHub branch name")
+        .t`Force push to ${currentBranch} (this will overwrite the remote branch)`,
+    };
+    const discardOption: OutOfSyncOption = {
+      value: "discard",
+      label: t`Delete unsynced changes (can’t be undone)`,
+    };
 
-    if (variant === "push") {
-      return [
-        newBranchOption,
-        {
-          value: "push",
-          label: c("{0} is the current GitHub branch name")
-            .t`Force push to ${currentBranch} (this will overwrite the remote branch)`,
-        },
-      ];
+    switch (variant) {
+      case "push":
+        return [newBranchOption, forcePushOption];
+      case "switch-branch":
+        return [pushOption, newBranchOption, discardOption];
+      case "setup":
+        return isRemoteSyncReadOnly
+          ? [discardOption]
+          : [newBranchOption, discardOption];
+      default: // pull
+        return isRemoteSyncReadOnly
+          ? [discardOption]
+          : [forcePushOption, newBranchOption, discardOption];
     }
-
-    return [
-      {
-        value: "push",
-        label: c("{0} is the current GitHub branch name")
-          .t`Push changes to the current branch, ${currentBranch}`,
-      },
-      newBranchOption,
-      {
-        value: "discard",
-        label: t`Delete unsynced changes (can’t be undone)`,
-      },
-    ];
-  }, [currentBranch, variant]);
+  }, [currentBranch, isRemoteSyncReadOnly, variant]);
 
   return (
     <Box mt="xl">

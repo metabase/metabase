@@ -11,9 +11,10 @@ import S from "./SegmentItem.module.css";
 interface Props {
   segment: Segment;
   onRetire?: () => void;
+  readOnly?: boolean;
 }
 
-export const SegmentItem = ({ segment, onRetire }: Props) => {
+export const SegmentItem = ({ segment, onRetire, readOnly }: Props) => {
   const canEdit = !!onRetire;
 
   return (
@@ -54,7 +55,11 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
       {onRetire && (
         <Box component="td" className={S.cell} p="sm">
           <Flex justify="center">
-            <SegmentActionSelect object={segment} onRetire={onRetire} />
+            <SegmentActionSelect
+              object={segment}
+              onRetire={onRetire}
+              readOnly={readOnly}
+            />
           </Flex>
         </Box>
       )}

@@ -286,4 +286,116 @@ describe("metabase/parameters/utils/formatting", () => {
       },
     );
   });
+
+  describe("formatParameterValue with settings and abbreviated dates", () => {
+    const cases = [
+      {
+        type: "date/single",
+        value: "2018-01-01",
+        expected: "1 Jan, 2018",
+      },
+      {
+        type: "date/single",
+        value: "2018-01-01T12:30:00",
+        expected: "1 Jan, 2018 12:30 pm",
+      },
+      {
+        type: "date/range",
+        value: "1995-01-01~1995-01-10",
+        expected: "1 Jan, 1995 - 10 Jan, 1995",
+      },
+      {
+        type: "date/range",
+        value: "2018-01-01T12:30:00~2018-01-10",
+        expected: "1 Jan, 2018 12:30 pm - 10 Jan, 2018 12:00 am",
+      },
+      {
+        type: "date/range",
+        value: "2018-01-01~2018-01-10T08:15:00",
+        expected: "1 Jan, 2018 12:00 am - 10 Jan, 2018 08:15 am",
+      },
+      {
+        type: "date/range",
+        value: "2018-01-01T12:30:00~2018-01-10T08:15:00",
+        expected: "1 Jan, 2018 12:30 pm - 10 Jan, 2018 08:15 am",
+      },
+      {
+        type: "date/all-options",
+        value: "2018-01-01",
+        expected: "On 1 Jan, 2018",
+      },
+      {
+        type: "date/month-year",
+        value: "2018-01",
+        expected: "Jan 2018",
+      },
+      {
+        type: "date/quarter-year",
+        value: "Q1-2018",
+        expected: "Q1 2018",
+      },
+      {
+        type: "date/relative",
+        value: "past30days",
+        expected: "Previous 30 days",
+      },
+      {
+        type: "date/month-year",
+        value: "thisday",
+        expected: "Today",
+      },
+      {
+        type: "date/month-year",
+        value: "thisweek",
+        expected: "This week",
+      },
+      {
+        type: "date/month-year",
+        value: "past1days",
+        expected: "Yesterday",
+      },
+      {
+        type: "date/month-year",
+        value: "past1weeks",
+        expected: "Previous week",
+      },
+      {
+        type: "date/month-year",
+        value: "2023-10-02~2023-10-24",
+        expected: "2 Oct, 2023 - 24 Oct, 2023",
+      },
+    ];
+
+    const formattingSettings = {
+      "type/Temporal": {
+        date_style: "D MMMM, YYYY",
+        time_style: "hh:mm a",
+        date_abbreviate: true,
+      },
+    };
+
+    test.each(cases)(
+      "should format $type parameter",
+      ({ value, expected, ...parameterProps }) => {
+        const parameter = createMockUiParameter(parameterProps);
+        expect(
+          formatParameterValue(value, parameter, formattingSettings),
+        ).toEqual(expected);
+      },
+    );
+  });
+
+  describe("formatParameterValue with unset settings", () => {
+    it("should render a sensical value even if the date style is unset", () => {
+      const parameter = createMockUiParameter({ type: "date/month-year" });
+      const value = "2023-10-02~2023-10-24";
+      const expected = "October 2, 2023 - October 24, 2023";
+
+      expect(formatParameterValue(value, parameter)).toEqual(expected);
+      expect(formatParameterValue(value, parameter, undefined)).toEqual(
+        expected,
+      );
+      expect(formatParameterValue(value, parameter, {})).toEqual(expected);
+    });
+  });
 });

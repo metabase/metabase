@@ -1,9 +1,7 @@
-import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
 
-import type { TagType } from "metabase/api/tags";
-import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
@@ -14,41 +12,40 @@ import type {
   GetDependencyGraphRequest,
   PythonTransformSourceDraft,
   Transform,
-  TransformId,
   UpdateSnippetRequest,
   UpdateTransformRequest,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 // Types
-export type TransformPickerItem = {
-  id: TransformId;
-  name: string;
+export type TransformPickerItem = OmniPickerItem & {
   model: "transform";
-};
-
-export type TransformPickerProps = {
-  value: TransformPickerItem | undefined;
-  onItemSelect: (transform: TransformPickerItem) => void;
 };
 
 export type TransformsPlugin = {
   isEnabled: boolean;
-  canAccessTransforms: (state: State) => boolean;
-  getDataStudioTransformRoutes(): ReactNode;
-  TransformPicker: ComponentType<TransformPickerProps>;
-  useGetTransformQuery: UseQuery<
-    QueryDefinition<TransformId, BaseQueryFn, TagType, Transform>
-  >;
+  TransformsUpsellPage: ComponentType;
+};
+
+export type PythonTransformEditorUiOptions = {
+  canChangeDatabase?: boolean;
+  readOnly?: boolean;
+  hidePreview?: boolean;
+  hideRunButton?: boolean;
 };
 
 export type PythonTransformEditorProps = {
   source: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSourceDraft;
-  isDirty: boolean;
+  uiOptions?: PythonTransformEditorUiOptions;
+  isEditMode?: boolean;
+  transform?: Transform;
+  readOnly?: boolean;
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onRunTransform?: (result: any) => void;
+  /** Custom run handler that overrides internal test-run. Used in workspace context for dry-run. */
+  onRun?: () => void;
 };
 
 export type PythonTransformSourceSectionProps = {
@@ -62,7 +59,7 @@ export type PythonTransformSourceValidationResult = {
 
 export type PythonTransformsPlugin = {
   isEnabled: boolean;
-  getPythonLibraryRoutes: () => ReactNode;
+  getPythonTransformsRoutes: () => ReactNode;
   getPythonSourceValidationResult: (
     source: PythonTransformSourceDraft,
   ) => PythonTransformSourceValidationResult;
@@ -71,12 +68,13 @@ export type PythonTransformsPlugin = {
   PythonRunnerSettingsPage: ComponentType;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;
+  sharedLibImportPath: string;
 };
 
 type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
-  getDataStudioTasksRoutes: () => ReactNode;
+  getDataStudioDependencyDiagnosticsRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -141,25 +139,22 @@ function useCheckDependencies<TChange>({
 }
 
 const getDefaultPluginTransforms = (): TransformsPlugin => ({
-  isEnabled: false,
-  canAccessTransforms: () => false,
-  getDataStudioTransformRoutes: () => null,
-  TransformPicker: PluginPlaceholder,
-  useGetTransformQuery:
-    (() => []) as unknown as TransformsPlugin["useGetTransformQuery"],
+  isEnabled: true, // transforms are enabled by default in OSS
+  TransformsUpsellPage: PluginPlaceholder,
 });
 
 export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
 
 const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
-  getPythonLibraryRoutes: () => null,
+  getPythonTransformsRoutes: () => null,
   getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,
   PythonRunnerSettingsPage: NotFoundPlaceholder,
   getAdminRoutes: () => null,
   getTransformsNavLinks: () => null,
+  sharedLibImportPath: "",
 });
 
 export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();
@@ -167,7 +162,7 @@ export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();
 const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
-  getDataStudioTasksRoutes: () => null,
+  getDataStudioDependencyDiagnosticsRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

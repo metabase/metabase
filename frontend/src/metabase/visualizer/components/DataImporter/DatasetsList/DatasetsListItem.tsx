@@ -35,7 +35,11 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
       aria-pressed={selected}
       size="xs"
       onClick={() => {
-        selected ? onRemove?.(item) : onToggle?.(item);
+        if (selected) {
+          onRemove?.(item);
+        } else {
+          onToggle?.(item);
+        }
       }}
       leftSection={
         <Box>

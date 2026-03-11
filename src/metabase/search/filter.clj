@@ -91,11 +91,11 @@
 (defmethod where-clause* ::collection-hierarchy [_ k v]
   ;; Filter by collection and all descendants
   ;; Match items directly in the collection OR in descendant collections
-  ;; Tables in collections are an EE feature (data-studio), so exclude them in OSS
+  ;; Tables in collections are an EE feature (library), so exclude them in OSS
   (let [collection-filter [:or
                            [:= k v]
                            [:like :collection.location (str "%" (collection/location-path v) "%")]]]
-    (if (premium-features/has-feature? :data-studio)
+    (if (premium-features/has-feature? :library)
       collection-filter
       [:and
        [:not= :search_index.model [:inline "table"]]
@@ -140,6 +140,19 @@
            [:= :collection.personal_owner_id nil]
            ;; nor within one of their sub-collections
            ~@(for [p child-patterns] [:not-like :collection.location p])]]))))
+
+(defn transform-source-type-where-clause
+  "Build a clause that limits transforms to enabled source types.
+  When a `model-col` is provided, non-transform models always pass through."
+  ([search-context source-type-col]
+   (let [enabled-types (:enabled-transform-source-types search-context)]
+     (if (seq enabled-types)
+       [:in source-type-col enabled-types]
+       [:= [:inline 0] [:inline 1]])))
+  ([search-context model-col source-type-col]
+   [:or
+    [:!= model-col [:inline "transform"]]
+    (transform-source-type-where-clause search-context source-type-col)]))
 
 (defn with-filters
   "Return a HoneySQL clause corresponding to all the optional search filters."

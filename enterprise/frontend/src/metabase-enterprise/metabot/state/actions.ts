@@ -8,8 +8,9 @@ import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { addUndo } from "metabase/redux/undo";
-import { getIsEmbedding } from "metabase/selectors/embed";
+import { getIsWorkspace } from "metabase/selectors/routing";
 import { getUser } from "metabase/selectors/user";
 import {
   type JSONValue,
@@ -73,6 +74,7 @@ export const {
   addSuggestedTransform,
   activateSuggestedTransform,
   deactivateSuggestedTransform,
+  updateSuggestedTransformId,
   createAgent,
   destroyAgent,
   addSuggestedCodeEdit,
@@ -90,6 +92,17 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
       errorMessage: false as const,
       shouldRetry: false,
     }))
+    .with(
+      { message: P.string.startsWith("Response status: 401") },
+      { status: 401 },
+      () => ({
+        errorMessage: {
+          type: "alert" as const,
+          message: METABOT_ERR_MSG.unauthenticated,
+        },
+        shouldRetry: true,
+      }),
+    )
     .with(
       { message: P.string.startsWith("Response status: 5") },
       { status: 500 },
@@ -179,12 +192,13 @@ export const submitInput = createAsyncThunk<
     context: MetabotChatContext;
     agentId: MetabotAgentId;
     metabot_id?: string;
+    profile?: string;
   }
 >(
   "metabase-enterprise/metabot/submitInput",
   async (payload, { dispatch, getState, signal }) => {
     const state = getState();
-    const { agentId, message: rawPrompt, ...data } = payload;
+    const { agentId, message: rawPrompt, profile, ...data } = payload;
     const convo = getMetabotConversation(state, agentId);
 
     const prompt = rawPrompt.trim();
@@ -244,6 +258,7 @@ export const submitInput = createAsyncThunk<
           agentId,
           conversation_id: convo.conversationId,
           ...agentMetadata,
+          ...(profile ? { profile_id: profile } : {}),
         }),
       );
       signal.addEventListener("abort", () => {
@@ -300,7 +315,7 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const isEmbedding = getIsEmbedding(getState());
+    const isWorkspace = getIsWorkspace(getState());
     const { agentId, ...request } = payload;
 
     try {
@@ -338,7 +353,7 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbedding) {
+                if (!isEmbeddingSdk() && !isWorkspace) {
                   dispatch(push(part.value) as UnknownAction);
                 }
               })

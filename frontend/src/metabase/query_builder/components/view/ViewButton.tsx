@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { CSSProperties } from "react";
 
-import Button, { type ButtonProps } from "metabase/common/components/Button";
+import { Button, type ButtonProps } from "metabase/common/components/Button";
 
 import S from "./ViewButton.module.css";
 
@@ -11,7 +11,7 @@ interface Props extends ButtonProps {
 }
 
 // NOTE: some of this is duplicated from NotebookCell.jsx
-const ViewButton = ({ className, active, color, ...props }: Props) => {
+export const ViewButton = ({ className, active, color, ...props }: Props) => {
   return (
     <Button
       classNames={{
@@ -26,6 +26,3 @@ const ViewButton = ({ className, active, color, ...props }: Props) => {
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ViewButton;

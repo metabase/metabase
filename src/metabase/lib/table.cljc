@@ -30,7 +30,7 @@
           (i18n/tru "Table {0}" (pr-str source-table))))))
 
 (mu/defmethod lib.metadata.calculation/returned-columns-method :metadata/table :- ::lib.metadata.calculation/returned-columns
-  [query _stage-number table-metadata _options]
+  [query _stage-number table-metadata {:keys [include-sensitive-fields?]}]
   (into []
         (comp (map #(assoc % :lib/source :source/table-defaults))
               ;; don't truncate column names, if the database says they're ok we should assume they are and we need to
@@ -38,4 +38,4 @@
               ;; equal to returned columns for a stage with this source table and nothing else... those SHOULD get
               ;; truncated desired aliases when they stage returned columns are calculated.
               (lib.field.util/add-source-and-desired-aliases-xform query (lib.util.unique-name-generator/non-truncating-unique-name-generator)))
-        (lib.metadata/active-fields query (:id table-metadata))))
+        (lib.metadata/active-fields query (:id table-metadata) {:include-sensitive? include-sensitive-fields?})))

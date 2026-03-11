@@ -77,7 +77,7 @@ describe("siteUrlWidget", () => {
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
     const [{ url, body }] = await findRequests("PUT");
@@ -102,7 +102,7 @@ describe("siteUrlWidget", () => {
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
     expect(
@@ -118,7 +118,7 @@ describe("siteUrlWidget", () => {
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
-    await fireEvent.blur(input);
+    fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
     expect(

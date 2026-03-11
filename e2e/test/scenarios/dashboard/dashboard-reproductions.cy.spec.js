@@ -96,8 +96,8 @@ describe("issue 61013", () => {
 
     H.modal().within(() => {
       cy.findByPlaceholderText("Search…").type(dashboardName);
-      cy.findByTestId("result-item").click();
-      cy.findByText("Select").click();
+      cy.findByText(dashboardName).click();
+      cy.findByTestId("entity-picker-select-button").click();
     });
 
     H.getDashboardCards().should("have.length", 1);
@@ -133,8 +133,8 @@ describe("issue 61013", () => {
 
     H.modal().within(() => {
       cy.findByPlaceholderText("Search…").type(dashboardName);
-      cy.findByTestId("result-item").click();
-      cy.findByText("Select").click();
+      cy.findByText(dashboardName).click();
+      cy.findByTestId("entity-picker-select-button").click();
     });
 
     cy.findByTestId("edit-bar")
@@ -754,9 +754,9 @@ describe("issue 29076", () => {
     // test that user is sandboxed - normal users has over 2000 rows
     H.getDashboardCard().findAllByRole("row").should("have.length", 1);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
     H.assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
     H.assertDatasetReqIsSandboxed({

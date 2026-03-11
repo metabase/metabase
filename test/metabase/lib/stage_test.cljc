@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
@@ -169,20 +168,20 @@
                  {:id (meta/id :venues :price), :name "PRICE", :lib/source :source/table-defaults}
                  {:name "ID + 1", :lib/source :source/expressions}
                  {:name "ID + 2", :lib/source :source/expressions}
-                 {:id                       (meta/id :categories :id)
-                  :name                     "ID_2"
-                  :lib/source               :source/joins
-                  :source-alias             "Cat"
-                  :display-name             "ID"
-                  :lib/source-column-alias  "ID"
-                  :lib/desired-column-alias "Cat__ID"}
-                 {:id                       (meta/id :categories :name)
-                  :name                     "NAME_2"
-                  :lib/source               :source/joins
-                  :source-alias             "Cat"
-                  :display-name             "Name"
-                  :lib/source-column-alias  "NAME"
-                  :lib/desired-column-alias "Cat__NAME"}]
+                 {:id                           (meta/id :categories :id)
+                  :name                         "ID_2"
+                  :lib/source                   :source/joins
+                  :lib/join-alias "Cat"
+                  :display-name                 "ID"
+                  :lib/source-column-alias      "ID"
+                  :lib/desired-column-alias     "Cat__ID"}
+                 {:id                           (meta/id :categories :name)
+                  :name                         "NAME_2"
+                  :lib/source                   :source/joins
+                  :lib/join-alias "Cat"
+                  :display-name                 "Name"
+                  :lib/source-column-alias      "NAME"
+                  :lib/desired-column-alias     "Cat__NAME"}]
                 metadata))
         (testing ":long display names"
           (is (= ["ID"
@@ -321,16 +320,16 @@
     (let [query (metadata-for-breakouts-from-joins-test-query)]
       (is (= [{:name                     "CATEGORY"
                :lib/source-column-alias  "CATEGORY"
-               ::lib.join/join-alias     "P1"
+               :lib/join-alias     "P1"
                :lib/desired-column-alias "P1__CATEGORY"}
               {:name                     "SOURCE"
                :lib/source-column-alias  "SOURCE"
-               ::lib.join/join-alias     "People"
+               :lib/join-alias     "People"
                :lib/desired-column-alias "People__SOURCE"}
               {:name                     "count"
                :lib/source-column-alias  "count"
                :lib/desired-column-alias "count"}]
-             (map #(select-keys % [:name :lib/source-column-alias ::lib.join/join-alias :lib/desired-column-alias])
+             (map #(select-keys % [:name :lib/source-column-alias :lib/join-alias :lib/desired-column-alias])
                   (lib/returned-columns query)))))))
 
 (defn- metadata-for-breakouts-from-joins-test-query-2
@@ -352,7 +351,7 @@
     (let [query (metadata-for-breakouts-from-joins-test-query-2)]
       (is (= [{:name "CATEGORY", :lib/source-column-alias "P2__CATEGORY", :lib/desired-column-alias "P2__CATEGORY"}
               {:name "avg", :lib/source-column-alias "avg", :lib/desired-column-alias "avg"}]
-             (map #(select-keys % [:name :lib/source-column-alias ::lib.join/join-alias :lib/desired-column-alias])
+             (map #(select-keys % [:name :lib/source-column-alias :lib/join-alias :lib/desired-column-alias])
                   (lib/returned-columns query)))))))
 
 (defn- metadata-for-breakouts-from-joins-from-previous-stage-test-query
@@ -383,13 +382,13 @@
                :lib/desired-column-alias "count"}
               {:name                     "CATEGORY_2"
                :lib/source-column-alias  "P2__CATEGORY"
-               ::lib.join/join-alias     "Q2"
+               :lib/join-alias     "Q2"
                :lib/desired-column-alias "Q2__P2__CATEGORY"}
               {:name                     "avg"
                :lib/source-column-alias  "avg"
-               ::lib.join/join-alias     "Q2"
+               :lib/join-alias     "Q2"
                :lib/desired-column-alias "Q2__avg"}]
-             (map #(select-keys % [:name :lib/source-column-alias ::lib.join/join-alias :lib/desired-column-alias])
+             (map #(select-keys % [:name :lib/source-column-alias :lib/join-alias :lib/desired-column-alias])
                   (lib/returned-columns query)))))))
 
 (deftest ^:parallel ensure-filter-stage-test
@@ -890,10 +889,9 @@
           :lib/source-column-alias      "sum"
           :lib/source-uuid              "4d059464-4190-40ae-bc4e-717ff016e157"
           :lib/type                     :metadata/column
-          :metabase.lib.join/join-alias "Orders"
+          :lib/join-alias "Orders"
           :name                         "sum"
-          :semantic-type                :type/Quantity
-          :source-alias                 "Orders"}
+          :semantic-type                :type/Quantity}
          {:base-type                    :type/Integer
           :display-name                 "Sum"
           :effective-type               :type/Integer
@@ -901,7 +899,7 @@
           :lib/source                   :source/joins
           :lib/source-uuid              "91b22976-279d-4052-b269-e4cd83a6683b"
           :lib/type                     :metadata/column
-          :metabase.lib.join/join-alias "Orders"
+          :lib/join-alias "Orders"
           :name                         "sum"}))))
 
 (deftest ^:parallel column-equality-test
@@ -929,7 +927,6 @@
                       :preview-display              true
                       :semantic-type                :type/Title
                       :settings                     nil
-                      :source-alias                 "Orders"
                       :table-id                     24050
                       :visibility-type              :normal
                       :lib/breakout?                false
@@ -939,7 +936,7 @@
                       :lib/source                   :source/joins
                       :lib/source-column-alias      "TITLE"
                       :lib/type                     :metadata/column
-                      :metabase.lib.join/join-alias "Orders"}
+                      :lib/join-alias "Orders"}
         existing-col {:base-type               :type/Integer
                       :display-name            "Orders → Sum"
                       :name                    "sum"

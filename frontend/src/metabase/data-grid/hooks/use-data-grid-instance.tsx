@@ -538,5 +538,6 @@ export const useDataGridInstance = <TData, TValue>({
     getTotalHeight,
     getVisibleRows,
     enablePagination,
+    sorting,
   };
 };

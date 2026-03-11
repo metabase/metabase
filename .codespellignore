@@ -4,6 +4,8 @@ altho
 Brite
 cancelation
 cancelations
+caracteres
+copyin
 datas
 edn
 eduction
@@ -13,6 +15,7 @@ horizontalX
 horizontalY
 juxt
 methodd
+nd
 notIn
 optionA
 ot
@@ -29,3 +32,4 @@ trsn
 tru
 trun
 unparseable
+withs

@@ -18,6 +18,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -222,8 +223,10 @@
                     [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))))
 
 ;;; this can get called in post-select which doesn't always have ID
-(mu/defn- ensure-lib-database :- [:map
-                                  [:lib/type [:= :metadata/database]]]
+(mu/defn ensure-lib-database :- [:map
+                                 [:lib/type [:= :metadata/database]]]
+  "Ensures the database is in MLv2 metadata format (SnakeHatingMap with kebab-case keys).
+   If passed a Toucan2 instance, converts it. If already MLv2 metadata, returns as-is."
   [database :- [:or
                 [:map
                  [:lib/type [:= :metadata/database]]]
@@ -728,6 +731,21 @@
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
 
+(defn fields-hidden-for-write-data-connection
+  "Returns the set of field names (strings) that should NOT appear in `write_data_details` for the given `driver`.
+   These are fields whose resolved `visible-if` includes `\"write-data-connection\" false`, meaning they are hidden
+   when the write-data-connection form marker is true."
+  [driver]
+  (when-some [conn-prop-fn (get-method driver/connection-properties driver)]
+    (let [all-props     (conn-prop-fn driver)
+          resolved      (connection-props-server->client driver all-props)
+          props-by-name (collect-all-props-by-name resolved)]
+      (into #{}
+            (keep (fn [[field-name {:keys [visible-if]}]]
+                    (when (false? (get visible-if "write-data-connection"))
+                      field-name)))
+            props-by-name))))
+
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.
 
@@ -743,3 +761,76 @@
         (auth-provider/fetch-auth auth-provider database-id db-details)
         db-details))
      db-details)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        Workspace Isolation Utilities                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- instance-uuid-slug
+  "Create a slug from the site UUID, taking the first character of each section."
+  [site-uuid-string]
+  (->> (str/split site-uuid-string #"-")
+       (map first)
+       (apply str)))
+
+;; WARNING: Changing this prefix requires backwards compatibility handling for existing workspaces.
+;; The prefix is used to identify isolation namespaces in the database, and existing workspaces
+;; will have namespaces created with the current prefix.
+(def ^:private workspace-isolated-prefix "mb__isolation")
+
+(defn workspace-isolation-namespace-name
+  "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.
+  Uses 'namespace' as the generic term that maps to 'schema' in Postgres, 'database' in ClickHouse, etc."
+  [workspace]
+  (assert (some? (:id workspace)) "Workspace must have an :id")
+  (let [instance-slug      (instance-uuid-slug (str (system/site-uuid)))
+        clean-workspace-id (str/replace (str (:id workspace)) #"[^a-zA-Z0-9]" "_")]
+    (format "%s_%s_%s" workspace-isolated-prefix instance-slug clean-workspace-id)))
+
+(defn workspace-isolation-user-name
+  "Generate username for workspace isolation."
+  [workspace]
+  (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))]
+    (format "%s_%s_%s" workspace-isolated-prefix instance-slug (:id workspace))))
+
+(def ^:private workspace-password-char-sets
+  "Character sets for password generation. Cycles through these to ensure representation from each."
+  ["ABCDEFGHJKLMNPQRSTUVWXYZ"
+   "abcdefghjkmnpqrstuvwxyz"
+   "123456789"
+   "!#$%&*+-="])
+
+(defn random-workspace-password
+  "Generate a random password suitable for most database engines.
+   Ensures the password contains characters from all sets (uppercase, lowercase, digits, special)
+   by cycling through the character sets. Result is shuffled for randomness."
+  []
+  (->> (cycle workspace-password-char-sets)
+       (take (+ 32 (rand-int 32)))
+       (map rand-nth)
+       shuffle
+       (apply str)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Macaw parsing helpers                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; At some point, we may want a way for 3rd party drivers to opt in, but a public API deserves some hammock time.
+(def trusted-for-table-permissions?
+  "Do we trust that Macaw will not give us false negatives for tables referenced by a given query?"
+  #{:h2 :mysql :postgres})
+
+(def ^:const transform-temp-table-prefix
+  "Prefix used for temporary tables created during transform execution."
+  "mb_transform_temp_table")
+
+(defn temp-table-name
+  "Generate a temporary table name with a random suffix for uniqueness.
+
+   Takes a `table` keyword like `:schema/table_name` where the namespace is the schema.
+
+   Format: <prefix>_<random_suffix>"
+  [_driver table]
+  (let [schema (some-> table namespace)
+        rand   (subs (str (random-uuid)) 0 8)]
+    (keyword schema (str transform-temp-table-prefix "_" rand))))

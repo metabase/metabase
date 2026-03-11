@@ -10,7 +10,7 @@ import {
 import { Box, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import ViewSection from "../ViewSection";
+import { ViewSection } from "../ViewSection";
 
 import { CenterViewFooterButtonGroup } from "./CenterViewFooterButtonGroup";
 import { LeftViewFooterButtonGroup } from "./LeftViewFooterButtonGroup";

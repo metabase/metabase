@@ -10,9 +10,11 @@ import { action } from "./actions";
 import { browseDatabase } from "./browse";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
+import { dataStudioPublishedTableMeasure } from "./data-studio";
 import { document } from "./documents";
 import { indexedEntity } from "./indexed-entities";
-import { metric, model } from "./models";
+import { metric } from "./metrics";
+import { model } from "./models";
 import { question, tableRowsQuery } from "./questions";
 import { timeline } from "./timelines";
 import { transform } from "./transforms";
@@ -78,6 +80,11 @@ export function modelToUrl(item: UrlableModel): string {
     case "segment":
       if (databaseId != null && item.table_id != null) {
         return tableRowsQuery(databaseId, item.table_id, undefined, item.id);
+      }
+      return NOT_FOUND_URL;
+    case "measure":
+      if (item.table_id != null) {
+        return dataStudioPublishedTableMeasure(item.table_id, item.id);
       }
       return NOT_FOUND_URL;
     default:

@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
-import Link from "metabase/common/components/Link/Link";
+import { Link } from "metabase/common/components/Link/Link";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 

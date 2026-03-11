@@ -10,16 +10,20 @@ import {
   isTrashedCollection,
   isValidCollectionId,
 } from "metabase/collections/utils";
-import CollectionName from "metabase/common/components/CollectionName";
-import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
-import FormField from "metabase/common/components/FormField";
+import { CollectionName } from "metabase/common/components/CollectionName";
+import { FormField } from "metabase/common/components/FormField";
+import type {
+  EntityPickerOptions,
+  EntityPickerProps,
+  FilterItemsInPersonalCollection,
+  OmniPickerItem,
+  OmniPickerValue,
+} from "metabase/common/components/Pickers";
 import {
-  type CollectionPickerItem,
   CollectionPickerModal,
-  type CollectionPickerModalProps,
-  type CollectionPickerOptions,
-} from "metabase/common/components/Pickers/CollectionPicker";
-import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
+  isInDbTree,
+} from "metabase/common/components/Pickers";
+import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Collections } from "metabase/entities/collections";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
@@ -66,7 +70,6 @@ function ItemName({
     </Flex>
   );
 }
-
 interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   collectionIdFieldName: string;
   dashboardIdFieldName: string;
@@ -79,12 +82,7 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   entityType?: EntityType;
   zIndex?: number;
-  collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
-  /**
-   * When set to "collection", allows saving to namespace root collections
-   * (like tenant root). When null/undefined, namespace roots are disabled.
-   */
-  savingModel?: "collection" | null;
+  collectionPickerModalProps?: Partial<EntityPickerProps>;
 }
 
 export function FormCollectionAndDashboardPicker({
@@ -99,7 +97,6 @@ export function FormCollectionAndDashboardPicker({
   dashboardIdFieldName,
   dashboardTabIdFieldName,
   entityType,
-  savingModel,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -116,10 +113,6 @@ export function FormCollectionAndDashboardPicker({
   const pickerTitle = collectionPickerModalProps?.models?.includes("dashboard")
     ? t`Select a collection or dashboard`
     : t`Select a collection`;
-
-  const pickerValue = dashboardIdInput.value
-    ? ({ id: dashboardIdInput.value, model: "dashboard" } as const)
-    : ({ id: collectionIdInput.value, model: "collection" } as const);
 
   const touched = dashboardIdMeta.touched || collectionIdMeta.touched;
   const error = dashboardIdMeta.error || collectionIdMeta.error;
@@ -142,6 +135,12 @@ export function FormCollectionAndDashboardPicker({
       }),
   );
 
+  const namespace = selectedItem?.namespace;
+
+  const pickerValue: OmniPickerValue = dashboardIdInput.value
+    ? { id: dashboardIdInput.value, model: "dashboard", namespace }
+    : { id: collectionIdInput.value, model: "collection", namespace };
+
   useEffect(
     function preventUsingArchivedItem() {
       if (
@@ -160,35 +159,31 @@ export function FormCollectionAndDashboardPicker({
     filterPersonalCollections !== "only" ||
     isOpenCollectionInPersonalCollection;
 
-  const options = useMemo<CollectionPickerOptions>(
+  const options = useMemo<EntityPickerOptions>(
     () => ({
-      showPersonalCollections: filterPersonalCollections !== "exclude",
-      showRootCollection: filterPersonalCollections !== "only",
+      hasPersonalCollections: filterPersonalCollections !== "exclude",
+      hasRootCollection: filterPersonalCollections !== "only",
       // Search API doesn't support collection namespaces yet
-      showSearch: type === "collections",
-      hasConfirmButtons: true,
-      namespace: type === "snippet-collections" ? "snippets" : undefined,
-      allowCreateNew: showCreateNewCollectionOption,
+      hasSearch: type === "collections",
       hasRecents: type !== "snippet-collections",
+      hasConfirmButtons: true,
+      namespaces: type === "snippet-collections" ? ["snippets"] : undefined,
+      canCreateCollections: showCreateNewCollectionOption,
       confirmButtonText: (item) =>
-        item === "dashboard"
+        item?.model === "dashboard"
           ? t`Select this dashboard`
           : t`Select this collection`,
-      savingModel,
     }),
-    [
-      filterPersonalCollections,
-      type,
-      showCreateNewCollectionOption,
-      savingModel,
-    ],
+    [filterPersonalCollections, type, showCreateNewCollectionOption],
   );
 
   const [fetchDashboard] = useLazyGetDashboardQuery();
 
   const handleChange = useCallback(
-    async (item: CollectionPickerItem) => {
-      const { id, collection_id, model } = item;
+    async (item: OmniPickerItem) => {
+      const { id, model } = item;
+      const collection_id = isInDbTree(item) ? undefined : item.collection?.id;
+
       collectionIdHelpers.setValue(
         canonicalCollectionId(model === "dashboard" ? collection_id : id),
       );

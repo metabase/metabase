@@ -2,11 +2,12 @@
 import cx from "classnames";
 import { Component, createRef } from "react";
 
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
-import SelectButton from "metabase/common/components/SelectButton";
+import { PopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger";
+import { SelectButton } from "metabase/common/components/SelectButton";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import { getMappingOptionByTarget } from "metabase/parameters/utils/mapping-options";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ParameterTargetWidget extends Component {
   constructor(props) {
     super(props);

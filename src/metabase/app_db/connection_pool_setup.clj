@@ -93,7 +93,7 @@
    "idleConnectionTestPeriod"
    60
    ;;
-   ;; The fully qualified class-name of an implememtation of the ConnectionCustomizer interface, which users can
+   ;; The fully qualified class-name of an implementation of the ConnectionCustomizer interface, which users can
    ;; implement to set up Connections when they are acquired from the database, or on check-out, and potentially to
    ;; clean things up on check-in and Connection destruction. If standard Connection properties (holdability, readOnly,
    ;; or transactionIsolation) are set in the ConnectionCustomizer's onAcquire() method, these will override the

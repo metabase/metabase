@@ -20,6 +20,9 @@
    {:name      :sso-saml
     :available (premium-features/enable-sso-saml?)
     :enabled   (sso-settings/saml-enabled)}
+   {:name      :sso-slack
+    :available (premium-features/enable-sso-slack?)
+    :enabled   (sso-settings/slack-connect-enabled)}
    {:name      :scim
     :available (premium-features/enable-scim?)
     :enabled   (boolean (scim/scim-enabled))}

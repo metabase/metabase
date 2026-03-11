@@ -1,52 +1,55 @@
 # Metabase Developer Assistant Instructions
 
-## Frontend Development
+For detailed coding standards and conventions, see `CLAUDE.md` and the skills in `.claude/skills/`.
 
-### Repository Structure
+## Code Review Standards
 
-```
-frontend/src/
-├── metabase/           # Main application components and pages
-├── metabase-lib/       # Query building and data modeling utilities
-├── metabase-types/     # TypeScript type definitions
-└── metabase/ui/        # Design system components
+Review focus areas: Security → Performance → Testing → Documentation (in priority order)
 
-e2e/                    # Cypress end-to-end tests
-frontend/test/          # Jest unit tests
-```
+When reviewing code, use these emoji prefixes to categorize feedback:
+- 🔒 Security concerns
+- ⚡ Performance opportunities
+- 🧹 Cleanup needs
+- 📚 Documentation gaps
+- 🚨 Blocking issues
+- 💭 Clarification questions
 
-### Technology Stack
+### Security Critical Issues
 
-- **Framework**: React 18 with TypeScript
-- **State**: Redux Toolkit
-- **Styling**: CSS Modules (preferred) > Emotion styled-components
-- **UI**: `metabase/ui` components built with Mantine v8
-- **Build**: Rspack (primary), Webpack (legacy)
-- **Testing**: Jest + React Testing Library, Cypress
+- Check for hardcoded secrets, API keys, or credentials
+- Look for SQL injection and XSS vulnerabilities
+- Verify proper input validation and sanitization
+- Review authentication and authorization logic
+- Ensure enterprise features use the plugin system (no enterprise code in OSS)
 
-### Coding Standards
+### Performance Red Flags
 
-#### Component Preferences
+- Identify N+1 database query problems
+- Spot inefficient loops and algorithmic issues
+- Check for memory leaks and resource cleanup
+- Review caching opportunities for expensive operations
 
-- Prefer `metabase/ui`components over `metabase/common/components`
-- Use `.tsx` for components, `.ts` for utilities
+### Code Quality Essentials
 
-#### Styling
+- Functions should be focused and appropriately sized
+- Use clear, descriptive naming conventions
+- Ensure proper error handling throughout
+- Remove dead code and unused imports
 
-ALWAYS prefer Mantine style props,then CSS modules. DO NOT suggest styled components, they are deprecated.
+### Review Style
 
-#### TypeScript Migration
+- Only flag actual issues worth mentioning
+- Do not post "looks good" comments or congratulate following conventions
+- Be specific and actionable in feedback
+- Explain the "why" behind recommendations
+- Ask clarifying questions when code intent is unclear
 
-When heavily editing `.js`/`.jsx` files, create a separate PR to convert to TypeScript first, then implement changes.
+### Review Format
 
-#### Enterprise Features
+- Condense feedback into as few comments as possible
+- Prefer a single summary comment over dozens of inline comments
+- Only use inline comments for critical issues that require immediate attention
+- For non-critical issues, link to the specific line from the summary instead
+- Delete all stale comments and summaries on each new push or CI run
 
-Enterprise functionality MUST use the plugin system. It is very important to not expose enterprise code in the OSS version.
-
-#### Testing Requirements
-
-All PRs should include tests. Prefer Unit tests over E2E tests.
-
-#### Localization
-
-All user-facing strings MUST be localized using the ttag library. Localized strings should be complete phrases, do not concatenate a few separately localized strings. You should add context to strings where the meaning of the string might not be obvious in isolation: e.g. "Home" might have different words in some languages depending on whether you're talking about a dwelling or the landing page for a website.
+Language-specific rules are in `.github/instructions/*.instructions.md`.

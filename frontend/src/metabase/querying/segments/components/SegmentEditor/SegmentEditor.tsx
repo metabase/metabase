@@ -12,9 +12,15 @@ type SegmentEditorProps = {
   query: Lib.Query | undefined;
   isNew: boolean;
   onChange: (query: Lib.Query) => void;
+  readOnly?: boolean;
 };
 
-export function SegmentEditor({ query, isNew, onChange }: SegmentEditorProps) {
+export function SegmentEditor({
+  query,
+  isNew,
+  onChange,
+  readOnly,
+}: SegmentEditorProps) {
   return (
     <Flex className={S.root} data-testid="segment-editor">
       <DataStep
@@ -23,7 +29,12 @@ export function SegmentEditor({ query, isNew, onChange }: SegmentEditorProps) {
         isNew={isNew}
         onChange={onChange}
       />
-      <FilterStep query={query} stageIndex={STAGE_INDEX} onChange={onChange} />
+      <FilterStep
+        query={query}
+        stageIndex={STAGE_INDEX}
+        onChange={onChange}
+        readOnly={readOnly}
+      />
       <PreviewStep query={query} stageIndex={STAGE_INDEX} />
     </Flex>
   );

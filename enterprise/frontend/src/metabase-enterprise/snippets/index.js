@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import Modal from "metabase/common/components/Modal";
+import { Modal } from "metabase/common/components/Modal";
 import {
   PLUGIN_SNIPPET_FOLDERS,
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
@@ -12,7 +12,6 @@ import {
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import CollectionOptionsButton from "./components/CollectionOptionsButton";
 import CollectionRow from "./components/CollectionRow";
 import { MoveSnippetModal } from "./components/MoveSnippetModal";
 import SnippetCollectionFormModal from "./components/SnippetCollectionFormModal";
@@ -86,12 +85,17 @@ export function initializePlugin() {
     // Add header button
     PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.push((snippetSidebar, props) => {
       const collection = snippetSidebar.props.snippetCollection;
+      const setSidebarState = snippetSidebar.setState.bind(snippetSidebar);
+
       return (
-        <CollectionOptionsButton
-          {...snippetSidebar.props}
-          {...props}
-          setSidebarState={snippetSidebar.setState.bind(snippetSidebar)}
+        <SnippetCollectionMenu
           collection={collection}
+          onEditDetails={() => {
+            setSidebarState({ modalSnippetCollection: collection });
+          }}
+          onChangePermissions={() => {
+            setSidebarState({ permissionsModalCollectionId: collection.id });
+          }}
         />
       );
     });

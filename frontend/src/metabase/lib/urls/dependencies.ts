@@ -1,8 +1,13 @@
-import type { DependencyEntry, DependencyGroupType } from "metabase-types/api";
+import type {
+  DependencyEntry,
+  DependencyGroupType,
+  DependencySortColumn,
+  SortDirection,
+} from "metabase-types/api";
 
 const BASE_URL = `/data-studio`;
 const GRAPH_URL = `${BASE_URL}/dependencies`;
-const TASKS_URL = `${BASE_URL}/tasks`;
+const DIAGNOSTICS_URL = `${BASE_URL}/dependency-diagnostics`;
 
 export type DependencyGraphParams = {
   entry?: DependencyEntry;
@@ -22,24 +27,29 @@ export function dependencyGraph({
   return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
-export function dependencyTasks() {
-  return TASKS_URL;
+export function dependencyDiagnostics() {
+  return DIAGNOSTICS_URL;
 }
 
-export type DependencyListParams = {
+export type DependencyDiagnosticsParams = {
   page?: number;
   query?: string;
   groupTypes?: DependencyGroupType[];
   includePersonalCollections?: boolean;
+  sortColumn?: DependencySortColumn;
+  sortDirection?: SortDirection;
 };
 
-function dependencyListQueryString({
+function dependencyDiagnosticsQueryString({
   page,
   query,
   groupTypes,
   includePersonalCollections,
-}: DependencyListParams = {}) {
+  sortColumn,
+  sortDirection,
+}: DependencyDiagnosticsParams = {}) {
   const searchParams = new URLSearchParams();
+
   if (page != null) {
     searchParams.set("page", String(page));
   }
@@ -48,24 +58,30 @@ function dependencyListQueryString({
   }
   if (groupTypes != null) {
     groupTypes.forEach((groupType) => {
-      searchParams.append("groupTypes", groupType);
+      searchParams.append("group-types", groupType);
     });
   }
   if (includePersonalCollections != null) {
     searchParams.set(
-      "includePersonalCollections",
+      "include-personal-collections",
       String(includePersonalCollections),
     );
+  }
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
   }
 
   const queryString = searchParams.toString();
   return queryString.length > 0 ? `?${queryString}` : "";
 }
 
-export function brokenDependencies(params?: DependencyListParams) {
-  return `${dependencyTasks()}/broken${dependencyListQueryString(params)}`;
+export function brokenDependencies(params?: DependencyDiagnosticsParams) {
+  return `${dependencyDiagnostics()}/broken${dependencyDiagnosticsQueryString(params)}`;
 }
 
-export function unreferencedDependencies(params?: DependencyListParams) {
-  return `${dependencyTasks()}/unreferenced${dependencyListQueryString(params)}`;
+export function unreferencedDependencies(params?: DependencyDiagnosticsParams) {
+  return `${dependencyDiagnostics()}/unreferenced${dependencyDiagnosticsQueryString(params)}`;
 }

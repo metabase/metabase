@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import Select from "./Select";
+import { Select } from "./Select";
 
 export default {
   title: "Deprecated/Components/Select",

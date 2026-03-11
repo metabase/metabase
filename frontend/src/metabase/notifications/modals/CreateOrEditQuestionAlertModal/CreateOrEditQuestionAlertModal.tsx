@@ -9,8 +9,9 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import ActionButton from "metabase/common/components/ActionButton";
+import { ActionButton } from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import {
   alertIsValid,
@@ -40,6 +41,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 import type {
   CreateAlertNotificationRequest,
   Notification,
@@ -91,7 +93,7 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "cron",
 ];
 
-type CreateOrEditQuestionAlertModalProps = {
+type CreateOrEditQuestionAlertModalWithQuestionProps = {
   onClose: () => void;
 } & (
   | {
@@ -106,14 +108,47 @@ type CreateOrEditQuestionAlertModalProps = {
     }
 );
 
+type CreateOrEditQuestionAlertModalProps =
+  CreateOrEditQuestionAlertModalWithQuestionProps & {
+    question?: Question;
+  };
+
+export const CreateOrEditQuestionAlertModalWithQuestion = ({
+  editingNotification,
+  onAlertCreated,
+  onAlertUpdated,
+  onClose,
+}: CreateOrEditQuestionAlertModalWithQuestionProps) => {
+  const question = useSelector(getQuestion);
+
+  if (editingNotification) {
+    return (
+      <CreateOrEditQuestionAlertModal
+        question={question}
+        editingNotification={editingNotification}
+        onAlertUpdated={onAlertUpdated}
+        onClose={onClose}
+      />
+    );
+  } else {
+    return (
+      <CreateOrEditQuestionAlertModal
+        question={question}
+        onAlertCreated={onAlertCreated}
+        onClose={onClose}
+      />
+    );
+  }
+};
+
 export const CreateOrEditQuestionAlertModal = ({
   editingNotification,
   onAlertCreated,
   onAlertUpdated,
   onClose,
+  question,
 }: CreateOrEditQuestionAlertModalProps) => {
   const dispatch = useDispatch();
-  const question = useSelector(getQuestion);
   const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
   const userCanAccessSettings = useSelector(canAccessSettings);
@@ -336,26 +371,29 @@ export const CreateOrEditQuestionAlertModal = ({
             onScheduleChange={handleScheduleChange}
           />
         </AlertModalSettingsBlock>
-        <AlertModalSettingsBlock
-          title={t`Where do you want to send the results?`}
-        >
-          <NotificationChannelsPicker
-            notificationHandlers={notification.handlers}
-            channels={channelSpec ? channelSpec.channels : undefined}
-            onChange={(newHandlers: NotificationHandler[]) => {
-              setNotification({
-                ...notification,
-                handlers: newHandlers,
-              });
-            }}
-            emailRecipientText={t`Email alerts to:`}
-            getInvalidRecipientText={(domains) =>
-              userCanAccessSettings
-                ? t`You're only allowed to email alerts to addresses ending in ${domains}`
-                : t`You're only allowed to email alerts to allowed domains`
-            }
-          />
-        </AlertModalSettingsBlock>
+        {!isEmbeddingSdk() && (
+          <AlertModalSettingsBlock
+            title={t`Where do you want to send the results?`}
+          >
+            <NotificationChannelsPicker
+              notificationHandlers={notification.handlers}
+              channels={channelSpec ? channelSpec.channels : undefined}
+              onChange={(newHandlers: NotificationHandler[]) => {
+                setNotification({
+                  ...notification,
+                  handlers: newHandlers,
+                });
+              }}
+              emailRecipientText={t`Email alerts to:`}
+              getInvalidRecipientText={(domains) =>
+                userCanAccessSettings
+                  ? t`You're only allowed to email alerts to addresses ending in ${domains}`
+                  : t`You're only allowed to email alerts to allowed domains`
+              }
+            />
+          </AlertModalSettingsBlock>
+        )}
+
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Delete this Alert after it's triggered`}

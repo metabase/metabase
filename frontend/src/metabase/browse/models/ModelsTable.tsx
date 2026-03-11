@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { getCollectionName } from "metabase/collections/utils";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import EntityItem from "metabase/common/components/EntityItem";
+import { EntityItem } from "metabase/common/components/EntityItem";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ItemNameCell,
@@ -21,7 +21,7 @@ import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { FixedSizeIcon, Flex, Icon, Repeat, Skeleton } from "metabase/ui";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { SortingOptions } from "metabase-types/api";
 
 import {
   Cell,
@@ -55,7 +55,7 @@ const collectionProps: ResponsiveProps = {
 
 const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
   sort_column: "collection",
-  sort_direction: SortDirection.Asc,
+  sort_direction: "asc",
 };
 
 export const ModelsTable = ({
@@ -219,7 +219,7 @@ function NameCell({ model }: { model?: ModelResult }) {
         }}
         onClick={preventDefault}
       >
-        <Icon size={16} {...icon} c="icon-primary" style={{ flexShrink: 0 }} />
+        <Icon size={16} {...icon} c="icon-brand" style={{ flexShrink: 0 }} />
         {
           <EntityItem.Name
             name={model?.name || ""}

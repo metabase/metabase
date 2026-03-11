@@ -9,7 +9,7 @@ import {
   onOpenChartType,
   onReplaceAllVisualizationSettings,
 } from "metabase/query_builder/actions";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import {
   getUiControls,
   getVisualizationSettings,

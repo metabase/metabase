@@ -1,5 +1,5 @@
-import Button from "metabase/common/components/Button";
-import Link from "metabase/common/components/Link";
+import { Button } from "metabase/common/components/Button";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Text, isValidIconName } from "metabase/ui";
@@ -9,6 +9,7 @@ import {
   EmptyStateActions,
   EmptyStateHeader,
   EmptyStateIllustration,
+  type EmptyStateIllustrationProps,
 } from "./EmptyState.styled";
 
 // Don't break existing empty states
@@ -48,9 +49,10 @@ type EmptyStateProps = {
   className?: string;
   icon?: IconName;
   image?: string;
+  spacing?: EmptyStateIllustrationProps["spacing"];
 };
 
-const EmptyState = ({
+export const EmptyState = ({
   title,
   message,
   action,
@@ -60,12 +62,16 @@ const EmptyState = ({
   className,
   icon,
   image,
+  spacing = "md",
   ...rest
 }: EmptyStateProps) => (
   <div className={className}>
     <EmptyStateHeader>
       {illustrationElement && (
-        <EmptyStateIllustration className="empty-state-illustration">
+        <EmptyStateIllustration
+          className="empty-state-illustration"
+          spacing={spacing}
+        >
           {illustrationElement}
         </EmptyStateIllustration>
       )}
@@ -103,6 +109,3 @@ const EmptyState = ({
     </Flex>
   </div>
 );
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EmptyState;

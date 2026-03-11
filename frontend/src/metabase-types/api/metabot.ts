@@ -47,6 +47,8 @@ export type MetabotUserIsViewingContext = Array<
 export type MetabotChatContext = {
   user_is_viewing: MetabotUserIsViewingContext;
   current_time_with_timezone: string;
+  default_database_id?: number;
+  workspace_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
 };
@@ -150,9 +152,9 @@ export type MetabotDocumentInfo = {
 };
 
 export type MetabotTransformInfo =
-  | ({ type: "transform" } & Transform) // edit
-  | ({ type: "transform" } & SuggestedTransform) // edit saved suggested
-  | ({ type: "transform" } & DraftTransform); // edit unsaved suggested
+  | ({ type: "transform"; error?: string } & Transform) // edit
+  | ({ type: "transform"; error?: string } & SuggestedTransform) // edit saved suggested
+  | ({ type: "transform"; error?: string } & DraftTransform); // edit unsaved suggested
 
 export type MetabotEntityInfo =
   | MetabotCardInfo

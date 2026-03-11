@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.util :as embed.util]
    [metabase.request.settings :as request.settings]
@@ -46,34 +47,14 @@
         ;; font files are static and should be cached
         (re-matches #"^/app/fonts/.+\.(woff2?|ttf|otf|eot)$" uri))))
 
-(defn https?
+(def https?
   "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.
 
   In many production instances, a reverse proxy such as an ELB or nginx will handle SSL termination, and the actual
-  request handled by Jetty will be over HTTP."
-  [{{:strs [x-forwarded-proto x-forwarded-protocol x-url-scheme x-forwarded-ssl front-end-https origin]} :headers
-    :keys                                                                                                [scheme]}]
-  (cond
-    ;; If `X-Forwarded-Proto` is present use that. There are several alternate headers that mean the same thing. See
-    ;; https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-Proto
-    (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
-    (= "https" (u/lower-case-en (or x-forwarded-proto x-forwarded-protocol x-url-scheme)))
+  request handled by Jetty will be over HTTP.
 
-    ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Frontend-End-Https`, which
-    ;; will be set to `on` if the original request was over HTTPS.
-    (or x-forwarded-ssl front-end-https)
-    (= "on" (u/lower-case-en (or x-forwarded-ssl front-end-https)))
-
-    ;; If none of the above are present, we are most not likely being accessed over a reverse proxy. Still, there's a
-    ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
-    ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
-    origin
-    (str/starts-with? (u/lower-case-en origin) "https")
-
-    ;; Last but not least, if none of the above are set (meaning there are no proxy servers such as ELBs or nginx in
-    ;; front of us), we can look directly at the scheme of the request sent to Jetty.
-    scheme
-    (= scheme :https)))
+  Note: Implementation is in [[metabase.util/https?]]."
+  u/https?)
 
 (defn embedded?
   "Whether this frontend client that made this request is embedded inside an `<iframe>`."
@@ -172,11 +153,14 @@
                                             :socket-timeout     gecode-ip-address-timeout-ms
                                             :connection-timeout gecode-ip-address-timeout-ms})
                              :body
-                             json/decode+kw)]
-            (into {} (for [info response]
-                       [(:ip info) {:description (or (describe-location info)
-                                                     "Unknown location")
-                                    :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
+                             json/decode+kw)
+                result (into {} (for [info response]
+                                  [(:ip info) {:description (or (describe-location info)
+                                                                "Unknown location")
+                                               :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}]))]
+            (analytics/inc! :metabase-geocoding/requests)
+            result)
           (catch Throwable e
+            (analytics/inc! :metabase-geocoding/errors)
             (log/error e "Error geocoding IP addresses" {:url url})
             nil))))))

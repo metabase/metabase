@@ -1285,6 +1285,126 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v58.2026-01-05T12:00:00
+      author: metasasha
+      comment: Add is_data_analyst column to core_user table for analyst role
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_data_analyst
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Indicates if the user has data analyst privileges for Data Studio
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-01-09T12:00:00
+      author: johnswanson
+      comment: Create data-analyst magic permissions group
+      changes:
+        - sql:
+            sql: INSERT INTO permissions_group (name, magic_group_type) VALUES ('Data Analysts', 'data-analyst')
+      rollback:
+        - sql:
+            sql: DELETE FROM permissions_group WHERE magic_group_type = 'data-analyst';
+
+  - changeSet:
+      id: v58.2026-01-09T12:00:01
+      author: johnswanson
+      comment: Grant read permissions on existing Library collections to Data Analysts group
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT pg.id, '/collection/' || c.id || '/'
+              FROM permissions_group pg, collection c
+              WHERE pg.magic_group_type = 'data-analyst'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+      rollback:
+        - sql:
+            # We can safely delete ALL permissions for this group because it will be deleted in the rollback above
+            sql: >-
+              DELETE FROM permissions
+              WHERE group_id IN (SELECT id FROM permissions_group WHERE magic_group_type = 'data-analyst');
+
+  - changeSet:
+      id: v58.2026-01-23T05:55:14
+      author: johnswanson
+      comment: Fix missing perm_value/perm_type/collection_id from v58.2026-01-09T12:00:01
+      rollback: # not needed
+      changes:
+        - sql:
+            dbms: postgres
+            sql: >-
+              UPDATE permissions p
+              SET perm_value = 'read-and-write',
+                  perm_type = 'perms/collection-access',
+                  collection_id = c.id
+              FROM permissions_group pg, collection c
+              WHERE p.group_id = pg.id
+                AND pg.magic_group_type = 'data-analyst'
+                AND p.object = '/collection/' || c.id || '/'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+                AND p.perm_value IS NULL
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE permissions p
+              JOIN permissions_group pg ON p.group_id = pg.id
+              JOIN collection c ON p.object = CONCAT('/collection/', c.id, '/')
+              SET p.perm_value = 'read-and-write',
+                  p.perm_type = 'perms/collection-access',
+                  p.collection_id = c.id
+              WHERE pg.magic_group_type = 'data-analyst'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+                AND p.perm_value IS NULL
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE permissions p
+              SET (perm_value, perm_type, collection_id) = (
+                SELECT 'read-and-write', 'perms/collection-access', c.id
+                FROM permissions_group pg, collection c
+                WHERE p.group_id = pg.id
+                  AND pg.magic_group_type = 'data-analyst'
+                  AND p.object = '/collection/' || c.id || '/'
+                  AND c.type IN ('library', 'library-data', 'library-metrics')
+              )
+              WHERE p.perm_value IS NULL
+                AND EXISTS (
+                  SELECT 1
+                  FROM permissions_group pg, collection c
+                  WHERE p.group_id = pg.id
+                    AND pg.magic_group_type = 'data-analyst'
+                    AND p.object = '/collection/' || c.id || '/'
+                    AND c.type IN ('library', 'library-data', 'library-metrics')
+                )
+
+  - changeSet:
+      id: v58.2026-01-27T13:00:00
+      author: wotbrew
+      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = CASE data_layer
+                WHEN 'copper' THEN 'hidden'
+                ELSE 'final'
+              END
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET data_layer = CASE data_layer
+                WHEN 'hidden' THEN 'copper'
+                ELSE 'bronze'
+              END
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

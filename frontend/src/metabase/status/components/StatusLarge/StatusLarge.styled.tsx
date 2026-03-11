@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { color } from "metabase/ui/utils/colors";
 
 export const StatusRoot = styled.div`
@@ -61,7 +61,7 @@ export const StatusCardIcon = styled.div`
   height: 2rem;
   border-radius: 1rem;
   color: var(--mb-color-brand);
-  background-color: var(--mb-color-brand-light);
+  background-color: var(--mb-color-background-brand);
 `;
 
 export const StatusCardTitle = styled.div`

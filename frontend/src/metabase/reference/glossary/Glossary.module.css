@@ -52,3 +52,9 @@
   border: none;
   padding-inline: 0 !important;
 }
+
+.inputError {
+  border: none;
+  padding-inline: 0 !important;
+  color: var(--mb-color-error) !important;
+}

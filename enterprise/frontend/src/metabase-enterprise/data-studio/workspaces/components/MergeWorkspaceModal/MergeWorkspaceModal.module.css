@@ -1,0 +1,31 @@
+.sidebarItem {
+  cursor: pointer;
+  border-left: 2px solid transparent;
+
+  &:hover {
+    background: var(--mb-color-background-secondary);
+  }
+}
+
+.sidebarItemActive {
+  background: var(--mb-color-background-secondary);
+  border-left-color: var(--mb-color-brand);
+}
+
+.diffEditor {
+  height: 100%;
+
+  :global {
+    .cm-content {
+      padding: 0;
+    }
+
+    .cm-collapsedLines {
+      padding-left: 0;
+    }
+
+    .cm-scroller {
+      font-family: monospace;
+    }
+  }
+}

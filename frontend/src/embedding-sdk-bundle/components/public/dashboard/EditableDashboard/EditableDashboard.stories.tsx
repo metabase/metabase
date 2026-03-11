@@ -32,7 +32,11 @@ const meta = {
 
     "dataPickerProps.entityTypes": {
       control: "check",
-      options: ["model", "table"] satisfies SdkQuestionProps["entityTypes"],
+      options: [
+        "model",
+        "table",
+        "question",
+      ] satisfies SdkQuestionProps["entityTypes"],
     },
 
     // Display options
@@ -154,6 +158,9 @@ const meta = {
       },
       action: "onLoadWithoutCards",
     },
+  },
+  args: {
+    autoRefreshInterval: 0,
   },
   render: ({ "dataPickerProps.entityTypes": entityTypes, ...args }) => {
     return (

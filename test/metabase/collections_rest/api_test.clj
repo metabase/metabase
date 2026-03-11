@@ -8,7 +8,7 @@
    [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
-   [metabase.collections.test-helpers :refer [without-library]]
+   [metabase.collections.test-utils :refer [without-library]]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -3385,7 +3385,7 @@
            (mt/user-http-request :rasta :delete 403 (str "/collection/" a-id))))))
 
 (deftest published-tables-not-in-collection-items-oss-test
-  (testing "In OSS (without :data-studio feature), published tables should NOT appear in collection items"
+  (testing "In OSS (without :library feature), published tables should NOT appear in collection items"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                      :model/Card {card-id :id} {:collection_id coll-id :name "Test Card"}
@@ -3400,7 +3400,7 @@
           (testing "Published table should NOT appear"
             (is (not (some #(= table-id (:id %)) items))
                 "Published table should NOT be in collection items in OSS"))))))
-  (testing "In OSS (without :data-studio feature), published tables should NOT appear in root collection items"
+  (testing "In OSS (without :library feature), published tables should NOT appear in root collection items"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Table {table-id :id} {:collection_id nil
                                                   :is_published  true

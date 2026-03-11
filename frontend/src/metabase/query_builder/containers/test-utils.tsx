@@ -32,7 +32,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import NewItemMenu from "metabase/common/components/NewItemMenu";
+import { NewItemMenu } from "metabase/common/components/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
@@ -238,7 +238,11 @@ export const setup = async ({
   card,
   dataset = createMockDataset(),
   initialRoute = `/question${
-    isSavedCard(card) ? `/${card.id}` : `#${serializeCardForUrl(card)}`
+    card == null
+      ? ""
+      : isSavedCard(card)
+        ? `/${card.id}`
+        : `#${serializeCardForUrl(card)}`
   }`,
 }: SetupOpts) => {
   setupDatabasesEndpoints([TEST_DB]);

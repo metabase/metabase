@@ -12,10 +12,9 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 import { hasLatitudeAndLongitudeColumns } from "metabase-lib/v1/types/utils/isa";
 
-import LeafletGridHeatMap from "./LeafletGridHeatMap";
-import LeafletHeatMap from "./LeafletHeatMap";
-import LeafletMarkerPinMap from "./LeafletMarkerPinMap";
-import LeafletTilePinMap from "./LeafletTilePinMap";
+import { LeafletGridHeatMap } from "./LeafletGridHeatMap";
+import { LeafletMarkerPinMap } from "./LeafletMarkerPinMap";
+import { LeafletTilePinMap } from "./LeafletTilePinMap";
 import S from "./PinMap.module.css";
 
 const WORLD_BOUNDS = [
@@ -26,11 +25,10 @@ const WORLD_BOUNDS = [
 const MAP_COMPONENTS_BY_TYPE = {
   markers: LeafletMarkerPinMap,
   tiles: LeafletTilePinMap,
-  heat: LeafletHeatMap,
   grid: LeafletGridHeatMap,
 };
 
-export default class PinMap extends Component {
+export class PinMap extends Component {
   static getUiName = () => t`Pin Map`;
   static identifier = "pin_map";
   static iconName = "pinmap";

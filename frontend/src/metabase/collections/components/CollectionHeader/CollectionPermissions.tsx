@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link/Link";
+import { Link } from "metabase/common/components/Link/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

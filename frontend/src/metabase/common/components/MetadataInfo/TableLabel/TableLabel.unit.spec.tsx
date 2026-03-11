@@ -6,7 +6,7 @@ import type { Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import TableLabel from "./TableLabel";
+import { TableLabel } from "./TableLabel";
 
 interface SetupOpts {
   table: Table;

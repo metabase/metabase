@@ -30,6 +30,7 @@
     DateTimeRange
     FieldFilter
     ReferencedCardQuery
+    ReferencedTableQuery
     ReferencedQuerySnippet
     TemporalUnit)))
 
@@ -38,7 +39,7 @@
 (defmulti ->prepared-substitution
   "Returns a `PreparedStatementSubstitution` (see schema below) for `x` and the given driver. This allows driver
   specific parameters and SQL replacement text (usually just ?). The param value is already prepared and ready for
-  inlcusion in the query, such as what's needed for SQLite and timestamps."
+  inclusion in the query, such as what's needed for SQLite and timestamps."
   {:added "0.34.0" :arglists '([driver x])}
   (fn [driver x] [(driver/dispatch-on-initialized-driver driver) (class x)])
   :hierarchy #'driver/hierarchy)
@@ -288,7 +289,7 @@
   (field->clause field {:temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value)}))
 
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
-  "Return an approprate snippet to represent this `field` in SQL given its param type.
+  "Return an appropriate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type value]
@@ -408,3 +409,13 @@
                             (field->clause field (when (not= value params/no-value)
                                                    {:temporal-unit (keyword value)}))))]
     (replace-alias driver field alias replacement-snippet-info)))
+
+(defmethod ->replacement-snippet-info [:sql ReferencedTableQuery]
+  [driver {:keys [table-id]}]
+  (let [mp (driver-api/metadata-provider)
+        alias (->> (driver-api/table mp table-id)
+                   (sql.qp/->honeysql driver)
+                   (sql.qp/format-honeysql driver)
+                   first)]
+    {:prepared-statement-args []
+     :replacement-snippet alias}))

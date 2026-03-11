@@ -82,6 +82,7 @@ export const DataGrid = function DataGrid<TData>({
   onWheel,
   tableFooterExtraButtons,
   rowsTruncated,
+  sorting,
 }: DataGridProps<TData>) {
   const {
     virtualColumns,
@@ -103,7 +104,8 @@ export const DataGrid = function DataGrid<TData>({
     (element: HTMLElement | null) => {
       rowVirtualizer.measureElement(element);
     },
-    [rowVirtualizer],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `sorting` triggers re-measurement when sorting changes
+    [rowVirtualizer, sorting],
   );
 
   const forceUpdate = useForceUpdate();

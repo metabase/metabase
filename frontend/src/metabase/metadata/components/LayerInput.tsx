@@ -1,7 +1,6 @@
 import type { FocusEvent } from "react";
 import { t } from "ttag";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { Group, Icon, Select, SelectItem, type SelectProps } from "metabase/ui";
 import type { TableDataLayer } from "metabase-types/api";
 
@@ -10,7 +9,7 @@ interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   onChange: (value: TableDataLayer | null) => void;
 }
 
-const dataLayers = ["copper", "bronze", "silver", "gold"] as const;
+const dataLayers = ["hidden", "internal", "final"] as const;
 
 export const LayerInput = ({
   comboboxProps,
@@ -37,28 +36,25 @@ export const LayerInput = ({
         ...comboboxProps,
       }}
       data={[
-        { value: "copper" as const, label: t`Copper` },
-        { value: "bronze" as const, label: t`Bronze` },
-        { value: "silver" as const, label: t`Silver` },
-        { value: "gold" as const, label: t`Gold` },
+        { value: "hidden" as const, label: t`Hidden` },
+        { value: "internal" as const, label: t`Internal` },
+        { value: "final" as const, label: t`Final` },
       ]}
-      label={t`Visibility type`}
+      label={t`Visibility layer`}
       renderOption={(item) => {
         const selected = item.option.value === value;
 
         return (
           <SelectItem selected={selected}>
             <Group align="center" gap="sm" justify="center">
-              <Icon c={getColor(item.option.value)} name="medallion" />
+              <VisibilityIcon value={item.option.value} />
               <span>{item.option.label}</span>
             </Group>
           </SelectItem>
         );
       }}
-      leftSection={
-        value ? <Icon c={getColor(value)} name="medallion" /> : undefined
-      }
-      placeholder={t`Select a visibility type`}
+      leftSection={value ? <VisibilityIcon value={value} /> : undefined}
+      placeholder={t`Select visibility layer`}
       value={value}
       onChange={(value) => onChange(value)}
       onFocus={handleFocus}
@@ -71,9 +67,20 @@ function isDataLayer(value: string): value is TableDataLayer {
   return dataLayers.some((layer) => layer === value);
 }
 
-function getColor(value: TableDataLayer | string): ColorName {
-  if (isDataLayer(value)) {
-    return value;
+function VisibilityIcon({ value }: { value: string | null }): React.ReactNode {
+  if (value == null) {
+    return null;
   }
-  return "copper";
+
+  if (isDataLayer(value)) {
+    return <Icon name={VISIBILITY_ICONS[value]} />;
+  }
+
+  return null;
 }
+
+const VISIBILITY_ICONS = {
+  hidden: "eye_filled",
+  internal: "database",
+  final: "published",
+} as const;

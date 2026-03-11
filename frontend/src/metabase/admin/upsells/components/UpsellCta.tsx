@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { P, match } from "ts-pattern";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
 import { UnstyledButton } from "metabase/ui";
 
 import S from "./UpsellCta.module.css";

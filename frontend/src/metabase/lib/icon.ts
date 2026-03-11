@@ -1,5 +1,6 @@
+import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
@@ -21,7 +22,9 @@ export type IconModel =
   | "timeline"
   | "question"
   | "transform"
-  | "user";
+  | "user"
+  | "nativequerysnippet"
+  | "pythonlibrary";
 
 export type ObjectWithModel = {
   id?: unknown;
@@ -51,12 +54,15 @@ export const modelIconMap: Record<IconModel, IconName> = {
   model: "model",
   card: "table2",
   segment: "segment",
+  measure: "ruler",
   metric: "metric",
-  snippet: "unknown",
+  snippet: "snippet",
+  nativequerysnippet: "snippet",
   document: "document",
   timeline: "calendar",
   transform: "transform",
   user: "person",
+  pythonlibrary: "code_block",
 };
 
 export type IconData = {
@@ -87,9 +93,7 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
   }
 
   if (item.model === "collection") {
-    switch (
-      PLUGIN_DATA_STUDIO.getLibraryCollectionType(item.type as CollectionType)
-    ) {
+    switch (getLibraryCollectionType(item.type as CollectionType)) {
       case "root":
         return { name: "repository" };
       case "data":

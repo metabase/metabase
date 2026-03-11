@@ -1,5 +1,5 @@
 const { H } = cy;
-const { IS_ENTERPRISE } = Cypress.env();
+const IS_ENTERPRISE = Cypress.expose("IS_ENTERPRISE");
 import { USERS } from "e2e/support/cypress_data";
 import { SUBSCRIBE_URL } from "metabase/setup/constants";
 
@@ -436,19 +436,19 @@ describe("scenarios > setup", () => {
     skipLicenseStepOnEE();
 
     // usage data
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.get("section")
       .last()
       .findByText(/certain data about product usage/);
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.get("section").last().button("Finish").click();
 
     // done
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.get("section")
       .last()
       .findByText(/You're all set up/);
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.get("section")
       .last()
       .findByRole("link", { name: "Take me to Metabase" })
@@ -506,16 +506,16 @@ describe("scenarios > setup", () => {
         "not.exist",
       );
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.get("section")
         .last()
         .findByText(/certain data about product usage/);
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.get("section").last().button("Finish").click();
 
       // Finish & Subscribe
       cy.intercept("GET", "/api/session/properties").as("properties");
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.get("section")
         .last()
         .findByRole("link", { name: "Take me to Metabase" })
@@ -573,7 +573,10 @@ describe("scenarios > setup (EE)", () => {
 
       cy.findByText("Activate your commercial license").should("exist");
 
-      typeToken(Cypress.env("MB_STARTER_CLOUD_TOKEN"));
+      // Use cy.env() for sensitive token values (async API)
+      cy.env(["MB_STARTER_CLOUD_TOKEN"]).then(({ MB_STARTER_CLOUD_TOKEN }) => {
+        typeToken(MB_STARTER_CLOUD_TOKEN);
+      });
 
       cy.button("Activate").click();
 

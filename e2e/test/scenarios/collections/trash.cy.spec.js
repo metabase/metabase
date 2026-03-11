@@ -29,7 +29,7 @@ describe("scenarios > collections > trash", () => {
 
     cy.log("should show trash at bottom of the side navbar");
     H.navigationSidebar().within(() => {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("sidebar-collection-link-root")
         .last()
         .as("sidebar-trash-link")

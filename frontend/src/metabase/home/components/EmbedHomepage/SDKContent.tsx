@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Box, Button, Group, Text } from "metabase/ui";
 
 type SDKContentProps = {

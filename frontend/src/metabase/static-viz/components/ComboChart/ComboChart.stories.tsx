@@ -1,4 +1,5 @@
 import type { StoryFn } from "@storybook/react";
+import { updateIn } from "icepick";
 
 import { color } from "metabase/lib/colors";
 import {
@@ -127,6 +128,30 @@ export const LineCustomYAxisRangeEqualsExtents = {
   render: Template,
   args: {
     rawSeries: data.lineCustomYAxisRangeEqualsExtents as any,
+    renderingContext,
+  },
+};
+
+export const LineCustomYAxisRangeOffScreenHigh = {
+  render: Template,
+  args: {
+    rawSeries: updateIn(
+      data.lineCustomYAxisRangeEqualsExtents,
+      [0, "card", "visualization_settings"],
+      (val) => ({ ...val, "graph.y_axis.max": 1000, "graph.y_axis.min": 200 }),
+    ) as any,
+    renderingContext,
+  },
+};
+
+export const LineCustomYAxisRangeOffScreenLow = {
+  render: Template,
+  args: {
+    rawSeries: updateIn(
+      data.lineCustomYAxisRangeEqualsExtents,
+      [0, "card", "visualization_settings"],
+      (val) => ({ ...val, "graph.y_axis.max": 0, "graph.y_axis.min": -100 }),
+    ) as any,
     renderingContext,
   },
 };

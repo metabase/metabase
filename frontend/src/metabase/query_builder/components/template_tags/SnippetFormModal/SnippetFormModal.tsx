@@ -11,7 +11,7 @@ import type {
   UpdateSnippetRequest,
 } from "metabase-types/api";
 
-import SnippetForm, { type SnippetFormValues } from "../SnippetForm";
+import { SnippetForm, type SnippetFormValues } from "../SnippetForm";
 
 type SnippetModalProps = {
   snippet: NativeQuerySnippet | Partial<Omit<NativeQuerySnippet, "id">>;

@@ -7,6 +7,7 @@ import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
 import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import { metabotActions } from "metabase-enterprise/metabot/state";
 import { getMetabotInitialState } from "metabase-enterprise/metabot/state/reducer-utils";
 
 import { Metabot } from "../components/Metabot";
@@ -144,38 +145,54 @@ describe("metabot > ui", () => {
     });
   });
 
-  it("should present the user an option to provide feedback", async () => {
-    const feedbackPath = "path:/api/ee/metabot-v3/feedback";
+  it("should render single newlines in user input as separate paragraphs", async () => {
+    const { store } = setup();
 
-    setup();
-    fetchMock.post(feedbackPath, 204);
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
-
-    await enterChatMessage("Who is your favorite?");
-    const lastMessage = await lastChatMessage();
-    expect(lastMessage).toHaveTextContent(/You, but don't tell anyone./);
-
-    const feedbackModal = () => screen.findByTestId("metabot-feedback-modal");
-    const thumbsUp = () =>
-      within(lastMessage!).findByTestId("metabot-chat-message-thumbs-up");
-    const thumbsDown = () =>
-      within(lastMessage!).findByTestId("metabot-chat-message-thumbs-down");
-
-    expect(await thumbsUp()).toBeInTheDocument();
-    expect(await thumbsDown()).toBeInTheDocument();
-    await userEvent.click(await thumbsDown());
-
-    expect(await feedbackModal()).toBeInTheDocument();
-    await userEvent.click(
-      await within(await feedbackModal()).findByRole("button", {
-        name: /Submit/,
+    store.dispatch(
+      metabotActions.addUserMessage({
+        agentId: "omnibot",
+        id: "user-1",
+        type: "text",
+        message: "first line\nsecond line",
       }),
     );
 
-    expect(fetchMock.callHistory.calls(feedbackPath)).toHaveLength(1);
+    const messages = await screen.findAllByTestId("metabot-chat-message");
+    const userMessage = messages[0];
+    const firstParagraph = within(userMessage).getByText("first line", {
+      selector: "p",
+    });
+    const secondParagraph = within(userMessage).getByText("second line", {
+      selector: "p",
+    });
 
-    expect(await thumbsUp()).toBeDisabled();
-    expect(await thumbsDown()).toBeDisabled();
+    expect(firstParagraph).toBeInTheDocument();
+    expect(secondParagraph).toBeInTheDocument();
+  });
+
+  it("should preserve double newlines from user input", async () => {
+    const { store } = setup();
+
+    store.dispatch(
+      metabotActions.addUserMessage({
+        agentId: "omnibot",
+        id: "user-2",
+        type: "text",
+        message: "first line\n\nsecond line",
+      }),
+    );
+
+    const messages = await screen.findAllByTestId("metabot-chat-message");
+    const userMessage = messages[0];
+    const firstParagraph = within(userMessage).getByText("first line", {
+      selector: "p",
+    });
+    const secondParagraph = within(userMessage).getByText("second line", {
+      selector: "p",
+    });
+
+    expect(firstParagraph).toBeInTheDocument();
+    expect(secondParagraph).toBeInTheDocument();
   });
 
   it("should present the user an option to retry a response", async () => {

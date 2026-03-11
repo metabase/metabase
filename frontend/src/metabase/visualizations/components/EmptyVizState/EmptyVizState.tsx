@@ -1,6 +1,6 @@
 import { c, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
@@ -35,7 +35,8 @@ export const EmptyVizState = ({
     isCardDisplayType(chartType) &&
     chartType !== "table" &&
     chartType !== "object" &&
-    chartType !== "list";
+    chartType !== "list" &&
+    chartType !== "boxplot";
 
   const emptyVizChart = isValidChartType ? chartType : "bar";
 

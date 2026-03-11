@@ -166,11 +166,11 @@ describe("issue 17524", () => {
 
       cy.get("polygon");
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.icon("play").last().click();
 
       cy.get("polygon");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").should("not.exist");
     });
   });
@@ -324,7 +324,7 @@ describe("issue 18061", () => {
       addFilter("Twitter");
 
       cy.wait("@dashCardQuery");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Something went wrong").should("not.exist");
 
       cy.location("search").should("eq", "?category=Twitter");
@@ -335,9 +335,9 @@ describe("issue 18061", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-3)", () => {
       H.visitAlias("@publicLink");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18061D");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18061");
       cy.get("[data-element-id=pin-map]");
 
@@ -435,7 +435,7 @@ describe("issue 18776", () => {
 
   it("should not freeze when opening a timeseries chart with sparse data and without the X-axis", () => {
     H.visitQuestionAdhoc(questionDetails);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
   });
 });
@@ -713,7 +713,7 @@ describe("issue 22527", { tags: "@skip" }, () => {
       cy.findByTextEnsureVisible("Data").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Bubble size").parent().contains("Select a field").click();
 
     H.popover().contains(/size/i).click();
@@ -739,7 +739,7 @@ describe("issue 25007", () => {
   };
 
   const clickLineDot = ({ index } = {}) => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.cartesianChartCircle().eq(index).click({ force: true });
   };
 
@@ -916,53 +916,12 @@ describe("issue 27279", () => {
   });
 });
 
-describe("issue 27427", () => {
-  const questionDetails = {
-    name: "27427",
-    native: {
-      query:
-        "select 1 as sortorder, year(current_timestamp), 1 v1, 2 v2\nunion all select 1, year(current_timestamp)-1, 1, 2",
-      "template-tags": {},
-    },
-    display: "bar",
-    visualization_settings: {
-      "graph.dimensions": ["EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"],
-      "graph.metrics": ["V1", "V2"],
-      "graph.series_order_dimension": null,
-      "graph.series_order": null,
-    },
-  };
-
-  function assertStaticVizRender(questionDetails, callback) {
-    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.request({
-        method: "GET",
-        url: `/api/pulse/preview_card/${id}`,
-        failOnStatusCode: false,
-      }).then((response) => {
-        callback(response);
-      });
-    });
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("static-viz should not fail if there is unused returned column: 'divide by zero' (metabase#27427)", () => {
-    assertStaticVizRender(questionDetails, ({ status, body }) => {
-      expect(status).to.eq(200);
-      expect(body).to.not.include(
-        "An error occurred while displaying this card.",
-      );
-    });
-  });
-});
+// Test for issue 27427 (static-viz with unused returned column)
+// has been moved to backend test in metabase.channel.render.card-test
 
 const addCountGreaterThan2Filter = () => {
   H.openNotebook();
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("action-buttons").last().button("Filter").click();
   H.popover().findByText("Count").click();
   H.selectFilterOperator("Greater than");

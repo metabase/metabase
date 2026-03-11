@@ -45,7 +45,7 @@
                          "settings"        true
                          "field_values"    false
                          "duration_ms"     pos?
-                         "count"           11
+                         "count"           12
                          "source"          "cli"
                          "secrets"         false
                          "success"         true
@@ -60,8 +60,8 @@
                          "direction"     "import"
                          "duration_ms"   pos?
                          "source"        "cli"
-                         "models"        "Card,Collection,Setting,TransformJob,TransformTag"
-                         "count"         11
+                         "models"        "Card,Collection,PythonLibrary,Setting,TransformJob,TransformTag"
+                         "count"         12
                          "success"       true
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
@@ -91,7 +91,7 @@
               (let [ingest-file @#'v2.ingest/ingest-file]
                 ;; overriding ingest-file is weird, but ingest-one is a protocol function and with-redefs won't
                 ;; override that reliably
-                (with-redefs [v2.ingest/ingest-file (fn [file]
+                (with-redefs [v2.ingest/ingest-file (fn [^java.io.File file]
                                                       (cond-> (ingest-file file)
                                                         (str/includes? (.getName file) (:entity_id card))
                                                         (assoc :collection_id "DoesNotExist")))]
@@ -106,5 +106,5 @@
                              "count"         0
                              "success"       false
                              ;; t2/with-transactions re-wraps errors with data about toucan connections
-                             "error_message" "Failed to read file {:path \"Collection DoesNotExist\"}"}
+                             "error_message" #"Collection 'DoesNotExist' was not found.*"}
                             (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))))))))

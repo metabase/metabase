@@ -134,6 +134,3 @@ const shouldRender = ({ result }: ShouldRenderDownloadPopoverProps) => {
 
 QuestionDownloadPopover.shouldRender = shouldRender;
 PublicOrEmbeddedQuestionDownloadPopover.shouldRender = shouldRender;
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default QuestionDownloadPopover;

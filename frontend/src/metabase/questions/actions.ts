@@ -16,7 +16,13 @@ export const loadMetadataForTable =
   };
 
 export const loadMetadataForCard =
-  (card: Card | UnsavedCard, { token }: { token?: EntityToken | null } = {}) =>
+  (
+    card: Card | UnsavedCard,
+    {
+      token,
+      includeSensitiveFields,
+    }: { token?: EntityToken | null; includeSensitiveFields?: boolean } = {},
+  ) =>
   async (dispatch: Dispatch) => {
     if (isSavedCard(card)) {
       return entityCompatibleQuery(
@@ -30,6 +36,9 @@ export const loadMetadataForCard =
         {
           ...card.dataset_query,
           ...(!!token && { token }),
+          ...(includeSensitiveFields && {
+            settings: { include_sensitive_fields: true },
+          }),
         },
         dispatch,
         datasetApi.endpoints.getAdhocQueryMetadata,

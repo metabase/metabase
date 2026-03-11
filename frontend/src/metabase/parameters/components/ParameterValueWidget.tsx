@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactNode, useMemo, useState } from "react";
-import { t } from "ttag";
 
 import { Sortable } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
@@ -200,6 +199,8 @@ export const ParameterValueWidget = ({
     ) : null;
   }, [hasValue, isEditing, isFocused, noPopover, parameterTypeIcon]);
 
+  const translatedPlaceholder = tc(placeholder);
+
   if (noPopover) {
     return (
       <Sortable
@@ -223,7 +224,7 @@ export const ParameterValueWidget = ({
             value={value}
             setValue={setValue}
             isEditing={isEditing}
-            placeholder={placeholder}
+            placeholder={translatedPlaceholder}
             focusChanged={setIsFocused}
             isFullscreen={isFullscreen}
             commitImmediately={commitImmediately}
@@ -238,14 +239,6 @@ export const ParameterValueWidget = ({
     );
   }
 
-  const translatedPlaceholder = tc(placeholder);
-
-  const placeholderText = isEditing
-    ? isDateParameter(parameter)
-      ? t`Select a default value…`
-      : t`Enter a default value…`
-    : translatedPlaceholder || t`Select…`;
-
   return (
     <Popover
       opened={isOpen}
@@ -253,6 +246,7 @@ export const ParameterValueWidget = ({
       position="bottom-start"
       trapFocus
       middlewares={{ flip: true, shift: true }}
+      clickOutsideEvents={["mousedown", "touchstart", "pointerdown"]}
       {...popoverProps}
     >
       <Popover.Target>
@@ -260,6 +254,7 @@ export const ParameterValueWidget = ({
           data-testid="parameter-value-widget-target"
           onClick={toggle}
           className={CS.cursorPointer}
+          maw="100%"
         >
           <Sortable
             id={parameter.id}
@@ -279,7 +274,12 @@ export const ParameterValueWidget = ({
               <div
                 className={CS.mr1}
                 style={
-                  isStringParameter(parameter) ? { maxWidth: "190px" } : {}
+                  isStringParameter(parameter)
+                    ? { maxWidth: "190px" }
+                    : {
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }
                 }
               >
                 <FormattedParameterValue
@@ -287,7 +287,7 @@ export const ParameterValueWidget = ({
                   value={value}
                   cardId={cardId}
                   dashboardId={dashboardId}
-                  placeholder={placeholderText}
+                  placeholder={translatedPlaceholder}
                   isPopoverOpen={isOpen}
                 />
               </div>

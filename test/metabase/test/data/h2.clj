@@ -34,11 +34,14 @@
   (defmethod sql.tx/field-base-type->sql-type [:h2 base-type] [_ _] database-type))
 
 (defmethod tx/dbdef->connection-details :h2
-  [_driver context dbdef]
-  {:db (str "mem:" (tx/escaped-database-name dbdef) (when (= context :db)
-                                                      ;; Return details with the GUEST user added so SQL queries are
-                                                      ;; allowed.
-                                                      ";USER=GUEST;PASSWORD=guest"))})
+  [_driver _context dbdef]
+  {:db (str "mem:" (tx/escaped-database-name dbdef)
+            ;; TODO (Ngoc 2025-12-05) -- we want admins user because workspaces tests need to be able to create
+            ;; user and grant privileges and stuffs. is it safe???
+            #_(when (= context :db)
+                ;; Return details with the GUEST user added so SQL queries are
+                ;; allowed.
+                ";USER=GUEST;PASSWORD=guest"))})
 
 (defmethod sql.tx/pk-sql-type :h2 [_] "BIGINT AUTO_INCREMENT")
 

@@ -11,9 +11,9 @@ describe("scenarios > admin > tools > help", { tags: "@OSS" }, () => {
   it("should link `Get help` to help", () => {
     cy.visit("/admin/tools/help");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Get help")
       .parents("a")
       .should("have.prop", "href")
@@ -68,8 +68,12 @@ describe("scenarios > admin > tools > help > helping hand", () => {
           .click();
       }
 
-      ticket && cy.findByLabelText("Ticket").type(ticket);
-      notes && cy.findByLabelText("Notes").type(notes);
+      if (ticket) {
+        cy.findByLabelText("Ticket").type(ticket);
+      }
+      if (notes) {
+        cy.findByLabelText("Notes").type(notes);
+      }
 
       cy.button("Grant access").click();
     });

@@ -1,4 +1,4 @@
-import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { Flex, Text } from "metabase/ui";
 
 import S from "./EditTableDataOverlay.module.css";

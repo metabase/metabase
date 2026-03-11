@@ -80,6 +80,7 @@ export function getTemplateTagParameters(
       (tag) =>
         tag.type != null &&
         tag.type !== "card" &&
+        tag.type !== "table" &&
         tag.type !== "snippet" &&
         ((tag.type !== "dimension" && tag.type !== "temporal-unit") ||
           tag.dimension != null ||

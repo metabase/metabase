@@ -1,7 +1,5 @@
 # execute this in your shell to enable custom merge driver:
 # echo '\n[include]\npath=../.gitconfig' >> .git/config
-#
-# TODO (Bryan 12/12/25) -- reenable this when we can completely verify correctness
-# [merge "yaml-migrations"]
-#     name = YAML migration changeset-aware merge
-#     driver = mage -merge-yaml-migrations %O %A %B %L %P
+[merge "yaml-migrations"]
+    name = YAML migration changeset-aware merge
+    driver = bin/mage -merge-yaml-migrations %O %A %B %L %P

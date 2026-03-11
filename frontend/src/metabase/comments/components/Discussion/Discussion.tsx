@@ -202,7 +202,7 @@ export const Discussion = ({
             onReactionRemove={handleReactionRemove}
           />
         ))}
-        {!comments[0]?.is_resolved && (
+        {!comments[0]?.is_resolved && currentUser && (
           <Timeline.Item
             className={S.commentRoot}
             bullet={<Avatar name={currentUser.common_name} />}

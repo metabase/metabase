@@ -3,7 +3,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 
-import SidebarLayout from "metabase/common/components/SidebarLayout";
+import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -62,6 +62,7 @@ class SegmentListContainer extends Component {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,

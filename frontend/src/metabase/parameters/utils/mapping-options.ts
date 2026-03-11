@@ -46,7 +46,7 @@ export type StructuredQuerySectionOption = {
   name: string;
   icon: string;
   target: StructuredParameterDimensionTarget;
-  isForeign: boolean;
+  isForeign?: boolean;
 };
 
 function buildStructuredQuerySectionOptions(
@@ -131,12 +131,17 @@ export type ParameterMappingOption =
   | StructuredQuerySectionOption
   | NativeParameterMappingOption;
 
+export type GetParameterMappingOptionsOpts = {
+  includeSensitiveFields?: boolean;
+};
+
 export function getParameterMappingOptions(
   question: Question | undefined,
   parameter: Parameter | null | undefined = null,
   card: Card | VirtualCard,
   dashcard: BaseDashboardCard | null | undefined = null,
   parameterDashcard: BaseDashboardCard | null | undefined = null,
+  opts?: GetParameterMappingOptionsOpts,
 ): ParameterMappingOption[] {
   const isInlineParameterOnCardFromOtherTab =
     parameterDashcard != null &&
@@ -206,6 +211,7 @@ export function getParameterMappingOptions(
     const { query, columns } = getParameterColumns(
       question,
       parameter ?? undefined,
+      opts,
     );
 
     const columnsByStageIndex = _.groupBy(columns, "stageIndex");

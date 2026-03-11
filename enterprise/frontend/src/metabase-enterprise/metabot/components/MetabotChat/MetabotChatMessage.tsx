@@ -1,6 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useState } from "react";
+import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -11,6 +11,7 @@ import {
   Icon,
   type IconName,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import { useSubmitMetabotFeedbackMutation } from "metabase-enterprise/api/metabot";
 import type {
@@ -99,25 +100,34 @@ export const UserMessage = ({
   </MessageContainer>
 );
 
-const FeedbackButton = ({
-  disabled,
-  icon,
-  onClick,
-  hasBeenClicked,
-  ...props
-}: {
+interface FeedbackButtonProps {
   disabled: boolean;
   icon: IconName;
   onClick: () => void;
   hasBeenClicked: boolean;
-}) => (
-  <ActionIcon onClick={onClick} disabled={disabled} h="sm" {...props}>
-    <Icon
-      name={icon}
-      size="1rem"
-      c={hasBeenClicked ? "brand" : "currentColor"}
-    />
-  </ActionIcon>
+}
+
+const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
+  function FeedbackButton(
+    { disabled, icon, onClick, hasBeenClicked, ...props },
+    ref,
+  ) {
+    return (
+      <ActionIcon
+        onClick={onClick}
+        disabled={disabled}
+        h="sm"
+        {...props}
+        ref={ref}
+      >
+        <Icon
+          name={icon}
+          size="1rem"
+          c={hasBeenClicked ? "brand" : "currentColor"}
+        />
+      </ActionIcon>
+    );
+  },
 );
 
 interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
@@ -164,50 +174,58 @@ export const AgentMessage = ({
       <Flex className={Styles.messageActions}>
         {!hideActions && (
           <>
-            <ActionIcon
-              h="sm"
-              data-testid="metabot-chat-message-copy"
-              onClick={() => onCopy(message.id)}
-            >
-              <Icon name="copy" size="1rem" />
-            </ActionIcon>
+            <Tooltip label={t`Copy`}>
+              <ActionIcon
+                h="sm"
+                data-testid="metabot-chat-message-copy"
+                onClick={() => onCopy(message.id)}
+              >
+                <Icon name="copy" size="1rem" />
+              </ActionIcon>
+            </Tooltip>
             {showFeedbackButtons && setFeedbackMessage && (
               <>
-                <FeedbackButton
-                  data-testid="metabot-chat-message-thumbs-up"
-                  icon="thumbs_up"
-                  hasBeenClicked={submittedFeedback === "positive"}
-                  disabled={!!submittedFeedback}
-                  onClick={() =>
-                    setFeedbackMessage({
-                      messageId: message.id,
-                      positive: true,
-                    })
-                  }
-                />
-                <FeedbackButton
-                  data-testid="metabot-chat-message-thumbs-down"
-                  icon="thumbs_down"
-                  hasBeenClicked={submittedFeedback === "negative"}
-                  disabled={!!submittedFeedback}
-                  onClick={() =>
-                    setFeedbackMessage({
-                      messageId: message.id,
-                      positive: false,
-                    })
-                  }
-                />
+                <Tooltip label={t`Give positive feedback`}>
+                  <FeedbackButton
+                    data-testid="metabot-chat-message-thumbs-up"
+                    icon="thumbs_up"
+                    hasBeenClicked={submittedFeedback === "positive"}
+                    disabled={!!submittedFeedback}
+                    onClick={() =>
+                      setFeedbackMessage({
+                        messageId: message.id,
+                        positive: true,
+                      })
+                    }
+                  />
+                </Tooltip>
+                <Tooltip label={t`Give negative feedback`}>
+                  <FeedbackButton
+                    data-testid="metabot-chat-message-thumbs-down"
+                    icon="thumbs_down"
+                    hasBeenClicked={submittedFeedback === "negative"}
+                    disabled={!!submittedFeedback}
+                    onClick={() =>
+                      setFeedbackMessage({
+                        messageId: message.id,
+                        positive: false,
+                      })
+                    }
+                  />
+                </Tooltip>
               </>
             )}
 
             {onRetry && (
-              <ActionIcon
-                onClick={() => onRetry(message.id)}
-                h="sm"
-                data-testid="metabot-chat-message-retry"
-              >
-                <Icon name="revert" size="1rem" />
-              </ActionIcon>
+              <Tooltip label={t`Retry`}>
+                <ActionIcon
+                  onClick={() => onRetry(message.id)}
+                  h="sm"
+                  data-testid="metabot-chat-message-retry"
+                >
+                  <Icon name="revert" size="1rem" />
+                </ActionIcon>
+              </Tooltip>
             )}
           </>
         )}

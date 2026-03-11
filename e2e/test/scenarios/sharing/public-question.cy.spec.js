@@ -145,7 +145,6 @@ describe("scenarios > public > question", () => {
       "test question",
       { wrapId: true },
       {
-        tab: "Browse",
         path: ["Our analytics"],
       },
     );
@@ -176,7 +175,6 @@ describe("scenarios > public > question", () => {
         "test question",
         { wrapId: true },
         {
-          tab: "Browse",
           path: ["Our analytics"],
         },
       );

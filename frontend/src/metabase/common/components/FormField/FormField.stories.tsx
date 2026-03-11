@@ -3,9 +3,9 @@ import type { StoryFn } from "@storybook/react";
 import type { ComponentProps } from "react";
 import { cloneElement, isValidElement } from "react";
 
-import Toggle from "../Toggle/Toggle";
+import { Toggle } from "../Toggle/Toggle";
 
-import FormField from "./FormField";
+import { FormField } from "./FormField";
 
 export default {
   title: "Components/Ask Before Using/FormField",

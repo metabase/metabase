@@ -11,6 +11,7 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
+import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useQuestionEditorSync } from "embedding-sdk-bundle/hooks/private/use-question-editor-sync";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
@@ -34,9 +35,10 @@ import {
   FlexibleSizeComponent,
   type FlexibleSizeProps,
 } from "../FlexibleSizeComponent";
-import { BackButton } from "../SdkQuestion/components/BackButton/BackButton";
+import { RenderIfHasContent } from "../RenderIfHasContent/RenderIfHasContent";
+import { SdkInternalNavigationBackButton } from "../SdkInternalNavigation/SdkInternalNavigationBackButton";
 import { BreakoutDropdown } from "../SdkQuestion/components/Breakout/BreakoutDropdown";
-import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeSelectorList";
+import { ChartTypeDropdown } from "../SdkQuestion/components/ChartTypeDropdown";
 import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget";
 import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
@@ -60,11 +62,6 @@ export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
   title?: SdkQuestionTitleProps;
 
   /**
-   * Determines whether a reset button is displayed. Only relevant when using the default layout.
-   */
-  withResetButton?: boolean;
-
-  /**
    * Determines whether the chart type selector and corresponding settings button are shown. Only relevant when using the default layout.
    */
   withChartTypeSelector?: boolean;
@@ -76,7 +73,6 @@ export const SdkQuestionDefaultView = ({
   className,
   style,
   title,
-  withResetButton,
   withChartTypeSelector,
 }: SdkQuestionDefaultViewProps): ReactElement => {
   const { isLocaleLoading } = useLocale();
@@ -87,14 +83,13 @@ export const SdkQuestionDefaultView = ({
     isQuestionLoading,
     originalQuestion,
     isSaveEnabled,
-    withDownloads,
     targetCollection,
     onReset,
     onNavigateBack,
     queryQuestion,
   } = useSdkQuestionContext();
 
-  const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
+  const { reportLocation } = useSdkBreadcrumbs();
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   const isQuestionSaved = question?.isSaved();
@@ -124,12 +119,12 @@ export const SdkQuestionDefaultView = ({
     question && shouldRunCardQuery({ question, isGuestEmbed }) && !queryResults;
 
   useEffect(() => {
-    const isNewQuestion = originalId === "new";
+    const isNewQuestion = originalId === "new" || originalId === "new-native";
     const isExistingQuestion =
       question &&
       !isQuestionLoading &&
       question?.isSaved() &&
-      originalId !== "new" &&
+      !isNewQuestion &&
       queryResults;
 
     const onNavigate = onNavigateBack ?? onReset ?? undefined;
@@ -137,7 +132,7 @@ export const SdkQuestionDefaultView = ({
     if (isNewQuestion) {
       reportLocation({
         type: "question",
-        id: "new",
+        id: originalId,
         name: "New exploration",
         onNavigate,
       });
@@ -193,26 +188,32 @@ export const SdkQuestionDefaultView = ({
       className={cx(InteractiveQuestionS.Container, className)}
       style={style}
     >
-      <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-        <Group
+      <RenderIfHasContent
+        component={Stack}
+        className={InteractiveQuestionS.TopBar}
+        gap="sm"
+        p="md"
+      >
+        <RenderIfHasContent
+          component={Group}
           justify="space-between"
           align="flex-end"
           data-testid="interactive-question-top-toolbar"
         >
-          <Group gap="xs">
-            <Box className={InteractiveQuestionS.BackButtonWrapper} mr="sm">
-              <BackButton />
-            </Box>
-            <DefaultViewTitle
-              title={title}
-              withResetButton={withResetButton && !isBreadcrumbEnabled}
-            />
-          </Group>
+          <RenderIfHasContent component={Group} gap="xs">
+            <Stack align="flex-start">
+              <SdkInternalNavigationBackButton />
+              <DefaultViewTitle title={title} />
+            </Stack>
+          </RenderIfHasContent>
           {showSaveButton && <SaveButton onClick={openSaveModal} />}
-        </Group>
+        </RenderIfHasContent>
         {queryResults && (
-          <ResultToolbar data-testid="interactive-question-result-toolbar">
-            <Group gap="xs">
+          <RenderIfHasContent
+            component={ResultToolbar}
+            data-testid="interactive-question-result-toolbar"
+          >
+            <RenderIfHasContent component={Group} gap="xs">
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
@@ -252,12 +253,17 @@ export const SdkQuestionDefaultView = ({
                   )}
                 </>
               )}
-            </Group>
-            <Group gap="sm">
-              {withDownloads && <DownloadWidgetDropdown />}
+            </RenderIfHasContent>
+            <RenderIfHasContent component={Group} gap="sm" ml="auto">
+              {!isEditorOpen && (
+                <>
+                  <DownloadWidgetDropdown />
+                  <QuestionAlertsButton />
+                </>
+              )}
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
-            </Group>
-          </ResultToolbar>
+            </RenderIfHasContent>
+          </RenderIfHasContent>
         )}
 
         {isGuestEmbed && (
@@ -265,7 +271,7 @@ export const SdkQuestionDefaultView = ({
             <SdkQuestion.SqlParametersList />
           </Box>
         )}
-      </Stack>
+      </RenderIfHasContent>
 
       <Box
         className={cx(InteractiveQuestionS.Main, "sdk-question-main")}

@@ -13,7 +13,11 @@ describe("AccountLayout", () => {
   it("should render header and content", () => {
     const user = getUser();
 
-    render(<AccountLayout user={user}>Content</AccountLayout>);
+    render(
+      <AccountLayout user={user} onChangeLocation={() => {}}>
+        Content
+      </AccountLayout>,
+    );
 
     expect(screen.getByText("Profile")).toBeInTheDocument();
     expect(screen.getByText("Content")).toBeInTheDocument();

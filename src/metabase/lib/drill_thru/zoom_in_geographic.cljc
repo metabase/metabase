@@ -106,7 +106,7 @@
   [query                      :- ::lib.schema/query
    stage-number               :- :int
    {:keys [row], :as context} :- ::lib.schema.drill-thru/context]
-  (let [;; First check returned columns in case we breakout by lat/lon so we maintain the binning, othwerwise check visible.
+  (let [;; First check returned columns in case we breakout by lat/lon so we maintain the binning, otherwise check visible.
         [lat-column lon-column] (some
                                  (fn [columns]
                                    (when-let [lat-column (m/find-first lib.types.isa/latitude? columns)]

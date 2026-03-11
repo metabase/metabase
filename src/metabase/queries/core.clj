@@ -36,6 +36,7 @@
    ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata
+  infer-metadata
   maybe-async-result-metadata
   refresh-metadata
   save-metadata-async!]

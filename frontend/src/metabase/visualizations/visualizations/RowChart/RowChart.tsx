@@ -1,8 +1,7 @@
-import type * as React from "react";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
@@ -45,6 +44,7 @@ import type {
   ComputedVisualizationSettings,
   RemappingHydratedChartData,
   VisualizationProps,
+  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import {
   getClickData,
@@ -82,7 +82,7 @@ interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
 
 function RowChartRendererInner(props: RowChartRendererProps) {
   return (
-    <RowChartContainer>
+    <RowChartContainer data-testid="row-chart-container">
       <RowChart {...props} />
     </RowChartContainer>
   );
@@ -114,6 +114,7 @@ const RowChartVisualization = ({
   width: outerWidth,
   height: outerHeight,
   getHref,
+  hideLegend,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -132,8 +133,7 @@ const RowChartVisualization = ({
   );
 
   const groupedData = useMemo(
-    () =>
-      getGroupedDataset(data.rows, chartColumns, settings, formatColumnValue),
+    () => getGroupedDataset(data, chartColumns, settings, formatColumnValue),
     [chartColumns, data, settings, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
@@ -273,7 +273,7 @@ const RowChartVisualization = ({
 
   const hasBreakout =
     settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
-  const hasLegend = series.length > 1 || hasBreakout;
+  const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
 
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
@@ -338,10 +338,11 @@ RowChartVisualization.noHeader = true;
 RowChartVisualization.minSize = getMinSize("row");
 RowChartVisualization.defaultSize = getDefaultSize("row");
 
-RowChartVisualization.settings = {
+const settings: VisualizationSettingsDefinitions = {
   ...ROW_CHART_SETTINGS,
   ...GRAPH_DATA_SETTINGS,
 };
+RowChartVisualization.settings = settings;
 
 RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {
   return (
@@ -433,5 +434,4 @@ RowChartVisualization.hasEmptyState = true;
 
 RowChartVisualization.getUiName = () => t`Row`;
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default RowChartVisualization;
+export { RowChartVisualization as RowChart };

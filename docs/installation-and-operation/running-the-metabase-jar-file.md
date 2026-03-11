@@ -58,7 +58,7 @@ If you want to install the [Pro or Enterprise editions](https://www.metabase.com
 
 ### 3. Create a new directory and move the Metabase JAR into it
 
-When you run Metabase, Metabase will create some new files, so it's important to put the Metabase Jar file in a new directory before running it (so move it out of your downloads folder and put it a new directory).
+When you run Metabase, Metabase will create some new files, so it's important to put the Metabase JAR file in a new directory before running it (so move it out of your downloads folder and put it a new directory).
 
 On posix systems, the commands would look something like this:
 

@@ -69,6 +69,8 @@
 (derive ::table-event ::event)
 (derive :event/table-manual-scan ::table-event)
 (derive :event/table-manual-sync ::table-event)
+(derive :event/table-publish ::table-event)
+(derive :event/table-unpublish ::table-event)
 
 (methodical/defmethod events/publish-event! ::table-event
   [topic event]
@@ -326,6 +328,8 @@
 (derive :event/update-transform ::transform-event)
 (derive :event/transform-delete ::transform-event)
 (derive :event/transform-run-start ::transform-event)
+(derive :event/transform-inspect-discover ::transform-event)
+(derive :event/transform-inspect-lens ::transform-event)
 
 (methodical/defmethod events/publish-event! ::transform-event
   [topic event]

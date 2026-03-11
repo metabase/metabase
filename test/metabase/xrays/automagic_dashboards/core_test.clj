@@ -562,7 +562,7 @@
     (is (= source-database-id query-db-id))
     (is (= source-table-id magic-card-table-id))
     (is (= source-card-id
-           (lib/source-card-id magic-card-query)))
+           (lib/primary-source-card-id magic-card-query)))
     (doseq [breakout (lib/breakouts magic-card-query)
             field-id (lib/all-field-ids breakout)]
       (is (contains? valid-source-ids field-id)))))
@@ -623,8 +623,8 @@
                             :let     [query (get-in dashcard [:card :dataset_query])]
                             :when    query
                             :let     [breakouts (lib/breakouts query)]
-                            id       (lib.util.match/match breakouts
-                                       [:field (_opts :guard :binning) (id :guard pos-int?)]
+                            id       (lib.util.match/match-many breakouts
+                                       [:field {:binning _} (id :guard pos-int?)]
                                        id)]
                         id)))))))))))
 
@@ -657,8 +657,8 @@
                                            :let     [query (get-in dashcard [:card :dataset_query])]
                                            :when    query
                                            :let     [breakouts (lib/breakouts query)]
-                                           id       (lib.util.match/match breakouts
-                                                      [:field (_opts :guard :temporal-unit) (id :guard pos-int?)]
+                                           id       (lib.util.match/match-many breakouts
+                                                      [:field {:temporal-unit _} (id :guard pos-int?)]
                                                       id)]
                                        id)]
               (ensure-single-table-sourced (mt/id :products) dashboard)

@@ -3,12 +3,13 @@ import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
-import { useHasEmailSetup } from "metabase/common/hooks";
+import { useDocsUrl, useHasEmailSetup } from "metabase/common/hooks";
 import type {
   MetabaseColors,
   MetabaseThemePreset,
 } from "metabase/embedding-sdk/theme";
 import {
+  Anchor,
   Card,
   Checkbox,
   Divider,
@@ -21,10 +22,10 @@ import {
 
 import { UPSELL_CAMPAIGN_BEHAVIOR } from "../analytics";
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { getBehaviorDocsUrlParams } from "../utils/get-behavior-docs-url-params";
 
 import { ColorCustomizationSection } from "./Appearance/ColorCustomizationSection";
 import { SimpleThemeSwitcherSection } from "./Appearance/SimpleThemeSwitcherSection";
-import { AuthenticationSection } from "./Authentication/AuthenticationSection";
 import { EmbeddingUpsell } from "./Common/EmbeddingUpsell";
 import { WithNotAvailableForOssOrGuestEmbedsGuard } from "./Common/WithNotAvailableForOssOrGuestEmbedsGuard";
 import { LegacyStaticEmbeddingAlert } from "./LegacyStaticEmbeddingAlert";
@@ -33,7 +34,6 @@ import { ParameterSettings } from "./ParameterSettings";
 
 export const SelectEmbedOptionsStep = () => (
   <Stack gap="md">
-    <AuthenticationSection />
     <BehaviorSection />
     <ParametersSection />
     <AppearanceSection />
@@ -47,6 +47,12 @@ const BehaviorSection = () => {
     useSdkIframeEmbedSetupContext();
   const hasEmailSetup = useHasEmailSetup();
 
+  const behaviorDocsParams = getBehaviorDocsUrlParams(settings);
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Only admins can see the EmbedJS Wizard
+  const { url: behaviorDocsUrl } = useDocsUrl(behaviorDocsParams?.page ?? "", {
+    anchor: behaviorDocsParams?.anchor,
+  });
+
   const behaviorSection = useMemo(() => {
     return match(settings)
       .with(
@@ -57,7 +63,9 @@ const BehaviorSection = () => {
             disabled={settings.isGuest}
             checked={settings.isSaveEnabled}
             onChange={(e) =>
-              updateSettings({ isSaveEnabled: e.target.checked })
+              updateSettings({
+                isSaveEnabled: e.target.checked,
+              } satisfies Partial<typeof settings>)
             }
           />
         ),
@@ -72,7 +80,11 @@ const BehaviorSection = () => {
                   label={t`Allow people to drill through on data points`}
                   disabled={disabled}
                   checked={settings.drills}
-                  onChange={(e) => updateSettings({ drills: e.target.checked })}
+                  onChange={(e) =>
+                    updateSettings({
+                      drills: e.target.checked,
+                    } satisfies Partial<typeof settings>)
+                  }
                 />
               )}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
@@ -82,7 +94,9 @@ const BehaviorSection = () => {
               disabled={!isSimpleEmbedFeatureAvailable}
               checked={settings.withDownloads}
               onChange={(e) =>
-                updateSettings({ withDownloads: e.target.checked })
+                updateSettings({
+                  withDownloads: e.target.checked,
+                } satisfies Partial<typeof settings>)
               }
             />
 
@@ -93,10 +107,56 @@ const BehaviorSection = () => {
                   disabled={disabled}
                   checked={settings.isSaveEnabled}
                   onChange={(e) =>
-                    updateSettings({ isSaveEnabled: e.target.checked })
+                    updateSettings({
+                      isSaveEnabled: e.target.checked,
+                    } satisfies Partial<typeof settings>)
                   }
                 />
               )}
+            </WithNotAvailableForOssOrGuestEmbedsGuard>
+
+            <WithNotAvailableForOssOrGuestEmbedsGuard>
+              {({ disabled: disabledInGuestEmbedding }) => {
+                return (
+                  <Flex align="center" gap="xs">
+                    <Checkbox
+                      disabled={!hasEmailSetup || disabledInGuestEmbedding}
+                      label={t`Allow alerts`}
+                      checked={settings.withAlerts}
+                      onChange={(e) =>
+                        updateSettings({
+                          withAlerts: e.target.checked,
+                        } satisfies Partial<typeof settings>)
+                      }
+                    />
+                    {!hasEmailSetup && !disabledInGuestEmbedding && (
+                      <HoverCard>
+                        <HoverCard.Target>
+                          <Icon name="info" size={14} c="text-secondary" />
+                        </HoverCard.Target>
+                        <HoverCard.Dropdown p="sm">
+                          <Text>{c(
+                            "{0} is a link to email settings page with text 'admin settings'",
+                          ).jt`To allow alerts, set up email in ${(
+                            <Link
+                              key="admin-settings-link"
+                              to="/admin/settings/email"
+                            >
+                              <Text
+                                display="inline"
+                                c="text-brand"
+                                fw="bold"
+                              >{c(
+                                "is a link in a sentence 'To allow alerts, set up email in admin settings'",
+                              ).t`admin settings`}</Text>
+                            </Link>
+                          )}`}</Text>
+                        </HoverCard.Dropdown>
+                      </HoverCard>
+                    )}
+                  </Flex>
+                );
+              }}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
           </Stack>
         ),
@@ -111,7 +171,11 @@ const BehaviorSection = () => {
                   label={t`Allow people to drill through on data points`}
                   disabled={disabled}
                   checked={settings.drills}
-                  onChange={(e) => updateSettings({ drills: e.target.checked })}
+                  onChange={(e) =>
+                    updateSettings({
+                      drills: e.target.checked,
+                    } satisfies Partial<typeof settings>)
+                  }
                 />
               )}
             </WithNotAvailableForOssOrGuestEmbedsGuard>
@@ -121,7 +185,9 @@ const BehaviorSection = () => {
               disabled={!isSimpleEmbedFeatureAvailable}
               checked={settings.withDownloads}
               onChange={(e) =>
-                updateSettings({ withDownloads: e.target.checked })
+                updateSettings({
+                  withDownloads: e.target.checked,
+                } satisfies Partial<typeof settings>)
               }
             />
 
@@ -134,7 +200,9 @@ const BehaviorSection = () => {
                       label={t`Allow subscriptions`}
                       checked={settings.withSubscriptions}
                       onChange={(e) =>
-                        updateSettings({ withSubscriptions: e.target.checked })
+                        updateSettings({
+                          withSubscriptions: e.target.checked,
+                        } satisfies Partial<typeof settings>)
                       }
                     />
                     {!hasEmailSetup && !disabledInGuestEmbedding && (
@@ -176,7 +244,11 @@ const BehaviorSection = () => {
             label={t`Allow editing dashboards and questions`}
             disabled={settings.isGuest}
             checked={!settings.readOnly}
-            onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
+            onChange={(e) =>
+              updateSettings({
+                readOnly: !e.target.checked,
+              } satisfies Partial<typeof settings>)
+            }
           />
         ),
       )
@@ -189,9 +261,27 @@ const BehaviorSection = () => {
 
   return (
     <Card p="md">
-      <Text size="lg" fw="bold" mb="md">
-        {t`Behavior`}
-      </Text>
+      <Flex align="center" justify="space-between" gap="xs" mb="md">
+        <Text size="lg" fw="bold">
+          {t`Behavior`}
+        </Text>
+        {!!behaviorDocsParams?.page && (
+          <Anchor
+            data-testid="behavior-docs-link"
+            href={behaviorDocsUrl}
+            target="_blank"
+            rel="noreferrer"
+            c="brand"
+            lh={1}
+          >
+            <Icon
+              name="book_open"
+              size={16}
+              tooltip={t`See all properties in the docs`}
+            />
+          </Anchor>
+        )}
+      </Flex>
 
       {behaviorSection}
     </Card>
@@ -230,7 +320,7 @@ const AppearanceSection = () => {
 
   const updateThemePreset = useCallback(
     (preset: MetabaseThemePreset) => {
-      updateSettings({ theme: { preset } });
+      updateSettings({ theme: { preset } } satisfies Partial<typeof settings>);
     },
     [updateSettings],
   );
@@ -239,7 +329,7 @@ const AppearanceSection = () => {
     (nextColors: Partial<MetabaseColors>) => {
       updateSettings({
         theme: { ...theme, colors: { ...theme?.colors, ...nextColors } },
-      });
+      } satisfies Partial<typeof settings>);
     },
     [theme, updateSettings],
   );
@@ -259,7 +349,11 @@ const AppearanceSection = () => {
           <Checkbox
             label={label}
             checked={settings.withTitle}
-            onChange={(e) => updateSettings({ withTitle: e.target.checked })}
+            onChange={(e) =>
+              updateSettings({
+                withTitle: e.target.checked,
+              } satisfies Partial<typeof settings>)
+            }
           />
         );
       },
@@ -272,7 +366,11 @@ const AppearanceSection = () => {
         <ColorCustomizationSection
           theme={theme}
           onColorChange={updateColors}
-          onColorReset={() => updateSettings({ theme: undefined })}
+          onColorReset={() =>
+            updateSettings({ theme: undefined } satisfies Partial<
+              typeof settings
+            >)
+          }
         />
       ) : (
         <SimpleThemeSwitcherSection

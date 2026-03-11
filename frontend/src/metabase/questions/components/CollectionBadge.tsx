@@ -2,6 +2,7 @@ import type { ComponentType, PropsWithChildren } from "react";
 
 import { Badge } from "metabase/common/components/Badge";
 import { Collections } from "metabase/entities/collections";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -34,6 +35,8 @@ const CollectionBadgeInner = ({
   isSingleLine,
   onClick,
 }: CollectionBadgeProps) => {
+  const tc = useTranslateContent();
+
   if (!collection) {
     return null;
   }
@@ -56,7 +59,7 @@ const CollectionBadgeInner = ({
       isSingleLine={isSingleLine}
       {...clickActionProps}
     >
-      {collection.getName()}
+      {tc(collection.getName())}
     </Badge>
   );
 };

@@ -6,15 +6,20 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.query-processor :as qp]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
    [metabase.test :as mt]
+   [metabase.test.data.impl.get-or-create :as test.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.tx]
    [metabase.test.data.sql :as sql.tx]
@@ -134,37 +139,41 @@
 ;; stored as textfile
 ;; location 's3://mb-rs-test/tickit/spectrum/sales/'
 ;; table properties ('numRows'='172000');
-;;
+
 (deftest ^:parallel test-external-table
-  (mt/test-driver :redshift
-    (testing "expects spectrum schema to exist"
-      (is (=? [{:table_id        (mt/id :extsales)
-                :name            "buyerid"
-                :source          :fields
-                :field_ref       [:field (mt/id :extsales :buyerid) nil]
-                :id              (mt/id :extsales :buyerid)
-                :visibility_type :normal
-                :display_name    "Buyerid"
-                :base_type       :type/Integer
-                :effective_type  :type/Integer}
-               {:table_id        (mt/id :extsales)
-                :name            "salesid"
-                :source          :fields
-                :field_ref       [:field (mt/id :extsales :salesid) nil]
-                :id              (mt/id :extsales :salesid)
-                :visibility_type :normal
-                :display_name    "Salesid"
-                :base_type       :type/Integer
-                :effective_type  :type/Integer}]
-              ;; in different Redshift instances, the fingerprint on these columns is different.
-              (map #(dissoc % :fingerprint)
-                   (get-in (qp/process-query (mt/mbql-query extsales
-                                               {:limit    1
-                                                :fields   [$buyerid $salesid]
-                                                :order-by [[:asc $buyerid]
-                                                           [:asc $salesid]]
-                                                :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
-                           [:data :cols])))))))
+  ;; The extsales table is an AWS Redshift Spectrum external table that only exists in the real
+  ;; Redshift database - it's not part of our test data definitions. Skip this test when using
+  ;; fake sync since the table won't be synced.
+  (when (tx/on-master-or-release-branch?)
+    (mt/test-driver :redshift
+      (testing "expects spectrum schema to exist"
+        (is (=? [{:table_id        (mt/id :extsales)
+                  :name            "buyerid"
+                  :source          :fields
+                  :field_ref       [:field (mt/id :extsales :buyerid) nil]
+                  :id              (mt/id :extsales :buyerid)
+                  :visibility_type :normal
+                  :display_name    "Buyerid"
+                  :base_type       :type/Integer
+                  :effective_type  :type/Integer}
+                 {:table_id        (mt/id :extsales)
+                  :name            "salesid"
+                  :source          :fields
+                  :field_ref       [:field (mt/id :extsales :salesid) nil]
+                  :id              (mt/id :extsales :salesid)
+                  :visibility_type :normal
+                  :display_name    "Salesid"
+                  :base_type       :type/Integer
+                  :effective_type  :type/Integer}]
+                ;; in different Redshift instances, the fingerprint on these columns is different.
+                (map #(dissoc % :fingerprint)
+                     (get-in (qp/process-query (mt/mbql-query extsales
+                                                 {:limit    1
+                                                  :fields   [$buyerid $salesid]
+                                                  :order-by [[:asc $buyerid]
+                                                             [:asc $salesid]]
+                                                  :filter   [:= [:field (mt/id :extsales :buyerid) nil] 11498]}))
+                             [:data :cols]))))))))
 
 (deftest parameters-test
   (mt/test-driver :redshift
@@ -344,12 +353,14 @@
                   "CREATE MATERIALIZED VIEW %2$s AS SELECT * FROM %1$s;")
              qual-tbl-nm
              qual-mview-nm)
-            (is (some #(= mview-nm (:name %))
-                      (:tables (sql-jdbc.describe-database/describe-database :redshift database))))))))))
+            (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
+              (is (contains?
+                   (set (map :name (:tables (driver/describe-database :redshift database))))
+                   mview-nm)))))))))
 
 (mt/defdataset unix-timestamps
   [["timestamps"
-    [{:field-name "timestamp", :base-type {:native "numeric"}}]
+    [{:field-name "timestamp", :base-type {:native "numeric"}, :effective-type :type/Decimal}]
     [[1642704550656]]]])
 
 (deftest unix-timestamp-test
@@ -362,12 +373,19 @@
               (is (= [1 1642704550656M]
                      (mt/first-row (qp/process-query query)))))))
         (testing "WITH coercion strategy"
-          (mt/with-temp-vals-in-db :model/Field (mt/id :timestamps :timestamp) {:coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
-                                                                                :effective_type    :type/Instant}
-            (let [query (mt/mbql-query timestamps)]
-              (mt/with-native-query-testing-context query
-                (is (= [1 "2022-01-20T18:49:10.656Z"]
-                       (mt/first-row (qp/process-query query))))))))))))
+          ;; Use merged-mock-metadata-provider to set coercion strategy, avoiding
+          ;; caching issues with with-temp-vals-in-db (see coercion_test.clj for pattern)
+          (let [mp    (lib.tu/merged-mock-metadata-provider
+                       (mt/metadata-provider)
+                       {:fields [{:id                (mt/id :timestamps :timestamp)
+                                  :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
+                                  :effective-type    :type/Instant}]})
+                query (lib/query mp (lib.metadata/table mp (mt/id :timestamps)))]
+            (mt/with-native-query-testing-context query
+              (is (= [[1 "2022-01-20T18:49:10.656Z"]]
+                     (mt/formatted-rows [int str]
+                                        (qp.store/with-metadata-provider mp
+                                          (qp/process-query query))))))))))))
 
 (deftest interval-test
   (mt/test-drivers #{:postgres :redshift}
@@ -399,9 +417,9 @@
                 conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec database)
                 get-privileges               (fn []
                                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                                [spec [:redshift (assoc (:details database) :user username)]]
+                                                [spec [:redshift (assoc (:details database) :user username)]
                                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+                                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))]))]
             (try
               (execute! (format
                          (str
@@ -553,6 +571,19 @@
       :type/DateTimeWithTZ     [:timestamp-with-time-zone]
       :type/Time               [:time])))
 
+(deftest ^:parallel describe-fields-pre-process-xf-removes-all-duplicates-test
+  (testing "describe-fields-pre-process-xf removes ALL fields that have duplicate (table-schema, table-name, name)"
+    (is (= [{:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
+            {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}]
+           (into []
+                 (sql-jdbc.describe-table/describe-fields-pre-process-xf :redshift nil)
+                 [{:table-schema "public" :table-name "users" :name "id" :database-type "integer"}
+                  {:table-schema "public" :table-name "users" :name "id" :database-type "bigint"}
+                  {:table-schema "public" :table-name "orders" :name "id" :database-type "integer"}
+                  {:table-schema "other" :table-name "users" :name "id" :database-type "integer"}
+                  {:table-schema "public" :table-name "users" :name "name" :database-type "varchar"}
+                  {:table-schema "public" :table-name "users" :name "name" :database-type "text"}])))))
+
 (deftest ^:parallel alternate-config-options-test
   (testing "Can configure with either db or dbname"
     (let [options {:host "test.example.com"}]
@@ -563,3 +594,116 @@
       (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
              (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-dbname" :db "test-db")))
           ":db should take precedence"))))
+
+;;; ------------------------------------------------ Real Sync Test ------------------------------------------------
+;; This test uses real sync (not fake sync) to validate that fake sync produces equivalent metadata.
+;; It uses a minimal dataset to keep sync time reasonable (~30s instead of ~6min for test-data).
+
+(deftest real-sync-validation-test
+  (mt/test-driver :redshift
+    (testing "Forces a real sync for a minimal dataset to test real sync logic"
+      ;; Disable fake sync for this test to force a real sync
+      (tx/with-driver-supports-feature! [:redshift :test/use-fake-sync false]
+        (mt/dataset (mt/dataset-definition "real-sync-validation"
+                                           [["sync_test_table"
+                                             [{:field-name "text_col" :base-type :type/Text}
+                                              {:field-name "int_col" :base-type :type/Integer}]
+                                             [["hello" 1]
+                                              ["world" 2]]]])
+          (testing "Table was synced with correct schema"
+            (let [table (t2/select-one :model/Table :db_id (mt/id) :name "real_sync_validation_sync_test_table")]
+              (is (some? table) "Table should exist")
+              (is (= (redshift.tx/unique-session-schema) (:schema table)) "Schema should match session schema")))
+          (testing "Fields were synced with correct types"
+            (let [fields (t2/select [:model/Field :name :base_type :semantic_type]
+                                    :table_id (mt/id :sync_test_table)
+                                    :active true
+                                    {:order-by [:database_position]})]
+              (is (= 3 (count fields)) "Should have 3 fields (id + 2 defined)")
+              (is (= "id" (:name (first fields))) "First field should be auto-generated PK")
+              (is (= :type/PK (:semantic_type (first fields))) "PK should have :type/PK semantic type")
+              (is (= :type/Text (:base_type (second fields))) "text_col should be :type/Text")
+              (is (= :type/Integer (:base_type (nth fields 2))) "int_col should be :type/Integer"))))))))
+
+;;; ---------------------------------------- Fake Sync Transformation Test ----------------------------------------
+;; Tests the pure transformation functions that convert dbdefs to Table/Field row maps.
+;; These are the "debuggable" pure functions separated from the stateful insertion code.
+
+(deftest ^:parallel fake-sync-transformation-test
+  (mt/test-driver :redshift
+    (testing "dbdef->fake-sync-rows produces correct Table and Field row maps"
+      (let [dbdef {:database-name "transform-test"
+                   :table-definitions
+                   [{:table-name "users"
+                     :table-comment "User accounts"
+                     :field-definitions
+                     [{:field-name "name" :base-type :type/Text :field-comment "User name"}
+                      {:field-name "age" :base-type :type/Integer}
+                      {:field-name "org_id" :base-type :type/Integer :fk :organizations}]}
+                    {:table-name "organizations"
+                     :field-definitions
+                     [{:field-name "org_name" :base-type :type/Text}]}]}
+            rows  (@#'test.get-or-create/dbdef->fake-sync-rows :redshift 123 dbdef)]
+        (testing "returns one entry per table"
+          (is (= 2 (count rows)))
+          (is (= ["users" "organizations"] (mapv :table-name rows))))
+
+        (testing "table rows have correct structure"
+          (let [users-table (:table-row (first rows))]
+            (is (= 123 (:db_id users-table)))
+            (is (= "transform_test_users" (:name users-table)))
+            (is (= (redshift.tx/unique-session-schema) (:schema users-table)))
+            (is (= "Users" (:display_name users-table)))
+            (is (= "User accounts" (:description users-table)))
+            (is (= "complete" (:initial_sync_status users-table)))))
+
+        (testing "auto PK field is injected at position 0"
+          (let [users-fields (:field-rows (first rows))
+                pk-field     (first users-fields)]
+            (is (= 4 (count users-fields)) "Should have 4 fields: auto PK + 3 defined")
+            (is (= "id" (:name pk-field)))
+            (is (= :type/PK (:semantic_type pk-field)))
+            (is (= 0 (:position pk-field)))))
+
+        (testing "user-defined fields have correct positions and types"
+          (let [users-fields (:field-rows (first rows))
+                name-field   (second users-fields)
+                age-field    (nth users-fields 2)
+                fk-field     (nth users-fields 3)]
+            (is (= "name" (:name name-field)))
+            (is (= 1 (:position name-field)))
+            (is (= :type/Text (:base_type name-field)))
+            (is (= "User name" (:description name-field)))
+
+            (is (= "age" (:name age-field)))
+            (is (= 2 (:position age-field)))
+            (is (= :type/Integer (:base_type age-field)))
+
+            (is (= "org_id" (:name fk-field)))
+            (is (= 3 (:position fk-field)))
+            (is (= :type/FK (:semantic_type fk-field)) "FK fields get :type/FK semantic type"))))))
+
+  (testing "native type maps are handled correctly"
+    (let [dbdef {:database-name "native-types"
+                 :table-definitions
+                 [{:table-name "binary_data"
+                   :field-definitions
+                   [{:field-name "raw_bytes"
+                     :base-type {:native "VARBYTE"}
+                     :effective-type :type/Text}
+                    {:field-name "multi_driver"
+                     :base-type {:natives {:redshift "SUPER" :postgres "JSONB"}}
+                     :effective-type :type/JSON}]}]}
+          rows  (@#'test.get-or-create/dbdef->fake-sync-rows :redshift 456 dbdef)
+          fields (:field-rows (first rows))]
+      (testing "{:native ...} form"
+        (let [raw-field (second fields)] ; first is auto PK
+          (is (= "VARBYTE" (:database_type raw-field)))
+          (is (= :type/Text (:effective_type raw-field)))
+          ;; When effective-type is provided, base_type uses it; otherwise would be :type/*
+          (is (= :type/Text (:base_type raw-field)))))
+
+      (testing "{:natives ...} form picks driver-specific type"
+        (let [multi-field (nth fields 2)]
+          (is (= "SUPER" (:database_type multi-field)))
+          (is (= :type/JSON (:effective_type multi-field))))))))

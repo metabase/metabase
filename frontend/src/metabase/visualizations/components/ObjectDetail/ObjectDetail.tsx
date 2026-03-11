@@ -82,8 +82,7 @@ type OwnProps = Omit<
   keyof MapStateProps | keyof MapDispatchProps
 >;
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
+export const ObjectDetail = connect(
   mapStateToProps,
   mapDispatchToProps,
 )(ObjectDetailWrapper) as unknown as React.ComponentType<OwnProps>;

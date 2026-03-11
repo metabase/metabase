@@ -6,7 +6,7 @@ import type { Table } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import ColumnCount from "./ColumnCount";
+import { ColumnCount } from "./ColumnCount";
 
 interface SetupOpts {
   table: Table;

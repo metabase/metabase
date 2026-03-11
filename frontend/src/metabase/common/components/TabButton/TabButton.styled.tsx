@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 
 interface TabButtonProps {
   isSelected?: boolean;

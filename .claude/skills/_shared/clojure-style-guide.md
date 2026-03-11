@@ -29,7 +29,7 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 
 **Comments:**
 
-- `TODO` format: `;; TODO (Name M/D/YY) -- description`
+- `TODO` format: `;; TODO (Name YYYY-MM-DD) -- description`
 
 ## Code Organization
 

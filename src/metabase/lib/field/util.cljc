@@ -106,7 +106,7 @@
                                                      [:lib/type [:= :metadata/column]]]
   "For a column that came from a previous stage, change the keys for things that mean 'this happened in the current
   stage' to the equivalent keys that mean 'this happened at some stage in the past' e.g.
-  `:metabase.lib.join/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
+  `:lib/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
   `:lib/original-expression-name` respectively."
   [col :- [:map
            [:lib/type [:= :metadata/column]]]]
@@ -115,9 +115,9 @@
                         :fk-field-name                    :lib/original-fk-field-name
                         :fk-join-alias                    :lib/original-fk-join-alias
                         :lib/expression-name              :lib/original-expression-name
-                        :metabase.lib.field/binning       :lib/original-binning
-                        :metabase.lib.field/temporal-unit :inherited-temporal-unit
-                        :metabase.lib.join/join-alias     :lib/original-join-alias})
+                        :lib/binning       :lib/original-binning
+                        :lib/temporal-unit :inherited-temporal-unit
+                        :lib/join-alias     :lib/original-join-alias})
       (assoc :lib/breakout? false
              ;; TODO (Cam 6/26/25) -- should we set `:lib/original-display-name` here too?
              :lib/original-name ((some-fn :lib/original-name :name) col)

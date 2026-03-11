@@ -2,7 +2,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { Form, FormProvider } from "metabase/forms";
 
-import FormTextArea from "./FormTextArea";
+import { FormTextArea } from "./FormTextArea";
 
 export default {
   title: "Components/Ask Before Using/FormTextArea",

@@ -5,7 +5,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { useSearchQuery } from "metabase/api";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
@@ -151,4 +151,5 @@ SearchApp.propTypes = {
   location: PropTypes.object,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SearchApp;

@@ -1,3 +1,4 @@
+export * from "./sensibility-grouping";
 export * from "./ChartTypeList";
 export * from "./ChartTypeOption";
 export * from "./ChartTypeSettings";

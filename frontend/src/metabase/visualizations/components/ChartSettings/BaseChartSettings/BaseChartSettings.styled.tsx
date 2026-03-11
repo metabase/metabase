@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Radio from "metabase/common/components/Radio";
+import { Radio } from "metabase/common/components/Radio";
 
 export const SectionContainer = styled.div`
   width: 100%;

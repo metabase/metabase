@@ -17,11 +17,11 @@
 (api.macros/defendpoint :post "/"
   "Creates the Library if it doesn't exist. Returns the created collection.
 
-  Requires superuser permissions."
+  Requires data analyst or superuser permissions."
   [_route
    _query
    _body]
-  (api/check-superuser)
+  (api/check-data-analyst)
   (api/check-400 (not (collections/library-collection)) "Library already exists")
   (collections/create-library-collection!))
 

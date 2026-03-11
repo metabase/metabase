@@ -176,7 +176,7 @@ describe("scenarios > question > offset", () => {
         const columnIndex = 9;
         const columnsCount = 10;
         const cellIndex = rowIndex * columnsCount + columnIndex;
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         cy.findAllByRole("gridcell").eq(cellIndex).click();
         cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
@@ -557,7 +557,7 @@ describe("scenarios > question > offset", () => {
         table: "Product",
         field: "Category",
       });
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByLabelText("Custom column").last().click();
 
       H.enterCustomColumnDetails({
@@ -566,7 +566,7 @@ describe("scenarios > question > offset", () => {
       });
       H.popover().findByText("Done").click();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("action-buttons").last().icon("filter").click();
       H.popover().findByText("Custom Expression").click();
 
@@ -575,7 +575,7 @@ describe("scenarios > question > offset", () => {
       });
       H.popover().findByText("Done").click();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("action-buttons").last().icon("sort").click();
       H.popover().findByText(OFFSET_SUM_TOTAL_AGGREGATION_NAME).click();
       H.getNotebookStep("sort", { stage: 1, index: 0 })
@@ -1358,7 +1358,7 @@ function verifyTableContent(rows: string[][]) {
 }
 
 function verifyTableCellContent(index: number, text: string) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByRole("gridcell").eq(index).should("have.text", text);
 }
 
@@ -1428,7 +1428,7 @@ function addCustomColumn({
   if (actionButtonsGroup === "first") {
     cy.findAllByTestId("action-buttons").first().icon("add_data").click();
   } else {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().icon("add_data").click();
   }
 

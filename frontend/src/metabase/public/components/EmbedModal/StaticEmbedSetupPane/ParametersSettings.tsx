@@ -3,7 +3,7 @@ import type { ChangeEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import Select, { Option } from "metabase/common/components/Select";
+import { Option, Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import { ParameterWidget as StaticParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { getParameterIconName } from "metabase/parameters/utils/ui";

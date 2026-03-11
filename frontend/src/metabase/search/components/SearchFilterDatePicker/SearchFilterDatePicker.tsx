@@ -2,7 +2,7 @@ import type {
   DatePickerOperator,
   DatePickerShortcut,
   RelativeIntervalDirection,
-} from "metabase/querying/filters/types";
+} from "metabase/querying/common/types";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 
 const OPERATORS: DatePickerOperator[] = ["=", ">", "<", "between"];

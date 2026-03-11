@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useMount } from "react-use";
 
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import { Alert, Box, Loader, Text } from "metabase/ui";
 import type { EngineKey } from "metabase-types/api";
 

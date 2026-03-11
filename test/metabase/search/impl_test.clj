@@ -15,6 +15,7 @@
    [metabase.search.in-place.legacy :as search.legacy]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [toucan2.core :as t2]))
 
 (deftest ^:parallel parse-engine-test
@@ -86,10 +87,12 @@
                                                  :models                      search.config/all-models
                                                  :current-user-id             (mt/user->id :crowberto)
                                                  :is-superuser?               true
+                                                 :is-data-analyst?            false
                                                  :current-user-perms          #{"/"}
                                                  :model-ancestors?            false
                                                  :limit-int                   100
-                                                 :calculate-available-models? false}))]
+                                                 :calculate-available-models? false
+                                                 :enabled-transform-source-types (transforms.gating/enabled-source-types)}))]
             ;; warm it up, in case the DB call depends on the order of test execution and it needs to
             ;; do some initialization
             (search/init-index!)
@@ -99,7 +102,7 @@
               ;; the call count number here are expected to change if we change the search api
               ;; we have this test here just to keep tracks this number to remind us to put effort
               ;; into keep this number as low as we can
-              (is (<= (call-count) 9)))))))))
+              (is (<= (call-count) 10)))))))))
 
 (deftest created-at-correctness-test
   (let [search-term   "created-at-filtering"

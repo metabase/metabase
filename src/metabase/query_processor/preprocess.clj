@@ -90,6 +90,8 @@
    #'qp.add-default-temporal-unit/add-default-temporal-unit
    #'qp.add-implicit-joins/add-implicit-joins
    #'resolve-joins/resolve-joins
+   ;; rerun add-implicit-clauseds to add implicit fields clauses to implicit joins #67002
+   #'qp.add-implicit-clauses/add-implicit-clauses
    #'fix-bad-field-id-refs/fix-bad-field-id-refs
    #'qp.remove-inactive-field-refs/remove-inactive-field-refs
    ;; yes, this is called a second time, because we need to handle any joins that got added
@@ -101,6 +103,7 @@
    #'optimize-temporal-filters/optimize-temporal-filters
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
+   #'qp.middleware.enterprise/apply-workspace-remapping
    #'check-features/check-features])
 
 (def ^:private ^Long slow-middleware-warning-threshold-ms

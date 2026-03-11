@@ -15,7 +15,7 @@ export const SANKEY_CHART_STYLE = {
     minPadding: 24,
   },
   edgeColor: {
-    // eslint-disable-next-line no-color-literals
+    // eslint-disable-next-line metabase/no-color-literals
     gray: "#81898e", // --mb-base-color-orion-50
   },
 };

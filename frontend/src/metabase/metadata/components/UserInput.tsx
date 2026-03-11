@@ -2,10 +2,10 @@ import { type FocusEvent, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { isEmail } from "metabase/lib/email";
-import { Avatar, Group, Icon, Select, type SelectProps } from "metabase/ui";
+import { Avatar, Flex, Icon, Select, type SelectProps } from "metabase/ui";
 import type { User, UserId } from "metabase-types/api";
-
 interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
   email: string | null;
   userId: UserId | "unknown" | null;
@@ -93,10 +93,10 @@ export const UserInput = ({
       renderOption={(item) => {
         const option = item.option as Option;
         return (
-          <Group gap="sm" p="sm">
+          <Flex align="center" gap="sm" p="sm" w="100%">
             {option.type === "user" && <Avatar name={item.option.label} />}
             {option.type === "unknown" && (
-              <Avatar>
+              <Avatar color="background-secondary">
                 <Icon name="person" c="text-secondary" />
               </Avatar>
             )}
@@ -105,10 +105,8 @@ export const UserInput = ({
                 <Icon name="mail" />
               </Avatar>
             )}
-
-            {option.type === "unknown" && <i>{item.option.label}</i>}
-            {option.type !== "unknown" && <span>{item.option.label}</span>}
-          </Group>
+            <Ellipsified>{item.option.label}</Ellipsified>
+          </Flex>
         );
       }}
       value={email ? email : userId ? String(userId) : null}

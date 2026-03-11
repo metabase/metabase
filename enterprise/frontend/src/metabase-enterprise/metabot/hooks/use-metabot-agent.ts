@@ -19,7 +19,6 @@ import {
   getMetabotReactionsState,
   getMetabotRequestId,
   getMetabotVisible,
-  getProfileOverride,
   resetConversation as resetConversationAction,
   retryPrompt,
   setProfileOverride as setProfileOverrideAction,
@@ -90,6 +89,7 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
           context: await getChatContext(),
           agentId,
           metabot_id: metabotRequestId,
+          profile: options?.profile,
         }),
       );
 
@@ -172,9 +172,6 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
       getActiveToolCalls(state, agentId),
     ),
     debugMode: useMetabotSelector(getDebugMode),
-    profileOverride: useMetabotSelector((state) =>
-      getProfileOverride(state, agentId),
-    ),
     reactions: useMetabotSelector(getMetabotReactionsState),
   };
 };

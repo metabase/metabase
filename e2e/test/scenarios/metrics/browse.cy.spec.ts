@@ -169,6 +169,8 @@ describe("scenarios > browse > metrics", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
       cy.visit("/browse/metrics");
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click();
+      cy.location("pathname").should("match", /^\/explore/);
+      H.MetricsViewer.openMetricHomePage("Count of orders");
       cy.location("pathname").should("match", /^\/metric\/\d+-.*$/);
     });
 
@@ -191,16 +193,14 @@ describe("scenarios > browse > metrics", () => {
       createMetrics([ORDERS_SCALAR_METRIC]);
       cy.visit("/browse/metrics");
 
-      const macOSX = Cypress.platform === "darwin";
-      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click({
-        metaKey: macOSX,
-        ctrlKey: !macOSX,
-      });
+      findMetric(ORDERS_SCALAR_METRIC.name)
+        .should("be.visible")
+        .click(H.holdMetaKey);
 
       cy.get("@open").should("have.been.calledOnce");
       cy.get("@open").should(
         "have.been.calledWithMatch",
-        /^\/metric\/\d+-.*$/,
+        /^\/explore/,
         "_blank",
       );
 
@@ -387,7 +387,7 @@ describe("scenarios > browse > metrics", () => {
     });
 
     it("should not show the verified metrics filter when there are no verified metrics", () => {
-      createMetrics();
+      createMetrics(ALL_METRICS);
       cy.visit("/browse/metrics");
 
       cy.findByLabelText("Table of metrics").should("be.visible");
@@ -470,12 +470,6 @@ describe("scenarios > browse > metrics", () => {
   });
 });
 
-function createMetrics(
-  metrics: StructuredQuestionDetailsWithName[] = ALL_METRICS,
-) {
-  metrics.forEach((metric) => H.createQuestion(metric));
-}
-
 function metricsTable() {
   return cy.findByLabelText("Table of metrics").should("be.visible");
 }
@@ -485,7 +479,7 @@ function findMetric(name: string) {
 }
 
 function getMetricsTableItem(index: number) {
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   return metricsTable().findAllByTestId("metric-name").eq(index);
 }
 
@@ -501,10 +495,12 @@ function shouldNotHaveBookmark(name: string) {
 
 function verifyMetric(metric: StructuredQuestionDetailsWithName) {
   metricsTable().findByText(metric.name).should("be.visible").click();
+  H.MetricsViewer.openMetricHomePage(metric.name);
 
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Verify this metric").click();
 
+  H.openNavigationSidebar();
   H.navigationSidebar()
     .findByRole("listitem", { name: "Browse metrics" })
     .click();
@@ -512,10 +508,12 @@ function verifyMetric(metric: StructuredQuestionDetailsWithName) {
 
 function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
   metricsTable().findByText(metric.name).should("be.visible").click();
+  H.MetricsViewer.openMetricHomePage(metric.name);
 
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Remove verification").click();
 
+  H.openNavigationSidebar();
   H.navigationSidebar()
     .findByRole("listitem", { name: "Browse metrics" })
     .click();
@@ -523,4 +521,8 @@ function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
 
 function toggleVerifiedMetricsFilter() {
   cy.findByLabelText(/show.*verified.*metrics/i).click();
+}
+
+function createMetrics(metrics: StructuredQuestionDetailsWithName[]) {
+  metrics.forEach((metric) => H.createQuestion(metric));
 }

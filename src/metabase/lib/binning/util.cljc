@@ -38,7 +38,7 @@
     [:num-bins  ::lib.schema.binning/num-bins]]])
 
 (mu/defn- resolve-default-strategy :- ResolvedStrategy
-  "Determine the approprate strategy & options to use when `:default` strategy was specified."
+  "Determine the appropriate strategy & options to use when `:default` strategy was specified."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column
    min-value             :- number?

@@ -10,7 +10,7 @@ import {
   setUIControls,
   updateQuestion,
 } from "metabase/query_builder/actions";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import {
   ChartTypeSettings,
   type GetSensibleVisualizationsProps,

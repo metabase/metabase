@@ -90,7 +90,7 @@ export const useDeleteGdriveFolderLink = (options?: {
       .catch((response: unknown) => {
         const error = getErrorMessage(
           response,
-          // eslint-disable-next-line no-literal-metabase-strings -- admin only ui
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin only ui
           t`Please check that the folder is shared with the Metabase Service Account.`,
         );
         setErrorMessage(error);

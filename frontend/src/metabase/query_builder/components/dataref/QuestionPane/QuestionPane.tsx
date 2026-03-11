@@ -7,14 +7,14 @@ import {
   useGetCollectionQuery,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Description,
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { useSelector } from "metabase/lib/redux";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, type IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
