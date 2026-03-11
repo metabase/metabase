@@ -1,5 +1,4 @@
-import { DndContext, pointerWithin } from "@dnd-kit/core";
-import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
+import { DndContext } from "@dnd-kit/core";
 import {
   SortableContext,
   horizontalListSortingStrategy,
@@ -7,7 +6,7 @@ import {
 import type { HeaderGroup } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect } from "react";
 import _ from "underscore";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
@@ -17,6 +16,7 @@ import {
   PINNED_BORDER_SEPARATOR_WIDTH,
 } from "../../constants";
 import { DataGridThemeProvider } from "../../hooks";
+import { useDataGridColumnsReordering } from "../../hooks/use-data-grid-columns-reordering";
 import type {
   DataGridColumn,
   DataGridInstance,
@@ -134,34 +134,9 @@ export const DataGrid = function DataGrid<TData>({
     lastPinnedColumn?.origin.columnDef.meta?.isUtilityColumn === true;
   const hasSeparator = lastPinnedColumn != null && !isLastPinnedColumnSpecial;
 
-  const pinnedColumnIdSet = useMemo(
-    () => new Set(pinnedColumns.map((c) => c.origin.id)),
-    [pinnedColumns],
-  );
-
-  const collisionDetection = useCallback(
-    (args: Parameters<typeof pointerWithin>[0]) => {
-      const collisions = pointerWithin(args);
-      if (collisions.length <= 1) {
-        return collisions;
-      }
-
-      const pinnedCollisions = collisions.filter((c) =>
-        pinnedColumnIdSet.has(String(c.id)),
-      );
-
-      return pinnedCollisions.length > 0 ? pinnedCollisions : collisions;
-    },
-    [pinnedColumnIdSet],
-  );
-
-  const dndContextProps = useMemo(
-    () => ({
-      collisionDetection,
-      modifiers: [restrictToHorizontalAxis],
-      ...columnsReordering,
-    }),
-    [collisionDetection, columnsReordering],
+  const dndContextProps = useDataGridColumnsReordering(
+    columnsReordering,
+    pinnedColumns,
   );
 
   const pinnedColumnsWidth = table.getLeftTotalSize();
