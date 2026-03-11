@@ -45,11 +45,13 @@
 
 (defn compute-categorical-stats
   "Compute categorical stats for all series in a chart.
-   series-data: map of series-name -> {:x_values [...] :y_values [...]}"
+   series-data: map of series-name -> {:x_values [...] :y_values [...] :x {:name ...} :y {:name ...}}"
   [series-data opts]
   (let [series-stats (into {}
-                           (for [[series-name {:keys [x_values y_values]}] series-data]
-                             [series-name (compute-series-stats x_values y_values)]))
+                           (for [[series-name {:keys [x_values y_values x y]}] series-data]
+                             [series-name (-> (compute-series-stats x_values y_values)
+                                              (assoc :x_name (some-> x :name))
+                                              (assoc :y_name (some-> y :name)))]))
         correlations (when (and (:deep? opts) (> (count series-data) 1))
                        (time-series/compute-correlations series-data))]
     (cond-> {:chart_type   :categorical

@@ -29,7 +29,8 @@
          "- Current week: Week " (week-of-year now) " of " (.getYear now) "\n"
          "- Current month: " month-name " (day " (.getDayOfMonth now) ")\n"
          "- Current quarter: Q" (quarter-of-year now) " " (.getYear now) "\n"
-         "Take this into account when analyzing recent data points.")))
+         "Take this into account when analyzing recent data points.\n"
+         "If the latest data point falls within the current week, month, or quarter, it may represent an incomplete period and should be interpreted accordingly.")))
 
 ;;; ------------------------------------------------- Formatting -----------------------------------------------------
 
@@ -82,6 +83,39 @@
     :high "high"
     :extreme "extreme"
     (name level)))
+
+;;; ----------------------------------------- Data Characteristics ---------------------------------------------------
+
+(defn- compute-data-characteristics
+  "Derive data quality flags from pre-computed series stats.
+
+  Uses fields already present in the stats map so no raw values are needed:
+  - :small_counts  max y-value < 20 (percentage changes may be exaggerated)
+  - :high_variance CoV > 0.5        (fluctuations may be normal noise)
+  - :sparse_data   < 10 data points"
+  [{:keys [data_points category_count summary y_summary]}]
+  (let [n     (or data_points category_count 0)
+        s     (or y_summary summary)
+        max-v (some-> s :max)
+        cov   (let [mean-v (some-> s :mean)
+                    std-v  (some-> s :std_dev)]
+                (if (and mean-v std-v (not (zero? mean-v)))
+                  (/ std-v (Math/abs (double mean-v)))
+                  0.0))]
+    {:small_counts  (boolean (and max-v (< max-v 20)))
+     :high_variance (> cov 0.5)
+     :sparse_data   (< n 10)}))
+
+(defn- render-data-characteristics-note
+  "Render a **Note**: line when any data quality warning applies."
+  [series-stats]
+  (let [{:keys [small_counts high_variance sparse_data]} (compute-data-characteristics series-stats)
+        warnings (cond-> []
+                   small_counts  (conj "small values (percentage changes may be exaggerated)")
+                   high_variance (conj "high variance (fluctuations may be normal noise)")
+                   sparse_data   (conj "limited data points"))]
+    (when (seq warnings)
+      (str "**Note**: " (str/join ", " warnings) ". Cross-reference with the chart visual."))))
 
 ;;; ------------------------------------------ Series Representation -------------------------------------------------
 
@@ -201,9 +235,13 @@
 
 (defn- render-categorical-series
   "Render stats for a single categorical series."
-  [series-name {:keys [summary category_count top_categories bottom_categories outliers]}]
+  [series-name {:keys [x_name y_name summary category_count
+                       top_categories bottom_categories outliers] :as series-stats}]
   (let [sections [(str "## Series: " series-name)
+                  (when x_name (str "**X-axis**: " x_name))
+                  (when y_name (str "**Y-axis**: " y_name))
                   (str "**Categories**: " category_count)
+                  (render-data-characteristics-note series-stats)
                   (when summary
                     (str "**Value Range**: " (format-number (:min summary))
                          " to " (format-number (:max summary))
@@ -217,11 +255,11 @@
 
 (defn generate-categorical-representation
   "Generate markdown representation for categorical (bar, pie, funnel, etc.) stats."
-  [{:keys [title stats timeline-events]}]
+  [{:keys [title display-type stats timeline-events]}]
   (let [{:keys [series_count series correlations]} stats
         header (str "# Chart Analysis\n"
                     (when title (str "## Chart: " title "\n"))
-                    "**Type**: Categorical\n"
+                    "**Type**: Categorical" (when display-type (str " (" display-type ")")) "\n"
                     "**Series Count**: " series_count)
         series-sections (str/join "\n\n"
                                   (for [[series-name s] series]
@@ -237,11 +275,37 @@
 (defn- correlation-label [{:keys [strength direction]}]
   (str (name strength) " " (name direction)))
 
+(defn- render-scatter-sample-data
+  "Render sampled points as 'x: y | x: y | ...'."
+  [sampled-points]
+  (when (seq sampled-points)
+    (let [n         (count sampled-points)
+          formatted (str/join " | " (map (fn [[x y]] (str (format-number x) ": " (format-number y)))
+                                         sampled-points))]
+      (str "**Sample Data** (" n " points):\n" formatted))))
+
+(defn- render-scatter-outliers
+  "Render outliers as 'x=..., y=...' (each outlier map has :date=x-value, :value=y-value)."
+  [outliers]
+  (when (seq outliers)
+    (let [total (count outliers)
+          shown (take 5 outliers)
+          lines (map (fn [{:keys [date value]}]
+                       (str "- x=" (format-number date) ", y=" (format-number value)))
+                     shown)
+          more  (when (> total 5) (str "... and " (- total 5) " more"))]
+      (str "**Outliers** (" total " total, showing up to 5):\n"
+           (str/join "\n" (remove nil? (concat lines [more])))))))
+
 (defn- render-scatter-series
   "Render stats for a single scatter series."
-  [series-name {:keys [x_summary y_summary data_points correlation regression]}]
+  [series-name {:keys [x_name y_name x_summary y_summary data_points
+                       correlation regression sampled_points outliers] :as series-stats}]
   (let [sections [(str "## Series: " series-name)
                   (str "**Data Points**: " data_points)
+                  (when x_name (str "**X-axis**: " x_name))
+                  (when y_name (str "**Y-axis**: " y_name))
+                  (render-data-characteristics-note series-stats)
                   (when x_summary
                     (str "**X-axis Range**: " (format-number (:min x_summary))
                          " to " (format-number (:max x_summary))))
@@ -254,16 +318,18 @@
                   (when regression
                     (str "**Trend Line**: y = "
                          (format "%.3f" (double (:slope regression))) "x + "
-                         (format "%.3f" (double (:intercept regression)))))]]
+                         (format "%.3f" (double (:intercept regression)))))
+                  (render-scatter-sample-data sampled_points)
+                  (render-scatter-outliers outliers)]]
     (str/join "\n" (remove nil? sections))))
 
 (defn generate-scatter-representation
   "Generate markdown representation for scatter plot stats."
-  [{:keys [title stats timeline-events]}]
+  [{:keys [title display-type stats timeline-events]}]
   (let [{:keys [series_count series]} stats
         header (str "# Chart Analysis\n"
                     (when title (str "## Chart: " title "\n"))
-                    "**Type**: Scatter\n"
+                    "**Type**: Scatter" (when display-type (str " (" display-type ")")) "\n"
                     "**Series Count**: " series_count)
         series-sections (str/join "\n\n"
                                   (for [[series-name s] series]
@@ -286,9 +352,18 @@
     (< kurtosis -1) "light tails (fewer extreme values than normal)"
     :else           nil))
 
+(defn- render-histogram-bin-data
+  "Render bin data as 'x: y | x: y | ...'."
+  [bin_data]
+  (when (seq bin_data)
+    (let [n         (count bin_data)
+          formatted (str/join " | " (map (fn [[x y]] (str (format-number x) ": " (format-number y)))
+                                         bin_data))]
+      (str "**Bin Data** (" n " bins):\n" formatted))))
+
 (defn- render-histogram-series
   "Render stats for a single histogram series."
-  [series-name {:keys [summary data_points distribution]}]
+  [series-name {:keys [x_name y_name summary data_points bin_data distribution] :as series-stats}]
   (let [{:keys [skewness kurtosis percentiles quartiles]} distribution
         p-str (when (seq percentiles)
                 (str "**Percentiles**: "
@@ -305,21 +380,25 @@
                       (str "**Distribution Shape**: " (skewness-description skewness)
                            (when k-desc (str ", " k-desc)))))
         sections [(str "## Series: " series-name)
+                  (when x_name (str "**X-axis**: " x_name))
+                  (when y_name (str "**Y-axis**: " y_name))
                   (str "**Data Points**: " data_points)
+                  (render-data-characteristics-note series-stats)
                   (when summary
                     (str "**Value Range**: " (format-number (:min summary))
                          " to " (format-number (:max summary))
                          " (median: " (format-number (:median summary)) ")"))
-                  p-str iqr-str shape-str]]
+                  p-str iqr-str shape-str
+                  (render-histogram-bin-data bin_data)]]
     (str/join "\n" (remove nil? sections))))
 
 (defn generate-histogram-representation
   "Generate markdown representation for histogram stats."
-  [{:keys [title stats timeline-events]}]
+  [{:keys [title display-type stats timeline-events]}]
   (let [{:keys [series_count series]} stats
         header (str "# Chart Analysis\n"
                     (when title (str "## Chart: " title "\n"))
-                    "**Type**: Histogram\n"
+                    "**Type**: Histogram" (when display-type (str " (" display-type ")")) "\n"
                     "**Series Count**: " series_count)
         series-sections (str/join "\n\n"
                                   (for [[series-name s] series]
@@ -332,11 +411,11 @@
 
 (defn generate-time-series-representation
   "Generate comprehensive markdown representation for time series stats."
-  [{:keys [title stats timeline-events]}]
+  [{:keys [title display-type stats timeline-events]}]
   (let [{:keys [series_count series correlations]} stats
         header (str "# Chart Analysis\n"
                     (when title (str "## Chart: " title "\n"))
-                    "**Type**: Time Series\n"
+                    "**Type**: Time Series" (when display-type (str " (" display-type ")")) "\n"
                     "**Series Count**: " series_count)
         temporal-context (generate-temporal-context)
         series-sections (str/join "\n\n"

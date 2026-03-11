@@ -1,12 +1,22 @@
 (ns metabase-enterprise.metabot-v3.stats.scatter
   "Scatter plot statistics computation."
   (:require
+   [metabase-enterprise.metabot-v3.stats.outliers :as outliers]
    [tech.v3.datatype.functional :as dfn]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private min-regression-points 3)
 (def ^:private min-correlation-points 2)
+(def ^:private min-outlier-points 5)
+(def ^:private max-sample-points 30)
+
+(defn- sample-points
+  "Randomly sample up to max-points items from a collection."
+  [coll max-points]
+  (if (<= (count coll) max-points)
+    (vec coll)
+    (vec (take max-points (shuffle coll)))))
 
 (defn- correlation-strength [coef]
   (let [abs-coef (Math/abs (double coef))]
@@ -59,20 +69,28 @@
                               {:slope     slope
                                :intercept intercept
                                :r_squared r-squared})
-                            (catch Exception _ nil)))]
-        (cond-> {:x_summary   x-summary
-                 :y_summary   y-summary
-                 :data_points n}
-          correlation (assoc :correlation correlation)
-          regression  (assoc :regression regression))))))
+                            (catch Exception _ nil)))
+            ;; Pass numeric xs as "dates" so each outlier map carries the x-value in :date
+            scatter-outliers (when (>= n min-outlier-points)
+                               (outliers/find-outliers ys xs))
+            sampled-points   (sample-points (mapv vector xs ys) max-sample-points)]
+        (cond-> {:x_summary      x-summary
+                 :y_summary      y-summary
+                 :data_points    n
+                 :sampled_points sampled-points}
+          correlation            (assoc :correlation correlation)
+          regression             (assoc :regression regression)
+          (seq scatter-outliers) (assoc :outliers scatter-outliers))))))
 
 (defn compute-scatter-stats
   "Compute scatter stats for all series in a chart.
-  series-data: map of series-name -> {:x_values [...] :y_values [...]}"
+  series-data: map of series-name -> {:x_values [...] :y_values [...] :x {:name ...} :y {:name ...}}"
   [series-data _opts]
   (let [series-stats (into {}
-                           (for [[series-name {:keys [x_values y_values]}] series-data]
-                             [series-name (compute-series-stats x_values y_values)]))]
+                           (for [[series-name {:keys [x_values y_values x y]}] series-data]
+                             [series-name (-> (compute-series-stats x_values y_values)
+                                              (assoc :x_name (some-> x :name))
+                                              (assoc :y_name (some-> y :name)))]))]
     {:chart_type   :scatter
      :series_count (count series-data)
      :series       series-stats}))

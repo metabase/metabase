@@ -62,38 +62,49 @@
       (- term1 term2))))
 
 (defn compute-series-stats
-  "Compute histogram stats for a single series using its y_values (counts/frequencies)."
-  [y-values]
-  (let [valid (mapv double (filter some? y-values))
-        n     (count valid)]
-    (if (zero? n)
-      {:summary     {:min 0 :max 0 :mean 0 :median 0 :std_dev 0 :range 0}
-       :data_points 0
-       :distribution {:percentiles {} :quartiles {:q1 0 :median 0 :q3 0 :iqr 0}}}
-      (let [summary     (time-series/compute-summary valid)
-            sorted-vals (sort valid)
-            percentiles (compute-percentiles sorted-vals)
-            quartiles   (compute-quartiles sorted-vals)
-            mean-val    (:mean summary)
-            std-dev     (:std_dev summary)
-            skewness    (when (>= n min-shape-metrics-points)
-                          (compute-skewness valid mean-val std-dev n))
-            kurtosis    (when (>= n min-shape-metrics-points)
-                          (compute-excess-kurtosis valid mean-val std-dev n))]
-        {:summary     summary
-         :data_points n
-         :distribution (cond-> {:percentiles percentiles
-                                :quartiles   quartiles}
-                         skewness (assoc :skewness skewness)
-                         kurtosis (assoc :kurtosis kurtosis))}))))
+  "Compute histogram stats for a single series using its y_values (counts/frequencies)
+  and x_values (bin edges/centers) for display.
+
+  Single-arity form accepts only y_values and uses sequential indices as x_values."
+  ([y-values]
+   (compute-series-stats (range (count y-values)) y-values))
+  ([x-values y-values]
+   (let [valid-pairs (filter (fn [[_ y]] (some? y)) (map vector x-values y-values))
+         valid       (mapv (comp double second) valid-pairs)
+         valid-xs    (mapv first valid-pairs)
+         n           (count valid)]
+     (if (zero? n)
+       {:summary      {:min 0 :max 0 :mean 0 :median 0 :std_dev 0 :range 0}
+        :data_points  0
+        :bin_data     []
+        :distribution {:percentiles {} :quartiles {:q1 0 :median 0 :q3 0 :iqr 0}}}
+       (let [summary     (time-series/compute-summary valid)
+             sorted-vals (sort valid)
+             percentiles (compute-percentiles sorted-vals)
+             quartiles   (compute-quartiles sorted-vals)
+             mean-val    (:mean summary)
+             std-dev     (:std_dev summary)
+             skewness    (when (>= n min-shape-metrics-points)
+                           (compute-skewness valid mean-val std-dev n))
+             kurtosis    (when (>= n min-shape-metrics-points)
+                           (compute-excess-kurtosis valid mean-val std-dev n))]
+         {:summary      summary
+          :data_points  n
+          :bin_data     (mapv vector valid-xs valid)
+          :distribution (cond-> {:percentiles percentiles
+                                 :quartiles   quartiles}
+                          skewness (assoc :skewness skewness)
+                          kurtosis (assoc :kurtosis kurtosis))})))))
 
 (defn compute-histogram-stats
   "Compute statistics for histogram data. Uses y_values (counts/frequencies per bin).
-  series-data: map of series-name -> {:x_values [...] :y_values [...]}"
+  series-data: map of series-name -> {:x_values [...] :y_values [...] :x {:name ...} :y {:name ...}}"
   [series-data _opts]
   (let [series-stats (into {}
-                           (for [[series-name {:keys [y_values]}] series-data]
-                             [series-name (compute-series-stats y_values)]))]
+                           (for [[series-name {:keys [x_values y_values x y]}] series-data]
+                             [series-name (-> (compute-series-stats x_values y_values)
+                                              (assoc :x_name (some-> x :name))
+                                              (assoc :y_name (some-> y :name)))]))]
     {:chart_type   :histogram
      :series_count (count series-data)
      :series       series-stats}))
