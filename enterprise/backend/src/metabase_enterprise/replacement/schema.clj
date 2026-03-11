@@ -19,16 +19,23 @@
 (mr/def ::run-status
   [:enum :pending :started :succeeded :failed :canceled :timeout])
 
+(mr/def ::run-type
+  [:enum :replace :convert_to_transform])
+
 (mr/def ::run
   [:map
    [:id ::run-id]
    [:status ::run-status]
    [:is_active [:maybe :boolean]]
+   [:run_type ::run-type]
    [:source_entity_type ::source-entity-type]
    [:source_entity_id ::source-entity-id]
    [:target_entity_type ::source-entity-type]
    [:target_entity_id ::source-entity-id]
    [:progress [:maybe number?]]
+   [:transform_progress [:maybe number?]]
+   [:sync_progress [:maybe number?]]
+   [:replacement_progress [:maybe number?]]
    [:message [:maybe :string]]
    [:user_id [:maybe ::lib.schema.id/user]]
    [:start_time ms/TemporalInstant]

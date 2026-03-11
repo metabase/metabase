@@ -17,20 +17,24 @@
 (t2/deftransforms :model/ReplacementRun
   {:status             mi/transform-keyword
    :source_entity_type mi/transform-keyword
-   :target_entity_type mi/transform-keyword})
+   :target_entity_type mi/transform-keyword
+   :run_type           mi/transform-keyword})
 
 (defn create-run!
   "Insert a new pending run. It becomes active when [[start-run!]] is called."
-  [source-type source-id target-type target-id user-id]
-  (t2/insert-returning-instance! :model/ReplacementRun
-                                 {:source_entity_type source-type
-                                  :source_entity_id   source-id
-                                  :target_entity_type target-type
-                                  :target_entity_id   target-id
-                                  :user_id            user-id
-                                  :status             :pending
-                                  :is_active          false
-                                  :progress           0.0}))
+  ([source-type source-id target-type target-id user-id]
+   (create-run! source-type source-id target-type target-id user-id :replace))
+  ([source-type source-id target-type target-id user-id run-type]
+   (t2/insert-returning-instance! :model/ReplacementRun
+                                  {:source_entity_type source-type
+                                   :source_entity_id   source-id
+                                   :target_entity_type target-type
+                                   :target_entity_id   target-id
+                                   :user_id            user-id
+                                   :run_type           run-type
+                                   :status             :pending
+                                   :is_active          false
+                                   :progress           0.0})))
 
 (defn start-run!
   "Mark the active run as started."
@@ -96,6 +100,29 @@
   "Return the single active run, or nil."
   []
   (t2/select-one :model/ReplacementRun :is_active true))
+
+(defn list-runs
+  "List runs, optionally filtered to only active ones."
+  [& {:keys [is-active]}]
+  (if is-active
+    (t2/select :model/ReplacementRun :is_active true {:order-by [[:id :desc]]})
+    (t2/select :model/ReplacementRun {:order-by [[:id :desc]]})))
+
+(defn update-phase-progress!
+  "Update a specific phase progress column on the active run."
+  [run-id column progress-value]
+  (t2/update! :model/ReplacementRun
+              :id run-id
+              :is_active true
+              {column progress-value}))
+
+(defn update-target!
+  "Update the target entity type and ID on a run (for convert runs where target is determined mid-execution)."
+  [run-id target-type target-id]
+  (t2/update! :model/ReplacementRun
+              :id run-id
+              {:target_entity_type target-type
+               :target_entity_id   target-id}))
 
 (def ^:private ^:const progress-batch-size
   "Write progress to DB every N items (and always on the final item)."

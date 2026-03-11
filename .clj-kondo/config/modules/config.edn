@@ -2367,6 +2367,8 @@
            queries
            source-swap
            task
+           transforms
+           transforms-base
            util
            enterprise/dependencies}}
 

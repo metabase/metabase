@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.api
   "`/api/ee/replacement/` routes"
   (:require
+   [metabase-enterprise.replacement.convert :as convert]
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.runner :as replacement.runner]
@@ -9,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib.schema.id :as lib.schema.id]
    [ring.util.response :as response]
    [toucan2.core :as t2]))
 
@@ -83,6 +85,41 @@
       (throw (ex-info "Run is not active" {:status-code 409})))
     (replacement-run/cancel-run! id)
     {:success true}))
+
+(api.macros/defendpoint :post "/convert-card-to-transform"
+  :- [:map
+      [:status [:= 202]]
+      [:body [:map {:closed true}
+              [:run_id ::replacement.schema/run-id]]]]
+  "Convert a model to a transform, run it, sync the output table, and replace all
+   usages of the model with the new table. Returns 202 with a run_id for polling.
+   Returns 409 if another replacement or conversion is already running."
+  [_route-params
+   _query-params
+   {:keys [card_id]}
+   :- [:map [:card_id ::lib.schema.id/card]]]
+  (api/check-superuser)
+  (let [card    (api/check-404 (t2/select-one :model/Card :id card_id))
+        _       (api/check-400 (= "model" (:type card))
+                               "Card is not a model")
+        job-row (replacement-run/create-run!
+                 :card card_id :card card_id
+                 api/*current-user-id* :convert_to_transform)
+        progress (replacement-run/run-row->progress job-row)
+        work-fn  (fn [_progress]
+                   (convert/convert-card-to-transform! card_id (:id job-row)))]
+    (replacement.execute/execute-async! work-fn progress)
+    (-> (response/response {:run_id (:id job-row)})
+        (assoc :status 202))))
+
+(api.macros/defendpoint :get "/runs"
+  :- [:sequential ::replacement.schema/run]
+  "List source replacement/conversion runs. Optionally filter to only active runs."
+  [_route-params
+   {:keys [is-active]}
+   :- [:map [:is-active {:optional true} [:maybe :boolean]]]]
+  (api/check-superuser)
+  (replacement-run/list-runs :is-active is-active))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/replacement` routes."
