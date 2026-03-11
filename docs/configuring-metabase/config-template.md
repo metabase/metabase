@@ -109,6 +109,7 @@ config:
     can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
+    csv-field-separator: ','
     custom-formatting: {}
     custom-geojson: null
     custom-geojson-enabled: true
@@ -292,6 +293,7 @@ config:
     sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
     thread-interrupt-escalation-timeout-ms: 0
+    transform-timeout: 240
     transforms-enabled: false
     unaggregated-query-row-limit: null
     uploads-settings: null

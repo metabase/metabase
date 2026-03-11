@@ -97,7 +97,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                 <Grid>
                   {step.cards.map((card) => {
                     const onClick =
-                      card.clickAction?.type === "click"
+                      card.clickAction?.type === "click" && !card.locked
                         ? card.clickAction.onClick
                         : undefined;
 
@@ -116,9 +116,8 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                               [S.lockedStepCard]: card.locked,
                               [S.nextStepCard]: isNextCard,
                             })}
-                            component={onClick ? "button" : undefined}
                             onClick={onClick}
-                            disabled={card.locked}
+                            aria-disabled={card.locked}
                             data-testid={`step-card-${card.id}`}
                             data-next-step={isNextCard}
                           >

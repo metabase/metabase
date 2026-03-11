@@ -24,6 +24,7 @@
                 metabase.lib.limit
                 metabase.transforms-inspector.js
                 metabase.lib.types.isa
+                metabase.lib-metric.js
                 metabase.parameters.shared
                 metabase.pivot.core
                 metabase.pivot.js

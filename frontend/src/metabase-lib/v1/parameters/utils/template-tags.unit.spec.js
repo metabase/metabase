@@ -182,6 +182,72 @@ describe("parameters/utils/cards", () => {
       );
     });
 
+    it("should produce string/= for text tags without widget-type (QUE2-326)", () => {
+      const tags = [
+        createMockTemplateTag({
+          type: "text",
+          id: "1",
+          name: "name",
+          "display-name": "Name",
+        }),
+      ];
+      expect(getTemplateTagParameters(tags)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "1",
+            name: "Name",
+            slug: "name",
+            target: ["variable", ["template-tag", "name"]],
+            type: "string/=",
+          }),
+        ]),
+      );
+    });
+
+    it("should produce boolean/= for boolean tags without widget-type (QUE2-326)", () => {
+      const tags = [
+        createMockTemplateTag({
+          type: "boolean",
+          id: "1",
+          name: "active",
+          "display-name": "Is Active",
+        }),
+      ];
+      expect(getTemplateTagParameters(tags)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "1",
+            name: "Is Active",
+            slug: "active",
+            target: ["variable", ["template-tag", "active"]],
+            type: "boolean/=",
+          }),
+        ]),
+      );
+    });
+
+    it("should produce string/= for unknown tag types (QUE2-326)", () => {
+      const tags = [
+        createMockTemplateTag({
+          type: "unknown-type",
+          id: "1",
+          name: "x",
+          "display-name": "X",
+        }),
+      ];
+      expect(getTemplateTagParameters(tags)).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "1",
+            name: "X",
+            slug: "x",
+            target: ["variable", ["template-tag", "x"]],
+            type: "string/=",
+          }),
+        ]),
+      );
+    });
+
     it("should exclude tags that are not parameters", () => {
       const tags = [
         createMockTemplateTag({

@@ -50,7 +50,7 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     cy.visit("/admin/settings/authentication/jwt");
 
     cy.findByTestId("jwt-user-provisioning-enabled?-setting")
-      .findByText("Enabled")
+      .findByText(/^Disabled/)
       .click();
     cy.wait("@updateSetting");
 

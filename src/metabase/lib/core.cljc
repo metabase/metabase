@@ -178,6 +178,7 @@
   ->legacy-MBQL
   ->pMBQL
   legacy-default-join-alias
+  with-aggregation-list
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -430,8 +431,10 @@
   parameter-target-field-options
   parameter-target-field-ref
   parameter-target-is-dimension?
+  parameter-target-stage-number
   parameter-target-template-tag-name
-  update-parameter-target-dimension-options]
+  update-parameter-target-dimension-options
+  update-parameter-target-field-ref]
  [lib.parameters.parse
   match-and-normalize-tag-name]
  [lib.parse
@@ -525,6 +528,7 @@
   validation-exception-error]
  [metabase.lib.walk.util
   all-field-ids
+  all-referenced-entity-ids
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids

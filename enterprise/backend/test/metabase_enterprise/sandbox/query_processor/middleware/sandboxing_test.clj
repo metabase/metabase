@@ -1813,3 +1813,14 @@
                       (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :quantity)))))]
         (is (= [[44]]
                (mt/rows (mt/user-http-request :rasta :post 202 "dataset" query))))))))
+
+(deftest ^:parallel attr-remapping-parameter-type-test
+  (testing "attr-remapping->parameter uses explicit parameter types instead of :category (QUE2-326)"
+    (let [attr-remapping->parameter #'sandboxing/attr-remapping->parameter
+          mp                        (mt/metadata-provider)]
+      (testing "numeric field → :number/="
+        (is (= :number/=
+               (:type (attr-remapping->parameter mp {"cat" "50"} ["cat" [:variable [:field (mt/id :venues :price) nil]]])))))
+      (testing "text field → :string/="
+        (is (= :string/=
+               (:type (attr-remapping->parameter mp {"cat" "foo"} ["cat" [:variable [:field (mt/id :venues :name) nil]]]))))))))

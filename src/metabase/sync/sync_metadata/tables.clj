@@ -222,7 +222,12 @@
                                    (some? (:visibility_type old-table))
                                    ;; noop
                                    (= (:visibility_type new-table) (:visibility_type old-table)))
-                                  (dissoc changes :visibility_type))]
+                                  (dissoc changes :visibility_type)
+
+                                  ;; don't mark computed tables as writable — they are derived
+                                  ;; and should never be editable, regardless of what the driver reports
+                                  (= :computed (:data_authority metabase-table))
+                                  (dissoc changes :is_writable))]
     (doseq [[k v] changes]
       (log/infof "%s of %s changed from %s to %s"
                  k
@@ -259,7 +264,7 @@
    & filters]
   (set (apply
         t2/select
-        (into [:model/Table :id :name :schema] keys-to-update)
+        (into [:model/Table :id :name :schema :data_authority] keys-to-update)
         :db_id (u/the-id database)
         filters)))
 

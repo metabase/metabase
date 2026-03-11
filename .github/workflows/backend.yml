@@ -36,6 +36,18 @@ jobs:
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
         name: Run Eastwood linter
 
+  be-linter-eastwood-test:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    name: Eastwood (test)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+        name: Run Eastwood linter on tests
+
   be-tests:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
@@ -184,6 +196,7 @@ jobs:
   be-tests-result:
     needs:
       - be-linter-eastwood
+      - be-linter-eastwood-test
       - be-linter-clj-kondo
       - be-cljfmt
       - be-check

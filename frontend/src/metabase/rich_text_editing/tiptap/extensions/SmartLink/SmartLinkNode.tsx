@@ -430,6 +430,7 @@ export const useEntityData = (
       };
     }
     case "indexed-entity":
+    case "measure":
     case null:
       return { entity: null, isLoading: false, error: null };
     default:

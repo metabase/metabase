@@ -632,6 +632,7 @@ export function DashCardVisualization({
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
           enableEntityNavigation={enableEntityNavigation}
+          autoAdjustSettings
         />
       </EmbeddingEntityContextProvider>
     </div>

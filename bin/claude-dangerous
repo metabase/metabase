@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# Runs Claude Code in a custom Docker container with --dangerously-skip-permissions.
+# The image includes Clojure, Java, Babashka, and all tools from mise.toml.
+# DB connection info is forwarded from mise.local.toml.
+#
+# Usage: workmux add --agent ./bin/claude-dangerous feat/my-branch
+#
+# Pass --build as the first arg to force a rebuild of the image.
+
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+IMAGE_NAME="metabase-claude-code"
+DOCKERFILE="$PROJECT_ROOT/dev/docker/claude-code/Dockerfile"
+
+# Build image if --build passed or image doesn't exist
+if [[ "${1:-}" == "--build" ]]; then
+    shift
+    echo "Building $IMAGE_NAME image..."
+    docker build -t "$IMAGE_NAME" -f "$DOCKERFILE" "$PROJECT_ROOT"
+elif ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
+    echo "Image $IMAGE_NAME not found, building..."
+    docker build -t "$IMAGE_NAME" -f "$DOCKERFILE" "$PROJECT_ROOT"
+fi
+
+# On macOS, extract Claude OAuth credentials from the system keychain
+# and prepare a minimal .claude.json for the container.
+AUTH_TMPDIR=$(mktemp -d)
+trap 'rm -rf "$AUTH_TMPDIR"' EXIT
+
+AUTH_MOUNT_ARGS=()
+if [[ "$OSTYPE" == darwin* ]]; then
+    KEYCHAIN_CREDS=$(security find-generic-password -s "Claude Code-credentials" -a "$USER" -w 2>/dev/null || true)
+    if [[ -n "$KEYCHAIN_CREDS" ]]; then
+        mkdir -p "$AUTH_TMPDIR/.claude"
+        echo "$KEYCHAIN_CREDS" > "$AUTH_TMPDIR/.claude/.credentials.json"
+        AUTH_MOUNT_ARGS+=(-v "$AUTH_TMPDIR/.claude/.credentials.json:/home/claude/.claude/.credentials.json")
+    fi
+fi
+
+# Build a minimal .claude.json with onboarding complete and project trust.
+# Mounting the host's full ~/.claude.json won't work (host-specific paths).
+python3 -c "
+import json, os
+host_config = '$HOME/.claude.json'
+config = {}
+if os.path.exists(host_config):
+    with open(host_config) as f:
+        full = json.load(f)
+    # Copy only the auth-related keys
+    for key in ('oauthAccount', 'customApiKeyResponses'):
+        if key in full:
+            config[key] = full[key]
+config['hasCompletedOnboarding'] = True
+config['bypassPermissionsModeAccepted'] = True
+config['dangerouslySkipPermissions'] = True
+config['autoAcceptPermissions'] = True
+config['numStartups'] = 1
+config['projects'] = {
+    '/app': {
+        'allowedTools': [],
+        'hasTrustDialogAccepted': True,
+        'skipConfirmationDialogs': True,
+    }
+}
+with open('$AUTH_TMPDIR/claude.json', 'w') as f:
+    json.dump(config, f, indent=2)
+"
+AUTH_MOUNT_ARGS+=(-v "$AUTH_TMPDIR/claude.json:/home/claude/.claude.json")
+
+# Parse mise.local.toml for env vars (DB connection, ports, etc.)
+ENV_ARGS=()
+if [[ -f "$PROJECT_ROOT/mise.local.toml" ]]; then
+    while IFS='=' read -r key value; do
+        key="$(echo "$key" | xargs)"
+        value="$(echo "$value" | sed 's/^[[:space:]]*"//;s/"[[:space:]]*$//')"
+        if [[ -n "$key" && -n "$value" ]]; then
+            # Rewrite localhost to host.docker.internal so container can reach host DBs
+            if [[ "$key" == "MB_DB_CONNECTION_URI" ]]; then
+                value="${value//localhost/host.docker.internal}"
+            fi
+            ENV_ARGS+=(-e "$key=$value")
+        fi
+    done < <(grep -E '^[A-Z_]+ *= *"' "$PROJECT_ROOT/mise.local.toml")
+fi
+
+exec docker run -it --rm \
+  -v "$PROJECT_ROOT:/app" \
+  -w /app \
+  -v /dev/null:/app/mise.local.toml:ro \
+  "${AUTH_MOUNT_ARGS[@]}" \
+  -e ANTHROPIC_API_KEY \
+  "${ENV_ARGS[@]}" \
+  --add-host=host.docker.internal:host-gateway \
+  "$IMAGE_NAME" \
+  --dangerously-skip-permissions

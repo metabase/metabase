@@ -147,13 +147,17 @@
             ;; A seq represents a specific path in the tree which is collapsed
             (sequential? collapsed-subtotal)
             (loop [node tree, [c & r] collapsed-subtotal]
-              (let [children (:children node)
-                    idx (perf/map-get (:value->child-pos node) c)
-                    child (perf/list-nth children idx)]
-                (if r
-                  (recur child r)
-                  (do (perf/list-set! children idx (assoc child :isCollapsed true))
-                      tree))))))
+              (if (nil? node)
+                tree
+                (let [children (:children node)
+                      idx (perf/map-get (:value->child-pos node) c)
+                      child (perf/list-nth children idx)]
+                  (if r
+                    (if (nil? child)
+                      tree
+                      (recur child r))
+                    (do (perf/list-set! children idx (assoc child :isCollapsed true))
+                        tree)))))))
         tree
         parsed-collapsed-subtotals))))
 

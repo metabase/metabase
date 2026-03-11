@@ -25,7 +25,7 @@ export function MeasureItem({ measure, href }: MeasureItemProps) {
     >
       <Stack gap="xs">
         <Flex align="center" gap="sm">
-          <Icon name="sum" c="brand" />
+          <Icon name="ruler" c="brand" />
           <Ellipsified lines={1} tooltip={measure.name}>
             <Text fw="bold">{measure.name}</Text>
           </Ellipsified>

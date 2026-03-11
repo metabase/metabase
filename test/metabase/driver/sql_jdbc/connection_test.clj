@@ -988,3 +988,20 @@
               (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
                 (is (= 1 @create-count) "Pool should be reused, not recreated")
                 (is (identical? pool-1 pool-2) "Should be the same pool instance")))))))))
+
+(defmulti has-default-port?
+  "Whether a driver has a default port"
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod has-default-port? :default [_driver] true)
+
+(doseq [driver [:h2 :athena :databricks :snowflake :sqlite :sqlserver]]
+  (defmethod has-default-port? driver [_driver] false))
+
+(deftest ^:parallel default-ssh-tunnel-target-port-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :+fns [has-default-port?]})
+    (is (integer? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*))))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :-fns [has-default-port?]})
+    (is (nil? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*)))))

@@ -9,7 +9,7 @@ export interface DataPoint extends ClickObjectDataRow {
 }
 
 export interface HoveredDimension {
-  value: string;
+  value: RowValue;
   column: RemappingHydratedDatasetColumn;
 }
 

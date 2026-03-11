@@ -51,12 +51,25 @@ runs:
 
           const artifact_id = artifacts.data.artifacts[0].id;
 
-          const download = await github.rest.actions.downloadArtifact({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            artifact_id: artifact_id,
-            archive_format: 'zip',
-          });
+          let download;
+          const maxAttempts = 3;
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+              download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact_id,
+                archive_format: 'zip',
+              });
+              break;
+            } catch (err) {
+              console.log(`Attempt ${attempt}/${maxAttempts} failed: ${err.message}`);
+              if (attempt === maxAttempts) throw err;
+              const delay = attempt * 15000; // 15s, 30s
+              console.log(`Retrying in ${delay / 1000}s...`);
+              await new Promise(r => setTimeout(r, delay));
+            }
+          }
 
           fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
 

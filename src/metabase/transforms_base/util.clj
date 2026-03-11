@@ -323,7 +323,7 @@
   ([database target {:keys [create?]}]
    (when-let [table (or (target-table (:id database) target)
                         (when create?
-                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority]))))]
+                          (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
      (sync/sync-table! table)
      table)))
 
@@ -332,7 +332,8 @@
   [database target]
   (when-let [table (sync-table! database (assoc target
                                                 :data_authority :computed
-                                                :data_source :metabase-transform)
+                                                :data_source :metabase-transform
+                                                :is_writable false)
                                 {:create? true})]
     (when-not (:active table)
       (t2/update! :model/Table (:id table) {:active true}))
@@ -676,6 +677,17 @@
              {:alias (name alias) :table_id v}
              (assoc v :alias (name alias))))
          m)))
+
+(defn normalize-source-tables-structure
+  "Converts legacy map format to vec format if needed, otherwise passes through."
+  [st]
+  (if (map? st)
+    (source-tables-map->vec st)
+    st))
+
+(def keyword-type-dispatch
+  "Dispatch function for malli :multi schemas that dispatch on `(keyword (:type m))`."
+  (comp keyword :type))
 
 ;;; ------------------------------------------------- Timestamp Helpers -------------------------------------------------
 

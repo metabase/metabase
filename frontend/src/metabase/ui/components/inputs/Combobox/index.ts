@@ -1,4 +1,4 @@
-export { Combobox } from "@mantine/core";
+export { Combobox, OptionsDropdown } from "@mantine/core";
 export type {
   ComboboxGroupProps,
   ComboboxProps,

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { UpsellWrapper } from "metabase/admin/upsells/components/UpsellWrapper";
+import { UpsellWrapper } from "metabase/common/components/upsells/components/UpsellWrapper";
 import { Tabs } from "metabase/ui";
 
 /** This tab just shows the Insights upsell */

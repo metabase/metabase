@@ -1,6 +1,6 @@
 import querystring from "querystring";
 
-import type { LocationDescriptor } from "history";
+import type { LocationDescriptor, LocationDescriptorObject } from "history";
 import _ from "underscore";
 
 import { handleLinkSdkPlugin } from "embedding-sdk-shared/lib/sdk-global-plugins";
@@ -187,7 +187,7 @@ window.addEventListener(
 type OpenOptions = {
   openInSameWindow?: (url: string) => void;
   openInBlankWindow?: (url: string) => void;
-  openInSameOrigin?: (location: LocationDescriptor) => void;
+  openInSameOrigin?: (location: LocationDescriptorObject) => void;
   ignoreSiteUrl?: boolean;
 } & ShouldOpenInBlankWindowOptions;
 

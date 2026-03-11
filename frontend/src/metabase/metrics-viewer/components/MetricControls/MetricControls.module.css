@@ -1,0 +1,7 @@
+.container {
+  box-shadow: var(--mantine-shadow-sm);
+}
+
+.divider {
+  align-self: stretch;
+}

@@ -32,7 +32,7 @@ import type {
   VisualizationSettingKey,
   VisualizationSettings,
 } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
+import { isObjectWithRaw } from "metabase-types/guards";
 
 const WIDGETS: Record<string, React.ComponentType<any>> = {
   input: ChartSettingInput,
@@ -157,10 +157,6 @@ function getComputedSetting<T, TValue, TProps extends Record<string, unknown>>(
     console.warn("Error getting setting", settingId, e);
   }
   computedSettings[settingId] = undefined;
-}
-
-function isObjectWithRaw<T>(object: T): object is T & { _raw?: T } {
-  return isObject(object) && "_raw" in object;
 }
 
 function getSettingWidget<T, TValue, TProps extends Record<string, unknown>>(

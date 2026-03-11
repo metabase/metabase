@@ -1,0 +1,15 @@
+.inputWrapper {
+  cursor: text;
+}
+
+.inputField {
+  background: transparent;
+  border: none;
+  padding: 0;
+  height: auto;
+  min-height: unset;
+}
+
+.inputField::placeholder {
+  color: var(--mb-color-text-tertiary);
+}

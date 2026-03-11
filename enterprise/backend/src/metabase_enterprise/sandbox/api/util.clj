@@ -56,8 +56,9 @@
                                                         [:= :pgm.user_id user-id]]})
                                     :table)
 
-          impersonations-with-group-ids (t2/select :model/ConnectionImpersonation
-                                                   :group_id [:in user-group-ids])
+          impersonations-with-group-ids (when (seq user-group-ids)
+                                          (t2/select :model/ConnectionImpersonation
+                                                     :group_id [:in user-group-ids]))
           group-id->impersonations (->> impersonations-with-group-ids
                                         (group-by :group_id))
           group-id->sandboxes (->> sandboxes-with-group-ids

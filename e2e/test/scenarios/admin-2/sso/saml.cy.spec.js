@@ -79,7 +79,7 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     cy.visit("/admin/settings/authentication/saml");
 
     cy.findByTestId("saml-user-provisioning-enabled?-setting")
-      .findByText("Enabled")
+      .findByText(/^Disabled/)
       .click();
     cy.wait("@updateSetting");
     H.undoToast().findByText("Changes saved").should("exist");

@@ -34,6 +34,7 @@ import { useBoxPlotEvents } from "./events";
 function BoxPlotInner({
   rawSeries,
   settings: originalSettings,
+  autoAdjustSettings,
   fontFamily,
   card,
   width,
@@ -68,13 +69,14 @@ function BoxPlotInner({
 
   const settings = useMemo(
     () =>
-      getDashboardAdjustedSettings(
-        originalSettings,
-        isDashboard ?? false,
-        width,
-        height,
-      ),
-    [originalSettings, isDashboard, width, height],
+      autoAdjustSettings
+        ? getDashboardAdjustedSettings({
+            settings: originalSettings,
+            height,
+            width,
+          })
+        : originalSettings,
+    [originalSettings, height, width, autoAdjustSettings],
   );
 
   const renderingContext = useBrowserRenderingContext({ fontFamily });

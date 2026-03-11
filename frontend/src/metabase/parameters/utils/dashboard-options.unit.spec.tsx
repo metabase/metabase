@@ -2,7 +2,10 @@ import _ from "underscore";
 
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 
-import { getDashboardParameterSections } from "./dashboard-options";
+import {
+  getDashboardParameterSections,
+  getDefaultOptionForParameterSectionMap,
+} from "./dashboard-options";
 
 describe("parameters/utils/dashboard-options", () => {
   describe("getDashboardParameterSections", () => {
@@ -33,6 +36,25 @@ describe("parameters/utils/dashboard-options", () => {
       expect(
         _.findWhere(getDashboardParameterSections(), { id: "string" }),
       ).toBeDefined();
+    });
+
+    it("should have an id section with numeric and text subtypes", () => {
+      const idSection = _.findWhere(getDashboardParameterSections(), {
+        id: "id",
+      });
+      expect(idSection).toBeDefined();
+      expect(idSection?.options).toHaveLength(2);
+      expect(idSection?.options.map((o) => o.type)).toEqual([
+        "number/=",
+        "string/=",
+      ]);
+    });
+  });
+
+  describe("getDefaultOptionForParameterSectionMap", () => {
+    it("should default id section to number/=", () => {
+      const map = getDefaultOptionForParameterSectionMap();
+      expect(map.id.type).toBe("number/=");
     });
   });
 });

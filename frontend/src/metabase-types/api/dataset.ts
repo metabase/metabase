@@ -85,6 +85,8 @@ export interface DatasetColumn {
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+
+  remapping?: Map<RowValue, string | number>;
 }
 
 export interface ResultsMetadata {
@@ -109,6 +111,8 @@ export interface DatasetData {
     "show-column-totals"?: boolean;
   };
   untranslatedRows?: RowValues[];
+
+  sourceRows?: (number | null)[][]; // present in pivoted data
 }
 
 export type JsonQuery = DatasetQuery & {

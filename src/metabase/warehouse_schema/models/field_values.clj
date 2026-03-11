@@ -451,7 +451,8 @@
   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-ids]
   (delete-duplicates-and-return-latest!
-   (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil)))
+   (when (seq field-ids)
+     (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil))))
 
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for

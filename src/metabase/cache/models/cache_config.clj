@@ -6,6 +6,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -35,6 +36,56 @@
   {:strategy mi/transform-keyword
    :config   mi/transform-json
    :state    mi/transform-json})
+
+(defn- target-collection-id
+  "Get the collection_id for the target entity of a CacheConfig."
+  [{:keys [model model_id]}]
+  (case model
+    "dashboard" (:collection_id (t2/select-one [:model/Dashboard :collection_id] :id model_id))
+    "question"  (:collection_id (t2/select-one [:model/Card :collection_id] :id model_id))
+    nil))
+
+(defmethod mi/can-write? :model/CacheConfig
+  ([instance]
+   (case (:model instance)
+     "root"      (mi/superuser?)
+     "database"  (mi/can-write? :model/Database (:model_id instance))
+     ("dashboard" "question")
+     (mi/current-user-has-full-permissions?
+      (perms/perms-objects-set-for-parent-collection
+       {:collection_id (target-collection-id instance)}
+       :write))))
+  ([_model pk]
+   (mi/can-write? (t2/select-one :model/CacheConfig pk))))
+
+(defmethod mi/can-read? :model/CacheConfig
+  ([instance]
+   (case (:model instance)
+     "root"      (mi/superuser?)
+     "database"  (mi/can-read? :model/Database (:model_id instance))
+     "dashboard" (mi/can-read? :model/Dashboard (:model_id instance))
+     "question"  (mi/can-read? :model/Card (:model_id instance))))
+  ([_model pk]
+   (mi/can-read? (t2/select-one :model/CacheConfig pk))))
+
+(defn- can-set-cache-policy?
+  "Check if the current user can set a cache policy for an entity.
+   Uses collection permissions directly, bypassing remote-sync content lock."
+  [{model-id :id :as instance}]
+  (mi/can-write? (t2/instance :model/CacheConfig {:model (-> (t2/model instance)
+                                                             name
+                                                             u/lower-case-en)
+                                                  :model_id model-id})))
+
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_set_cache_policy]
+  [_model k models]
+  (mi/instances-with-hydrated-data
+   models k
+   #(into {}
+          (map (juxt :id can-set-cache-policy?))
+          (t2/hydrate (remove nil? models) :collection))
+   :id
+   {:default false}))
 
 (defn- audit-caching-change! [user-id id prev new]
   (events/publish-event!

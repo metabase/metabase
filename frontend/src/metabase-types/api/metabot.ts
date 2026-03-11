@@ -152,9 +152,9 @@ export type MetabotDocumentInfo = {
 };
 
 export type MetabotTransformInfo =
-  | ({ type: "transform" } & Transform) // edit
-  | ({ type: "transform" } & SuggestedTransform) // edit saved suggested
-  | ({ type: "transform" } & DraftTransform); // edit unsaved suggested
+  | ({ type: "transform"; error?: string } & Transform) // edit
+  | ({ type: "transform"; error?: string } & SuggestedTransform) // edit saved suggested
+  | ({ type: "transform"; error?: string } & DraftTransform); // edit unsaved suggested
 
 export type MetabotEntityInfo =
   | MetabotCardInfo

@@ -134,7 +134,7 @@ describe("StepperWithCards", () => {
 
     // The locked card should be disabled
     const lockedCard = screen.getByTestId("step-card-2");
-    expect(lockedCard).toBeDisabled();
+    expect(lockedCard).toHaveAttribute("aria-disabled", "true");
 
     // Clicking the disabled card should not trigger the action
     await userEvent.click(lockedCard);
@@ -142,7 +142,7 @@ describe("StepperWithCards", () => {
 
     // The step should not be marked as done
     const allSteps = screen.getAllByRole("button");
-    expect(allSteps).toHaveLength(2);
+    expect(allSteps).toHaveLength(1);
     expect(allSteps[0]).toHaveAttribute("data-done", "false");
 
     // No steps should be marked as done

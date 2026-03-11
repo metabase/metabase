@@ -206,6 +206,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should persist filter changes after page reload", () => {
       setupEntities();
+      H.waitForUnreferencedEntities((entities) =>
+        entities.some((e) => e.data.name === MODEL_FOR_QUESTION_DATA_SOURCE),
+      );
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({ visibleEntities: MODEL_NAMES });
 
@@ -219,6 +222,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should filter by location", () => {
       setupEntities();
+      H.waitForUnreferencedEntities((entities) =>
+        entities.some((e) => e.data.name === MODEL_FOR_MODEL_DATA_SOURCE),
+      );
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({
         visibleEntities: [

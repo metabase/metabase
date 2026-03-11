@@ -23,6 +23,7 @@ const MODEL_NAME: Record<EnabledSearchModel, string> = {
   dashboard: "Dashboard",
   database: "Database",
   dataset: "Model",
+  measure: "Measure",
   metric: "Metric",
   table: "Table",
   "indexed-entity": "Indexed record",

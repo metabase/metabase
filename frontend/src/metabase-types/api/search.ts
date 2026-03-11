@@ -10,6 +10,7 @@ import type {
 import type { Dashboard, DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { Field } from "./field";
+import type { MeasureId } from "./measure";
 import type { ModerationReviewStatus } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { FieldReference } from "./query";
@@ -22,6 +23,7 @@ const ENABLED_SEARCH_MODELS = [
   "card",
   "dataset",
   "metric",
+  "measure",
   "database",
   "table",
   "action",
@@ -68,7 +70,8 @@ export type SearchResultId =
   | CardId
   | DatabaseId
   | TableId
-  | DashboardId;
+  | DashboardId
+  | MeasureId;
 
 export interface SearchResult<
   Id extends SearchResultId = SearchResultId,

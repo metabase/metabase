@@ -19,7 +19,6 @@ import type {
   ChartDataset,
   DataKey,
   Datum,
-  Extent,
   NumericAxisScaleTransforms,
   SeriesExtents,
   SeriesModel,
@@ -35,7 +34,10 @@ import {
   nullDimensionWarning,
   unaggregatedDataWarning,
 } from "metabase/visualizations/lib/warnings";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  Extent,
+} from "metabase/visualizations/types";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import {
   type DatasetColumn,

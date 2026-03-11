@@ -346,10 +346,11 @@
    Useful for testing workspace execution logic without running real transforms."
   [& body]
   `(mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
-                               (fn [_transform# _remapping#]
+                               (fn [transform# _remapping#]
                                  {:status   :succeeded
                                   :end_time (Instant/now)
-                                  :message  "Mocked execution"})]
+                                  :message  "Mocked execution"
+                                  :table    (select-keys (:target transform#) [:schema :name])})]
      ~@body))
 
 (defn mock-run-transform!

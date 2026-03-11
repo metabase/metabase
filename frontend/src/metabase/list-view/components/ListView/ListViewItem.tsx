@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 
 import { Box, Flex, Icon, type IconName, Image } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { DatasetColumn, DatasetData } from "metabase-types/api";
+import type { DatasetColumn, RowValues } from "metabase-types/api";
 
 import { ColumnValue } from "./ColumnValue";
 import styles from "./ListView.module.css";
@@ -11,8 +11,8 @@ import { getIconBackground } from "./styling";
 
 export interface ListViewItemProps {
   className?: string;
-  row: DatasetData["rows"][number];
-  rows: DatasetData["rows"];
+  row: RowValues;
+  rows: RowValues[];
   cols: DatasetColumn[];
   settings: ComputedVisualizationSettings;
   entityIcon?: string;

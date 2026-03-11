@@ -11,7 +11,6 @@ import {
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import {
   skipToken,
   useGetCollectionQuery,
@@ -21,6 +20,7 @@ import {
 import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";

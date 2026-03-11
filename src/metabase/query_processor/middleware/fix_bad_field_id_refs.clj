@@ -29,7 +29,9 @@
                                      (when-let [resolved (lib.walk/apply-f-for-stage-at-path
                                                           lib.field.resolution/resolve-field-ref
                                                           query path &match)]
-                                       (lib/ref resolved))))
+                                       (cond-> (lib/ref resolved)
+                                         (:lib/expression-name opts)
+                                         (lib/update-options assoc :lib/expression-name (:lib/expression-name opts))))))
                                  &match)))
         stage' (update-fields stage)]
     (when-not (= stage' stage)

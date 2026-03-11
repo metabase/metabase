@@ -22,7 +22,7 @@ export const validateDatasetRows = (series: Series) => {
   };
 
   if (_.every(series, singleSeriesHasNoRows)) {
-    throw new MinRowsError(1, 0);
+    throw new MinRowsError(0);
   }
 };
 

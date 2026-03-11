@@ -1,38 +1,33 @@
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { Button } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { trackQueryFixClicked } from "../../analytics";
 
-type FixSqlQueryButtonProps = {
-  rawSql?: string | null;
-  errorMessage?: string | null;
-};
-
-export function FixSqlQueryButton({
-  rawSql,
-  errorMessage,
-}: FixSqlQueryButtonProps) {
+export function FixSqlQueryButton() {
+  const dispatch = useDispatch();
   const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
-  const { submitInput } = useMetabotAgent("omnibot");
+  const { submitInput, isDoingScience } = useMetabotAgent("sql");
 
   if (!isMetabotEnabled) {
     return null;
   }
 
-  const handleClick = () => {
+  const handleClick = async () => {
     trackQueryFixClicked();
-    const promptParts = ["Fix this SQL query"];
-    if (errorMessage) {
-      promptParts.push(`The database returned this error: ${errorMessage}`);
-    }
-    if (rawSql) {
-      promptParts.push(`SQL:\n${rawSql}`);
-    }
-    submitInput(promptParts.join("\n\n"));
+    await dispatch(setIsNativeEditorOpen(true));
+    // SQL and error message are included in the context.
+    await submitInput("Fix this SQL query");
   };
 
-  return <Button onClick={handleClick}>{t`Have Metabot fix it`}</Button>;
+  return (
+    <Button
+      loading={isDoingScience}
+      onClick={handleClick}
+    >{t`Have Metabot fix it`}</Button>
+  );
 }

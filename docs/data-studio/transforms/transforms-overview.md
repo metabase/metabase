@@ -48,11 +48,10 @@ Metabase supports two types of transforms: query-based transforms and Python tra
 
 If you are running Metabase Open Source/Starter, Admins (and only Admins) can see and run transforms.
 
-Metabase Pro/Enterprise comes with additional permission controls for transforms, see [Transform permissions](../../permissions/data.md).
+Metabase Pro/Enterprise comes with additional permission controls for transforms:
 
-To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
-
-To **execute** transforms on a database, people additionally need to have the [Transform permissions](../../permissions/data.md) for that database.
+- To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
+- To **execute** transforms on a database, people additionally need to have the [Transform permissions](../../permissions/data.md) for that database.
 
 ## See all transforms
 

@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
-import { trackUpsellViewed } from "metabase/admin/upsells/components/analytics";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { trackUpsellViewed } from "metabase/common/components/upsells/components/analytics";
 import { useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";

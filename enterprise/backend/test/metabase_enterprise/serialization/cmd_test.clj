@@ -91,7 +91,7 @@
               (let [ingest-file @#'v2.ingest/ingest-file]
                 ;; overriding ingest-file is weird, but ingest-one is a protocol function and with-redefs won't
                 ;; override that reliably
-                (with-redefs [v2.ingest/ingest-file (fn [file]
+                (with-redefs [v2.ingest/ingest-file (fn [^java.io.File file]
                                                       (cond-> (ingest-file file)
                                                         (str/includes? (.getName file) (:entity_id card))
                                                         (assoc :collection_id "DoesNotExist")))]

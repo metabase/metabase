@@ -89,6 +89,12 @@
     (can-write? search-ctx instance)
     (can-read? search-ctx instance)))
 
+(defmethod check-permissions-for-model :measure
+  [search-ctx instance]
+  (if (:archived? search-ctx)
+    (can-write? search-ctx instance)
+    (can-read? search-ctx instance)))
+
 (defmethod check-permissions-for-model :database
   [search-ctx instance]
   (if (:archived? search-ctx)

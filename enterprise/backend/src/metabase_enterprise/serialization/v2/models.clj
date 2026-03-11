@@ -109,6 +109,7 @@
    "QueryField"
    "QueryTable"
    "RecentViews"
+   "ReplacementRun"
    "RemoteSyncObject"
    "RemoteSyncTask"
    "Revision"

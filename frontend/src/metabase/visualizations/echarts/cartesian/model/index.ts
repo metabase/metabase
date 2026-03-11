@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/lib/types";
 import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   getXAxisModel,
@@ -53,8 +54,8 @@ const getSettingsWithDefaultMetricsAndDimensions = (series: SingleSeries) => {
   const { dimensions, metrics } = getSingleSeriesDimensionsAndMetrics(series);
   const settingsWithDefaults = { ...settings };
 
-  settingsWithDefaults["graph.dimensions"] = dimensions;
-  settingsWithDefaults["graph.metrics"] = metrics;
+  settingsWithDefaults["graph.dimensions"] = dimensions.filter(isNotNull);
+  settingsWithDefaults["graph.metrics"] = metrics.filter(isNotNull);
 
   return settingsWithDefaults;
 };

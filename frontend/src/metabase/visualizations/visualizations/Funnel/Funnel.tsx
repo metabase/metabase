@@ -69,7 +69,7 @@ Object.assign(Funnel, {
     }
 
     if (rows.length < 1) {
-      throw new MinRowsError(1, rows.length);
+      throw new MinRowsError(rows.length);
     }
     if (!settings["funnel.dimension"] || !settings["funnel.metric"]) {
       throw new ChartSettingsError(

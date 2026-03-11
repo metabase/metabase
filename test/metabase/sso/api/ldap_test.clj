@@ -53,7 +53,7 @@
       (testing "Valid LDAP settings can still be saved if port is a integer (#18936)"
         (mt/user-http-request :crowberto :put 200 "ldap/settings"
                               (assoc (ldap-test-details)
-                                     :ldap-port (Integer. (ldap.test/get-ldap-port)))))
+                                     :ldap-port (int (ldap.test/get-ldap-port)))))
 
       (testing "Passing ldap-enabled=false will disable LDAP"
         (mt/user-http-request :crowberto :put 200 "ldap/settings" (ldap-test-details false))

@@ -11,7 +11,6 @@ import {
 import { usePrevious } from "react-use";
 import { isEqual } from "underscore";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useListRecentsQuery } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import {
@@ -22,6 +21,7 @@ import {
 import { FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
+import { getUser } from "metabase/selectors/user";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId, DashboardId } from "metabase-types/api";
 
@@ -78,7 +78,7 @@ export const SaveQuestionProvider = ({
     originalQuestion?.collectionId(),
   );
 
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
 
   const targetCollection =
     userTargetCollection === "personal" && currentUser

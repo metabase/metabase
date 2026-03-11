@@ -1,9 +1,6 @@
 import { t } from "ttag";
 
-import {
-  BOOLEAN_OPTION,
-  ID_OPTION,
-} from "metabase-lib/v1/parameters/constants";
+import { BOOLEAN_OPTION } from "metabase-lib/v1/parameters/constants";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { buildTypedOperatorOptions } from "metabase-lib/v1/parameters/utils/operators";
 import type { ParameterMappingOptions } from "metabase-types/api";
@@ -63,12 +60,7 @@ export function getDashboardParameterSections(): ParameterSection[] {
       id: "id",
       name: t`ID`,
       description: t`Primary key, User ID…`,
-      options: [
-        {
-          ...ID_OPTION,
-          sectionId: "id",
-        },
-      ],
+      options: buildTypedOperatorOptions("id", "id", t`ID`),
     },
   ];
 }
@@ -79,6 +71,7 @@ const defaultSectionToParameter = {
   string: "string/=",
   date: "date/all-options",
   boolean: "boolean/=",
+  id: "number/=",
 };
 
 export function getDefaultOptionForParameterSectionMap(): Record<
@@ -91,7 +84,7 @@ export function getDefaultOptionForParameterSectionMap(): Record<
   for (const section of sections) {
     const { id: sectionId, options } = section;
 
-    if (sectionId === "id" || sectionId === "temporal-unit") {
+    if (sectionId === "temporal-unit") {
       map[sectionId] = options[0];
       continue;
     }

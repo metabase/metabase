@@ -1,0 +1,17 @@
+.list {
+  &::before {
+    display: none;
+  }
+}
+
+.allTab :global(.Icon) {
+  display: block;
+}
+
+.closeButton {
+  visibility: hidden;
+}
+
+.tab:hover .closeButton {
+  visibility: visible;
+}

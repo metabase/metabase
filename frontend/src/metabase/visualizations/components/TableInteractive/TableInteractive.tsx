@@ -59,7 +59,7 @@ import type {
   QueryClickActionsMode,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { ClickObject, OrderByDirection } from "metabase-lib/types";
+import type { ClickObject, OrderByDirection } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {

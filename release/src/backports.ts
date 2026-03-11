@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import { sendBackportReminder } from "./slack";
 import type { Issue } from "./types";
 
-const RECENT_BACKPORT_THRESHOLD_HOURS = 8;
+const RECENT_BACKPORT_THRESHOLD_HOURS = 25;
 
 /** check open backports and send slack reminders about stale ones */
 export const checkOpenBackports = async ({ github, owner, repo, channelName }: {

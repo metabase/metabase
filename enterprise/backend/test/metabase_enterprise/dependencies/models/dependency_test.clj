@@ -292,3 +292,60 @@
                 (is (= #{}
                        (set deps))
                     "Should be empty, chain is broken at card2")))))))))
+
+(deftest swap-dependency!-test
+  (testing "swap-dependency! handles the various cases correctly"
+    (mt/with-temp [:model/Card card1 {}
+                   :model/Card card2 {}
+                   :model/Table table1 {:db_id (mt/id)}
+                   :model/Table table2 {:db_id (mt/id)}]
+      (mt/with-model-cleanup [:model/Dependency]
+        (testing "basic swap - old dep exists, new dep doesn't"
+          (t2/insert! :model/Dependency {:from_entity_type :card
+                                         :from_entity_id (:id card1)
+                                         :to_entity_type :table
+                                         :to_entity_id (:id table1)})
+          (deps.graph/swap-dependency! :card (:id card1) [:table (:id table1)] [:table (:id table2)])
+          (is (not (t2/exists? :model/Dependency
+                               :from_entity_type :card
+                               :from_entity_id (:id card1)
+                               :to_entity_type :table
+                               :to_entity_id (:id table1)))
+              "Old dependency should be gone")
+          (is (t2/exists? :model/Dependency
+                          :from_entity_type :card
+                          :from_entity_id (:id card1)
+                          :to_entity_type :table
+                          :to_entity_id (:id table2))
+              "New dependency should exist"))
+
+        (testing "swap when new dep already exists - should just delete old"
+          ;; Set up: card2 depends on both table1 and table2
+          (t2/insert! :model/Dependency [{:from_entity_type :card
+                                          :from_entity_id (:id card2)
+                                          :to_entity_type :table
+                                          :to_entity_id (:id table1)}
+                                         {:from_entity_type :card
+                                          :from_entity_id (:id card2)
+                                          :to_entity_type :table
+                                          :to_entity_id (:id table2)}])
+          ;; This would fail with duplicate key error before the fix
+          (deps.graph/swap-dependency! :card (:id card2) [:table (:id table1)] [:table (:id table2)])
+          (is (not (t2/exists? :model/Dependency
+                               :from_entity_type :card
+                               :from_entity_id (:id card2)
+                               :to_entity_type :table
+                               :to_entity_id (:id table1)))
+              "Old dependency should be deleted")
+          (is (t2/exists? :model/Dependency
+                          :from_entity_type :card
+                          :from_entity_id (:id card2)
+                          :to_entity_type :table
+                          :to_entity_id (:id table2))
+              "New dependency should still exist (only one copy)")
+          (is (= 1 (t2/count :model/Dependency
+                             :from_entity_type :card
+                             :from_entity_id (:id card2)
+                             :to_entity_type :table
+                             :to_entity_id (:id table2)))
+              "Should have exactly one dependency to table2"))))))

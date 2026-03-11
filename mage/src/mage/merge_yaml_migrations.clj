@@ -17,11 +17,11 @@
         (println (.getMessage e)))
       (u/exit 2))))
 
-(def ^:private FOOTER-PREFIX
+(def ^:private footer-prefix
   "# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<")
 
 (defn- extract-footer [content]
-  (let [idx (some-> content (str/index-of FOOTER-PREFIX))]
+  (let [idx (some-> content (str/index-of footer-prefix))]
     (if (and idx (pos? idx))
       (subs content idx)
       "")))
@@ -183,6 +183,10 @@
      :cnt (count sorted-merged)}))
 
 ;;
+;; Custom merge driver for per-release *_update_migrations.yaml files.
+;; Directory-based migrations (e.g. 060/*.yaml) have one file per migration
+;; and should use git's default merge strategy.
+;;
 ;; Usage (called by git):
 ;;   merge-yaml-migrations %O %A %B %L %P
 ;;   %O = ancestor's version (base)
@@ -196,7 +200,9 @@
 ;;   1 = conflicts detected (conflict markers added to file)
 ;;   >1 = merge failed
 
-(defn -main [{:keys [arguments]}]
+(defn -main
+  "Main function"
+  [{:keys [arguments]}]
   (when (< (count arguments) 3)
     (binding [*out* *err*]
       (println "Usage: merge-yaml-migrations <base> <ours> <theirs> [conflict-marker-size] [file-path]")
@@ -209,6 +215,11 @@
                          p
                          (str u/project-root-directory "/" p)))
         [base ours theirs marker-size filepath] arguments
+        _ (when (and filepath (not (str/ends-with? filepath "_update_migrations.yaml")))
+            (binding [*out* *err*]
+              (println "merge-yaml-migrations is only for per-release *_update_migrations.yaml files, not:" filepath)
+              (println "Falling back to git's default merge."))
+            (u/exit 1))
         base (resolve-path base)
         ours (resolve-path ours)
         theirs (resolve-path theirs)

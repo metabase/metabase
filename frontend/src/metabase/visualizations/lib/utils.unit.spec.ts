@@ -11,20 +11,29 @@ import {
   getDefaultPivotColumn,
   preserveExistingColumnsOrder,
 } from "metabase/visualizations/lib/utils";
-import { createMockColumn } from "metabase-types/api/mocks";
+import type { Breakout, Card, CardId, DatasetQuery } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
+
+import type { Extent } from "../types";
 
 // TODO Atte Keinänen 5/31/17 Rewrite tests using metabase-lib methods instead of a raw format
 
-const baseQuery = {
+const baseQueryBreakout: Breakout = ["field", 2, null];
+
+const baseQuery: DatasetQuery = {
   database: 1,
   type: "query",
   query: {
     "source-table": 2,
     aggregation: [["count"]],
-    breakout: [["field", 2, null]],
+    breakout: [baseQueryBreakout],
   },
 };
-const derivedQuery = {
+const derivedQuery: DatasetQuery = {
   ...baseQuery,
   query: {
     ...baseQuery.query,
@@ -32,17 +41,14 @@ const derivedQuery = {
   },
 };
 
-const breakoutMultiseriesQuery = {
+const breakoutMultiseriesQuery: DatasetQuery = {
   ...baseQuery,
   query: {
     ...baseQuery.query,
-    breakout: [
-      ...baseQuery.query.breakout,
-      ["field", 10, { "source-field": 1 }],
-    ],
+    breakout: [baseQueryBreakout, ["field", 10, { "source-field": 1 }]],
   },
 };
-const derivedBreakoutMultiseriesQuery = {
+const derivedBreakoutMultiseriesQuery: DatasetQuery = {
   ...breakoutMultiseriesQuery,
   query: {
     ...breakoutMultiseriesQuery.query,
@@ -50,57 +56,59 @@ const derivedBreakoutMultiseriesQuery = {
   },
 };
 
-const savedCard = {
+const savedCard = createMockCard({
   id: 3,
   dataset_query: baseQuery,
   display: "line",
-};
-const clonedSavedCard = {
+});
+const clonedSavedCard = createMockCard({
   id: 3,
   dataset_query: _.clone(baseQuery),
   display: "line",
-};
-const dirtyCardOnlyOriginalId = {
+});
+const dirtyCardOnlyOriginalId = createMockCard({
   original_card_id: 7,
   dataset_query: baseQuery,
   display: "line",
-};
+});
 
-const derivedCard = {
+const derivedCard: Card = {
   ...dirtyCardOnlyOriginalId,
   dataset_query: derivedQuery,
 };
-const derivedCardModifiedId = {
+const derivedCardModifiedId: Card = {
   ...savedCard,
   dataset_query: derivedQuery,
 };
-const derivedDirtyCard = {
+const derivedDirtyCard: Card = {
   ...dirtyCardOnlyOriginalId,
   dataset_query: derivedQuery,
 };
 
-const derivedCardWithDifferentDisplay = {
+const derivedCardWithDifferentDisplay: Card = {
   ...savedCard,
   display: "table",
 };
 
-const savedMultiseriesCard = {
+const savedMultiseriesCard: Card = {
   ...savedCard,
   dataset_query: breakoutMultiseriesQuery,
 };
-const derivedMultiseriesCard = {
-  // id is not present when drilling through series / multiseries
+const derivedMultiseriesCard = createMockCard({
+  id: null as unknown as CardId, // id is not present when drilling through series / multiseries
   dataset_query: derivedBreakoutMultiseriesQuery,
   display: savedCard.display,
-};
-const newCard = {
+});
+const newCard = createMockCard({
+  id: null as unknown as CardId, // id is not present when drilling through series / multiseries
   dataset_query: baseQuery,
   display: "line",
-};
-const modifiedNewCard = {
+});
+const modifiedNewCard = createMockCard({
+  id: null as unknown as CardId, // id is not present when drilling through series / multiseries
   dataset_query: derivedQuery,
   display: "line",
-};
+});
 
 describe("metabase/visualization/lib/utils", () => {
   describe("cardHasBecomeDirty", () => {
@@ -168,13 +176,13 @@ describe("metabase/visualization/lib/utils", () => {
 
   describe("getColumnCardinality", () => {
     it("should get column cardinality", () => {
-      const cols = [{}];
+      const cols = [createMockColumn({})];
       const rows = [[1], [2], [3], [3]];
       expect(getColumnCardinality(cols, rows, 0)).toEqual(3);
     });
 
     it("should get column cardinality for frozen column", () => {
-      const cols = [{}];
+      const cols = [createMockColumn({})];
       const rows = [[1], [2], [3], [3]];
       Object.freeze(cols[0]);
       expect(getColumnCardinality(cols, rows, 0)).toEqual(3);
@@ -183,8 +191,10 @@ describe("metabase/visualization/lib/utils", () => {
 
   describe("computeMaxDecimalsForValues", () => {
     it("should correctly compute max decimals for normal numbers", () => {
-      const options = { maximumSignificantDigits: 2 };
-      const testCases = [
+      const options: Intl.NumberFormatOptions = {
+        maximumSignificantDigits: 2,
+      };
+      const testCases: [number[], number][] = [
         [[123, 321], 0],
         [[1.2, 321], 1],
         [[1, 0.123], 2],
@@ -195,8 +205,11 @@ describe("metabase/visualization/lib/utils", () => {
     });
 
     it("should correctly compute max decimals for percentages", () => {
-      const options = { maximumSignificantDigits: 2, style: "percent" };
-      const testCases = [
+      const options: Intl.NumberFormatOptions = {
+        maximumSignificantDigits: 2,
+        style: "percent",
+      };
+      const testCases: [number[], number][] = [
         [[0.12, 0.123], 0],
         [[12, 0.012], 1],
         [[0.9999, 0.0001], 2],
@@ -212,26 +225,27 @@ describe("metabase/visualization/lib/utils", () => {
       expect(
         getDefaultDimensionsAndMetrics([
           {
-            data: {
+            card: createMockCard(),
+            data: createMockDatasetData({
               rows: _.range(0, 100).map((v) => [0, 0, v]),
               cols: [
-                {
+                createMockColumn({
                   name: "count",
                   base_type: "type/Number",
                   source: "aggregation",
-                },
-                {
+                }),
+                createMockColumn({
                   name: "low",
                   base_type: "type/Number",
                   source: "breakout",
-                },
-                {
+                }),
+                createMockColumn({
                   name: "high",
                   base_type: "type/Number",
                   source: "breakout",
-                },
+                }),
               ],
-            },
+            }),
           },
         ]),
       ).toEqual({ dimensions: ["high", "low"], metrics: ["count"] });
@@ -241,26 +255,27 @@ describe("metabase/visualization/lib/utils", () => {
       expect(
         getDefaultDimensionsAndMetrics([
           {
-            data: {
+            card: createMockCard(),
+            data: createMockDatasetData({
               rows: _.range(0, 101).map((v) => [0, v, v]),
               cols: [
-                {
+                createMockColumn({
                   name: "count",
                   base_type: "type/Number",
                   source: "aggregation",
-                },
-                {
+                }),
+                createMockColumn({
                   name: "high1",
                   base_type: "type/Number",
                   source: "breakout",
-                },
-                {
+                }),
+                createMockColumn({
                   name: "high2",
                   base_type: "type/Number",
                   source: "breakout",
-                },
+                }),
               ],
-            },
+            }),
           },
         ]),
       ).toEqual({ dimensions: ["high1"], metrics: ["count"] });
@@ -270,26 +285,27 @@ describe("metabase/visualization/lib/utils", () => {
       expect(
         getDefaultDimensionsAndMetrics([
           {
-            data: {
+            card: createMockCard(),
+            data: createMockDatasetData({
               rows: [[0, 0, 0]],
               cols: [
-                {
+                createMockColumn({
                   name: "count",
                   base_type: "type/Number",
                   source: "aggregation",
-                },
-                {
+                }),
+                createMockColumn({
                   name: "date",
                   base_type: "type/DateTime",
                   source: "breakout",
-                },
-                {
+                }),
+                createMockColumn({
                   name: "category",
                   base_type: "type/Text",
                   source: "breakout",
-                },
+                }),
               ],
-            },
+            }),
           },
         ]),
       ).toEqual({ dimensions: ["date", "category"], metrics: ["count"] });
@@ -329,7 +345,7 @@ describe("metabase/visualization/lib/utils", () => {
   });
 
   describe("computeSplit", () => {
-    const extents = [
+    const extents: Extent[] = [
       [6, 8],
       [9, 13],
       [6, 7],
@@ -345,7 +361,7 @@ describe("metabase/visualization/lib/utils", () => {
     ];
 
     it("should return the same number of series as given", () => {
-      expect(computeSplit(extents).flat()).toHaveLength(extents.length);
+      expect(computeSplit(extents)?.flat()).toHaveLength(extents.length);
     });
   });
 
@@ -439,7 +455,7 @@ describe("metabase/visualization/lib/utils", () => {
         ["B", "C", 15],
       ];
 
-      const data = { cols, rows };
+      const data = createMockDatasetData({ cols, rows });
 
       expect(findSensibleSankeyColumns(data)).toEqual({
         source: "source",
@@ -480,7 +496,7 @@ describe("metabase/visualization/lib/utils", () => {
         rows.push([`unique_${i}`, source.toString(), target.toString(), 10]);
       }
 
-      const data = { cols, rows };
+      const data = createMockDatasetData({ cols, rows });
 
       expect(findSensibleSankeyColumns(data)).toEqual({
         source: "good_source",
@@ -519,7 +535,7 @@ describe("metabase/visualization/lib/utils", () => {
         ["2023-01-03", "B", "C", 30],
       ];
 
-      const data = { cols, rows };
+      const data = createMockDatasetData({ cols, rows });
 
       expect(findSensibleSankeyColumns(data)).toEqual({
         source: "source",
@@ -553,7 +569,7 @@ describe("metabase/visualization/lib/utils", () => {
         ["C", "Z", 30],
       ];
 
-      const data = { cols, rows };
+      const data = createMockDatasetData({ cols, rows });
 
       expect(findSensibleSankeyColumns(data)).toEqual({
         source: "dim1",
@@ -582,7 +598,7 @@ describe("metabase/visualization/lib/utils", () => {
         ["C", 30],
       ];
 
-      const data = { cols, rows };
+      const data = createMockDatasetData({ cols, rows });
 
       expect(findSensibleSankeyColumns(data)).toEqual(null);
     });

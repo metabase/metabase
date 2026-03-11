@@ -68,6 +68,7 @@ export function useMetabotSQLSuggestion({
         !responseHasCodeEdit(action)
       ) {
         setHasError(true);
+        throw new Error(t`Something went wrong. Please try again.`);
       } else {
         onGenerated?.();
       }
