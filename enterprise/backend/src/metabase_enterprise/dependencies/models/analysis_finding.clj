@@ -3,6 +3,7 @@
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -32,7 +33,8 @@
    We use `:message` for the error detail if there was an `validation-exception-error`."
   [error]
   {:error-type          (:type error)
-   :error-detail        (or (:name error) (:message error))
+   ;; error-detail cannot be longer than 254
+   :error-detail        (some-> (or (:name error) (:message error)) (u/truncate 254))
    :source-entity-type  (:source-entity-type error)
    :source-entity-id    (:source-entity-id error)})
 

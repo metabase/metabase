@@ -382,7 +382,11 @@ export const getDefaultGoalLabel = () => t`Goal`;
  * @param data - property on the series object from the `rawSeries` array
  * @returns object containing column names
  */
-export function getDefaultScatterColumns(data: DatasetData) {
+export function getDefaultScatterColumns(data: DatasetData): {
+  dimensions: string[] | [null];
+  metrics: string[] | [null];
+  bubble?: null;
+} {
   const { cols, rows } = data;
   const dimensions = cols.filter(isDimension);
   const metrics = cols.filter(isMetric);
@@ -452,7 +456,11 @@ export function getDefaultBubbleSizeCol(data: DatasetData) {
   return getDefaultScatterColumns(data).bubble;
 }
 
-export function getDefaultColumns(series: RawSeries) {
+export function getDefaultColumns(series: RawSeries): {
+  dimensions: string[] | [null];
+  metrics: string[] | [null];
+  bubble?: null;
+} {
   if (series[0].card.display === "scatter") {
     return getDefaultScatterColumns(series[0].data);
   } else {
@@ -533,4 +541,33 @@ export function getSeriesModelsForSettings(
 ) {
   const cardsColumns = getCardsColumns(rawSeries, settings);
   return getCardsSeriesModels(rawSeries, cardsColumns, [], settings);
+}
+
+export function getDefaultBoxplotDimensions(
+  series: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  // since a boxplot needs unaggregated data, we default to only one dimension - the one with the lowest cardinality
+  const dimensions = getDefaultDimensions(series, settings);
+  if (dimensions.length <= 1) {
+    return dimensions;
+  }
+  const { cols, rows } = series[0].data;
+  let lowestDimension: string | null = null;
+  let lowestCardinality = Infinity;
+  for (const dimension of dimensions) {
+    const index = cols.findIndex((col) => col.name === dimension);
+    if (index === -1) {
+      continue;
+    }
+    const cardinality = getColumnCardinality(cols, rows, index);
+    if (cardinality < lowestCardinality) {
+      lowestDimension = dimension;
+      lowestCardinality = cardinality;
+    }
+  }
+  if (lowestDimension == null) {
+    return [];
+  }
+  return [lowestDimension];
 }

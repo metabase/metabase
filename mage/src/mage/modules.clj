@@ -115,6 +115,7 @@
      login-history
      notification
      permissions
+     premium-features
      public-sharing
      pulse
      remote-sync
