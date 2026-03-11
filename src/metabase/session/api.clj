@@ -40,26 +40,30 @@
   authenticated."
   [username password device-info :- request/DeviceInfo]
   (when (sso/ldap-enabled)
-    (let [result (auth-identity/login! :provider/ldap
-                                       {:username username
-                                        :password password
-                                        :device-info device-info})]
-      (cond
-        ;; Fallback when the ldap operation fails
-        (contains? #{:ldap-error :server-error} (:error result))
-        nil
+    ;; Skip LDAP for users that exist locally and aren't LDAP users
+    (let [existing-user (t2/select-one [:model/User :id :sso_source] :%lower.email (u/lower-case-en username))]
+      (when (or (nil? existing-user)                    ; new user — might be provisioned from LDAP
+                (= :ldap (:sso_source existing-user)))  ; known LDAP user
+        (let [result (auth-identity/login! :provider/ldap
+                                           {:username username
+                                            :password password
+                                            :device-info device-info})]
+          (cond
+            ;; Fallback when the ldap operation fails
+            (contains? #{:ldap-error :server-error} (:error result))
+            nil
 
-        (= (:error result) :invalid-credentials)
-        (throw (ex-info (str password-fail-message)
-                        {:status-code 401
-                         :errors {:password password-fail-snippet}}))
+            (= (:error result) :invalid-credentials)
+            (throw (ex-info (str password-fail-message)
+                            {:status-code 401
+                             :errors {:password password-fail-snippet}}))
 
-        (:success? result)
-        (:session result)
+            (:success? result)
+            (:session result)
 
-        :else
-        (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
-                                                 :status-code 401}))))))
+            :else
+            (throw (ex-info (str (:message result)) {:errors {:_error (:error result)}
+                                                     :status-code 401}))))))))
 
 (mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."

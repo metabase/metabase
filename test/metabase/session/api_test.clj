@@ -653,16 +653,24 @@
                  (mt/client :post 401 "session" (mt/user->credentials :crowberto)))))))))
 
 (deftest ldap-login-no-fallback-for-invalid-ldap-password-test
-  (testing "LDAP login - no fallback for users in LDAP with invalid password"
+  (testing "LDAP login - no fallback for LDAP users with invalid password"
     (ldap.test/with-ldap-server!
-      (is (= {:errors {:password "did not match stored password"}}
-             (mt/client :post 401 "session" (mt/user->credentials :lucky)))))))
+      ;; Lucky exists in the mock LDAP server with password "notalmonds".
+      ;; Mark Lucky as an LDAP user so the fix still routes through LDAP auth.
+      ;; Sending the wrong password ("almonds") should fail without falling back to local auth.
+      (t2/update! :model/User (mt/user->id :lucky) {:sso_source :ldap})
+      (try
+        (is (= {:errors {:password "did not match stored password"}}
+               (mt/client :post 401 "session" (mt/user->credentials :lucky))))
+        (finally
+          (t2/update! :model/User (mt/user->id :lucky) {:sso_source nil}))))))
 
 (deftest ldap-login-deactivated-user-test
   (testing "LDAP login - deactivated user cannot login"
     (ldap.test/with-ldap-server!
-      (mt/with-temp [:model/User _ {:email    "sally.brown@metabase.com"
-                                    :is_active false}]
+      (mt/with-temp [:model/User _ {:email      "sally.brown@metabase.com"
+                                    :is_active  false
+                                    :sso_source :ldap}]
         (is (= {:errors {:_error "Your account is disabled."}}
                (mt/client :post 401 "session" {:username "sally.brown@metabase.com"
                                                :password "1234"})))))))
@@ -721,6 +729,31 @@
                       (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
           (let [user-id (t2/select-one-pk :model/User :email "fred.taylor@metabase.com")]
             (is (t2/exists? :model/PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id)))))))))
+
+(deftest ldap-login-skips-ldap-for-non-ldap-user-test
+  (testing "LDAP login - skips LDAP lookup for existing non-LDAP users"
+    (ldap.test/with-ldap-server!
+      ;; Lucky exists locally with sso_source=nil. Even though Lucky also exists in LDAP,
+      ;; the fix should skip LDAP entirely and fall through to local email auth.
+      (mt/with-dynamic-fn-redefs [metabase.sso.ldap.default-implementation/search
+                                  (fn [& _args]
+                                    (throw (Exception. "LDAP should not be called for non-LDAP users")))]
+        ;; Lucky's local password is "almonds" — should authenticate locally without touching LDAP.
+        (is (malli= SessionResponse
+                    (mt/client :post 200 "session" (mt/user->credentials :lucky))))))))
+
+(deftest ldap-login-still-tries-ldap-for-ldap-user-test
+  (testing "LDAP login - still authenticates via LDAP for users with sso_source=:ldap"
+    (ldap.test/with-ldap-server!
+      ;; Lucky exists in LDAP with password "notalmonds".
+      ;; Mark Lucky as an LDAP user so the fix routes through LDAP auth.
+      (t2/update! :model/User (mt/user->id :lucky) {:sso_source :ldap})
+      (try
+        (is (malli= SessionResponse
+                    (mt/client :post 200 "session" {:username "lucky@metabase.com"
+                                                    :password "notalmonds"})))
+        (finally
+          (t2/update! :model/User (mt/user->id :lucky) {:sso_source nil}))))))
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"
