@@ -155,7 +155,6 @@ export const IncrementalTransformSettings = ({
                 source={source}
                 query={libQuery}
                 type={transformType}
-                variant={variant}
                 readOnly={readOnly}
               />
             </Group>
@@ -187,7 +186,6 @@ export const IncrementalTransformSettings = ({
             source={source}
             query={libQuery}
             type={transformType}
-            variant={variant}
           />
           <TargetStrategyFields variant={variant} />
         </>
@@ -232,7 +230,6 @@ type SourceStrategyFieldsProps = {
   source: TransformSource;
   query: Lib.Query | null;
   type: "query" | "native" | "python";
-  variant: "embedded" | "standalone";
   readOnly?: boolean;
 };
 
@@ -240,7 +237,6 @@ function SourceStrategyFields({
   source,
   query,
   type,
-  variant,
   readOnly,
 }: SourceStrategyFieldsProps) {
   const { values } = useFormikContext<IncrementalSettingsFormValues>();
@@ -268,7 +264,7 @@ function SourceStrategyFields({
               query={query}
               source={source}
               disabled={readOnly}
-              autoSelectFirst={variant === "standalone"}
+              autoSelectFirst
             />
           )}
           {type === "native" && query && (
@@ -280,7 +276,7 @@ function SourceStrategyFields({
               descriptionProps={{ lh: "1rem" }}
               query={query}
               disabled={readOnly}
-              autoSelectFirst={variant === "standalone"}
+              autoSelectFirst
             />
           )}
           {type === "python" && "source-tables" in source && (
@@ -292,7 +288,7 @@ function SourceStrategyFields({
               descriptionProps={{ lh: "1rem" }}
               sourceTables={source["source-tables"]}
               disabled={readOnly}
-              autoSelectFirst={variant === "standalone"}
+              autoSelectFirst
             />
           )}
         </>
