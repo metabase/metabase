@@ -9,6 +9,7 @@
   (:require
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.util.performance :refer [some mapv update-keys]]))
 
 ;; Oracle and SQLServer (and maybe others) use 0 and 1 for boolean constants, but, for example, none of the following
@@ -79,9 +80,6 @@
   (and (driver-api/is-clause? :expression clause)
        (boolean-value-clause? (driver-api/expression-with-name sql.qp/*inner-query* (second clause)))))
 
-(def ^:private comparison-operators
-  #{:= :!= :> :>= :< :<= :is-null :not-null :is-empty :not-empty :starts-with :ends-with :contains :does-not-contain :between :inside})
-
 (defn comparison-expression-clause?
   "Is `clause` an :expression clause containing a comparison operator (like :>, :<, :=, etc.)?
 
@@ -91,7 +89,7 @@
   (and (driver-api/is-clause? :expression clause)
        (->> (second clause)
             (driver-api/expression-with-name sql.qp/*inner-query*)
-            (driver-api/is-clause? comparison-operators))))
+            (driver-api/is-clause? lib.schema.filter/comparison-operators))))
 
 (defn boolean->comparison
   "Convert boolean field refs or expression literals to equivalent boolean comparison expressions.

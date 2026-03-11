@@ -29,6 +29,9 @@
                                    (expression/comparable-expressions? (get argv i) (get argv j)))
                                  compared-position-pairs)))))]]))
 
+(def comparison-operators
+  #{:= :!= :> :>= :< :<= :is-null :not-null :is-empty :not-empty :starts-with :ends-with :contains :does-not-contain :between :inside})
+
 (mr/def ::default-filter-operator
   "Filter operators that should be supported by any column type. Note that the FE allows only `:is-empty` and
   `:not-empty` for string columns."
