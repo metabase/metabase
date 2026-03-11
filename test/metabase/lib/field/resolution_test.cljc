@@ -1806,3 +1806,44 @@
       (testing "ref with :source-field-name should resolve to the column with matching :fk-field-name"
         (is (= (:lib/desired-column-alias stage-1-renamed-cat)
                (:lib/source-column-alias (lib.field.resolution/resolve-field-ref query 2 renamed-ref))))))))
+
+(deftest ^:parallel resolve-field-ref-missing-table-previous-stage-metadata-test
+  (testing "resolve-field-ref should not throw when the source table is missing from the metadata provider"
+    (let [table-id 9999
+          mp       (lib.tu/mock-metadata-provider
+                    meta/metadata-provider
+                    {:tables [{:id table-id :name "ORDERS"}]
+                     :fields [{:id 1 :table-id table-id :name "ID" :base-type :type/BigInteger}]})
+          query    (as-> (lib/query mp (lib.metadata/table mp table-id)) q
+                     (lib/with-fields q (lib/fieldable-columns q))
+                     (lib/append-stage q)
+                     (lib/with-fields q (lib/fieldable-columns q)))
+          field-ref (lib/ref (first (lib/fieldable-columns query)))
+          query     (assoc query :lib/metadata meta/metadata-provider)]
+      (is (=? {::lib.field.resolution/fallback-metadata? true}
+              (lib.field.resolution/resolve-field-ref query -1 field-ref))))))
+
+(deftest ^:parallel resolve-field-ref-wrong-join-alias-missing-card-previous-stage-metadata-test
+  (testing "resolve-field-ref should not throw when a join's source-card is missing from the metadata provider"
+    (let [orders-with-join (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                               (lib/join (meta/table-metadata :products)))
+          field-ref        (lib/ref (m/find-first #(= (:name %) "CATEGORY") (lib/filterable-columns orders-with-join)))
+          mp               (lib.tu/metadata-provider-with-card-from-query 1 orders-with-join)
+          query            (-> (lib/query mp (lib.metadata/card mp 1))
+                               (assoc :lib/metadata meta/metadata-provider))]
+      (is (=? {::lib.field.resolution/fallback-metadata? true}
+              (lib.field.resolution/resolve-field-ref query -1 field-ref))))))
+
+(deftest ^:parallel resolve-field-ref-missing-parent-field-test
+  (testing "resolve-field-ref should not throw when a nested column's parent-id points to a non-existent field"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:fields [{:id        999998
+                            :table-id  (meta/id :orders)
+                            :name      "nested_col"
+                            :base-type :type/Text
+                            :parent-id 999999}]})
+          query (lib/query mp (meta/table-metadata :orders))
+          field-ref (lib/ref (m/find-first #(= (:name %) "nested_col") (lib/fieldable-columns query)))]
+      (is (=? {:name "nested_col"}
+              (lib.field.resolution/resolve-field-ref query -1 field-ref))))))

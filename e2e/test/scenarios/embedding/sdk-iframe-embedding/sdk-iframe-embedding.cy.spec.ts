@@ -499,16 +499,42 @@ describe("scenarios > embedding > modular embedding", () => {
 
       cy.wait("@getDashCardQuery");
 
+      // Spy on the iframe's anchor clicks and window.open
+      // so we can check the default behavior is prevented
+      cy.get("iframe").then(($iframe) => {
+        const iframeWin: any = $iframe[0].contentWindow;
+        expect(iframeWin).to.not.be.null;
+
+        iframeWin.__blankLinkClicks = [];
+        iframeWin.__windowOpenCalls = [];
+
+        iframeWin.HTMLAnchorElement.prototype.click = function () {
+          iframeWin.__blankLinkClicks.push(this.href);
+        };
+
+        iframeWin.open = function (...args: unknown[]) {
+          iframeWin.__windowOpenCalls.push(args);
+        };
+      });
+
       frame.within(() => {
         cy.findByText("Order 448").click();
       });
 
-      // Verify handleLink was called with the correct URL
+      cy.log("Verify handleLink was called with the correct URL");
       cy.window()
         .its("handleLinkCalls")
         .should("have.length", 1)
         .its(0)
         .should("include", "https://example.org/order/448");
+
+      cy.log("Verify that no default navigation happened");
+      cy.get("iframe")
+        .its("0.contentWindow.__blankLinkClicks")
+        .should("have.length", 0);
+      cy.get("iframe")
+        .its("0.contentWindow.__windowOpenCalls")
+        .should("have.length", 0);
     });
   });
 
@@ -565,59 +591,223 @@ describe("scenarios > embedding > modular embedding", () => {
         event: "setup",
         global: {
           auth_method: "sso",
+          locale_used: false,
         },
-        dashboard: {
-          with_title: {
-            false: 0,
-            true: 1,
+        components: [
+          {
+            name: "dashboard",
+            properties: [
+              {
+                name: "drills",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_downloads",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_title",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_subscriptions",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "auto_refresh_interval",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "enable_entity_navigation",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
           },
-          with_downloads: {
-            false: 1,
-            true: 0,
+          {
+            name: "question",
+            properties: [
+              {
+                name: "drills",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_downloads",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_title",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "is_save_enabled",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_alerts",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
           },
-          drills: {
-            false: 0,
-            true: 1,
+          {
+            name: "exploration",
+            properties: [
+              {
+                name: "is_save_enabled",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "id_new_native",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "id_new",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+            ],
           },
-          with_subscriptions: {
-            false: 0,
-            true: 1,
+          {
+            name: "browser",
+            properties: [
+              {
+                name: "read_only",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "enable_entity_navigation",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
           },
+        ],
+      });
+    });
+
+    it("should send locale_used=true when locale is configured", () => {
+      cy.signOut();
+      cy.visit("http://localhost:4000");
+      const frame = H.loadSdkIframeEmbedTestPage({
+        origin: "http://different-than-metabase-instance.com",
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+            },
+          },
+        ],
+        metabaseConfig: {
+          locale: "de",
         },
-        question: {
-          drills: {
-            false: 0,
-            true: 1,
-          },
-          with_downloads: {
-            false: 1,
-            true: 0,
-          },
-          with_title: {
-            false: 0,
-            true: 1,
-          },
-          is_save_enabled: {
-            false: 1,
-            true: 0,
-          },
-          with_alerts: {
-            false: 1,
-            true: 0,
-          },
+        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`,
+      });
+
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "setup",
+        global: {
+          auth_method: "sso",
+          locale_used: true,
         },
-        exploration: {
-          is_save_enabled: {
-            false: 1,
-            true: 0,
+        components: [
+          {
+            name: "dashboard",
+            properties: [
+              {
+                name: "drills",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_downloads",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "with_title",
+                values: [
+                  { group: "false", value: 0 },
+                  { group: "true", value: 1 },
+                ],
+              },
+              {
+                name: "with_subscriptions",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "auto_refresh_interval",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+              {
+                name: "enable_entity_navigation",
+                values: [
+                  { group: "false", value: 1 },
+                  { group: "true", value: 0 },
+                ],
+              },
+            ],
           },
-        },
-        browser: {
-          read_only: {
-            false: 0,
-            true: 1,
-          },
-        },
+        ],
       });
     });
 
@@ -637,7 +827,9 @@ describe("scenarios > embedding > modular embedding", () => {
           event: "setup",
           global: {
             auth_method: "session",
+            locale_used: false,
           },
+          components: [],
         },
         // Expect that the usage event shouldn't be sent
         0,
