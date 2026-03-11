@@ -3157,6 +3157,47 @@ databaseChangeLog:
             columnNames: identifier
             constraintName: uq_custom_viz_plugin_identifier
 
+  - changeSet:
+      id: v59.2026-03-11T12:00:00
+      author: sgavrylov
+      comment: Add enabled column to custom_viz_plugin table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: custom_viz_plugin
+                columnName: enabled
+      changes:
+        - addColumn:
+            tableName: custom_viz_plugin
+            columns:
+              - column:
+                  name: enabled
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Whether the plugin is enabled for use in dashboards and questions
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v59.2026-03-11T12:30:00
+      author: sgavrylov
+      comment: Add icon column to custom_viz_plugin table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: custom_viz_plugin
+                columnName: icon
+      changes:
+        - addColumn:
+            tableName: custom_viz_plugin
+            columns:
+              - column:
+                  name: icon
+                  type: varchar(254)
+                  remarks: Icon name for the visualization type selector
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

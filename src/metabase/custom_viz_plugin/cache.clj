@@ -6,7 +6,6 @@
    [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [metabase.custom-viz-plugin.git :as git]
-   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
@@ -17,6 +16,10 @@
 
 ;; plugin-id -> {:content str, :hash str, :commit str}
 (defonce ^:private bundle-cache (atom {}))
+;; plugin-id -> monotonic nano-time timestamp of last failed fetch
+(defonce ^:private last-fetch-failure-ns (atom {}))
+
+(def ^:private ^:const fetch-failure-cooldown-ms (* 5 60 1000))
 
 ;;; ------------------------------------------------ Disk Cache ------------------------------------------------
 
@@ -48,38 +51,50 @@
 
 ;;; ------------------------------------------------ Fetch & Cache ------------------------------------------------
 
+(defn- in-failure-cooldown?
+  [plugin-id]
+  (when-let [last-failure-ns (get @last-fetch-failure-ns plugin-id)]
+    (< (/ (- (System/nanoTime) last-failure-ns) 1e6)
+       fetch-failure-cooldown-ms)))
+
 (defn fetch-and-cache!
   "Fetch index.js from the plugin's git repo, update both caches and DB record.
    Returns the cached entry or nil on failure."
-  [{:keys [id repo_url access_token pinned_version]}]
-  (try
-    (let [conn          (git/create-repo-connection repo_url access_token)
-          _             (git/fetch! conn)
-          ref-to-use    (or pinned_version "HEAD")
-          commit-sha    (git/resolve-ref conn ref-to-use)
-          _             (when-not commit-sha
-                          (throw (ex-info (str "Cannot resolve ref: " ref-to-use) {:ref ref-to-use})))
-          content       (git/read-file conn commit-sha "index.js")
-          _             (when-not content
-                          (throw (ex-info "index.js not found in repository" {:commit commit-sha})))
-          hash          (content-hash content)
-          cache-entry   {:content content :hash hash :commit commit-sha}]
-      ;; update caches
-      (swap! bundle-cache assoc id cache-entry)
-      (write-to-disk! id content)
-      ;; update DB
-      (t2/update! :model/CustomVizPlugin id
-                  {:status           :active
-                   :error_message    nil
-                   :resolved_commit  commit-sha})
-      (log/infof "Cached custom viz plugin %d (commit %s)" id commit-sha)
-      cache-entry)
-    (catch Exception e
-      (log/errorf e "Failed to fetch custom viz plugin %d from %s" id repo_url)
-      (t2/update! :model/CustomVizPlugin id
-                  {:status        :error
-                   :error_message (ex-message e)})
-      nil)))
+  ([plugin]
+   (fetch-and-cache! plugin nil))
+  ([{:keys [id repo_url access_token pinned_version]}
+    {:keys [force?]
+     :or   {force? false}}]
+   (if (and (not force?) (in-failure-cooldown? id))
+     nil
+     (try
+       (let [conn          (git/create-repo-connection repo_url access_token)
+             _             (git/fetch! conn)
+             ref-to-use    (or pinned_version "HEAD")
+             commit-sha    (git/resolve-ref conn ref-to-use)
+             _             (when-not commit-sha
+                             (throw (ex-info (str "Cannot resolve ref: " ref-to-use) {:ref ref-to-use})))
+             content       (git/read-file conn commit-sha "index.js")
+             _             (when-not content
+                             (throw (ex-info "index.js not found in repository" {:commit commit-sha})))
+             hash          (content-hash content)
+             cache-entry   {:content content :hash hash :commit commit-sha}]
+         ;; update caches
+         (swap! bundle-cache assoc id cache-entry)
+         (swap! last-fetch-failure-ns dissoc id)
+         (write-to-disk! id content)
+         ;; update DB
+         (t2/update! :model/CustomVizPlugin id
+                     {:status           :active
+                      :error_message    nil
+                      :resolved_commit  commit-sha})
+         cache-entry)
+       (catch Exception e
+         (swap! last-fetch-failure-ns assoc id (System/nanoTime))
+         (t2/update! :model/CustomVizPlugin id
+                     {:status        :error
+                      :error_message (ex-message e)})
+         nil)))))
 
 ;;; ------------------------------------------------ Get / Evict ------------------------------------------------
 
@@ -96,4 +111,5 @@
   "Remove a plugin from both caches."
   [plugin-id]
   (swap! bundle-cache dissoc plugin-id)
+  (swap! last-fetch-failure-ns dissoc plugin-id)
   (delete-from-disk! plugin-id))

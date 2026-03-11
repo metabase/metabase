@@ -20,11 +20,20 @@
    [:display_name  ms/NonBlankString]
    [:identifier    ms/NonBlankString]
    [:status        [:enum "pending" "active" "error"]]
+   [:enabled       :boolean]
+   [:icon          {:optional true} [:maybe :string]]
    [:error_message {:optional true} [:maybe :string]]
    [:pinned_version  {:optional true} [:maybe :string]]
    [:resolved_commit {:optional true} [:maybe :string]]
    [:created_at    :any]
    [:updated_at    :any]])
+
+(def ^:private CustomVizPluginRuntimeResponse
+  [:map
+   [:id           ms/PositiveInt]
+   [:identifier   ms/NonBlankString]
+   [:display_name ms/NonBlankString]
+   [:bundle_url   ms/NonBlankString]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
@@ -40,6 +49,14 @@
       strip-token
       (update :status name)))
 
+(defn- plugin->runtime-response
+  "Convert a plugin record to the safe runtime response shape."
+  [{:keys [id identifier display_name]}]
+  {:id           id
+   :identifier   identifier
+   :display_name display_name
+   :bundle_url   (format "/api/custom-viz-plugin/%d/bundle" id)})
+
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
 
 (api.macros/defendpoint :post "/" :- CustomVizPluginResponse
@@ -48,10 +65,10 @@
   [_route-params
    _query-params
    {:keys [repo_url display_name access_token pinned_version]} :- [:map
-                                                                    [:repo_url      ms/NonBlankString]
-                                                                    [:display_name  ms/NonBlankString]
-                                                                    [:access_token  {:optional true} [:maybe :string]]
-                                                                    [:pinned_version {:optional true} [:maybe :string]]]]
+                                                                   [:repo_url      ms/NonBlankString]
+                                                                   [:display_name  ms/NonBlankString]
+                                                                   [:access_token  {:optional true} [:maybe :string]]
+                                                                   [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (let [identifier (git/parse-repo-name repo_url)
         plugin     (first (t2/insert-returning-instances! :model/CustomVizPlugin
@@ -72,10 +89,14 @@
   (api/check-superuser)
   (map plugin->response (t2/select :model/CustomVizPlugin {:order-by [[:display_name :asc]]})))
 
-(api.macros/defendpoint :get "/list" :- [:sequential CustomVizPluginResponse]
-  "List active custom visualization plugins. Available to any authenticated user."
+(api.macros/defendpoint :get "/list" :- [:sequential CustomVizPluginRuntimeResponse]
+  "List active and enabled custom visualization plugins. Available to any authenticated user."
   []
-  (map plugin->response (t2/select :model/CustomVizPlugin :status "active" {:order-by [[:display_name :asc]]})))
+  (map plugin->runtime-response
+       (t2/select [:model/CustomVizPlugin :id :identifier :display_name]
+                  :status :active
+                  :enabled true
+                  {:order-by [[:display_name :asc]]})))
 
 (api.macros/defendpoint :delete "/:id"
   "Remove a custom visualization plugin and evict its cached bundle."
@@ -85,6 +106,23 @@
   (cache/evict! id)
   (t2/delete! :model/CustomVizPlugin :id id)
   nil)
+
+(api.macros/defendpoint :put "/:id" :- CustomVizPluginResponse
+  "Update a custom visualization plugin."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   body :- [:map
+            [:enabled       {:optional true} [:maybe :boolean]]
+            [:display_name  {:optional true} [:maybe ms/NonBlankString]]
+            [:icon          {:optional true} [:maybe :string]]
+            [:access_token  {:optional true} [:maybe :string]]
+            [:pinned_version {:optional true} [:maybe :string]]]]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+  (let [updates (into {} (filter (fn [[_ v]] (some? v))) body)]
+    (when (seq updates)
+      (t2/update! :model/CustomVizPlugin id updates)))
+  (plugin->response (t2/select-one :model/CustomVizPlugin :id id)))
 
 (api.macros/defendpoint :get "/:id/bundle"
   "Serve the cached JS bundle for a plugin.
@@ -117,5 +155,5 @@
   (api/check-superuser)
   (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
     (cache/evict! id)
-    (cache/fetch-and-cache! plugin)
+    (cache/fetch-and-cache! plugin {:force? true})
     (plugin->response (t2/select-one :model/CustomVizPlugin :id id))))

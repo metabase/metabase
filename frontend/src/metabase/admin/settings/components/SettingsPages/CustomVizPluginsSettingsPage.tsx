@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -9,6 +9,8 @@ import {
   useCreateCustomVizPluginMutation,
   useDeleteCustomVizPluginMutation,
   useListAllCustomVizPluginsQuery,
+  useRefreshCustomVizPluginMutation,
+  useUpdateCustomVizPluginMutation,
 } from "metabase/api";
 import {
   Form,
@@ -18,102 +20,129 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import {
-  Badge,
+  ActionIcon,
   Box,
   Button,
   Flex,
   Group,
   Icon,
+  type IconName,
   Loader,
+  Menu,
+  Select,
+  type SelectOption,
   Stack,
+  Switch,
   Text,
 } from "metabase/ui";
+import { iconNames } from "metabase/ui/components/icons/Icon/icons";
 import type { CustomVizPlugin } from "metabase-types/api";
 
-function PluginStatusBadge({ status }: { status: CustomVizPlugin["status"] }) {
-  const color =
-    status === "active" ? "success" : status === "error" ? "error" : "warning";
-  return <Badge color={color}>{status}</Badge>;
-}
+const DEFAULT_ICON: IconName = "area";
 
-function PluginListItem({
-  plugin,
-  onDelete,
-}: {
-  plugin: CustomVizPlugin;
-  onDelete: (id: number) => void;
-}) {
-  const [isDeleting, setIsDeleting] = useState(false);
+const ICON_OPTIONS: SelectOption[] = iconNames.map((name) => ({
+  value: name,
+  label: name,
+  icon: name as IconName,
+}));
 
-  const handleDelete = useCallback(async () => {
-    setIsDeleting(true);
-    try {
-      await onDelete(plugin.id);
-    } finally {
-      setIsDeleting(false);
-    }
-  }, [plugin.id, onDelete]);
-
+function IconPreview({ iconName }: { iconName: IconName }) {
   return (
-    <Flex
-      justify="space-between"
-      align="center"
-      p="md"
-      style={{
-        border: "1px solid var(--mb-color-border)",
-        borderRadius: "var(--mb-radius-md)",
-      }}
+    <ActionIcon
+      w="3.125rem"
+      h="3.125rem"
+      radius="xl"
+      color="brand"
+      variant="outline"
+      style={{ border: "1px solid var(--mb-color-border)" }}
     >
-      <Stack gap="xs">
-        <Group gap="sm">
-          <Text fw={700}>{plugin.display_name}</Text>
-          <PluginStatusBadge status={plugin.status} />
-        </Group>
-        <Text size="sm" c="text-tertiary">
-          {plugin.repo_url}
-        </Text>
-        {plugin.error_message && (
-          <Text size="sm" c="error">
-            {plugin.error_message}
-          </Text>
-        )}
-        {plugin.resolved_commit && (
-          <Text size="sm" c="text-tertiary">
-            {t`Commit`}: {plugin.resolved_commit.slice(0, 8)}
-            {plugin.pinned_version && ` (${plugin.pinned_version})`}
-          </Text>
-        )}
-      </Stack>
-      <Button
-        variant="subtle"
-        color="error"
-        loading={isDeleting}
-        onClick={handleDelete}
-        leftSection={<Icon name="trash" />}
-      >
-        {t`Remove`}
-      </Button>
-    </Flex>
+      <Icon name={iconName} c="brand" size={20} />
+    </ActionIcon>
   );
 }
 
-function AddPluginForm({ onClose }: { onClose: () => void }) {
+function IconPickerField({
+  value,
+  onChange,
+}: {
+  value: IconName;
+  onChange: (icon: IconName) => void;
+}) {
+  return (
+    <Box>
+      <Text fw={700} size="sm" mb={4}>
+        {t`Icon (optional)`}
+      </Text>
+      <Group gap="md" align="center">
+        <Box style={{ flex: 1 }}>
+          <Select
+            data={ICON_OPTIONS}
+            value={value}
+            onChange={(val) => onChange((val as IconName) ?? DEFAULT_ICON)}
+            searchable
+            clearable
+            placeholder={t`Search icons...`}
+          />
+        </Box>
+        <IconPreview iconName={value} />
+      </Group>
+    </Box>
+  );
+}
+
+function PluginForm({
+  plugin,
+  onClose,
+}: {
+  plugin?: CustomVizPlugin;
+  onClose: () => void;
+}) {
   const [createPlugin] = useCreateCustomVizPluginMutation();
+  const [updatePlugin] = useUpdateCustomVizPluginMutation();
+  const isEdit = Boolean(plugin);
+
+  const [selectedIcon, setSelectedIcon] = useState<IconName>(
+    (plugin?.icon as IconName) ?? DEFAULT_ICON,
+  );
+
+  const initialValues = useMemo(
+    () => ({
+      repo_url: plugin?.repo_url ?? "",
+      display_name: plugin?.display_name ?? "",
+      access_token: "",
+      pinned_version: plugin?.pinned_version ?? "",
+    }),
+    [plugin],
+  );
 
   const handleSubmit = useCallback(
     async (values: {
       repo_url: string;
       display_name: string;
       access_token: string;
+      pinned_version: string;
     }) => {
-      await createPlugin({
-        repo_url: values.repo_url,
-        display_name: values.display_name,
-        access_token: values.access_token || undefined,
-      }).unwrap();
+      const icon = selectedIcon === DEFAULT_ICON ? null : selectedIcon;
+
+      if (isEdit && plugin) {
+        await updatePlugin({
+          id: plugin.id,
+          display_name: values.display_name,
+          icon,
+          access_token: values.access_token || undefined,
+          pinned_version: values.pinned_version || undefined,
+        }).unwrap();
+      } else {
+        await createPlugin({
+          repo_url: values.repo_url,
+          display_name: values.display_name,
+          access_token: values.access_token || undefined,
+          pinned_version: values.pinned_version || undefined,
+        }).unwrap();
+      }
       onClose();
     },
-    [createPlugin, onClose],
+    [createPlugin, updatePlugin, plugin, isEdit, selectedIcon, onClose],
   );
 
   return (
@@ -124,39 +153,62 @@ function AddPluginForm({ onClose }: { onClose: () => void }) {
         borderRadius: "var(--mb-radius-md)",
       }}
     >
-      <FormProvider
-        initialValues={{ repo_url: "", display_name: "", access_token: "" }}
-        onSubmit={handleSubmit}
-      >
+      <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>
         {({ dirty }) => (
           <Form>
-            <Stack gap="md">
-              <FormTextInput
-                name="repo_url"
-                label={t`Repository URL`}
-                placeholder="https://github.com/user/custom-viz-plugin"
-                autoFocus
-              />
-              <FormTextInput
-                name="display_name"
-                label={t`Display name`}
-                placeholder={t`My Custom Visualization`}
-              />
-              <FormTextInput
-                name="access_token"
-                label={t`Access token (optional)`}
-                description={
-                  <Text c="text-tertiary" size="sm" component="span">
-                    {t`Personal access token for private repositories`}
-                  </Text>
-                }
-                type="password"
-              />
+            <Stack gap="lg">
+              <Stack gap="md">
+                <Text fw={700}>{t`Git settings`}</Text>
+                <FormTextInput
+                  name="repo_url"
+                  label={t`Repository URL`}
+                  placeholder="https://github.com/user/custom-viz-plugin"
+                  disabled={isEdit}
+                  autoFocus={!isEdit}
+                />
+                <FormTextInput
+                  name="access_token"
+                  label={t`Access token (optional)`}
+                  description={
+                    <Text c="text-tertiary" size="sm" component="span">
+                      {t`Personal access token for private repositories`}
+                    </Text>
+                  }
+                  type="password"
+                />
+                <FormTextInput
+                  name="pinned_version"
+                  label={t`Pinned version (optional)`}
+                  description={
+                    <Text c="text-tertiary" size="sm" component="span">
+                      {t`Branch, tag, or commit SHA to pin to`}
+                    </Text>
+                  }
+                  placeholder="main"
+                />
+              </Stack>
+              <Stack gap="md">
+                <Text fw={700}>{t`Customization`}</Text>
+                <FormTextInput
+                  name="display_name"
+                  label={t`Display name`}
+                  placeholder={t`My Custom Visualization`}
+                  autoFocus={isEdit}
+                />
+                <IconPickerField
+                  value={selectedIcon}
+                  onChange={setSelectedIcon}
+                />
+              </Stack>
               <FormErrorMessage />
               <Group gap="sm">
                 <FormSubmitButton
-                  label={t`Add plugin`}
-                  disabled={!dirty}
+                  label={isEdit ? t`Update plugin` : t`Add plugin`}
+                  disabled={
+                    !dirty &&
+                    selectedIcon ===
+                      ((plugin?.icon as IconName) ?? DEFAULT_ICON)
+                  }
                   variant="filled"
                 />
                 <Button variant="subtle" onClick={onClose}>
@@ -171,10 +223,126 @@ function AddPluginForm({ onClose }: { onClose: () => void }) {
   );
 }
 
+function PluginListItem({
+  plugin,
+  onDelete,
+  onEdit,
+}: {
+  plugin: CustomVizPlugin;
+  onDelete: (id: number) => void;
+  onEdit: (plugin: CustomVizPlugin) => void;
+}) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [updatePlugin] = useUpdateCustomVizPluginMutation();
+  const [refreshPlugin, { isLoading: isRefreshing }] =
+    useRefreshCustomVizPluginMutation();
+
+  const handleDelete = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete(plugin.id);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [plugin.id, onDelete]);
+
+  const handleToggleEnabled = useCallback(async () => {
+    await updatePlugin({ id: plugin.id, enabled: !plugin.enabled });
+  }, [plugin.id, plugin.enabled, updatePlugin]);
+
+  const handleRefresh = useCallback(async () => {
+    await refreshPlugin(plugin.id);
+  }, [plugin.id, refreshPlugin]);
+
+  return (
+    <Flex
+      justify="space-between"
+      align="flex-start"
+      p="md"
+      style={{
+        border: "1px solid var(--mb-color-border)",
+        borderRadius: "var(--mb-radius-md)",
+      }}
+    >
+      <Group gap="md" align="flex-start">
+        <IconPreview iconName={(plugin.icon as IconName) ?? DEFAULT_ICON} />
+        <Stack gap="xs">
+          <Text fw={700}>{plugin.display_name}</Text>
+          <Text
+            component="a"
+            href={plugin.repo_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            size="sm"
+            c="text-tertiary"
+            td="underline"
+          >
+            {plugin.repo_url}
+          </Text>
+          {plugin.error_message && (
+            <Text size="sm" c="error">
+              {plugin.error_message}
+            </Text>
+          )}
+          {plugin.resolved_commit && (
+            <Text size="sm" c="text-tertiary">
+              {t`Commit`}: {plugin.resolved_commit.slice(0, 8)}
+              {plugin.pinned_version && ` (${plugin.pinned_version})`}
+            </Text>
+          )}
+        </Stack>
+      </Group>
+      <Group gap="sm">
+        <Switch
+          checked={plugin.enabled}
+          onChange={handleToggleEnabled}
+          label={plugin.enabled ? t`Enabled` : t`Disabled`}
+          size="sm"
+        />
+        <Menu>
+          <Menu.Target>
+            <Button
+              variant="subtle"
+              p="xs"
+              loading={isRefreshing || isDeleting}
+            >
+              <Icon name="ellipsis" />
+            </Button>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={<Icon name="pencil" />}
+              onClick={() => onEdit(plugin)}
+            >
+              {t`Edit`}
+            </Menu.Item>
+            <Menu.Item
+              leftSection={<Icon name="refresh" />}
+              onClick={handleRefresh}
+            >
+              {t`Refetch`}
+            </Menu.Item>
+            <Menu.Item
+              leftSection={<Icon name="trash" />}
+              color="error"
+              onClick={handleDelete}
+            >
+              {t`Remove`}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Group>
+    </Flex>
+  );
+}
+
 export function CustomVizPluginsSettingsPage() {
   const { data: plugins, isLoading } = useListAllCustomVizPluginsQuery();
   const [deletePlugin] = useDeleteCustomVizPluginMutation();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingPlugin, setEditingPlugin] = useState<CustomVizPlugin | null>(
+    null,
+  );
 
   const handleDelete = useCallback(
     async (id: number) => {
@@ -183,6 +351,16 @@ export function CustomVizPluginsSettingsPage() {
     [deletePlugin],
   );
 
+  const handleEdit = useCallback((plugin: CustomVizPlugin) => {
+    setShowAddForm(false);
+    setEditingPlugin(plugin);
+  }, []);
+
+  const handleCloseForm = useCallback(() => {
+    setShowAddForm(false);
+    setEditingPlugin(null);
+  }, []);
+
   return (
     <SettingsPageWrapper
       title={t`Custom visualization plugins`}
@@ -190,7 +368,7 @@ export function CustomVizPluginsSettingsPage() {
     >
       <SettingsSection>
         <Stack gap="md">
-          {!showAddForm && (
+          {!showAddForm && !editingPlugin && (
             <Box>
               <Button
                 variant="filled"
@@ -202,8 +380,10 @@ export function CustomVizPluginsSettingsPage() {
             </Box>
           )}
 
-          {showAddForm && (
-            <AddPluginForm onClose={() => setShowAddForm(false)} />
+          {showAddForm && <PluginForm onClose={handleCloseForm} />}
+
+          {editingPlugin && (
+            <PluginForm plugin={editingPlugin} onClose={handleCloseForm} />
           )}
 
           {isLoading && (
@@ -216,13 +396,16 @@ export function CustomVizPluginsSettingsPage() {
             <Text c="text-tertiary">{t`No plugins registered yet.`}</Text>
           )}
 
-          {plugins?.map(plugin => (
-            <PluginListItem
-              key={plugin.id}
-              plugin={plugin}
-              onDelete={handleDelete}
-            />
-          ))}
+          {plugins
+            ?.filter((plugin) => plugin.id !== editingPlugin?.id)
+            .map((plugin) => (
+              <PluginListItem
+                key={plugin.id}
+                plugin={plugin}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+              />
+            ))}
         </Stack>
       </SettingsSection>
     </SettingsPageWrapper>

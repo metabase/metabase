@@ -1033,7 +1033,11 @@ export default _.compose(
 )(
   forwardRef<HTMLDivElement, VisualizationProps>(
     function VisualizationForwardRef(props, ref) {
-      useCustomVizPlugins();
+      const shouldLoadCustomVizPlugins =
+        Boolean(props.isQueryBuilder) &&
+        props.queryBuilderMode === "view" &&
+        !props.isEmbeddingSdk;
+      useCustomVizPlugins({ enabled: shouldLoadCustomVizPlugins });
       return <VisualizationMemoized {...props} forwardedRef={ref} />;
     },
   ),

@@ -4,6 +4,8 @@ export interface CustomVizPlugin {
   display_name: string;
   identifier: string;
   status: "pending" | "active" | "error";
+  enabled: boolean;
+  icon: string | null;
   error_message: string | null;
   pinned_version: string | null;
   resolved_commit: string | null;
@@ -11,9 +13,25 @@ export interface CustomVizPlugin {
   updated_at: string;
 }
 
+export interface CustomVizPluginRuntime {
+  id: number;
+  identifier: string;
+  display_name: string;
+  bundle_url: string;
+}
+
 export interface CreateCustomVizPluginRequest {
   repo_url: string;
   display_name: string;
+  access_token?: string;
+  pinned_version?: string;
+}
+
+export interface UpdateCustomVizPluginRequest {
+  id: number;
+  enabled?: boolean;
+  display_name?: string;
+  icon?: string | null;
   access_token?: string;
   pinned_version?: string;
 }
