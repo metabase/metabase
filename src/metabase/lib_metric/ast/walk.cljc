@@ -65,6 +65,11 @@
   [inner ast]
   (update ast :ast inner))
 
+;; Expression constant — no children to walk
+(defmethod walk-node :expression/constant
+  [_inner ast]
+  ast)
+
 ;; Expression arithmetic — walk into children
 (defmethod walk-node :expression/arithmetic
   [inner ast]

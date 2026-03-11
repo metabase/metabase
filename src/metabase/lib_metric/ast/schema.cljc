@@ -266,16 +266,22 @@
    [:uuid string?]
    [:ast ::source-query]])
 
+(mr/def ::expression-constant
+  "A numeric constant in an expression tree."
+  [:map
+   [:node/type [:= :expression/constant]]
+   [:value number?]])
+
 (mr/def ::expression-arithmetic
   "An arithmetic operation over expression children."
   [:map
    [:node/type [:= :expression/arithmetic]]
    [:operator (into [:enum] (operators/arithmetic-operator-keywords))]
-   [:children [:sequential [:or [:ref ::expression-leaf] [:ref ::expression-arithmetic]]]]])
+   [:children [:sequential [:or [:ref ::expression-leaf] [:ref ::expression-arithmetic] [:ref ::expression-constant]]]]])
 
 (mr/def ::expression-node
   "Union of expression node types."
-  [:or ::expression-leaf ::expression-arithmetic])
+  [:or ::expression-leaf ::expression-arithmetic ::expression-constant])
 
 ;;; -------------------- Root Node --------------------
 

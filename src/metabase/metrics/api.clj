@@ -121,6 +121,9 @@
     [:expression  ::lib-metric.schema/metric-math-expression]
     [:filters     {:optional true} [:maybe ::lib-metric.schema/instance-filters]]
     [:projections {:optional true} [:maybe ::lib-metric.schema/typed-projections]]]
+   [:fn {:error/message "Expression must contain at least one metric or measure"}
+    (fn [{:keys [expression]}]
+      (seq (collect-expression-leaves expression)))]
    [:fn {:error/message "All :lib/uuid values in expression must be unique"}
     (fn [{:keys [expression]}]
       (let [uuids (collect-expression-uuids expression)]

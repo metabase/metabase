@@ -400,16 +400,24 @@
 
 (defn- build-expression-ast
   "Recursively build expression AST from a metric-math expression tree.
+   For numeric constants, produces :expression/constant.
    For leaves, calls build-leaf-ast and wraps in :expression/leaf.
    For arithmetic, recursively builds children and wraps in :expression/arithmetic."
   [expression metadata-provider filters projections]
-  (if-let [leaf-type (expression-leaf-type expression)]
-    (let [leaf-id   (expression-leaf-id expression)
+  (cond
+    (number? expression)
+    {:node/type :expression/constant :value expression}
+
+    (expression-leaf-type expression)
+    (let [leaf-type (expression-leaf-type expression)
+          leaf-id   (expression-leaf-id expression)
           leaf-uuid (expression-leaf-uuid expression)
           sub-ast   (build-leaf-ast leaf-type leaf-id leaf-uuid metadata-provider filters projections)]
       {:node/type :expression/leaf
        :uuid      leaf-uuid
        :ast       sub-ast})
+
+    :else
     (let [op       (arithmetic-operator expression)
           children (drop 2 expression)]
       {:node/type :expression/arithmetic

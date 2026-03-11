@@ -298,6 +298,32 @@
                         sample-ast)]
       (is (= audit-filter (get-in result [:expression :ast :source :filters]))))))
 
+(deftest ^:parallel collect-constants-test
+  (testing "collect with :expression/constant pred finds constants"
+    (let [constant-node {:node/type :expression/constant :value 100}
+          arith-ast {:node/type  :ast/root
+                     :expression {:node/type :expression/arithmetic
+                                  :operator  :*
+                                  :children  [{:node/type :expression/leaf
+                                               :uuid      "test-uuid"
+                                               :ast       sample-source-query}
+                                              constant-node]}}
+          constants (ast.walk/collect #(= :expression/constant (:node/type %)) arith-ast)]
+      (is (= 1 (count constants)))
+      (is (= 100 (:value (first constants))))))
+  (testing "collect with :expression/leaf pred excludes constants"
+    (let [constant-node {:node/type :expression/constant :value 100}
+          arith-ast {:node/type  :ast/root
+                     :expression {:node/type :expression/arithmetic
+                                  :operator  :*
+                                  :children  [{:node/type :expression/leaf
+                                               :uuid      "test-uuid"
+                                               :ast       sample-source-query}
+                                              constant-node]}}
+          leaves (ast.walk/collect #(= :expression/leaf (:node/type %)) arith-ast)]
+      (is (= 1 (count leaves)))
+      (is (= "test-uuid" (:uuid (first leaves)))))))
+
 (deftest ^:parallel dimension-ref-collection-from-filters-test
   (testing "can collect dimension refs from filters only"
     (let [filter-only-source-query {:node/type  :ast/source-query

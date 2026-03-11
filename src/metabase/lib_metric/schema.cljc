@@ -233,9 +233,11 @@
 
 (defn normalize-math-expression
   "Recursively normalize a metric math expression from API format.
-   Handles string keys, string operators, and nested expressions."
+   Handles string keys, string operators, nested expressions, and bare numeric constants."
   [x]
-  (when (sequential? x)
+  (cond
+    (number? x) x
+    (sequential? x)
     (let [[first-el] x]
       (if (and (>= (count x) 3)
                (let [tag (lib.schema.common/normalize-keyword first-el)]
@@ -247,7 +249,8 @@
           (let [[op opts & exprs] x]
             (into [(lib.schema.common/normalize-keyword op)
                    (lib.schema.common/normalize-options-map (or opts {}))]
-                  (map normalize-math-expression exprs))))))))
+                  (map normalize-math-expression exprs))))))
+    :else nil))
 
 (mr/def ::metric-math-expression
   "A recursive metric math expression tree.
@@ -258,6 +261,7 @@
    {:decode/normalize normalize-math-expression}
    [:or
     ::expression-leaf
+    number?
     [:and
      vector?
      [:fn {:error/message "must be arithmetic expression [op opts expr expr ...] with at least 2 operands"}

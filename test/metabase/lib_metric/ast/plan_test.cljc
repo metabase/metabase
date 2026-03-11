@@ -101,6 +101,22 @@
       (is (nil? (ast.plan/evaluate-expression expr {uuid-a nil uuid-b 20})))
       (is (nil? (ast.plan/evaluate-expression expr {uuid-a 10}))))))
 
+(deftest ^:parallel evaluate-expression-constant-test
+  (testing "constant node returns its value"
+    (is (= 42 (ast.plan/evaluate-expression {:node/type :expression/constant :value 42} {})))))
+
+(deftest ^:parallel evaluate-expression-leaf-times-constant-test
+  (testing "leaf * constant evaluates correctly"
+    (let [expr (make-expression-arithmetic :* [(make-expression-leaf uuid-a [])
+                                               {:node/type :expression/constant :value 100}])]
+      (is (= 500 (ast.plan/evaluate-expression expr {uuid-a 5}))))))
+
+(deftest ^:parallel validate-arithmetic-ast-with-constants-test
+  (testing "arithmetic with constants + leaves with projections passes validation"
+    (let [expr (make-expression-arithmetic :* [(make-expression-leaf uuid-a [dim-1])
+                                               {:node/type :expression/constant :value 100}])]
+      (is (nil? (ast.plan/validate-arithmetic-ast! expr))))))
+
 (deftest ^:parallel evaluate-expression-division-by-zero-test
   (testing "division by zero returns nil"
     (let [expr (make-expression-arithmetic :/ [(make-expression-leaf uuid-a [])

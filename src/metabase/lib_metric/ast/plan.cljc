@@ -162,6 +162,9 @@
     :expression/leaf
     (get uuid->value (:uuid expression-node))
 
+    :expression/constant
+    (:value expression-node)
+
     :expression/arithmetic
     (let [{:keys [operator children]} expression-node
           child-vals (mapv #(evaluate-expression % uuid->value) children)]

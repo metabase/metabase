@@ -121,6 +121,35 @@
         (is (= "completed" (:status response)))
         (is (pos? (:row_count response)))))))
 
+(deftest arithmetic-metric-times-constant-test
+  (testing "POST /api/metric/dataset with [:* {} [:metric ...] 2] returns correct results"
+    (mt/with-temp [:model/Card metric {:name          "Test Metric"
+                                       :type          :metric
+                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+      (let [metric-response (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
+            dim-uuid        (:id (first (:dimensions metric-response)))
+            response        (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                                  {:definition
+                                                   {:expression   [:* {}
+                                                                   [:metric {:lib/uuid "a"} (:id metric)]
+                                                                   2]
+                                                    :projections  [{:type :metric :id (:id metric)
+                                                                    :projection [[:dimension {} dim-uuid]]}]}})]
+        (is (= "completed" (:status response)))
+        (is (pos? (:row_count response)))
+        ;; Each result should be exactly double the count
+        (let [single-response (mt/user-http-request :rasta :post 202 "metric/dataset"
+                                                    {:definition
+                                                     {:expression   [:metric {:lib/uuid "x"} (:id metric)]
+                                                      :projections  [{:type :metric :id (:id metric)
+                                                                      :projection [[:dimension {} dim-uuid]]}]}})
+              single-rows     (into {} (map (fn [[k v]] [k v]) (get-in single-response [:data :rows])))
+              double-rows     (into {} (map (fn [[k v]] [k v]) (get-in response [:data :rows])))]
+          (doseq [[dim-val single-val] single-rows]
+            (is (= (* 2 single-val) (get double-rows dim-val))
+                (str "Value for " dim-val " should be doubled"))))))))
+
 (deftest arithmetic-mixed-metric-measure-test
   (testing "POST /api/metric/dataset with metric + measure arithmetic"
     (let [mp             (mt/metadata-provider)

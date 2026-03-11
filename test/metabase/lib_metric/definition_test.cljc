@@ -240,6 +240,13 @@
           expr  [:* {} inner leaf3]]
       (is (= [leaf1 leaf2 leaf3] (lib-metric.definition/expression-leaves expr))))))
 
+(deftest ^:parallel expression-leaves-with-constant-test
+  (testing "arithmetic with constant returns only the metric leaf"
+    (let [leaf [:metric {:lib/uuid "a"} 1]]
+      (is (= [leaf] (lib-metric.definition/expression-leaves [:* {} leaf 100])))))
+  (testing "bare number returns empty vector"
+    (is (= [] (lib-metric.definition/expression-leaves 42)))))
+
 (deftest ^:parallel expression-leaves-invalid-input-test
   (testing "nil returns empty vector"
     (is (= [] (lib-metric.definition/expression-leaves nil))))
@@ -299,6 +306,15 @@
                       :projections       [{:type :metric :id 1 :projection [[:dimension {} uuid-1]]}]
                       :metadata-provider mock-provider}]
       (is (not (lib-metric.definition/projection-valid? definition))))))
+
+(deftest ^:parallel projection-valid?-constant-in-arithmetic-test
+  (testing "only real leaves need projections when constants present"
+    (let [definition {:lib/type          :metric/definition
+                      :expression        [:* {} [:metric {:lib/uuid "a"} 1] 100]
+                      :filters           []
+                      :projections       [{:type :metric :id 1 :projection [[:dimension {} uuid-1]]}]
+                      :metadata-provider mock-provider}]
+      (is (lib-metric.definition/projection-valid? definition)))))
 
 (deftest ^:parallel projection-valid?-wrong-type-match-test
   (testing "projection with wrong type does not match"

@@ -513,6 +513,28 @@
         (is (some? (get-in child-a [:ast :filter])))
         (is (nil? (get-in child-b [:ast :filter])))))))
 
+(deftest ^:parallel from-definition-arithmetic-with-constant-test
+  (let [definition {:lib/type          :metric/definition
+                    :expression        [:* {} [:metric {:lib/uuid arith-uuid-a} 42] 100]
+                    :filters           []
+                    :projections       []
+                    :metadata-provider (make-test-provider (sample-metric-metadata) (sample-measure-metadata))}
+        ast (ast.build/from-definition definition)]
+
+    (testing "creates valid AST with constant child"
+      (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
+
+    (testing "expression root is arithmetic"
+      (is (= :expression/arithmetic (get-in ast [:expression :node/type])))
+      (is (= :* (get-in ast [:expression :operator]))))
+
+    (testing "has one leaf and one constant child"
+      (let [children (get-in ast [:expression :children])]
+        (is (= 2 (count children)))
+        (is (= :expression/leaf (get-in children [0 :node/type])))
+        (is (= :expression/constant (get-in children [1 :node/type])))
+        (is (= 100 (get-in children [1 :value])))))))
+
 (deftest ^:parallel from-definition-arithmetic-with-projections-test
   (let [definition (assoc (arithmetic-definition)
                           :projections [{:type :metric

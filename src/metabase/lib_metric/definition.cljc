@@ -46,6 +46,7 @@
   [expression]
   (cond
     (nil? expression) []
+    (number? expression) []
     (expression-leaf? expression) [expression]
     (arithmetic-expression? expression)
     (into [] (mapcat expression-leaves) (drop 2 expression))
