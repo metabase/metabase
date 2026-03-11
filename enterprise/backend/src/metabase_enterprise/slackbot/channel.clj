@@ -2,6 +2,7 @@
   "Visible Slack channel reply/update flow for metabot."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.persistence :as metabot-v3.persistence]
    [metabase-enterprise.slackbot.client :as slackbot.client]
    [metabase.util.log :as log]))
 
@@ -62,7 +63,8 @@
                                         :thread-ts            thread-ts
                                         :tool-name->friendly  tool-name->friendly})
         prefetched-viz (atom {})
-        on-data        (make-viz-prefetch-callback prefetched-viz)]
+        on-data        (make-viz-prefetch-callback prefetched-viz)
+        stored-msg-id  (atom nil)]
     (set-status! "Thinking...")
     (try
       (make-streaming-ai-request
@@ -78,7 +80,8 @@
         :on-data              on-data
         :req-slack-msg-id     (:ts event)
         :get-res-slack-msg-id nil
-        :request-prompt       (channel-request-prompt prompt)})
+        :request-prompt       (channel-request-prompt prompt)
+        :stored-msg-id        stored-msg-id})
       (when (seq @prefetched-viz)
         (set-status! "Rendering results..."))
       (let [{:keys [blocks errors]} (collect-viz-blocks @prefetched-viz)
@@ -90,6 +93,8 @@
                                           (feedback-blocks conversation-id))
             res                     (slackbot.client/post-thread-reply client {:channel channel :thread_ts thread-ts}
                                                                        final-text :blocks final-blocks)]
+        (when-let [res-ts (:ts res)]
+          (metabot-v3.persistence/set-response-slack-msg-id! @stored-msg-id res-ts))
         (when-not (:ok res)
           (log/errorf "[slackbot] channel post-message failed: %s (block_count=%d block_types=%s response_messages=%s)"
                       (:error res)

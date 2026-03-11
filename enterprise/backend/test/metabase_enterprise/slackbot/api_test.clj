@@ -186,31 +186,24 @@
             event-body   tu/base-mention-event]
         (tu/with-slackbot-mocks
           {:ai-text mock-ai-text}
-          (fn [{:keys [post-calls stream-calls stop-stream-calls update-calls
-                       add-reaction-calls remove-reaction-calls]}]
+          (fn [{:keys [post-calls stream-calls stop-stream-calls]}]
             (let [response (mt/client :post 200 "ee/metabot-v3/slack/events"
                                       (tu/slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk      #(and (>= (count @update-calls) 1)
-                                         (>= (count @remove-reaction-calls) 1))
+              (u/poll {:thunk      #(>= (count @post-calls) 1)
                        :done?      true?
                        :timeout-ms 5000})
-              (testing "a visible threaded reply is posted immediately with thinking placeholder"
+              (testing "a single threaded reply is posted with the answer"
                 (is (= 1 (count @post-calls)))
-                (is (= "_Thinking..._" (:text (first @post-calls))))
+                (is (str/includes? (:text (first @post-calls)) mock-ai-text))
                 (is (= "1234567890.000001" (:thread_ts (first @post-calls)))))
-              (testing "the triggering message gets a temporary eyes reaction"
-                (is (= [{:channel "C123" :ts "1234567890.000001" :name "eyes"}]
-                       @add-reaction-calls))
-                (is (= [{:channel "C123" :ts "1234567890.000001" :name "eyes"}]
-                       @remove-reaction-calls)))
-              (testing "the visible reply is updated with the answer"
-                (is (= 1 (count @update-calls)))
-                (is (some #(str/includes? (:text %) mock-ai-text) @update-calls)))
               (testing "streaming APIs are not used for app mentions"
                 (is (empty? @stream-calls))
-                (is (empty? @stop-stream-calls))))))))))
+                (is (empty? @stop-stream-calls)))
+              (testing "assistant message in DB has slack_msg_id backfilled"
+                (let [msg (t2/select-one :model/MetabotMessage :channel_id "C123" :role "assistant")]
+                  (is (some? (:slack_msg_id msg))))))))))))
 
 (deftest stream-start-failure-test
   (testing "When start-stream fails, falls back to a regular message"
