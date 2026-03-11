@@ -516,6 +516,15 @@
           changeset-id (last (map :id (jdbc/query {:connection conn} [changeset-query])))]
       (some-> changeset-id extract-numbers first))))
 
+(defn changesets-from-later-version
+  "Returns changeset IDs applied from versions later than `latest-available` up to `latest-applied`, ordered by execution date."
+  [conn ^Database database latest-available latest-applied]
+  (let [table    (.getDatabaseChangeLogTableName database)
+        versions (range (inc latest-available) (inc latest-applied))
+        clauses  (str/join " OR " (map #(format "id LIKE 'v%d.%%'" %) versions))
+        query    (format "SELECT id FROM %s WHERE %s ORDER BY dateexecuted ASC" table clauses)]
+    (mapv :id (jdbc/query {:connection conn} [query]))))
+
 (defn rollback-major-version!
   "Roll back migrations later than given Metabase major version. If force is true, it will ignore any checks and always
   roll back"
