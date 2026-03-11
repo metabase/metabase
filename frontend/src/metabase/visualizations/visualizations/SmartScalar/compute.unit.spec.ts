@@ -2390,7 +2390,7 @@ function getComparisonValueProperties({
   }
 
   if (!isNumber(comparisonValue) || !isNumber(metricValue)) {
-    throw new TypeError();
+    throw new TypeError(`comparisonValue and metricValue need to be numbers`);
   }
 
   if (changeType === "no change") {
