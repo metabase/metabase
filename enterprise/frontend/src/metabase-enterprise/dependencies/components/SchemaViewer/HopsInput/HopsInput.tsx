@@ -116,7 +116,7 @@ export function HopsInput({ value, onChange }: HopsInputProps) {
       wrap="nowrap"
       data-testid="hops-input"
     >
-      <Text fw={700} className={S.label}>{t`Steps`}</Text>
+      <Text fw={700} className={S.label}>{t`Hops to show`}</Text>
       <Slider
         value={displayValue}
         onChange={handleChange}

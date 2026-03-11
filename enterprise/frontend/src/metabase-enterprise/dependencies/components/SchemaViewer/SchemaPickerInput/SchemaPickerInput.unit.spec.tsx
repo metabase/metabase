@@ -98,7 +98,6 @@ function renderSchemaPicker(
     <SchemaPickerInput
       databaseId={undefined}
       schema={undefined}
-      isLoading={false}
       {...props}
     />,
   );

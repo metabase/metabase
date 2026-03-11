@@ -1,4 +1,19 @@
+.container {
+  padding-inline: 0.75rem;
+  height: 2.5rem;
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+}
+
+.label {
+  flex-shrink: 0;
+}
+
 .triggerButton {
+  border: none;
+  background: transparent;
+
   &:hover {
     background-color: var(--mb-color-background-secondary);
     color: var(--mb-color-brand) !important;

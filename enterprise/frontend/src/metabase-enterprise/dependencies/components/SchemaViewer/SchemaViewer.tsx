@@ -18,6 +18,7 @@ import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
   ActionIcon,
+  Box,
   Group,
   Icon,
   Loader,
@@ -679,7 +680,6 @@ export function SchemaViewer({
             <SchemaPickerInput
               databaseId={databaseId}
               schema={schema}
-              isLoading={isFetching}
               onChange={handleSchemaPickerChange}
             />
             {effectiveSelectedTableIds != null && (
@@ -699,11 +699,9 @@ export function SchemaViewer({
           </Group>
         </Panel>
         {isFetching && (
-          <Panel position="top-center">
-            <Stack align="center" justify="center" pt="xl">
-              <Loader />
-            </Stack>
-          </Panel>
+          <Box className={S.centerLoader}>
+            <Loader />
+          </Box>
         )}
         {error != null && (
           <Panel position="bottom-center">

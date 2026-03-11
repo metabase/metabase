@@ -1,11 +1,5 @@
 import { useClickOutside, useDisclosure } from "@mantine/hooks";
-import {
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -34,18 +28,16 @@ import S from "./SchemaPickerInput.module.css";
 interface SchemaPickerInputProps {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
-  isLoading: boolean;
   onChange?: () => void;
 }
 
 export function SchemaPickerInput({
   databaseId,
   schema,
-  isLoading,
   onChange,
 }: SchemaPickerInputProps) {
   const dispatch = useDispatch();
-  const [opened, { open, close, toggle }] = useDisclosure(false);
+  const [opened, { open, close, toggle }] = useDisclosure(databaseId == null);
   const [selectedDatabaseId, setSelectedDatabaseId] =
     useState<DatabaseId | null>(null);
 
@@ -74,10 +66,6 @@ export function SchemaPickerInput({
   const databases = useMemo(() => {
     return databasesResponse?.data?.filter((db) => !db.is_saved_questions);
   }, [databasesResponse]);
-
-  const selectedDatabase = useMemo(() => {
-    return databases?.find((db) => db.id === databaseId);
-  }, [databases, databaseId]);
 
   // Auto-select when database has a single schema
   useEffect(() => {
@@ -121,15 +109,6 @@ export function SchemaPickerInput({
     setSelectedDatabaseId(null);
   }, []);
 
-  const handleClear = useCallback(
-    (event: MouseEvent) => {
-      event.stopPropagation();
-      onChange?.();
-      dispatch(push(Urls.dataStudioErdBase()));
-    },
-    [onChange, dispatch],
-  );
-
   const handleClose = useCallback(() => {
     setSelectedDatabaseId(null);
     close();
@@ -142,16 +121,6 @@ export function SchemaPickerInput({
   });
 
   const hasSelection = databaseId != null;
-  // Show explicit schema, or auto-selected schema (single schema)
-  const autoSelectedSchema =
-    selectedDatabaseId == null && schemas?.length === 1 ? schemas[0] : null;
-  const displaySchema = schema ?? autoSelectedSchema;
-  // Display "Database / Schema" or just "Database"
-  const displayLabel = selectedDatabase
-    ? displaySchema
-      ? `${selectedDatabase.name} / ${displaySchema}`
-      : selectedDatabase.name
-    : null;
 
   return (
     <Box ref={clickOutsideRef}>
@@ -168,25 +137,12 @@ export function SchemaPickerInput({
             <Button
               bg="background-primary"
               className={S.triggerButton}
-              leftSection={
-                <FixedSizeIcon name={displaySchema ? "folder" : "database"} />
-              }
-              rightSection={
-                isLoading ? (
-                  <Loader size="xs" />
-                ) : (
-                  <FixedSizeIcon
-                    name="close"
-                    display="block"
-                    aria-label={t`Clear`}
-                    onClick={handleClear}
-                  />
-                )
-              }
+              leftSection={<FixedSizeIcon name="database" />}
+              rightSection={<FixedSizeIcon name="chevrondown" />}
               data-testid="schema-picker-button"
               onClick={toggle}
             >
-              {displayLabel}
+              {t`Database`}
             </Button>
           ) : (
             <Button
@@ -194,11 +150,7 @@ export function SchemaPickerInput({
               variant="default"
               leftSection={<FixedSizeIcon name="database" c="text-tertiary" />}
               rightSection={
-                isLoading ? (
-                  <Loader size="xs" />
-                ) : (
-                  <FixedSizeIcon name="chevrondown" c="text-tertiary" />
-                )
+                <FixedSizeIcon name="chevrondown" c="text-tertiary" />
               }
               data-testid="schema-picker-button"
               onClick={open}

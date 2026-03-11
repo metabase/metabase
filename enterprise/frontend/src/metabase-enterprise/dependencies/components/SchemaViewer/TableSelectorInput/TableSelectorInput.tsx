@@ -270,19 +270,22 @@ export function TableSelectorInput({
         width={320}
       >
         <Popover.Target>
-          <Button
-            className={S.triggerButton}
-            bg="background-primary"
-            variant="default"
-            leftSection={<FixedSizeIcon name="table" />}
-            rightSection={<FixedSizeIcon name="chevrondown" />}
-            data-testid="table-selector-button"
-            onClick={handlePopoverToggle}
-          >
-            {isUserModified
-              ? t`${selectedCount} tables selected`
-              : t`Most relationships`}
-          </Button>
+          <Group className={S.container} gap="sm" align="center" wrap="nowrap">
+            <Text fw={700} className={S.label}>{t`Tables to show`}</Text>
+            <Button
+              className={S.triggerButton}
+              bg="background-primary"
+              variant="default"
+              leftSection={<FixedSizeIcon name="table" />}
+              rightSection={<FixedSizeIcon name="chevrondown" />}
+              data-testid="table-selector-button"
+              onClick={handlePopoverToggle}
+            >
+              {isUserModified
+                ? t`${selectedCount} selected`
+                : t`Auto`}
+            </Button>
+          </Group>
         </Popover.Target>
 
         <Popover.Dropdown p={0}>
