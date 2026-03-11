@@ -5,37 +5,12 @@
    cleaned up by the existing background job."
   (:require
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
-   [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms.core :as transforms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- relay-progress
-  "Wraps a progress object to relay runner advances to the run record as 0→1 progress.
-   Lifecycle methods are no-ops — the outer execute-async! harness handles those."
-  [base-progress run-id]
-  (let [total*     (atom 1)
-        completed* (atom 0)]
-    (reify replacement.protocols/IRunnerProgress
-      (set-total! [_ total] (reset! total* total))
-      (advance! [this] (replacement.protocols/advance! this 1))
-      (advance! [this n]
-        (let [c        (swap! completed* + n)
-              t        @total*
-              fraction (if (pos? t)
-                         (min 1.0 (double (/ c t)))
-                         0.0)]
-          (replacement-run/update-progress! run-id fraction)
-          (when (replacement.protocols/canceled? this)
-            (throw (ex-info "Run canceled" {:run-id run-id})))))
-      (canceled? [_]
-        (replacement.protocols/canceled? base-progress))
-      (start-run! [_])
-      (succeed-run! [_])
-      (fail-run! [_ _]))))
 
 (defn convert-card-to-transform!
   "Convert a model to a transform, execute it, and replace all usages of the model
@@ -86,6 +61,8 @@
         _          (replacement-run/update-target! run-id :table table-id)
 
         ;; --- Phase 4: Replace all usages (0 → 1) ---
-        replace-prog (relay-progress progress run-id)]
+        ;; progress (from run-row->progress) already writes to the run record and
+        ;; checks cancellation — run-swap only calls set-total!/advance!/canceled?
+        ]
 
-    (replacement.runner/run-swap [:card card-id] [:table table-id] replace-prog)))
+    (replacement.runner/run-swap [:card card-id] [:table table-id] progress)))
