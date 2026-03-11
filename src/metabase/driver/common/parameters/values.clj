@@ -261,7 +261,7 @@
   #{:> :>= :< :<= := :!=})
 
 (mu/defmethod parse-tag :table :- ReferencedTableQuery
-  [{:keys [table-id source-filters]} _params]
+  [{:keys [table-id source-filters]} :- ::mbql.s/TemplateTag _params]
   (when (seq source-filters)
     (doseq [{:keys [op]} source-filters]
       (when-not (allowed-source-filter-ops op)

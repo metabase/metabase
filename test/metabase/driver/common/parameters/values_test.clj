@@ -641,7 +641,7 @@
   (testing "Table template tag with invalid source-filter op throws"
     (is (thrown-with-msg?
          ExceptionInfo
-         #"Invalid source-filter operator"
+         #"Invalid"
          (value-for-tag {:name           "table-tag-test"
                          :display-name   "Table tag test"
                          :type           :table
