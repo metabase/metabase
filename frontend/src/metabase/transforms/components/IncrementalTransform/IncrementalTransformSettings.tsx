@@ -87,6 +87,16 @@ export const IncrementalTransformSettings = ({
   );
 
   const renderIncrementalSwitch = () => {
+    const getLabel = () => {
+      if (isMultiTablePythonTransform) {
+        return t`Incremental transforms are only supported for single data source transforms.`;
+      }
+      if (isNativeWithoutTableTags) {
+        return t`Incremental transforms for native queries require at least one table template tag.`;
+      }
+      return t`Only process new and changed data`;
+    };
+
     const switchContent = (
       <Switch
         disabled={
@@ -97,13 +107,7 @@ export const IncrementalTransformSettings = ({
         }
         checked={incremental}
         size="sm"
-        label={
-          isMultiTablePythonTransform
-            ? t`Incremental transforms are only supported for single data source transforms.`
-            : isNativeWithoutTableTags
-              ? t`Incremental transforms for native queries require at least one table template tag.`
-              : t`Only process new and changed data`
-        }
+        label={getLabel()}
         wrapperProps={{
           "data-testid": "incremental-switch",
         }}
