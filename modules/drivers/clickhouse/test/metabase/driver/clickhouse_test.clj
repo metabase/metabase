@@ -464,6 +464,30 @@
                        (qp/process-query)
                        (mt/rows))))))))))
 
+(mt/defdataset date32-dataset
+  [["date32_table"
+    [{:field-name "date", :base-type {:native "Date32"}}]
+    [["1969-12-29"]
+     ["1969-12-30"]
+     ["1969-12-31"]
+     ["1970-01-01"]
+     ["1970-01-02"]
+     ["2024-06-15"]]]])
+
+(deftest ^:parallel group-date32-values-before-1970-test
+  (mt/test-driver :clickhouse
+    (testing "grouping a Date32 column with values before 1970 by day should work (#68249)"
+      (mt/dataset date32-dataset
+        (let [mp (mt/metadata-provider)
+              query (-> (lib/query mp (lib.metadata/table mp (mt/id :date32_table)))
+                        (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :date32_table :date)) :month))
+                        (lib/aggregate (lib/count))
+                        (lib/order-by (lib.metadata/field mp (mt/id :date32_table :date)) :asc))]
+          (is (= [["1969-12-01T00:00:00Z" 3]
+                  ["1970-01-01T00:00:00Z" 2]
+                  ["2024-06-01T00:00:00Z" 1]]
+                 (mt/rows (qp/process-query query)))))))))
+
 ;; TODO (lbrdnk 2026-01-23): Excplicit exceptions from [[metabase.driver.util/parsed-query]] are shutdown
 ;;                           at the moment to avoid potential log flooding. We should revisit this during further
 ;;                           parsing work.
