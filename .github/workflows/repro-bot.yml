@@ -57,6 +57,11 @@ jobs:
         with:
           node-version: 22
 
+      - name: Set up Clojure CLI
+        uses: DeLaGuardo/setup-clojure@13.4
+        with:
+          cli: 'latest'
+
       - name: Set up Python (uv)
         uses: astral-sh/setup-uv@v4
 
