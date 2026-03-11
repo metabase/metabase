@@ -29,7 +29,7 @@ const EmbeddingUpsellInner = ({ campaign }: Props) => {
   );
 
   const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
-    campaign: "enterprise",
+    campaign,
     location: "embedding-page",
   });
 
