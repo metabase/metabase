@@ -61,7 +61,7 @@
              :user "bob"
              :password "qaz"
              :ssl true
-             :custom_http_params "select_sequential_consistency=1,max_threads=42,allow_experimental_analyzer=0"})
+             :custom_http_params "select_sequential_consistency=1,enable_extended_results_for_datetime_functions=1,max_threads=42,allow_experimental_analyzer=0"})
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {:host "myclickhouse"

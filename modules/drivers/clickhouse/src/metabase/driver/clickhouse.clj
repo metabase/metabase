@@ -127,8 +127,7 @@
          ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
          ;; enable_extended_results_for_datetime_functions=1 to make toStartOfMonth, toStartOfYear, etc.
          ;; work with Date32 values before 1970. See #68249 for more details.
-         :custom_http_params             (cond-> "select_sequential_consistency=1,
-                                                  enable_extended_results_for_datetime_functions=1"
+         :custom_http_params             (cond-> "select_sequential_consistency=1,enable_extended_results_for_datetime_functions=1"
                                            (not (str/blank? clickhouse-settings))
                                            (str "," clickhouse-settings))}
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
