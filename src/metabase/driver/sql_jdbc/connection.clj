@@ -175,7 +175,9 @@
 
 (defn ^:private default-ssh-tunnel-target-port [driver]
   (when-let [port-info (some
-                        #(when (= "port" (:name %)) %)
+                        (fn [prop]
+                          (some #(when (= "port" (:name %)) %)
+                                (cons prop (:fields prop))))
                         (driver/connection-properties driver))]
     (or (:default port-info)
         (:placeholder port-info))))
