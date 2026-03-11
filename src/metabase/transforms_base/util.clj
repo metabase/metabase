@@ -156,6 +156,11 @@
               transform-id
               {:last_checkpoint_value (some-> source-range-params :hi :value str)}))
 
+(defn- encode-checkpoint-value [v]
+  (if (number? v)
+    (str v)
+    (u.date/format v)))
+
 (defn save-run-checkpoint-range!
   "Persist the checkpoint range (lo/hi) on a transform run record.
   This is called early in execution so the range is recorded even if the run fails."
@@ -164,13 +169,14 @@
     (let [{:keys [checkpoint-filter-field-id lo hi]} source-range-params]
       (t2/update! :model/TransformRun run-id
                   (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
-                    lo (assoc :checkpoint_lo_value (str (:value lo)))
-                    hi (assoc :checkpoint_hi_value (str (:value hi))))))))
+                    lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
+                    hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
 
 (defn- parse-checkpoint-value
   "Parse a serialized checkpoint value string according to its base-type keyword."
-  [base-type ^String s]
+  [base-type s]
   (cond
+    (not (string? s)) s
     (isa? base-type :type/Float)    (bigdec s)
     (isa? base-type :type/Number)   (biginteger s)
     (isa? base-type :type/Temporal) (u.date/parse s)
@@ -180,7 +186,7 @@
 (defn- tag-checkpoint-value
   "Wrap a raw checkpoint value from the QP into a map `{:value parsed}`."
   [base-type raw-value]
-  {:value (parse-checkpoint-value base-type (str raw-value))})
+  {:value (parse-checkpoint-value base-type raw-value)})
 
 (defn- inject-filters-into-table-tag
   "Inject `:source-filters` into the table template tag matching the checkpoint field's table.
