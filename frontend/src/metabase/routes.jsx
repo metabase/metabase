@@ -66,11 +66,8 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import {
-  CanAccessDataModel,
-  CanAccessDataStudio,
   CanAccessOnboarding,
   CanAccessSettings,
-  CanAccessTransforms,
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
@@ -379,14 +376,6 @@ export const getRoutes = (store) => {
 
           {/* ADMIN */}
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
-
-          {/* DATA STUDIO */}
-          {/* {PLUGIN_DATA_STUDIO.getDataStudioRoutes(
-            store,
-            CanAccessDataStudio,
-            CanAccessDataModel,
-            CanAccessTransforms,
-          )} */}
         </Route>
       </Route>
 
