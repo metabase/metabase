@@ -52,7 +52,7 @@ import {
   getInitialEditorHeight,
 } from "./utils";
 
-type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
+export type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   availableHeight?: number;
   canChangeDatabase?: boolean;
   cancelQuery?: () => void;

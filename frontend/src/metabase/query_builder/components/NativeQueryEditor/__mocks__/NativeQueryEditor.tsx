@@ -1,7 +1,11 @@
-/* eslint-disable react/prop-types */
+import type { ChangeEvent } from "react";
+
 import CS from "metabase/css/core/index.css";
 import { DataSourceSelectors } from "metabase/query_builder/components/NativeQueryEditor/DataSourceSelectors";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
+import type { DatabaseId, TableId } from "metabase-types/api";
+
+import type { NativeQueryEditorProps } from "../NativeQueryEditor";
 
 export const NativeQueryEditor = ({
   canChangeDatabase = true,
@@ -12,18 +16,18 @@ export const NativeQueryEditor = ({
   readOnly,
   setDatasetQuery,
   setParameterValue,
-}) => {
-  const onChange = (evt) => {
+}: NativeQueryEditorProps) => {
+  const onChange = (evt: ChangeEvent<HTMLTextAreaElement>) => {
     setDatasetQuery(query.setQueryText(evt.target.value));
   };
 
-  const onDatabaseIdChange = (databaseId) => {
+  const onDatabaseIdChange = (databaseId: DatabaseId) => {
     if (question.databaseId() !== databaseId) {
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
     }
   };
 
-  const onTableIdChange = (tableId) => {
+  const onTableIdChange = (tableId: TableId) => {
     const table = query.metadata().table(tableId);
     if (table && table.name !== query.collection()) {
       setDatasetQuery(query.setCollectionName(table.name));
