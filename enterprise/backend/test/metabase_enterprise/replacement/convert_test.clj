@@ -79,10 +79,12 @@
   (testing "cleanup deletes orphaned transforms and clears transform_id on the run"
     (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
       (let [transform (t2/insert-returning-instance! :model/Transform
-                                                     {:name      "orphaned"
-                                                      :source    {:type "query" :query {}}
-                                                      :target    {:type "table" :name "t" :schema "s"}
-                                                      :creator_id (mt/user->id :crowberto)})
+                                                     {:name               "orphaned"
+                                                      :source             {:type  "query"
+                                                                           :query (mt/mbql-query orders)}
+                                                      :target             {:type "table" :name "t" :schema "s"}
+                                                      :source_database_id (mt/id)
+                                                      :creator_id         (mt/user->id :crowberto)})
             run       (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)]
         (replacement-run/start-run! (:id run))
         (replacement-run/update-transform-id! (:id run) (:id transform))

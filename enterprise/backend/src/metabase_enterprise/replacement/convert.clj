@@ -28,7 +28,7 @@
    table is confirmed."
   [card-id run-id transform-name transform-target progress]
   (let [card (t2/select-one :model/Card :id card-id)
-        _    (when-not (= "model" (:type card))
+        _    (when-not (= :model (:type card))
                (throw (ex-info "Card is not a model" {:card-id card-id})))
 
         ;; --- Phase 1: Create transform ---

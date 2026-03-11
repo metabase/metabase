@@ -33,7 +33,7 @@
                                    :user_id            user-id
                                    :run_type           run-type
                                    :status             :pending
-                                   :is_active          false
+                                   :is_active          nil
                                    :progress           (when (= run-type :replace) 0.0)})))
 
 (defn start-run!

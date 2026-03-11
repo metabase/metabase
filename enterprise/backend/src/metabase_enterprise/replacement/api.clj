@@ -99,7 +99,7 @@
    :- ::replacement.schema/convert-card-to-transform-request]
   (api/check-superuser)
   (let [card    (api/check-404 (t2/select-one :model/Card :id card_id))
-        _       (api/check-400 (= "model" (:type card))
+        _       (api/check-400 (= :model (:type card))
                                "Card is not a model")
         job-row (replacement-run/create-run!
                  :card card_id :card card_id
