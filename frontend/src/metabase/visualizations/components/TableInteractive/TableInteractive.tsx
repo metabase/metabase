@@ -179,12 +179,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const infoPopoversDisabled =
-    clicked !== null || !hasMetadataPopovers || isDashboard;
-  const tableInteractiveContextValue = useMemo(
-    () => ({ infoPopoversDisabled }),
-    [infoPopoversDisabled],
-  );
   const tableTheme = theme?.other?.table;
   const dispatch = useDispatch();
   const isClientSideSortingEnabled = isDashboard;
@@ -744,7 +738,16 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     minGridWidth,
     enableSelection: true,
   });
-  const { virtualGrid } = tableProps;
+  const { virtualGrid, columnsReordering } = tableProps;
+  const infoPopoversDisabled =
+    clicked !== null ||
+    !hasMetadataPopovers ||
+    isDashboard ||
+    columnsReordering.isDragging;
+  const tableInteractiveContextValue = useMemo(
+    () => ({ infoPopoversDisabled }),
+    [infoPopoversDisabled],
+  );
 
   // If the data changes we reset saved column widths as it is no longer relevant
   // except for the case where question is converted from a model to a question and back.
