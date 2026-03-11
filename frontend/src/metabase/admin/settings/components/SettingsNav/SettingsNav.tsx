@@ -65,6 +65,11 @@ export function SettingsNav() {
         label={t`Localization`}
         icon="globe"
       />
+      <SettingsNavItem
+        path="custom-viz-plugins"
+        label={t`Custom viz plugins`}
+        icon="embed"
+      />
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}

@@ -14,6 +14,7 @@ import { SettingsNav } from "./settings/components/SettingsNav";
 import { AppearanceSettingsPage } from "./settings/components/SettingsPages/AppearanceSettingsPage";
 import { AuthenticationSettingsPage } from "./settings/components/SettingsPages/AuthenticationSettingsPage";
 import { CloudSettingsPage } from "./settings/components/SettingsPages/CloudSettingsPage";
+import { CustomVizPluginsSettingsPage } from "./settings/components/SettingsPages/CustomVizPluginsSettingsPage";
 import { EmailSettingsPage } from "./settings/components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "./settings/components/SettingsPages/GeneralSettingsPage";
 import { LicenseSettingsPage } from "./settings/components/SettingsPages/LicenseSettingsPage";
@@ -69,6 +70,10 @@ export const getSettingsRoutes = () => (
     />
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />
+    <Route
+      path="custom-viz-plugins"
+      component={CustomVizPluginsSettingsPage}
+    />
     <Route path="uploads" component={UploadSettingsPage} />
     <Route
       path="python-runner"
