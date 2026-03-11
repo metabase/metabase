@@ -206,7 +206,7 @@ export class SchedulePicker extends Component<SchedulePickerProps> {
             <Select
               styles={getSelectDayStyles(schedule)}
               comboboxProps={{ width: 150 }}
-              value={schedule.schedule_day || ""}
+              value={schedule.schedule_day ?? ""}
               onChange={(value) =>
                 this.handleChangeProperty(
                   "schedule_day",
