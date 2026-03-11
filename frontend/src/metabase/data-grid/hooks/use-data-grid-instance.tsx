@@ -22,7 +22,6 @@ import _ from "underscore";
 
 import {
   MIN_COLUMN_WIDTH,
-  ROW_ID_COLUMN_ID,
   TRUNCATE_LONG_CELL_WIDTH,
 } from "metabase/data-grid/constants";
 import { useBodyCellMeasure } from "metabase/data-grid/hooks/use-body-cell-measure";
@@ -52,18 +51,10 @@ import { useRowPinningByCount } from "./use-row-pinning-by-count";
 // Disable pagination by setting pageSize to -1
 const DISABLED_PAGINATION_STATE = { pageSize: -1, pageIndex: 0 };
 
-// Creates a column order array with special (row ID and/or a selection) columns first if present
 const getColumnOrder = (
   dataColumnsOrder: string[],
-  hasRowIdColumn: boolean,
-  columnRowSelectId?: string,
-) => {
-  const prefix = [
-    columnRowSelectId,
-    hasRowIdColumn ? ROW_ID_COLUMN_ID : null,
-  ].filter(isNotNull);
-  return _.uniq([...prefix, ...dataColumnsOrder]);
-};
+  utilityColumnIds: string[],
+) => _.uniq([...utilityColumnIds, ...dataColumnsOrder]);
 
 export const defaultGetRowId = <TData extends RowData>(
   originalRow: TData,
@@ -101,15 +92,26 @@ export const useDataGridInstance = <TData, TValue>({
   getRowId = defaultGetRowId,
 }: DataGridOptions<TData, TValue>): DataGridInstance<TData> => {
   const gridRef = useRef<HTMLDivElement>(null);
-  const hasRowIdColumn = rowId != null;
-  const hasColumnRowSelectColumn = columnRowSelectOptions != null;
+
+  const utilityColumns = useMemo(
+    () =>
+      [
+        columnRowSelectOptions,
+        rowId ? getRowIdColumn<TData, TValue>(rowId) : null,
+      ].filter(isNotNull),
+    [rowId, columnRowSelectOptions],
+  );
+
+  const utilityColumnIds = useMemo(
+    () => utilityColumns.map((column) => column.id).filter(isNotNull),
+    [utilityColumns],
+  );
 
   // Initialize column order (either controlled or from column options)
   const [columnOrder, setColumnOrder] = useState<string[]>(
     getColumnOrder(
       controlledColumnOrder ?? columnsOptions.map((column) => column.id),
-      hasRowIdColumn,
-      columnRowSelectOptions?.id,
+      utilityColumnIds,
     ),
   );
 
@@ -137,13 +139,9 @@ export const useDataGridInstance = <TData, TValue>({
   // Update column order when controlled value changes
   useLayoutEffect(() => {
     setColumnOrder(
-      getColumnOrder(
-        controlledColumnOrder ?? [],
-        hasRowIdColumn,
-        columnRowSelectOptions?.id,
-      ),
+      getColumnOrder(controlledColumnOrder ?? [], utilityColumnIds),
     );
-  }, [controlledColumnOrder, hasRowIdColumn, columnRowSelectOptions?.id]);
+  }, [controlledColumnOrder, utilityColumnIds]);
 
   // Handler for updating column expanded state
   const handleUpdateColumnExpanded = useCallback(
@@ -178,42 +176,36 @@ export const useDataGridInstance = <TData, TValue>({
     ],
   );
 
-  // Generate table columns configuration from options
-  const columns = useMemo(() => {
-    const rowIdColumnDefinition =
-      rowId != null ? getRowIdColumn<TData, TValue>(rowId) : null;
-
-    const dataColumns = columnsOptions.map((options) =>
-      getDataColumn<TData, TValue>(
-        options,
-        columnSizingMap,
-        measuredColumnSizingMap,
-        expandedColumnsMap,
-        truncateLongCellWidth,
-        handleExpandButtonClick,
+  const dataColumns = useMemo(
+    () =>
+      columnsOptions.map((options) =>
+        getDataColumn<TData, TValue>(
+          options,
+          columnSizingMap,
+          measuredColumnSizingMap,
+          expandedColumnsMap,
+          truncateLongCellWidth,
+          handleExpandButtonClick,
+        ),
       ),
-    );
+    [
+      columnsOptions,
+      columnSizingMap,
+      measuredColumnSizingMap,
+      expandedColumnsMap,
+      truncateLongCellWidth,
+      handleExpandButtonClick,
+    ],
+  );
 
-    return [
-      columnRowSelectOptions,
-      rowIdColumnDefinition,
-      ...dataColumns,
-    ].filter(isNotNull);
-  }, [
-    rowId,
-    columnsOptions,
-    columnRowSelectOptions,
-    columnSizingMap,
-    measuredColumnSizingMap,
-    expandedColumnsMap,
-    truncateLongCellWidth,
-    handleExpandButtonClick,
-  ]);
+  const columns = useMemo(
+    () => [...utilityColumns, ...dataColumns],
+    [utilityColumns, dataColumns],
+  );
 
-  // IDs of columns with fixed width that shouldn't be auto-resized
-  const fixedWidthColumnIds = useMemo(() => {
-    return [columnRowSelectOptions?.id, ROW_ID_COLUMN_ID].filter(isNotNull);
-  }, [columnRowSelectOptions]);
+  const utilityColumnsCount = utilityColumns.length;
+
+  const fixedWidthColumnIds = utilityColumnIds;
 
   // Columns that need text wrapping
   const wrappedColumnsOptions = useMemo(() => {
@@ -254,8 +246,7 @@ export const useDataGridInstance = <TData, TValue>({
   const columnPinning = useColumnPinningByCount({
     columnOrder,
     pinnedLeftColumnsCount,
-    hasRowIdColumn,
-    hasColumnRowSelectColumn,
+    utilityColumnsCount,
   });
 
   const rowPinning = useRowPinningByCount({

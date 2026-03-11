@@ -1,11 +1,10 @@
-import { flexRender } from "@tanstack/react-table";
-import type { HeaderGroup } from "@tanstack/table-core/src/types";
+import { type HeaderGroup, flexRender } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
 
 import { getColumnPositionStyles } from "metabase/data-grid/utils/stylings";
 
-import { HEADER_HEIGHT, ROW_ID_COLUMN_ID } from "../../constants";
+import { HEADER_HEIGHT } from "../../constants";
 import type { DataGridColumn } from "../../types";
 import S from "../DataGrid/DataGrid.module.css";
 import type { DataGridStylesProps } from "../DataGrid/types";
@@ -42,18 +41,17 @@ export const DataGridHeader = <TData,>({
         header.column.columnDef.header,
         header.getContext(),
       );
-      const isRowIdColumn = header.column.id === ROW_ID_COLUMN_ID;
+      const isUtilityColumn =
+        header.column.columnDef.meta?.isUtilityColumn === true;
       const columnPositionStyles = getColumnPositionStyles(column);
 
-      const headerContent = isRowIdColumn ? (
+      const headerContent = isUtilityColumn ? (
         headerCell
       ) : (
         <SortableHeader
           className={cx(S.headerCell, classNames?.headerCell)}
           style={styles?.headerCell}
-          isColumnReorderingDisabled={
-            isColumnReorderingDisabled || isRowIdColumn
-          }
+          isColumnReorderingDisabled={isColumnReorderingDisabled}
           header={header}
           onClick={onHeaderCellClick}
         >

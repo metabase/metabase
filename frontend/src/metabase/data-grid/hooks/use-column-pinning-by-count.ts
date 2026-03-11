@@ -4,29 +4,17 @@ import { useMemo } from "react";
 type UseColumnPinningByCountProps = {
   pinnedLeftColumnsCount: number;
   columnOrder: string[];
-  hasRowIdColumn: boolean;
-  hasColumnRowSelectColumn: boolean;
+  utilityColumnsCount: number;
 };
 
 export const useColumnPinningByCount = ({
   pinnedLeftColumnsCount,
   columnOrder,
-  hasRowIdColumn,
-  hasColumnRowSelectColumn,
+  utilityColumnsCount,
 }: UseColumnPinningByCountProps): ColumnPinningState =>
   useMemo(
     () => ({
-      left: columnOrder.slice(
-        0,
-        pinnedLeftColumnsCount +
-          (hasRowIdColumn ? 1 : 0) +
-          (hasColumnRowSelectColumn ? 1 : 0),
-      ),
+      left: columnOrder.slice(0, pinnedLeftColumnsCount + utilityColumnsCount),
     }),
-    [
-      columnOrder,
-      pinnedLeftColumnsCount,
-      hasRowIdColumn,
-      hasColumnRowSelectColumn,
-    ],
+    [columnOrder, pinnedLeftColumnsCount, utilityColumnsCount],
   );

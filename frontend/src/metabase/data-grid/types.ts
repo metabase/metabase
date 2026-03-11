@@ -29,6 +29,7 @@ declare module "@tanstack/react-table" {
     formatter?: CellFormatter<TValue>;
     clipboardFormatter?: PlainCellFormatter<TValue>;
     width?: "auto";
+    isUtilityColumn?: boolean;
   }
 }
 

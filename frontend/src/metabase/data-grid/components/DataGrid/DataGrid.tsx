@@ -4,7 +4,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import type { HeaderGroup } from "@tanstack/table-core/src/types";
+import type { HeaderGroup } from "@tanstack/react-table";
 import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
@@ -15,7 +15,6 @@ import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import {
   DEFAULT_FONT_SIZE,
   PINNED_BORDER_SEPARATOR_WIDTH,
-  ROW_ID_COLUMN_ID,
 } from "../../constants";
 import { DataGridThemeProvider } from "../../hooks";
 import type {
@@ -131,9 +130,9 @@ export const DataGrid = function DataGrid<TData>({
   const centralColumns = getCentralColumns();
   const hasPinnedColumns = pinnedColumns.length > 0;
   const lastPinnedColumn = pinnedColumns.at(-1);
-  const isLastPinnedColumnRowId =
-    lastPinnedColumn?.origin.id === ROW_ID_COLUMN_ID;
-  const hasSeparator = lastPinnedColumn != null && !isLastPinnedColumnRowId;
+  const isLastPinnedColumnSpecial =
+    lastPinnedColumn?.origin.columnDef.meta?.isUtilityColumn === true;
+  const hasSeparator = lastPinnedColumn != null && !isLastPinnedColumnSpecial;
 
   const pinnedColumnIdSet = useMemo(
     () => new Set(pinnedColumns.map((c) => c.origin.id)),
