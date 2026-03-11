@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useFormikContext } from "formik";
+import { useEffect, useMemo } from "react";
 
 import { FormSelect } from "metabase/forms";
 import {
@@ -66,6 +67,7 @@ type KeysetColumnSelectProps = {
   query: Lib.Query | null;
   disabled?: boolean;
   isLoading?: boolean;
+  autoSelectFirst?: boolean;
 };
 
 export function KeysetColumnSelect({
@@ -77,7 +79,10 @@ export function KeysetColumnSelect({
   query,
   disabled,
   isLoading,
+  autoSelectFirst,
 }: KeysetColumnSelectProps) {
+  const { setFieldValue, values } =
+    useFormikContext<Record<string, string | null>>();
   const columnOptions = useMemo((): Array<SelectOption> => {
     if (!query) {
       return [];
@@ -93,6 +98,36 @@ export function KeysetColumnSelect({
       return [];
     }
   }, [query]);
+
+  useEffect(() => {
+    if (
+      !autoSelectFirst ||
+      disabled ||
+      isLoading ||
+      columnOptions.length === 0
+    ) {
+      return;
+    }
+
+    const currentValue = values[name];
+    const hasValidCurrentValue =
+      currentValue != null &&
+      columnOptions.some((option) => option.value === currentValue);
+
+    if (hasValidCurrentValue) {
+      return;
+    }
+
+    setFieldValue(name, columnOptions[0].value);
+  }, [
+    autoSelectFirst,
+    columnOptions,
+    disabled,
+    isLoading,
+    name,
+    setFieldValue,
+    values,
+  ]);
 
   return (
     <FormSelect

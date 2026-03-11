@@ -159,6 +159,15 @@ function ConfirmableInlineUpdater({
         return;
       }
 
+      const waitingForCheckpointSelection =
+        values.incremental &&
+        values.sourceStrategy === "checkpoint" &&
+        values.checkpointFilterFieldId == null;
+
+      if (waitingForCheckpointSelection) {
+        return;
+      }
+
       const fieldChanged =
         currentFieldId != null &&
         values.checkpointFilterFieldId != null &&

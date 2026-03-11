@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
@@ -25,6 +26,7 @@ type NativeQueryTableTagFieldSelectProps = {
   descriptionProps?: InputDescriptionProps & DataAttributes;
   query: Lib.Query;
   disabled?: boolean;
+  autoSelectFirst?: boolean;
 };
 
 const selectTableQueryMetadata =
@@ -70,7 +72,10 @@ export function NativeQueryTableTagFieldSelect({
   descriptionProps,
   query,
   disabled,
+  autoSelectFirst,
 }: NativeQueryTableTagFieldSelectProps) {
+  const { setFieldValue, values } =
+    useFormikContext<Record<string, string | null>>();
   const metadata = useSelector(getMetadata);
 
   const tableIds = useMemo(() => {
@@ -142,6 +147,36 @@ export function NativeQueryTableTagFieldSelect({
     }
     return null;
   }, [tableIds, hasError]);
+
+  useEffect(() => {
+    if (
+      !autoSelectFirst ||
+      disabled ||
+      isLoading ||
+      fieldOptions.length === 0
+    ) {
+      return;
+    }
+
+    const currentValue = values[name];
+    const hasValidCurrentValue =
+      currentValue != null &&
+      fieldOptions.some((option) => option.value === currentValue);
+
+    if (hasValidCurrentValue) {
+      return;
+    }
+
+    setFieldValue(name, fieldOptions[0].value);
+  }, [
+    autoSelectFirst,
+    disabled,
+    fieldOptions,
+    isLoading,
+    name,
+    setFieldValue,
+    values,
+  ]);
 
   if (noQueryMessage) {
     return (
