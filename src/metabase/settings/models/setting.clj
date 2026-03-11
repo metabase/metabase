@@ -111,7 +111,7 @@
      (contains? (set (keys (methods get-value-of-type))) a-type))])
 
 (def ^:private Visibility
-  [:enum :public :authenticated :settings-manager :admin-write-public-read :admin :internal])
+  [:enum :public :authenticated :settings-manager :admin-write-authed-read :admin :internal])
 
 (defmulti default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
@@ -1245,7 +1245,7 @@
     :public                  | The entire world             | Admins and Settings Managers
     :authenticated           | Logged-in Users              | Admins and Settings Managers
     :settings-manager        | Admins and Settings Managers | Admins and Settings Managers
-    :admin-write-public-read | The entire world             | Admins
+    :admin-write-authed-read | Logged-in Users              | Admins
     :admin                   | Admins                       | Admins
     :internal                | Nobody                       | No one (usually for env-var-only settings)
 
@@ -1471,9 +1471,10 @@
 (defn current-user-readable-visibilities
   "Returns a set of setting visibilities that the current user has read access to."
   []
-  (set (concat [:public :admin-write-public-read]
+  (set (concat [:public]
                (when @api/*current-user*
-                 [:authenticated])
+                 [:authenticated
+                  :admin-write-authed-read])
                (when (has-advanced-setting-access?)
                  [:settings-manager])
                (when api/*is-superuser?*
@@ -1486,7 +1487,7 @@
                (when (has-advanced-setting-access?)
                  [:settings-manager :authenticated :public])
                (when api/*is-superuser?*
-                 [:admin :admin-write-public-read]))))
+                 [:admin :admin-write-authed-read]))))
 
 (defn- user-facing-settings-matching
   "Returns the user facing view of the registered settings satisfying the given predicate"

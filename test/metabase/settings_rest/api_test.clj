@@ -37,9 +37,9 @@
   :visibility :settings-manager
   :encryption :when-encryption-key-set)
 
-(defsetting test-admin-write-public-read-visibility
-  (deferred-tru "Setting to test the `:admin-write-public-read` visibility level. This only shows up in dev.")
-  :visibility :admin-write-public-read
+(defsetting test-admin-write-authed-read-visibility
+  (deferred-tru "Setting to test the `:admin-write-authed-read` visibility level. This only shows up in dev.")
+  :visibility :admin-write-authed-read
   :encryption :when-encryption-key-set)
 
 ;; ## Helper Fns
@@ -108,15 +108,15 @@
                  :default nil}]
                (fetch-test-settings :rasta [:test-setting-1 :test-settings-manager-visibility])))))
 
-    (testing "Check that public users can read Settings with `:visibility :admin-write-public-read` via session/properties"
-      (test-admin-write-public-read-visibility! "PUBLIC_VALUE")
-      (is (= "PUBLIC_VALUE"
+    (testing "Check that authenticated users can read Settings with `:visibility :admin-write-authed-read` via session/properties"
+      (test-admin-write-authed-read-visibility! "VALUE")
+      (is (= "VALUE"
              (get (mt/user-http-request :rasta :get 200 "session/properties")
-                  :test-admin-write-public-read-visibility)))
+                  :test-admin-write-authed-read-visibility)))
       (testing "but non-admins cannot read them via GET /api/setting (the admin-only listing endpoint)"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 "setting"))))
-      (test-admin-write-public-read-visibility! nil))
+      (test-admin-write-authed-read-visibility! nil))
 
     (testing "Check that non-admins are denied access"
       (is (= "You don't have permissions to do that."
@@ -197,16 +197,16 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "setting/test-setting-1" {:value "NICE!"}))))
 
-    (testing "Check that :admin-write-public-read settings are writable by admins but not non-admins"
-      (mt/user-http-request :crowberto :put 204 "setting/test-admin-write-public-read-visibility" {:value "ADMIN_SET"})
+    (testing "Check that :admin-write-authed-read settings are writable by admins but not non-admins"
+      (mt/user-http-request :crowberto :put 204 "setting/test-admin-write-authed-read-visibility" {:value "ADMIN_SET"})
       (is (= "ADMIN_SET"
-             (test-admin-write-public-read-visibility)))
+             (test-admin-write-authed-read-visibility)))
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 "setting/test-admin-write-public-read-visibility" {:value "RASTA_SET"})))
+             (mt/user-http-request :rasta :put 403 "setting/test-admin-write-authed-read-visibility" {:value "RASTA_SET"})))
       (is (= "ADMIN_SET"
-             (test-admin-write-public-read-visibility))
+             (test-admin-write-authed-read-visibility))
           "Value should be unchanged after non-admin write attempt")
-      (test-admin-write-public-read-visibility! nil))
+      (test-admin-write-authed-read-visibility! nil))
 
     (testing "Check that a generic 403 error is returned if a non-superuser tries to set a Setting that doesn't exist"
       (is (= "You don't have permissions to do that."
