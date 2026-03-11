@@ -11,7 +11,7 @@
 
 (defenterprise metabot-slack-signing-secret-setting
   "Returns the Slack signing secret for Metabot (EE only)."
-  metabase-enterprise.metabot-v3.settings
+  metabase-enterprise.slackbot.settings
   []
   nil)
 

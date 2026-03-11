@@ -1,20 +1,20 @@
-(ns metabase-enterprise.metabot-v3.api.slackbot.streaming
+(ns metabase-enterprise.slackbot.streaming
   "Streaming AI responses to Slack using Slack's chat streaming API
    (startStream/appendStream/stopStream)."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase-enterprise.metabot-v3.api.slackbot.channel :as slackbot.channel]
-   [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
-   [metabase-enterprise.metabot-v3.api.slackbot.events :as slackbot.events]
-   [metabase-enterprise.metabot-v3.api.slackbot.persistence :as slackbot.persistence]
-   [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.context :as metabot-v3.context]
    [metabase-enterprise.metabot-v3.envelope :as metabot-v3.envelope]
    [metabase-enterprise.metabot-v3.persistence :as metabot-v3.persistence]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
+   [metabase-enterprise.slackbot.channel :as slackbot.channel]
+   [metabase-enterprise.slackbot.client :as slackbot.client]
+   [metabase-enterprise.slackbot.events :as slackbot.events]
+   [metabase-enterprise.slackbot.persistence :as slackbot.persistence]
+   [metabase-enterprise.slackbot.query :as slackbot.query]
    [metabase.api.common :as api]
    [metabase.channel.slack :as channel.slack]
    [metabase.permissions.core :as perms]
@@ -112,9 +112,9 @@
   [title link]
   (let [full-link (when link (str (system/site-url) link))]
     (cond
-      (and title full-link) (str "📊 <" full-link "|" (escape-slack-link-text title) ">")
+      (and title full-link) (str "\ud83d\udcca <" full-link "|" (escape-slack-link-text title) ">")
       title                 title
-      full-link             (str "📊 <" full-link "|Open in Metabase>")
+      full-link             (str "\ud83d\udcca <" full-link "|Open in Metabase>")
       :else                 nil)))
 
 (defn- viz-output->blocks

@@ -1,8 +1,8 @@
-(ns metabase-enterprise.metabot-v3.api.slackbot.config
+(ns metabase-enterprise.slackbot.config
   "Configuration, manifest, and validation helpers for slackbot."
   (:require
-   [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
-   [metabase-enterprise.metabot-v3.settings :as metabot.settings]
+   [metabase-enterprise.slackbot.client :as slackbot.client]
+   [metabase-enterprise.slackbot.settings :as slackbot.settings]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.channel.settings :as channel.settings]
    [metabase.premium-features.core :as premium-features]
@@ -69,7 +69,7 @@
         (premium-features/enable-sso-slack?)
         (sso-settings/slack-connect-client-id)
         (sso-settings/slack-connect-client-secret)
-        (metabot.settings/metabot-slack-signing-secret)
+        (slackbot.settings/metabot-slack-signing-secret)
         (channel.settings/unobfuscated-slack-app-token)
         (encryption/default-encryption-enabled?))))
 

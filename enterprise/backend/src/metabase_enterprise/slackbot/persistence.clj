@@ -1,4 +1,4 @@
-(ns metabase-enterprise.metabot-v3.api.slackbot.persistence
+(ns metabase-enterprise.slackbot.persistence
   "Slack-specific persistence: reconstruct conversation history from stored messages."
   (:require
    [toucan2.core :as t2]))

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.metabot-v3.api.slackbot.query
+(ns metabase-enterprise.slackbot.query
   "Ad-hoc query execution and visualization for slackbot."
   (:require
    [metabase.api.common :as api]
@@ -122,7 +122,7 @@
     (cond
       (= formatted "") "-"
       (> (count formatted) *slack-table-max-cell-length*)
-      (str (u/truncate formatted (dec *slack-table-max-cell-length*)) "…")
+      (str (u/truncate formatted (dec *slack-table-max-cell-length*)) "\u2026")
       :else formatted)))
 
 (defn- make-column-settings

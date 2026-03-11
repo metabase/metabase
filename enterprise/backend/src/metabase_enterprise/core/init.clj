@@ -18,6 +18,7 @@
    [metabase-enterprise.remote-sync.init]
    [metabase-enterprise.scim.init]
    [metabase-enterprise.semantic-search.init]
+   [metabase-enterprise.slackbot.init]
    [metabase-enterprise.sso.init]
    [metabase-enterprise.stale.init]
    [metabase-enterprise.support-access-grants.init]
