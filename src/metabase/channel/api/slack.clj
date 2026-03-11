@@ -20,7 +20,7 @@
 (defenterprise clear-slack-bot-settings!
   "Clears enterprise slackbot settings when the Slack token is cleared.
    OSS implementation is a no-op."
-  metabase-enterprise.metabot-v3.api.slackbot
+  metabase-enterprise.slackbot.api
   [])
 
 (defn- truncate-url
@@ -176,7 +176,7 @@
 
 (defenterprise-schema get-slack-manifest :- SlackManifest
   "Returns the Slack app manifest. OSS returns basic manifest; EE with metabot-v3 returns full MetaBot manifest."
-  metabase-enterprise.metabot-v3.api.slackbot
+  metabase-enterprise.slackbot.api
   []
   {:display_information {:name "Metabot"
                          :description "Bringing the power of Metabase to your Slack #channels!"

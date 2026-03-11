@@ -1,9 +1,9 @@
-(ns metabase-enterprise.metabot-v3.api.slackbot.query-test
+(ns metabase-enterprise.slackbot.query-test
   "Integration tests for ad-hoc query execution and visualization."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.metabot-v3.api.slackbot.query :as slackbot.query]
+   [metabase-enterprise.slackbot.query :as slackbot.query]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt])
@@ -305,4 +305,56 @@
             {:keys [type content]} (slackbot.query/generate-adhoc-output query)]
         (is (= :table type))
         (is (vector? content))
-        (is (= "table" (:type (first content)))))))) ; header only
+        (is (= "table" (:type (first content))))))))
+
+;;; -------------------------------------------- generate-card-output -----------------------------------------------
+
+(deftest generate-card-output-display-type-test
+  (testing "generate-card-output returns correct type based on card display"
+    (let [mock-results {:data {:cols [{:name "x" :base_type :type/Integer}]
+                               :rows [[1] [2]]}}]
+      (mt/with-dynamic-fn-redefs
+        [slackbot.query/pulse-card-query-results (constantly mock-results)]
+
+        (testing "supported display types return :image"
+          (doseq [display [:bar :line :pie :area :row :scatter :funnel
+                           :waterfall :combo :progress :gauge
+                           :smartscalar :boxplot :sankey]]
+            (testing (str "display type: " display)
+              (mt/with-temp [:model/Card {card-id :id} {:display display}]
+                (let [result (#'slackbot.query/generate-card-output card-id)]
+                  (is (= :image (:type result))))))))
+
+        (testing "unsupported display types return :table"
+          (doseq [display [:table :pin_map :state :country :map :pivot :scalar]]
+            (testing (str "display type: " display)
+              (mt/with-temp [:model/Card {card-id :id} {:display display}]
+                (let [result (#'slackbot.query/generate-card-output card-id)]
+                  (is (= :table (:type result))))))))))))
+
+(deftest generate-card-output-failed-qp-result-test
+  (testing "throws when QP returns :status :failed for table card"
+    (mt/with-temp [:model/Card {card-id :id} {:display :table}]
+      (mt/with-dynamic-fn-redefs
+        [slackbot.query/pulse-card-query-results (constantly {:status :failed
+                                                              :error  "Permission denied"})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Permission denied"
+                              (#'slackbot.query/generate-card-output card-id)))))))
+
+(deftest generate-card-output-failed-qp-result-image-test
+  (testing "throws when QP returns :status :failed for image card"
+    (mt/with-temp [:model/Card {card-id :id} {:display :bar}]
+      (mt/with-dynamic-fn-redefs
+        [slackbot.query/pulse-card-query-results (constantly {:status :failed
+                                                              :error  "Permission denied"})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Permission denied"
+                              (#'slackbot.query/generate-card-output card-id)))))))
+
+(deftest ^:parallel generate-adhoc-output-failed-qp-result-test
+  (testing "throws when QP returns :status :failed"
+    (mt/with-dynamic-fn-redefs
+      [slackbot.query/execute-adhoc-query (constantly {:status :failed
+                                                       :error  "Table not found"
+                                                       :data   {:rows [] :cols []}})]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Table not found"
+                            (slackbot.query/generate-adhoc-output {:database 1} :display :table))))))

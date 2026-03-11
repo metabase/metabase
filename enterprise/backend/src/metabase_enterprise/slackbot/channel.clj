@@ -1,8 +1,8 @@
-(ns metabase-enterprise.metabot-v3.api.slackbot.channel
+(ns metabase-enterprise.slackbot.channel
   "Visible Slack channel reply/update flow for metabot."
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
+   [metabase-enterprise.slackbot.client :as slackbot.client]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 

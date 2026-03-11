@@ -2284,9 +2284,9 @@
               metabase-enterprise.metabot-v3.core
               metabase-enterprise.metabot-v3.init
               metabase-enterprise.metabot-v3.tools.api}
-   :friends #{enterprise/agent-api}
+   :friends #{enterprise/agent-api
+              enterprise/slackbot}
    :uses    #{activity-feed
-              analytics
               api
               app-db
               audit-app
@@ -2295,7 +2295,6 @@
               config
               documents
               driver
-              formatter
               legacy-mbql
               lib
               lib-be
@@ -2318,13 +2317,12 @@
               task
               transforms
               transforms-base
-              upload
               users
               util
               warehouses
               enterprise/api
               enterprise/dependencies
-              enterprise/sso
+              enterprise/slackbot
               enterprise/transforms-python}}
 
   enterprise/permission-debug
@@ -2464,6 +2462,27 @@
            search
            setup
            util}}
+
+  enterprise/slackbot
+  {:team    "Metabot"
+   :api     #{metabase-enterprise.slackbot.init}
+   :friends #{enterprise/metabot-v3}
+   :uses    #{analytics
+              api
+              channel
+              config
+              formatter
+              lib
+              permissions
+              premium-features
+              query-processor
+              request
+              settings
+              system
+              upload
+              util
+              enterprise/metabot-v3
+              enterprise/sso}}
 
   enterprise/snippet-collections
   {:team "Querying"

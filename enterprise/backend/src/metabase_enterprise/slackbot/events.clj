@@ -1,4 +1,4 @@
-(ns metabase-enterprise.metabot-v3.api.slackbot.events
+(ns metabase-enterprise.slackbot.events
   "Event definitions for slackbot."
   (:require
    [clojure.string :as str]))

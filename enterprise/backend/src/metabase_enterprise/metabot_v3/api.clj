@@ -4,7 +4,6 @@
    [metabase-enterprise.api.routes.common :as ee.api.routes]
    [metabase-enterprise.metabot-v3.api.document]
    [metabase-enterprise.metabot-v3.api.metabot]
-   [metabase-enterprise.metabot-v3.api.slackbot]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.client.schema :as metabot-v3.client.schema]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
@@ -14,6 +13,7 @@
    [metabase-enterprise.metabot-v3.persistence :as metabot-v3.persistence]
    [metabase-enterprise.metabot-v3.settings :as metabot-v3.settings]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
+   [metabase-enterprise.slackbot.api]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -100,7 +100,7 @@
                   :metabot-v3 (deferred-tru "MetaBot")
                   metabase-enterprise.metabot-v3.api.document/routes)
      ;; premium check happens in the route so we still ack events to prevent slack retrying
-     "/slack"    metabase-enterprise.metabot-v3.api.slackbot/routes})
+     "/slack"    metabase-enterprise.slackbot.api/routes})
    (ee.api.routes/+require-premium-feature
     :metabot-v3 (deferred-tru "MetaBot")
     (api.macros/ns-handler *ns* +auth))))

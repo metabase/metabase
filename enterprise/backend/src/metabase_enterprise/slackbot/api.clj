@@ -1,17 +1,17 @@
-(ns metabase-enterprise.metabot-v3.api.slackbot
+(ns metabase-enterprise.slackbot.api
   "`/api/ee/metabot-v3/slack` routes"
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
-   [metabase-enterprise.metabot-v3.api.slackbot.config :as slackbot.config]
-   [metabase-enterprise.metabot-v3.api.slackbot.events :as slackbot.events]
-   [metabase-enterprise.metabot-v3.api.slackbot.persistence :as slackbot.persistence]
-   [metabase-enterprise.metabot-v3.api.slackbot.streaming :as slackbot.streaming]
-   [metabase-enterprise.metabot-v3.api.slackbot.uploads :as slackbot.uploads]
    [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.feedback :as metabot-v3.feedback]
-   [metabase-enterprise.metabot-v3.settings :as metabot.settings]
+   [metabase-enterprise.slackbot.client :as slackbot.client]
+   [metabase-enterprise.slackbot.config :as slackbot.config]
+   [metabase-enterprise.slackbot.events :as slackbot.events]
+   [metabase-enterprise.slackbot.persistence :as slackbot.persistence]
+   [metabase-enterprise.slackbot.settings :as slackbot.settings]
+   [metabase-enterprise.slackbot.streaming :as slackbot.streaming]
+   [metabase-enterprise.slackbot.uploads :as slackbot.uploads]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.analytics.core :as analytics]
    [metabase.api.macros :as api.macros]
@@ -61,7 +61,7 @@
 (defn- assert-valid-slack-req
   "Asserts that incoming Slack request has a valid signature."
   [request]
-  (when-not (metabot.settings/unobfuscated-metabot-slack-signing-secret)
+  (when-not (slackbot.settings/unobfuscated-metabot-slack-signing-secret)
     (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503})))
   (when-not (:slack/validated? request)
     (throw (ex-info (str (tru "Slack request signature is not valid.")) {:status-code 401}))))
@@ -369,7 +369,7 @@
                 (boolean (premium-features/enable-sso-slack?))
                 (boolean (sso-settings/slack-connect-client-id))
                 (boolean (sso-settings/slack-connect-client-secret))
-                (boolean (metabot.settings/metabot-slack-signing-secret))
+                (boolean (slackbot.settings/metabot-slack-signing-secret))
                 (boolean (channel.settings/unobfuscated-slack-app-token))
                 (boolean (encryption/default-encryption-enabled?)))
     (throw (ex-info (str (tru "Slack integration is not fully configured.")) {:status-code 503}))))

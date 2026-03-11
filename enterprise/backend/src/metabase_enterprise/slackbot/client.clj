@@ -1,4 +1,4 @@
-(ns metabase-enterprise.metabot-v3.api.slackbot.client
+(ns metabase-enterprise.slackbot.client
   "Slack API client functions for Metabot slackbot."
   (:require
    [clj-http.client :as http]

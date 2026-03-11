@@ -1,9 +1,9 @@
-(ns metabase-enterprise.metabot-v3.api.slackbot.uploads
+(ns metabase-enterprise.slackbot.uploads
   "CSV upload handling for slackbot."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.metabot-v3.api.slackbot.client :as slackbot.client]
+   [metabase-enterprise.slackbot.client :as slackbot.client]
    [metabase.analytics.core :as analytics]
    [metabase.channel.settings :as channel.settings]
    [metabase.upload.core :as upload]
