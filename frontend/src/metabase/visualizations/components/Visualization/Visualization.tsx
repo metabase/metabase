@@ -212,7 +212,7 @@ const mapStateToProps = (state: State): StateProps => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
   isEmbeddingSdk: isEmbeddingSdk(),
-  scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
+  scrollToLastColumn: getUiControls(state)?.scrollToLastColumn ?? false,
   isDownloadingToImage: getIsDownloadingToImage(state),
 });
 

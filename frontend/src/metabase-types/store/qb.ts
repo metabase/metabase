@@ -52,6 +52,7 @@ export interface QueryBuilderUIControls {
   dataReferenceStack: null;
   highlightedNativeQueryLineNumbers: number[];
   isShowingListViewConfiguration: boolean;
+  scrollToLastColumn?: boolean;
 }
 
 export interface QueryBuilderLoadingControls {

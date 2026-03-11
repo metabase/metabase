@@ -14,6 +14,7 @@ import type {
   CollectionItemModel,
   Dataset,
   Field,
+  NativeQuerySnippet,
   ParameterValuesMap,
   TimelineEvent,
 } from "metabase-types/api";
@@ -24,6 +25,7 @@ import type {
   QueryBuilderParentEntityState,
   QueryBuilderQueryStatus,
   QueryBuilderUIControls,
+  Range,
 } from "metabase-types/store";
 
 import {
@@ -191,20 +193,26 @@ export const uiControls = createReducer<QueryBuilderUIControls>(
           isShowingTemplateTagsEditor: action.isShowingTemplateTagsEditor,
         }),
       )
-      .addCase<string, { type: string; payload: unknown }>(
+      .addCase<string, { type: string; payload: Range[] }>(
         SET_NATIVE_EDITOR_SELECTED_RANGE,
         (state, action) => ({
           ...state,
           nativeEditorSelectedRange: action.payload,
         }),
       )
-      .addCase<string, { type: string; payload: unknown }>(
-        SET_MODAL_SNIPPET,
-        (state, action) => ({
-          ...state,
-          modalSnippet: action.payload,
-        }),
-      )
+      .addCase<
+        string,
+        {
+          type: string;
+          payload:
+            | NativeQuerySnippet
+            | Partial<Omit<NativeQuerySnippet, "id">>
+            | null;
+        }
+      >(SET_MODAL_SNIPPET, (state, action) => ({
+        ...state,
+        modalSnippet: action.payload,
+      }))
       .addCase<
         string,
         { type: string; payload: QueryBuilderUIControls["snippetCollectionId"] }
