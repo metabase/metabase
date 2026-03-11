@@ -15,7 +15,12 @@
 (defn- cleanup-failed-convert-runs!
   "Delete orphaned transform records from failed convert-to-transform runs.
    Deletes the transform record (not the output table) and clears the transform_id
-   on the run so it won't be retried."
+   on the run so it won't be retried.
+
+   Uses t2/delete! rather than crud/delete-transform! because this is automated cleanup,
+   not a user action. t2/delete! fires lifecycle hooks (search index removal, dependency
+   events) which is what we want, but skips the audit logging that crud/delete-transform!
+   adds."
   []
   (doseq [run (replacement-run/failed-convert-runs-with-transforms)]
     (try

@@ -25,7 +25,9 @@
       (advance! [this n]
         (let [c        (swap! completed* + n)
               t        @total*
-              fraction (if (pos? t) (double (/ c t)) 0.0)
+              fraction (if (pos? t)
+                         (min 1.0 (double (/ c t)))
+                         0.0)
               scaled   (+ offset (* fraction (- 1.0 offset)))]
           (replacement-run/update-progress! run-id scaled)
           (when (replacement.protocols/canceled? this)
@@ -58,6 +60,7 @@
                (throw (ex-info "Card is not a model" {:card-id card-id})))
 
         ;; --- Phase 1: Create transform ---
+        _          (replacement-run/update-progress! run-id 0.05)
         transform  (transforms/create-transform!
                     {:name        transform-name
                      :description (:description card)
