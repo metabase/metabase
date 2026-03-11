@@ -12,6 +12,7 @@ export * from "./MonthPicker";
 export * from "./MultiAutocomplete";
 export * from "./MultiSelect";
 export * from "./NumberInput";
+export * from "./PasswordInput";
 export * from "./Pill";
 export * from "./PillsInput";
 export * from "./QuarterPicker";

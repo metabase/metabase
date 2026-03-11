@@ -562,3 +562,17 @@
         (is (= coll1-id (-> hydrated first :collection :id)))
         (is (= coll2-id (-> hydrated second :collection :id)))
         (is (nil? (-> hydrated (nth 2) :collection)))))))
+
+(deftest data-layer-tolerates-v59-values-test
+  (testing "v58 code can read data_layer values written by v59 migrations (#69158)"
+    (mt/with-temp [:model/Table {table-id :id} {}]
+      (doseq [[v59-value expected-v58-value] {"hidden"   :copper
+                                              "internal" :copper
+                                              "final"    :gold}]
+        (testing (format "v59 value %s maps to %s" v59-value expected-v58-value)
+          ;; Simulate v59 migration having written the new enum value
+          (t2/query-one {:update :metabase_table
+                         :set    {:data_layer v59-value}
+                         :where  [:= :id table-id]})
+          (is (= expected-v58-value
+                 (t2/select-one-fn :data_layer :model/Table :id table-id))))))))

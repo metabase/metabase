@@ -7,6 +7,7 @@
    [clojure.test :refer [deftest is testing]]
    [mage.alias-test]
    [mage.merge-yaml-migrations-test :as merge-yaml-migrations-test]
+   [mage.modules-test]
    [mage.token-scan-test]
    [mage.util :as u]
    [mage.util-test]))
@@ -14,6 +15,7 @@
 (comment
   mage.util-test/keep-me
   merge-yaml-migrations-test/keep-me
+  mage.modules-test/keep-me
   token-scan-test/keep-me)
 
 (set! *warn-on-reflection* true)
