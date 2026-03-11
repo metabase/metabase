@@ -1,8 +1,3 @@
-import { webcrypto } from "crypto";
-import { TextDecoder, TextEncoder } from "util";
-
-import { ReadableStream } from "web-streams-polyfill";
-import "cross-fetch/polyfill";
 import "raf/polyfill";
 import "jest-canvas-mock";
 import "metabase/utils/dayjs";
@@ -27,7 +22,10 @@ if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
   };
 }
 
-// Patch TextEncoder to coerce to global Uint8Array
+// Patch TextEncoder.encode to coerce to jsdom's Uint8Array.
+// jest-fixed-jsdom exposes Node's TextEncoder, but its encode() returns
+// Node's Uint8Array which fails instanceof checks in modules evaluated in
+// jsdom's VM context (e.g. jose).
 class JSDOMTextEncoder extends TextEncoder {
   encode(...args) {
     const result = super.encode(...args);
@@ -37,20 +35,7 @@ class JSDOMTextEncoder extends TextEncoder {
     return result;
   }
 }
-
-// global TextEncoder and Crypto are not available in jsdom + Jest, see
-// https://stackoverflow.com/questions/70808405/how-to-set-global-textdecoder-in-jest-for-jsdom-if-nodes-util-textdecoder-is-ty
-// Use Node.js native webcrypto instead of @peculiar/webcrypto polyfill
-Object.defineProperty(globalThis, "crypto", {
-  value: webcrypto,
-  writable: true,
-  configurable: true,
-});
 global.TextEncoder = JSDOMTextEncoder;
-global.TextDecoder = TextDecoder;
-
-// replace node's ReadableStream what one that matches what is in the browser
-global.ReadableStream = ReadableStream;
 
 // https://github.com/jsdom/jsdom/issues/3002
 Range.prototype.getBoundingClientRect = () => ({

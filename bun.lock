@@ -280,7 +280,6 @@
         "commander": "^12.1.0",
         "concurrently": "^8.2.2",
         "cross-env": "^10.1.0",
-        "cross-fetch": "^3.1.5",
         "crypto-browserify": "^3.12.0",
         "css-loader": "^6.10.0",
         "cypress": "^15.10.0",
@@ -322,6 +321,7 @@
         "jest": "^30.0.0",
         "jest-canvas-mock": "^2.5.2",
         "jest-environment-jsdom": "^30.0.0",
+        "jest-fixed-jsdom": "^0.0.11",
         "jest-junit": "^16.0.0",
         "jest-watch-typeahead": "^3.0.0",
         "jose": "^5.6.3",
@@ -387,7 +387,6 @@
         "typedoc-plugin-redirect": "^1.2.0",
         "typescript-eslint": "8.54.0",
         "typescript-plugin-css-modules": "^5.1.0",
-        "web-streams-polyfill": "^4.1.0",
         "webpack": "5.105.0",
         "webpack-bundle-analyzer": "^4.10.1",
         "webpack-cli": "^5.1.1",
@@ -2514,8 +2513,6 @@
 
     "cross-env": ["cross-env@10.1.0", "", { "dependencies": { "@epic-web/invariant": "^1.0.0", "cross-spawn": "^7.0.6" }, "bin": { "cross-env": "dist/bin/cross-env.js", "cross-env-shell": "dist/bin/cross-env-shell.js" } }, "sha512-GsYosgnACZTADcmEyJctkJIoqAhHjttw7RsFrVoJNXbsWWqaq6Ym+7kZjq6mS45O0jij6vtiReppKQEtqWy6Dw=="],
 
-    "cross-fetch": ["cross-fetch@3.1.5", "", { "dependencies": { "node-fetch": "2.6.7" } }, "sha512-lvb1SBsI0Z7GDwmuid+mU3kWVBwTVUbe7S0H52yaaAdQOXq2YktTCZdlAcNKFzE6QtRz0snpw9bNiPeOIkkQvw=="],
-
     "cross-spawn": ["cross-spawn@7.0.5", "", { "dependencies": { "path-key": "^3.1.0", "shebang-command": "^2.0.0", "which": "^2.0.1" } }, "sha512-ZVJrKKYunU38/76t0RMOulHOnUcbU9GbpWKAOZ0mhjr7CX6FVrH+4FrAapSOekrgFQ3f/8gwMEuIft0aKq6Hug=="],
 
     "crossfilter": ["crossfilter@1.3.12", "", {}, "sha1-FH1yNqmMRcafeL3DqZ1vsA9wkww="],
@@ -3543,6 +3540,8 @@
     "jest-environment-jsdom": ["jest-environment-jsdom@30.2.0", "", { "dependencies": { "@jest/environment": "30.2.0", "@jest/environment-jsdom-abstract": "30.2.0", "@types/jsdom": "^21.1.7", "@types/node": "*", "jsdom": "^26.1.0" }, "peerDependencies": { "canvas": "^3.0.0" }, "optionalPeers": ["canvas"] }, "sha512-zbBTiqr2Vl78pKp/laGBREYzbZx9ZtqPjOK4++lL4BNDhxRnahg51HtoDrk9/VjIy9IthNEWdKVd7H5bqBhiWQ=="],
 
     "jest-environment-node": ["jest-environment-node@30.2.0", "", { "dependencies": { "@jest/environment": "30.2.0", "@jest/fake-timers": "30.2.0", "@jest/types": "30.2.0", "@types/node": "*", "jest-mock": "30.2.0", "jest-util": "30.2.0", "jest-validate": "30.2.0" } }, "sha512-ElU8v92QJ9UrYsKrxDIKCxu6PfNj4Hdcktcn0JX12zqNdqWHB0N+hwOnnBBXvjLd2vApZtuLUGs1QSY+MsXoNA=="],
+
+    "jest-fixed-jsdom": ["jest-fixed-jsdom@0.0.11", "", { "peerDependencies": { "jest-environment-jsdom": ">=28.0.0" } }, "sha512-3UkjgM79APnmLVDnelrxdwz4oybD5qw6NLyayl7iCX8C8tJHeqjL9fmNrRlIrNiVJSXkF5t9ZPJ+xlM0kSwwYg=="],
 
     "jest-haste-map": ["jest-haste-map@30.2.0", "", { "dependencies": { "@jest/types": "30.2.0", "@types/node": "*", "anymatch": "^3.1.3", "fb-watchman": "^2.0.2", "graceful-fs": "^4.2.11", "jest-regex-util": "30.0.1", "jest-util": "30.2.0", "jest-worker": "30.2.0", "micromatch": "^4.0.8", "walker": "^1.0.8" }, "optionalDependencies": { "fsevents": "^2.3.3" } }, "sha512-sQA/jCb9kNt+neM0anSj6eZhLZUIhQgwDt7cPGjumgLM4rXsfb9kpnlacmvZz3Q5tb80nS+oG/if+NBKrHC+Xw=="],
 
@@ -5305,8 +5304,6 @@
     "wcwidth": ["wcwidth@1.0.1", "", { "dependencies": { "defaults": "^1.0.3" } }, "sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg=="],
 
     "web-namespaces": ["web-namespaces@2.0.1", "", {}, "sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ=="],
-
-    "web-streams-polyfill": ["web-streams-polyfill@4.1.0", "", {}, "sha512-A7Jxrg7+eV+eZR/CIdESDnRGFb6/bcKukGvJBB5snI6cw3is1c2qamkYstC1bY1p08TyMRlN9eTMkxmnKJBPBw=="],
 
     "webidl-conversions": ["webidl-conversions@7.0.0", "", {}, "sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g=="],
 
