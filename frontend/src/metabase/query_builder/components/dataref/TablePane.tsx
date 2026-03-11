@@ -11,7 +11,7 @@ import { useSelector } from "metabase/lib/redux";
 import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import { ConnectedTableList } from "metabase/query_builder/components/dataref/ConnectedTableList";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { ConcreteTableId } from "metabase-types/api";
+import { isConcreteTableId } from "metabase-types/api";
 
 import { FieldList } from "./FieldList";
 import {
@@ -24,24 +24,14 @@ import {
   NodeListTitleText,
 } from "./NodeList";
 import { TableInfoLoader } from "./TableInfoLoader";
-
-type TableItem = {
-  id: ConcreteTableId;
-};
-
-type TablePaneProps = {
-  table: TableItem;
-  onBack: () => void;
-  onClose: () => void;
-  onItemClick: (type: string, item: unknown) => void;
-};
+import type { DataReferencePaneProps, DataReferenceTableItem } from "./types";
 
 export function TablePane({
-  table: { id },
+  id,
   onItemClick,
   onBack,
   onClose,
-}: TablePaneProps) {
+}: DataReferencePaneProps<DataReferenceTableItem>) {
   const { isLoading, error } = useGetTableQuery({ id });
   const metadata = useSelector(getMetadata);
 
@@ -75,12 +65,20 @@ export function TablePane({
               <>
                 <FieldList
                   fields={table.fields}
-                  onFieldClick={(f) => onItemClick("field", f)}
+                  onFieldClick={(field) => {
+                    if (typeof field.id === "number") {
+                      onItemClick({ type: "field", id: field.id });
+                    }
+                  }}
                 />
                 {table.connectedTables() && (
                   <ConnectedTableList
                     tables={table.connectedTables()}
-                    onTableClick={(t) => onItemClick("table", t)}
+                    onTableClick={(table) => {
+                      if (isConcreteTableId(table.id)) {
+                        onItemClick({ type: "table", id: table.id });
+                      }
+                    }}
                   />
                 )}
               </>
@@ -101,7 +99,12 @@ export function TablePane({
                   {table.metrics?.map((metric) => (
                     <li key={metric.card().id}>
                       <NodeListItemLink
-                        onClick={() => onItemClick("question", metric.card())}
+                        onClick={() =>
+                          onItemClick({
+                            type: "question",
+                            id: metric.card().id,
+                          })
+                        }
                       >
                         <NodeListItemIcon name="metric" />
                         <NodeListItemName>

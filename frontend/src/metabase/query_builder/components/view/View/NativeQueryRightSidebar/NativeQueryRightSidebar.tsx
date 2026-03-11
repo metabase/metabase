@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
+import type { DataReferenceItem } from "metabase/query_builder/components/dataref/types";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
@@ -51,6 +52,10 @@ interface NativeQueryRightSidebarProps {
   getEmbeddedParameterVisibility: (
     slug: string,
   ) => EmbeddingParameterVisibility;
+
+  dataReferenceStack: DataReferenceItem[];
+  pushDataReferenceStack: (item: DataReferenceItem) => void;
+  popDataReferenceStack: () => void;
 }
 
 export const NativeQueryRightSidebar = (
