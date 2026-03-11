@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type d3 from "d3";
 
 import CS from "metabase/css/core/index.css";
 import {
@@ -27,7 +28,7 @@ const resolveMax = (min: number, max: number, number_style: string) => {
 
 export interface MiniBarCellProps<TValue> {
   value: TValue;
-  extent: [number, number];
+  extent: ReturnType<typeof d3.extent> | null;
   formatter?: CellFormatter<TValue>;
   backgroundColor?: string;
   align?: CellAlign;
@@ -42,7 +43,7 @@ export interface MiniBarCellProps<TValue> {
 
 export const MiniBarCell = <TValue,>({
   value,
-  extent: [min, max],
+  extent,
   formatter,
   backgroundColor,
   align,
@@ -54,7 +55,12 @@ export const MiniBarCell = <TValue,>({
   barHeight = BAR_HEIGHT,
   barColor = color("brand"),
 }: MiniBarCellProps<TValue>) => {
-  if (typeof value !== "number") {
+  const [min, max] = extent ?? [undefined, undefined];
+  if (
+    typeof value !== "number" ||
+    typeof min !== "number" ||
+    typeof max !== "number"
+  ) {
     return null;
   }
 
