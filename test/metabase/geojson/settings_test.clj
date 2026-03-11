@@ -1,5 +1,6 @@
 (ns metabase.geojson.settings-test
   (:require
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.geojson.settings :as geojson.settings]
@@ -23,7 +24,7 @@
   (is (@#'geojson.settings/CustomGeoJSONValidator test-custom-geojson)))
 
 (deftest ^:parallel validate-geojson-test
-  (testing "It validates URLs and files appropriately"
+  (testing "It validates URLs and files appropriately (classpath resources disabled by default)"
     (let [examples {;; Internal metadata for GCP
                     "metadata.google.internal"                 false
                     "https://metadata.google.internal"         false
@@ -54,8 +55,8 @@
                     "http://192.0.2.0"                         true
                     ;; this following test flakes in CI for unknown reasons
                     ;;"http://0xc0000200"                        true
-                    ;; Resources (files on classpath) are valid
-                    "c3p0.properties"                          true
+                    ;; Classpath resources are NOT valid when env var is not set
+                    "c3p0.properties"                          false
                     ;; Other files are not
                     "./README.md"                              false
                     "file:///tmp"                              false
@@ -72,6 +73,26 @@
           (if should-pass?
             (is (valid? geojson geojson) (str url))
             (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson)) (str url))))))))
+
+(deftest classpath-geojson-env-var-test
+  (testing "When MB_ALLOW_CLASSPATH_GEOJSON is true"
+    (mt/with-temp-env-var-value! [mb-allow-classpath-geojson "true"]
+      (let [valid? #'geojson.settings/validate-geojson
+            make-geojson (fn [url] {:deadb33f {:name "Test" :url url :region_key nil :region_name nil}})]
+        (testing "classpath resources under geojson/custom/ are accepted"
+          (with-redefs [io/resource (constantly (Object.))]
+            (let [geojson (make-geojson "geojson/custom/my-map.json")]
+              (is (valid? geojson geojson)))))
+        (testing "classpath resources outside geojson/custom/ are rejected"
+          (let [geojson (make-geojson "c3p0.properties")]
+            (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson)))))
+        (testing "path traversal is blocked"
+          (let [geojson (make-geojson "geojson/custom/../../etc/passwd")]
+            (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson))))))))
+  (testing "When MB_ALLOW_CLASSPATH_GEOJSON is not set, classpath resources are rejected"
+    (let [valid? #'geojson.settings/validate-geojson
+          geojson {:deadb33f {:name "Test" :url "geojson/custom/my-map.json" :region_key nil :region_name nil}}]
+      (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson))))))
 
 (deftest custom-geojson-disallow-overriding-builtins-test
   (testing "We shouldn't let people override the builtin GeoJSON and put weird stuff in there; ignore changes to them"

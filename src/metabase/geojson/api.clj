@@ -64,7 +64,8 @@
       :else (:body resp))))
 
 (defn- url->reader [url]
-  (if-let [resource (io/resource url)]
+  (if-let [resource (and (geojson.settings/allowed-classpath-resource? url)
+                         (io/resource url))]
     (io/reader resource)
     (url->geojson url)))
 

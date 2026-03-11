@@ -1,12 +1,15 @@
 (ns metabase.geojson.settings
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
-   (java.net InetAddress URL)))
+   (java.net InetAddress URI URL)
+   (java.nio.file Paths)))
 
 (set! *warn-on-reflection* true)
 
@@ -52,20 +55,54 @@
 
 (def ^:private CustomGeoJSONValidator (mr/validator CustomGeoJSON))
 
+(defn allow-classpath-geojson?
+  "Whether classpath GeoJSON resources are allowed, controlled by MB_ALLOW_CLASSPATH_GEOJSON."
+  []
+  (config/config-bool :mb-allow-classpath-geojson))
+
+(def ^:private allowed-classpath-prefixes
+  "Prefixes allowed for classpath GeoJSON resources."
+  #{"geojson/custom/" "app/assets/geojson/"})
+
+(defn allowed-classpath-resource?
+  "Checks if a classpath resource path is allowed. The path must be under one of the [[allowed-classpath-prefixes]]
+   with no path traversal, and the resource must exist."
+  [path]
+  (let [normalized (str (.normalize (Paths/get path (into-array String []))))]
+    (and (not (str/includes? normalized ".."))
+         (some #(str/starts-with? normalized %) allowed-classpath-prefixes)
+         (some? (io/resource normalized)))))
+
+(defn- valid-classpath-resource?
+  "Checks if a URL string is a valid classpath resource for custom GeoJSON.
+   Only allowed when MB_ALLOW_CLASSPATH_GEOJSON is set to true.
+   Must be under the geojson/custom/ prefix with no path traversal."
+  [url]
+  (let [normalized (str (.normalize (Paths/get url (into-array String []))))]
+    (and (str/starts-with? normalized "geojson/custom/")
+         (not (str/includes? normalized ".."))
+         (some? (io/resource normalized)))))
+
 (defn invalid-location-msg
   "Error message when a GeoJSON URL is invalid."
   []
-  (str (tru "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath.")
+  (str (if (allow-classpath-geojson?)
+         (tru "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath. Only classpath resources under geojson/custom/ are allowed.")
+         (tru "Invalid GeoJSON file location: must start with http:// or https://."))
        " "
        (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")))
 
 (def ^:private invalid-hosts
   #{"metadata.google.internal"}) ; internal metadata for GCP
 
+(defn- parse-url
+  [s]
+  (.toURL (URI. s)))
+
 (defn- valid-host?
   [^URL url]
   (let [host (.getHost url)
-        host->url (fn [host] (URL. (str "http://" host)))
+        host->url (fn [host] (parse-url (str "http://" host)))
         base-url  (host->url (.getHost url))]
     (and (not-any? (fn [invalid-url] (.equals ^URL base-url invalid-url))
                    (map host->url invalid-hosts))
@@ -78,16 +115,18 @@
 (defn- valid-url?
   [url-string]
   (try
-    (let [url (URL. url-string)]
+    (let [url (parse-url url-string)]
       (and (valid-protocol? url)
            (valid-host? url)))
     (catch Throwable e
       (throw (ex-info (invalid-location-msg) {:status-code 400, :url url-string} e)))))
 
 (defn valid-geojson-url?
-  "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not."
+  "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not.
+   Classpath resources are only allowed when MB_ALLOW_CLASSPATH_GEOJSON is true, and must be under `geojson/custom/`."
   [url]
-  (or (io/resource url)
+  (or (and (allow-classpath-geojson?)
+           (valid-classpath-resource? url))
       (valid-url? url)))
 
 (defn- valid-geojson-urls?
