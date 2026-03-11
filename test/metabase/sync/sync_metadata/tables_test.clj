@@ -276,6 +276,32 @@
           (is (= "sensitive_table" (:name new-table)))
           (is (nil? (:archived_at new-table))))))))
 
+(deftest computed-tables-not-marked-writable-by-sync-test
+  (testing "Sync should not mark computed tables as writable, even if the driver reports them as writable"
+    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}
+                   :model/Table computed-table {:name           "computed_table"
+                                                :db_id          (u/the-id db)
+                                                :data_authority :computed
+                                                :is_writable    false}
+                   :model/Table normal-table   {:name           "normal_table"
+                                                :db_id          (u/the-id db)
+                                                :data_authority :unconfigured
+                                                :is_writable    false}]
+      ;; Simulate what happens during sync: the driver reports both tables as writable
+      (let [select-cols (into [:model/Table :id :name :schema :data_authority] @#'sync-tables/keys-to-update)]
+        (#'sync-tables/update-table-metadata-if-needed!
+         {:name "computed_table" :schema nil :is_writable true}
+         (t2/select-one select-cols (:id computed-table))
+         db)
+        (#'sync-tables/update-table-metadata-if-needed!
+         {:name "normal_table" :schema nil :is_writable true}
+         (t2/select-one select-cols (:id normal-table))
+         db))
+      (testing "computed table should remain non-writable"
+        (is (false? (t2/select-one-fn :is_writable :model/Table (:id computed-table)))))
+      (testing "normal table should be updated to writable"
+        (is (true? (t2/select-one-fn :is_writable :model/Table (:id normal-table))))))))
+
 (deftest sample-database-tables-data-authority-test
   (testing "Tables from sample databases should be marked as :ingested"
     (mt/with-temp [:model/Database sample-db {:is_sample true}

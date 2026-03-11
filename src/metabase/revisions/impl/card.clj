@@ -7,6 +7,8 @@
   #{:cache_invalidated_at
     :created_at
     :creator_id
+    :dimension_mappings
+    :dimensions
     :document_id
     :entity_id
     :id

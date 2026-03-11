@@ -229,7 +229,6 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: An optional email address of the owner of this transform (for external owners), exclusive with owner_user_id
 
-
   - changeSet:
       id: v59.2026-01-06T10:00:02
       author: gantoreno
@@ -281,7 +280,6 @@ databaseChangeLog:
                   type: int
                   remarks: The user ID who triggered this run (owner for scheduled runs, current user for manual runs)
 
-
   - changeSet:
       id: v59.2026-01-06T10:00:06
       author: gantoreno
@@ -306,7 +304,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_transform_run_user_id
             onDelete: SET NULL
-
 
   - changeSet:
       id: v59.2026-01-07T00:00:01
@@ -878,7 +875,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_transform_run_transform_id
             onDelete: SET NULL
-
 
   - changeSet:
       id: v59.2026-01-27T12:00:00
@@ -2873,7 +2869,6 @@ databaseChangeLog:
                     nullable: true
       rollback:
 
-
   - changeSet:
       id: v59.2026-01-31T12:01:23
       author: christruter
@@ -3635,6 +3630,20 @@ databaseChangeLog:
                   remarks: Slack message ID (ts) for correlating with Slack thread history
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v59.2026-03-06T00:00:00
+      author: qnkhuat
+      comment: Fix computed transform tables incorrectly marked as writable
+      changes:
+        - sql:
+            sql: >
+              UPDATE metabase_table
+              SET is_writable = FALSE
+              WHERE data_authority = 'computed'
+                AND data_source = 'metabase-transform'
+                AND is_writable = TRUE;
+      rollback: # rolling back still leaves the fix in place
 
   - changeSet:
       id: v59.2026-03-06T18:05:00

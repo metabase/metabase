@@ -2,7 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics";
+import { trackUpsellClicked } from "metabase/common/components/upsells/components/analytics";
 import type { BillingPeriod } from "metabase/data-studio/upsells/types";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
