@@ -53,21 +53,23 @@ export const FormGroupsWidget = ({
   const isUserAdmin = memberships.has(adminGroup?.id);
 
   const handleAdd = (groupId: GroupId, membershipData: Partial<Member>) => {
-    const updatedValue = Array.from(memberships.entries()).map(
-      ([id, membershipData]) => {
+    const updatedValue = memberships
+      .entries()
+      .map(([id, membershipData]) => {
         return {
           id,
           ...membershipData,
         };
-      },
-    );
+      })
+      .toArray();
 
     updatedValue.push({ id: groupId, ...membershipData });
     setValue(updatedValue);
   };
 
   const handleRemove = (groupId: GroupId) => {
-    const updatedValue = Array.from(memberships.entries())
+    const updatedValue = memberships
+      .entries()
       .map(([id, membershipData]) => {
         if (id === groupId) {
           return null;
@@ -78,7 +80,8 @@ export const FormGroupsWidget = ({
           ...membershipData,
         };
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      .toArray();
 
     setValue(updatedValue);
   };
@@ -86,15 +89,16 @@ export const FormGroupsWidget = ({
     groupId: GroupId,
     newMembershipData: Partial<Member>,
   ) => {
-    const updatedValue = Array.from(memberships.entries()).map(
-      ([id, membershipData]) => {
+    const updatedValue = memberships
+      .entries()
+      .map(([id, membershipData]) => {
         const data = groupId === id ? newMembershipData : membershipData;
         return {
           id,
           ...data,
         };
-      },
-    );
+      })
+      .toArray();
 
     setValue(updatedValue);
   };

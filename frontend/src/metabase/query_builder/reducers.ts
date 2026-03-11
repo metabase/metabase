@@ -48,7 +48,6 @@ import {
   SOFT_RELOAD_CARD,
   ZOOM_IN_ROW,
 } from "metabase/redux/query-builder";
-import { clone } from "metabase/utils/clone";
 import type { Deferred } from "metabase/utils/promise";
 import type {
   Card,
@@ -401,7 +400,7 @@ export const zoomedRowObjectId = createReducer<number | string | null>(
 );
 
 // a copy of the card being worked on at its last known saved state. if the card is NEW then this should be null.
-// NOTE: we use JSON serialization/deserialization to ensure a deep clone of the object which is required
+// NOTE: we use structuredClone to ensure a deep clone of the object which is required
 //       because we can't have any links between the active card being modified and the "originalCard" for testing dirtiness
 // ALSO: we consistently check for payload.id because an unsaved card has no "originalCard"
 export const originalCard = createReducer<Card | null>(null, (builder) => {
@@ -409,24 +408,24 @@ export const originalCard = createReducer<Card | null>(null, (builder) => {
     .addCase<string, { type: string; payload: { originalCard?: Card } }>(
       INITIALIZE_QB,
       (_state, action) =>
-        action.payload.originalCard ? clone(action.payload.originalCard) : null,
+        action.payload.originalCard ? structuredClone(action.payload.originalCard) : null,
     )
     .addCase<string, { type: string; payload: Card }>(
       RELOAD_CARD,
-      (_state, action) => (action.payload.id ? clone(action.payload) : null),
+      (_state, action) => (action.payload.id ? structuredClone(action.payload) : null),
     )
     .addCase<string, { type: string; payload: { originalCard?: Card } }>(
       SET_CARD_AND_RUN,
       (_state, action) =>
-        action.payload.originalCard ? clone(action.payload.originalCard) : null,
+        action.payload.originalCard ? structuredClone(action.payload.originalCard) : null,
     )
     .addCase<string, { type: string; payload: Card }>(
       API_CREATE_QUESTION,
-      (_state, action) => clone(action.payload),
+      (_state, action) => structuredClone(action.payload),
     )
     .addCase<string, { type: string; payload: Card }>(
       API_UPDATE_QUESTION,
-      (_state, action) => clone(action.payload),
+      (_state, action) => structuredClone(action.payload),
     );
 });
 

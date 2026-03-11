@@ -9,8 +9,7 @@ import undoable, { combineFilters, includeAction } from "redux-undo";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
-import { clone } from "metabase/utils/clone";
-import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
+import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import { isCartesianChart } from "metabase/visualizations";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
@@ -146,7 +145,7 @@ const initializeFromState = async (
       })
       .flat(),
   );
-  return clone(initialState);
+  return structuredClone(initialState);
 };
 
 export const initializeFromCard = async (
@@ -222,7 +221,7 @@ export const addDataSource = createAsyncThunk(
 
     return maybeCombineDataset(
       {
-        ...clone(state),
+        ...structuredClone(state),
         settings,
       },
       settings,
@@ -581,9 +580,11 @@ const visualizerSlice = createSlice({
         const nextState = action.payload;
         if (nextState) {
           state.display = nextState.display;
-          state.columns = clone(nextState.columns);
-          state.columnValuesMapping = clone(nextState.columnValuesMapping);
-          state.settings = clone(nextState.settings);
+          state.columns = structuredClone(nextState.columns);
+          state.columnValuesMapping = structuredClone(
+            nextState.columnValuesMapping,
+          );
+          state.settings = structuredClone(nextState.settings);
         }
       })
       .addCase(fetchCard.pending, (state, action) => {

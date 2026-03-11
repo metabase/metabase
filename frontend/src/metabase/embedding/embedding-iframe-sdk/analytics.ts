@@ -122,25 +122,26 @@ export function createEmbeddedAnalyticsJsUsage(
   };
 
   // Filter embeds by type
-  const dashboardEmbeds = Array.from(activeEmbeds).filter(
+  const allEmbeds = [...activeEmbeds];
+  const dashboardEmbeds = allEmbeds.filter(
     (element) => element.properties.componentName === "metabase-dashboard",
   );
-  const questionEmbeds = Array.from(activeEmbeds).filter(
+  const questionEmbeds = allEmbeds.filter(
     (element) =>
       element.properties.componentName === "metabase-question" &&
       element.properties.questionId !== "new" &&
       element.properties.questionId !== "new-native",
   );
-  const explorationEmbeds = Array.from(activeEmbeds).filter(
+  const explorationEmbeds = allEmbeds.filter(
     (element) =>
       element.properties.componentName === "metabase-question" &&
       (element.properties.questionId === "new" ||
         element.properties.questionId === "new-native"),
   );
-  const browserEmbeds = Array.from(activeEmbeds).filter(
+  const browserEmbeds = allEmbeds.filter(
     (element) => element.properties.componentName === "metabase-browser",
   );
-  const metabotEmbeds = Array.from(activeEmbeds).filter(
+  const metabotEmbeds = allEmbeds.filter(
     (element) => element.properties.componentName === "metabase-metabot",
   );
 

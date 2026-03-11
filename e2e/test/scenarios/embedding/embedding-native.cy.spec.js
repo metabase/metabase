@@ -1,4 +1,3 @@
-import { clone } from "metabase/utils/clone";
 const { H } = cy;
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
@@ -17,7 +16,7 @@ describe("scenarios > embedding > native questions", () => {
 
   context("UI", () => {
     function createAndVisitQuestion({ requiredTagName, defaultValue } = {}) {
-      const details = clone(questionDetails);
+      const details = structuredClone(questionDetails);
 
       if (requiredTagName) {
         details.native["template-tags"][requiredTagName].default = defaultValue;

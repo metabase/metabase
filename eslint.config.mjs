@@ -87,11 +87,11 @@ const configs = [
   {
     files: ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"],
     languageOptions: {
-      ecmaVersion: 2020,
+      ecmaVersion: 2025,
       sourceType: "module",
       globals: {
         ...globals.browser,
-        ...globals.es2020,
+        ...globals.es2025,
         ...globals.commonjs,
         ...globals.jest,
         before: "readonly",
