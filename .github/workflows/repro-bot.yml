@@ -57,13 +57,16 @@ jobs:
         with:
           node-version: 22
 
+      - name: Capture Node.js path for MCP subprocesses
+        run: echo "NODE_BIN_DIR=$(dirname $(which node))" >> $GITHUB_ENV
+
       - name: Set up Clojure CLI
         uses: DeLaGuardo/setup-clojure@13.5.2
         with:
           cli: 'latest'
 
       - name: Cache Maven/Clojure dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.m2/repository
@@ -72,6 +75,8 @@ jobs:
 
       - name: Set up Python (uv)
         uses: astral-sh/setup-uv@v7
+        with:
+          cache-dependency-glob: "mcp/pyproject.toml"
 
       - name: Install playwright-cli
         run: |
@@ -172,6 +177,9 @@ jobs:
             Edit(//./**)
             Edit(repro/**)
             Read(//.claude/**)
+            Read(/tmp/**)
+            Write(/tmp/**)
+            Edit(/tmp/**)
             WebFetch(domain:docs.metabase.com)
             WebFetch(domain:metabase.com)
             WebFetch(domain:www.metabase.com)
