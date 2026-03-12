@@ -22,7 +22,8 @@ jobs:
         version:
           - name: MariaDB 10.6
             junit-name: be-tests-mariadb-10-6-ee
-            image: mariadb:10.6
+            # FIXME: Use the official image when DEV-1668 gets resolved
+            image: circleci/mariadb:10.6
             env:
               enable-ssl-tests: 'false'
           - name: MariaDB Latest
