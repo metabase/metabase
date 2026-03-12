@@ -779,6 +779,23 @@ export const getChartLayout = (
   height: number,
   renderingContext: RenderingContext,
 ): ChartLayout => {
+  const visibleSeries =
+    input.seriesModels?.filter((series) => series.visible) ?? [];
+  const isSplitPanels =
+    settings["graph.split_panels"] === true && visibleSeries.length > 1;
+
+  if (isSplitPanels) {
+    return computeSplitPanelLayout(
+      input,
+      visibleSeries,
+      settings,
+      hasTimelineEvents,
+      width,
+      height,
+      renderingContext,
+    );
+  }
+
   const { ticksDimensions, axisEnabledSetting } = getTicksDimensions(
     input,
     width,
@@ -818,5 +835,135 @@ export const getChartLayout = (
     outerHeight: height,
     axisEnabledSetting,
     stackedBarTicksRotation,
+  };
+};
+
+const computeSplitPanelLayout = (
+  input: ChartLayoutInput,
+  visibleSeries: SeriesModel[],
+  settings: ComputedVisualizationSettings,
+  hasTimelineEvents: boolean,
+  width: number,
+  height: number,
+  renderingContext: RenderingContext,
+): ChartLayout => {
+  const panelCount = visibleSeries.length;
+
+  const dataset = getDataset(input);
+  const perPanelYAxisExtents = new Map<string, [number, number]>();
+
+  for (const series of visibleSeries) {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const datum of dataset) {
+      const value = datum[series.dataKey];
+      if (typeof value === "number" && isFinite(value)) {
+        min = Math.min(min, value);
+        max = Math.max(max, value);
+      }
+    }
+    if (!isFinite(min)) {
+      min = 0;
+    }
+    if (!isFinite(max)) {
+      max = 0;
+    }
+    perPanelYAxisExtents.set(series.dataKey, [min, max]);
+  }
+
+  const yAxisTickWidths: number[] = [];
+  if (input.leftAxisModel) {
+    for (const series of visibleSeries) {
+      const extent = perPanelYAxisExtents.get(series.dataKey) ?? [0, 0];
+      const tempAxisModel: YAxisModel = {
+        ...input.leftAxisModel,
+        extent,
+        seriesKeys: [series.dataKey],
+      };
+      const tickWidth = getYAxisTicksWidth(
+        tempAxisModel,
+        input.yAxisScaleTransforms,
+        settings,
+        renderingContext,
+      );
+      yAxisTickWidths.push(tickWidth);
+    }
+  }
+
+  const maxYTicksWidth =
+    yAxisTickWidths.length > 0
+      ? Math.max(...yAxisTickWidths) + CHART_STYLE.axisTicksMarginY
+      : 0;
+
+  const singleAxisInput: ChartLayoutInput = {
+    ...input,
+    rightAxisModel: null,
+  };
+
+  const overriddenTicksDimensions: TicksDimensions = {
+    yTicksWidthLeft: maxYTicksWidth,
+    yTicksWidthRight: 0,
+    xTicksHeight: 0,
+    firstXTickWidth: 0,
+    lastXTickWidth: 0,
+  };
+
+  const { ticksDimensions: computedTicks, axisEnabledSetting } =
+    getTicksDimensions(
+      singleAxisInput,
+      width,
+      height,
+      settings,
+      hasTimelineEvents,
+      renderingContext,
+    );
+
+  overriddenTicksDimensions.xTicksHeight = computedTicks.xTicksHeight;
+  overriddenTicksDimensions.firstXTickWidth = computedTicks.firstXTickWidth;
+  overriddenTicksDimensions.lastXTickWidth = computedTicks.lastXTickWidth;
+
+  const padding = getChartPadding(
+    singleAxisInput,
+    {
+      ...settings,
+      "graph.x_axis.axis_enabled": axisEnabledSetting,
+    },
+    overriddenTicksDimensions,
+    axisEnabledSetting,
+    width,
+    renderingContext,
+  );
+
+  const bounds = getChartBounds(
+    width,
+    height,
+    padding,
+    overriddenTicksDimensions,
+  );
+
+  const boundaryWidth =
+    width -
+    padding.left -
+    padding.right -
+    overriddenTicksDimensions.yTicksWidthLeft -
+    overriddenTicksDimensions.yTicksWidthRight;
+
+  const panelGap = CHART_STYLE.splitPanel.gap;
+  const availableHeight = height - padding.top - padding.bottom;
+  const panelHeight =
+    (availableHeight - (panelCount - 1) * panelGap) / panelCount;
+
+  return {
+    ticksDimensions: overriddenTicksDimensions,
+    padding,
+    bounds,
+    boundaryWidth,
+    outerHeight: height,
+    axisEnabledSetting,
+    panelCount,
+    panelHeight,
+    panelGap,
+    maxYTicksWidth,
+    perPanelYAxisExtents,
   };
 };

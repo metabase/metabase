@@ -157,6 +157,7 @@ export function useModelsAndOption(
     const shouldAnimate = !isReducedMotionPreferred();
 
     let baseOption;
+
     switch (card.display) {
       case "waterfall":
         baseOption = getWaterfallChartOption(

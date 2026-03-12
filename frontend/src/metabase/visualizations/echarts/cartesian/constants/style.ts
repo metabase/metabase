@@ -60,4 +60,7 @@ export const CHART_STYLE = {
     areaBlurred: 0.2,
     scatter: 0.8,
   },
+  splitPanel: {
+    gap: 30,
+  },
 };

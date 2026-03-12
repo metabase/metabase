@@ -75,7 +75,7 @@ export const ComboChart = ({
     null,
     [],
     settings,
-    WIDTH,
+    width,
     false,
     renderingContext,
   );

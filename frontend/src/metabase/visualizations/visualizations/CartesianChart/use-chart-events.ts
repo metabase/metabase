@@ -86,11 +86,15 @@ export const useChartEvents = (
     ],
   );
 
+  const isSplitPanels =
+    settings["graph.split_panels"] === true &&
+    chartModel.seriesModels.filter((series) => series.visible).length > 1;
+
   useChartYAxisVisibility({
     chartRef,
     seriesModels: chartModel.seriesModels,
-    leftAxisModel: chartModel.leftAxisModel,
-    rightAxisModel: chartModel.rightAxisModel,
+    leftAxisModel: isSplitPanels ? null : chartModel.leftAxisModel,
+    rightAxisModel: isSplitPanels ? null : chartModel.rightAxisModel,
     leftAxisSeriesKeys: chartModel.leftAxisModel?.seriesKeys ?? [],
     hovered,
   });

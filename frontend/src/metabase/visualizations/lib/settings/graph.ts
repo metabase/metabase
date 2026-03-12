@@ -361,6 +361,37 @@ export const STACKABLE_SETTINGS: VisualizationSettingsDefinitions = {
   },
 };
 
+export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
+  "graph.split_panels": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Split into panels`;
+    },
+    widget: "toggle",
+    default: false,
+    inline: true,
+    marginBottom: "1rem",
+    getHidden: (series, settings) => {
+      if (settings["stackable.stack_type"] != null) {
+        return true;
+      }
+      const displays = series.map(
+        (single) => settings.series?.(single).display,
+      );
+      const visibleDisplays = displays.filter((display) => display != null);
+      return visibleDisplays.length <= 1;
+    },
+    readDependencies: [
+      "graph.metrics",
+      "graph.dimensions",
+      "series",
+      "stackable.stack_type",
+    ],
+  },
+};
+
 export const LEGEND_SETTINGS: VisualizationSettingsDefinitions = {
   "legend.is_reversed": {
     getDefault: (_series, settings) => getDefaultLegendIsReversed(settings),
