@@ -65,7 +65,7 @@ describe("IncrementalTransformSettings", () => {
     setup({
       incremental: false,
       hookOverrides: {
-        transformType: "query",
+        transformType: "mbql",
         hasCheckpointOptions: false,
       },
     });
@@ -77,7 +77,7 @@ describe("IncrementalTransformSettings", () => {
     setup({
       incremental: true,
       hookOverrides: {
-        transformType: "query",
+        transformType: "native",
         hasCheckpointOptions: false,
       },
     });
