@@ -11,8 +11,8 @@ import * as Urls from "metabase/lib/urls";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import { Button, Center, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 
-import { trackTransformCreate } from "../../analytics";
-import { CreateTransformCollectionModal } from "../CreateTransformCollectionModal";
+import { trackTransformCreate } from "../../../analytics";
+import { CreateTransformCollectionModal } from "../../../components/CreateTransformCollectionModal";
 
 import { shouldDisableItem } from "./utils";
 

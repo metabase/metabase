@@ -1,7 +1,7 @@
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import type { Database } from "metabase-types/api";
 
-import { doesDatabaseSupportTransforms } from "../../utils";
+import { doesDatabaseSupportTransforms } from "../../../utils";
 
 export function shouldDisableItem(
   item: OmniPickerItem,
