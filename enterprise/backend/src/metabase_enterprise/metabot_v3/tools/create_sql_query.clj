@@ -1,10 +1,15 @@
 (ns metabase-enterprise.metabot-v3.tools.create-sql-query
   "Tool for creating new SQL queries."
   (:require
+   [metabase-enterprise.metabot-v3.tools.sql.common :as metabot-v3.tools.sql.common]
+   [metabase-enterprise.metabot-v3.tools.sql.validation :as metabot-v3.tools.sql.validation]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -12,9 +17,11 @@
 (defn- create-native-query
   "Create a native (SQL) query structure."
   [database-id sql-content]
-  {:database database-id
-   :type     :native
-   :native   {:query sql-content}})
+  (let [mp (lib-be/application-database-metadata-provider database-id)]
+    (-> (lib/native-query mp sql-content)
+        ;; Going forward we should ensure consumers are fine processing MBQL 5.
+        ^{:clj-kondo/ignore [:discouraged-var]}
+        lib/->legacy-MBQL)))
 
 (defn- validate-database-access
   "Check if the current user has access to the database."
@@ -25,7 +32,7 @@
                      :database-id database-id})))
   (api/read-check :model/Database database-id))
 
-(defn create-sql-query
+(mu/defn create-sql-query :- ::metabot-v3.tools.sql.common/operation-result
   "Create a new SQL query in memory.
 
   Parameters:
@@ -48,11 +55,16 @@
   ;; Validate access
   (validate-database-access database-id)
 
-  ;; Create the in-memory query structure
-  (let [dataset-query (create-native-query database-id sql)
-        query-id (u/generate-nano-id)
-        _card-name (or name (str "SQL Query " (random-uuid)))]
-    {:query-id      query-id
-     :query-content sql
-     :query         dataset-query
-     :database      database-id}))
+  (let [dialect (metabot-v3.tools.sql.validation/database-id->dialect database-id)
+
+        {:keys [valid? transpiled-sql] :as validation-result}
+        (metabot-v3.tools.sql.validation/validate-sql dialect sql)]
+    (merge {:validation-result validation-result}
+           (when valid?
+             (let [;; Create the in-memory query structure
+                   dataset-query (create-native-query database-id transpiled-sql)
+                   query-id (u/generate-nano-id)]
+               {:action-result {:query-id      query-id
+                                :query-content transpiled-sql
+                                :query         dataset-query
+                                :database      database-id}})))))
