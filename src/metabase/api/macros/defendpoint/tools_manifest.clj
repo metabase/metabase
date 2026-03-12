@@ -41,18 +41,23 @@
   "Dynamic var bound to an atom collecting `$defs` during manifest generation."
   nil)
 
+(def ^:private sanitize-replacements
+  {"~1" "_SLASH_"
+   "!"  "_BANG_"
+   "="  "_EQ_"
+   "<"  "_LT_"
+   ">"  "_GT_"
+   "*"  "_STAR_"
+   "+"  "_PLUS_"
+   "/"  "_SLASH_"})
+
+(def ^:private sanitize-pattern
+  (re-pattern (str/join "|" (map #(java.util.regex.Pattern/quote %) (keys sanitize-replacements)))))
+
 (defn- sanitize-def-name
   "Sanitize a definition name for use in JSON Schema `$defs`."
   [s]
-  (-> s
-      (str/replace "~1" "/")
-      (str/replace "!" "_BANG_")
-      (str/replace "=" "_EQ_")
-      (str/replace "<" "_LT_")
-      (str/replace ">" "_GT_")
-      (str/replace "*" "_STAR_")
-      (str/replace "+" "_PLUS_")
-      (str/replace "/" "_SLASH_")))
+  (str/replace s sanitize-pattern sanitize-replacements))
 
 (defn- sanitize-ref [ref-str]
   (str/replace ref-str #"#/\$defs/(.+)"
@@ -67,8 +72,15 @@
                             {::mjs/definitions-path "#/$defs/"})
         defs (:definitions jss)]
     (when (and *definitions* (seq defs))
-      (swap! *definitions* merge
-             (into {} (map (fn [[k v]] [(sanitize-def-name k) v])) defs)))
+      (swap! *definitions*
+             (fn [existing]
+               (let [sanitized (into {} (map (fn [[k v]] [(sanitize-def-name k) v])) defs)]
+                 (doseq [[k v] sanitized
+                         :let [prev (get existing k)]
+                         :when (and prev (not= prev v))]
+                   (throw (ex-info (str "Conflicting $defs for " (pr-str k))
+                                   {:key k :existing prev :new v})))
+                 (merge existing sanitized)))))
     (cond-> (dissoc jss :definitions)
       (:$ref jss) (update :$ref sanitize-ref))))
 
@@ -81,15 +93,17 @@
   - Strip version prefix (e.g. `/v1/`)
   - Strip path params (`:id`, `:field-id`)
   - For GET: prefix with `get_` + remaining segments joined by `_`
-  - For POST/PUT/DELETE: just remaining segments joined by `_`
+  - For DELETE: prefix with `delete_` + remaining segments joined by `_`
+  - For POST/PUT: just remaining segments joined by `_`
   - Convert to snake_case"
   [method prefix route-path]
   (let [full-path    (str prefix route-path)
         stripped     (str/replace full-path #".*/v\d+/" "")
         segments     (remove #(str/starts-with? % ":") (str/split stripped #"/"))
         base         (str/join "_" segments)
-        with-prefix  (if (= method :get)
-                       (str "get_" base)
+        with-prefix  (case method
+                       :get    (str "get_" base)
+                       :delete (str "delete_" base)
                        base)]
     (str/replace with-prefix #"-" "_")))
 
@@ -209,6 +223,21 @@
 
 ;;; ------------------------------------------------ Top-level generation --------------------------------------------------
 
+(defn check-tool-uniqueness
+  "Throws if `tools` contains duplicate `:name` values. The exception message lists each
+  conflicting name and the endpoints that share it."
+  [tools]
+  (let [dupes (into (sorted-map)
+                    (comp (filter (fn [[_ tools]] (< 1 (count tools))))
+                          (map (fn [[name tools]] [name (mapv :endpoint tools)])))
+                    (group-by :name tools))]
+    (when (seq dupes)
+      (throw (ex-info (str "Duplicate tool names detected: "
+                           (str/join ", " (map (fn [[name endpoints]]
+                                                 (str name " -> " (pr-str endpoints)))
+                                               dupes)))
+                      {:duplicates dupes})))))
+
 (defn generate-tools-manifest
   "Generate a tools manifest from all `:tool`-annotated endpoints.
 
@@ -224,6 +253,7 @@
                                   (when-let [endpoint (get (api.macros/ns-routes ns-sym) k)]
                                     (endpoint->tool-definition (get namespace-prefixes ns-sym) endpoint)))))
                          registry)]
+      (check-tool-uniqueness tools)
       (cond-> {:$schema "https://json-schema.org/draft/2020-12/schema"
                :version "1.0.0"
                :tools   (sort-by :name tools)}

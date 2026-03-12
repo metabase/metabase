@@ -20,8 +20,8 @@
   (testing "Hyphens are converted to underscores"
     (is (= "construct_query"
            (tools-manifest/infer-tool-name :post "/api/agent" "/v1/construct-query"))))
-  (testing "DELETE endpoints don't get a prefix"
-    (is (= "table"
+  (testing "DELETE endpoints get a delete_ prefix"
+    (is (= "delete_table"
            (tools-manifest/infer-tool-name :delete "/api/agent" "/v1/table/:id")))))
 
 ;;; ------------------------------------------------- Annotation inference ------------------------------------------------
@@ -50,44 +50,47 @@
 ;;; ------------------------------------------- Tool description rewriting ------------------------------------------------
 
 (deftest ^:parallel rewrite-tool-descriptions-test
-  (testing "tool/description replaces description in JSON schema output"
-    (let [schema    [:map
-                     [:id [:int {:description      "Internal ID"
-                                 :tool/description "The ID of the saved question"}]]]
-          rewritten (tools-manifest/rewrite-tool-descriptions schema)
-          jss       (mjs/transform rewritten)]
-      (is (= "The ID of the saved question"
-             (get-in jss [:properties :id :description])))))
-  (testing "schemas without tool/description keep original description"
-    (let [schema    [:map [:id [:int {:description "Internal ID"}]]]
-          rewritten (tools-manifest/rewrite-tool-descriptions schema)
-          jss       (mjs/transform rewritten)]
-      (is (= "Internal ID"
-             (get-in jss [:properties :id :description]))))))
+  (are [description schema expected]
+    (testing description
+      (let [rewritten (tools-manifest/rewrite-tool-descriptions schema)
+            jss       (mjs/transform rewritten)]
+        (is (= expected
+               (get-in jss [:properties :id :description])))))
+    "tool/description replaces description in JSON schema output"
+    [:map [:id [:int {:description      "Internal ID"
+                      :tool/description "The ID of the saved question"}]]]
+    "The ID of the saved question"
+
+    "schemas without tool/description keep original description"
+    [:map [:id [:int {:description "Internal ID"}]]]
+    "Internal ID"))
 
 ;;; ------------------------------------------- endpoint->tool-definition -------------------------------------------------
 
 (deftest ^:parallel endpoint->tool-definition-test
   (testing "Basic endpoint conversion"
     (binding [tools-manifest/*definitions* (atom (sorted-map))]
-      (let [form     {:method          :get
-                      :route           {:path "/v1/table/:id"}
-                      :params          {:route {:binding '{:keys [id]}
-                                                :schema  [:map [:id :int]]}}
-                      :response-schema [:map [:name :string]]
-                      :docstr          "Get a table."
-                      :metadata        {:tool {:name "get_table"}}
-                      :body            '(nil)}
-            result   (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
-        (is (= "get_table" (:name result)))
-        (is (= "Get a table." (:description result)))
-        (is (= {:method "GET" :path "/api/agent/v1/table/{id}"}
-               (:endpoint result)))
-        (is (some? (:inputSchema result)))
-        (is (some? (:responseSchema result)))
-        (is (= {:readOnlyHint   true
-                :idempotentHint true}
-               (:annotations result)))))))
+      (let [form   {:method          :get
+                    :route           {:path "/v1/table/:id"}
+                    :params          {:route {:binding '{:keys [id]}
+                                              :schema  [:map [:id :int]]}}
+                    :response-schema [:map [:name :string]]
+                    :docstr          "Get a table."
+                    :metadata        {:tool {:name "get_table"}}
+                    :body            '(nil)}
+            result (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
+        (is (= {:name           "get_table"
+                :description    "Get a table."
+                :endpoint       {:method "GET" :path "/api/agent/v1/table/{id}"}
+                :inputSchema    {:type       "object"
+                                 :properties {:id {:type "integer"}}
+                                 :required   ["id"]}
+                :responseSchema {:type       "object"
+                                 :properties {:name {:type "string"}}
+                                 :required   ["name"]}
+                :annotations    {:readOnlyHint   true
+                                 :idempotentHint true}}
+               result))))))
 
 ;;; ---------------------------------------------- Integration test -------------------------------------------------------
 
@@ -109,7 +112,20 @@
    body :- [:map [:name :string]]]
   body)
 
-(deftest generate-tools-manifest-test
+(deftest ^:parallel check-tool-uniqueness-test
+  (testing "No duplicates — no exception"
+    (is (nil? (tools-manifest/check-tool-uniqueness
+               [{:name "foo" :endpoint {:method "GET" :path "/v1/foo"}}
+                {:name "bar" :endpoint {:method "POST" :path "/v1/bar"}}]))))
+  (testing "Throws on duplicate tool names"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Duplicate tool names detected"
+         (tools-manifest/check-tool-uniqueness
+          [{:name "foo" :endpoint {:method "GET"  :path "/v1/foo"}}
+           {:name "foo" :endpoint {:method "POST" :path "/v1/foo"}}])))))
+
+(deftest ^:parallel generate-tools-manifest-test
   (testing "Generate manifest from test endpoints in this namespace"
     (let [manifest (tools-manifest/generate-tools-manifest
                     {'metabase.api.macros.defendpoint.tools-manifest-test "/api/test"})]
