@@ -1112,7 +1112,7 @@
                                                (ws-url (:id workspace) "/transform" new-ref-id)
                                                {:name   "New Transform via Upsert"
                                                 :source {:type  "query"
-                                                         :query (-> q :orders (lib/aggregate (lib/count)) ->native)}
+                                                         :query (-> (q :orders) (lib/aggregate (lib/count)) ->native)}
                                                 :target {:type   "table"
                                                          :schema target-schema
                                                          :name   "upsert_test_table"}})]

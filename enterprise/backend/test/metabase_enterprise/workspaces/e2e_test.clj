@@ -20,7 +20,7 @@
       (mt/with-model-cleanup [:model/Transform :model/Workspace]
         (mt/with-temp [:model/Transform {transform-id :id} {:name   "Transform 1"
                                                             :source {:type  "query"
-                                                                     :query (ws.tu/->native (-> (ws.tu/q :orders) (lib/limit 3)))}
+                                                                     :query (-> (ws.tu/q :orders) (lib/limit 3) ws.tu/->native)}
                                                             :target {:type     "table"
                                                                      :name     output-table-name
                                                                      :database (mt/id)
