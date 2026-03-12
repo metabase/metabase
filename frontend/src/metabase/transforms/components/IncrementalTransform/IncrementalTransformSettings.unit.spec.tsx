@@ -8,7 +8,7 @@ import { createMockTransformSource } from "metabase-types/api/mocks";
 import { IncrementalTransformSettings } from "./IncrementalTransformSettings";
 import { getInitialValues } from "./form";
 
-jest.mock("./hooks", () => ({
+jest.mock("./useHasCheckpointOptions", () => ({
   useHasCheckpointOptions: jest.fn(),
 }));
 
@@ -17,7 +17,9 @@ jest.mock("metabase/transforms/utils", () => ({
   isMbqlQuery: () => false,
 }));
 
-const { useHasCheckpointOptions } = jest.requireMock("./hooks");
+const { useHasCheckpointOptions } = jest.requireMock(
+  "./useHasCheckpointOptions",
+);
 
 type SetupOpts = {
   incremental?: boolean;
