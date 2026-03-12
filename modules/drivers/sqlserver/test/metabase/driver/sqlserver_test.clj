@@ -15,6 +15,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -644,6 +645,85 @@
                          (map :base_type cols)))
                   (is (= expected-types
                          (map :base_type results-metadata-cols))))))))))))
+
+(deftest ^:parallel predicate-expression-in-custom-column-test
+  (mt/test-driver :sqlserver
+    (let [mp    (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          id (lib.metadata/field mp (mt/id :products :id))
+          price (lib.metadata/field mp (mt/id :products :price))
+          category (lib.metadata/field mp (mt/id :products :category))]
+      (testing "predicate expression with >"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "price_gt60" (lib/> price 60))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "price_gt60")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [2 "Doohickey" 70.08 true]
+                  [3 "Doohickey" 35.39 false]
+                  [4 "Doohickey" 73.99 true]
+                  [5 "Gadget" 82.75 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with contains"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "contains_get" (lib/contains category "get"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "contains_get")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [2 "Doohickey" 70.08 false]
+                  [3 "Doohickey" 35.39 false]
+                  [4 "Doohickey" 73.99 false]
+                  [5 "Gadget" 82.75 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with not"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "not_predicate" (lib/not (lib/> price 60)))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "not_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 true]
+                  [2 "Doohickey" 70.08 false]
+                  [3 "Doohickey" 35.39 true]
+                  [4 "Doohickey" 73.99 false]
+                  [5 "Gadget" 82.75 false]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with or, and a filter"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "or_predicate" (lib/or (lib/> price 60) (lib/contains category "get")))
+                        (lib/filter (lib/contains category "g"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "or_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [5 "Gadget" 82.75 true]
+                  [9 "Widget" 58.31 true]
+                  [10 "Gizmo" 31.79 false]
+                  [11 "Gadget" 88.3 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "predicate expression with and, and a filter"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "and_predicate" (lib/and (lib/> price 60) (lib/contains category "get")))
+                        (lib/filter (lib/contains category "g"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "and_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [5 "Gadget" 82.75 true]
+                  [9 "Widget" 58.31 false]
+                  [10 "Gizmo" 31.79 false]
+                  [11 "Gadget" 88.3 true]]
+                 (mt/rows (qp/process-query query))))))
+      (testing "nested predicate expression, and a filter"
+        (let [query (-> (lib/query mp products)
+                        (lib/expression "nested_predicate" (lib/and (lib/and (lib/> price 30) (lib/< price 60))
+                                                                    (lib/or (lib/contains category "wid")
+                                                                            (lib/contains category "gad"))))
+                        (lib/filter (lib/contains category "g"))
+                        (lib/limit 5))
+              query (lib/with-fields query [id category price (lib/expression-ref query "nested_predicate")])]
+          (is (= [[1 "Gizmo" 29.46 false]
+                  [5 "Gadget" 82.75 false]
+                  [9 "Widget" 58.31 true]
+                  [10 "Gizmo" 31.79 false]
+                  [11 "Gadget" 88.3 false]]
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest filter-by-datetime-fields-test
   (mt/test-driver :sqlserver
