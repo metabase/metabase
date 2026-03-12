@@ -27,3 +27,15 @@
   metabase-enterprise.oauth-server.api
   [_request _client-id]
   nil)
+
+(defenterprise authorize-handler
+  "Handles the authorization endpoint (GET /oauth/authorize), or returns nil if unavailable."
+  metabase-enterprise.oauth-server.api
+  [_request]
+  nil)
+
+(defenterprise authorize-decision-handler
+  "Handles the authorization decision (POST /oauth/authorize/decision), or returns nil if unavailable."
+  metabase-enterprise.oauth-server.api
+  [_request]
+  nil)

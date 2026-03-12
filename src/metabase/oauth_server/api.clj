@@ -22,4 +22,10 @@
            not-found-response))
      (GET "/register/:client-id" [client-id :as request]
        (or (oauth-server/dynamic-client-read-handler request client-id)
+           not-found-response))
+     (GET "/authorize" request
+       (or (oauth-server/authorize-handler request)
+           not-found-response))
+     (POST "/authorize/decision" request
+       (or (oauth-server/authorize-decision-handler request)
            not-found-response)))))
