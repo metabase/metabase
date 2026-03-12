@@ -35,5 +35,5 @@ export interface UpdateCustomVizPluginRequest {
   display_name?: string;
   icon?: string | null;
   access_token?: string;
-  pinned_version?: string;
+  pinned_version?: string | null;
 }
