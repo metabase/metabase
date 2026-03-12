@@ -5,6 +5,8 @@
    The full transforms module (metabase.transforms.schema) extends these with
    additional fields like :id (required for scheduled execution)."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -39,6 +41,22 @@
    [:name {:optional true} :string]
    [:description {:optional true} [:maybe :string]]])
 
+;;; ----------------------------------------- Source Range Params -----------------------------------------------
+
+(mr/def ::checkpoint-bound
+  "A bound (lo or hi) for incremental checkpoint filtering."
+  [:map
+   [:value :any]])
+
+(mr/def ::source-range-params
+  "Parameters for incremental range filtering on a source query.
+   Returned by get-source-range-params."
+  [:map
+   [:column ::lib.schema.metadata/column]
+   [:checkpoint-filter-field-id ::lib.schema.id/field]
+   [:lo {:optional true} [:maybe ::checkpoint-bound]]
+   [:hi {:optional true} [:maybe ::checkpoint-bound]]])
+
 ;;; ------------------------------------------------- Options -------------------------------------------------
 
 (mr/def ::execute-base-options
@@ -50,7 +68,7 @@
    [:publish-events? {:optional true} :boolean]
    [:message-log {:optional true} [:maybe ::atom]]
    [:cancel-chan {:optional true} [:maybe ::chan]]
-   [:source-range-params {:optional true} [:maybe :map]]])
+   [:source-range-params {:optional true} [:maybe ::source-range-params]]])
 
 ;;; ------------------------------------------------- Result -------------------------------------------------
 
@@ -61,4 +79,4 @@
    [:result {:optional true} :any]
    [:error {:optional true} [:maybe (ms/InstanceOfClass Throwable)]]
    [:logs {:optional true} [:maybe :string]]
-   [:source-range-params {:optional true} [:maybe :map]]])
+   [:source-range-params {:optional true} [:maybe ::source-range-params]]])

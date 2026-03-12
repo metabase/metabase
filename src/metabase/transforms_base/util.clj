@@ -21,6 +21,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.sync.core :as sync]
    [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n]
@@ -215,7 +216,7 @@
      query 0
      #(assoc-in % [:template-tags tag-name :source-filters] filters))))
 
-(defn get-source-range-params
+(mu/defn get-source-range-params :- [:maybe ::transforms-base.schema/source-range-params]
   "Returns information on the incremental range filters that ought to be applied to a source query.
 
   Returns a map:
