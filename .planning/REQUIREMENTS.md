@@ -72,25 +72,25 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORR-01 | — | Pending |
-| CORR-02 | — | Pending |
-| SUMM-01 | — | Pending |
-| SUMM-02 | — | Pending |
-| SUMM-03 | — | Pending |
-| DETL-01 | — | Pending |
-| DETL-02 | — | Pending |
-| DETL-03 | — | Pending |
-| ATTR-01 | — | Pending |
-| ATTR-02 | — | Pending |
-| ATTR-03 | — | Pending |
-| PRES-01 | — | Pending |
-| PRES-02 | — | Pending |
+| CORR-01 | Phase 1 | Pending |
+| CORR-02 | Phase 1 | Pending |
+| SUMM-01 | Phase 1 | Pending |
+| SUMM-02 | Phase 1 | Pending |
+| SUMM-03 | Phase 1 | Pending |
+| DETL-01 | Phase 2 | Pending |
+| DETL-02 | Phase 2 | Pending |
+| DETL-03 | Phase 2 | Pending |
+| ATTR-01 | Phase 1 | Pending |
+| ATTR-02 | Phase 1 | Pending |
+| ATTR-03 | Phase 1 | Pending |
+| PRES-01 | Phase 3 | Pending |
+| PRES-02 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-12*
-*Last updated: 2026-03-12 after initial definition*
+*Last updated: 2026-03-12 after roadmap creation*
