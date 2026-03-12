@@ -608,6 +608,30 @@
       (execute-statement! driver st sql)
       (execute-prepared-statement! driver st))))
 
+(defn emit-statement-detail!
+  "Emit a DEBUG log line with per-statement execution details: database ID, SQL text, parameter values, and
+   execution time. The log line is only constructed when DEBUG level is enabled for this namespace.
+
+   This function is public for testability but should be considered an implementation detail."
+  [sql params database-id elapsed-ms]
+  (log/debug
+   (let [sb (StringBuilder. "Statement executed :: database=")]
+     (.append sb (str database-id))
+     (.append sb " SQL: ")
+     (.append sb sql)
+     (when (seq params)
+       (.append sb " params=[")
+       (loop [[p & more] params]
+         (.append sb (str p))
+         (when more
+           (.append sb ", ")
+           (recur more)))
+       (.append sb "]"))
+     (.append sb " time=")
+     (.append sb (str (long elapsed-ms)))
+     (.append sb "ms")
+     (.toString sb))))
+
 (defmethod read-column-thunk :default
   [driver ^ResultSet rs rsmeta ^long i]
   (let [driver-default-method (get-method read-column-thunk driver)]
@@ -787,7 +811,10 @@
      (fn [^Connection conn]
        (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
                    ^ResultSet rs (try
-                                   (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
+                                   (let [timer  (u/start-timer)
+                                         result (execute-statement-or-prepared-statement! driver stmt max-rows params sql)]
+                                     (emit-statement-detail! sql params (:id database) (u/since-ms timer))
+                                     result)
                                    (catch Throwable e
                                      (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                      (cond-> {:driver driver
