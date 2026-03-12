@@ -29,9 +29,19 @@
   "Sessions expire after 1 hour."
   (* 60 60 1000))
 
+(defn- sweep-expired-sessions!
+  "Remove all sessions whose TTL has elapsed. Called on session creation to
+   prevent abandoned sessions from accumulating in memory."
+  []
+  (swap! sessions (fn [m]
+                    (into {} (remove (fn [[_ {:keys [timer]}]]
+                                       (>= (u/since-ms timer) session-ttl-ms)))
+                          m))))
+
 (defn- create-session! []
+  (sweep-expired-sessions!)
   (let [session-id (str (UUID/randomUUID))]
-    (swap! sessions assoc session-id {:timer (u/start-timer)})
+    (swap! sessions assoc session-id {:timer (u/start-timer) :initialized? false})
     session-id))
 
 (defn- delete-session! [session-id]
@@ -42,6 +52,12 @@
     (if (< (u/since-ms (:timer session)) session-ttl-ms)
       true
       (do (delete-session! session-id) false))))
+
+(defn- session-initialized? [session-id]
+  (get-in @sessions [session-id :initialized?]))
+
+(defn- mark-session-initialized! [session-id]
+  (swap! sessions assoc-in [session-id :initialized?] true))
 
 ;;; -------------------------------------------------- Auth --------------------------------------------------------
 
@@ -109,16 +125,17 @@
       (handle-initialize id params session-id)
 
       "notifications/initialized"
-      nil ; notification — no response
+      (do (mark-session-initialized! session-id)
+          nil) ; notification — no response
 
-      "tools/list"
-      (handle-tools-list id params)
-
-      "tools/call"
-      (handle-tools-call id params)
-
-      "ping"
-      (handle-ping id params)
+      ;; All other methods require the session to be initialized
+      ("tools/list" "tools/call" "ping")
+      (if-not (session-initialized? session-id)
+        (jsonrpc-error id -32600 "Session not initialized: send notifications/initialized first")
+        (case method
+          "tools/list" (handle-tools-list id params)
+          "tools/call" (handle-tools-call id params)
+          "ping"       (handle-ping id params)))
 
       ;; unknown method
       (if id
@@ -237,7 +254,7 @@
     (if (and session-id (valid-session? session-id))
       (do (delete-session! session-id)
           {:status 200 :headers {"Content-Type" "application/json"} :body ""})
-      (json-response 400 {:error "Invalid or missing session"}))))
+      (json-response 400 (jsonrpc-error nil -32600 "Invalid or missing Mcp-Session-Id")))))
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 

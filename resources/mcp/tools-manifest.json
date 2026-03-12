@@ -345,12 +345,13 @@
     },
     {
       "name": "execute_query",
-      "description": "Execute a previously constructed query and return the results as a markdown table with row count and execution time.",
+      "_TODO": "Change responseFormat back to markdown once the execute tool formats results as a markdown table",
+      "description": "Execute a previously constructed query and return the results as JSON with row count and execution time.",
       "endpoint": {
         "method": "POST",
         "path": "/api/agent/v1/execute"
       },
-      "responseFormat": "query_result",
+      "responseFormat": "json",
       "streaming": true,
       "inputSchema": {
         "type": "object",
