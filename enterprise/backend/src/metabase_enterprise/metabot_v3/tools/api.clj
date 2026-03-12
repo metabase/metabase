@@ -887,7 +887,7 @@
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
 (deftool "/filter-records"
-  "Construct a query from a metric."
+  "Apply filters to records from a data source (query, report, or table)."
   {:args-schema   ::filter-records-arguments
    :result-schema ::filtering-result
    :handler       metabot-v3.tools.filters/filter-records})

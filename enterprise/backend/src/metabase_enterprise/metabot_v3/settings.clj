@@ -4,7 +4,7 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting ai-service-base-url
-  (deferred-tru "URL for the a AI Service")
+  (deferred-tru "URL for the AI Service")
   :type       :string
   :encryption :no
   :default    "http://localhost:8000"
