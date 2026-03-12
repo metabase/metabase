@@ -30,76 +30,77 @@
 
 (deftest ^:parallel prefer-tool-descriptions-test
   (testing "tool/description replaces description in JSON schema output"
-    (binding [tools-manifest/*definitions* (atom (sorted-map))]
-      (let [jss (tools-manifest/mjs-collect-tool-definitions
-                 [:map [:id [:int {:description      "Internal ID"
-                                   :tool/description "The ID of the saved question"}]]])]
-        (is (= "The ID of the saved question"
-               (get-in jss [:properties :id :description]))))))
+    (let [defs (atom (sorted-map))
+          jss  (tools-manifest/malli->json-schema
+                defs
+                [:map [:id [:int {:description      "Internal ID"
+                                  :tool/description "The ID of the saved question"}]]])]
+      (is (= "The ID of the saved question"
+             (get-in jss [:properties :id :description])))))
   (testing "schemas without tool/description keep original description"
-    (binding [tools-manifest/*definitions* (atom (sorted-map))]
-      (let [jss (tools-manifest/mjs-collect-tool-definitions
-                 [:map [:id [:int {:description "Internal ID"}]]])]
-        (is (= "Internal ID"
-               (get-in jss [:properties :id :description])))))))
+    (let [defs (atom (sorted-map))
+          jss  (tools-manifest/malli->json-schema
+                defs
+                [:map [:id [:int {:description "Internal ID"}]]])]
+      (is (= "Internal ID"
+             (get-in jss [:properties :id :description]))))))
 
 (mr/def ::ref-target-a [:enum "x" "y"])
 (mr/def ::ref-target-b [:map [:nested ::ref-target-a]])
 
 (deftest ^:parallel nested-ref-sanitization-test
   (testing "All $ref values are sanitized, including nested ones inside oneOf/definitions"
-    (binding [tools-manifest/*definitions* (atom (sorted-map))]
-      ;; [:or ...] produces oneOf in JSON Schema, each branch may have its own $ref
-      (let [jss (tools-manifest/mjs-collect-tool-definitions
-                 [:or ::ref-target-a ::ref-target-b])]
-        ;; The top-level schema should be an anyOf (malli :or → anyOf) with $ref entries
-        (is (contains? jss :anyOf))
-        ;; Every $ref anywhere in the output must use sanitized names (no raw / characters after #/$defs/)
-        (let [all-refs (atom [])]
-          (clojure.walk/postwalk
-           (fn [x]
-             (when (and (map-entry? x) (= (key x) :$ref))
-               (swap! all-refs conj (val x)))
-             x)
-           jss)
-          (is (seq @all-refs) "should have found $ref entries")
-          (doseq [ref @all-refs]
-            (is (not (re-find #"#/\$defs/.*/" ref))
-                (str "$ref should not contain unsanitized /: " ref))))
-        ;; Also check that definitions stored in *definitions* have sanitized nested $refs
-        (doseq [[_def-name def-val] @tools-manifest/*definitions*]
-          (clojure.walk/postwalk
-           (fn [x]
-             (when (and (map-entry? x) (= (key x) :$ref))
-               (is (not (re-find #"#/\$defs/.*/" (val x)))
-                   (str "$ref in definition should not contain unsanitized /: " (val x))))
-             x)
-           def-val))))))
+    (let [defs (atom (sorted-map))
+          ;; [:or ...] produces oneOf in JSON Schema, each branch may have its own $ref
+          jss  (tools-manifest/malli->json-schema defs [:or ::ref-target-a ::ref-target-b])]
+      ;; The top-level schema should be an anyOf (malli :or → anyOf) with $ref entries
+      (is (contains? jss :anyOf))
+      ;; Every $ref anywhere in the output must use sanitized names (no raw / characters after #/$defs/)
+      (let [all-refs (atom [])]
+        (clojure.walk/postwalk
+         (fn [x]
+           (when (and (map-entry? x) (= (key x) :$ref))
+             (swap! all-refs conj (val x)))
+           x)
+         jss)
+        (is (seq @all-refs) "should have found $ref entries")
+        (doseq [ref @all-refs]
+          (is (not (re-find #"#/\$defs/.*/" ref))
+              (str "$ref should not contain unsanitized /: " ref))))
+      ;; Also check that definitions stored in defs have sanitized nested $refs
+      (doseq [[_def-name def-val] @defs]
+        (clojure.walk/postwalk
+         (fn [x]
+           (when (and (map-entry? x) (= (key x) :$ref))
+             (is (not (re-find #"#/\$defs/.*/" (val x)))
+                 (str "$ref in definition should not contain unsanitized /: " (val x))))
+           x)
+         def-val)))))
 
 (deftest ^:parallel endpoint->tool-definition-test
   (testing "Basic endpoint conversion"
-    (binding [tools-manifest/*definitions* (atom (sorted-map))]
-      (let [form   {:method          :get
-                    :route           {:path "/v1/table/:id"}
-                    :params          {:route {:binding '{:keys [id]}
-                                              :schema  [:map [:id :int]]}}
-                    :response-schema [:map [:name :string]]
-                    :docstr          "Get a table."
-                    :metadata        {:tool {:name "get_table"}}
-                    :body            '(nil)}
-            result (tools-manifest/endpoint->tool-definition "/api/agent" {:form form})]
-        (is (= {:name           "get_table"
-                :description    "Get a table."
-                :endpoint       {:method "GET" :path "/api/agent/v1/table/{id}"}
-                :inputSchema    {:type       "object"
-                                 :properties {:id {:type "integer"}}
-                                 :required   [:id]}
-                :responseSchema {:type       "object"
-                                 :properties {:name {:type "string"}}
-                                 :required   [:name]}
-                :annotations    {:readOnlyHint   true
-                                 :idempotentHint true}}
-               result))))))
+    (let [defs   (atom (sorted-map))
+          form   {:method          :get
+                  :route           {:path "/v1/table/:id"}
+                  :params          {:route {:binding '{:keys [id]}
+                                            :schema  [:map [:id :int]]}}
+                  :response-schema [:map [:name :string]]
+                  :docstr          "Get a table."
+                  :metadata        {:tool {:name "get_table"}}
+                  :body            '(nil)}
+          result (tools-manifest/endpoint->tool-definition defs "/api/agent" {:form form})]
+      (is (= {:name           "get_table"
+              :description    "Get a table."
+              :endpoint       {:method "GET" :path "/api/agent/v1/table/{id}"}
+              :inputSchema    {:type       "object"
+                               :properties {:id {:type "integer"}}
+                               :required   [:id]}
+              :responseSchema {:type       "object"
+                               :properties {:name {:type "string"}}
+                               :required   [:name]}
+              :annotations    {:readOnlyHint   true
+                               :idempotentHint true}}
+             result)))))
 
 ;; This test verifies the full pipeline with actual defendpoint endpoints.
 ;; It requires the agent API namespace to be loaded.

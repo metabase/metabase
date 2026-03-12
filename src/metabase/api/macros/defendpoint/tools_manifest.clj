@@ -35,10 +35,6 @@
          (mc/into-schema (mc/type node) props children (mc/options node))
          node)))))
 
-(def ^:dynamic *definitions*
-  "Dynamic var bound to an atom collecting `$defs` during manifest generation."
-  nil)
-
 (def ^:private sanitize-replacements
   {"~1" "_SLASH_"
    "!"  "_BANG_"
@@ -76,25 +72,18 @@
     (vector? schema) (mapv walk-sanitize-refs schema)
     :else            schema))
 
-(defn mjs-collect-tool-definitions
-  "Transform a malli schema to JSON Schema. Uses `#/$defs/` as the definitions path.
-  Collects shared definitions into [[*definitions*]]."
-  [malli-schema]
+(defn malli->json-schema
+  "Transform a malli schema to JSON Schema, collecting any `$defs` into `definitions-acc`.
+  Returns the JSON Schema with `$ref` values sanitized and `:definitions` stripped."
+  [definitions-acc malli-schema]
   (let [jss  (mjs/transform (prefer-tool-descriptions malli-schema)
                             {::mjs/definitions-path "#/$defs/"})
         defs (:definitions jss)]
-    (when (and *definitions* (seq defs))
-      (swap! *definitions*
-             (fn [existing]
-               (let [sanitized (into {} (map (fn [[k v]]
-                                               [(sanitize-def-name k) (walk-sanitize-refs v)]))
-                                     defs)]
-                 (doseq [[k v] sanitized
-                         :let [prev (get existing k)]
-                         :when (and prev (not= prev v))]
-                   (throw (ex-info (str "Conflicting $defs for " (pr-str k))
-                                   {:key k :existing prev :new v})))
-                 (merge existing sanitized)))))
+    (when (seq defs)
+      (swap! definitions-acc
+             into
+             (map (fn [[k v]] [(sanitize-def-name k) (walk-sanitize-refs v)]))
+             defs))
     (walk-sanitize-refs (dissoc jss :definitions))))
 
 (def ^:private annotation-key-mapping
@@ -127,16 +116,16 @@
     (merge defaults explicit)))
 
 (defn- schema->json-schema
-  "Convert a malli schema to JSON Schema, collecting definitions."
-  [malli-schema]
+  "Convert a malli schema to JSON Schema, collecting definitions into `defs`."
+  [defs malli-schema]
   (when malli-schema
-    (mjs-collect-tool-definitions malli-schema)))
+    (malli->json-schema defs malli-schema)))
 
 (defn- schema->properties-and-required
   "Extract `:properties` and `:required` from a malli schema's JSON Schema.
   Returns nil if the schema doesn't have `:properties` (e.g., `:or`/`:oneOf`)."
-  [malli-schema]
-  (when-let [jss (schema->json-schema malli-schema)]
+  [defs malli-schema]
+  (when-let [jss (schema->json-schema defs malli-schema)]
     (when (:properties jss)
       (select-keys jss [:properties :required]))))
 
@@ -144,14 +133,14 @@
   "Merge route, query, and body param schemas into a single inputSchema object.
   Route params are always required. For body schemas that aren't simple maps (e.g. `:or`),
   the full JSON Schema is used directly."
-  [form]
-  (let [route-parts (schema->properties-and-required (get-in form [:params :route :schema]))
-        query-parts (schema->properties-and-required (get-in form [:params :query :schema]))
+  [defs form]
+  (let [route-parts (schema->properties-and-required defs (get-in form [:params :route :schema]))
+        query-parts (schema->properties-and-required defs (get-in form [:params :query :schema]))
         body-schema (get-in form [:params :body :schema])
-        body-parts  (schema->properties-and-required body-schema)
+        body-parts  (schema->properties-and-required defs body-schema)
         ;; If the body schema doesn't yield properties (e.g. :or), use its full JSON Schema
         body-full   (when (and body-schema (nil? body-parts))
-                      (schema->json-schema body-schema))
+                      (schema->json-schema defs body-schema))
         all-props   (merge (:properties route-parts)
                            (:properties query-parts)
                            (:properties body-parts))
@@ -166,12 +155,12 @@
 
 (defn- response-schema->json-schema
   "Convert an endpoint's response schema to JSON Schema for the tools manifest."
-  [response-schema]
+  [defs response-schema]
   (when response-schema
     (let [resolved (mr/resolve-schema response-schema)
           content  (or (-> resolved mc/properties :openapi/response-schema)
                        response-schema)]
-      (mjs-collect-tool-definitions content))))
+      (malli->json-schema defs content))))
 
 (defn- route-path->endpoint-path
   "Convert Clout-style route path (`:id`) to curly-brace path (`{id}`)."
@@ -180,7 +169,7 @@
 
 (defn endpoint->tool-definition
   "Convert a single endpoint info + prefix to a tool definition map."
-  [prefix {:keys [form]}]
+  [defs prefix {:keys [form]}]
   (let [method       (:method form)
         route-path   (get-in form [:route :path])
         tool-md      (get-in form [:metadata :tool])
@@ -189,8 +178,8 @@
         description  (or (:description tool-md)
                          (:docstr form))
         full-path    (str prefix (route-path->endpoint-path route-path))
-        input-schema (merge-input-schemas form)
-        resp-schema  (response-schema->json-schema (:response-schema form))
+        input-schema (merge-input-schemas defs form)
+        resp-schema  (response-schema->json-schema defs (:response-schema form))
         annotations  (infer-annotations method (:annotations tool-md))
         task-support (:task-support tool-md)]
     (cond-> {:name        tool-name
@@ -223,15 +212,15 @@
   `namespace-prefixes` is a map of `{ns-symbol \"/api/agent\"}` — each namespace symbol maps
   to the URL prefix its endpoints are served under."
   [namespace-prefixes]
-  (binding [*definitions* (atom (sorted-map))]
-    (let [tools (into []
-                      (mapcat (fn [[ns-sym prefix]]
-                                (for [[_k endpoint] (api.macros/ns-routes ns-sym)
-                                      :when (get-in endpoint [:form :metadata :tool])]
-                                  (endpoint->tool-definition prefix endpoint))))
-                      namespace-prefixes)]
-      (check-tool-uniqueness tools)
-      (cond-> {:$schema "https://json-schema.org/draft/2020-12/schema"
-               :version "1.0.0"
-               :tools   (sort-by :name tools)}
-        (seq @*definitions*) (assoc :$defs @*definitions*)))))
+  (let [defs  (atom (sorted-map))
+        tools (into []
+                    (mapcat (fn [[ns-sym prefix]]
+                              (for [[_k endpoint] (api.macros/ns-routes ns-sym)
+                                    :when (get-in endpoint [:form :metadata :tool])]
+                                (endpoint->tool-definition defs prefix endpoint))))
+                    namespace-prefixes)]
+    (check-tool-uniqueness tools)
+    (cond-> {:$schema "https://json-schema.org/draft/2020-12/schema"
+             :version "1.0.0"
+             :tools   (sort-by :name tools)}
+      (seq @defs) (assoc :$defs @defs))))
