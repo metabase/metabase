@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :as env]
+   [metabase.config.core :as config]
    [metabase.embedding.settings :as embed.settings]
    [metabase.server.instance :as server.instance]
    [metabase.server.middleware.security :as mw.security]
