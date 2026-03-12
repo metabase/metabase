@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import type { TreeTableColumnDef } from "metabase/ui";
 import { EntityNameCell } from "metabase/ui";
 import type { SearchResult } from "metabase-types/api";
@@ -26,10 +27,10 @@ export function getColumns(): TreeTableColumnDef<SearchResult>[] {
       minWidth: 100,
       maxAutoWidth: 520,
       enableSorting: true,
-      accessorFn: (result) => result.collection.name,
+      accessorFn: (result) => result.collection.name ?? ROOT_COLLECTION.name,
       cell: ({ row }) => (
         <Ellipsified tooltipProps={{ openDelay: 300 }}>
-          {row.original.collection.name}
+          {row.original.collection.name ?? ROOT_COLLECTION.name}
         </Ellipsified>
       ),
     },

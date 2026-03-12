@@ -1,5 +1,6 @@
 import { memo } from "react";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { Stack } from "metabase/ui";
 import { SidebarResizableBox } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/SidebarResizableBox";
 import type { SearchResult } from "metabase-types/api";
@@ -25,6 +26,10 @@ export const ModelSidebar = memo(function ModelSidebar({
   onResizeStop,
   onClose,
 }: ModelSidebarProps) {
+  const { data: database } = useGetDatabaseQuery(
+    result.database_id != null ? { id: result.database_id } : skipToken,
+  );
+
   return (
     <SidebarResizableBox
       containerWidth={containerWidth}
@@ -40,10 +45,10 @@ export const ModelSidebar = memo(function ModelSidebar({
       >
         <Stack gap="lg">
           <SidebarHeader result={result} onClose={onClose} />
-          <LocationSection result={result} />
+          <LocationSection result={result} database={database} />
           <InfoSection result={result} />
         </Stack>
-        <ActionSection result={result} />
+        <ActionSection result={result} database={database} />
       </Stack>
     </SidebarResizableBox>
   );
