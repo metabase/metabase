@@ -8,7 +8,9 @@
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
-   [oidc-provider.util :as oidc-util]))
+   [oidc-provider.util :as oidc-util])
+  (:import
+   (java.net URLEncoder)))
 
 (defenterprise openid-discovery-handler
   "Returns the OIDC discovery document."
@@ -94,3 +96,70 @@
             {:status  401
              :headers {"Content-Type" "application/json"}
              :body    {"error" "invalid_token"}}))))))
+
+(defn- build-query-string
+  "Build a URL query string from a map of parameters."
+  [params]
+  (->> params
+       (remove (fn [[_k v]] (nil? v)))
+       (map (fn [[k v]] (str (name k) "=" (URLEncoder/encode (str v) "UTF-8"))))
+       (str/join "&")))
+
+(defenterprise authorize-handler
+  "Handles the authorization endpoint (GET /oauth/authorize)."
+  :feature :metabot-v3
+  [request]
+  (if-not (:metabase-user-id request)
+    {:status  401
+     :headers {"Content-Type" "application/json"}
+     :body    {:error "unauthorized"}}
+    (when-let [provider (oauth-server/get-provider)]
+      (try
+        (let [parsed  (oidc/parse-authorization-request provider (:query-string request))
+              client  (proto/get-client (:client-store provider) (:client_id parsed))]
+          {:status  200
+           :headers {"Content-Type" "application/json"}
+           :body    {:client_name   (or (:client-name client) "")
+                     :scopes        (or (:scopes client) [])
+                     :redirect_uri  (:redirect_uri parsed)
+                     :client_id     (:client_id parsed)
+                     :response_type (:response_type parsed)
+                     :state         (:state parsed)
+                     :scope         (:scope parsed)}})
+        (catch clojure.lang.ExceptionInfo e
+          {:status  400
+           :headers {"Content-Type" "application/json"}
+           :body    {:error             "invalid_request"
+                     :error_description (ex-message e)}})))))
+
+(defenterprise authorize-decision-handler
+  "Handles the authorization decision (POST /oauth/authorize/decision)."
+  :feature :metabot-v3
+  [request]
+  (if-not (:metabase-user-id request)
+    {:status  401
+     :headers {"Content-Type" "application/json"}
+     :body    {:error "unauthorized"}}
+    (when-let [provider (oauth-server/get-provider)]
+      (let [body    (:body request)
+            approved (:approved body)
+            ;; Rebuild query string from the forwarded authorization params to re-validate
+            auth-params (select-keys body [:client_id :redirect_uri :response_type :scope :state :nonce
+                                           :code_challenge :code_challenge_method])
+            query-string (build-query-string auth-params)]
+        (try
+          (let [parsed (oidc/parse-authorization-request provider query-string)]
+            (if approved
+              (let [url (oidc/authorize provider parsed (:metabase-user-id request))]
+                {:status  302
+                 :headers {"Location" url}
+                 :body    ""})
+              (let [url (oidc/deny-authorization provider parsed "access_denied" "User denied the request")]
+                {:status  302
+                 :headers {"Location" url}
+                 :body    ""})))
+          (catch clojure.lang.ExceptionInfo e
+            {:status  400
+             :headers {"Content-Type" "application/json"}
+             :body    {:error             "invalid_request"
+                       :error_description (ex-message e)}}))))))

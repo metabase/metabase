@@ -59,6 +59,7 @@
         response-types (or (not-empty response_types) ["code"])
         scopes         (or (not-empty scopes) ["openid" "profile"])
         row           {:client_id          client-id
+                       :client_type        "confidential"
                        :client_secret_hash secret-hash
                        :redirect_uris      redirect_uris
                        :grant_types        grant-types

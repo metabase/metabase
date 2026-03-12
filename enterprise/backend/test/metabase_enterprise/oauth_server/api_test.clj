@@ -1,5 +1,6 @@
 (ns metabase-enterprise.oauth-server.api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.oauth-server.core :as oauth-server]
    [metabase.test :as mt]
@@ -168,3 +169,153 @@
     (mt/with-premium-features #{}
       (mt/user-http-request :crowberto :get 404 "oauth/register/some-client-id"
                             {:request-options {:headers {"authorization" "Bearer some-token"}}}))))
+
+;;; ----------------------------------------- Authorization Endpoint ------------------------------------------------
+
+(defn- create-test-client!
+  "Create a static OAuth client via the admin API and return the response.
+   Temporarily restores the default URL prefix since the fixture clears it for /oauth/ routes."
+  []
+  (binding [client/*url-prefix* "/api"]
+    (mt/user-http-request :crowberto :post 200
+                          "ee/oauth-server/clients"
+                          {:redirect_uris  ["https://example.com/callback"]
+                           :client_name    "Test Auth Client"
+                           :grant_types    ["authorization_code"]
+                           :response_types ["code"]
+                           :scopes         ["openid" "profile"]})))
+
+(deftest authorize-valid-request-test
+  (testing "GET /oauth/authorize with valid params returns consent data"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [client    (create-test-client!)
+                client-id (:client_id client)
+                response  (mt/user-http-request :crowberto :get 200
+                                                "oauth/authorize"
+                                                :client_id     client-id
+                                                :redirect_uri  "https://example.com/callback"
+                                                :response_type "code"
+                                                :scope         "openid profile"
+                                                :state         "test-state")]
+            (is (= "Test Auth Client" (:client_name response)))
+            (is (= ["openid" "profile"] (:scopes response)))
+            (is (= "https://example.com/callback" (:redirect_uri response)))
+            (is (= client-id (:client_id response)))
+            (is (= "code" (:response_type response)))
+            (is (= "test-state" (:state response)))
+            (is (= "openid profile" (:scope response)))))))))
+
+(deftest authorize-invalid-client-id-test
+  (testing "GET /oauth/authorize with missing/invalid client_id returns 400"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (let [response (mt/user-http-request :crowberto :get 400
+                                             "oauth/authorize"
+                                             :client_id     "nonexistent-client"
+                                             :redirect_uri  "https://example.com/callback"
+                                             :response_type "code")]
+          (is (= "invalid_request" (:error response))))))))
+
+(deftest authorize-mismatched-redirect-uri-test
+  (testing "GET /oauth/authorize with mismatched redirect_uri returns 400"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [client    (create-test-client!)
+                client-id (:client_id client)
+                response  (mt/user-http-request :crowberto :get 400
+                                                "oauth/authorize"
+                                                :client_id     client-id
+                                                :redirect_uri  "https://evil.com/callback"
+                                                :response_type "code")]
+            (is (= "invalid_request" (:error response)))))))))
+
+(deftest authorize-unauthenticated-test
+  (testing "GET /oauth/authorize without session returns 401"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (let [response (client/client :get 401 "oauth/authorize"
+                                      :client_id     "some-client"
+                                      :redirect_uri  "https://example.com/callback"
+                                      :response_type "code")]
+          (is (= "unauthorized" (:error response))))))))
+
+(deftest authorize-without-feature-flag-test
+  (testing "GET /oauth/authorize returns 404 without feature flag"
+    (mt/with-premium-features #{}
+      (mt/user-http-request :crowberto :get 404
+                            "oauth/authorize"
+                            :client_id     "some-client"
+                            :redirect_uri  "https://example.com/callback"
+                            :response_type "code"))))
+
+;;; ----------------------------------------- Authorization Decision ------------------------------------------------
+
+(deftest authorize-decision-approve-test
+  (testing "POST /oauth/authorize/decision with approved=true returns 302 redirect with code"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [client    (create-test-client!)
+                client-id (:client_id client)
+                response  (mt/user-http-request-full-response
+                           :crowberto :post "oauth/authorize/decision"
+                           {:approved      true
+                            :client_id     client-id
+                            :redirect_uri  "https://example.com/callback"
+                            :response_type "code"
+                            :scope         "openid profile"
+                            :state         "test-state"})
+                status    (:status response)
+                location  (get-in response [:headers "Location"])]
+            (is (= 302 status))
+            (is (some? location))
+            (is (str/starts-with? location "https://example.com/callback?"))
+            (is (str/includes? location "code="))
+            (is (str/includes? location "state=test-state"))))))))
+
+(deftest authorize-decision-deny-test
+  (testing "POST /oauth/authorize/decision with approved=false returns 302 redirect with error"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (let [client    (create-test-client!)
+                client-id (:client_id client)
+                response  (mt/user-http-request-full-response
+                           :crowberto :post "oauth/authorize/decision"
+                           {:approved      false
+                            :client_id     client-id
+                            :redirect_uri  "https://example.com/callback"
+                            :response_type "code"
+                            :scope         "openid profile"
+                            :state         "test-state"})
+                status    (:status response)
+                location  (get-in response [:headers "Location"])]
+            (is (= 302 status))
+            (is (some? location))
+            (is (str/starts-with? location "https://example.com/callback?"))
+            (is (str/includes? location "error=access_denied"))
+            (is (str/includes? location "state=test-state"))))))))
+
+(deftest authorize-decision-unauthenticated-test
+  (testing "POST /oauth/authorize/decision without session returns 401"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+        (let [response (client/client :post 401 "oauth/authorize/decision"
+                                      {:approved      true
+                                       :client_id     "some-client"
+                                       :redirect_uri  "https://example.com/callback"
+                                       :response_type "code"})]
+          (is (= "unauthorized" (:error response))))))))
+
+(deftest authorize-decision-without-feature-flag-test
+  (testing "POST /oauth/authorize/decision returns 404 without feature flag"
+    (mt/with-premium-features #{}
+      (mt/user-http-request :crowberto :post 404
+                            "oauth/authorize/decision"
+                            {:approved      true
+                             :client_id     "some-client"
+                             :redirect_uri  "https://example.com/callback"
+                             :response_type "code"}))))

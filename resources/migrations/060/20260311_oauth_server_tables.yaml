@@ -117,6 +117,22 @@ databaseChangeLog:
             constraintName: uq_oauth_client_client_id
             columnNames: client_id
 
+  - changeSet:
+      id: v60.2026-03-12T00:00:00
+      author: epaget
+      comment: Add client_type column to oauth_client
+      changes:
+        - addColumn:
+            tableName: oauth_client
+            columns:
+              - column:
+                  name: client_type
+                  type: varchar(50)
+                  remarks: "confidential or public"
+                  defaultValue: "confidential"
+                  constraints:
+                    nullable: false
+
   # oauth_authorization_code table
   - changeSet:
       id: v60.2026-03-11T00:00:02
