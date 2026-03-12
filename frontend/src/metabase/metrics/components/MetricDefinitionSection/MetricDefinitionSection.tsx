@@ -113,16 +113,27 @@ export function MetricDefinitionSection({
 
   const isSavingInProgress = isSaving || isCheckingDependencies;
 
+  const handleSaveRef = useLatest(handleSave);
+  const handleCancelRef = useLatest(handleCancel);
+  const onStateChangeRef = useLatest(onStateChange);
+
   useLayoutEffect(() => {
-    onStateChange?.({
+    onStateChangeRef.current?.({
       isDirty,
       isSaving: isSavingInProgress,
       isValid: validationResult.isValid,
       errorMessage: validationResult.errorMessage,
-      onSave: handleSave,
-      onCancel: handleCancel,
+      onSave: () => handleSaveRef.current(),
+      onCancel: () => handleCancelRef.current(),
     });
-  }, [isDirty, isSavingInProgress, validationResult, onStateChange, handleSave, handleCancel]);
+  }, [
+    isDirty,
+    isSavingInProgress,
+    validationResult,
+    onStateChangeRef,
+    handleSaveRef,
+    handleCancelRef,
+  ]);
 
   return (
     <>
