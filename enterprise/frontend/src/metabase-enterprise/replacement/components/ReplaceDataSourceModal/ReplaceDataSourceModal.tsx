@@ -1,17 +1,17 @@
-import { useDisclosure } from "@mantine/hooks";
 import { useLayoutEffect, useState } from "react";
+import { t } from "ttag";
 
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
-import { useToast } from "metabase/common/hooks";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import type { ReplaceDataSourceModalProps } from "metabase/plugins";
 import { Flex, Modal } from "metabase/ui";
 import {
   useCheckReplaceSourceQuery,
   useListNodeDependentsQuery,
 } from "metabase-enterprise/api";
+import { useReplaceSourceMutation } from "metabase-enterprise/api/replacement";
 import type { SourceReplacementEntry } from "metabase-types/api";
 
-import { ConfirmAndProgressModal } from "./ConfirmAndProgressModal";
 import { ModalBody } from "./ModalBody";
 import { ModalSidebar } from "./ModalSidebar";
 import type { TabType } from "./types";
@@ -19,10 +19,10 @@ import {
   canReplaceSource,
   getCardRequest,
   getCheckReplaceSourceRequest,
+  getConfirmSubmitLabel,
+  getConfirmTitle,
   getDependentsRequest,
   getEntityItem,
-  getFailureMessage,
-  getSuccessMessage,
   getTableRequest,
 } from "./utils";
 
@@ -60,9 +60,9 @@ function ModalContent({
   const [sourceEntry, setSourceEntry] = useState(initialSource);
   const [targetEntry, setTargetEntry] = useState(initialTarget);
   const [selectedTab, setSelectedTab] = useState<TabType>("column-mappings");
-  const [isConfirming, { open: openConfirmation, close: closeConfirmation }] =
-    useDisclosure();
-  const [sendToast] = useToast();
+  const [replaceSource] = useReplaceSourceMutation();
+  const { show: showConfirmation, modalContent: confirmationModal } =
+    useConfirmation();
 
   const { currentData: sourceTable } = useGetTableQuery(
     getTableRequest(sourceEntry),
@@ -99,15 +99,26 @@ function ModalContent({
     setTargetEntry(undefined);
   };
 
-  const handleReplaceSuccess = (dependentsCount: number) => {
-    sendToast({ message: getSuccessMessage(dependentsCount), icon: "check" });
-    closeConfirmation();
-    onClose();
-  };
+  const handleSubmit = () => {
+    if (sourceEntry == null || targetEntry == null || dependents == null) {
+      return;
+    }
 
-  const handleReplaceFailure = () => {
-    sendToast({ message: getFailureMessage(), icon: "warning" });
-    closeConfirmation();
+    showConfirmation({
+      title: getConfirmTitle(dependents.length),
+      message: t`This can't be undone.`,
+      confirmButtonText: getConfirmSubmitLabel(dependents.length),
+      confirmButtonProps: { variant: "filled", color: "error" },
+      onConfirm: async () => {
+        await replaceSource({
+          source_entity_id: sourceEntry.id,
+          source_entity_type: sourceEntry.type,
+          target_entity_id: targetEntry.id,
+          target_entity_type: targetEntry.type,
+        }).unwrap();
+        onClose();
+      },
+    });
   };
 
   return (
@@ -120,7 +131,7 @@ function ModalContent({
         canReplace={canReplace}
         onSourceChange={handleSourceChange}
         onTargetChange={setTargetEntry}
-        onSubmit={openConfirmation}
+        onSubmit={handleSubmit}
         onCancel={onClose}
       />
       <ModalBody
@@ -132,17 +143,7 @@ function ModalContent({
         columnMappings={columnMappings}
         onTabChange={setSelectedTab}
       />
-      {sourceEntry != null && targetEntry != null && dependents != null && (
-        <ConfirmAndProgressModal
-          sourceEntry={sourceEntry}
-          targetEntry={targetEntry}
-          dependentsCount={dependents?.length}
-          opened={isConfirming}
-          onReplaceSuccess={handleReplaceSuccess}
-          onReplaceFailure={handleReplaceFailure}
-          onClose={closeConfirmation}
-        />
-      )}
+      {confirmationModal}
     </Flex>
   );
 }

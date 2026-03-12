@@ -1,4 +1,4 @@
-import { msgid, ngettext, t } from "ttag";
+import { msgid, ngettext } from "ttag";
 
 import { skipToken } from "metabase/api";
 import type {
@@ -86,14 +86,18 @@ export function canReplaceSource(
   );
 }
 
-export function getSuccessMessage(dependentsCount: number) {
+export function getConfirmTitle(dependentsCount: number): string {
   return ngettext(
-    msgid`Updated ${dependentsCount} item`,
-    `Updated ${dependentsCount} items`,
+    msgid`Really replace the data source in this ${dependentsCount} item?`,
+    `Really replace the data sources in these ${dependentsCount} items?`,
     dependentsCount,
   );
 }
 
-export function getFailureMessage() {
-  return t`Failed to replace data source`;
+export function getConfirmSubmitLabel(dependentsCount: number): string {
+  return ngettext(
+    msgid`Replace data source in ${dependentsCount} item`,
+    `Replace data source in ${dependentsCount} items`,
+    dependentsCount,
+  );
 }

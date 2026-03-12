@@ -1,7 +1,6 @@
 import type { CardId } from "./card";
 import type { Field } from "./field";
 import type { ConcreteTableId } from "./table";
-import type { UserId } from "./user";
 
 export type SourceReplacementEntityId = ConcreteTableId | CardId;
 
@@ -93,5 +92,4 @@ export type ReplaceSourceResponse = {
 
 export type ListSourceReplacementRunsRequest = {
   "is-active"?: boolean;
-  "user-id"?: UserId;
 };

@@ -3,16 +3,13 @@ import { msgid, ngettext, t } from "ttag";
 import { Form, FormErrorMessage, FormProvider } from "metabase/forms";
 import { Box, Button, Group, Stack, Text } from "metabase/ui";
 import { useReplaceSourceMutation } from "metabase-enterprise/api/replacement";
-import type {
-  SourceReplacementEntry,
-  SourceReplacementRunId,
-} from "metabase-types/api";
+import type { SourceReplacementEntry } from "metabase-types/api";
 
 type ConfirmModalContentProps = {
   sourceEntry: SourceReplacementEntry;
   targetEntry: SourceReplacementEntry;
   dependentsCount: number;
-  onSubmit: (runId: SourceReplacementRunId) => void;
+  onSubmit: () => void;
   onCancel: () => void;
 };
 
@@ -26,13 +23,13 @@ export function ConfirmModalContent({
   const [replaceSource] = useReplaceSourceMutation();
 
   const handleSubmit = async () => {
-    const response = await replaceSource({
+    await replaceSource({
       source_entity_id: sourceEntry.id,
       source_entity_type: sourceEntry.type,
       target_entity_id: targetEntry.id,
       target_entity_type: targetEntry.type,
     }).unwrap();
-    onSubmit(response.run_id);
+    onSubmit();
   };
 
   return (
