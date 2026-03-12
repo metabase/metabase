@@ -78,6 +78,7 @@ function ResetCheckpointSection({ transform }: { transform: Transform }) {
         opened={isModalOpen}
         onClose={closeModal}
         onConfirm={handleConfirm}
+        confirmButtonText={t`Reset`}
       />
     </Group>
   );
@@ -204,6 +205,7 @@ function ConfirmableInlineUpdater({
       <ConfirmModal
         title={t`Change checkpoint field?`}
         message={t`Changing the checkpoint field will reset the stored checkpoint value. The next run will reprocess all data from scratch.`}
+        confirmButtonText={t`Change checkpoint field`}
         opened={isModalOpen}
         onClose={handleCancel}
         onConfirm={handleConfirm}
