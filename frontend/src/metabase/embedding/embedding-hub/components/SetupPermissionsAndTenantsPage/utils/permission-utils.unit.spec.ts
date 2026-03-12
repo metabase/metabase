@@ -43,7 +43,7 @@ describe("buildPermissionsGraph", () => {
     });
   });
 
-  it("blocks schemas without selected tables when allDatabaseSchemas is provided", () => {
+  it("blocks schemas without selected tables when allSchemaTables is provided", () => {
     const result = buildPermissionsGraph(
       groupId,
       {
@@ -56,14 +56,20 @@ describe("buildPermissionsGraph", () => {
           },
         ],
       },
-      { 1: ["tenant_data", "internal", "analytics"] },
+      {
+        1: {
+          tenant_data: [100, 101],
+          internal: [200, 201],
+          analytics: [300],
+        },
+      },
     );
 
     expect(result).toEqual({
       [groupId]: {
         1: {
           "view-data": {
-            tenant_data: { 100: "sandboxed" },
+            tenant_data: { 100: "sandboxed", 101: "blocked" },
             internal: "blocked",
             analytics: "blocked",
           },
@@ -73,7 +79,35 @@ describe("buildPermissionsGraph", () => {
     });
   });
 
-  it("handles multiple databases with allDatabaseSchemas", () => {
+  it("blocks non-selected tables within schemas that have sandboxed tables", () => {
+    const result = buildPermissionsGraph(
+      groupId,
+      {
+        sandboxedTables: [
+          {
+            tableId: 100,
+            databaseId: 1,
+            schemaName: "public",
+            filterFieldId: 5,
+          },
+        ],
+      },
+      { 1: { public: [100, 101, 102] } },
+    );
+
+    expect(result).toEqual({
+      [groupId]: {
+        1: {
+          "view-data": {
+            public: { 100: "sandboxed", 101: "blocked", 102: "blocked" },
+          },
+          "create-queries": "query-builder",
+        },
+      },
+    });
+  });
+
+  it("handles multiple databases with allSchemaTables", () => {
     const result = buildPermissionsGraph(
       groupId,
       {
@@ -93,8 +127,8 @@ describe("buildPermissionsGraph", () => {
         ],
       },
       {
-        1: ["public", "private"],
-        2: ["data", "logs", "archive"],
+        1: { public: [100, 101], private: [150] },
+        2: { data: [200, 201], logs: [300], archive: [400] },
       },
     );
 
@@ -102,14 +136,14 @@ describe("buildPermissionsGraph", () => {
       [groupId]: {
         1: {
           "view-data": {
-            public: { 100: "sandboxed" },
+            public: { 100: "sandboxed", 101: "blocked" },
             private: "blocked",
           },
           "create-queries": "query-builder",
         },
         2: {
           "view-data": {
-            data: { 200: "sandboxed" },
+            data: { 200: "sandboxed", 201: "blocked" },
             logs: "blocked",
             archive: "blocked",
           },
@@ -119,7 +153,7 @@ describe("buildPermissionsGraph", () => {
     });
   });
 
-  it("does not block schemas when allDatabaseSchemas is not provided (backward compatible)", () => {
+  it("does not block schemas when allSchemaTables is not provided (backward compatible)", () => {
     const result = buildPermissionsGraph(groupId, {
       sandboxedTables: [
         {
@@ -143,7 +177,7 @@ describe("buildPermissionsGraph", () => {
     });
   });
 
-  it("ignores allDatabaseSchemas entries for databases without sandboxed tables", () => {
+  it("ignores allSchemaTables entries for databases without sandboxed tables", () => {
     const result = buildPermissionsGraph(
       groupId,
       {
@@ -157,9 +191,9 @@ describe("buildPermissionsGraph", () => {
         ],
       },
       {
-        1: ["public", "private"],
+        1: { public: [100, 101], private: [200] },
         // db 99 has schemas listed but no sandboxed tables — should be ignored
-        99: ["schema_a", "schema_b"],
+        99: { schema_a: [300], schema_b: [400] },
       },
     );
 
@@ -167,10 +201,82 @@ describe("buildPermissionsGraph", () => {
       [groupId]: {
         1: {
           "view-data": {
-            public: { 100: "sandboxed" },
+            public: { 100: "sandboxed", 101: "blocked" },
             private: "blocked",
           },
           "create-queries": "query-builder",
+        },
+      },
+    });
+  });
+
+  it("blocks databases not in sandboxedTables or impersonatedDatabaseIds when allDatabaseIds is provided", () => {
+    const result = buildPermissionsGraph(
+      groupId,
+      {
+        sandboxedTables: [
+          {
+            tableId: 100,
+            databaseId: 1,
+            schemaName: "public",
+            filterFieldId: 5,
+          },
+        ],
+      },
+      { 1: { public: [100, 101], private: [200] } },
+      [1, 99],
+    );
+
+    expect(result).toEqual({
+      [groupId]: {
+        1: {
+          "view-data": {
+            public: { 100: "sandboxed", 101: "blocked" },
+            private: "blocked",
+          },
+          "create-queries": "query-builder",
+        },
+        99: {
+          "view-data": "blocked",
+          "create-queries": "no",
+        },
+      },
+    });
+  });
+
+  it("does not block impersonated databases via allDatabaseIds", () => {
+    const result = buildPermissionsGraph(
+      groupId,
+      {
+        impersonatedDatabaseIds: [2],
+        sandboxedTables: [
+          {
+            tableId: 100,
+            databaseId: 1,
+            schemaName: "public",
+            filterFieldId: 5,
+          },
+        ],
+      },
+      { 1: { public: [100] } },
+      [1, 2, 99],
+    );
+
+    expect(result).toEqual({
+      [groupId]: {
+        1: {
+          "view-data": {
+            public: { 100: "sandboxed" },
+          },
+          "create-queries": "query-builder",
+        },
+        2: {
+          "view-data": "impersonated",
+          "create-queries": "query-builder",
+        },
+        99: {
+          "view-data": "blocked",
+          "create-queries": "no",
         },
       },
     });

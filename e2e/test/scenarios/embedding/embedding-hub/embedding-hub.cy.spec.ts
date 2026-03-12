@@ -1188,9 +1188,12 @@ describe("scenarios - embedding hub", () => {
           expect(viewData["Domestic"]).to.be.an("object");
           const domesticTableIds = Object.keys(viewData["Domestic"]);
           expect(domesticTableIds.length).to.be.at.least(1);
-          expect(viewData["Domestic"][domesticTableIds[0]]).to.equal(
-            "sandboxed",
-          );
+
+          // At least one table should be sandboxed (the Animals table we selected)
+          const domesticValues = Object.values(
+            viewData["Domestic"],
+          ) as string[];
+          expect(domesticValues).to.include("sandboxed");
 
           // Wild schema should be blocked (it has no selected tables)
           expect(viewData["Wild"]).to.equal("blocked");

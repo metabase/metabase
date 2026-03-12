@@ -1,13 +1,15 @@
 import { useCallback, useMemo } from "react";
 
 import { Api, databaseApi, useListPermissionsGroupsQuery } from "metabase/api";
+import { tableApi } from "metabase/api/table";
 import { listTag } from "metabase/api/tags";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { PermissionsApi } from "metabase/services";
-import type { DatabaseId } from "metabase-types/api";
+import type { DatabaseId, TableId } from "metabase-types/api";
 
 import {
+  type AllSchemaTables,
   type UpdateTenantDataAccessOptions,
   buildPermissionsGraph,
   buildSandboxPolicies,
@@ -63,21 +65,38 @@ export function useUpdateAllTenantUsersGroupPermissions(): UseUpdateAllTenantUse
         return;
       }
 
-      // Fetch all schemas for each database so we can block schemas without selected tables
+      // Fetch all tables for each database with sandboxed tables so we can
+      // block non-selected tables and schemas
       const uniqueDbIds = [
         ...new Set(sandboxedTables.map((t) => t.databaseId)),
       ];
-      const allDatabaseSchemas: Record<DatabaseId, string[]> = {};
+      const allSchemaTables: AllSchemaTables = {};
       await Promise.all(
         uniqueDbIds.map(async (dbId) => {
-          const { data: schemas } = await dispatch(
-            databaseApi.endpoints.listDatabaseSchemas.initiate({ id: dbId }),
+          const { data: tables } = await dispatch(
+            tableApi.endpoints.listTables.initiate({ dbId }),
           );
-          if (schemas) {
-            allDatabaseSchemas[dbId] = schemas;
+          if (tables) {
+            const bySchema: Record<string, TableId[]> = {};
+            for (const table of tables) {
+              const schema = table.schema ?? "";
+              if (!bySchema[schema]) {
+                bySchema[schema] = [];
+              }
+              bySchema[schema].push(table.id);
+            }
+            allSchemaTables[dbId] = bySchema;
           }
         }),
       );
+
+      // Fetch all database IDs so we can block databases without sandboxed tables
+      const allDatabaseIds = await dispatch(
+        databaseApi.endpoints.listDatabases.initiate(),
+      )
+        .unwrap()
+        .then((res) => res.data.map((db) => db.id))
+        .catch(() => [] as DatabaseId[]);
 
       // get the revision number of the graph
       const graph = await PermissionsApi.graphForGroup({
@@ -87,7 +106,8 @@ export function useUpdateAllTenantUsersGroupPermissions(): UseUpdateAllTenantUse
       const groups = buildPermissionsGraph(
         allTenantUsersGroupId,
         options,
-        allDatabaseSchemas,
+        allSchemaTables,
+        allDatabaseIds,
       );
       const sandboxes = buildSandboxPolicies(
         allTenantUsersGroupId,
