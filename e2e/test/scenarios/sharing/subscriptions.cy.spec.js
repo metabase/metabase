@@ -108,7 +108,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         cy.findByPlaceholderText("Enter user names or email addresses").click();
         H.popover().should("be.visible").and("contain", `${admin.first_name}`);
         cy.realPress("Escape");
-        H.popover({ skipVisibilityCheck: true }).should("not.exist");
+        H.popover({ skipVisibilityCheck: true }).should("not.be.visible");
         cy.findByPlaceholderText("Enter user names or email addresses").should(
           "not.have.value",
         );
