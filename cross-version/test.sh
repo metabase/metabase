@@ -99,7 +99,7 @@ start_metabase() {
   log "Starting Metabase with image: $image"
 
   METABASE_IMAGE="$image" METABASE_PORT="$METABASE_PORT" \
-    docker compose up -d
+    docker compose up -d --quiet-pull
 }
 
 # Stop Metabase (but keep postgres)
@@ -174,11 +174,11 @@ migrate_down_step() {
 
     log "HEAD JAR patched - proceeding with migrate down"
 
-    output=$(METABASE_IMAGE="$image" docker compose run --rm \
+    output=$(METABASE_IMAGE="$image" docker compose run --rm --quiet-pull \
       -v "$modified_jar:/app/metabase.jar:ro" \
       metabase "migrate down" 2>&1) || exit_code=$?
   else
-    output=$(METABASE_IMAGE="$image" docker compose run --rm metabase "migrate down" 2>&1) || exit_code=$?
+    output=$(METABASE_IMAGE="$image" docker compose run --rm --quiet-pull metabase "migrate down" 2>&1) || exit_code=$?
   fi
 
   # Always print output for visibility
