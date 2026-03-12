@@ -417,11 +417,11 @@
         table-hsql (sql.qp/->honeysql driver (driver-api/table mp table-id))]
     (if (seq source-filters)
       (let [prepared     (mapv (fn [{:keys [field-id op value]}]
-                               (let [field (driver-api/field mp field-id)]
-                                 {:col (h2x/identifier :field (:name field))
-                                  :op  op
-                                  :sub (->prepared-substitution driver value)}))
-                             source-filters)
+                                 (let [field (driver-api/field mp field-id)]
+                                   {:col (h2x/identifier :field (:name field))
+                                    :op  op
+                                    :sub (->prepared-substitution driver value)}))
+                               source-filters)
             where-clause (into [:and]
                                (map (fn [{:keys [col op sub]}]
                                       [op col [:raw (:sql-string sub)]]))
