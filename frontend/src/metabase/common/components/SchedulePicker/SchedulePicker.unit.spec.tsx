@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 
-import type { SchedulePickerProps } from "./SchedulePicker";
-import { SchedulePicker } from "./SchedulePicker";
+import type { SchedulePickerProps } from "./SchedulePickerView";
+import SchedulePicker from "./SchedulePickerView";
 
 const DEFAULT_SCHEDULE_OPTIONS = [
   "hourly",
