@@ -59,9 +59,7 @@ jobs:
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
-        command:
-          - mariadbd
-          - "--collation-server=utf8mb4_unicode_ci"
+        command: '["mariadbd", "--collation-server=utf8mb4_unicode_ci"]'
 
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests

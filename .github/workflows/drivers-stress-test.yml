@@ -130,9 +130,7 @@ jobs:
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
-        command:
-          - mariadbd
-          - "--collation-server=utf8mb4_unicode_ci"
+        command: '["mariadbd", "--collation-server=utf8mb4_unicode_ci"]'
     steps:
     - uses: actions/checkout@v4
     - name: Test MariaDB driver (10.6)
@@ -162,9 +160,7 @@ jobs:
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
-        command:
-          - mariadbd
-          - "--collation-server=utf8mb4_unicode_ci"
+        command: '["mariadbd", "--collation-server=utf8mb4_unicode_ci"]'
     steps:
     - uses: actions/checkout@v4
     - name: Test MariaDB driver (latest)

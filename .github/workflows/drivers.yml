@@ -607,7 +607,7 @@ jobs:
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
-        command: ${{ fromJSON(matrix.version.image-command) }}
+        command: '${{ matrix.version.image-command }}'
 
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
