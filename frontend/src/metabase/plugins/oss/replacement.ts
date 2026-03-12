@@ -1,10 +1,11 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactElement } from "react";
 
 import type { SourceReplacementEntry } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
-export type ReplaceDataSourceModalProps = {
+export type SourceReplacementModalProps = {
   initialSource?: SourceReplacementEntry;
   initialTarget?: SourceReplacementEntry;
   isOpened: boolean;
@@ -13,14 +14,22 @@ export type ReplaceDataSourceModalProps = {
 
 type ReplacementPlugin = {
   isEnabled: boolean;
-  ReplaceDataSourceModal: ComponentType<ReplaceDataSourceModalProps>;
+  canReplaceSources: (state: State) => boolean;
+  getTransformToolsRoutes: () => ReactElement | null;
+  SourceReplacementButton: ComponentType;
+  SourceReplacementModal: ComponentType<SourceReplacementModalProps>;
   SourceReplacementStatus: ComponentType;
+  TransformToolsMenu: ComponentType;
 };
 
 const getDefaultReplacementPlugin = (): ReplacementPlugin => ({
   isEnabled: false,
-  ReplaceDataSourceModal: PluginPlaceholder,
+  canReplaceSources: () => false,
+  getTransformToolsRoutes: () => null,
+  SourceReplacementButton: PluginPlaceholder,
+  SourceReplacementModal: PluginPlaceholder,
   SourceReplacementStatus: PluginPlaceholder,
+  TransformToolsMenu: PluginPlaceholder,
 });
 
 export const PLUGIN_REPLACEMENT = getDefaultReplacementPlugin();

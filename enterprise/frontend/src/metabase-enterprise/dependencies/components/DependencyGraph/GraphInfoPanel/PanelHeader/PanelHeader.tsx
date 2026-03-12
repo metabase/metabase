@@ -4,7 +4,6 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
   Center,
@@ -37,7 +36,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
   const location = getNodeLocationInfo(node);
   const sourceEntry = getNodeSourceReplacementEntry(node);
-  const isAdmin = useSelector(getUserIsAdmin);
+  const canReplaceSources = useSelector(PLUGIN_REPLACEMENT.canReplaceSources);
   const [
     isReplaceModalOpened,
     { open: openReplaceModal, close: closeReplaceModal },
@@ -59,7 +58,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
           {link != null && (
             <GraphExternalLink label={link.label} url={link.url} />
           )}
-          {isAdmin && sourceEntry != null && PLUGIN_REPLACEMENT.isEnabled && (
+          {canReplaceSources && sourceEntry != null && (
             <Tooltip label={t`Find and replace`}>
               <ActionIcon
                 aria-label={t`Replace data source`}
@@ -75,7 +74,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
         </Group>
       </Group>
       {sourceEntry != null && (
-        <PLUGIN_REPLACEMENT.ReplaceDataSourceModal
+        <PLUGIN_REPLACEMENT.SourceReplacementModal
           isOpened={isReplaceModalOpened}
           initialSource={sourceEntry}
           onClose={closeReplaceModal}

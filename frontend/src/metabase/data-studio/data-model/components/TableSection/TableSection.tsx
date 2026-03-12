@@ -28,7 +28,6 @@ import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_REPLACEMENT,
 } from "metabase/plugins";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
   Button,
@@ -83,7 +82,7 @@ const TableSectionBase = ({
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
-  const isAdmin = useSelector(getUserIsAdmin);
+  const canReplaceSources = useSelector(PLUGIN_REPLACEMENT.canReplaceSources);
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
@@ -260,7 +259,7 @@ const TableSectionBase = ({
         >
           {t`Sync settings`}
         </Button>
-        {isAdmin && PLUGIN_REPLACEMENT.isEnabled && (
+        {canReplaceSources && (
           <Tooltip label={t`Find and replace`}>
             <Button
               p="sm"
@@ -420,7 +419,7 @@ const TableSectionBase = ({
         onUnpublish={handleCloseModal}
         onClose={handleCloseModal}
       />
-      <PLUGIN_REPLACEMENT.ReplaceDataSourceModal
+      <PLUGIN_REPLACEMENT.SourceReplacementModal
         isOpened={modalType === "replace"}
         initialSource={{ id: Number(table.id), type: "table" }}
         onClose={handleCloseModal}

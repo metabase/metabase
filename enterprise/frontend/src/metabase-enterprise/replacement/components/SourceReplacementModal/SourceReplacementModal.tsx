@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useGetCardQuery, useGetTableQuery } from "metabase/api";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import type { ReplaceDataSourceModalProps } from "metabase/plugins";
+import type { SourceReplacementModalProps } from "metabase/plugins";
 import { Flex, Modal } from "metabase/ui";
 import {
   useCheckReplaceSourceQuery,
@@ -26,12 +26,12 @@ import {
   getTableRequest,
 } from "./utils";
 
-export function ReplaceDataSourceModal({
+export function SourceReplacementModal({
   initialSource,
   initialTarget,
   isOpened,
   onClose,
-}: ReplaceDataSourceModalProps) {
+}: SourceReplacementModalProps) {
   return (
     <Modal.Root opened={isOpened} fullScreen onClose={onClose}>
       <Modal.Overlay />

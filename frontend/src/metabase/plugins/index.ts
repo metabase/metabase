@@ -112,7 +112,7 @@ export {
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
 export {
   PLUGIN_REPLACEMENT,
-  type ReplaceDataSourceModalProps,
+  type SourceReplacementModalProps,
 } from "./oss/replacement";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
 export {

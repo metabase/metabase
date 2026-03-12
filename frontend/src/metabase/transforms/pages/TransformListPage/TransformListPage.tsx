@@ -30,7 +30,11 @@ import type { ColorName } from "metabase/lib/colors/types";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_REPLACEMENT,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -51,7 +55,6 @@ import {
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
 import S from "./TransformListPage.module.css";
-import { TransformToolsMenu } from "./TransformToolsMenu";
 import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import { buildTreeData, getDefaultExpandedIds } from "./utils";
 
@@ -105,6 +108,7 @@ export const TransformListPage = ({
 }: TransformListPageProps) => {
   const { transformsDatabases = [], isLoadingDatabases } =
     useTransformPermissions();
+  const canReplaceSources = useSelector(PLUGIN_REPLACEMENT.canReplaceSources);
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -366,7 +370,7 @@ export const TransformListPage = ({
           {!isRemoteSyncReadOnly && transformsDatabases.length > 0 && (
             <>
               <CreateTransformMenu />
-              <TransformToolsMenu />
+              {canReplaceSources && <PLUGIN_REPLACEMENT.TransformToolsMenu />}
             </>
           )}
         </Flex>
