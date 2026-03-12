@@ -22,8 +22,7 @@ jobs:
         version:
           - name: MariaDB 10.6
             junit-name: be-tests-mariadb-10-6-ee
-            # FIXME: Use the official image when DEV-1668 gets resolved
-            image: circleci/mariadb:10.6
+            image: mariadb:10.6
             env:
               enable-ssl-tests: 'false'
           - name: MariaDB Latest
@@ -58,8 +57,11 @@ jobs:
         ports:
           - "3306:3306"
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: mb_test
+          MARIADB_ALLOW_EMPTY_PASSWORD: true
+          MARIADB_DATABASE: mb_test
+        options: >-
+          --collation-server=utf8mb4_unicode_ci
+
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
       # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
