@@ -11,7 +11,6 @@
    [metabase.test.data.impl.verify :as verify]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -385,26 +384,47 @@
               *dbdef-used-to-create-db* dbdef]
       (f))))
 
+(defn- log! [fmt & args]
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (println (apply format fmt args)))
+
 (defn drop-dataset!
-  "Drop a test dataset by driver and name. Resolves the dataset name to its definition,
-   verifies it exists, calls [[metabase.test.data.interface/destroy-db!]], and confirms
-   it was deleted.
+  "Drop a test dataset by driver and name. Resolves the dataset name to its definition
+   and calls [[metabase.test.data.interface/destroy-db!]].
 
    Can be called from the REPL or via clojure -X:
 
-     clojure -X:dev:drivers:drivers-dev metabase.test.data.impl/drop-dataset! :driver '\"snowflake\"' :dataset-name '\"test-data\"'"
+     clojure -X:dev:drivers:drivers-dev:test metabase.test.data.impl/drop-dataset! :driver '\"snowflake\"' :dataset-name '\"test-data\"'"
   [{:keys [driver dataset-name]}]
   (let [driver      (keyword driver)
+        _           (classloader/require 'metabase.test.data.dataset-definitions)
         dataset-def (resolve-dataset-definition
                      'metabase.test.data.dataset-definitions
                      (symbol dataset-name))
         dbdef       (tx/get-dataset-definition dataset-def)]
-    (log/infof "[%s] Checking if dataset '%s' exists..." (name driver) dataset-name)
+    (log! "[%s] Dropping dataset '%s'..." (name driver) dataset-name)
+    (tx/destroy-db! driver dbdef)
+    (log! "[%s] Done." (name driver))))
+
+(defn test-drop-dataset
+  "Like [[drop-dataset!]] but checks existence before and after, verifying deletion.
+
+     clojure -X:dev:drivers:drivers-dev:test metabase.test.data.impl/test-drop-dataset :driver '\"snowflake\"' :dataset-name '\"test-data\"'"
+  [{:keys [driver dataset-name] :as opts}]
+  (let [driver      (keyword driver)
+        _           (classloader/require 'metabase.test.data.dataset-definitions)
+        dataset-def (resolve-dataset-definition
+                     'metabase.test.data.dataset-definitions
+                     (symbol dataset-name))
+        dbdef       (tx/get-dataset-definition dataset-def)]
+    (log! "[%s] Checking if dataset '%s' exists..." (name driver) dataset-name)
     (if-not (tx/dataset-already-loaded? driver dbdef)
-      (log/infof "[%s] Dataset '%s' does not exist, nothing to drop." (name driver) dataset-name)
+      (log! "[%s] Dataset '%s' does not exist, nothing to drop." (name driver) dataset-name)
       (do
-        (log/infof "[%s] Dataset '%s' exists. Dropping..." (name driver) dataset-name)
-        (tx/destroy-db! driver dbdef)
+        (log! "[%s] Dataset '%s' exists, proceeding with drop." (name driver) dataset-name)
+        (drop-dataset! opts)
+        (log! "[%s] Verifying dataset '%s' was deleted..." (name driver) dataset-name)
         (if (tx/dataset-already-loaded? driver dbdef)
-          (throw (ex-info (format "[%s] Dataset '%s' still exists after drop!" (name driver) dataset-name) {}))
-          (log/infof "[%s] Verified: dataset '%s' has been deleted." (name driver) dataset-name))))))
+          (do (log! "[%s] FAIL: dataset '%s' still exists after drop!" (name driver) dataset-name)
+              (System/exit 1))
+          (log! "[%s] PASS: dataset '%s' has been deleted." (name driver) dataset-name))))))

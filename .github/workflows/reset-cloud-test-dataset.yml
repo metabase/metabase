@@ -57,7 +57,7 @@ jobs:
       - uses: ./.github/actions/prepare-backend
       - name: Drop dataset
         run: >-
-          clojure -X:dev:drivers:drivers-dev
+          clojure -X:dev:drivers:drivers-dev:test
           metabase.test.data.impl/drop-dataset!
           :driver '"${{ inputs.driver }}"'
           :dataset-name '"${{ inputs.dataset-name }}"'
