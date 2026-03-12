@@ -30,7 +30,7 @@ import {
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import StatusListing from "metabase/status/components/StatusListing";
+import { StatusListing } from "metabase/status/components/StatusListing";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";

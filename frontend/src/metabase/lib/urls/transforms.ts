@@ -81,6 +81,10 @@ export function transformInspect(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/inspect`;
 }
 
+export function transformMigrateModels() {
+  return `${TRANSFORMS_ROOT_URL}/migrate-models`;
+}
+
 export function transformJobList() {
   return JOBS_ROOT_URL;
 }

@@ -10,7 +10,7 @@ import {
 } from "metabase-types/store/mocks";
 import type { FileUploadState } from "metabase-types/store/upload";
 
-import StatusListing from "./StatusListing";
+import { StatusListing } from "./StatusListing";
 
 const DatabaseStatusMock = () => <div>DatabaseStatus</div>;
 

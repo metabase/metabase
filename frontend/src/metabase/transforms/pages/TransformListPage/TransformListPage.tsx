@@ -31,7 +31,6 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { CreateTransformMenu } from "metabase/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
@@ -50,6 +49,7 @@ import {
 } from "metabase/ui";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
+import { CreateTransformMenu } from "./CreateTransformMenu";
 import S from "./TransformListPage.module.css";
 import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import { buildTreeData, getDefaultExpandedIds } from "./utils";

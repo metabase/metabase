@@ -7,14 +7,14 @@ import { hasActiveUploads } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
 
-import DatabaseStatus from "../../containers/DatabaseStatus";
 import { AnalyticsExportStatus } from "../AnalyticsExportStatus";
+import { DatabaseStatus } from "../DatabaseStatus";
 import { DownloadsStatus } from "../DownloadsStatus";
 import { FileUploadStatus } from "../FileUploadStatus";
 
 import { StatusListingRoot } from "./StatusListing.styled";
 
-const StatusListing = () => {
+export const StatusListing = () => {
   const isAdmin = useSelector(getUserIsAdmin);
   const { progressModal } = PLUGIN_REMOTE_SYNC.useSyncStatus();
 
@@ -40,6 +40,3 @@ const StatusListing = () => {
     </>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default StatusListing;
