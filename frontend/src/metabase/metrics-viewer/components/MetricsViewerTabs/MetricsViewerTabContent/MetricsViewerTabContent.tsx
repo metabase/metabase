@@ -27,6 +27,13 @@ import { getTabConfig } from "../../../utils/tab-config";
 import { MetricControls } from "../../MetricControls";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
 
+type ExpressionItemResult = {
+  name: string;
+  result: Dataset | null;
+  isExecuting: boolean;
+  error: string | null;
+};
+
 type MetricsViewerTabContentProps = {
   definitions: MetricsViewerDefinitionEntry[];
   tab: MetricsViewerTabState;
@@ -35,10 +42,16 @@ type MetricsViewerTabContentProps = {
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
   sourceColors: SourceColorMap;
   isExecuting: (id: MetricSourceId) => boolean;
-  arithmeticResult?: Dataset | null;
-  arithmeticIsExecuting?: boolean;
-  arithmeticError?: string | null;
-  expressionName?: string | null;
+  /**
+   * One entry per expression item (items with operators). Empty in pure
+   * individual-metric mode.
+   */
+  expressionItems?: ExpressionItemResult[];
+  /**
+   * Source IDs that are plain single-metric items. `null` = pure individual
+   * mode (all definitions are standalone).
+   */
+  standaloneSourceIds?: Set<MetricSourceId> | null;
   onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
   onDimensionChange: (
     definitionId: MetricSourceId,
@@ -55,75 +68,78 @@ export function MetricsViewerTabContent({
   modifiedDefinitions,
   sourceColors,
   isExecuting,
-  arithmeticResult,
-  arithmeticIsExecuting,
-  arithmeticError,
-  expressionName,
+  expressionItems = [],
+  standaloneSourceIds = null,
   onTabUpdate,
   onDimensionChange,
   onDimensionRemove,
 }: MetricsViewerTabContentProps) {
-  const isArithmeticMode =
-    arithmeticResult != null ||
-    arithmeticIsExecuting === true ||
-    arithmeticError != null;
+  // Definitions that are plain single-metric items (or all, in pure individual mode).
+  const standaloneDefs = useMemo(
+    () =>
+      standaloneSourceIds === null
+        ? definitions
+        : definitions.filter((d) => standaloneSourceIds.has(d.id)),
+    [definitions, standaloneSourceIds],
+  );
 
   const isLoading = useMemo(() => {
-    if (isArithmeticMode) {
-      return arithmeticIsExecuting === true;
-    }
-    return getObjectKeys(tab.dimensionMapping).some(isExecuting);
-  }, [
-    isArithmeticMode,
-    arithmeticIsExecuting,
-    tab.dimensionMapping,
-    isExecuting,
-  ]);
+    const expressionLoading = expressionItems.some((item) => item.isExecuting);
+    const individualLoading = standaloneDefs.map((d) => d.id).some(isExecuting);
+    return expressionLoading || individualLoading;
+  }, [expressionItems, standaloneDefs, isExecuting]);
 
   const firstError = useMemo(() => {
-    if (isArithmeticMode) {
-      return arithmeticError ?? null;
+    const expressionError =
+      expressionItems.find((item) => item.error)?.error ?? null;
+    if (expressionError) {
+      return expressionError;
     }
-    for (const sourceId of getObjectKeys(tab.dimensionMapping)) {
-      const err = errorsByDefinitionId.get(sourceId);
+    for (const { id } of standaloneDefs) {
+      const err = errorsByDefinitionId.get(id);
       if (err) {
         return err;
       }
     }
     return null;
-  }, [
-    isArithmeticMode,
-    arithmeticError,
-    tab.dimensionMapping,
-    errorsByDefinitionId,
-  ]);
+  }, [expressionItems, standaloneDefs, errorsByDefinitionId]);
 
   const dimensionFilter = getTabConfig(tab.type).dimensionPredicate;
 
   const { series: rawSeries, cardIdToDimensionId } = useMemo(() => {
-    if (isArithmeticMode && arithmeticResult && expressionName) {
-      const series = buildArithmeticSeriesFromResult(
-        definitions,
+    // Build one arithmetic series per expression item that has a result.
+    const expressionSeries = expressionItems.flatMap((item) =>
+      item.result && item.name
+        ? buildArithmeticSeriesFromResult(
+            definitions,
+            tab.dimensionMapping,
+            tab.display,
+            item.result,
+            modifiedDefinitions,
+            item.name,
+          )
+        : [],
+    );
+
+    // Build individual series for standalone metric items (or all in pure
+    // individual mode when there are no expression items).
+    const { series: individualSeries, cardIdToDimensionId } =
+      buildRawSeriesFromDefinitions(
+        standaloneDefs,
         tab.dimensionMapping,
         tab.display,
-        arithmeticResult,
+        resultsByDefinitionId,
         modifiedDefinitions,
-        expressionName,
+        sourceColors,
       );
-      return { series, cardIdToDimensionId: {} };
-    }
-    return buildRawSeriesFromDefinitions(
-      definitions,
-      tab.dimensionMapping,
-      tab.display,
-      resultsByDefinitionId,
-      modifiedDefinitions,
-      sourceColors,
-    );
+
+    return {
+      series: [...expressionSeries, ...individualSeries],
+      cardIdToDimensionId,
+    };
   }, [
-    isArithmeticMode,
-    arithmeticResult,
-    expressionName,
+    expressionItems,
+    standaloneDefs,
     definitions,
     tab.dimensionMapping,
     tab.display,

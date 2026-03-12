@@ -40,6 +40,8 @@ export function buildExpressionText(
       result += token.op;
     } else if (token.type === "metric") {
       result += selectedMetrics[token.metricIndex]?.name ?? "";
+    } else if (token.type === "constant") {
+      result += String(token.value);
     }
   }
   return result;
@@ -185,6 +187,30 @@ function parseItemText(
     if (ch === "+" || ch === "-" || ch === "*" || ch === "/") {
       tokens.push({ type: "operator", op: ch as MathOperator });
       i++;
+      continue;
+    }
+
+    // Numeric literal: one or more digits, optionally followed by "." and more digits
+    // e.g. "0.85", "100", "1.5" — but NOT a leading-dot form like ".85"
+    if (ch >= "0" && ch <= "9") {
+      let numStr = "";
+      while (i < text.length && text[i] >= "0" && text[i] <= "9") {
+        numStr += text[i++];
+      }
+      // Consume decimal part only when followed by at least one digit
+      if (
+        i < text.length &&
+        text[i] === "." &&
+        i + 1 < text.length &&
+        text[i + 1] >= "0" &&
+        text[i + 1] <= "9"
+      ) {
+        numStr += text[i++]; // consume "."
+        while (i < text.length && text[i] >= "0" && text[i] <= "9") {
+          numStr += text[i++];
+        }
+      }
+      tokens.push({ type: "constant", value: parseFloat(numStr) });
       continue;
     }
 

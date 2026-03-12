@@ -9,6 +9,7 @@ import type {
 import * as LibMetric from "metabase-lib/metric";
 import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
 
+import { buildExpressionText } from "../components/MetricSearch/utils";
 import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type { ExpressionToken } from "../types/operators";
 import type {
@@ -63,9 +64,22 @@ export interface UseMetricsViewerResult {
   modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
   isExecuting: (id: MetricSourceId) => boolean;
 
-  arithmeticResult: Dataset | null;
-  arithmeticIsExecuting: boolean;
-  arithmeticError: string | null;
+  /**
+   * One entry per expression item in the token list (items with operators).
+   * Each entry's `name` is the human-readable expression text built from the
+   * current selectedMetrics list.
+   */
+  expressionItems: Array<{
+    name: string;
+    result: Dataset | null;
+    isExecuting: boolean;
+    error: string | null;
+  }>;
+  /**
+   * Source IDs of definitions that are plain single-metric items.
+   * `null` means pure individual mode — all definitions are standalone.
+   */
+  standaloneSourceIds: Set<MetricSourceId> | null;
 
   sourceColors: SourceColorMap;
   breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
@@ -219,14 +233,28 @@ export function useMetricsViewer(
     modifiedDefinitions,
     breakoutValuesBySourceId,
     isExecuting,
-    arithmeticResult,
-    arithmeticIsExecuting,
-    arithmeticError,
+    expressionItems: rawExpressionItems,
+    standaloneSourceIds,
   } = useDefinitionQueries(state.definitions, activeTab, tokens);
 
   const selectedMetrics = useMemo(
     () => getSelectedMetricsInfo(state.definitions, loadingIds),
     [state.definitions, loadingIds],
+  );
+
+  // Enrich each expression item with its human-readable name derived from the
+  // current selectedMetrics list (which maps metricIndex → metric name).
+  const expressionItems = useMemo(
+    () =>
+      rawExpressionItems.map(
+        ({ itemTokens, result, isExecuting: itemExec, error }) => ({
+          name: buildExpressionText(itemTokens, selectedMetrics),
+          result,
+          isExecuting: itemExec,
+          error,
+        }),
+      ),
+    [rawExpressionItems, selectedMetrics],
   );
 
   const sourceColors = useMemo(
@@ -390,9 +418,8 @@ export function useMetricsViewer(
     modifiedDefinitions,
     isExecuting,
 
-    arithmeticResult,
-    arithmeticIsExecuting,
-    arithmeticError,
+    expressionItems,
+    standaloneSourceIds,
 
     sourceColors,
     breakoutValuesBySourceId,

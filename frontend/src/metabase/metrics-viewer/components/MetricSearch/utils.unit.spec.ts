@@ -2,10 +2,12 @@ import type { ExpressionToken } from "../../types/operators";
 import type { SelectedMetric } from "../../types/viewer-state";
 
 import {
+  buildExpressionText,
   cleanupParens,
   filterSearchResults,
   getSelectedMeasureIds,
   getSelectedMetricIds,
+  parseFullText,
 } from "./utils";
 
 function makeSelectedMetric(
@@ -186,5 +188,182 @@ describe("cleanupParens", () => {
     expect(
       cleanupParens([open, m(0), close, op("+"), open, m(1), close]),
     ).toEqual([m(0), op("+"), m(1)]);
+  });
+
+  it("keeps parentheses around a metric and a constant (two operands)", () => {
+    // (A * 0.85) stays — two operands inside
+    const k = (v: number): ExpressionToken => ({ type: "constant", value: v });
+    expect(cleanupParens([open, m(0), op("*"), k(0.85), close])).toEqual([
+      open,
+      m(0),
+      op("*"),
+      k(0.85),
+      close,
+    ]);
+  });
+
+  it("removes parentheses around a lone constant (one operand)", () => {
+    const k = (v: number): ExpressionToken => ({ type: "constant", value: v });
+    expect(cleanupParens([open, k(1), close])).toEqual([k(1)]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildExpressionText — constants
+// ---------------------------------------------------------------------------
+
+describe("buildExpressionText", () => {
+  const revenue: SelectedMetric = {
+    id: 1,
+    name: "Revenue",
+    sourceType: "metric",
+  };
+  const costs: SelectedMetric = { id: 2, name: "Costs", sourceType: "metric" };
+  const metrics = [revenue, costs];
+
+  const m = (idx: number): ExpressionToken => ({
+    type: "metric",
+    metricIndex: idx,
+  });
+  const op = (o: "+" | "-" | "*" | "/"): ExpressionToken => ({
+    type: "operator",
+    op: o,
+  });
+  const k = (v: number): ExpressionToken => ({ type: "constant", value: v });
+  const open: ExpressionToken = { type: "open-paren" };
+  const close: ExpressionToken = { type: "close-paren" };
+
+  it("renders a metric scaled by a decimal constant", () => {
+    expect(buildExpressionText([m(0), op("*"), k(0.85)], metrics)).toBe(
+      "Revenue * 0.85",
+    );
+  });
+
+  it("renders an integer constant", () => {
+    expect(buildExpressionText([m(0), op("*"), k(100)], metrics)).toBe(
+      "Revenue * 100",
+    );
+  });
+
+  it("renders constants inside parentheses", () => {
+    // (Revenue + Costs) * 0.85
+    expect(
+      buildExpressionText(
+        [open, m(0), op("+"), m(1), close, op("*"), k(0.85)],
+        metrics,
+      ),
+    ).toBe("(Revenue + Costs) * 0.85");
+  });
+
+  it("renders a constant divided by a metric", () => {
+    expect(buildExpressionText([k(1), op("/"), m(0)], metrics)).toBe(
+      "1 / Revenue",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseFullText — numeric literals
+// ---------------------------------------------------------------------------
+
+describe("parseFullText — numeric literal parsing", () => {
+  const revenue: SelectedMetric = {
+    id: 1,
+    name: "Revenue",
+    sourceType: "metric",
+  };
+  const costs: SelectedMetric = { id: 2, name: "Costs", sourceType: "metric" };
+  const metrics = [revenue, costs];
+
+  const m = (idx: number): ExpressionToken => ({
+    type: "metric",
+    metricIndex: idx,
+  });
+  const op = (o: "+" | "-" | "*" | "/"): ExpressionToken => ({
+    type: "operator",
+    op: o,
+  });
+  const k = (v: number): ExpressionToken => ({ type: "constant", value: v });
+
+  it("parses a metric multiplied by a decimal constant", () => {
+    expect(parseFullText("Revenue * 0.85", metrics)).toEqual([
+      m(0),
+      op("*"),
+      k(0.85),
+    ]);
+  });
+
+  it("parses a metric multiplied by an integer constant", () => {
+    expect(parseFullText("Revenue * 100", metrics)).toEqual([
+      m(0),
+      op("*"),
+      k(100),
+    ]);
+  });
+
+  it("parses a constant on the left side", () => {
+    expect(parseFullText("0.5 * Revenue", metrics)).toEqual([
+      k(0.5),
+      op("*"),
+      m(0),
+    ]);
+  });
+
+  it("parses a constant inside parentheses — (Revenue + Costs) * 0.85", () => {
+    expect(parseFullText("(Revenue + Costs) * 0.85", metrics)).toEqual([
+      { type: "open-paren" },
+      m(0),
+      op("+"),
+      m(1),
+      { type: "close-paren" },
+      op("*"),
+      k(0.85),
+    ]);
+  });
+
+  it("parses multiple constants in one expression", () => {
+    // 0.5 * Revenue + 0.5 * Costs
+    expect(parseFullText("0.5 * Revenue + 0.5 * Costs", metrics)).toEqual([
+      k(0.5),
+      op("*"),
+      m(0),
+      op("+"),
+      k(0.5),
+      op("*"),
+      m(1),
+    ]);
+  });
+
+  it("handles an integer that looks like it could start a decimal (no dot follows)", () => {
+    // "1 + Revenue" — "1" is an integer with no fractional part
+    expect(parseFullText("1 + Revenue", metrics)).toEqual([
+      k(1),
+      op("+"),
+      m(0),
+    ]);
+  });
+
+  it("does not parse a trailing dot as part of the number", () => {
+    // "1." — trailing dot with no digit after it; "1" is the constant, "." is skipped
+    expect(parseFullText("1.", metrics)).toEqual([k(1)]);
+  });
+
+  it("parses constants and metrics as separate items separated by a comma", () => {
+    // "Revenue * 0.85, Costs"
+    expect(parseFullText("Revenue * 0.85, Costs", metrics)).toEqual([
+      m(0),
+      op("*"),
+      k(0.85),
+      { type: "separator" },
+      m(1),
+    ]);
+  });
+
+  it("round-trips through buildExpressionText", () => {
+    const text = "(Revenue + Costs) * 0.85";
+    const tokens = parseFullText(text, metrics);
+    // Remove the separator-less single item and rebuild
+    const [item] = [tokens]; // only one item (no separators)
+    expect(buildExpressionText(item as ExpressionToken[], metrics)).toBe(text);
   });
 });

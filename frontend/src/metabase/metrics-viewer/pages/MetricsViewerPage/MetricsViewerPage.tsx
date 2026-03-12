@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { Box, Flex, Stack } from "metabase/ui";
 
@@ -40,9 +40,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     sourceDataById,
     availableDimensions,
     isExecuting,
-    arithmeticResult,
-    arithmeticIsExecuting,
-    arithmeticError,
+    expressionItems,
+    standaloneSourceIds,
     addMetric,
     swapMetric,
     removeMetric,
@@ -55,34 +54,6 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     updateDefinition,
     setBreakoutDimension,
   } = useMetricsViewer(props, tokens, setTokens);
-
-  const expressionName = useMemo(() => {
-    const metricCount = tokens.filter((t) => t.type === "metric").length;
-    const opCount = tokens.filter((t) => t.type === "operator").length;
-    if (metricCount < 1 || opCount === 0) {
-      return null;
-    }
-    return tokens
-      .map((token) => {
-        if (token.type === "open-paren") {
-          return "(";
-        }
-        if (token.type === "close-paren") {
-          return ")";
-        }
-        if (token.type === "operator") {
-          return token.op;
-        }
-        if (token.type === "separator") {
-          return ",";
-        }
-        if (token.type === "constant") {
-          return String(token.value);
-        }
-        return selectedMetrics[token.metricIndex]?.name ?? "...";
-      })
-      .join(" ");
-  }, [tokens, selectedMetrics]);
 
   const hasDefinitions = definitions.length > 0;
   const hasLoadedDefinitions = definitions.some(
@@ -143,10 +114,8 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
                   modifiedDefinitions={modifiedDefinitions}
                   sourceColors={sourceColors}
                   isExecuting={isExecuting}
-                  arithmeticResult={arithmeticResult}
-                  arithmeticIsExecuting={arithmeticIsExecuting}
-                  arithmeticError={arithmeticError}
-                  expressionName={expressionName}
+                  expressionItems={expressionItems}
+                  standaloneSourceIds={standaloneSourceIds}
                   onTabUpdate={updateActiveTab}
                   onDimensionChange={(defId, dim) =>
                     changeTabDimension(activeTab.id, defId, dim)
