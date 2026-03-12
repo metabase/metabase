@@ -58,11 +58,11 @@
       (is (= :negative (:direction corr))))))
 
 (deftest compute-series-stats-weak-correlation-test
-  (testing "uncorrelated data has weak strength"
-    ;; y = [3 1 2 1 3] produces Pearson r = 0 with x = [1 2 3 4 5]
+  (testing "uncorrelated data has no correlation strength"
+    ;; y = [3 1 2 1 3] produces Pearson r ≈ 0 with x = [1 2 3 4 5]
     (let [result (scatter/compute-series-stats [1 2 3 4 5] [3 1 2 1 3])]
       (when-let [corr (:correlation result)]
-        (is (= :weak (:strength corr)))))))
+        (is (= :none (:strength corr)))))))
 
 (deftest compute-series-stats-moderate-correlation-test
   (testing "moderate correlation (0.3-0.7)"

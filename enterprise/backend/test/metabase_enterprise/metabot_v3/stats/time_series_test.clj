@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.stats.repr :as repr]
    [metabase-enterprise.metabot-v3.stats.time-series :as time-series]
+   [metabase-enterprise.metabot-v3.stats.util :as stats.u]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -173,7 +174,7 @@
                                  :y_values (mapv #(* 10.0 %) (range 1 (inc n)))}
                       "Sales"   {:x_values x-vals
                                  :y_values (mapv #(* 20.0 %) (range 1 (inc n)))}}
-          result  (time-series/compute-correlations series-map)]
+          result  (stats.u/compute-correlations series-map)]
       (is (= 1 (count result)))
       ;; "Revenue" < "Sales" alphabetically → series_a="Revenue", series_b="Sales"
       (is (= "Revenue" (:series_a (first result))))
@@ -190,7 +191,7 @@
                                :y_values (mapv #(* 10.0 %) (range 1 (inc n)))}
                       "Sales" {:x_values x-vals
                                :y_values (mapv #(* 10.0 %) (range (inc n) 0 -1))}}
-          result (time-series/compute-correlations series-map)]
+          result (stats.u/compute-correlations series-map)]
       (is (= 1 (count result)))
       (is (< (:coefficient (first result)) -0.9))
       (is (= :strong (:strength (first result))))
@@ -202,7 +203,7 @@
           x-vals (mapv str (range 1 (inc n)))
           series-map {"Sales" {:x_values x-vals
                                :y_values (mapv #(* 10.0 %) (range 1 (inc n)))}}
-          result (time-series/compute-correlations series-map)]
+          result (stats.u/compute-correlations series-map)]
       (is (empty? result)))))
 
 (deftest compute-correlations-three-series-all-pairs-test
@@ -213,7 +214,7 @@
           series-map {"A" {:x_values x-vals :y_values vals}
                       "B" {:x_values x-vals :y_values vals}
                       "C" {:x_values x-vals :y_values vals}}
-          result (time-series/compute-correlations series-map)]
+          result (stats.u/compute-correlations series-map)]
       (is (= 3 (count result))))))
 
 (deftest compute-correlations-insufficient-points-skipped-test
@@ -222,7 +223,7 @@
     (let [x-vals (mapv str (range 1 6))
           series-map {"A" {:x_values x-vals :y_values [1.0 2.0 3.0 4.0 5.0]}
                       "B" {:x_values x-vals :y_values [2.0 4.0 6.0 8.0 10.0]}}
-          result (time-series/compute-correlations series-map)]
+          result (stats.u/compute-correlations series-map)]
       (is (empty? result)))))
 
 ;;; ----------------------------------------- find-significant-changes tests -----------------------------------------

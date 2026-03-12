@@ -2,6 +2,7 @@
   "Scatter plot statistics computation."
   (:require
    [metabase-enterprise.metabot-v3.stats.outliers :as outliers]
+   [metabase-enterprise.metabot-v3.stats.util :as stats.u]
    [tech.v3.datatype.functional :as dfn]))
 
 (set! *warn-on-reflection* true)
@@ -18,13 +19,6 @@
     (vec coll)
     (vec (take max-points (shuffle coll)))))
 
-(defn- correlation-strength [coef]
-  (let [abs-coef (Math/abs (double coef))]
-    (cond
-      (>= abs-coef 0.7) :strong
-      (>= abs-coef 0.3) :moderate
-      :else :weak)))
-
 (defn compute-series-stats
   "Compute stats for a single scatter series.
   x-values and y-values are parallel sequences of numbers."
@@ -38,27 +32,13 @@
        :data_points n}
       (let [xs        (mapv (comp double first) valid-pairs)
             ys        (mapv (comp double second) valid-pairs)
-            x-min     (dfn/reduce-min xs)
-            x-max     (dfn/reduce-max xs)
-            y-min     (dfn/reduce-min ys)
-            y-max     (dfn/reduce-max ys)
-            x-summary {:min     x-min
-                       :max     x-max
-                       :mean    (dfn/mean xs)
-                       :median  (dfn/median xs)
-                       :std_dev (dfn/standard-deviation xs)
-                       :range   (- x-max x-min)}
-            y-summary {:min     y-min
-                       :max     y-max
-                       :mean    (dfn/mean ys)
-                       :median  (dfn/median ys)
-                       :std_dev (dfn/standard-deviation ys)
-                       :range   (- y-max y-min)}
+            x-summary (stats.u/compute-summary xs)
+            y-summary (stats.u/compute-summary ys)
             raw-coef  (dfn/pearsons-correlation xs ys)
             coef      (when-not (Double/isNaN (double raw-coef)) raw-coef)
             correlation (when coef
                           {:coefficient coef
-                           :strength    (correlation-strength coef)
+                           :strength    (stats.u/correlation-strength coef)
                            :direction   (if (neg? coef) :negative :positive)})
             regression  (when (>= n min-regression-points)
                           (try
@@ -86,11 +66,5 @@
   "Compute scatter stats for all series in a chart.
   series-data: map of series-name -> {:x_values [...] :y_values [...] :x {:name ...} :y {:name ...}}"
   [series-data _opts]
-  (let [series-stats (into {}
-                           (for [[series-name {:keys [x_values y_values x y]}] series-data]
-                             [series-name (-> (compute-series-stats x_values y_values)
-                                              (assoc :x_name (some-> x :name))
-                                              (assoc :y_name (some-> y :name)))]))]
-    {:chart_type   :scatter
-     :series_count (count series-data)
-     :series       series-stats}))
+  (let [series-stats (stats.u/compute-series-with-labels series-data compute-series-stats)]
+    (stats.u/make-chart-result :scatter series-data series-stats nil)))

@@ -2,7 +2,7 @@
   "Categorical chart statistics computation."
   (:require
    [metabase-enterprise.metabot-v3.stats.outliers :as outliers]
-   [metabase-enterprise.metabot-v3.stats.time-series :as time-series]))
+   [metabase-enterprise.metabot-v3.stats.util :as stats.u]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,7 +25,7 @@
        :category_count 0
        :top_categories []
        :outliers       []}
-      (let [summary  (time-series/compute-summary ys)
+      (let [summary  (stats.u/compute-summary ys)
             outliers (when (>= n min-outlier-points)
                        (outliers/find-outliers ys (mapv str xs)))
             total    (reduce + 0.0 ys)
@@ -47,17 +47,6 @@
   "Compute categorical stats for all series in a chart.
    series-data: map of series-name -> {:x_values [...] :y_values [...] :x {:name ...} :y {:name ...}}"
   [series-data opts]
-  (let [series-stats (into {}
-                           (for [[series-name {:keys [x_values y_values x y]}] series-data]
-                             [series-name (-> (compute-series-stats x_values y_values)
-                                              (assoc :x_name (some-> x :name))
-                                              (assoc :y_name (some-> y :name)))]))
-        correlation-series (if-let [max-k (:max-correlation-series opts)]
-                             (into {} (take max-k series-data))
-                             series-data)
-        correlations (when (and (:deep? opts) (> (count correlation-series) 1))
-                       (time-series/compute-correlations correlation-series))]
-    (cond-> {:chart_type   :categorical
-             :series_count (count series-data)
-             :series       series-stats}
-      correlations (assoc :correlations correlations))))
+  (let [series-stats (stats.u/compute-series-with-labels series-data compute-series-stats)
+        correlations (stats.u/maybe-compute-correlations series-data opts)]
+    (stats.u/make-chart-result :categorical series-data series-stats correlations)))

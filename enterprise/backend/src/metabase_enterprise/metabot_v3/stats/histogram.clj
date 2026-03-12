@@ -1,7 +1,7 @@
 (ns metabase-enterprise.metabot-v3.stats.histogram
   "Histogram chart statistics computation."
   (:require
-   [metabase-enterprise.metabot-v3.stats.time-series :as time-series]))
+   [metabase-enterprise.metabot-v3.stats.util :as stats.u]))
 
 (set! *warn-on-reflection* true)
 
@@ -78,7 +78,7 @@
         :data_points  0
         :bin_data     []
         :distribution {:percentiles {} :quartiles {:q1 0 :median 0 :q3 0 :iqr 0}}}
-       (let [summary     (time-series/compute-summary valid)
+       (let [summary     (stats.u/compute-summary valid)
              sorted-vals (sort valid)
              percentiles (compute-percentiles sorted-vals)
              quartiles   (compute-quartiles sorted-vals)
@@ -100,11 +100,5 @@
   "Compute statistics for histogram data. Uses y_values (counts/frequencies per bin).
   series-data: map of series-name -> {:x_values [...] :y_values [...] :x {:name ...} :y {:name ...}}"
   [series-data _opts]
-  (let [series-stats (into {}
-                           (for [[series-name {:keys [x_values y_values x y]}] series-data]
-                             [series-name (-> (compute-series-stats x_values y_values)
-                                              (assoc :x_name (some-> x :name))
-                                              (assoc :y_name (some-> y :name)))]))]
-    {:chart_type   :histogram
-     :series_count (count series-data)
-     :series       series-stats}))
+  (let [series-stats (stats.u/compute-series-with-labels series-data compute-series-stats)]
+    (stats.u/make-chart-result :histogram series-data series-stats nil)))
