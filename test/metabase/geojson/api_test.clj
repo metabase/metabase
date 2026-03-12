@@ -97,7 +97,7 @@
       (mt/with-temp-env-var-value! [mb-allow-classpath-geojson "true"]
         (let [resource-geojson {(first (keys test-custom-geojson))
                                 (assoc (first (vals test-custom-geojson))
-                                       :url "c3p0.properties")}]
+                                       :url "app/assets/geojson/world.json")}]
           (is (= (merge (@#'geojson.settings/builtin-geojson) resource-geojson)
                  (u/auto-retry 3
                    (mt/with-temporary-setting-values [custom-geojson nil]
