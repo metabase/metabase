@@ -388,17 +388,23 @@
     {:should-run true
      :reason "Module updated which explicitly triggers cloud drivers"}
 
-    ;; Priority 8: Cloud driver, no relevant changes → skip
+    ;; Priority 8: Cloud driver + driver deps affected (e.g., deps.edn changed)
+    (and (contains? cloud-drivers driver)
+         driver-deps-affected?)
+    {:should-run true
+     :reason "driver module affected by shared code changes"}
+
+    ;; Priority 9: Cloud driver, no relevant changes → skip
     (contains? cloud-drivers driver)
     {:should-run false
      :reason "no relevant changes for cloud driver"}
 
-    ;; Priority 9: Driver deps affected by shared code changes
+    ;; Priority 10: Driver deps affected by shared code changes
     driver-deps-affected?
     {:should-run true
      :reason "driver module affected by shared code changes"}
 
-    ;; Priority 10: Self-hosted driver, not affected
+    ;; Priority 11: Self-hosted driver, not affected
     :else
     {:should-run false
      :reason "driver module not affected"}))
