@@ -228,9 +228,17 @@
   (let [{:keys [source-incremental-strategy]} source
         {:keys [checkpoint-filter-field-id]} source-incremental-strategy]
     (when (and (= "table-incremental" (:type target))
+               (native-query-transform? transform)
+               (not (some (fn [[_k v]] (#{:table "table"} (:type v)))
+                          (get-in source [:query :stages 0 :template-tags]))))
+      (let [msg (str "Incremental transform with a native query requires a table template tag."
+                     "Please add a table template tag to the query and update the checkpoint field.")]
+        (throw (ex-info msg {:transform-message msg}))))
+    (when (and (= "table-incremental" (:type target))
                (not checkpoint-filter-field-id))
-      (throw (ex-info "Incremental transform is enabled but no checkpoint field is selected. Please select a checkpoint field in the transform settings."
-                      {:transform-message "Incremental transform is enabled but no checkpoint field is selected. Please select a checkpoint field in the transform settings."})))
+      (let [msg (str "Incremental transform is enabled but no checkpoint field is selected."
+                     "Please select a checkpoint field in the transform settings.")]
+        (throw (ex-info msg {:transform-message msg}))))
     (when checkpoint-filter-field-id
       (let [{:keys [last_checkpoint_value]} transform
             db-id             (transforms-base.i/target-db-id transform)
