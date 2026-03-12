@@ -40,7 +40,7 @@ export function NativeQueryTableTagFieldSelect({
 
   const noQueryMessage = useMemo(() => {
     if (tableIds.length === 0) {
-      return t`Native queries must use at least one table template tag to enable incremental transforms`;
+      return t`Native queries must use at least one table variable to enable incremental transforms`;
     }
     if (hasError) {
       return t`Unable to load table metadata. You may not have permission to access the table.`;

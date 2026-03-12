@@ -134,7 +134,7 @@ describe("getIncrementalWarning", () => {
     expect(getIncrementalWarning(transform, metadata)).toBeUndefined();
   });
 
-  it("should warn when native query has no table template tags", () => {
+  it("should warn when native query has no table variables", () => {
     const libQuery = {} as any;
     mockGetLibQuery.mockReturnValue(libQuery);
     mockTemplateTags.mockReturnValue({
@@ -147,7 +147,7 @@ describe("getIncrementalWarning", () => {
     });
 
     const result = getIncrementalWarning(transform, metadata);
-    expect(result).toMatch(/table template tag/);
+    expect(result).toMatch(/table variable/);
   });
 
   it("should warn when native query has no lib query (getLibQuery returns null)", () => {
@@ -159,7 +159,7 @@ describe("getIncrementalWarning", () => {
     });
 
     const result = getIncrementalWarning(transform, metadata);
-    expect(result).toMatch(/table template tag/);
+    expect(result).toMatch(/table variable/);
   });
 
   it("should warn when incremental transform has no checkpoint field", () => {

@@ -205,7 +205,7 @@
                             k))
                         tags)
         _         (when-not tag-name
-                    (throw (ex-info "No table template tag found for checkpoint field's table"
+                    (throw (ex-info "No table variable found for checkpoint field's table"
                                     {:checkpoint-table-id table-id
                                      :template-tags       tags})))
         filters   (cond-> []
@@ -231,8 +231,8 @@
                (native-query-transform? transform)
                (not (some (fn [[_k v]] (#{:table "table"} (:type v)))
                           (get-in source [:query :stages 0 :template-tags]))))
-      (let [msg (str "Incremental transform with a native query requires a table template tag."
-                     "Please add a table template tag to the query and update the checkpoint field.")]
+      (let [msg (str "Incremental transform with a native query requires a table variable. "
+                     "Please add a table variable to the query and update the checkpoint field.")]
         (throw (ex-info msg {:transform-message msg}))))
     (when (and (= "table-incremental" (:type target))
                (not checkpoint-filter-field-id))

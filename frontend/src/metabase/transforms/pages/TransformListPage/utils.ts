@@ -31,7 +31,7 @@ export function getIncrementalWarning(
       : false;
 
     if (!hasTableTag) {
-      return t`Incremental transform with a native query requires a table template tag. Please add a table template tag to the query and update the checkpoint field.`;
+      return t`Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field.`;
     }
   }
 
