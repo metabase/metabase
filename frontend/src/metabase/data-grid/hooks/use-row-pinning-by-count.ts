@@ -9,7 +9,7 @@ type UseRowPinningByCountProps<TData> = {
   data: TData[];
   getRowId: (originalRow: TData, index: number, parent?: Row<TData>) => string;
   gridRef: RefObject<HTMLDivElement | null>;
-  pinnedRowHeights: number[];
+  topRowHeights: number[];
 };
 
 export const useRowPinningByCount = <TData>({
@@ -17,22 +17,24 @@ export const useRowPinningByCount = <TData>({
   data,
   getRowId,
   gridRef,
-  pinnedRowHeights,
+  topRowHeights,
 }: UseRowPinningByCountProps<TData>): RowPinningState => {
+  const pinnedRowSizes = useMemo(
+    () => topRowHeights.slice(0, top),
+    [topRowHeights, top],
+  );
+
   const effectivePinnedRowsCount = useItemsLimiter({
     containerRef: gridRef,
     dimension: "height",
-    sizes: pinnedRowHeights,
+    sizes: pinnedRowSizes,
     maxRatio: 0.9,
   });
 
-  const pinnedCount =
-    pinnedRowHeights.length > 0 ? effectivePinnedRowsCount : top;
-
   return useMemo(() => {
     const topIds = data
-      .slice(0, pinnedCount)
+      .slice(0, effectivePinnedRowsCount)
       .map((row, index) => getRowId(row, index));
     return { top: topIds };
-  }, [pinnedCount, data, getRowId]);
+  }, [effectivePinnedRowsCount, data, getRowId]);
 };

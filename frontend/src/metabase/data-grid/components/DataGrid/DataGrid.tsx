@@ -266,7 +266,7 @@ export const DataGrid = function DataGrid<TData>({
               )}
               style={styles?.bodyContainer}
             >
-              {pinnedRows.length && (
+              {pinnedRows.length > 0 && (
                 <div
                   className={S.pinnedRowsSection}
                   style={{

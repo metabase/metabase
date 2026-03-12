@@ -73,7 +73,7 @@ export const useDataGridInstance = <TData, TValue>({
   columnOrder: controlledColumnOrder,
   columnSizingMap: controlledColumnSizingMap,
   pinnedLeftColumnsCount = 0,
-  pinnedTopRowsCount,
+  pinnedTopRowsCount = 0,
   sorting,
   defaultRowHeight = 36,
   minGridWidth: minGridWidthProp,
@@ -250,14 +250,14 @@ export const useDataGridInstance = <TData, TValue>({
       pinnedColumnsCount: pinnedLeftColumnsCount + utilityColumns.length,
     });
 
-  const [pinnedRowHeights, setPinnedRowHeights] = useState<number[]>([]);
+  const [topRowHeights, setTopRowHeights] = useState<number[]>([]);
 
   const rowPinning = useRowPinningByCount({
     top: pinnedTopRowsCount,
     data,
     getRowId,
     gridRef,
-    pinnedRowHeights,
+    topRowHeights,
   });
 
   const table = useReactTable({
@@ -335,30 +335,28 @@ export const useDataGridInstance = <TData, TValue>({
     enableRowVirtualization,
   });
 
-  const rawPinnedTopCount = pinnedTopRowsCount ?? 0;
-
   useEffect(() => {
-    if (rawPinnedTopCount === 0) {
-      if (pinnedRowHeights.length > 0) {
-        setPinnedRowHeights([]);
+    if (pinnedTopRowsCount === 0) {
+      if (topRowHeights.length > 0) {
+        setTopRowHeights([]);
       }
       return;
     }
 
     const virtualItems = virtualGrid.rowVirtualizer.getVirtualItems();
     const heights = virtualItems
-      .filter((item) => item.index < rawPinnedTopCount)
+      .filter((item) => item.index < pinnedTopRowsCount)
       .map((item) => item.size);
 
     if (
-      heights.length === pinnedRowHeights.length &&
-      heights.every((h, i) => h === pinnedRowHeights[i])
+      heights.length === topRowHeights.length &&
+      heights.every((h, i) => h === topRowHeights[i])
     ) {
       return;
     }
 
-    setPinnedRowHeights(heights);
-  }, [rawPinnedTopCount, virtualGrid.rowVirtualizer, pinnedRowHeights]);
+    setTopRowHeights(heights);
+  }, [pinnedTopRowsCount, virtualGrid.rowVirtualizer, topRowHeights]);
 
   const measureColumnWidths = useMeasureColumnWidths(
     table,
@@ -419,7 +417,6 @@ export const useDataGridInstance = <TData, TValue>({
   const { measureGrid } = virtualGrid;
   const prevColumnSizing = useRef<ColumnSizingState>();
   const prevWrappedColumns = useRef<string[]>();
-  const prevPinnedTopRowsCount = useRef<number>();
 
   useEffect(() => {
     const didColumnSizingChange =
@@ -432,16 +429,7 @@ export const useDataGridInstance = <TData, TValue>({
         wrappedColumnsOptions.map((column) => column.id),
         prevWrappedColumns.current,
       );
-
-    const didPinnedRowsChange =
-      prevPinnedTopRowsCount.current != null &&
-      prevPinnedTopRowsCount.current !== rawPinnedTopCount;
-
-    if (
-      didColumnSizingChange ||
-      didColumnWrappingChange ||
-      didPinnedRowsChange
-    ) {
+    if (didColumnSizingChange || didColumnWrappingChange) {
       measureGrid();
     }
 
@@ -449,8 +437,7 @@ export const useDataGridInstance = <TData, TValue>({
     prevWrappedColumns.current = wrappedColumnsOptions.map(
       (column) => column.id,
     );
-    prevPinnedTopRowsCount.current = rawPinnedTopCount;
-  }, [columnSizingMap, measureGrid, wrappedColumnsOptions, rawPinnedTopCount]);
+  }, [columnSizingMap, measureGrid, wrappedColumnsOptions]);
 
   // Handle column resize from resize observer
   const handleColumnResize = useCallback(
