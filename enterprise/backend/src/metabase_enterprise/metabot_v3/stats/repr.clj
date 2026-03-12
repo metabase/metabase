@@ -115,7 +115,7 @@
                    high_variance (conj "high variance (fluctuations may be normal noise)")
                    sparse_data   (conj "limited data points"))]
     (when (seq warnings)
-      (str "**Note**: " (str/join ", " warnings) ". Cross-reference with the chart visual."))))
+      (str "**Note**: " (str/join ", " warnings) "."))))
 
 ;;; ------------------------------------------ Series Representation -------------------------------------------------
 
