@@ -963,7 +963,7 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.findByText("Load").click();
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
-      "Invalid GeoJSON file location: must either start with http:// or https://. " +
+      "Invalid GeoJSON file location: must start with http:// or https://. " +
         "URLs referring to hosts that supply internal hosting metadata are prohibited.",
     );
   });
