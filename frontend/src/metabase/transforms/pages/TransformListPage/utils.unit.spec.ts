@@ -1,7 +1,10 @@
+import { createMockMetadata } from "__support__/metadata";
 import { getLibQuery } from "metabase/transforms/utils";
 import * as Lib from "metabase-lib";
-import type { TransformOwner } from "metabase-types/api";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
+  createMockStructuredDatasetQuery,
+  createMockTemplateTag,
   createMockTransform,
   createMockTransformOwner,
   createMockTransformTarget,
@@ -14,8 +17,11 @@ jest.mock("metabase/transforms/utils", () => ({
 }));
 
 jest.mock("metabase-lib", () => ({
+  ...jest.requireActual<typeof Lib>("metabase-lib"),
   templateTags: jest.fn(),
 }));
+
+const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
 const mockGetLibQuery = getLibQuery as jest.MockedFunction<typeof getLibQuery>;
 const mockTemplateTags = Lib.templateTags as jest.MockedFunction<
@@ -54,13 +60,13 @@ describe("buildTreeData", () => {
       id: 1,
       name: "Test Transform",
       owner_email: "external@example.com",
-      owner: { email: "external@example.com" } as TransformOwner,
+      owner: createMockTransformOwner({ email: "external@example.com" }),
     });
 
     const result = buildTreeData([], [transform]);
 
     expect(result).toHaveLength(1);
-    expect(result[0].owner).toEqual({ email: "external@example.com" });
+    expect(result[0].owner).toMatchObject({ email: "external@example.com" });
     expect(result[0].owner_email).toBe("external@example.com");
   });
 
@@ -98,7 +104,7 @@ describe("buildTreeData", () => {
         id: 2,
         name: "Transform with email owner",
         owner_email: "external@example.com",
-        owner: { email: "external@example.com" } as TransformOwner,
+        owner: createMockTransformOwner({ email: "external@example.com" }),
       }),
       createMockTransform({
         id: 3,
@@ -111,19 +117,14 @@ describe("buildTreeData", () => {
 
     expect(result).toHaveLength(3);
     expect(result[0].owner).toEqual(userOwner);
-    expect(result[1].owner).toEqual({ email: "external@example.com" });
+    expect(result[1].owner).toMatchObject({ email: "external@example.com" });
     expect(result[1].owner_email).toBe("external@example.com");
     expect(result[2].owner).toBeUndefined();
   });
 });
 
 describe("getIncrementalWarning", () => {
-  const metadata = {} as any;
-
-  beforeEach(() => {
-    mockGetLibQuery.mockReset();
-    mockTemplateTags.mockReset();
-  });
+  const metadata = createMockMetadata({});
 
   it("should return undefined for non-incremental transform", () => {
     const transform = createMockTransform({
@@ -134,10 +135,13 @@ describe("getIncrementalWarning", () => {
   });
 
   it("should warn when native query has no table variables", () => {
-    const libQuery = {} as any;
-    mockGetLibQuery.mockReturnValue(libQuery);
+    mockGetLibQuery.mockReturnValue(query);
     mockTemplateTags.mockReturnValue({
-      snippet1: { id: "1", name: "snippet1", type: "snippet" } as any,
+      snippet1: createMockTemplateTag({
+        id: "1",
+        name: "snippet1",
+        type: "snippet",
+      }),
     });
 
     const transform = createMockTransform({
@@ -162,22 +166,21 @@ describe("getIncrementalWarning", () => {
   });
 
   it("should warn when incremental transform has no checkpoint field", () => {
-    const libQuery = {} as any;
-    mockGetLibQuery.mockReturnValue(libQuery);
+    mockGetLibQuery.mockReturnValue(query);
     mockTemplateTags.mockReturnValue({
-      my_table: {
+      my_table: createMockTemplateTag({
         id: "1",
         name: "my_table",
         type: "table",
         "table-id": 42,
-      } as any,
+      }),
     });
 
     const transform = createMockTransform({
       source_type: "native",
       source: {
         type: "query",
-        query: {} as any,
+        query: createMockStructuredDatasetQuery(),
       },
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
@@ -187,22 +190,21 @@ describe("getIncrementalWarning", () => {
   });
 
   it("should return undefined for properly configured native incremental transform", () => {
-    const libQuery = {} as any;
-    mockGetLibQuery.mockReturnValue(libQuery);
+    mockGetLibQuery.mockReturnValue(query);
     mockTemplateTags.mockReturnValue({
-      my_table: {
+      my_table: createMockTemplateTag({
         id: "1",
         name: "my_table",
         type: "table",
         "table-id": 42,
-      } as any,
+      }),
     });
 
     const transform = createMockTransform({
       source_type: "native",
       source: {
         type: "query",
-        query: {} as any,
+        query: createMockStructuredDatasetQuery(),
         "source-incremental-strategy": {
           type: "checkpoint",
           "checkpoint-filter-field-id": 99,
@@ -217,10 +219,6 @@ describe("getIncrementalWarning", () => {
   it("should warn when mbql incremental transform has no checkpoint field", () => {
     const transform = createMockTransform({
       source_type: "mbql",
-      source: {
-        type: "query",
-        query: {} as any,
-      },
       target: createMockTransformTarget({ type: "table-incremental" }),
     });
 
@@ -233,7 +231,7 @@ describe("getIncrementalWarning", () => {
       source_type: "mbql",
       source: {
         type: "query",
-        query: {} as any,
+        query: createMockStructuredDatasetQuery(),
         "source-incremental-strategy": {
           type: "checkpoint",
           "checkpoint-filter-field-id": 99,
