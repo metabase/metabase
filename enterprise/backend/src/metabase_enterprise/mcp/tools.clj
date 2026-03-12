@@ -122,6 +122,7 @@
   (if-let [tool-def (get @tool-index tool-name)]
     (try
       (if (:streaming tool-def)
+        ;; TODO (Chris 2026-03-26) Stop cheating :-)
         (execute-query arguments)
         (dispatch-via-agent-api tool-def arguments))
       (catch Exception e
