@@ -242,35 +242,36 @@
   ;;    (dev/start!)
   :dev
   {:extra-deps
-   {cider/cider-nrepl            {:mvn/version "0.58.0"}                    ; nREPL server for CIDER
-    clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
+   {cider/cider-nrepl             {:mvn/version "0.58.0"}                    ; nREPL server for CIDER
+    clj-http-fake/clj-http-fake   {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2025.10.23"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
-    cloverage/cloverage          {:mvn/version "1.2.4"}
+    clj-kondo/clj-kondo           {:mvn/version "2025.10.23"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    cloverage/cloverage           {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
     {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
     com.clojure-goes-fast/clj-memory-meter
     {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
-    com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
-    criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
-    djblue/portal                {:mvn/version "0.62.0"}                    ; ui for inspecting values
-    io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
-    io.github.metabase/hawk      {:mvn/version "1.0.13"}                    ; test runner
-    jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
-                                  :exclusions
-                                  [org.ow2.asm/asm-all]}
-    lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
-    net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
-    nrepl/nrepl                  {:mvn/version "1.5.1"}                     ; nREPL server
-    pjstadig/humane-test-output  {:mvn/version "0.11.0"}
+    com.gfredericks/test.chuck    {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
+    criterium/criterium           {:mvn/version "0.4.6"}                     ; benchmarking library
+    djblue/portal                 {:mvn/version "0.62.0"}                    ; ui for inspecting values
+    io.github.camsaul/humane-are  {:mvn/version "1.0.2"}                     ; cleaner test output
+    io.github.metabase/hawk       {:mvn/version "1.0.13"}                    ; test runner
+    io.github.tonsky/clj-reload   {:mvn/version "1.0.0"}
+    jonase/eastwood               {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
+                                   :exclusions
+                                   [org.ow2.asm/asm-all]}
+    lambdaisland/deep-diff2       {:mvn/version "2.12.219"}                  ; way better diffs
+    net.solovyov/hashp            {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
+    nrepl/nrepl                   {:mvn/version "1.5.1"}                     ; nREPL server
+    pjstadig/humane-test-output   {:mvn/version "0.11.0"}
     refactor-nrepl/refactor-nrepl {:mvn/version "3.11.0"}                   ; refactoring helpers for cider
-    reifyhealth/specmonstah      {:mvn/version "2.1.0"
-                                  :exclusions  [org.clojure/clojure
-                                                org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
-    rewrite-clj/rewrite-clj      {:mvn/version "1.2.50"}                    ; clojure source parsing and rewriting
-    ring/ring-devel              {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
-    ring/ring-mock               {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
-    talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
+    reifyhealth/specmonstah       {:mvn/version "2.1.0"
+                                   :exclusions  [org.clojure/clojure
+                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
+    rewrite-clj/rewrite-clj       {:mvn/version "1.2.50"}                    ; clojure source parsing and rewriting
+    ring/ring-devel               {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
+    ring/ring-mock                {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
+    talltale/talltale             {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
    :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
@@ -315,9 +316,9 @@
   ;; 2. This starts the repl too: just like the :nrepl alias below. (see [[user/-main]])
   ;; clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev
   :dev-start {:main-opts ["-m" "user"]
-              :jvm-opts ["-Dmb.run.mode=dev"
-                         "-Dmacaw.run.mode=dev"
-                         "-Djava.awt.headless=true"]}
+              :jvm-opts  ["-Dmb.run.mode=dev"
+                          "-Dmacaw.run.mode=dev"
+                          "-Djava.awt.headless=true"]}
 
   ;; includes test code as source paths. Run tests with clojure -X:dev:test
   :test
@@ -351,35 +352,35 @@
   ;;
   ;; clojure -M:dev:drivers:(oss|ee):run:e2e
   :e2e
-  {:jvm-opts  ["-Dmb.run.mode=e2e"
-               "-Dmetastore.dev.server.url=https://token-check.staging.metabase.com"
-               ;; prevent Java icon from randomly popping up in macOS dock
-               "-Djava.awt.headless=true"
-               ;; ignore options that aren't recognized by older versions of Java
-               "-XX:+IgnoreUnrecognizedVMOptions"
-               ;; test self-signed certificates for testing
-               "-Dmail.smtps.ssl.trust=*"
-               ;; Writes all logs to a file logs/test.log
-               "-Dlog4j.configurationFile=file:frontend/test/__runner__/log4j2.xml"
-               "-Duser.timezone=US/Pacific"
-               "-Dmb.db.type=h2"
-               "-Dmb.enable.test.endpoints=true"
-               "-Dmb.dangerous.unsafe.enable.testing.h2.connections.do.not.enable=true"
-               ;; Ignore connection URI in favor of the MB_DB_FILE
-               "-Dmb.db.connection.uri="
-               ;; Unset the premium token so that tests can set it programmatically
-               "-Dmb.premium.embedding.token="
-               ;; Ignore config.yml
-               "-Dmb.config.file.path=__cypress__"
-               ;; We use Snowplow micro in e2e tests
-               "-Dmb.snowplow.available=true"
-               "-Dmb.snowplow.url=http://localhost:9090"
-               ;; See: https://github.com/metabase/metabase/pull/38280
-               "-Dmb.last.analytics.checksum=-1"
-               "-Dmb.experimental.search.block.on.queue=true"
-               "-Dmb.search.engine=appdb"
-               ;; We use a local webhook service for testing
-               "-Dmb.http.channel.host.strategy=allow-all"]}
+  {:jvm-opts ["-Dmb.run.mode=e2e"
+              "-Dmetastore.dev.server.url=https://token-check.staging.metabase.com"
+              ;; prevent Java icon from randomly popping up in macOS dock
+              "-Djava.awt.headless=true"
+              ;; ignore options that aren't recognized by older versions of Java
+              "-XX:+IgnoreUnrecognizedVMOptions"
+              ;; test self-signed certificates for testing
+              "-Dmail.smtps.ssl.trust=*"
+              ;; Writes all logs to a file logs/test.log
+              "-Dlog4j.configurationFile=file:frontend/test/__runner__/log4j2.xml"
+              "-Duser.timezone=US/Pacific"
+              "-Dmb.db.type=h2"
+              "-Dmb.enable.test.endpoints=true"
+              "-Dmb.dangerous.unsafe.enable.testing.h2.connections.do.not.enable=true"
+              ;; Ignore connection URI in favor of the MB_DB_FILE
+              "-Dmb.db.connection.uri="
+              ;; Unset the premium token so that tests can set it programmatically
+              "-Dmb.premium.embedding.token="
+              ;; Ignore config.yml
+              "-Dmb.config.file.path=__cypress__"
+              ;; We use Snowplow micro in e2e tests
+              "-Dmb.snowplow.available=true"
+              "-Dmb.snowplow.url=http://localhost:9090"
+              ;; See: https://github.com/metabase/metabase/pull/38280
+              "-Dmb.last.analytics.checksum=-1"
+              "-Dmb.experimental.search.block.on.queue=true"
+              "-Dmb.search.engine=appdb"
+              ;; We use a local webhook service for testing
+              "-Dmb.http.channel.host.strategy=allow-all"]}
 
   ;; run the prod server when generating docs
   ;; as some default values differ between dev and prod
@@ -434,24 +435,24 @@
                "The simplest, fastest way to get business intelligence and analytics to everyone in your company 😋"]}
 
   ;; Find outdated versions of dependencies. Run with `clojure -M:outdated`
-  :outdated {;; Note that it is `:deps`, not `:extra-deps`
-             :deps {com.github.liquidz/antq {:mvn/version "RELEASE"}}
-             :main-opts ["-m" "antq.core" "--skip=github-action"]}
+  :outdated  {;; Note that it is `:deps`, not `:extra-deps`
+              :deps      {com.github.liquidz/antq {:mvn/version "RELEASE"}}
+              :main-opts ["-m" "antq.core" "--skip=github-action"]}
 
   :cljs
   {:extra-paths ["test"]
    :extra-deps
-   {binaryage/devtools                 {:mvn/version "1.0.7"}
-    cider/cider-nrepl                  {:mvn/version "0.58.0"}
-    cider/piggieback                   {:mvn/version "0.6.1"}
-    cljs-bean/cljs-bean                {:mvn/version "1.9.0"}
-    com.lambdaisland/glogi             {:mvn/version "1.3.169"}
-    io.github.metabase/hawk            {:mvn/version "1.0.13"}
-    org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
-    org.clojure/clojurescript          {:mvn/version "1.12.134"}
-    refactor-nrepl/refactor-nrepl      {:mvn/version "3.11.0"}
+   {binaryage/devtools            {:mvn/version "1.0.7"}
+    cider/cider-nrepl             {:mvn/version "0.58.0"}
+    cider/piggieback              {:mvn/version "0.6.1"}
+    cljs-bean/cljs-bean           {:mvn/version "1.9.0"}
+    com.lambdaisland/glogi        {:mvn/version "1.3.169"}
+    io.github.metabase/hawk       {:mvn/version "1.0.13"}
+    org.clojars.mmb90/cljs-cache  {:mvn/version "0.1.4"}
+    org.clojure/clojurescript     {:mvn/version "1.12.134"}
+    refactor-nrepl/refactor-nrepl {:mvn/version "3.11.0"}
     ;; keep it in sync with package.json
-    thheller/shadow-cljs               {:mvn/version "3.3.5"}}}
+    thheller/shadow-cljs          {:mvn/version "3.3.5"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers
@@ -485,7 +486,7 @@
     "modules/drivers/starburst/test"
     "modules/drivers/vertica/test"]}
 
-;;; Linters
+  ;;; Linters
 
   ;; clojure -M:kondo --lint src test
   ;;
@@ -594,40 +595,40 @@
   {:exec-fn   metabase.linters.eastwood/eastwood
    :exec-args {;; manually specify the source paths for the time being (exclude test paths) until we fix Eastwood
                ;; errors in the test paths (once PR #17193 is merged)
-               :source-paths    ["src"
-                                 "enterprise/backend/src"
-                                 "modules/drivers/athena/src"
-                                 "modules/drivers/bigquery-cloud-sdk/src"
-                                 "modules/drivers/clickhouse/src"
-                                 "modules/drivers/databricks/src"
-                                 "modules/drivers/druid/src"
-                                 "modules/drivers/druid-jdbc/src"
-                                 "modules/drivers/hive-like/src"
-                                 "modules/drivers/mongo/src"
-                                 "modules/drivers/oracle/src"
-                                 "modules/drivers/presto-jdbc/src"
-                                 "modules/drivers/redshift/src"
-                                 "modules/drivers/snowflake/src"
-                                 "modules/drivers/sparksql/src"
-                                 "modules/drivers/sqlite/src"
-                                 "modules/drivers/sqlserver/src"
-                                 "modules/drivers/starburst/src"
-                                 "modules/drivers/vertica/src"]
-               :exclude-linters [;; Turn this off temporarily until we finish removing
-                                 ;; self-deprecated functions & macros
-                                 :deprecations
-                                 ;; this has a fit in libs that use Potemkin `import-vars` such
-                                 ;; as `java-time`
-                                 :implicit-dependencies
-                                 ;; too many false positives for now
-                                 :unused-ret-vals
-                                 ;; hard to clear on for lib.util.match macros, and disabling the linter just there
-                                 ;; doesn't seem to work
-                                 :unused-meta-on-macro
-                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :wrong-arity
-                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :suspicious-expression]
+               :source-paths       ["src"
+                                    "enterprise/backend/src"
+                                    "modules/drivers/athena/src"
+                                    "modules/drivers/bigquery-cloud-sdk/src"
+                                    "modules/drivers/clickhouse/src"
+                                    "modules/drivers/databricks/src"
+                                    "modules/drivers/druid/src"
+                                    "modules/drivers/druid-jdbc/src"
+                                    "modules/drivers/hive-like/src"
+                                    "modules/drivers/mongo/src"
+                                    "modules/drivers/oracle/src"
+                                    "modules/drivers/presto-jdbc/src"
+                                    "modules/drivers/redshift/src"
+                                    "modules/drivers/snowflake/src"
+                                    "modules/drivers/sparksql/src"
+                                    "modules/drivers/sqlite/src"
+                                    "modules/drivers/sqlserver/src"
+                                    "modules/drivers/starburst/src"
+                                    "modules/drivers/vertica/src"]
+               :exclude-linters    [;; Turn this off temporarily until we finish removing
+                                    ;; self-deprecated functions & macros
+                                    :deprecations
+                                    ;; this has a fit in libs that use Potemkin `import-vars` such
+                                    ;; as `java-time`
+                                    :implicit-dependencies
+                                    ;; too many false positives for now
+                                    :unused-ret-vals
+                                    ;; hard to clear on for lib.util.match macros, and disabling the linter just there
+                                    ;; doesn't seem to work
+                                    :unused-meta-on-macro
+                                    ;; Kondo lints this for us anyway, and this isn't as easy to configure.
+                                    :wrong-arity
+                                    ;; Kondo lints this for us anyway, and this isn't as easy to configure.
+                                    :suspicious-expression]
                ;; Snowplow has a dynamic dependency on okhttp3.CookieJar that we
                ;; don't use but eastwood detects. This is discussed in Slack here
                ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
@@ -730,7 +731,7 @@
                ["metabase\\.driver\\.mysql.*"
                 "metabase\\.driver\\.postgres.*"]}
    ;; different port from `:test` so you can run it at the same time as `:test`.
-   :jvm-opts ["-Dmb.jetty.port=3002"]}
+   :jvm-opts  ["-Dmb.jetty.port=3002"]}
 
   ;; To fix indentation in all source files
   ;;
@@ -754,7 +755,7 @@
    :ns-default cljfmt.tool
    :exec-fn    cljfmt.tool/fix}
 
-;;; building Uberjar, build and release scripts
+  ;;; building Uberjar, build and release scripts
 
   :build
   {:extra-paths
@@ -845,7 +846,7 @@
   {:exec-fn   mb.hawk.core/find-and-run-tests-cli
    :exec-args {:only ["bin/build/test"]}}
 
-;;; Other misc convenience aliases
+  ;;; Other misc convenience aliases
 
   ;; Profile Metabase start time with clojure -M:profile
   :profile
@@ -870,7 +871,7 @@
    :main-opts  ["-m" "nrepl.cmdline" "-p" "50605"]}
 
   ;; - start a Socket REPL on port 50505 that you can connect your editor to:
-  :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
+  :socket    {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
 
   ;; Liquibase CLI:
   ;;
@@ -892,7 +893,7 @@
   ;;    clojure -M:migrate rollback id "v40.00.001" ;; rollback to a specific migration with id
   ;;    clojure -M:migrate status                   ;; print the latest migration id
   :migrate
-  {:extra-deps {io.github.camsaul/humane-are {:mvn/version "1.0.2"}}
+  {:extra-deps  {io.github.camsaul/humane-are {:mvn/version "1.0.2"}}
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.migrate"]}
 
@@ -923,7 +924,7 @@
   {:exec-args {:only ["enterprise/backend/test/metabase_enterprise/transforms"
                       "enterprise/backend/test/metabase_enterprise/transforms_python"]}}
 
-;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
+  ;; test all MBQL related stuff: MLv2, the legacy shared `metabase.legacy-mbql` code, and the QP
   ;;
   ;;    clj -X:dev:ee:ee-dev:test:test/mbql
   :test/mbql
@@ -983,4 +984,4 @@
     "-Dmb.db.connection.uri=jdbc:mysql://localhost:3307/metabase_test?user=root&password="]}}}
 
 ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
-  ;; on them all from a single REPL process.
+;; on them all from a single REPL process.
