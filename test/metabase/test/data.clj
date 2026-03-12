@@ -344,7 +344,10 @@
     (for [driver (tx.env/test-drivers)
           :let [driver (tx/the-driver-with-test-extensions driver)
                 conn-prop-names (when (or (seq +conn-props) (seq -conn-props))
-                                  (into #{} (map :name (driver/connection-properties driver))))]
+                                  (->> (driver/connection-properties driver)
+                                       driver.u/collect-all-props-by-name
+                                       keys
+                                       (into #{})))]
           :when (driver/with-driver driver
                   (let [the-db (delay (db))]
                     (cond-> true

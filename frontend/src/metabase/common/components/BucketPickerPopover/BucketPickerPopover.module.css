@@ -1,0 +1,46 @@
+.triggerButton {
+  border-radius: 0;
+  visibility: hidden;
+  color: var(--mb-color-text-tertiary-inverse);
+  border-left: 2px solid var(--mb-color-border-subtle);
+}
+
+*:hover > .triggerButton {
+  visibility: visible;
+}
+
+.triggerButtonLabel {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chevronIcon {
+  color: var(--mb-color-text-primary-inverse);
+  flex: 0 0 auto;
+}
+
+.chevronDown {
+  flex: 0 0 auto;
+  width: 8px;
+  margin-left: 0.25em;
+  color: currentColor;
+  opacity: 0.75;
+}
+
+.selectListItem {
+  padding: 0.5rem 1rem;
+  font-weight: 400;
+}
+
+.selectListItem.selectListItem[aria-selected="true"],
+.selectListItem.selectListItem:hover {
+  background-color: var(--bucket-picker-active-color, var(--mb-color-brand));
+}
+
+.moreButton {
+  transition: none !important;
+}
+
+.moreButton:hover {
+  background-color: var(--mb-color-background-hover);
+}

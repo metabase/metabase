@@ -2,10 +2,10 @@ import * as d3 from "d3";
 import type { ScatterSeriesOption } from "echarts/charts";
 
 import { X_AXIS_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type { RenderingContext } from "metabase/visualizations/types";
+import type { Extent, RenderingContext } from "metabase/visualizations/types";
 
 import { CHART_STYLE, Z_INDEXES } from "../../constants/style";
-import type { DataKey, Datum, Extent, SeriesModel } from "../../model/types";
+import type { DataKey, Datum, SeriesModel } from "../../model/types";
 
 const MIN_BUBBLE_DIAMETER = 15;
 const MAX_BUBBLE_DIAMETER = 75;

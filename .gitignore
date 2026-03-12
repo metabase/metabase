@@ -25,6 +25,7 @@
 /.env*
 !/.env.example
 /.envrc
+/.workmux.yaml
 /.lein-env
 /.lein-failures
 /.lein-plugins

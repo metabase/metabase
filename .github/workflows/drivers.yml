@@ -561,21 +561,21 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MariaDB 10.2
-            junit-name: be-tests-mariadb-10-2-ee
-            image: circleci/mariadb:10.2.23
+          - name: MariaDB 10.6
+            junit-name: be-tests-mariadb-10-6-ee
+            image: mariadb:10.6
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
           - name: MariaDB Latest
             junit-name: be-tests-mariadb-latest-ee
-            image: circleci/mariadb:latest
+            image: mariadb:latest
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
-          - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
-            image: mysql:8.0
+          - name: MySQL 8.4
+            junit-name: be-tests-mysql-8-4-ee
+            image: mysql:8.4
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
@@ -602,7 +602,7 @@ jobs:
           - "3306:3306"
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: circle_test
+          MYSQL_DATABASE: mb_test
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
       # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
@@ -625,7 +625,7 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
       #
@@ -988,9 +988,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: Postgres 12.x
+          - name: Postgres 14.x
             junit-name: postgres-ee
-            docker-image: postgres:12-alpine
+            docker-image: postgres:14-alpine
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
