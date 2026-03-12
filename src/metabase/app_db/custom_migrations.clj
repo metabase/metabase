@@ -1994,10 +1994,60 @@
                                                            :where [:= :id id]}))]
           (run! retire-and-revive-upload-table! inactive-upload-tables))))))
 
+(defn- legacy-checkpoint-column-name
+  "Extract the column name from a legacy column-unique-key string.
+   Uses the same format as [[metabase.lib.metadata.column/unpack-unique-key]]:
+   `column-unique-key-v<version>$<column-key>`."
+  [unique-key]
+  (when-let [[_match _version column-key] (re-find #"^column-unique-key-v(\d+)\$(.+$)" unique-key)]
+    column-key))
+
+(defn- legacy-checkpoint-source-table-id
+  "Extract the source table ID from a parsed transform source for checkpoint migration.
+   Returns nil for native transforms (which can't be migrated)."
+  [parsed]
+  (case (keyword (:type parsed))
+    :query  (get-in parsed [:query :stages 0 :source-table])
+    :python (let [source-tables (:source-tables parsed)]
+              (cond
+                ;; vec format: [{:alias "t" :table_id 42}]
+                (sequential? source-tables)
+                (when (= 1 (count source-tables))
+                  (:table_id (first source-tables)))
+                ;; map format: {"t" 42} or {"t" {:table_id 42}}
+                (map? source-tables)
+                (when (= 1 (count source-tables))
+                  (let [v (first (vals source-tables))]
+                    (if (map? v) (:table_id v) v)))))
+    nil))
+
+(defn- resolve-checkpoint-field-id
+  "Try to resolve a legacy checkpoint-filter-unique-key to a field ID."
+  [parsed]
+  (when-let [unique-key (get-in parsed [:source-incremental-strategy :checkpoint-filter-unique-key])]
+    (when-let [column-name (legacy-checkpoint-column-name unique-key)]
+      (when-let [table-id (legacy-checkpoint-source-table-id parsed)]
+        (when (int? table-id)
+          (t2/select-one-pk :model/Field
+                            :table_id table-id
+                            :name column-name
+                            :active true))))))
+
 (define-migration RemoveLegacyIncrementalStrategies
   (doseq [{:keys [id source]} (t2/select [:transform :id :source])]
     (let [parsed (json-out source true)]
       (when (:source-incremental-strategy parsed)
-        (t2/query {:update :transform
-                   :set    {:source (json-in (dissoc parsed :source-incremental-strategy))}
-                   :where  [:= :id id]})))))
+        (if-let [field-id (resolve-checkpoint-field-id parsed)]
+          ;; Migrate: replace legacy keys with checkpoint-filter-field-id
+          (let [migrated (update parsed :source-incremental-strategy
+                                 (fn [s]
+                                   (-> s
+                                       (dissoc :checkpoint-filter-unique-key :checkpoint-filter)
+                                       (assoc :checkpoint-filter-field-id field-id))))]
+            (t2/query {:update :transform
+                       :set    {:source (json-in migrated)}
+                       :where  [:= :id id]}))
+          ;; Can't migrate: strip incremental strategy
+          (t2/query {:update :transform
+                     :set    {:source (json-in (dissoc parsed :source-incremental-strategy))}
+                     :where  [:= :id id]}))))))
