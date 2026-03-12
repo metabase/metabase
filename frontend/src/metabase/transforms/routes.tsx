@@ -11,11 +11,11 @@ import { NewJobPage } from "./pages/NewJobPage";
 import {
   NewCardTransformPage,
   NewNativeTransformPage,
-  NewPythonTransformPage,
   NewQueryTransformPage,
 } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformDependenciesPage } from "./pages/TransformDependenciesPage";
+import { TransformInspectPage } from "./pages/TransformInspectPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 import { TransformRunPage } from "./pages/TransformRunPage";
@@ -36,13 +36,15 @@ export function getDataStudioTransformRoutes() {
         <Route path="new/query" component={NewQueryTransformPage} />
         <Route path="new/native" component={NewNativeTransformPage} />
         <Route path="new/card/:cardId" component={NewCardTransformPage} />
-        {PLUGIN_TRANSFORMS_PYTHON.isEnabled && (
-          <Route path="new/python" component={NewPythonTransformPage} />
-        )}
         <Route path=":transformId" component={TransformQueryPage} />
         <Route path=":transformId/edit" component={TransformQueryPage} />
         <Route path=":transformId/run" component={TransformRunPage} />
         <Route path=":transformId/settings" component={TransformSettingsPage} />
+        <Route path=":transformId/inspect" component={TransformInspectPage} />
+        <Route
+          path=":transformId/inspect/:lensId"
+          component={TransformInspectPage}
+        />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
             path=":transformId/dependencies"
@@ -51,7 +53,7 @@ export function getDataStudioTransformRoutes() {
             <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
           </Route>
         )}
-        {PLUGIN_TRANSFORMS_PYTHON.getPythonLibraryRoutes()}
+        {PLUGIN_TRANSFORMS_PYTHON.getPythonTransformsRoutes()}
       </Route>
     </>
   );

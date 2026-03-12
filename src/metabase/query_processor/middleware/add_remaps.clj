@@ -151,7 +151,7 @@
                                                   {:lib/uuid                (str (random-uuid))
                                                    :source-field            id
                                                    ::new-field-dimension-id (u/the-id dimension)}
-                                                  (when-let [join-alias (:metabase.lib.join/join-alias col)]
+                                                  (when-let [join-alias (:lib/join-alias col)]
                                                     {:join-alias join-alias}))
                                                  (u/the-id (:human-readable-field-id dimension))]
                          :dimension             (assoc dimension
@@ -622,10 +622,10 @@
   (if disable-remaps?
     rff
     (fn remap-results-rff* [metadata]
-      (let [mlv2-cols          (map
+      (let [lib-cols           (map
                                 #(lib-be/instance->metadata % :metadata/column)
                                 (:cols metadata))
-            internal-cols-info (internal-columns-info mlv2-cols)
+            internal-cols-info (internal-columns-info lib-cols)
             metadata           (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)]
         (remap-results-xform internal-cols-info (rff metadata))))))
 

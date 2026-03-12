@@ -153,7 +153,7 @@
                 "estimated_row_count" "view_count" "owner_email" "owner_user_id"}
 
    "v_tasks" #{"id" "task" "status" "database_qualified_id" "started_at"
-               "ended_at" "duration_seconds" "details" "run_id" "logs"}
+               "ended_at" "duration_seconds" "details" "run_id"}
 
    "v_task_runs" #{"id" "run_type" "entity_type" "entity_id" "entity_qualified_id"
                    "started_at" "ended_at" "duration_seconds" "status"

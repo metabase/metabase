@@ -5,16 +5,11 @@
   Deprecated: will soon be migrated to notification APIs."
   (:require
    [clojure.set :refer [difference]]
-   [hiccup.core :refer [html]]
-   [hiccup.page :refer [html5]]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common]
-   [metabase.channel.render.core :as channel.render]
    [metabase.channel.settings :as channel.settings]
    [metabase.channel.slack :as channel.slack]
-   [metabase.channel.urls :as urls]
    [metabase.classloader.core :as classloader]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -27,14 +22,10 @@
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.send :as pulse.send]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.io ByteArrayInputStream)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -314,121 +305,6 @@
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
-(defn- pulse-card-query-results
-  {:arglists '([card])}
-  [{query :dataset_query, card-id :id}]
-  (binding [qp.perms/*card-id* card-id]
-    (qp/process-query
-     (qp/userland-query
-      (assoc query
-             :middleware {:process-viz-settings? true
-                          :js-int-to-string?     false})
-      {:executed-by api/*current-user-id*
-       :context     :pulse
-       :card-id     card-id}))))
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/preview_card/:id"
-  "Get HTML rendering of a Card with `id`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (let [card   (api/read-check :model/Card id)
-        result (pulse-card-query-results card)]
-    {:status 200
-     :body   (html5
-              [:html
-               [:body {:style "margin: 0;"}
-                (channel.render/render-pulse-card-for-display (channel.render/defaulted-timezone card)
-                                                              card
-                                                              result
-                                                              {:channel.render/include-title? true, :channel.render/include-buttons? true})]])}))
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/preview_dashboard/:id"
-  "Get HTML rendering of a Dashboard with `id`.
-
-  This endpoint relies on a custom middleware defined in `metabase.channel.render.core/style-tag-nonce-middleware` to
-  allow the style tag to render properly, given our Content Security Policy setup. This middleware is attached to these
-  routes at the bottom of this namespace using `metabase.api.common/define-routes`."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (api/read-check :model/Dashboard id)
-  {:status  200
-   :headers {"Content-Type" "text/html"}
-   :body    (channel.render/style-tag-from-inline-styles
-             (html5
-              [:head
-               [:meta {:charset "utf-8"}]
-               [:link {:nonce "%NONCE%" ;; this will be str/replaced by 'style-tag-nonce-middleware
-                       :rel  "stylesheet"
-                       :href "https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"}]]
-              [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
-               (channel.render/render-dashboard-to-html id)]))})
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/preview_card_info/:id"
-  "Get JSON object containing HTML rendering of a Card with `id` and other information."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (let [card      (api/read-check :model/Card id)
-        result    (pulse-card-query-results card)
-        data      (:data result)
-        card-type (channel.render/detect-pulse-chart-type card nil data)
-        card-html (html (channel.render/render-pulse-card-for-display (channel.render/defaulted-timezone card)
-                                                                      card
-                                                                      result
-                                                                      {:channel.render/include-title? true}))]
-    {:id              id
-     :pulse_card_type card-type
-     :pulse_card_html card-html
-     :pulse_card_name (:name card)
-     :pulse_card_url  (urls/card-url (:id card))
-     :row_count       (:row_count result)
-     :col_count       (count (:cols (:data result)))}))
-
-(def ^:private preview-card-width 400)
-
-;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/preview_card_png/:id"
-  "Get PNG rendering of a Card with `id`. Optionally specify `width` as a query parameter."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [width]} :- [:map
-                       [:width {:optional true} [:maybe ms/PositiveInt]]]]
-  (let [card   (api/read-check :model/Card id)
-        result (pulse-card-query-results card)
-        width  (or width preview-card-width)
-        ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
-                                                        card
-                                                        result
-                                                        width
-                                                        {:channel.render/include-title? true})]
-    {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -478,10 +354,6 @@
     (t2/delete! :model/PulseChannelRecipient :id pcr-id))
   api/generic-204-no-content)
 
-(def ^:private ^{:arglists '([handler])} style-nonce-middleware
-  (metabase.api.routes.common/wrap-middleware-for-open-api-spec-generation
-   (partial channel.render/style-tag-nonce-middleware "/api/pulse/preview_dashboard")))
-
 (def ^{:arglists '([request respond raise])} routes
   "`/api/pulse` endpoints."
-  (api.macros/ns-handler *ns* style-nonce-middleware))
+  (api.macros/ns-handler *ns*))

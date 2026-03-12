@@ -12,6 +12,7 @@ import {
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
 import { PermissionsSidebar } from "metabase/admin/permissions/components/PermissionsSidebar";
 import {
+  type UpdateTenantCollectionPermissionParams,
   initializeTenantCollectionPermissions,
   loadTenantCollectionPermissions,
   saveTenantCollectionPermissions,
@@ -19,13 +20,17 @@ import {
 } from "metabase/admin/permissions/permissions";
 import type {
   CollectionIdProps,
-  CollectionPermissionEditorType,
   CollectionSidebarType,
 } from "metabase/admin/permissions/selectors/collection-permissions";
+import type {
+  PermissionEditorEntity,
+  PermissionEditorType,
+} from "metabase/admin/permissions/types";
+import { assertNumericId } from "metabase/admin/permissions/types";
 import { Collections } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { connect } from "metabase/lib/redux";
-import type { Collection, CollectionId, GroupId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
@@ -54,17 +59,10 @@ const mapStateToProps = (state: State, props: CollectionIdProps) => {
   };
 };
 
-type UpdateCollectionPermissionParams = {
-  groupId: GroupId;
-  collection: Collection;
-  value: unknown;
-  shouldPropagateToChildren: boolean;
-};
-
 type TenantCollectionPermissionsPageProps = {
   params: CollectionIdProps["params"];
   sidebar: CollectionSidebarType;
-  permissionEditor: CollectionPermissionEditorType;
+  permissionEditor: PermissionEditorType | null;
   collection: Collection;
   navigateToItem: (item: { id: CollectionId }) => void;
   updateCollectionPermission: ({
@@ -72,7 +70,7 @@ type TenantCollectionPermissionsPageProps = {
     collection,
     value,
     shouldPropagateToChildren,
-  }: UpdateCollectionPermissionParams) => void;
+  }: UpdateTenantCollectionPermissionParams) => void;
   isDirty: boolean;
   savePermissions: () => void;
   loadPermissions: () => void;
@@ -98,16 +96,16 @@ function TenantCollectionPermissionsPageView({
 
   const handlePermissionChange = useCallback(
     (
-      item: { id: GroupId },
+      item: PermissionEditorEntity,
       _permission: unknown,
       value: unknown,
-      toggleState: boolean,
+      toggleState: boolean | null,
     ) => {
       updateCollectionPermission({
-        groupId: item.id,
+        groupId: assertNumericId(item.id),
         collection,
         value,
-        shouldPropagateToChildren: toggleState,
+        shouldPropagateToChildren: toggleState ?? false,
       });
     },
     [collection, updateCollectionPermission],

@@ -8,6 +8,7 @@ import {
 } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
@@ -25,6 +26,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
+  PLUGIN_REPLACEMENT,
 } from "metabase/plugins";
 import {
   Box,
@@ -36,7 +38,12 @@ import {
   Tabs,
   Tooltip,
 } from "metabase/ui";
-import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
+import {
+  type FieldId,
+  type Table,
+  type TableFieldOrder,
+  isConcreteTableId,
+} from "metabase-types/api";
 
 import S from "./TableSection.module.css";
 import { MeasureList } from "./components/MeasureList";
@@ -55,7 +62,7 @@ interface Props {
   onSyncOptionsClick: () => void;
 }
 
-type TableModalType = "library" | "publish" | "unpublish";
+type TableModalType = "library" | "publish" | "unpublish" | "replace";
 
 const TableSectionBase = ({
   table,
@@ -75,6 +82,9 @@ const TableSectionBase = ({
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
+  const isReplacementEnabled = useSelector(
+    PLUGIN_REPLACEMENT.canUserReplaceSources,
+  );
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
@@ -206,6 +216,16 @@ const TableSectionBase = ({
     setModalType(undefined);
   };
 
+  const registerDependencyGraphTrackingEvent = () => {
+    if (isConcreteTableId(table.id)) {
+      trackDependencyEntitySelected({
+        entityId: table.id,
+        triggeredFrom: "data-structure",
+        eventDetail: "table",
+      });
+    }
+  };
+
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
       <Box className={S.header}>
@@ -241,6 +261,18 @@ const TableSectionBase = ({
         >
           {t`Sync settings`}
         </Button>
+        {isReplacementEnabled && (
+          <Tooltip label={t`Find and replace`}>
+            <Button
+              p="sm"
+              w="2.5rem"
+              flex="0 1 auto"
+              leftSection={<Icon name="find_replace" />}
+              aria-label={t`Find and replace`}
+              onClick={() => setModalType("replace")}
+            />
+          </Tooltip>
+        )}
         {isDependencyGraphEnabled && (
           <Tooltip label={t`Dependency graph`}>
             <Button
@@ -249,12 +281,12 @@ const TableSectionBase = ({
                 entry: { id: Number(table.id), type: "table" },
               })}
               p="sm"
+              w="2.5rem"
+              flex="0 1 auto"
               leftSection={<Icon name="dependencies" />}
-              style={{
-                flexGrow: 0,
-                width: 40,
-              }}
               aria-label={t`Dependency graph`}
+              onClickCapture={registerDependencyGraphTrackingEvent}
+              onAuxClick={registerDependencyGraphTrackingEvent}
             />
           </Tooltip>
         )}
@@ -285,7 +317,7 @@ const TableSectionBase = ({
             >{t`Segments`}</Tabs.Tab>
             <Tabs.Tab
               value="measures"
-              leftSection={<Icon name="sum" />}
+              leftSection={<Icon name="ruler" />}
             >{t`Measures`}</Tabs.Tab>
           </Tabs.List>
 
@@ -387,6 +419,11 @@ const TableSectionBase = ({
         isOpened={modalType === "unpublish"}
         tableIds={[table.id]}
         onUnpublish={handleCloseModal}
+        onClose={handleCloseModal}
+      />
+      <PLUGIN_REPLACEMENT.ReplaceDataSourceModal
+        isOpened={modalType === "replace"}
+        initialSource={{ id: Number(table.id), type: "table" }}
         onClose={handleCloseModal}
       />
     </Stack>

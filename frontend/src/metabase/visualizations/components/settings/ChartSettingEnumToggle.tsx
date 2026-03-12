@@ -1,18 +1,20 @@
 import { Switch } from "metabase/ui";
 
+export type ChartSettingEnumToggleProps<T extends string> = {
+  value: T | undefined;
+  onChange: (value: T) => void;
+  id?: string;
+  checkedValue: T;
+  uncheckedValue: T;
+};
+
 export const ChartSettingEnumToggle = <T extends string>({
   value,
   onChange,
   id,
   checkedValue,
   uncheckedValue,
-}: {
-  value: T | undefined;
-  onChange: (value: T) => void;
-  id?: string;
-  checkedValue: T;
-  uncheckedValue: T;
-}) => (
+}: ChartSettingEnumToggleProps<T>) => (
   <Switch
     labelPosition="left"
     checked={value === checkedValue}

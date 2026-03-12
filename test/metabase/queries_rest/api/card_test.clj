@@ -304,8 +304,8 @@
     (let [;; any strings will work here (must be shorter than 254 chars), but these are semi-relaistic:
           client-string (mt/random-name)
           version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
-      (mt/with-temp [:model/Database {database-id :id} {}
-                     :model/Card card-1 {:name "Card 1" :database_id database-id}]
+      (mt/with-temp [:model/Card card-1 {:name "Card 1"
+                                         :dataset_query (mt/mbql-query venues {:limit 1})}]
         (mt/with-premium-features #{:audit-app}
           (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
                                 {:request-options {:headers {"x-metabase-client" client-string
@@ -705,7 +705,7 @@
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
     (let [openapi-object         (open-api/open-api-spec (api.macros/ns-handler 'metabase.queries-rest.api.card) "/api/card")
           schemas                (get-in openapi-object [:components :schemas])
-          body-properties        (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
+          body-properties        (get-in openapi-object [:paths "/api/card" :post :requestBody :content "application/json" :schema :properties])
           _                      (is (some? body-properties))
           resolve-schema         (fn resolve-schema [schema]
                                    (or (some-> schema
@@ -1097,6 +1097,52 @@
                                                    {:result_metadata new-metadata})]
             (is (= ["UPDATED" "UPDATED"]
                    (map :display_name (:result_metadata updated))))))))))
+
+(deftest model-aggregation-metadata-preserved-on-query-test
+  (testing "Custom display_name on aggregation columns should be preserved when querying a model (#26755)"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :quantity))))
+                    (lib/breakout (lib.metadata/field mp (mt/id :orders :product_id)))
+                    (lib/breakout (lib/with-temporal-bucket
+                                    (lib.metadata/field mp (mt/id :orders :created_at))
+                                    :year)))]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [card    (mt/user-http-request :crowberto :post 200 "card"
+                                            {:name                   "model-metadata-test"
+                                             :type                   "model"
+                                             :display                "table"
+                                             :dataset_query          query
+                                             :visualization_settings {}})
+              card-id (:id card)]
+          ;; Verify initial metadata has default display names
+          (is (= ["Product ID" "Created At: Year" "Count" "Sum of Quantity"]
+                 (map :display_name (:result_metadata card))))
+          ;; Rename all columns
+          (let [renames         {"PRODUCT_ID"  "Termekazonosito"
+                                 "CREATED_AT"  "Keszites eve"
+                                 "count"       "Darabszam"
+                                 "sum"         "Osszes mennyiseg"}
+                new-metadata    (mapv (fn [col]
+                                        (if-let [new-name (get renames (:name col))]
+                                          (assoc col :display_name new-name)
+                                          col))
+                                      (:result_metadata card))
+                expected-names  ["Termekazonosito" "Keszites eve" "Darabszam" "Osszes mennyiseg"]
+                updated-card    (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                                      {:result_metadata new-metadata})]
+            ;; Verify the PUT response has the custom display names.
+            ;; ": Year" should NOT be re-appended to a user-customized temporal column name.
+            (is (= expected-names
+                   (map :display_name (:result_metadata updated-card))))
+            ;; Now query the model and verify custom display names are preserved in the response
+            (let [query-response (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id))]
+              (is (= expected-names
+                     (map :display_name (get-in query-response [:data :results_metadata :columns]))))
+              ;; Also verify the card's stored metadata in DB wasn't overwritten
+              (is (= expected-names
+                     (map :display_name (t2/select-one-fn :result_metadata :model/Card :id card-id)))))))))))
 
 (deftest ^:parallel updating-native-card-preserves-metadata
   (testing "A trivial change in a native question should not remove result_metadata (#37009)"
@@ -2620,7 +2666,8 @@
 
 (deftest ^:parallel download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
-    (mt/with-temp [:model/Card card {:name "My Awesome Card"}]
+    (mt/with-temp [:model/Card card {:name "My Awesome Card"
+                                     :dataset_query (mt/mbql-query venues {:limit 1})}]
       (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
               "Content-Disposition" "attachment; filename=\"my_awesome_card_<timestamp>.csv\""
               "Content-Type"        "text/csv"
@@ -3823,6 +3870,19 @@
               (is (mi/can-read? collection))
               (is (mi/can-read? card)))
             (is (= [[1] [2]] (mt/rows (process-query))))))))))
+
+(deftest blocked-database-permissions-card-query-test
+  (testing "POST /api/card/:id/query should return an error when the user has blocked view-data permissions on the database (OSS)"
+    (mt/with-premium-features #{}
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:limit 1})}]
+            (is (malli= [:map
+                         [:status [:= "failed"]]
+                         [:error_type [:= "missing-required-permissions"]]]
+                        (mt/user-http-request :rasta :post 403 (format "card/%d/query" card-id))))))))))
 
 (defn- native-card-with-template-tags []
   {:dataset_query

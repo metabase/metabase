@@ -54,6 +54,22 @@ export const createMockNumericColumn = (data: Partial<DatasetColumn> = {}) =>
     ...data,
   });
 
+export const createMockLatitudeColumn = (data: Partial<DatasetColumn> = {}) =>
+  createMockColumn({
+    base_type: "type/Float",
+    effective_type: "type/Float",
+    semantic_type: "type/Latitude",
+    ...data,
+  });
+
+export const createMockLongitudeColumn = (data: Partial<DatasetColumn> = {}) =>
+  createMockColumn({
+    base_type: "type/Float",
+    effective_type: "type/Float",
+    semantic_type: "type/Longitude",
+    ...data,
+  });
+
 export const createMockDatasetData = ({
   cols = [
     createMockColumn({

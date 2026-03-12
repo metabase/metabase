@@ -7,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
-   [metabase.lib.field :as-alias lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
@@ -411,7 +410,7 @@
                                                     :type       :drill-thru/automatic-insights
                                                     :column-ref some?
                                                     :dimensions [{:column     {:name                     "CREATED_AT"
-                                                                               ::lib.field/temporal-unit :month}
+                                                                               :lib/temporal-unit :month}
                                                                   :column-ref some?
                                                                   :value      "2018-05-01T00:00:00Z"}]}
                                :quick-filter       {:lib/type  :metabase.lib.drill-thru/drill-thru
@@ -428,7 +427,7 @@
                                                     :display-name "See this month by week"
                                                     :type         :drill-thru/zoom-in.timeseries
                                                     :dimension    {:column     {:name                     "CREATED_AT"
-                                                                                ::lib.field/temporal-unit :month}
+                                                                                :lib/temporal-unit :month}
                                                                    :column-ref some?
                                                                    :value      "2018-05-01T00:00:00Z"}
                                                     :next-unit    :week}

@@ -3,12 +3,13 @@
    and fetches table metadata formatted as DDL for SQL generation."
   (:require
    [clojure.string :as str]
-   [macaw.core :as macaw]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.request.core :as request]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -52,7 +53,7 @@
       [:= [:lower :name] table-lower])))
 
 (defn extract-tables-from-sql
-  "Extract table IDs from a raw SQL string using Macaw parser.
+  "Extract table IDs from a raw SQL string.
 
    Parses the SQL to identify referenced table names, then queries the
    database to resolve those names to table IDs. When the SQL includes
@@ -64,8 +65,8 @@
   [database-id sql-string]
   (if (and database-id (seq sql-string))
     (try
-      (let [result (macaw/query->tables sql-string {:mode :compound-select})
-            tables (:tables result)]
+      (let [driver (t2/select-one-fn :engine :model/Database :id database-id)
+            tables (sql-tools/referenced-tables-raw driver sql-string)]
         (if (seq tables)
           (let [match-clauses (mapv table-match-clause tables)
                 matched-tables (t2/select :model/Table
@@ -179,7 +180,8 @@
     (when (seq missing-fp-ids)
       (let [fields (t2/select :model/Field :id [:in missing-fp-ids])]
         (doseq [field fields]
-          (sync/refingerprint-field! field))
+          ;; Run with admin perms to match behavior during normal sync.
+          (request/as-admin (sync/refingerprint-field! field)))
         (t2/select-pk->fn :fingerprint :model/Field :id [:in missing-fp-ids])))))
 
 ;;; ------------------------------------------- Fingerprint Formatting -------------------------------------------

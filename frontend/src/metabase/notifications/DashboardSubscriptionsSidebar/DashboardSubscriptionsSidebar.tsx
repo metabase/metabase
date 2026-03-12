@@ -490,6 +490,9 @@ function DashboardSubscriptionsSidebarInner({
 
     const [channel, index] = channelDetails[0];
     const channelSpec = formInput.channels.slack;
+    if (!channelSpec) {
+      return <Sidebar>{null}</Sidebar>;
+    }
     return (
       <AddEditSlackSidebar
         pulse={pulse}
@@ -596,6 +599,10 @@ function AddEditEmailSidebarWithHooks({
     () => _.partial(onChannelScheduleChange, index),
     [index, onChannelScheduleChange],
   );
+
+  if (!channelSpec) {
+    return <Sidebar>{null}</Sidebar>;
+  }
 
   return (
     <AddEditEmailSidebar

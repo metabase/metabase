@@ -1,0 +1,1 @@
+export { SetupSsoPage } from "./SetupSsoPage";

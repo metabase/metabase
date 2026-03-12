@@ -290,10 +290,13 @@ describe("UI elements that make no sense for users without data permissions (met
     cy.findByText("Visualization").click();
 
     cy.findByTestId("display-options-sensible");
-    cy.icon("line").click();
-    cy.findByTestId("Line-button").realHover();
-    cy.findByTestId("Line-container").within(() => {
-      cy.icon("gear").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("line").click();
+      cy.findByTestId("Line-button").realHover();
+      cy.findByTestId("Line-container").within(() => {
+        cy.icon("gear").click();
+      });
     });
 
     cy.findByTextEnsureVisible("Line options");
@@ -356,7 +359,7 @@ describe("issue 22473", () => {
 
   it("nocollection user should be able to view and unsubscribe themselves from a subscription", () => {
     cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-    H.openSharingMenu("Subscriptions");
+    H.openDashboardMenu("Subscriptions");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
     cy.findByPlaceholderText("Enter user names or email addresses")

@@ -161,9 +161,12 @@ describe("scenarios > dependencies > dependency checks", () => {
       cy.get<number>("@transformId").then(H.visitTransform);
       goToEditorAndType('SELECT name FROM "Schema A"."Animals"');
 
-      cy.log("no confirmation is shown");
+      cy.log("confirmation is shown");
       H.DataStudio.Transforms.saveChangesButton().click();
-      cy.wait("@updateTransform");
+      cy.contains(
+        "h2",
+        "These changes will break some other things. Save anyway?",
+      );
     });
 
     it("should not show a confirmation if there are no breaking changes when updating a SQL transform after it was run", () => {
@@ -361,8 +364,7 @@ function createSqlTransformWithDependentMbqlQuestions() {
     },
   }).then(({ body: transform }) => {
     cy.wrap(transform.id).as("transformId");
-    cy.request("POST", `/api/transform/${transform.id}/run`);
-    H.waitForSucceededTransformRuns();
+    H.runTransformAndWaitForSuccess(transform.id);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: transformTableName });
 
     H.getTableId({ databaseId: WRITABLE_DB_ID, name: transformTableName }).then(
@@ -392,6 +394,8 @@ function createSqlTransformWithDependentMbqlQuestions() {
 }
 
 function createMbqlTransformWithDependentMbqlTransforms() {
+  const targetTableName = "base_transform";
+
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
     (tableId) => {
       H.createTransform(
@@ -409,67 +413,70 @@ function createMbqlTransformWithDependentMbqlTransforms() {
           },
           target: {
             type: "table",
-            name: "base_transform",
+            name: targetTableName,
             schema: "public",
             database: WRITABLE_DB_ID,
           },
         },
         { wrapId: true },
-      );
-      cy.get<number>("@transformId").then((transformId) =>
-        H.runTransform(transformId),
-      );
-      H.waitForSucceededTransformRuns();
-
-      H.getTableId({ databaseId: WRITABLE_DB_ID, name: "base_transform" }).then(
-        (tableId) => {
-          H.getFieldId({ tableId, name: "name" }).then((fieldId) => {
-            H.createTransform({
-              name: "Name transform",
-              source: {
-                type: "query",
-                query: {
-                  database: WRITABLE_DB_ID,
+      )
+        .then(({ body }) => H.runTransformAndWaitForSuccess(body.id))
+        .then(() => {
+          H.resyncDatabase({
+            dbId: WRITABLE_DB_ID,
+            tableName: targetTableName,
+          });
+          H.getTableId({
+            databaseId: WRITABLE_DB_ID,
+            name: targetTableName,
+          }).then((tableId) => {
+            H.getFieldId({ tableId, name: "name" }).then((fieldId) => {
+              H.createTransform({
+                name: "Name transform",
+                source: {
                   type: "query",
                   query: {
-                    "source-table": tableId,
-                    fields: [["field", fieldId, null]],
+                    database: WRITABLE_DB_ID,
+                    type: "query",
+                    query: {
+                      "source-table": tableId,
+                      fields: [["field", fieldId, null]],
+                    },
                   },
                 },
-              },
-              target: {
-                type: "table",
-                name: "name_transform",
-                schema: "public",
-                database: WRITABLE_DB_ID,
-              },
-            });
-          });
-
-          H.getFieldId({ tableId, name: "score" }).then((fieldId) => {
-            H.createTransform({
-              name: "Score transform",
-              source: {
-                type: "query",
-                query: {
+                target: {
+                  type: "table",
+                  name: "name_transform",
+                  schema: "public",
                   database: WRITABLE_DB_ID,
+                },
+              });
+            });
+
+            H.getFieldId({ tableId, name: "score" }).then((fieldId) => {
+              H.createTransform({
+                name: "Score transform",
+                source: {
                   type: "query",
                   query: {
-                    "source-table": tableId,
-                    fields: [["field", fieldId, null]],
+                    database: WRITABLE_DB_ID,
+                    type: "query",
+                    query: {
+                      "source-table": tableId,
+                      filter: [">", ["field", fieldId, null], 1],
+                    },
                   },
                 },
-              },
-              target: {
-                type: "table",
-                name: "score_transform",
-                schema: "public",
-                database: WRITABLE_DB_ID,
-              },
+                target: {
+                  type: "table",
+                  name: "score_transform",
+                  schema: "public",
+                  database: WRITABLE_DB_ID,
+                },
+              });
             });
           });
-        },
-      );
+        });
     },
   );
 }

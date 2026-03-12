@@ -10,6 +10,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io File)
+   (java.net URI)
    (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheEntry)
@@ -43,11 +44,30 @@
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
         (throw (clean-git-exception e command false))))))
 
-(defn- call-remote-command [^TransportCommand command {:keys [^String token]}]
+(defmulti credentials-provider
+  "Creates a JGit CredentialsProvider based on the authentication method.
+
+  Dispatches on auth-method keyword. The credentials argument is method-specific
+  and can be any data structure appropriate for that authentication method.
+
+  Returns a CredentialsProvider instance or nil if no authentication is needed."
+  {:arglists '([remote-url credentials])}
+  (fn [remote-url _credentials] (keyword (u/lower-case-en (.getHost (URI. remote-url))))))
+
+(defmethod credentials-provider :default
+  [_remote-url ^String token]
+  (UsernamePasswordCredentialsProvider. "x-access-token" token))
+
+(defmethod credentials-provider :bitbucket.org
+  [_auth-method ^String token]
+  (when token
+    (UsernamePasswordCredentialsProvider. "x-token-auth" token)))
+
+(defn- call-remote-command [^TransportCommand command {:keys [^String token ^String remote-url]}]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote true}
         ;; GitHub convention: use "x-access-token" as username when authenticating with a personal access token
         ;; For Gitlab any values can be used as the user name so x-access-token works just as well
-        credentials-provider (when token (UsernamePasswordCredentialsProvider. "x-access-token" token))]
+        credentials-provider (when token (credentials-provider remote-url token))]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
 
     (try
@@ -94,7 +114,7 @@
     (u/prog1 (call-remote-command (-> (Git/cloneRepository)
                                       (.setDirectory repo-path)
                                       (.setURI remote-url)
-                                      (.setBare true)) {:token token})
+                                      (.setBare true)) {:token token :remote-url remote-url})
       (log/info "Successfully cloned repository" {:repo-path repo-path}))
     (catch Exception e
       (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))

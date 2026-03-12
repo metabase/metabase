@@ -5,10 +5,8 @@ import { t } from "ttag";
 import {
   Box,
   type BoxProps,
-  Flex,
   Icon,
   type IconName,
-  Skeleton,
   Text,
   Tooltip,
 } from "metabase/ui";
@@ -69,12 +67,3 @@ export const TransformListItem = ({
     </Box>
   );
 };
-
-export function TransformListItemSkeleton() {
-  return (
-    <Flex align="center" gap="sm" py="xs" px="sm" pl="md">
-      <Skeleton h={14} w={14} circle />
-      <Skeleton h={14} w="70%" />
-    </Flex>
-  );
-}

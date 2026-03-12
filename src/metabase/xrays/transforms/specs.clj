@@ -40,7 +40,8 @@
 
 (defn- extract-dimensions
   [mbql]
-  (lib.util.match/match (domain-entities.specs/normalize-mbql-clause mbql) [:dimension dimension & _] dimension))
+  (lib.util.match/match-many (domain-entities.specs/normalize-mbql-clause mbql)
+    [:dimension dimension & _] dimension))
 
 (def ^:private ^{:arglists '([m])} stringify-keys
   (partial m/map-keys name))

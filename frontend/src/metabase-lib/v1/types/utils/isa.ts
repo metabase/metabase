@@ -180,7 +180,8 @@ export const isMetric = (col: FieldLike | null | undefined): boolean =>
     col &&
       col.source !== "breakout" &&
       isSummable(col) &&
-      !hasNonMetricName(col),
+      !hasNonMetricName(col) &&
+      !col.binning_info,
   );
 
 export const isFK = (field: FieldLike | null | undefined): boolean =>

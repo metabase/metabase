@@ -135,7 +135,7 @@ function _PulsesListSidebar({
                     style={{ paddingBottom: "5px" }}
                     size={16}
                   />
-                  <Label className={cx(CS.hoverChild, CS.hoverInherit)}>
+                  <Label className={cx(CS.hoverChild, CS.hoverInherit)} mb="0">
                     {friendlySchedule(pulse.channels[0])}
                   </Label>
                 </div>

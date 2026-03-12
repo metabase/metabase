@@ -267,17 +267,7 @@ export default class NativeQuery {
   }
 
   variableTemplateTags(): TemplateTag[] {
-    return this.templateTags().filter((t) =>
-      [
-        "dimension",
-        "text",
-        "number",
-        "date",
-        "boolean",
-        "temporal-unit",
-        "table",
-      ].includes(t.type),
-    );
+    return this.templateTags().filter(Lib.isVariableTemplateTag);
   }
 
   hasVariableTemplateTags(): boolean {

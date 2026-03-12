@@ -10,15 +10,14 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv select-keys some not-empty]]))
 
 (defn- stage-has-window-aggregation? [stage]
-  (lib.util.match/match (:aggregation stage)
-    #{:cum-sum :cum-count :offset}))
+  (lib.util.match/match-lite (:aggregation stage)
+    [#{:cum-sum :cum-count :offset} & _] true))
 
 (defn- stage-has-breakout? [stage]
   (seq (:breakout stage)))
@@ -33,8 +32,8 @@
                          [tag
                           (select-keys opts [:join-alias :temporal-unit :bucketing])
                           id-or-name]))
-        (lib.util.match/match (concat (:breakout stage) (:aggregation stage) (:expressions stage))
-          #{:field :expression})))
+        (lib.util.match/match-many (concat (:breakout stage) (:aggregation stage) (:expressions stage))
+          [#{:field :expression} & _] &match)))
 
 (mu/defn- new-first-stage :- ::lib.schema/stage
   "Remove breakouts, aggregations, order bys, and limit. Add `:fields` to return the things needed by the second stage."
@@ -42,7 +41,7 @@
   (-> stage
       (dissoc :breakout :aggregation :order-by :limit :lib/stage-metadata)
       (assoc :fields (mapv
-                      lib.util/fresh-uuids
+                      lib/fresh-uuids
                       (fields-used-in-breakouts-aggregations-or-expressions stage)))))
 
 (defn- update-temporal-bucket
@@ -58,8 +57,8 @@
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
-  (lib.util.match/replace stage
-    #{:field :expression}
+  (lib.util.match/replace-lite stage
+    [#{:field :expression} & _]
     (if-let [col (when-not (some #{:expressions} &parents)
                    (lib.equality/find-matching-column &match first-stage-cols))]
       (-> col
@@ -67,7 +66,7 @@
           update-temporal-bucket
           lib/ref
           (cond-> (:lib/external-remap col) (lib/update-options assoc ::externally-remapped-field true)))
-      (lib.util/fresh-uuids &match))))
+      (lib/fresh-uuids &match))))
 
 (def ^:private granularity
   {:time-unbucketed 0
@@ -96,7 +95,6 @@
       temporal-unit
       (or (:original-temporal-unit temporal-attributes)
           (:inherited-temporal-unit temporal-attributes)
-          (:metabase.lib.field/original-temporal-unit temporal-attributes)
           temporal-unit))))
 
 (defn- column-granularity

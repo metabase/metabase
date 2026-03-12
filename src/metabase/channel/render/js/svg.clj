@@ -169,6 +169,11 @@
   "Height to render svg images. If not bound, will preserve aspect ratio of original image."
   nil)
 
+(def ^:dynamic ^:private *svg-background-color*
+  "Background color for rendered PNG images. Set to nil for transparent background.
+  Defaults to white to ensure charts are readable in dark mode email clients."
+  java.awt.Color/WHITE)
+
 (defn- render-svg
   ^bytes [^SVGOMDocument svg-document]
   (style/register-fonts-if-needed!)
@@ -180,6 +185,8 @@
       (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH *svg-render-width*)
       (when *svg-render-height*
         (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT *svg-render-height*))
+      (when *svg-background-color*
+        (.addTranscodingHint transcoder PNGTranscoder/KEY_BACKGROUND_COLOR *svg-background-color*))
       (.transcode transcoder in out))
     (.toByteArray os)))
 
@@ -253,6 +260,7 @@
   "Entrypoint for rendering an SVG icon as a PNG, with a specific color"
   [icon-name color]
   (let [svg-string (icon-svg-string icon-name color)]
-    (binding [*svg-render-width*  (float 33)
-              *svg-render-height* (float 33)]
+    (binding [*svg-render-width*       (float 33)
+              *svg-render-height*      (float 33)
+              *svg-background-color*   nil]
       (svg-string->bytes svg-string))))

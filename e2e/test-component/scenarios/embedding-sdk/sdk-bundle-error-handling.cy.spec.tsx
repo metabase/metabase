@@ -39,7 +39,7 @@ describe(
 
       sdkBundleCleanup();
 
-      cy.intercept("GET", "**/app/embedding-sdk.js", {
+      cy.intercept("GET", "**/app/embedding-sdk.js?*", {
         statusCode: 404,
       });
     });

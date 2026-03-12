@@ -5,7 +5,12 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import { popover } from "./e2e-ui-elements-helpers";
+import {
+  assertTableData,
+  hovercard,
+  popover,
+  undoToast,
+} from "./e2e-ui-elements-helpers";
 
 export const DataModel = {
   visit,
@@ -13,6 +18,16 @@ export const DataModel = {
   visitDataStudioSegments,
   visitDataStudioMeasures,
   get: getDataModel,
+  Shared: {
+    visitArea,
+    getBasePathForArea,
+    getCheckLocation,
+    getTriggeredFromArea,
+    verifyAndCloseToast,
+    verifyTablePreview,
+    verifyObjectDetailPreview,
+    getInterceptsForArea,
+  },
   TablePicker: {
     get: getTablePicker,
     getDatabase: getTablePickerDatabase,
@@ -36,6 +51,7 @@ export const DataModel = {
     getNameInput: getTableNameInput,
     getDescriptionInput: getTableDescriptionInput,
     getQueryBuilderLink: getTableQueryBuilderLink,
+    getDependencyGraphLink: getDependencyGraphLink,
     getSortButton: getTableSortButton,
     getSortDoneButton: getTableSortDoneButton,
     getSortOrderInput: getTableSortOrderInput,
@@ -317,6 +333,10 @@ function getTableNameInput() {
 
 function getTableQueryBuilderLink() {
   return getTableSection().findByLabelText("Go to this table");
+}
+
+function getDependencyGraphLink() {
+  return getTableSection().findByRole("link", { name: "Dependency graph" });
 }
 
 function getTableDescriptionInput() {
@@ -693,4 +713,123 @@ export function getDatabaseCheckbox(databaseName: string) {
 
 export function getSchemaCheckbox(schemaName: string) {
   return getTablePickerSchema(schemaName).find('input[type="checkbox"]');
+}
+
+export const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
+export type Area = (typeof areas)[number];
+
+export function getBasePathForArea(area: Area) {
+  return () => (area === "admin" ? "/admin/datamodel" : "/data-studio/data");
+}
+
+export function getCheckLocation(area: Area) {
+  return (path: string) => {
+    const basePath = getBasePathForArea(area)();
+    cy.location("pathname").should("eq", `${basePath}${path}`);
+  };
+}
+
+export function getTriggeredFromArea(area: Area) {
+  return () => (area === "admin" ? "admin" : "data_studio");
+}
+
+export function visitArea(area: Area) {
+  return (
+    ...args:
+      | Parameters<typeof H.DataModel.visit>
+      | Parameters<typeof H.DataModel.visitDataStudio>
+  ) => {
+    if (area === "admin") {
+      cy.log("visit admin");
+      visit(...args);
+    } else {
+      cy.log("visit datastudio");
+      visitDataStudio(...args);
+    }
+  };
+}
+
+function verifyAndCloseToast(message: string) {
+  undoToast().should("contain.text", message);
+  undoToast().icon("close").click({ force: true });
+}
+
+function verifyTablePreview({
+  column,
+  description,
+  values,
+}: {
+  column: string;
+  description?: string;
+  values: string[];
+}) {
+  getPreviewTabsInput().findByText("Table").click();
+  cy.wait("@dataset");
+
+  getPreviewSection().within(() => {
+    assertTableData({
+      columns: [column],
+      firstRows: values.map((value) => [value]),
+    });
+
+    if (description != null) {
+      cy.findByTestId("header-cell").realHover();
+    }
+  });
+
+  if (description != null) {
+    hovercard().should("contain.text", description);
+  }
+}
+
+function verifyObjectDetailPreview({
+  rowNumber,
+  row,
+}: {
+  rowNumber: number;
+  row: [string, string];
+}) {
+  const [label, value] = row;
+
+  getPreviewTabsInput().findByText("Detail").click();
+  cy.wait("@dataset");
+
+  cy.findAllByTestId("column-name").then(($els) => {
+    const foundRowIndex = $els
+      .toArray()
+      .findIndex((el) => el.textContent?.trim() === label);
+
+    expect(rowNumber).to.eq(foundRowIndex);
+
+    cy.findAllByTestId("value")
+      .should("have.length.gte", foundRowIndex)
+      .eq(foundRowIndex)
+      .should("contain", value);
+  });
+}
+
+function getInterceptsForArea(area: Area) {
+  cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
+  cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
+  cy.intercept("GET", "/api/database/*/schema/*").as("schema");
+  cy.intercept("POST", "/api/dataset*").as("dataset");
+  cy.intercept("GET", "/api/field/*/values").as("fieldValues");
+  cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
+    "updateField",
+  );
+  cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
+  cy.intercept("POST", "/api/field/*/values").as("updateFieldValues");
+  cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
+  cy.intercept("PUT", "/api/table").as("updateTables");
+  cy.intercept("PUT", "/api/table/*").as("updateTable");
+
+  if (area === "admin") {
+    cy.intercept("GET", "/api/database?*").as("databases");
+    cy.intercept("GET", "/api/field/*/values").as("fieldValues");
+    cy.intercept("PUT", "/api/table/*").as("updateTable");
+  }
+
+  if (area === "data studio") {
+    cy.intercept("GET", "/api/database").as("databases");
+  }
 }

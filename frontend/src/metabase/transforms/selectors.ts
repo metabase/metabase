@@ -16,7 +16,7 @@ export const canAccessTransforms = (state: State): boolean => {
 
 export const getTransformsFeatureAvailable = createSelector(
   (state: State) => getPlan(getSetting(state, "token-features")),
-  (state: State) => getTokenFeature(state, "transforms"),
+  (state: State) => getTokenFeature(state, "transforms-basic"),
   (plan, feature) => {
     if (plan === "oss") {
       return true;
@@ -28,13 +28,14 @@ export const getTransformsFeatureAvailable = createSelector(
 
 export const getShouldShowTransformsUpsell = createSelector(
   getIsHosted,
-  (state: State) => getTokenFeature(state, "transforms"),
+  (state: State) => getTokenFeature(state, "transforms-basic"),
   (isHosted, hasTransformsFeature) => isHosted && !hasTransformsFeature,
 );
 
 export const getShouldShowPythonTransformsUpsell = createSelector(
-  getIsHosted,
   (state: State) => getTokenFeature(state, "transforms-python"),
-  (isHosted, hasPythonTransformsFeature) =>
-    isHosted && !hasPythonTransformsFeature,
+  (state: State) => getPlan(getSetting(state, "token-features")),
+  (hasPythonTransformsFeature, plan) => {
+    return !hasPythonTransformsFeature && plan !== "oss";
+  },
 );

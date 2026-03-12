@@ -1290,7 +1290,8 @@
             (let [query  {:database (mt/id)
                           :type "native"
                           :native {:query (format "select * from `%s.orders` limit 100" (get-test-data-name))}}
-                  result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+                  expected-status (if (and (= :exception stop-tag) (= :initial-query tag)) 400 500)
+                  result (mt/user-http-request :crowberto :post expected-status "dataset" query)]
               (is (= "failed" (:status result)))
               (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")
                      (:error result)))))))
@@ -1379,3 +1380,4 @@
       (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products" nil]
              (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
                                                          :output-table :PRODUCTS_COPY}))))))
+

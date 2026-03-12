@@ -72,7 +72,7 @@
 
 (def db-connection-details
   (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
+          :port                    (parse-long (tx/db-test-env-var :redshift :port "5439"))
           :db                      (tx/db-test-env-var-or-throw :redshift :db)
           :user                    (tx/db-test-env-var-or-throw :redshift :user)
           :password                (tx/db-test-env-var-or-throw :redshift :password)
@@ -81,8 +81,8 @@
 
 (def db-routing-connection-details
   (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
-          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db                      (tx/db-test-env-var-or-throw :redshift :db-routing)
+          :port                    (parse-long (tx/db-test-env-var :redshift :port "5439"))
+          :db                      (tx/db-test-env-var :redshift :db-routing "dev")
           :user                    (tx/db-test-env-var-or-throw :redshift :user)
           :password                (tx/db-test-env-var-or-throw :redshift :password)
           :schema-filters-type     "inclusion"
@@ -195,7 +195,7 @@
                              result)))]
       (group-by (fn [schema-name]
                   (if-let [oldest (get schema->time schema-name)]
-                    (if (t/before? (.toInstant oldest) threshold)
+                    (if (t/before? (t/instant oldest) threshold)
                       :expired
                       :recent)
                     ;; Schema not in pg_class_info means no objects - treat as expired
@@ -346,14 +346,15 @@
          tabledef       (first (:table-definitions dbdef))
          ;; table-name should be something like test_data_venues
          table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))
-         ;; Use direct SQL query instead of JDBC metadata API (.getTables) because the metadata API
-         ;; can return stale/cached results on Redshift, causing flaky test failures.
-         jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
-         results        (jdbc/query jdbc-spec
-                                    ["SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1"
-                                     session-schema
-                                     table-name])]
-     (seq results))))
+         ;; Probe the table directly instead of querying information_schema.tables, which can return
+         ;; stale results on Redshift due to metadata catalog propagation delays between connections.
+         jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))]
+     (try
+       (jdbc/query jdbc-spec
+                   [(format "SELECT 1 FROM \"%s\".\"%s\" LIMIT 0" session-schema table-name)])
+       true
+       (catch Exception _
+         false)))))
 
 (defmethod driver/database-supports? [:redshift :test/use-fake-sync]
   [_driver _feature _database]

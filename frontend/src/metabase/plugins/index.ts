@@ -15,6 +15,8 @@ export {
   PLUGIN_LDAP_FORM_FIELDS,
   PLUGIN_IS_PASSWORD_USER,
   PLUGIN_ADMIN_USER_FORM_FIELDS,
+  type AuthSettingsPageProps,
+  type AuthSettingsPageTab,
 } from "./oss/auth";
 export {
   PLUGIN_CACHING,
@@ -108,8 +110,15 @@ export {
   PLUGIN_GROUP_MANAGERS,
 } from "./oss/permissions";
 export { PLUGIN_REMOTE_SYNC } from "./oss/remote-sync";
+export {
+  PLUGIN_REPLACEMENT,
+  type ReplaceDataSourceModalProps,
+} from "./oss/replacement";
 export { PLUGIN_RESOURCE_DOWNLOADS } from "./oss/resource-downloads";
-export { PLUGIN_SEMANTIC_SEARCH } from "./oss/semantic-search";
+export {
+  PLUGIN_SEMANTIC_SEARCH,
+  type SearchSettingsWidgetProps,
+} from "./oss/semantic-search";
 export { PLUGIN_ADMIN_SETTINGS } from "./oss/settings";
 export { PLUGIN_SMTP_OVERRIDE } from "./oss/smtp-override";
 export {
@@ -137,6 +146,10 @@ export {
 } from "./oss/transforms";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
+export {
+  PLUGIN_WRITABLE_CONNECTION,
+  type WritableConnectionInfoSectionProps,
+} from "./oss/writable-connection";
 export { PLUGIN_SUPPORT } from "./oss/support";
 export { PLUGIN_TENANTS } from "./oss/tenants";
 
@@ -172,6 +185,7 @@ import { reinitialize as reinitializeModelPersistence } from "./oss/model-persis
 import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
+import { reinitialize as reinitializeReplacement } from "./oss/replacement";
 import { reinitialize as reinitializeResourceDownloads } from "./oss/resource-downloads";
 import { reinitialize as reinitializeSemanticSearch } from "./oss/semantic-search";
 import { reinitialize as reinitializeSettings } from "./oss/settings";
@@ -182,7 +196,7 @@ import { reinitialize as reinitializeTenants } from "./oss/tenants";
 import { reinitialize as reinitializeTransforms } from "./oss/transforms";
 import { reinitialize as reinitializeUploadManagement } from "./oss/upload-management";
 import { reinitialize as reinitializeWhitelabel } from "./oss/whitelabel";
-
+import { reinitialize as reinitializeWritableConnection } from "./oss/writable-connection";
 /**
  * Mostly for test purposes, reinitialize all plugins.
  * You don't reinitialize plugins individually because some plugins depend on others,
@@ -212,6 +226,7 @@ export function reinitialize() {
   reinitializeModeration();
   reinitializePermissions();
   reinitializeRemoteSync();
+  reinitializeReplacement();
   reinitializeResourceDownloads();
   reinitializeSemanticSearch();
   reinitializeSettings();
@@ -222,4 +237,5 @@ export function reinitialize() {
   reinitializeTransforms();
   reinitializeUploadManagement();
   reinitializeWhitelabel();
+  reinitializeWritableConnection();
 }

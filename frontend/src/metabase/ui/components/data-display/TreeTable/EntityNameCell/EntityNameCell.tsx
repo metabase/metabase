@@ -8,7 +8,7 @@ import { Group, Icon, Text } from "metabase/ui";
 
 interface EntityNameCellProps {
   icon?: IconName;
-  name: string;
+  name: React.ReactNode;
   iconColor?: ColorName;
   wrap?: boolean;
   ellipsifiedProps?: ComponentProps<typeof Ellipsified>;

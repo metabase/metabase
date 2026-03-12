@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { push } from "react-router-redux";
 
+import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import { useDispatch } from "metabase/lib/redux";
 import { Card } from "metabase/ui";
 import type {
@@ -34,6 +35,14 @@ export function GraphEntryInput({
 
   const handleEntryChange = (newEntry: DependencyEntry | undefined) => {
     dispatch(push(getGraphUrl(newEntry)));
+
+    if (newEntry) {
+      trackDependencyEntitySelected({
+        entityId: newEntry.id,
+        triggeredFrom: "dependency-graph",
+        eventDetail: newEntry.type,
+      });
+    }
   };
 
   const handlePickerChange = (newEntry: DependencyEntry) => {

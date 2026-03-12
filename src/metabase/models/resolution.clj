@@ -88,6 +88,7 @@
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
+    :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret
@@ -118,6 +119,7 @@
     :model/Workspace                         metabase-enterprise.workspaces.models.workspace
     :model/WorkspaceInput                    metabase-enterprise.workspaces.models.workspace-input
     :model/WorkspaceInputExternal            metabase-enterprise.workspaces.models.workspace-input-external
+    :model/WorkspaceInputTransform           metabase-enterprise.workspaces.models.workspace-input-transform
     :model/WorkspaceLog                      metabase-enterprise.workspaces.models.workspace-log
     :model/WorkspaceMerge                    metabase-enterprise.workspaces.models.workspace-merge
     :model/WorkspaceMergeTransform           metabase-enterprise.workspaces.models.workspace-merge-transform

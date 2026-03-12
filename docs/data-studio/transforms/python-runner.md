@@ -5,14 +5,14 @@ summary: Configure self-hosted Python execution environment to run Python transf
 
 # Python runner
 
-> Self-hosted Python transforms require self-hosted Pro or Enterprise plan with the Transforms add-on.
+> Self-hosted Python transforms require self-hosted Pro or Enterprise plan with the **Advanced transforms** add-on.
 
 To run Python transforms from a self-hosted Metabase, you'll need to configure a separate self-hosted execution environment. If you're using Metabase Cloud, you'll need to buy the Transforms add-on.
 
 ## Prerequisites
 
 - Docker installed and running.
-- **Metabase Pro or Enterprise license** (Python Runner requires a Pro/Enterprise plan).
+- **Self-hosted Metabase Pro or Enterprise license** (Python Runner requires a Pro/Enterprise plan).
 - For production: an S3-compatible storage bucket (AWS S3, MinIO, etc.).
 
 ## Quickstart
@@ -95,7 +95,7 @@ docker run -d \
 
 ### Metabase environment variables
 
-These settings can also be configured in the Metabase UI at **Admin Settings** > **Settings** > **Python Runner** (`/admin/settings/python-runner`). Note that environment variables take precedence over UI settings.
+These settings can also be configured in the Metabase UI at **Admin** > **Settings** > **Python Runner** (`/admin/settings/python-runner`). Note that environment variables take precedence over UI settings.
 
 | Variable                                  | Description                                                                        |
 | ----------------------------------------- | ---------------------------------------------------------------------------------- |

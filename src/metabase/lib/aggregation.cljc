@@ -76,7 +76,7 @@
 (defmethod lib.metadata.calculation/describe-top-level-key-method :aggregation
   [query stage-number _k]
   (when-let [ags (not-empty (:aggregation (lib.util/query-stage query stage-number)))]
-    (lib.util/join-strings-with-conjunction
+    (i18n/join-strings-with-conjunction
      (i18n/tru "and")
      (for [aggregation ags]
        (lib.metadata.calculation/display-name query stage-number aggregation :long)))))

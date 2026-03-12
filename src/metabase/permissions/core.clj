@@ -101,6 +101,8 @@
   fail-to-remove-last-admin-msg
   remove-user-from-group!
   remove-user-from-groups!
+  remove-all-users-from-group!
+  remove-user-from-all-groups!
   throw-if-last-admin!
   without-is-superuser-sync-on-add-to-admin-group]
  [metabase.permissions.path

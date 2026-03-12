@@ -4,19 +4,24 @@ import { t } from "ttag";
 
 import { useGetDatabaseHealthQuery } from "metabase/api";
 import { Badge, Flex, type FlexProps, Text, Tooltip } from "metabase/ui";
-import type { DatabaseId } from "metabase-types/api";
+import type { DatabaseConnectionType, DatabaseId } from "metabase-types/api";
 
 interface DatabaseConnectionHealthInfoProps extends FlexProps {
   databaseId: DatabaseId;
+  connectionType?: DatabaseConnectionType;
   displayText?: "inline" | "tooltip";
 }
 
 export const DatabaseConnectionHealthInfo = ({
   databaseId,
   displayText = "inline",
+  connectionType = "default",
   ...props
 }: DatabaseConnectionHealthInfoProps) => {
-  const healthQuery = useGetDatabaseHealthQuery(databaseId);
+  const healthQuery = useGetDatabaseHealthQuery({
+    id: databaseId,
+    "connection-type": connectionType,
+  });
   const health = useMemo(() => {
     return match(healthQuery)
       .with(
@@ -49,7 +54,12 @@ export const DatabaseConnectionHealthInfo = ({
   }, [healthQuery]);
 
   return (
-    <Flex align="center" gap="sm" {...props}>
+    <Flex
+      align="center"
+      gap="sm"
+      {...props}
+      data-testid="database-connection-health-info"
+    >
       <Tooltip label={health.message}>
         <Badge size="12" circle bg={health.color} style={{ flexShrink: 0 }} />
       </Tooltip>

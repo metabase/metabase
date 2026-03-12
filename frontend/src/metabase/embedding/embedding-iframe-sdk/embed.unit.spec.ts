@@ -190,7 +190,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     }).not.toThrow();
   });
 
-  it("should include a counter as a query parameter in the iframe src for parallel loading", () => {
+  it("should include a component id as a query parameter in the iframe src for parallel loading", () => {
     defineMetabaseConfig({
       instanceUrl: "https://example.com",
     });
@@ -202,7 +202,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     const iframe = embed.querySelector("iframe");
     expect(iframe).not.toBeNull();
     expect(iframe?.src).toMatch(
-      /^https:\/\/example\.com\/embed\/sdk\/v1\?v=\d+$/,
+      /^https:\/\/example\.com\/embed\/sdk\/v1\?embed-js-identifier=\d+$/,
     );
   });
 });

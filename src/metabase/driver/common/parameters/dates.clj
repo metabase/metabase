@@ -198,7 +198,7 @@
    {:parser (#'qp.parameters.dates/regex->parser qp.parameters.dates/date-exclude-regex [:unit :exclusions])
     :filter (fn [{:keys [unit exclusions]} field-clause]
               (let [unit (keyword unit)
-                    exclusions (map (partial #'qp.parameters.dates/excluded-datetime unit (t/local-date))
+                    exclusions (map (partial #'qp.parameters.dates/excluded-datetime unit)
                                     (str/split exclusions #"-"))]
                 (when (and (seq exclusions) (every? some? exclusions))
                   (into [:!= (with-temporal-unit-if-field field-clause (#'qp.parameters.dates/excluded-temporal-unit unit))]

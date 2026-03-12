@@ -944,15 +944,15 @@
 (defn- replace-exclude-date-filters
   "Replaces legacy exclude date filter clauses that rely on temporal bucketing with `:temporal-extract` function calls."
   [filter-clause]
-  (lib.util.match/replace filter-clause
+  (lib.util.match/replace-lite filter-clause
     [:!=
-     [:field id-or-name (opts :guard #(= (:temporal-unit %) :hour-of-day))]
-     & (args :guard #(every? number? %))]
+     [:field id-or-name (opts :guard (= (:temporal-unit opts) :hour-of-day))]
+     & (args :guard (every? number? args))]
     (into [:!= [:get-hour [:field id-or-name (not-empty (dissoc opts :temporal-unit))]]] args)
 
     [:!=
-     [:field id-or-name (opts :guard #(#{:day-of-week :month-of-year :quarter-of-year} (:temporal-unit %)))]
-     & (args :guard #(every? u.time/timestamp-coercible? %))]
+     [:field id-or-name (opts :guard (#{:day-of-week :month-of-year :quarter-of-year} (:temporal-unit opts)))]
+     & (args :guard (every? u.time/timestamp-coercible? args))]
     (let [args (mapv u.time/coerce-to-timestamp args)]
       (if (every? u.time/valid? args)
         (let [unit         (:temporal-unit opts)
@@ -1009,7 +1009,7 @@
   expression and convert it to a `:relative-time-interval` call, honoring the original user intent. See #46211 and
   #46438 for details."
   [clause]
-  (lib.util.match/replace clause
+  (lib.util.match/replace-lite clause
     [:between
      [:+
       field

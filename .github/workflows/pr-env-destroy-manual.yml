@@ -1,0 +1,29 @@
+name: PR Env Destroy (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to destroy environment for'
+        required: true
+        type: string
+      self_hosting:
+        description: 'Self-hosting stack'
+        type: boolean
+        default: false
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    environment: pr-env-admin
+    steps:
+      - name: Approved
+        run: echo "Destroying PR environment for PR #${{ inputs.pr_number }}"
+
+  destroy:
+    needs: approve
+    uses: ./.github/workflows/pr-env-destroy.yml
+    secrets: inherit
+    with:
+      self_hosting: ${{ inputs.self_hosting }}
+      pr_number: ${{ inputs.pr_number }}

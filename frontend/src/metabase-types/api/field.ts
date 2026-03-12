@@ -1,5 +1,3 @@
-import type { Metabase_Lib_Schema_Metadata_ColumnVisibilityType } from "cljs/metabase.lib.js";
-
 import type { RowValue } from "./dataset";
 import type { DimensionReference, FieldReference } from "./query";
 import type { Table, TableId } from "./table";
@@ -44,8 +42,12 @@ export type DateTimeFieldFingerprint = {
   latest: string;
 };
 
-// Using the generated type from CLJS schema
-export type FieldVisibilityType = Metabase_Lib_Schema_Metadata_ColumnVisibilityType;
+export type FieldVisibilityType =
+  | "details-only"
+  | "hidden"
+  | "normal"
+  | "retired"
+  | "sensitive";
 
 type HumanReadableFieldValue = string;
 export type RemappedFieldValue = [RowValue, HumanReadableFieldValue];

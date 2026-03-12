@@ -6,6 +6,7 @@ import { t } from "ttag";
 
 import { useCreateMeasureMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { trackMeasureCreated } from "metabase/data-studio/analytics";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -82,8 +83,10 @@ export function NewMeasurePage({
     });
 
     if (error) {
+      trackMeasureCreated("failure");
       sendErrorToast(t`Failed to create measure`);
     } else if (measure) {
+      trackMeasureCreated("success", measure.id);
       setSavedMeasure(measure);
       sendSuccessToast(t`Measure created`);
     }

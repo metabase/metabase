@@ -114,7 +114,7 @@ describe("scenarios > visualizations > table", () => {
 
     // Cmd+click to add cells to selection
     getNonPKCells().eq(5).as("cmdClickCell");
-    cy.get("@cmdClickCell").click({ metaKey: true });
+    cy.get("@cmdClickCell").click(H.holdMetaKey);
     assertSelectedCells(5);
 
     // Shift+click for range selection

@@ -24,7 +24,6 @@ describe("DataStudioLayout", () => {
       });
 
       expect(screen.getByText("Data structure")).toBeInTheDocument();
-      expect(screen.getByText("Exit")).toBeInTheDocument();
     });
 
     it("should render content area", async () => {
@@ -71,7 +70,7 @@ describe("DataStudioLayout", () => {
         remoteSyncBranch: "main",
         tokenFeatures: {
           hosting: true, // Makes it a starter plan
-          transforms: false, // Transforms feature not available
+          "transforms-basic": false, // Transforms feature not available
         },
       });
 
@@ -100,7 +99,7 @@ describe("DataStudioLayout", () => {
         remoteSyncBranch: "main",
         tokenFeatures: {
           hosting: true, // Makes it a starter plan
-          transforms: true, // Transforms feature available
+          "transforms-basic": true, // Transforms feature available
         },
       });
 

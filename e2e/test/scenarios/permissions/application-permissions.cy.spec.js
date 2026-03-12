@@ -85,7 +85,7 @@ describe("scenarios > admin > permissions > application", () => {
 
         cy.log("Set up a dashboard subscription");
         H.visitDashboard(ORDERS_DASHBOARD_ID);
-        H.openSharingMenu(/subscriptions/i);
+        H.openDashboardMenu("Subscriptions");
         H.sidebar().findByText("Email this dashboard").should("exist");
 
         cy.log("Create a question alert");

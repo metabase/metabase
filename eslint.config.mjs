@@ -49,14 +49,6 @@ const baseMetabaseRestrictedConfig = {
       message: "Please import from `metabase/ui` instead.",
     },
     {
-      name: "moment",
-      message: "Moment is deprecated, please use dayjs",
-    },
-    {
-      name: "moment-timezone",
-      message: "Moment is deprecated, please use dayjs",
-    },
-    {
       name: "@emotion/styled",
       message: "Please style components using css modules.",
     },
@@ -163,21 +155,6 @@ const configs = [
         },
       ],
       "no-empty": ["warn", { allowEmptyCatch: true }],
-      "no-restricted-imports": [
-        "error",
-        {
-          paths: [
-            {
-              name: "moment",
-              message: "Moment is deprecated, please use dayjs",
-            },
-            {
-              name: "moment-timezone",
-              message: "Moment is deprecated, please use dayjs",
-            },
-          ],
-        },
-      ],
       curly: ["warn", "all"],
       eqeqeq: ["warn", "smart"],
       "prefer-const": ["warn", { destructuring: "all" }],
@@ -238,7 +215,12 @@ const configs = [
 
       // React Hooks rules
       ...reactHooksPlugin.configs.recommended.rules,
-      "react-hooks/exhaustive-deps": "warn",
+      "react-hooks/exhaustive-deps": [
+        "warn",
+        {
+          additionalHooks: "(useRegisterMetabotContextProvider)",
+        },
+      ],
 
       "no-only-tests/no-only-tests": [
         "error",
@@ -273,7 +255,6 @@ const configs = [
         {
           allowed: [
             "underscore",
-            "moment",
             "lodash.orderby",
             "lodash.debounce",
             "chalk",
@@ -454,14 +435,6 @@ const configs = [
         {
           paths: [
             {
-              name: "moment",
-              message: "Moment is deprecated, please use dayjs",
-            },
-            {
-              name: "moment-timezone",
-              message: "Moment is deprecated, please use dayjs",
-            },
-            {
               name: "metabase-types/api/mocks/presets",
               message: "Please use e2e/support/cypress_sample_database instead",
             },
@@ -491,6 +464,25 @@ const configs = [
     files: ["e2e/**/*.cy.spec.*"],
     rules: {
       "no-console": "error",
+    },
+  },
+  {
+    files: ["e2e/test-component/**/*.ts", "e2e/test-component/**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "warn",
+        {
+          patterns: [
+            {
+              // There might be things that we might benefit from importing, like `defer`, in those cases we can change the regex here to allow them
+              regex: "^metabase/(?!lib/promise$|embedding-sdk/test/).*",
+              allowTypeImports: true,
+              message:
+                "We should avoid importing `metabase/` code in the component tests, we might accidentally include CLJS in the dependencies and that can create issues. Component tests should only use the code it needs to test, which is in the package.",
+            },
+          ],
+        },
+      ],
     },
   },
   {
@@ -584,14 +576,6 @@ const configs = [
           ],
           paths: [
             {
-              name: "moment",
-              message: "Moment is deprecated, please use dayjs",
-            },
-            {
-              name: "moment-timezone",
-              message: "Moment is deprecated, please use dayjs",
-            },
-            {
               name: "@emotion/styled",
               message: "Please style components using css modules.",
             },
@@ -630,14 +614,6 @@ const configs = [
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
-            },
-            {
-              name: "moment",
-              message: "Moment is deprecated, please use dayjs",
-            },
-            {
-              name: "moment-timezone",
-              message: "Moment is deprecated, please use dayjs",
             },
             {
               name: "@emotion/styled",
@@ -690,16 +666,6 @@ const configs = [
                 "!metabase/lib/urls",
                 "!metabase/lib/utils",
               ],
-            },
-          ],
-          paths: [
-            {
-              name: "moment",
-              message: "Moment is deprecated, please use dayjs",
-            },
-            {
-              name: "moment-timezone",
-              message: "Moment is deprecated, please use dayjs",
             },
           ],
         },
@@ -825,14 +791,6 @@ const configs = [
               message: "Please import from `metabase/ui` instead.",
             },
             {
-              name: "moment",
-              message: "Moment is deprecated, please use dayjs",
-            },
-            {
-              name: "moment-timezone",
-              message: "Moment is deprecated, please use dayjs",
-            },
-            {
               name: "@storybook/test",
               message:
                 "Please use `testing-library/react` or `@testing-library/user-event`",
@@ -867,14 +825,6 @@ const configs = [
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
-            },
-            {
-              name: "moment",
-              message: "Moment is deprecated, please use dayjs",
-            },
-            {
-              name: "moment-timezone",
-              message: "Moment is deprecated, please use dayjs",
             },
             {
               name: "@storybook/test",
@@ -912,14 +862,6 @@ const configs = [
             {
               name: "@mantine/core",
               message: "Please import from `metabase/ui` instead.",
-            },
-            {
-              name: "moment",
-              message: "Moment is deprecated, please use dayjs",
-            },
-            {
-              name: "moment-timezone",
-              message: "Moment is deprecated, please use dayjs",
             },
             {
               name: "@storybook/test",

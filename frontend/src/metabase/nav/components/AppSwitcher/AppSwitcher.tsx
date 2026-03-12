@@ -8,6 +8,7 @@ import { trackErrorDiagnosticModalOpened } from "metabase/common/components/Erro
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { userInitials } from "metabase/common/utils/user";
+import { trackDataStudioOpened } from "metabase/data-studio/analytics";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import {
   getCanAccessOnboardingPage,
@@ -99,6 +100,8 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
           key="data-studio-app-link"
           component={ForwardRefLink}
           to={Urls.dataStudio()}
+          onAuxClick={trackDataStudioOpened}
+          onClickCapture={trackDataStudioOpened}
           leftSection={
             <Icon
               name="table"

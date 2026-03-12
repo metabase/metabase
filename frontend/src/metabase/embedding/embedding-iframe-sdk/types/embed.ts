@@ -20,7 +20,7 @@ import type { StrictUnion } from "metabase/embedding-sdk/types/utils";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
-import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
@@ -154,7 +154,7 @@ export interface BrowserEmbedOptions {
   collectionEntityTypes?: CollectionBrowserEntityTypes[];
 
   /** Which entities to show on the question's data picker */
-  dataPickerEntityTypes?: ModularEmbeddingEntityType[];
+  dataPickerEntityTypes?: EmbeddingEntityType[];
 
   /** Whether to show the "New exploration" button. Defaults to true. */
   withNewQuestion?: boolean;

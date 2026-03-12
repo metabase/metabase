@@ -205,10 +205,10 @@ const emptyVizConfig: Record<SupportedDisplayType, EmptyVizConfig> = {
       );
     },
     get primaryText() {
-      return t`Then pick a metric and a number columns to group by.`;
+      return t`Then pick one or more metrics and a column to group by.`;
     },
     get secondaryText() {
-      return t`E.g. Count of orders grouped by Customer age`;
+      return t`E.g. Count of orders and Sum of revenue grouped by Product category`;
     },
   },
   smartscalar: {

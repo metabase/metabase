@@ -115,6 +115,7 @@
      login-history
      notification
      permissions
+     premium-features
      public-sharing
      pulse
      remote-sync
@@ -305,7 +306,8 @@
 (defn- quarantined-drivers []
   (-> (read-ci-test-config)
       (get-in [:ignored :drivers] [])
-      (->> (map keyword))
+      (->> (mapcat #(or (get driver-directory->drivers %)
+                        [(keyword %)])))
       (set)))
 
 (defn- parse-bool

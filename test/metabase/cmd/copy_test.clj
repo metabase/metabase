@@ -44,6 +44,7 @@
     :model/QueryTable
     :model/RemoteSyncObject
     :model/RemoteSyncTask
+    :model/ReplacementRun
     :model/SearchIndexMetadata
     :model/SemanticSearchTokenTracking
     :model/SupportAccessGrantLog
@@ -64,6 +65,7 @@
     :model/WorkspaceGraph
     :model/WorkspaceInput
     :model/WorkspaceInputExternal
+    :model/WorkspaceInputTransform
     :model/WorkspaceLog
     :model/WorkspaceMerge
     :model/WorkspaceMergeTransform

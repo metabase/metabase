@@ -1,8 +1,4 @@
 import type {
-  Metabase_Lib_Schema_TemplateTag_Type,
-  Metabase_Lib_Schema_TemporalBucketing_Unit,
-} from "cljs/metabase.lib.js";
-import type {
   CacheStrategy,
   LocalFieldReference,
   Parameter,
@@ -10,7 +6,7 @@ import type {
   VisualizerColumnValueSource,
 } from "metabase-types/api";
 
-import type { Card } from "./card";
+import type { Card, ColumnSettings } from "./card";
 import type { DatabaseId } from "./database";
 import type {
   Field,
@@ -26,6 +22,12 @@ import type { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
+
+export function getRowsForStableKeys(
+  data: Pick<DatasetData, "rows" | "untranslatedRows">,
+): RowValues[] {
+  return data.untranslatedRows ?? data.rows;
+}
 
 export type BinningMetadata = {
   binning_strategy?: "default" | "bin-width" | "num-bins";
@@ -78,11 +80,13 @@ export interface DatasetColumn {
   remapped_to?: string;
   effective_type?: string;
   binning_info?: BinningMetadata | null;
-  settings?: Record<string, any>;
+  settings?: ColumnSettings;
   fingerprint?: FieldFingerprint | null;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+
+  remapping?: Map<RowValue, string | number>;
 }
 
 export interface ResultsMetadata {
@@ -106,6 +110,9 @@ export interface DatasetData {
     "show-row-totals"?: boolean;
     "show-column-totals"?: boolean;
   };
+  untranslatedRows?: RowValues[];
+
+  sourceRows?: (number | null)[][]; // present in pivoted data
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -207,8 +214,16 @@ export type Series = RawSeries | TransformedSeries;
 
 export type TemplateTagId = string;
 export type TemplateTagName = string;
-// Using the generated type from CLJS schema
-export type TemplateTagType = Metabase_Lib_Schema_TemplateTag_Type;
+export type TemplateTagType =
+  | "card"
+  | "text"
+  | "number"
+  | "date"
+  | "boolean"
+  | "temporal-unit"
+  | "dimension"
+  | "snippet"
+  | "table";
 
 export interface TemplateTag {
   id: TemplateTagId;
@@ -225,9 +240,6 @@ export interface TemplateTag {
   "snippet-id"?: number;
   "snippet-name"?: string;
 
-  // Source table specific
-  "table-id"?: number;
-
   // Field filter and time grouping specific
   dimension?: LocalFieldReference;
   alias?: string;
@@ -235,15 +247,34 @@ export interface TemplateTag {
   // Field filter specific
   "widget-type"?: string;
   options?: ParameterOptions;
+
+  // Table specific
+  "table-id"?: TableId;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;
 
-// Using the generated type from CLJS schema which includes all temporal units
-export type TemporalUnit = Metabase_Lib_Schema_TemporalBucketing_Unit;
+export type TemporalUnit =
+  | "minute"
+  | "hour"
+  | "day"
+  | "week"
+  | "quarter"
+  | "month"
+  | "year"
+  | "minute-of-hour"
+  | "hour-of-day"
+  | "day-of-week"
+  | "day-of-month"
+  | "day-of-year"
+  | "week-of-year"
+  | "month-of-year"
+  | "quarter-of-year";
 
 export type GetRemappedParameterValueRequest = {
   parameter: Parameter;
   field_ids: FieldId[];
   value: ParameterValueOrArray;
 };
+
+export type Point = [number, number];

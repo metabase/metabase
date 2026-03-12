@@ -65,7 +65,7 @@ export const EnableTransformsPage = () => {
             <SimpleCard
               icon="clock"
               title={t`Smart scheduling`}
-              description={t`Tell your transformd when to run by assigning tags`}
+              description={t`Tell your transforms when to run by assigning tags`}
             />
             <SimpleCard
               icon="eye"

@@ -325,31 +325,31 @@ export function createQ9Query(source: Card): StructuredQuery {
 type CreateQuery = (source: Card) => StructuredQuery;
 
 export function createAndVisitDashboardWithCardMatrix(
-  createQuery: CreateQuery,
+  createQueryFromCard: CreateQuery,
 ) {
   cy.then(function () {
     H.createQuestion({
       type: "question",
-      query: createQuery(this.baseQuestion),
+      query: createQueryFromCard(this.baseQuestion),
       name: "Question-based Question",
     }).then((response) => cy.wrap(response.body).as("qbq"));
 
     H.createQuestion({
       type: "question",
-      query: createQuery(this.baseModel),
+      query: createQueryFromCard(this.baseModel),
       name: "Model-based Question",
     }).then((response) => cy.wrap(response.body).as("mbq"));
 
     H.createQuestion({
       type: "model",
       name: "Question-based Model",
-      query: createQuery(this.baseQuestion),
+      query: createQueryFromCard(this.baseQuestion),
     }).then((response) => cy.wrap(response.body).as("qbm"));
 
     H.createQuestion({
       type: "model",
       name: "Model-based Model",
-      query: createQuery(this.baseModel),
+      query: createQueryFromCard(this.baseModel),
     }).then((response) => cy.wrap(response.body).as("mbm"));
   });
 

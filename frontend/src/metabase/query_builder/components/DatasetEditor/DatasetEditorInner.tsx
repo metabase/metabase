@@ -612,7 +612,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
               [DatasetEditorS.isSelected]: isSelected,
             })}
             size={14}
-            name={getSemanticTypeIcon(column.semantic_type, "ellipsis")}
+            name={getSemanticTypeIcon(column.semantic_type) ?? "ellipsis"}
           />
           <span>{column.display_name}</span>
         </Flex>
@@ -734,7 +734,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                 {...props}
                 isActive={isEditingQuery}
                 height={editorHeight}
-                viewHeight={height}
+                availableHeight={height}
                 onResizeStop={handleResize}
               />
             )}

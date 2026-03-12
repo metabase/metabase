@@ -12,13 +12,18 @@ import {
 import { createPortal } from "react-dom";
 
 import { skipToken, useExtractTablesQuery } from "metabase/api";
-import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature } from "metabase/common/hooks";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
+import { useLlmSqlGenerationEnabled } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { DatabaseId, DatasetQuery } from "metabase-types/api";
+import type {
+  DatabaseId,
+  DatasetQuery,
+  GenerateSqlResponse,
+} from "metabase-types/api";
 
 import { MetabotInlineSQLPrompt } from "./MetabotInlineSQLPrompt";
 import {
@@ -36,20 +41,15 @@ function useRegisterCodeEditorMetabotContext(
   bufferId: string,
 ): void {
   useRegisterMetabotContextProvider(
-    async () =>
-      buffer
-        ? {
-            user_is_viewing: [
-              {
-                type: "code_editor",
-                buffers: [
-                  extractMetabotBufferContext(buffer, databaseId, bufferId),
-                ],
-              },
-            ],
-          }
-        : {},
-    [buffer],
+    async () => ({
+      user_is_viewing: [
+        {
+          type: "code_editor",
+          buffers: [extractMetabotBufferContext(buffer, databaseId, bufferId)],
+        },
+      ],
+    }),
+    [buffer, databaseId, bufferId],
   );
 }
 
@@ -66,7 +66,7 @@ export function useInlineSQLPrompt(
   bufferId: string,
 ): UseInlineSqlEditResult {
   const isTableBarEnabled = !useHasTokenFeature("metabot_v3");
-  const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
+  const isEnabled = useLlmSqlGenerationEnabled();
 
   const databaseId = question.databaseId();
 
@@ -91,7 +91,7 @@ export function useInlineSQLPrompt(
   );
 
   useRegisterCodeEditorMetabotContext(
-    portalTarget?.view,
+    portalTarget?.view ?? undefined,
     question.databaseId(),
     bufferId,
   );
@@ -113,6 +113,13 @@ export function useInlineSQLPrompt(
     });
   }, [sourceSqlTables]);
 
+  const onGenerated = useCallback((res: GenerateSqlResponse | undefined) => {
+    if (res) {
+      setSelectedTables(res.referenced_entities as unknown as SelectedTable[]);
+    }
+    setPromptValue("");
+  }, []);
+
   const {
     source: generatedSource,
     isLoading,
@@ -126,18 +133,11 @@ export function useInlineSQLPrompt(
   } = PLUGIN_METABOT.useMetabotSQLSuggestion({
     databaseId,
     bufferId,
-    onGenerated: (res) => {
-      if (res) {
-        setSelectedTables(
-          res.referenced_entities as unknown as SelectedTable[],
-        );
-      }
-      setPromptValue("");
-    },
+    onGenerated,
   });
 
   const getSourceSql = useCallback(() => {
-    return portalTarget?.view.state.doc.toString() ?? "";
+    return portalTarget?.view?.state.doc.toString() ?? "";
   }, [portalTarget?.view]);
 
   const prevDatabaseIdRef = useRef(databaseId);
@@ -224,7 +224,7 @@ export function useInlineSQLPrompt(
 
   const extensions = useMemo(
     () =>
-      llmSqlGenerationEnabled
+      isEnabled
         ? [
             createPromptInputExtension(setPortalTarget),
             keymap.of([
@@ -263,13 +263,13 @@ export function useInlineSQLPrompt(
             }),
           ]
         : [],
-    [llmSqlGenerationEnabled],
+    [isEnabled],
   );
 
   return {
     extensions,
     portalElement:
-      llmSqlGenerationEnabled && portalTarget
+      isEnabled && portalTarget
         ? createPortal(
             <MetabotInlineSQLPrompt
               databaseId={databaseId}
@@ -289,12 +289,8 @@ export function useInlineSQLPrompt(
             portalTarget.container,
           )
         : null,
-    proposedQuestion: llmSqlGenerationEnabled ? proposedQuestion : undefined,
-    handleRejectProposed: llmSqlGenerationEnabled
-      ? handleRejectProposed
-      : undefined,
-    handleAcceptProposed: llmSqlGenerationEnabled
-      ? handleAcceptProposed
-      : undefined,
+    proposedQuestion: isEnabled ? proposedQuestion : undefined,
+    handleRejectProposed: isEnabled ? handleRejectProposed : undefined,
+    handleAcceptProposed: isEnabled ? handleAcceptProposed : undefined,
   };
 }

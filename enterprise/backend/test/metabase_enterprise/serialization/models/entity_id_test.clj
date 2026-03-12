@@ -83,6 +83,7 @@
     :model/QueryField
     :model/QueryTable
     :model/RecentViews
+    :model/ReplacementRun
     :model/RemoteSyncObject
     :model/RemoteSyncTask
     :model/Revision
@@ -116,6 +117,7 @@
     :model/Workspace
     :model/WorkspaceInput
     :model/WorkspaceInputExternal
+    :model/WorkspaceInputTransform
     :model/WorkspaceLog
     :model/WorkspaceMerge
     :model/WorkspaceMergeTransform

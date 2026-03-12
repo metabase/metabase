@@ -51,16 +51,6 @@ export const Measures = createEntity({
       ),
   },
 
-  objectActions: {
-    setArchived: (
-      { id },
-      archived,
-      { revision_message = archived ? "(Archive)" : "(Unarchive)" } = {},
-    ) => Measures.actions.update({ id }, { archived, revision_message }),
-
-    delete: null,
-  },
-
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).measure(entityId),
   },

@@ -14,6 +14,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]
@@ -68,12 +70,25 @@
 
 ;;;; Query helpers
 
+(defn q
+  "Create a lib query against a test database table, e.g. `(q :orders)`.
+   Can be threaded with lib functions: `(-> (q :orders) (lib/limit 10))`."
+  [table-kw]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-kw)))))
+
 (defn mbql->native
-  "Convert an MBQL query to a native query map suitable for use in transform tests.
+  "Compile a query to a native SQL map. Works with both legacy MBQL and lib (pMBQL) queries.
    This generates driver-specific SQL with properly qualified table names."
   [query]
   (qp.store/with-metadata-provider (mt/id)
     (sql.qp/mbql->native driver/*driver* (qp.preprocess/preprocess query))))
+
+(defn ->native
+  "Compile a query to native SQL form wrapped as a native query map.
+   Useful when building test transforms, which need to be SQL flavored."
+  [query]
+  (mt/native-query (mbql->native query)))
 
 ;;;; Building blocks for test resource creation
 
@@ -167,6 +182,40 @@
     (mt/with-current-user creator-id
       (ws.common/create-workspace! creator-id props))))
 
+(defn ws-done!
+  "Poll until workspace status is no longer :pending.
+   Returns immediately if workspace has not started initializing, which requires a transform being added."
+  [ws-or-id]
+  (let [ws-id (cond-> ws-or-id
+                (map? ws-or-id) :id)]
+    (or (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
+                 :done?      #(not= :pending (:db_status %))
+                 ;; some cloud drivers are really slow
+                 :timeout-ms (if config/is-dev? 10000 60000)})
+        (throw (ex-info "Timeout waiting for workspace to finish initializing" {:workspace-id ws-id})))))
+
+(defn ws-ready!
+  "Like [[ws-done!]], but throws if the workspace does not reach :ready status."
+  [ws-or-id]
+  (u/prog1 (ws-done! ws-or-id)
+    (when (not= :ready (:db_status <>))
+      (throw (ex-info "Workspace failed to become ready"
+                      {:db_status (:db_status <>) :workspace-id (:id <>)})))))
+
+(defn analyze-workspace!
+  "Trigger the reconstruction and persistence of the workspace graph."
+  [id]
+  (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" id "/graph")))
+
+(defn force-grant-all-inputs!
+  "Mark all WorkspaceInput records for a workspace as granted.
+   Test tables created by [[create-tables!]] are metadata-only (no physical DB tables),
+   so the isolation layer's GRANT fails silently and `access_granted` stays false.
+   Triggers graph calculation first to ensure WorkspaceInput records exist."
+  [workspace-id]
+  (analyze-workspace! workspace-id)
+  (t2/update! :model/WorkspaceInput {:workspace_id workspace-id} {:access_granted true}))
+
 (defn create-resources!
   "Create test resources from shorthand notation for both global and workspace transforms.
 
@@ -183,7 +232,7 @@
   (let [db-id            (or database-id (mt/id))
         definitions      (:definitions workspace)
         checkouts        (set (:checkouts workspace))
-        schema           (str/replace (str (random-uuid)) "-" "_")
+        schema           (str/replace (str "sch_" (random-uuid)) "-" "_")
 
         ;; Expand shorthand to insert intermediate table nodes
         expanded-global  (dag-abstract/expand-shorthand global)
@@ -262,7 +311,13 @@
         _                (when-let [props (:properties workspace)]
                            (doseq [[tx-sym updates] props]
                              (when-let [ref-id (workspace-map tx-sym)]
-                               (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id ref-id} updates))))]
+                               (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id ref-id} updates))))
+        ;; Wait for workspace DB initialization and grant all inputs by default.
+        ;; Test tables are metadata-only (no physical DB tables), so the isolation layer's GRANT
+        ;; fails silently and `access_granted` stays false — we force-grant to avoid that.
+        _                (when (and ws-id (not (:skip-init workspace)))
+                           (ws-done! ws-id)
+                           (force-grant-all-inputs! ws-id))]
     {:workspace-id  ws-id
      :global-map    global-map
      :workspace-map workspace-map}))
@@ -306,10 +361,11 @@
    Useful for testing workspace execution logic without running real transforms."
   [& body]
   `(mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
-                               (fn [_transform# _remapping#]
+                               (fn [transform# _remapping#]
                                  {:status   :succeeded
                                   :end_time (Instant/now)
-                                  :message  "Mocked execution"})]
+                                  :message  "Mocked execution"
+                                  :table    (select-keys (:target transform#) [:schema :name])})]
      ~@body))
 
 (defn mock-run-transform!
@@ -328,7 +384,7 @@
   []
   (use-fixtures :each (fn [tests]
                         (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
-                          (mt/with-premium-features [:workspaces :dependencies :transforms :transforms-python]
+                          (mt/with-premium-features [:workspaces :dependencies :transforms-basic :transforms-python]
                             (search.tu/with-index-disabled
                               (mt/with-model-cleanup [:model/Collection
                                                       :model/Transform
@@ -336,6 +392,7 @@
                                                       :model/Workspace
                                                       :model/WorkspaceTransform
                                                       :model/WorkspaceInput
+                                                      :model/WorkspaceInputTransform
                                                       :model/WorkspaceOutput]
                                 (tests))))))))
 
@@ -353,22 +410,10 @@
       (log/warn e "Failed to destroy isolation" {:workspace workspace})))
   workspace)
 
-(defn ws-done!
-  "Poll until workspace status is no longer :pending.
-   Returns immediately if workspace has not started initializing, which requires a transform being added."
-  [ws-or-id]
-  (let [ws-id (cond-> ws-or-id
-                (map? ws-or-id) :id)]
-    (or (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
-                 :done?      #(not= :pending (:db_status %))
-                 ;; some cloud drivers are really slow
-                 :timeout-ms (if config/is-dev? 10000 60000)})
-        (throw (ex-info "Timeout waiting for workspace to finish initializing" {:workspace-id ws-id})))))
-
 (defn create-empty-ws!
-  "Create a simple workspace and wait for it to be ready."
+  "Create a simple workspace with no transforms. Skips auto-init since there is nothing to analyze."
   [name]
-  (t2/select-one :model/Workspace (:workspace-id (create-resources! {:workspace {:name name}}))))
+  (t2/select-one :model/Workspace (:workspace-id (create-resources! {:workspace {:name name :skip-init true}}))))
 
 (defn initialize-ws!
   "Create a workspace with a transform to trigger initialization, and wait for it to finish.
@@ -382,11 +427,7 @@
   "Create a simple workspace and wait for it to finish initializing database resources.
    Throws if workspace does not become ready."
   [name]
-  (let [ws (initialize-ws! name)]
-    (if (= :ready (:db_status ws))
-      ws
-      (throw (ex-info "Workspace failed to become ready"
-                      {:name name :db_status (:db_status ws) :workspace-id (:id ws)})))))
+  (ws-ready! (initialize-ws! name)))
 
 (defn do-with-workspaces!
   "Function that sets up workspaces for testing and cleans up afterwards.
@@ -431,11 +472,6 @@
       [~@props-list]
       (fn [[~@syms]]
         ~@body))))
-
-(defn analyze-workspace!
-  "Trigger the reconstruction and persistence of the workspace graph."
-  [id]
-  (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" id "/graph")))
 
 (defn- replace-entity [{:keys [input-table workspace-transform external-transform]} entity-type entity-id]
   (get

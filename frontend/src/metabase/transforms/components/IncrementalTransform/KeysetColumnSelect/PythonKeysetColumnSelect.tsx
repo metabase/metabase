@@ -71,7 +71,8 @@ export function PythonKeysetColumnSelect({
       description={description}
       descriptionProps={descriptionProps}
       query={query}
-      disabled={disabled || isLoading || !!error}
+      disabled={disabled || !!error}
+      isLoading={isLoading}
     />
   );
 }

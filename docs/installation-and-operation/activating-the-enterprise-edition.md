@@ -31,7 +31,7 @@ You can get a license by signing up for a free trial of the [Pro or Enterprise e
 
 There are two ways to activate your license when self-hosting Metabase:
 
-- **When Metabase is running**: go to **Settings** > **Admin settings**, and click **License and Billing** in the lefthand sidebar. Paste in your license token under **License** and click **Activate**.
+- **When Metabase is running**: go to **Admin** > **Settings**, and click **License** in the lefthand sidebar. Paste in your license token under **License** and click **Activate**.
 
 OR
 

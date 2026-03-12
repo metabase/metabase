@@ -1,14 +1,9 @@
-import type {
-  Metabase_Lib_Schema_Binning_Binning,
-  Metabase_Lib_Schema_Join_Strategy,
-  Metabase_Lib_Schema_TemporalBucketing_Unit,
-} from "cljs/metabase.lib.js";
 import type * as Lib from "metabase-lib";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 import type { CardId } from "./card";
 import type { DatabaseId } from "./database";
-import type { TemplateTags, TemporalUnit } from "./dataset";
+import type { TemplateTag, TemplateTags, TemporalUnit } from "./dataset";
 import type { FieldId } from "./field";
 import type { SegmentId } from "./segment";
 import type { TableId } from "./table";
@@ -94,8 +89,10 @@ export const dateTimeUnits = [
 
 export type DateTimeAbsoluteUnit = (typeof dateTimeAbsoluteUnits)[number];
 export type DateTimeRelativeUnit = (typeof dateTimeRelativeUnits)[number];
-// Using generated type which includes all temporal units (second, millisecond, etc.)
-export type DatetimeUnit = Metabase_Lib_Schema_TemporalBucketing_Unit;
+export type DatetimeUnit =
+  | "default"
+  | DateTimeAbsoluteUnit
+  | DateTimeRelativeUnit;
 
 export interface ReferenceOptions {
   binning?: BinningOptions;
@@ -105,8 +102,24 @@ export interface ReferenceOptions {
   "source-field"?: number;
 }
 
-// Using generated type from CLJS schema
-type BinningOptions = Metabase_Lib_Schema_Binning_Binning;
+type BinningOptions =
+  | DefaultBinningOptions
+  | NumBinsBinningOptions
+  | BinWidthBinningOptions;
+
+interface DefaultBinningOptions {
+  strategy: "default";
+}
+
+interface NumBinsBinningOptions {
+  strategy: "num-bins";
+  "num-bins": number;
+}
+
+interface BinWidthBinningOptions {
+  strategy: "bin-width";
+  "bin-width": number;
+}
 
 export type ReferenceOptionsKeys =
   | "source-field"
@@ -295,8 +308,11 @@ export type SegmentFilter = ["segment", SegmentId];
 type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc" | "desc", FieldReference];
 
-// Using generated type from CLJS schema
-export type JoinStrategy = Metabase_Lib_Schema_Join_Strategy;
+export type JoinStrategy =
+  | "left-join"
+  | "right-join"
+  | "inner-join"
+  | "full-join";
 export type JoinAlias = string;
 export type JoinCondition = ["=", FieldReference, FieldReference];
 export type JoinFields = "all" | "none" | JoinedFieldReference[];
@@ -427,7 +443,7 @@ export type DimensionReference =
 
 export type TestTableSourceSpec = {
   type: "table";
-  id: number;
+  id: TableId;
 };
 
 export type TestCardSourceSpec = {
@@ -442,6 +458,10 @@ export type TestColumnSpec = {
   name: string;
   sourceName?: string;
   displayName?: string;
+
+  // When the columns cannot be disambiguated with name, sourceName and displayName
+  // use this index to pick one.
+  index?: number;
 };
 
 export type TestExpressionSpec =
@@ -460,13 +480,13 @@ export type TestNamedExpressionSpec = {
 
 export type TestLiteralSpec = {
   type: "literal";
-  value: string | number | boolean;
+  value: NumericLiteral | StringLiteral | BooleanLiteral | DatetimeLiteral;
 };
 
 export type TestOperatorSpec = {
   type: "operator";
   operator: string;
-  args: TestExpressionSpec[];
+  args?: TestExpressionSpec[];
 };
 
 export type TestTemporalBucketSpec = {
@@ -474,11 +494,11 @@ export type TestTemporalBucketSpec = {
 };
 
 export type TestBinCountSpec = {
-  bins?: number;
+  bins?: number | "auto";
 };
 
 export type TestBinWidthSpec = {
-  binWidth?: number;
+  binWidth?: number | "auto";
 };
 
 type TestBinningSpec =
@@ -528,5 +548,21 @@ export type TestQuerySpec = {
 };
 
 export type TestQuerySpecWithDatabase = TestQuerySpec & {
+  database: DatabaseId;
+};
+
+export type TestTemplateTag = Pick<TemplateTag, "type"> &
+  Partial<Omit<TemplateTag, "dimension" | "type">> & {
+    dimension?: TableId;
+  };
+
+export type TestTemplateTags = Record<string, TestTemplateTag>;
+
+export type TestNativeQuerySpec = {
+  query: string;
+  templateTags?: TestTemplateTags;
+};
+
+export type TestNativeQuerySpecWithDatabase = TestNativeQuerySpec & {
   database: DatabaseId;
 };

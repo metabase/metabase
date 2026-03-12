@@ -110,6 +110,11 @@ describe("scenarios > dependencies > unreferenced list", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TABLE_NAME });
     cy.viewport(1600, 1400);
+    H.resetSnowplow();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("analysis", () => {
@@ -201,6 +206,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should persist filter changes after page reload", () => {
       setupEntities();
+      H.waitForUnreferencedEntities((entities) =>
+        entities.some((e) => e.data.name === MODEL_FOR_QUESTION_DATA_SOURCE),
+      );
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({ visibleEntities: MODEL_NAMES });
 
@@ -214,6 +222,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
     it("should filter by location", () => {
       setupEntities();
+      H.waitForUnreferencedEntities((entities) =>
+        entities.some((e) => e.data.name === MODEL_FOR_MODEL_DATA_SOURCE),
+      );
       H.DependencyDiagnostics.visitUnreferencedEntities();
       checkList({
         visibleEntities: [
@@ -300,12 +311,17 @@ describe("scenarios > dependencies > unreferenced list", () => {
     });
   });
 
-  describe("sidebar", () => {
-    it("should show the sidebar for supported entities", () => {
+  describe("selecting entities", () => {
+    it("should show the sidebar for supported entities and trigger snowplow event", () => {
       setupEntities();
       H.DependencyDiagnostics.visitUnreferencedEntities();
 
       H.DependencyDiagnostics.list().findByText(TABLE_DISPLAY_NAME).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_diagnostics_entity_selected",
+        triggered_from: "unreferenced",
+        event_detail: "table",
+      });
       checkSidebar({
         title: TABLE_DISPLAY_NAME,
         location: DATABASE_NAME,
@@ -367,6 +383,14 @@ describe("scenarios > dependencies > unreferenced list", () => {
         title: SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
         location: "SQL snippets",
         createdBy: "Bobby Tables",
+      });
+
+      cy.log("snowplow event when dependency graph link is clicked");
+      cy.findByRole("link", { name: "View in dependency graph" }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "dependency_entity_selected",
+        triggered_from: "diagnostics-unreferenced-list",
+        event_detail: "snippet",
       });
     });
   });
@@ -1052,7 +1076,7 @@ function checkList({
 }) {
   H.DependencyDiagnostics.list().within(() => {
     visibleEntities.forEach((name) => {
-      cy.findByText(name).should("be.visible");
+      cy.findByText(name).scrollIntoView().should("be.visible");
     });
     hiddenEntities.forEach((name) => {
       cy.findByText(name).should("not.exist");
@@ -1090,7 +1114,10 @@ function checkSidebar({
   H.DependencyDiagnostics.sidebar().within(() => {
     Sidebar.header().findByText(title).should("be.visible");
     if (location) {
-      Sidebar.locationSection().findByText(location).should("be.visible");
+      Sidebar.locationSection()
+        .findByText(location)
+        .scrollIntoView()
+        .should("be.visible");
     }
     if (description) {
       Sidebar.infoSection().should("contain.text", description);
@@ -1104,7 +1131,7 @@ function checkSidebar({
     if (fields.length > 0) {
       Sidebar.fieldsSection().within(() => {
         fields.forEach((field) => {
-          cy.findByText(field).should("be.visible");
+          cy.findByText(field).scrollIntoView().should("be.visible");
         });
       });
     }

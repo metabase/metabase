@@ -4,12 +4,12 @@ import type { ResizableBoxProps, ResizeCallbackData } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setNotebookNativePreviewSidebarWidth,
   setUIControls,
 } from "metabase/query_builder/actions";
-import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { getUiControls } from "metabase/query_builder/selectors";
 import {
   Notebook,
@@ -82,7 +82,7 @@ export const NotebookContainer = ({
     dispatch(setNotebookNativePreviewSidebarWidth(width));
   };
 
-  const screenSize = useNotebookScreenSize();
+  const shouldShowFullWidthNativePreview = useIsSmallScreen();
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
   const Handle = forwardRef<
@@ -151,15 +151,13 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {renderNativePreview && screenSize && (
+      {renderNativePreview && (
         <>
-          {screenSize === "small" && (
+          {shouldShowFullWidthNativePreview ? (
             <Box pos="absolute" inset={0}>
               <NotebookNativePreview />
             </Box>
-          )}
-
-          {screenSize === "large" && (
+          ) : (
             <ResizableBox
               width={sidebarWidth}
               minConstraints={[minSidebarWidth, 0]}

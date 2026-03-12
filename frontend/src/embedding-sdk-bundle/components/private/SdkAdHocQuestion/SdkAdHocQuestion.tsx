@@ -24,6 +24,7 @@ export const SdkAdHocQuestion = ({
   onBeforeSave,
   onSave,
   entityTypes,
+  dataPicker,
   isSaveEnabled,
   targetCollection,
   withChartTypeSelector = true,
@@ -45,6 +46,7 @@ export const SdkAdHocQuestion = ({
     | "onBeforeSave"
     | "onSave"
     | "entityTypes"
+    | "dataPicker"
     | "isSaveEnabled"
     | "targetCollection"
     | "withChartTypeSelector"
@@ -63,7 +65,9 @@ export const SdkAdHocQuestion = ({
 
   const { options, deserializedCard } = useMemo(() => {
     const { options, serializedCard } = parseHash(location.hash);
-    const deserializedCard = serializedCard && deserializeCard(serializedCard);
+    const deserializedCard = serializedCard
+      ? deserializeCard(serializedCard)
+      : undefined;
 
     return { options, deserializedCard };
   }, [location.hash]);
@@ -77,6 +81,7 @@ export const SdkAdHocQuestion = ({
       onBeforeSave={onBeforeSave}
       onSave={onSave}
       entityTypes={entityTypes}
+      dataPicker={dataPicker}
       isSaveEnabled={isSaveEnabled}
       targetCollection={targetCollection}
       initialSqlParameters={initialSqlParameters}

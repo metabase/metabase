@@ -549,6 +549,22 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         });
       });
     });
+
+    it("should not render metabot when embedded-metabot-enabled? is false", () => {
+      H.updateSetting("embedded-metabot-enabled?", false);
+
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-metabot />
+      `);
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        // When embedded metabot is disabled, the component should not render the chat interface
+        cy.findByText("Ask questions to AI.").should("not.exist");
+        cy.findByPlaceholderText("Ask AI a question...").should("not.exist");
+      });
+    });
   });
 
   describe("common checks", () => {

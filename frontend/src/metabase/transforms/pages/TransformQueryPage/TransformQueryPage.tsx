@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { Route, RouteProps } from "react-router";
 import { push } from "react-router-redux";
 import { useLatest } from "react-use";
@@ -9,6 +9,7 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { EmptyState } from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -74,6 +75,8 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
 
   return (
     <TransformQueryPageBody
+      // Add key so the ui state gets reset when switching between edit and view
+      key={route.path}
       transform={transform}
       databases={transformsDatabases}
       route={route}
@@ -117,7 +120,16 @@ function TransformQueryPageBody({
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const isEditMode = !readOnly && !!route.path?.includes("/edit");
 
-  useRegisterMetabotTransformContext(transform, source);
+  const lastRunError = useMemo(() => {
+    if (!transform.last_run) {
+      return undefined;
+    }
+    return transform.last_run.status === "failed"
+      ? (transform.last_run.message ?? undefined)
+      : undefined;
+  }, [transform.last_run]);
+
+  useRegisterMetabotTransformContext(transform, source, lastRunError);
 
   const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
 
@@ -132,7 +144,12 @@ function TransformQueryPageBody({
     onSave: async (request) => {
       const { error } = await updateTransform(request);
       if (error) {
-        sendErrorToast(t`Failed to update transform query`);
+        const message = getErrorMessage(error);
+        sendErrorToast(
+          message
+            ? t`Failed to update transform query: ${message}`
+            : t`Failed to update transform query`,
+        );
       } else {
         sendSuccessToast(t`Transform query updated`);
 
