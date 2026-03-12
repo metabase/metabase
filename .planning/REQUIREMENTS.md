@@ -32,8 +32,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Logging Presets
 
-- [ ] **PRES-01**: An "Analytics query logging" preset is added to the existing preset system that enables detailed DEBUG logging for user-facing database queries
-- [ ] **PRES-02**: Users can enable/disable the analytics query logging preset without restart via the existing logging API
+- [x] **PRES-01**: An "Analytics query logging" preset is added to the existing preset system that enables detailed DEBUG logging for user-facing database queries
+- [x] **PRES-02**: Users can enable/disable the analytics query logging preset without restart via the existing logging API
 
 ## v2 Requirements
 
@@ -83,8 +83,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ATTR-01 | Phase 1 | Complete |
 | ATTR-02 | Phase 1 | Complete |
 | ATTR-03 | Phase 1 | Complete |
-| PRES-01 | Phase 3 | Pending |
-| PRES-02 | Phase 3 | Pending |
+| PRES-01 | Phase 3 | Complete |
+| PRES-02 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 13 total
