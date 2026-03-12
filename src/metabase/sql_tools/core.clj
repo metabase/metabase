@@ -182,3 +182,18 @@
   (let [parser (sql-tools.settings/current-parser-backend)]
     (metrics/with-operation-timing [parser "add-into-clause"]
       (interface/add-into-clause-impl parser driver sql table-name))))
+
+(def ^:private TranspilationResult
+  [:map
+   [:status [:enum :success :error :skipped]]
+   [:reason {:optional true} [:enum :contains-templates :missing-dialect]]
+   [:error-message {:optional true} :string]
+   [:transpiled-sql {:optional true} :string]])
+
+(mu/defn transpile-sql :- TranspilationResult
+  "Transpile sql from one dialect to another. Returns a map as per `TranspilationResult`."
+  [sql :- :string
+   from-dialect :- [:maybe :string]
+   to-dialect :- [:maybe :string]]
+  (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
+                                sql from-dialect to-dialect))
