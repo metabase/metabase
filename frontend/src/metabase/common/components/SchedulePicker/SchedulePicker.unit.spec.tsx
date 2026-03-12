@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 
 import type { SchedulePickerProps } from "./SchedulePicker";
 import { SchedulePicker } from "./SchedulePicker";
@@ -27,7 +27,9 @@ const setup = (props?: Partial<SchedulePickerProps>) => {
     ...props,
   };
 
-  const { rerender } = render(<SchedulePicker {...defaultProps} />);
+  const { rerender } = renderWithProviders(
+    <SchedulePicker {...defaultProps} />,
+  );
 
   return {
     onScheduleChange,
