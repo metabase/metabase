@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "metabase": {
+      "type": "http",
+      "url": "http://127.0.0.1:3000/api/mcp",
+      "headers": {
+        "X-Api-Key": "mb_QOZh8YWDzvGXo/baFO00OevOLMLtA3l1F+2fAyFbmWI="
+      }
+    },
+    "trunk": {
+      "type": "http",
+      "url": "https://mcp.trunk.io/mcp"
+    }
+  }
+}
