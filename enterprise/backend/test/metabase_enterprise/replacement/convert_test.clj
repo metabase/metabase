@@ -17,13 +17,13 @@
         (is (= :replace (:run_type run))))))
   (testing "6-arity accepts explicit run_type"
     (mt/with-model-cleanup [:model/ReplacementRun]
-      (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :convert-to-transform)]
-        (is (= :convert-to-transform (:run_type run)))))))
+      (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :replace-with-transform)]
+        (is (= :replace-with-transform (:run_type run)))))))
 
 (deftest list-runs-test
   (mt/with-model-cleanup [:model/ReplacementRun]
     (let [run1 (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto))
-          run2 (replacement-run/create-run! :card 3 :card 4 (mt/user->id :crowberto) :convert-to-transform)]
+          run2 (replacement-run/create-run! :card 3 :card 4 (mt/user->id :crowberto) :replace-with-transform)]
       ;; Start run2 so it's active
       (replacement-run/start-run! (:id run2))
       (testing "lists all runs"
@@ -39,7 +39,7 @@
 
 (deftest update-target-test
   (mt/with-model-cleanup [:model/ReplacementRun]
-    (let [run (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)]
+    (let [run (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :replace-with-transform)]
       (replacement-run/update-target! (:id run) :table 42)
       (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
         (is (= :table (:target_entity_type updated)))
@@ -47,35 +47,35 @@
 
 (deftest update-transform-id-test
   (mt/with-model-cleanup [:model/ReplacementRun]
-    (let [run (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)]
+    (let [run (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :replace-with-transform)]
       (is (nil? (:transform_id run)))
       (replacement-run/update-transform-id! (:id run) 42)
       (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
         (is (= 42 (:transform_id updated)))))))
 
-(deftest failed-convert-runs-with-transforms-test
+(deftest failed-runs-with-transforms-test
   (mt/with-model-cleanup [:model/ReplacementRun]
-    (let [failed-convert (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)
+    (let [failed-rwt    (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :replace-with-transform)
           failed-replace (replacement-run/create-run! :card 2 :card 3 (mt/user->id :crowberto))
-          ok-convert     (replacement-run/create-run! :card 4 :card 4 (mt/user->id :crowberto) :convert-to-transform)]
-      ;; Start and fail the convert run with a transform_id
-      (replacement-run/start-run! (:id failed-convert))
-      (replacement-run/update-transform-id! (:id failed-convert) 100)
-      (replacement-run/fail-run! (:id failed-convert) "boom")
+          ok-rwt         (replacement-run/create-run! :card 4 :card 4 (mt/user->id :crowberto) :replace-with-transform)]
+      ;; Start and fail the replace-with-transform run with a transform_id
+      (replacement-run/start-run! (:id failed-rwt))
+      (replacement-run/update-transform-id! (:id failed-rwt) 100)
+      (replacement-run/fail-run! (:id failed-rwt) "boom")
       ;; Start and fail the replace run (no transform_id)
       (replacement-run/start-run! (:id failed-replace))
       (replacement-run/fail-run! (:id failed-replace) "boom")
-      ;; Start and succeed the other convert run
-      (replacement-run/start-run! (:id ok-convert))
-      (replacement-run/update-transform-id! (:id ok-convert) 200)
-      (replacement-run/succeed-run! (:id ok-convert))
-      (testing "returns only failed convert runs with transform_id"
-        (let [runs (replacement-run/failed-convert-runs-with-transforms)]
+      ;; Start and succeed the other run
+      (replacement-run/start-run! (:id ok-rwt))
+      (replacement-run/update-transform-id! (:id ok-rwt) 200)
+      (replacement-run/succeed-run! (:id ok-rwt))
+      (testing "returns only failed runs with transform_id"
+        (let [runs (replacement-run/failed-runs-with-transforms)]
           (is (= 1 (count runs)))
-          (is (= (:id failed-convert) (:id (first runs))))
+          (is (= (:id failed-rwt) (:id (first runs))))
           (is (= 100 (:transform_id (first runs)))))))))
 
-(deftest cleanup-failed-convert-runs-test
+(deftest cleanup-failed-runs-with-transforms-test
   (testing "cleanup deletes orphaned transforms and clears transform_id on the run"
     (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
       (let [transform (t2/insert-returning-instance! :model/Transform
@@ -85,12 +85,12 @@
                                                       :target             {:type "table" :name "t" :schema "s"}
                                                       :source_database_id (mt/id)
                                                       :creator_id         (mt/user->id :crowberto)})
-            run       (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :convert-to-transform)]
+            run       (replacement-run/create-run! :card 1 :card 1 (mt/user->id :crowberto) :replace-with-transform)]
         (replacement-run/start-run! (:id run))
         (replacement-run/update-transform-id! (:id run) (:id transform))
         (replacement-run/fail-run! (:id run) "boom")
         ;; Run cleanup
-        (#'replacement.timeout/cleanup-failed-convert-runs!)
+        (#'replacement.timeout/cleanup-failed-runs-with-transforms!)
         ;; Transform should be deleted
         (is (nil? (t2/select-one :model/Transform :id (:id transform))))
         ;; Run should have transform_id cleared
@@ -99,65 +99,58 @@
 
 ;;; ------------------------------------------------ API endpoints ------------------------------------------------
 
-(def ^:private valid-convert-body
-  "A valid request body for the convert endpoint (card_id is overridden per test)."
-  {:card_id          999999
-   :transform_name   "My Transform"
-   :transform_target {:type "table" :name "my_transform" :schema "transforms"}})
+(def ^:private valid-replace-with-transform-body
+  "A valid request body for the replace-source-with-transform endpoint."
+  {:source_entity_id   999999
+   :source_entity_type "card"
+   :transform_id       999999})
 
-(deftest convert-card-not-found-test
-  (testing "POST /convert-card-to-transform — 404 for non-existent card"
+(deftest replace-source-with-transform-requires-superuser-test
+  (testing "POST /replace-source-with-transform — 403 for non-admin"
     (mt/with-premium-features #{:dependencies}
-      (mt/user-http-request :crowberto :post 404 "ee/replacement/convert-card-to-transform"
-                            valid-convert-body))))
+      (mt/user-http-request :rasta :post 403 "ee/replacement/replace-source-with-transform"
+                            valid-replace-with-transform-body))))
 
-(deftest convert-card-not-model-test
-  (testing "POST /convert-card-to-transform — 400 for non-model card"
+(deftest replace-source-with-transform-transform-not-found-test
+  (testing "POST /replace-source-with-transform — 404 for non-existent transform"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Card {card-id :id}
-                     {:database_id   (mt/id)
-                      :dataset_query (mt/mbql-query orders)
-                      :type          :question
-                      :name          "Not a model"}]
-        (mt/user-http-request :crowberto :post 400 "ee/replacement/convert-card-to-transform"
-                              (assoc valid-convert-body :card_id card-id))))))
+      (mt/user-http-request :crowberto :post 404 "ee/replacement/replace-source-with-transform"
+                            valid-replace-with-transform-body))))
 
-(deftest convert-card-concurrent-409-test
-  (testing "POST /convert-card-to-transform — 409 when another run is active"
+(deftest replace-source-with-transform-concurrent-409-test
+  (testing "POST /replace-source-with-transform — 409 when another run is active"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Card {card-id :id}
-                     {:database_id   (mt/id)
-                      :dataset_query (mt/mbql-query orders)
-                      :type          :model
-                      :name          "My Model"}]
+      (mt/with-temp [:model/Transform {transform-id :id}
+                     {:name               "t"
+                      :source             {:type  "query"
+                                           :query (mt/mbql-query orders)}
+                      :target             {:type "table" :name "t" :schema "s"}
+                      :source_database_id (mt/id)
+                      :creator_id         (mt/user->id :crowberto)}]
         (mt/with-model-cleanup [:model/ReplacementRun]
           ;; Insert a fake active run
           (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto))]
             (replacement-run/start-run! (:id run)))
-          (mt/user-http-request :crowberto :post 409 "ee/replacement/convert-card-to-transform"
-                                (assoc valid-convert-body :card_id card-id)))))))
+          (mt/user-http-request :crowberto :post 409 "ee/replacement/replace-source-with-transform"
+                                {:source_entity_id   1
+                                 :source_entity_type "card"
+                                 :transform_id       transform-id}))))))
 
-(deftest convert-card-requires-superuser-test
-  (testing "POST /convert-card-to-transform — 403 for non-admin"
+(deftest replace-source-with-transform-requires-params-test
+  (testing "POST /replace-source-with-transform — 400 when missing transform_id"
     (mt/with-premium-features #{:dependencies}
-      (mt/user-http-request :rasta :post 403 "ee/replacement/convert-card-to-transform"
-                            valid-convert-body))))
-
-(deftest convert-card-requires-transform-params-test
-  (testing "POST /convert-card-to-transform — 400 when missing transform_name"
+      (mt/user-http-request :crowberto :post 400 "ee/replacement/replace-source-with-transform"
+                            {:source_entity_id 1 :source_entity_type "card"})))
+  (testing "POST /replace-source-with-transform — 400 when missing source_entity_type"
     (mt/with-premium-features #{:dependencies}
-      (mt/user-http-request :crowberto :post 400 "ee/replacement/convert-card-to-transform"
-                            {:card_id 1})))
-  (testing "POST /convert-card-to-transform — 400 when missing transform_target"
-    (mt/with-premium-features #{:dependencies}
-      (mt/user-http-request :crowberto :post 400 "ee/replacement/convert-card-to-transform"
-                            {:card_id 1 :transform_name "foo"}))))
+      (mt/user-http-request :crowberto :post 400 "ee/replacement/replace-source-with-transform"
+                            {:source_entity_id 1 :transform_id 1}))))
 
 (deftest list-runs-api-test
   (testing "GET /runs — lists runs"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/ReplacementRun]
-        (let [run  (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :convert-to-transform)
+        (let [run  (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :replace-with-transform)
               runs (mt/user-http-request :crowberto :get 200 "ee/replacement/runs")]
           (is (sequential? runs))
           (is (some #(= (:id run) (:id %)) runs))))))
@@ -174,8 +167,8 @@
   (testing "GET /runs/:id returns run_type field"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/ReplacementRun]
-        (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :convert-to-transform)]
+        (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto) :replace-with-transform)]
           (replacement-run/start-run! (:id run))
           (let [result (mt/user-http-request :crowberto :get 200 (str "ee/replacement/runs/" (:id run)))]
-            (is (= "convert-to-transform" (:run_type result)))
+            (is (= "replace-with-transform" (:run_type result)))
             (is (nil? (:progress result)))))))))

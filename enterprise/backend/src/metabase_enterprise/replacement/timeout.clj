@@ -12,8 +12,8 @@
 
 (def ^:private job-key "metabase-enterprise.replacement.timeout")
 
-(defn- cleanup-failed-convert-runs!
-  "Delete orphaned transform records from failed convert-to-transform runs.
+(defn- cleanup-failed-runs-with-transforms!
+  "Delete orphaned transform records from failed runs that have a transform_id.
    Deletes the transform record (not the output table) and clears the transform_id
    on the run so it won't be retried.
 
@@ -22,7 +22,7 @@
    events) which is what we want, but skips the audit logging that crud/delete-transform!
    adds."
   []
-  (doseq [run (replacement-run/failed-convert-runs-with-transforms)]
+  (doseq [run (replacement-run/failed-runs-with-transforms)]
     (try
       (log/infof "Cleaning up transform %d from failed convert run %d"
                  (:transform_id run) (:id run))
@@ -39,9 +39,9 @@
     (catch Throwable t
       (log/error t "Error timing out old source replacement runs.")))
   (try
-    (cleanup-failed-convert-runs!)
+    (cleanup-failed-runs-with-transforms!)
     (catch Throwable t
-      (log/error t "Error cleaning up failed convert runs."))))
+      (log/error t "Error cleaning up failed runs with transforms."))))
 
 (task/defjob ^{:doc "Timeout long-running source replacement runs."
                org.quartz.DisallowConcurrentExecution true}

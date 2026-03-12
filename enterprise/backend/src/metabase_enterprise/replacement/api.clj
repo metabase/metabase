@@ -85,29 +85,30 @@
     (replacement-run/cancel-run! id)
     {:success true}))
 
-(api.macros/defendpoint :post "/convert-card-to-transform"
+(api.macros/defendpoint :post "/replace-source-with-transform"
   :- [:map
       [:status [:= 202]]
       [:body [:map {:closed true}
               [:run_id ::replacement.schema/run-id]]]]
-  "Convert a model to a transform, run it, sync the output table, and replace all
-   usages of the model with the new table. Returns 202 with a run_id for polling.
+  "Re-run a transform and replace all usages of the source entity with the output
+   table. The FE should create the transform first via the transforms API.
+   Returns 202 with a run_id for polling.
    Returns 409 if another replacement or conversion is already running."
   [_route-params
    _query-params
-   {:keys [card_id transform_name transform_target]}
-   :- ::replacement.schema/convert-card-to-transform-request]
+   {:keys [source_entity_id source_entity_type transform_id]}
+   :- ::replacement.schema/replace-source-with-transform-request]
   (api/check-superuser)
-  (let [card    (api/check-404 (t2/select-one :model/Card :id card_id))
-        _       (api/check-400 (= :model (:type card))
-                               "Card is not a model")
-        job-row (replacement-run/create-run!
-                 :card card_id :card card_id
-                 api/*current-user-id* :convert-to-transform)
+  (api/check-404 (t2/select-one :model/Transform :id transform_id))
+  (let [job-row  (replacement-run/create-run!
+                  source_entity_type source_entity_id
+                  source_entity_type source_entity_id
+                  api/*current-user-id* :replace-with-transform)
         progress (replacement-run/run-row->progress job-row)
         work-fn  (fn [progress]
-                   (convert/convert-card-to-transform!
-                    card_id (:id job-row) transform_name transform_target progress))]
+                   (convert/replace-source-with-transform!
+                    source_entity_type source_entity_id transform_id
+                    (:id job-row) progress))]
     (replacement.execute/execute-async! work-fn progress)
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))

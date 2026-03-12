@@ -20,7 +20,7 @@
   [:enum :pending :started :succeeded :failed :canceled :timeout])
 
 (mr/def ::run-type
-  [:enum :replace :convert-to-transform])
+  [:enum :replace :convert-to-transform :replace-with-transform])
 
 (mr/def ::run
   [:map
@@ -57,17 +57,11 @@
    [:target {:optional true} [:maybe ::column]]
    [:errors {:optional true} [:sequential ::source-swap.schema/column-error]]])
 
-(mr/def ::transform-target
+(mr/def ::replace-source-with-transform-request
   [:map
-   [:type   [:= "table"]]
-   [:name   ms/NonBlankString]
-   [:schema {:optional true} [:maybe ms/NonBlankString]]])
-
-(mr/def ::convert-card-to-transform-request
-  [:map
-   [:card_id          ::lib.schema.id/card]
-   [:transform_name   ms/NonBlankString]
-   [:transform_target ::transform-target]])
+   [:source_entity_id   ::source-entity-id]
+   [:source_entity_type ::source-entity-type]
+   [:transform_id       pos-int?]])
 
 (mr/def ::check-replace-source-response
   [:map

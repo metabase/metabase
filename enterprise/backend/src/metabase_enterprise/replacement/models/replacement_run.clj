@@ -115,11 +115,11 @@
               :id run-id
               {:transform_id transform-id}))
 
-(defn failed-convert-runs-with-transforms
-  "Return failed/timed-out convert-to-transform runs that have a transform_id set."
+(defn failed-runs-with-transforms
+  "Return failed/timed-out runs that have a transform_id set."
   []
   (t2/select :model/ReplacementRun
-             :run_type :convert-to-transform
+             :run_type [:in [:convert-to-transform :replace-with-transform]]
              :status [:in [:failed :timeout]]
              {:where [:not= :transform_id nil]}))
 
