@@ -1536,6 +1536,10 @@
     [:type    [:= {:decode/normalize helpers/normalize-keyword} :card]]
     [:card-id ::lib.schema.id/card]]])
 
+(def allowed-source-filter-ops
+  "Set of allowed source-filter ops"
+  #{:> :>= :< :<= := :!=})
+
 ;; Example:
 ;;
 ;;    {:id           "fc5e14d9-7d14-67af-66b2-b2a6e25afeaf"
@@ -1547,7 +1551,7 @@
   "Schema for a single source-filter applied to a table template tag."
   [:map
    [:field-id ::lib.schema.id/field]
-   [:op       [:enum :> :>= :< :<= := :!=]]
+   [:op       (into [:enum] allowed-source-filter-ops)]
    [:value    :any]])
 
 (mr/def ::TemplateTag.SourceTable
