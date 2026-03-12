@@ -15,21 +15,23 @@
    [metabase.api.macros.defendpoint.open-api :as open-api]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.memoize :as memoize]))
+   [metabase.util.malli.registry :as mr]))
 
 (defn infer-tool-name
   "Derive an MCP tool name from HTTP method and route path.
 
   Strips version prefixes, removes param placeholders, converts to snake_case, and joins with `_`.
-  GET endpoints get a `get_` prefix; other methods derive verbs from the path itself."
+  GET endpoints get a `get_` prefix; PUT/PATCH get `update_`; DELETE gets `delete_`.
+  POST endpoints derive verbs from the path itself."
   [method route-path]
   (let [segments (-> route-path
                      (str/replace #"^/v\d+/" "")
                      (str/split #"/")
                      (->> (remove #(or (str/blank? %) (str/starts-with? % ":")))))]
-    (-> (if (= method :get)
-          (str "get_" (str/join "_" segments))
+    (-> (case method
+          :get             (str "get_" (str/join "_" segments))
+          (:put :patch)    (str "update_" (str/join "_" segments))
+          :delete          (str "delete_" (str/join "_" segments))
           (str/join "_" segments))
         (str/replace "-" "_"))))
 
@@ -190,4 +192,4 @@
 (def tool-manifest
   "Generate an MCP tool manifest for all endpoints with `:tool` metadata in the given namespace.
   Result is memoized since endpoints are static after namespace loading."
-  (memoize/bounded build-manifest))
+  (memoize build-manifest))

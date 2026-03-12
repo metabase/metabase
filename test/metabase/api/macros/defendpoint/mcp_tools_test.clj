@@ -21,6 +21,11 @@
   (testing "version prefix is stripped"
     (is (= "get_foo" (mcp-tools/infer-tool-name :get "/v1/foo")))
     (is (= "get_foo" (mcp-tools/infer-tool-name :get "/v2/foo"))))
+  (testing "PUT/PATCH endpoints get `update_` prefix"
+    (is (= "update_table" (mcp-tools/infer-tool-name :put "/v1/table/:id")))
+    (is (= "update_table" (mcp-tools/infer-tool-name :patch "/v1/table/:id"))))
+  (testing "DELETE endpoints get `delete_` prefix"
+    (is (= "delete_table" (mcp-tools/infer-tool-name :delete "/v1/table/:id"))))
   (testing "hyphens are converted to underscores"
     (is (= "construct_query" (mcp-tools/infer-tool-name :post "/v1/construct-query")))))
 
@@ -33,6 +38,12 @@
   (testing "DELETE defaults to destructive"
     (is (= {:destructiveHint true}
            (mcp-tools/infer-annotations :delete true))))
+  (testing "PUT defaults to not readOnly"
+    (is (= {:readOnlyHint false}
+           (mcp-tools/infer-annotations :put true))))
+  (testing "PATCH defaults to not readOnly"
+    (is (= {:readOnlyHint false}
+           (mcp-tools/infer-annotations :patch true))))
   (testing "POST defaults to not readOnly"
     (is (= {:readOnlyHint false}
            (mcp-tools/infer-annotations :post true))))
