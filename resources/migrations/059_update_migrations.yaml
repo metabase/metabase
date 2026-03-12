@@ -3359,8 +3359,8 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.app_db.custom_migrations.FixClickHouseUploadDBSchemaNames"
-            
-  - changeSet:                   
+
+  - changeSet:
       id: v59.2026-03-11T00:00:00
       author: christruter
       comment: >-
@@ -3383,7 +3383,7 @@ databaseChangeLog:
                 'v58.2026-01-27T13:00:00'
               );
       rollback: # nothing to undo - these rows should not exist in v59
-      
+
   - changeSet:
       id: v59.2026-03-12T12:00:00
       author: wotbrew
