@@ -2,9 +2,37 @@ import type { Meta, StoryFn } from "@storybook/react";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
+import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 
 import { useMetabot } from "./use-metabot";
+
+// ============================================================================
+// Shared: inline chart component (independent SdkAdHocQuestion per message)
+// ============================================================================
+
+const InlineChart = ({ questionPath }: { questionPath: string }) => (
+  <div
+    style={{
+      height: 500,
+      width: "100%",
+      flexShrink: 0,
+      borderRadius: 8,
+      overflow: "hidden",
+      margin: "6px 0",
+    }}
+  >
+    <SdkAdHocQuestion
+      questionPath={questionPath}
+      title={false}
+      height="500px"
+      isSaveEnabled={false}
+    >
+      <SdkQuestionDefaultView height="500px" withChartTypeSelector />
+    </SdkAdHocQuestion>
+  </div>
+);
 
 // ============================================================================
 // Shared dark SaaS palette
@@ -159,6 +187,12 @@ const MessageList = ({
               {msg.name}
             </span>
           </div>
+        );
+      }
+
+      if (msg.type === "chart" && "questionPath" in msg) {
+        return (
+          <InlineChart key={msg.id} questionPath={msg.questionPath as string} />
         );
       }
 
@@ -1396,9 +1430,7 @@ const SlackDemo = () => {
                 alignItems: "center",
                 gap: 6,
                 background:
-                  activeChannel === ch.name
-                    ? sl.sidebarActive
-                    : "transparent",
+                  activeChannel === ch.name ? sl.sidebarActive : "transparent",
                 color:
                   activeChannel === ch.name
                     ? "#fff"
@@ -1411,11 +1443,7 @@ const SlackDemo = () => {
               }}
             >
               <span style={{ color: sl.sidebarTextMuted, fontSize: 14 }}>
-                {ch.isBot ? (
-                  <BotIcon size={14} />
-                ) : (
-                  "#"
-                )}
+                {ch.isBot ? <BotIcon size={14} /> : "#"}
               </span>
               {ch.name}
               {ch.unread && activeChannel !== ch.name && (
@@ -1588,6 +1616,15 @@ const SlackDemo = () => {
               );
             }
 
+            if (msg.type === "chart" && "questionPath" in msg) {
+              return (
+                <InlineChart
+                  key={msg.id}
+                  questionPath={msg.questionPath as string}
+                />
+              );
+            }
+
             const content =
               "message" in msg && msg.message
                 ? msg.message
@@ -1644,9 +1681,7 @@ const SlackDemo = () => {
                     >
                       {isUser ? "You" : "Metabot"}
                     </span>
-                    <span
-                      style={{ fontSize: 11, color: sl.textMuted }}
-                    >
+                    <span style={{ fontSize: 11, color: sl.textMuted }}>
                       {formatTime()}
                     </span>
                   </div>
@@ -1870,10 +1905,30 @@ const TeamsDemo = () => {
   ];
 
   const recentChats = [
-    { name: "Product Team", preview: "Let's review the sprint...", time: "2m", unread: true },
-    { name: "Metabot", preview: "Revenue is up 12.3%", time: "15m", isBot: true },
-    { name: "Design Review", preview: "Looks great!", time: "1h", unread: false },
-    { name: "Sarah Chen", preview: "Can you check the query?", time: "3h", unread: false },
+    {
+      name: "Product Team",
+      preview: "Let's review the sprint...",
+      time: "2m",
+      unread: true,
+    },
+    {
+      name: "Metabot",
+      preview: "Revenue is up 12.3%",
+      time: "15m",
+      isBot: true,
+    },
+    {
+      name: "Design Review",
+      preview: "Looks great!",
+      time: "1h",
+      unread: false,
+    },
+    {
+      name: "Sarah Chen",
+      preview: "Can you check the query?",
+      time: "3h",
+      unread: false,
+    },
   ];
 
   return (
@@ -1882,8 +1937,7 @@ const TeamsDemo = () => {
         display: "flex",
         width: "100%",
         height: "100vh",
-        fontFamily:
-          '"Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif',
+        fontFamily: '"Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif',
         background: tm.bg,
         color: tm.text,
       }}
@@ -2009,8 +2063,7 @@ const TeamsDemo = () => {
                 gap: 10,
                 padding: "8px 16px",
                 cursor: "pointer",
-                background:
-                  chat.isBot ? tm.sidebarActive : "transparent",
+                background: chat.isBot ? tm.sidebarActive : "transparent",
                 borderRadius: 4,
                 margin: "0 8px",
               }}
@@ -2030,11 +2083,7 @@ const TeamsDemo = () => {
                   fontWeight: 700,
                 }}
               >
-                {chat.isBot ? (
-                  <BotIcon size={18} />
-                ) : (
-                  chat.name[0]
-                )}
+                {chat.isBot ? <BotIcon size={18} /> : chat.name[0]}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
@@ -2053,9 +2102,7 @@ const TeamsDemo = () => {
                   >
                     {chat.name}
                   </span>
-                  <span
-                    style={{ fontSize: 11, color: tm.textMuted }}
-                  >
+                  <span style={{ fontSize: 11, color: tm.textMuted }}>
                     {chat.time}
                   </span>
                 </div>
@@ -2197,6 +2244,15 @@ const TeamsDemo = () => {
               );
             }
 
+            if (msg.type === "chart" && "questionPath" in msg) {
+              return (
+                <InlineChart
+                  key={msg.id}
+                  questionPath={msg.questionPath as string}
+                />
+              );
+            }
+
             const content =
               "message" in msg && msg.message
                 ? msg.message
@@ -2247,9 +2303,7 @@ const TeamsDemo = () => {
                     <span style={{ fontSize: 13, fontWeight: 700 }}>
                       {isUser ? "You" : "Metabot"}
                     </span>
-                    <span
-                      style={{ fontSize: 11, color: tm.textMuted }}
-                    >
+                    <span style={{ fontSize: 11, color: tm.textMuted }}>
                       {formatTime()}
                     </span>
                   </div>
