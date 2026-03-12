@@ -1,4 +1,5 @@
 import type { Metabase_Lib_Schema_Metadata_ColumnVisibilityType } from "cljs/metabase.lib.js";
+
 import type { RowValue } from "./dataset";
 import type { DimensionReference, FieldReference } from "./query";
 import type { Table, TableId } from "./table";

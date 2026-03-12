@@ -14,7 +14,6 @@ import type {
   ExcludeDateFilterParts,
   ExpressionClause,
   FilterClause,
-  FilterOperator,
   FilterParts,
   Filterable,
   NumberFilterParts,
