@@ -352,6 +352,8 @@
                   :target_entity_type :table}]
         (doseq [[method url params] [[:post "ee/replacement/check-replace-source" body]
                                      [:post "ee/replacement/replace-source" body]
+                                     [:post "ee/replacement/convert-card-to-transform" {:card_id 1}]
+                                     [:get  "ee/replacement/runs" nil]
                                      [:get  "ee/replacement/runs/1" nil]
                                      [:post "ee/replacement/runs/1/cancel" nil]]]
           (testing (str (name method) " " url)
@@ -365,6 +367,8 @@
     (mt/with-premium-features #{}
       (doseq [[method url] [[:post "ee/replacement/check-replace-source"]
                             [:post "ee/replacement/replace-source"]
+                            [:post "ee/replacement/convert-card-to-transform"]
+                            [:get  "ee/replacement/runs"]
                             [:get  "ee/replacement/runs/1"]
                             [:post "ee/replacement/runs/1/cancel"]]]
         (testing (str (name method) " " url)
