@@ -20,9 +20,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Detail Logging
 
-- [ ] **DETL-01**: For each SQL statement executed during a request, a DEBUG-level log line is emitted containing: request ID, full compiled SQL, parameter count and values, individual query execution time, and database ID
-- [ ] **DETL-02**: Detail log lines are only emitted when the analytics query logging preset is enabled
-- [ ] **DETL-03**: Detail log lines use Metabase's existing standard log format
+- [x] **DETL-01**: For each SQL statement executed during a request, a DEBUG-level log line is emitted containing: request ID, full compiled SQL, parameter count and values, individual query execution time, and database ID
+- [x] **DETL-02**: Detail log lines are only emitted when the analytics query logging preset is enabled
+- [x] **DETL-03**: Detail log lines use Metabase's existing standard log format
 
 ### Query Attribution
 
@@ -77,9 +77,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUMM-01 | Phase 1 | Complete |
 | SUMM-02 | Phase 1 | Complete |
 | SUMM-03 | Phase 1 | Complete |
-| DETL-01 | Phase 2 | Pending |
-| DETL-02 | Phase 2 | Pending |
-| DETL-03 | Phase 2 | Pending |
+| DETL-01 | Phase 2 | Complete |
+| DETL-02 | Phase 2 | Complete |
+| DETL-03 | Phase 2 | Complete |
 | ATTR-01 | Phase 1 | Complete |
 | ATTR-02 | Phase 1 | Complete |
 | ATTR-03 | Phase 1 | Complete |
