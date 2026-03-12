@@ -240,6 +240,7 @@
   (let [sections [(str "## Series: " series-name)
                   (when x_name (str "**X-axis**: " x_name))
                   (when y_name (str "**Y-axis**: " y_name))
+                  (str "**Data Points**: " category_count)
                   (str "**Categories**: " category_count)
                   (render-data-characteristics-note series-stats)
                   (when summary
