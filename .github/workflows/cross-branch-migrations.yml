@@ -158,8 +158,8 @@ jobs:
         ports:
           - "3306:3306"
         env:
-          - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
-          - MARIADB_DATABASE: mb_test
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MARIADB_DATABASE: mb_test
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
