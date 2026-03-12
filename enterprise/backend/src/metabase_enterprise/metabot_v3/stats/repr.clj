@@ -84,6 +84,27 @@
     :extreme "extreme"
     (name level)))
 
+;;; -------------------------------------------- Data Limits Note ---------------------------------------------------
+
+(defn- render-limits-note
+  "Render a note when data limits were applied during stats computation."
+  [{:keys [downsampled_series correlations_capped]}]
+  (let [parts (cond-> []
+                (seq downsampled_series)
+                (conj (let [entries (for [[name {:keys [original_count sampled_count]}] downsampled_series]
+                                      (str name " (" original_count " → " sampled_count " points)"))]
+                        (str "Data was downsampled for statistical analysis: "
+                             (str/join ", " entries)
+                             ". Results are based on a uniform sample of the full dataset.")))
+
+                correlations_capped
+                (conj (str "Cross-series correlations were limited to "
+                           (:max_correlated correlations_capped) " of "
+                           (:total_series correlations_capped)
+                           " series to keep computation tractable.")))]
+    (when (seq parts)
+      (str "**Data Limits Applied**: " (str/join " " parts)))))
+
 ;;; ----------------------------------------- Data Characteristics ---------------------------------------------------
 
 (defn- compute-data-characteristics
@@ -257,11 +278,12 @@
 (defn generate-categorical-representation
   "Generate markdown representation for categorical (bar, pie, funnel, etc.) stats."
   [{:keys [title display-type stats timeline-events]}]
-  (let [{:keys [series_count series correlations]} stats
+  (let [{:keys [series_count series correlations limits]} stats
         header (str "# Chart Analysis\n"
                     (when title (str "## Chart: " title "\n"))
                     "**Type**: Categorical" (when display-type (str " (" display-type ")")) "\n"
                     "**Series Count**: " series_count)
+        limits-note (when limits (render-limits-note limits))
         series-sections (str/join "\n\n"
                                   (for [[series-name s] series]
                                     (render-categorical-series series-name s)))
@@ -269,7 +291,7 @@
         events-section      (render-timeline-events timeline-events)]
     (str/join "\n\n"
               (remove str/blank?
-                      [header series-sections correlation-section events-section]))))
+                      [header limits-note series-sections correlation-section events-section]))))
 
 ;;; ------------------------------------------ Scatter Representation ------------------------------------------------
 
@@ -327,17 +349,18 @@
 (defn generate-scatter-representation
   "Generate markdown representation for scatter plot stats."
   [{:keys [title display-type stats timeline-events]}]
-  (let [{:keys [series_count series]} stats
+  (let [{:keys [series_count series limits]} stats
         header (str "# Chart Analysis\n"
                     (when title (str "## Chart: " title "\n"))
                     "**Type**: Scatter" (when display-type (str " (" display-type ")")) "\n"
                     "**Series Count**: " series_count)
+        limits-note (when limits (render-limits-note limits))
         series-sections (str/join "\n\n"
                                   (for [[series-name s] series]
                                     (render-scatter-series series-name s)))
         events-section (render-timeline-events timeline-events)]
     (str/join "\n\n"
-              (remove str/blank? [header series-sections events-section]))))
+              (remove str/blank? [header limits-note series-sections events-section]))))
 
 ;;; ----------------------------------------- Histogram Representation -----------------------------------------------
 
@@ -396,28 +419,30 @@
 (defn generate-histogram-representation
   "Generate markdown representation for histogram stats."
   [{:keys [title display-type stats timeline-events]}]
-  (let [{:keys [series_count series]} stats
+  (let [{:keys [series_count series limits]} stats
         header (str "# Chart Analysis\n"
                     (when title (str "## Chart: " title "\n"))
                     "**Type**: Histogram" (when display-type (str " (" display-type ")")) "\n"
                     "**Series Count**: " series_count)
+        limits-note (when limits (render-limits-note limits))
         series-sections (str/join "\n\n"
                                   (for [[series-name s] series]
                                     (render-histogram-series series-name s)))
         events-section (render-timeline-events timeline-events)]
     (str/join "\n\n"
-              (remove str/blank? [header series-sections events-section]))))
+              (remove str/blank? [header limits-note series-sections events-section]))))
 
 ;;; ----------------------------------------- Main Representation ----------------------------------------------------
 
 (defn generate-time-series-representation
   "Generate comprehensive markdown representation for time series stats."
   [{:keys [title display-type stats timeline-events]}]
-  (let [{:keys [series_count series correlations]} stats
+  (let [{:keys [series_count series correlations limits]} stats
         header (str "# Chart Analysis\n"
                     (when title (str "## Chart: " title "\n"))
                     "**Type**: Time Series" (when display-type (str " (" display-type ")")) "\n"
                     "**Series Count**: " series_count)
+        limits-note (when limits (render-limits-note limits))
         temporal-context (generate-temporal-context)
         series-sections (str/join "\n\n"
                                   (for [[name s] series]
@@ -427,6 +452,7 @@
     (str/join "\n\n"
               (remove str/blank?
                       [header
+                       limits-note
                        temporal-context
                        series-sections
                        correlation-section

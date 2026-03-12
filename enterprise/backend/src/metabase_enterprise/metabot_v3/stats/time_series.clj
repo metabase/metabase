@@ -294,8 +294,11 @@
   (let [series-stats (into {}
                            (for [[name {:keys [x_values y_values]}] series-data]
                              [name (compute-series-stats y_values x_values opts)]))
-        correlations (when (and (:deep? opts) (> (count series-data) 1))
-                       (compute-correlations series-data))]
+        correlation-series (if-let [max-k (:max-correlation-series opts)]
+                             (into {} (take max-k series-data))
+                             series-data)
+        correlations (when (and (:deep? opts) (> (count correlation-series) 1))
+                       (compute-correlations correlation-series))]
     (cond-> {:chart_type :time-series
              :series_count (count series-data)
              :series series-stats}

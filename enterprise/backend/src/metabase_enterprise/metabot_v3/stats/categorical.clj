@@ -52,8 +52,11 @@
                              [series-name (-> (compute-series-stats x_values y_values)
                                               (assoc :x_name (some-> x :name))
                                               (assoc :y_name (some-> y :name)))]))
-        correlations (when (and (:deep? opts) (> (count series-data) 1))
-                       (time-series/compute-correlations series-data))]
+        correlation-series (if-let [max-k (:max-correlation-series opts)]
+                             (into {} (take max-k series-data))
+                             series-data)
+        correlations (when (and (:deep? opts) (> (count correlation-series) 1))
+                       (time-series/compute-correlations correlation-series))]
     (cond-> {:chart_type   :categorical
              :series_count (count series-data)
              :series       series-stats}
