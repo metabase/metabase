@@ -489,7 +489,7 @@ export function getNodeFieldsLabelWithCount(fieldCount: number) {
   );
 }
 
-export function getNodeDataSourceEntry(
+export function getNodeSourceReplacementEntry(
   node: DependencyNode,
 ): SourceReplacementEntry | null {
   switch (node.type) {

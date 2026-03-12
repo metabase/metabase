@@ -4,6 +4,7 @@ import { t } from "ttag";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REPLACEMENT } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
   Center,
@@ -16,11 +17,11 @@ import {
 import type { DependencyNode } from "metabase-types/api";
 
 import {
-  getNodeDataSourceEntry,
   getNodeIcon,
   getNodeLabel,
   getNodeLink,
   getNodeLocationInfo,
+  getNodeSourceReplacementEntry,
 } from "../../../../utils";
 import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
 import { GraphExternalLink } from "../../GraphExternalLink";
@@ -35,10 +36,8 @@ type PanelHeaderProps = {
 export function PanelHeader({ node, onClose }: PanelHeaderProps) {
   const link = getNodeLink(node);
   const location = getNodeLocationInfo(node);
-  const sourceEntry = getNodeDataSourceEntry(node);
-  const canUserReplaceSources = useSelector(
-    PLUGIN_REPLACEMENT.canUserReplaceSources,
-  );
+  const sourceEntry = getNodeSourceReplacementEntry(node);
+  const isAdmin = useSelector(getUserIsAdmin);
   const [
     isReplaceModalOpened,
     { open: openReplaceModal, close: closeReplaceModal },
@@ -60,7 +59,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
           {link != null && (
             <GraphExternalLink label={link.label} url={link.url} />
           )}
-          {sourceEntry != null && canUserReplaceSources && (
+          {isAdmin && sourceEntry != null && PLUGIN_REPLACEMENT.isEnabled && (
             <Tooltip label={t`Find and replace`}>
               <ActionIcon
                 aria-label={t`Replace data source`}

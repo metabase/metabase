@@ -132,18 +132,20 @@ export {
 export {
   PLUGIN_TRANSFORMS,
   PLUGIN_TRANSFORMS_PYTHON,
-  PLUGIN_DEPENDENCIES,
   type TransformsPlugin,
   type PythonTransformEditorProps,
   type PythonTransformSourceSectionProps,
   type PythonTransformSourceValidationResult,
   type PythonTransformsPlugin,
+} from "./oss/transforms";
+export {
+  PLUGIN_DEPENDENCIES,
   type DependencyGraphPageContextType,
   type CheckDependenciesFormProps,
   type CheckDependenciesModalProps,
   type UseCheckDependenciesProps,
   type UseCheckDependenciesResult,
-} from "./oss/transforms";
+} from "./oss/dependencies";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
 export {
@@ -175,6 +177,7 @@ import { reinitialize as reinitializeContentVerification } from "./oss/content-v
 import { reinitialize as reinitializeCore } from "./oss/core";
 import { reinitialize as reinitializeDashcardMenu } from "./oss/dashcard-menu";
 import { reinitialize as reinitializeDatabase } from "./oss/database";
+import { reinitialize as reinitializeDependencies } from "./oss/dependencies";
 import { reinitialize as reinitializeEmbedding } from "./oss/embedding";
 import { reinitialize as reinitializeEmbeddingIframeSdk } from "./oss/embedding-iframe-sdk";
 import { reinitialize as reinitializeEmbeddingIframeSdkSetup } from "./oss/embedding-iframe-sdk-setup";
@@ -234,6 +237,7 @@ export function reinitialize() {
   reinitializeSnippets();
   reinitializeSupport();
   reinitializeTenants();
+  reinitializeDependencies();
   reinitializeTransforms();
   reinitializeUploadManagement();
   reinitializeWhitelabel();

@@ -28,6 +28,7 @@ import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_REPLACEMENT,
 } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
   Button,
@@ -82,9 +83,7 @@ const TableSectionBase = ({
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
-  const isReplacementEnabled = useSelector(
-    PLUGIN_REPLACEMENT.canUserReplaceSources,
-  );
+  const isAdmin = useSelector(getUserIsAdmin);
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
   const remoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
@@ -261,7 +260,7 @@ const TableSectionBase = ({
         >
           {t`Sync settings`}
         </Button>
-        {isReplacementEnabled && (
+        {isAdmin && PLUGIN_REPLACEMENT.isEnabled && (
           <Tooltip label={t`Find and replace`}>
             <Button
               p="sm"
