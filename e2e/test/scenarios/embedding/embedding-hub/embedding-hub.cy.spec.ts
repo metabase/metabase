@@ -962,23 +962,30 @@ describe("scenarios - embedding hub", () => {
         );
       });
 
-      cy.log("permissions graph should have sandboxed view-data");
       cy.request(
         "GET",
         `/api/permissions/graph/group/${ALL_EXTERNAL_USERS_GROUP_ID}`,
       ).should((response) => {
         const graph = response.body;
 
-        // [1] is for sample database, public schema.
         const permissions = graph.groups[ALL_EXTERNAL_USERS_GROUP_ID!][1];
         expect(permissions).to.exist;
 
-        const viewData = permissions["view-data"];
-        expect(viewData).to.exist;
-        expect(viewData["PUBLIC"][STATIC_ORDERS_ID]).to.equal("sandboxed");
-        expect(viewData["PUBLIC"][STATIC_PEOPLE_ID]).to.equal("sandboxed");
+        // deep.equal ensures only the selected tables have permissions —
+        // non-selected tables should be blocked (omitted from the response)
+        expect(permissions["view-data"]).to.deep.equal({
+          PUBLIC: {
+            [STATIC_ORDERS_ID]: "sandboxed",
+            [STATIC_PEOPLE_ID]: "sandboxed",
+          },
+        });
 
-        expect(permissions["create-queries"]).to.equal("query-builder");
+        expect(permissions["create-queries"]).to.deep.equal({
+          PUBLIC: {
+            [STATIC_ORDERS_ID]: "query-builder",
+            [STATIC_PEOPLE_ID]: "query-builder",
+          },
+        });
       });
 
       H.main()
