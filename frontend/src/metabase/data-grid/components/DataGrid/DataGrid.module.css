@@ -22,7 +22,7 @@
   flex-shrink: 0;
   position: sticky;
   left: 0;
-  z-index: 1;
+  z-index: 2;
 }
 
 .pinnedSection.withSeparator {
@@ -49,7 +49,7 @@
   flex-direction: row;
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 3;
   border-bottom: 1px solid var(--mb-color-border-subtle);
   /*
     HEADER_HEIGHT (36px) + HEADER_BORDER_SIZE (1px).
