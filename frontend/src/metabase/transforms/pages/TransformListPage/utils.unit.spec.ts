@@ -1,3 +1,5 @@
+import { getLibQuery } from "metabase/transforms/utils";
+import * as Lib from "metabase-lib";
 import type { TransformOwner } from "metabase-types/api";
 import {
   createMockTransform,
@@ -14,9 +16,6 @@ jest.mock("metabase/transforms/utils", () => ({
 jest.mock("metabase-lib", () => ({
   templateTags: jest.fn(),
 }));
-
-import { getLibQuery } from "metabase/transforms/utils";
-import * as Lib from "metabase-lib";
 
 const mockGetLibQuery = getLibQuery as jest.MockedFunction<typeof getLibQuery>;
 const mockTemplateTags = Lib.templateTags as jest.MockedFunction<
