@@ -30,7 +30,7 @@
 (defn normalize-metabot-id
   "Return the primary key for the metabot instance identified by `metabot-id`.
 
-  Returns nil, no entry can be found.
+  Returns nil if no entry can be found.
   The provided ID can be a UUID from [[metabot-config]] or an entity_id of a Metabot instance."
   [metabot-id]
   (t2/select-one-pk :model/Metabot :entity_id (get-in metabot-config [metabot-id :entity-id] metabot-id)))

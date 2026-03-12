@@ -175,7 +175,7 @@
       api/read-check))
 
 (defn card-query
-  "Return a query based on the model with ID `model-id`."
+  "Return a query based on the card with ID `card-id`."
   [card-id]
   (when-let [card (get-card card-id)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
@@ -184,7 +184,7 @@
                       (#{:question} (:type card)) (get :dataset-query))))))
 
 (defn metric-query
-  "Return a query based on the model with ID `model-id`."
+  "Return a query based on the metric with ID `metric-id`."
   [metric-id]
   (when-let [card (get-card metric-id)]
     (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
