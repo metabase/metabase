@@ -1,10 +1,15 @@
 import type { Meta, StoryFn } from "@storybook/react";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
-import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
+import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import {
+  CommonSdkStoryWrapper,
+  getStorybookSdkAuthConfigForUser,
+} from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
+import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import { useMetabot } from "./use-metabot";
 
@@ -21,6 +26,7 @@ const InlineChart = ({ questionPath }: { questionPath: string }) => (
       borderRadius: 8,
       overflow: "hidden",
       margin: "6px 0",
+      background: "var(--mb-color-background-secondary)",
     }}
   >
     <SdkAdHocQuestion
@@ -1274,6 +1280,59 @@ const AiBarDemo = () => {
 };
 
 // ============================================================================
+// Per-story SDK wrappers (dk only — sl/tm palettes not yet declared)
+// ============================================================================
+
+const makeSdkWrapper = (theme: ReturnType<typeof defineMetabaseTheme>) =>
+  function SdkWrapper(Story: StoryFn) {
+    const authConfig = useMemo(
+      () => getStorybookSdkAuthConfigForUser("admin"),
+      [],
+    );
+    return (
+      <ComponentProvider authConfig={authConfig} theme={theme}>
+        <Story />
+      </ComponentProvider>
+    );
+  };
+
+// Dark SaaS theme (Intercom / FloatingAIBar)
+const DkSdkWrapper = makeSdkWrapper(
+  defineMetabaseTheme({
+    fontFamily: "Inter",
+    fontSize: "14px",
+    colors: {
+      brand: dk.accent,
+      "text-primary": dk.text,
+      "text-secondary": dk.textSecondary,
+      "text-tertiary": dk.textMuted,
+      background: dk.surface,
+      "background-secondary": dk.surfaceRaised,
+      "background-hover": dk.surfaceHover,
+      "background-disabled": dk.border,
+      border: dk.border,
+      positive: dk.green,
+      negative: dk.red,
+    },
+    components: {
+      question: { backgroundColor: dk.surface },
+      table: {
+        cell: { backgroundColor: dk.surfaceRaised, textColor: dk.text },
+        idColumn: {
+          backgroundColor: dk.surfaceRaised,
+          textColor: dk.accentLight,
+        },
+      },
+      tooltip: {
+        backgroundColor: "#0B0D11",
+        textColor: dk.text,
+        secondaryTextColor: dk.textSecondary,
+      },
+    },
+  }),
+);
+
+// ============================================================================
 // Storybook exports
 // ============================================================================
 
@@ -1282,11 +1341,13 @@ export default {
   parameters: {
     layout: "fullscreen",
   },
-  decorators: [CommonSdkStoryWrapper],
 } satisfies Meta;
 
 export const Intercom: StoryFn = () => <IntercomDemo />;
+Intercom.decorators = [DkSdkWrapper];
+
 export const FloatingAIBar: StoryFn = () => <AiBarDemo />;
+FloatingAIBar.decorators = [DkSdkWrapper];
 
 // ============================================================================
 // Slack palette
@@ -1878,6 +1939,77 @@ const tm = {
   compose: "#323232",
   composeBorder: "#5B5FC7",
 };
+
+// ============================================================================
+// Slack + Teams SDK wrappers (sl/tm palettes now available)
+// ============================================================================
+
+// Slack dark theme
+const SlackSdkWrapper = makeSdkWrapper(
+  defineMetabaseTheme({
+    fontFamily: '"Lato", "Noto Sans", sans-serif',
+    fontSize: "14px",
+    colors: {
+      brand: sl.link,
+      "text-primary": sl.text,
+      "text-secondary": sl.textSecondary,
+      "text-tertiary": sl.textMuted,
+      background: sl.surface,
+      "background-secondary": sl.surfaceRaised,
+      "background-hover": sl.surfaceRaised,
+      "background-disabled": sl.border,
+      border: sl.border,
+      positive: sl.greenLight,
+      negative: sl.red,
+    },
+    components: {
+      question: { backgroundColor: sl.surface },
+      table: {
+        cell: { backgroundColor: sl.surfaceRaised, textColor: sl.text },
+        idColumn: { backgroundColor: sl.surfaceRaised, textColor: sl.link },
+      },
+      tooltip: {
+        backgroundColor: sl.bg,
+        textColor: sl.text,
+        secondaryTextColor: sl.textSecondary,
+      },
+    },
+  }),
+);
+
+// Microsoft Teams dark theme
+const TeamsSdkWrapper = makeSdkWrapper(
+  defineMetabaseTheme({
+    fontFamily: '"Segoe UI", sans-serif',
+    fontSize: "14px",
+    colors: {
+      brand: tm.accentLight,
+      "text-primary": tm.text,
+      "text-secondary": tm.textSecondary,
+      "text-tertiary": tm.textMuted,
+      background: tm.surface,
+      "background-secondary": tm.surfaceRaised,
+      "background-hover": tm.sidebarHover,
+      "background-disabled": tm.border,
+      border: tm.border,
+    },
+    components: {
+      question: { backgroundColor: tm.surface },
+      table: {
+        cell: { backgroundColor: tm.surfaceRaised, textColor: tm.text },
+        idColumn: {
+          backgroundColor: tm.surfaceRaised,
+          textColor: tm.accentLight,
+        },
+      },
+      tooltip: {
+        backgroundColor: tm.sidebar,
+        textColor: tm.text,
+        secondaryTextColor: tm.textSecondary,
+      },
+    },
+  }),
+);
 
 // ============================================================================
 // STORY 4: Microsoft Teams-style layout
@@ -2486,4 +2618,6 @@ const TeamsDemo = () => {
 };
 
 export const Slack: StoryFn = () => <SlackDemo />;
+Slack.decorators = [SlackSdkWrapper];
 export const MicrosoftTeams: StoryFn = () => <TeamsDemo />;
+MicrosoftTeams.decorators = [TeamsSdkWrapper];
