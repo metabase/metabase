@@ -78,7 +78,15 @@
                         (map #(assoc % :level :debug))
                         (sort-by :name)
                         (vec))
-               (as-> $ (when (empty? $) (log/error "Serialization preset is empty"))))}])
+               (as-> $ (when (empty? $) (log/error "Serialization preset is empty"))))}
+   {:id :analytics-query-logging
+    :display_name (tru "Analytics query logging")
+    :loggers (doto (->> (loggers-under "metabase.driver.sql-jdbc.execute")
+                        (filter map?)
+                        (map #(assoc % :level :debug))
+                        (sort-by :name)
+                        (vec))
+               (as-> $ (when (empty? $) (log/error "Analytics query logging preset is empty"))))}])
 
 (api.macros/defendpoint :get "/presets" :- [:sequential
                                             [:map
