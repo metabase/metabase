@@ -54,7 +54,6 @@ export const getIncrementalSettingsFromTransform = (
   return {
     incremental: isIncremental,
     sourceStrategy: "checkpoint",
-    // Convert number to string for Mantine Select
     checkpointFilterFieldId:
       isIncremental && checkpointFilterFieldId != null
         ? String(checkpointFilterFieldId)
