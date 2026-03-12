@@ -11,8 +11,6 @@ const sharedModules = ["common", "querying", "visualizations"];
 
 const featureModules = ["dashboard", "query_builder", "admin", "reference"];
 
-const _appModules = ["app", "home", "nav"];
-
 const elements = [
   { type: "lib/types", pattern: "frontend/src/metabase-types/*/**" },
   { type: "basic/mlv2", pattern: "frontend/src/metabase-lib/*/**" },
@@ -20,8 +18,9 @@ const elements = [
   ...basicModules.map((name) => createElement({ type: "basic", name })),
   ...sharedModules.map((name) => createElement({ type: "shared", name })),
   ...featureModules.map((name) => createElement({ type: "feature", name })),
+  { type: "app/enterprise", pattern: "metabase-enterprise/**" },
   { type: "app/misc", pattern: "frontend/src/metabase/*.*" },
-  { type: "other", pattern: "frontend/src/*/**" },
+  { type: "shared/other", pattern: "frontend/src/*/**" },
 ];
 
 const rules = [
@@ -39,18 +38,10 @@ const rules = [
     allow: ["lib/*"],
     message: "Basic modules can only import from lib modules",
   },
-  // {
-  //   from: ["lib/lib"],
-  //   allow: ["basic/mlv2"],
-  // },
   {
     from: ["basic/ui"],
     allow: ["lib/lib"],
   },
-  // {
-  //   from: ["shared/querying"],
-  //   allow: ["feature/query_builder"],
-  // },
   {
     from: ["shared/*"],
     allow: ["lib/*", "basic/*", "shared/*"],
@@ -63,27 +54,8 @@ const rules = [
   },
   {
     from: ["app/*"],
-    allow: ["*"],
-  },
-  {
-    from: ["other"],
-    allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*", "other"],
-  },
-  {
-    from: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
-    allow: ["other"],
+    allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
   },
 ];
 
-const shouldEnforce = true; // FIXME
-// process.env.CHECK_MODULE_BOUNDARIES === "true";
-
-module.exports = shouldEnforce // eslint-disable-line import/no-commonjs
-  ? {
-      elements,
-      rules,
-    }
-  : {
-      elements: [],
-      rules: [],
-    };
+export { elements, rules };

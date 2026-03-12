@@ -10,92 +10,110 @@
  *   node scripts/module-graph.mjs > module-boundaries.svg
  */
 
-import { readdirSync } from "fs";
+import { readdirSync, existsSync } from "fs";
 import { execSync } from "child_process";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import { elements } from "../frontend/lint/module-boundaries.mjs";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const tierColors = {
+  lib: "#e8f5e9",
+  basic: "#e3f2fd",
+  shared: "#fff3e0",
+  feature: "#fce4ec",
+  app: "#f3e5f5",
+};
 
 // ---------------------------------------------------------------------------
-// Configuration
+// Derive configuration from boundaries
 // ---------------------------------------------------------------------------
+
+function getTier(type) {
+  const idx = type.indexOf("/");
+  return idx >= 0 ? type.slice(0, idx) : type;
+}
+
+function getName(type) {
+  const idx = type.indexOf("/");
+  return idx >= 0 ? type.slice(idx + 1) : type;
+}
+
+/** Extract the collapsed directory path from an element pattern. */
+function patternToDir(pattern) {
+  return pattern
+    .replace(/\/\*\.\*$/, "/")
+    .replace(/\/\*\*$/, "/")
+    .replace(/\*\//, "");
+}
+
+/** Elements eligible for graph display (exclude catch-alls) */
+const graphElements = elements.filter(
+  (e) => e.type !== "other" && e.type !== "app/misc",
+);
 
 /** Map collapsed directory paths → short module names */
-const moduleNames = {
-  "frontend/src/metabase-types/": "types",
-  "frontend/src/metabase-lib/": "mlv2",
-  "frontend/src/metabase/lib/": "lib",
-  "frontend/src/metabase/ui/": "ui",
-  "frontend/src/metabase/api/": "api",
-  "frontend/src/metabase/common/": "common",
-  "frontend/src/metabase/querying/": "querying",
-  "frontend/src/metabase/visualizations/": "visualizations",
-  "frontend/src/metabase/dashboard/": "dashboard",
-  "frontend/src/metabase/query_builder/": "query_builder",
-  "frontend/src/metabase/admin/": "admin",
-  "frontend/src/metabase/reference/": "reference",
-};
+const moduleNames = {};
+for (const el of graphElements) {
+  moduleNames[patternToDir(el.pattern)] = getName(el.type);
+}
 
-const tierOrder = ["lib", "basic", "shared", "feature"];
+/** Tier ordering for the graph layout (feature at top, lib at bottom) */
+const tierOrder = [...new Set(graphElements.map((e) => getTier(e.type)))].reverse();
 
-const tiers = {
-  lib: { label: "lib", color: "#e8f5e9", modules: ["types", "lib"] },
-  basic: { label: "basic", color: "#e3f2fd", modules: ["mlv2", "ui", "api"] },
-  shared: {
-    label: "shared",
-    color: "#fff3e0",
-    modules: ["common", "querying", "visualizations"],
-  },
-  feature: {
-    label: "feature",
-    color: "#fce4ec",
-    modules: ["dashboard", "query_builder", "admin", "reference"],
-  },
-  // app tier not yet implemented in linter
-  // app: { label: "app", color: "#f3e5f5", modules: ["home", "nav"] },
-};
+/** Tier definitions: label, color, and module names */
+const tiers = {};
+for (const el of graphElements) {
+  const tier = getTier(el.type);
+  if (!tiers[tier]) {
+    tiers[tier] = {
+      label: tier,
+      color: tierColors[tier] || "#ffffff",
+      modules: [],
+    };
+  }
+  tiers[tier].modules.push(getName(el.type));
+}
 
-/** Directories already assigned to a tier (including app, which isn't linted yet) */
-const namedDirs = new Set([
-  "lib",
-  "ui",
-  "api",
-  "common",
-  "querying",
-  "visualizations",
-  "dashboard",
-  "query_builder",
-  "admin",
-  "reference",
-  "app",
-  "home",
-  "nav",
-]);
+/** Directories already assigned to a tier */
+const namedDirs = new Set();
+for (const el of elements) {
+  if (el.type === "other" || el.type === "app/misc") continue;
+  const match = el.pattern.match(/^frontend\/src\/metabase\/(\w+)\//);
+  if (match) namedDirs.add(match[1]);
+}
 
 /** Invisible vertical spines that anchor the horizontal layout */
 const spines = [
-  ["types", "mlv2", "querying", "query_builder"],
-  ["lib", "api", "visualizations", "reference"],
+  ["dashboard", "common", "mlv2", "types"],
+  ["query_builder", "querying", "ui", "lib"],
+  ["admin", "visualizations", "api"],
+  ["reference"],
 ];
 
 // ---------------------------------------------------------------------------
 // Run depcruise & parse JSON
 // ---------------------------------------------------------------------------
 
-const moduleDirs = [
-  "frontend/src/metabase/lib",
-  "frontend/src/metabase/ui",
-  "frontend/src/metabase/api",
-  "frontend/src/metabase/common",
-  "frontend/src/metabase/querying",
-  "frontend/src/metabase/visualizations",
-  "frontend/src/metabase/dashboard",
-  "frontend/src/metabase/query_builder",
-  "frontend/src/metabase/admin",
-  "frontend/src/metabase/reference",
-  "frontend/src/metabase-types",
-  "frontend/src/metabase-lib",
-];
+const moduleDirs = graphElements
+  .map((el) => patternToDir(el.pattern).replace(/\/$/, ""))
+  .filter((dir) => existsSync(dir));
 
-const collapsePattern =
-  "^frontend/src/(metabase-types|metabase-lib)/|^frontend/src/metabase/([^/]+)/";
+/** Build collapse pattern from elements */
+function buildCollapsePattern() {
+  const topLevel = [];
+  for (const el of graphElements) {
+    const m = el.pattern.match(/^frontend\/src\/([\w-]+)\/?\*\/?\*\*$/);
+    if (m) topLevel.push(m[1]);
+  }
+  if (topLevel.length > 0) {
+    return `^frontend/src/(${topLevel.join("|")})/|^frontend/src/metabase/([^/]+)/`;
+  }
+  return `^frontend/src/metabase/([^/]+)/`;
+}
+
+const collapsePattern = buildCollapsePattern();
 
 const depcruiseCmd = [
   "bunx depcruise",
@@ -208,7 +226,7 @@ function buildDot() {
   emit('  newrank="true"');
   emit('  splines="line"');
   emit('  outputorder="edgesfirst"');
-  emit('  nodesep="0.4"');
+  emit('  nodesep="0.8"');
   emit('  ranksep="1.0"');
   emit('  pad="0.3"');
   emit('  fontname="Helvetica"');
@@ -255,12 +273,28 @@ function buildDot() {
   emit("");
 
   // rank=same subgraphs — one row per tier
+  // Order modules by their spine column for consistent horizontal placement
+  const spineColumn = {};
+  for (let i = 0; i < spines.length; i++) {
+    for (const mod of spines[i]) {
+      spineColumn[mod] = i;
+    }
+  }
+
   for (const tierId of tierOrder) {
     const { modules } = tiers[tierId];
+    const ordered = [...modules].sort(
+      (a, b) => (spineColumn[a] ?? 999) - (spineColumn[b] ?? 999),
+    );
     emit(`  subgraph tier_${tierId} {`);
     emit('    rank="same"');
-    for (const mod of modules) {
+    for (const mod of ordered) {
       emit(`    "${mod}"`);
+    }
+    // Invisible chain to enforce even horizontal spacing
+    if (ordered.length >= 2) {
+      const chain = ordered.map((m) => `"${m}"`).join(" -> ");
+      emit(`    ${chain} [style="invis" weight="1"]`);
     }
     emit("  }");
     emit("");
@@ -319,14 +353,15 @@ function postProcessSvg(svg) {
   const injected = [];
 
   // --- Violation arrow in legend ---
-  // Find the legend_feature node (last tier box) to position below it
-  const featureMatch = svg.match(
-    /<title>legend_feature<\/title>\s*<path[^>]*d="M([\d.]+),([\d.-]+)C/,
+  // Find the last tier legend node to position below it
+  const lastTier = tierOrder[tierOrder.length - 1];
+  const legendMatch = svg.match(
+    new RegExp(
+      `<title>legend_${lastTier}<\\/title>\\s*<path[^>]*d="M([\\d.]+),([\\d.-]+)C`,
+    ),
   );
-  if (featureMatch) {
-    // legend_feature top-left corner; the node bottom is ~29px below
-    const nodeBottom = parseFloat(featureMatch[2]) + 29;
-    // Center the arrow on the legend (legend is roughly x=24..96)
+  if (legendMatch) {
+    const nodeBottom = parseFloat(legendMatch[2]) + 29;
     const arrowX1 = 32;
     const arrowX2 = 72;
     const arrowY = nodeBottom + 30;
@@ -340,7 +375,6 @@ function postProcessSvg(svg) {
   }
 
   // --- "Other modules" sidebar ---
-  // Find the graph's internal bounding box from the background polygon
   const polyMatch = svg.match(
     /id="graph0"[^>]*>[\s\S]*?<polygon[^>]*points="([\d.,-\s]+)"/,
   );
