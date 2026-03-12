@@ -780,12 +780,20 @@
 
 (defn def->ts
   "Convert a def with schema metadata into TypeScript. Dispatches to fn->ts for functions
-   and const->ts for constants."
+   and const->ts for constants. Returns nil if the schema cannot be processed (e.g., contains
+   [:fn] validators that require SCI)."
   [defmeta]
-  (indent-ts
-   (if (function-schema? (:schema defmeta))
-     (fn->ts defmeta)
-     (const->ts defmeta))))
+  (try
+    (indent-ts
+     (if (function-schema? (:schema defmeta))
+       (fn->ts defmeta)
+       (const->ts defmeta)))
+    (catch clojure.lang.ExceptionInfo e
+      (if (= :malli.core/sci-not-available (:type (ex-data e)))
+        (do (log/warn "Skipping TypeScript generation for" (:name defmeta)
+                      "- schema contains [:fn] validators requiring SCI")
+            nil)
+        (throw e)))))
 
 (defn- registry-schema?
   "Check if a keyword refers to a valid schema in the Malli registry."
@@ -863,9 +871,9 @@
   ([defs shared-types ns-refs]
    (binding [*registry-refs* (atom #{})]
      (let [fn-defs (->> (vals defs)
-                        (map (fn [defmeta]
-                               (binding [*current-def* (name (:name defmeta))]
-                                 (def->ts defmeta))))
+                        (keep (fn [defmeta]
+                                (binding [*current-def* (name (:name defmeta))]
+                                  (def->ts defmeta))))
                         (str/join "\n\n"))
            ;; Use pre-collected refs from first pass, filter out shared types
            local-refs (remove shared-types ns-refs)
