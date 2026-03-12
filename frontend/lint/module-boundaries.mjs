@@ -18,7 +18,6 @@ const elements = [
   ...basicModules.map((name) => createElement({ type: "basic", name })),
   ...sharedModules.map((name) => createElement({ type: "shared", name })),
   ...featureModules.map((name) => createElement({ type: "feature", name })),
-  { type: "app/enterprise", pattern: "metabase-enterprise/**" },
   { type: "app/misc", pattern: "frontend/src/metabase/*.*" },
   { type: "shared/other", pattern: "frontend/src/*/**" },
 ];
