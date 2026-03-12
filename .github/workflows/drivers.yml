@@ -563,31 +563,25 @@ jobs:
         version:
           - name: MariaDB 10.6
             junit-name: be-tests-mariadb-10-6-ee
-            image: mariadb:10.6
-            image-args: >-
-              --collation-server=utf8mb4_unicode_ci
+            image: image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
           - name: MariaDB Latest
             junit-name: be-tests-mariadb-latest-ee
             image: mariadb:latest
-            image-args: >-
-              --collation-server=utf8mb4_unicode_ci
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
           - name: MySQL 8.4
             junit-name: be-tests-mysql-8-4-ee
             image: mysql:8.4
-            image-args: ''
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
           - name: MySQL Latest
             junit-name: be-tests-mysql-latest-ee
             image: mysql:latest
-            image-args: ''
             env:
               enable-ssl-tests: 'true'
               enable-aws-iam-tests: 'true'
@@ -604,15 +598,11 @@ jobs:
     services:
       mysql:
         image: ${{ matrix.version.image }}
-        options: >-
-          -e MYSQL_ALLOW_EMPTY_PASSWORD=true
-          -e MYSQL_DATABASE=mb_test
-          --entrypoint sh
         ports:
           - "3306:3306"
-        # with entrypoint `sh` we're effectively executing 'sh -c [mysqld/mariadbd] $ARGS'
         env:
-          ARGS: '${{ matrix.version.image-args }}'
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: mb_test
 
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests

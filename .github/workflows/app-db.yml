@@ -22,7 +22,7 @@ jobs:
         version:
           - name: MariaDB 10.6
             junit-name: be-tests-mariadb-10-6-ee
-            image: mariadb:10.6
+            image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
             env:
               enable-ssl-tests: 'false'
           - name: MariaDB Latest
@@ -54,16 +54,11 @@ jobs:
     services:
       mysql:
         image: ${{ matrix.version.image }}
-        options: >-
-          -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=true
-          -e MARIADB_DATABASE=mb_test
-          --entrypoint sh
         ports:
           - "3306:3306"
-        # with entrypoint `sh` we're effectively executing 'sh -c mariadbd $ARGS'
         env:
-          ARGS: >-
-            --collation-server=utf8mb4_unicode_ci
+          - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          - MARIADB_DATABASE: mb_test
 
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
