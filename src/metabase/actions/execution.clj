@@ -20,7 +20,6 @@
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -45,7 +44,7 @@
                            (assoc :parameters parameters))]
         (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
         (binding [qp.perms/*card-id* model-id]
-          (qp.writeback/execute-write-query! query)))
+          (qp/execute-write-query! query)))
       (catch Throwable e
         (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
           (api/throw-403 e)

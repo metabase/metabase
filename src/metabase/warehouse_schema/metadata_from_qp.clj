@@ -7,7 +7,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.query-processor.core :as qp]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
