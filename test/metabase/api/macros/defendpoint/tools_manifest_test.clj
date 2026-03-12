@@ -8,8 +8,6 @@
    [metabase.util.malli.registry :as mr])
   (:import (clojure.lang ExceptionInfo)))
 
-;;; ------------------------------------------------- Annotation inference ------------------------------------------------
-
 (deftest ^:parallel infer-annotations-test
   (testing "GET defaults"
     (is (= {:readOnlyHint   true
@@ -31,8 +29,6 @@
             :idempotentHint true}
            (tools-manifest/infer-annotations :post {:read-only? true :idempotent? true})))))
 
-;;; ------------------------------------------- Tool description rewriting ------------------------------------------------
-
 (deftest ^:parallel rewrite-tool-descriptions-test
   (testing "tool/description replaces description in JSON schema output"
     (let [rewritten (tools-manifest/rewrite-tool-descriptions
@@ -47,8 +43,6 @@
           jss       (mjs/transform rewritten)]
       (is (= "Internal ID"
              (get-in jss [:properties :id :description]))))))
-
-;;; ------------------------------------------- Nested $ref sanitization ------------------------------------------------
 
 (mr/def ::ref-target-a [:enum "x" "y"])
 (mr/def ::ref-target-b [:map [:nested ::ref-target-a]])
@@ -83,8 +77,6 @@
              x)
            def-val))))))
 
-;;; ------------------------------------------- endpoint->tool-definition -------------------------------------------------
-
 (deftest ^:parallel endpoint->tool-definition-test
   (testing "Basic endpoint conversion"
     (binding [tools-manifest/*definitions* (atom (sorted-map))]
@@ -109,8 +101,6 @@
                 :annotations    {:readOnlyHint   true
                                  :idempotentHint true}}
                result))))))
-
-;;; ---------------------------------------------- Integration test -------------------------------------------------------
 
 ;; This test verifies the full pipeline with actual defendpoint endpoints.
 ;; It requires the agent API namespace to be loaded.

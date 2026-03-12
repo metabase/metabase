@@ -19,8 +19,6 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------ Description rewriting -------------------------------------------------
-
 (defn rewrite-tool-descriptions
   "Walk a malli schema and replace `:description` with `:tool/description` where present.
   This way `malli.json-schema/transform` picks up tool-facing text without affecting OpenAPI."
@@ -37,8 +35,6 @@
          (if (seq children)
            (mc/into-schema (mc/type node) props children (mc/options node))
            node))))))
-
-;;; ------------------------------------------------ JSON Schema generation ------------------------------------------------
 
 (def ^:dynamic *definitions*
   "Dynamic var bound to an atom collecting `$defs` during manifest generation."
@@ -102,8 +98,6 @@
                  (merge existing sanitized)))))
     (walk-sanitize-refs (dissoc jss :definitions))))
 
-;;; ------------------------------------------------ Annotation inference --------------------------------------------------
-
 (def ^:private annotation-key-mapping
   {:read-only?   :readOnlyHint
    :destructive? :destructiveHint
@@ -132,8 +126,6 @@
                                  [mcp-key v])))
                        explicit-annotations)]
     (merge defaults explicit)))
-
-;;; ------------------------------------------------ Schema merging --------------------------------------------------------
 
 (defn- schema->json-schema
   "Convert a malli schema to JSON Schema, collecting definitions."
@@ -173,8 +165,6 @@
       (seq all-props)                    (cond-> {:type "object" :properties all-props}
                                            (seq all-req) (assoc :required all-req)))))
 
-;;; ------------------------------------------------ Response schema -------------------------------------------------------
-
 (defn- response-schema->json-schema
   "Convert an endpoint's response schema to JSON Schema for the tools manifest."
   [response-schema]
@@ -183,8 +173,6 @@
           content  (or (-> resolved mc/properties :openapi/response-schema)
                        response-schema)]
       (mjs-collect-tool-definitions content))))
-
-;;; ------------------------------------------------ endpoint->tool-definition ---------------------------------------------
 
 (defn- route-path->endpoint-path
   "Convert Clout-style route path (`:id`) to curly-brace path (`{id}`)."
@@ -214,8 +202,6 @@
       resp-schema       (assoc :responseSchema resp-schema)
       (seq annotations) (assoc :annotations annotations)
       task-support      (assoc :execution {:taskSupport (name task-support)}))))
-
-;;; ------------------------------------------------ Top-level generation --------------------------------------------------
 
 (defn check-tool-uniqueness
   "Throws if `tools` contains duplicate `:name` values. The exception message lists each
