@@ -651,6 +651,7 @@
                 ;; "count not supported on this type: Symbol" in Eastwood's analyzer
                 metabase.query-processor.parameters.temporal-units-test
                 ;; Syntax error compiling fn* in Eastwood's analyzer
+                metabase.driver.sql.references-test
                 metabase.sql-tools.macaw.references-test
                 ;; Method too large for Eastwood's analyzer
                 metabase.sql-tools.sqlglot.references-test]}}
