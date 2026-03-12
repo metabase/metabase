@@ -41,10 +41,10 @@ Plans:
   1. When detail logging is enabled, each SQL statement executed during a request produces a DEBUG log line containing full compiled SQL, parameter values, individual execution time, and database ID
   2. Detail log lines share the same correlation ID as the request's summary line, so grepping the request ID shows both summary and detail together
   3. Detail log lines use the standard Metabase log format
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md -- Per-statement DEBUG logging in JDBC execute layer with timing and correlation
 
 ### Phase 3: Logging Presets
 **Goal**: Admins can enable and disable detailed query logging at runtime through the existing Metabase admin UI, without restart
