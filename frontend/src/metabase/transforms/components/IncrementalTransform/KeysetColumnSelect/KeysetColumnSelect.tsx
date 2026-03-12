@@ -19,6 +19,8 @@ export function getSourceFieldOptions(
   query: Lib.Query,
   opts?: { labelPrefix?: string; seenFieldIds?: Set<number> },
 ): Array<SelectOption> {
+  // Stage 0 is the source stage (raw table data). Keyset pagination requires columns from the
+  // actual source table; later stages may have aggregations, joins, or expressions instead.
   const stageIndex = 0;
   const filterableColumns = Lib.filterableColumns(query, stageIndex);
 
