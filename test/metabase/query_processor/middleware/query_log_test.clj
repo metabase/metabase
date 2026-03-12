@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.config.core :as config]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.query-log :as qp.middleware.query-log]
+   [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]))
 
 (defn- mock-qp
@@ -149,4 +151,73 @@
         (is (= 2 (count messages))
             "Should have exactly 2 summary lines")
         (is (= #{"concurrent-req-A" "concurrent-req-B"} (set req-ids))
+            "Each request should have its own request-id")))))
+
+;;; ------------------------------------------------ Integration Tests ------------------------------------------------
+
+(deftest integration-full-qp-pipeline-test
+  (testing "Full QP pipeline emits summary with correct fields for an ad-hoc userland query"
+    (log.capture/with-log-messages-for-level [messages [metabase.query-processor.middleware.query-log :info]]
+      (qp/process-query
+       (qp/userland-query
+        (mt/mbql-query venues {:limit 5})
+        {:executed-by (mt/user->id :rasta)
+         :context     :ad-hoc}))
+      (let [msgs (messages)]
+        (is (= 1 (count msgs))
+            "Exactly one summary INFO line should be emitted")
+        (let [msg (:message (first msgs))]
+          (is (str/includes? msg "Query completed ::")
+              "Should start with the summary prefix")
+          (is (re-find #"request-id=\S+" msg)
+              "Should contain a request-id")
+          (is (str/includes? msg (str "database=" (mt/id)))
+              "Should contain the correct database-id")
+          (is (re-find #"user=\d+" msg)
+              "Should contain a user-id")
+          (is (str/includes? msg "context=ad-hoc")
+              "Should contain context=ad-hoc")
+          (is (re-find #"time=\d+ms" msg)
+              "Should contain a time value")
+          (is (re-find #"rows=\d+" msg)
+              "Should contain a row count"))))))
+
+(deftest integration-card-id-test
+  (testing "Full QP pipeline includes card-id in summary when running a saved question"
+    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 3})}]
+      (log.capture/with-log-messages-for-level [messages [metabase.query-processor.middleware.query-log :info]]
+        (qp/process-query
+         (qp/userland-query
+          (mt/mbql-query venues {:limit 3})
+          {:executed-by (mt/user->id :rasta)
+           :context     :question
+           :card-id     (:id card)}))
+        (let [msgs (messages)]
+          (is (= 1 (count msgs)))
+          (is (str/includes? (:message (first msgs)) (str "card=" (:id card)))
+              "Should contain card-id"))))))
+
+(deftest integration-concurrent-isolation-test
+  (testing "Two concurrent QP queries produce summary lines with distinct request-ids (CORR-02)"
+    (let [all-messages (atom [])
+          run-query    (fn [req-id]
+                         (binding [config/*request-id* req-id]
+                           (log.capture/with-log-messages-for-level [messages [metabase.query-processor.middleware.query-log :info]]
+                             (qp/process-query
+                              (qp/userland-query
+                               (mt/mbql-query venues {:limit 2})
+                               {:executed-by (mt/user->id :rasta)
+                                :context     :ad-hoc}))
+                             (swap! all-messages into (messages)))))
+          f1 (future (run-query "integration-req-A"))
+          f2 (future (run-query "integration-req-B"))]
+      @f1
+      @f2
+      (let [messages @all-messages
+            req-ids  (map (fn [m]
+                            (second (re-find #"request-id=(\S+)" (:message m))))
+                          messages)]
+        (is (= 2 (count messages))
+            "Should have exactly 2 summary lines")
+        (is (= #{"integration-req-A" "integration-req-B"} (set req-ids))
             "Each request should have its own request-id")))))
