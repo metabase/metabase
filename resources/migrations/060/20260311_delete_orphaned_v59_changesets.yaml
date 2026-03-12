@@ -1,0 +1,40 @@
+## Clean up old v59 changeset rows from databasechangelog left behind when
+## migrations were moved to v60. These stale rows block downgrade to older versions.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+  - changeSet:
+      id: v60.2026-03-11T00:00:00
+      author: christruter
+      comment: >-
+        Clean up old v59 changeset rows from databasechangelog left behind when
+        migrations were moved to v60. These stale rows block downgrade to older versions.
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM ${databasechangelog.name} WHERE id IN (
+                'v59.2026-02-09T12:00:00',
+                'v59.2026-02-09T12:00:01',
+                'v59.2026-02-09T12:00:02',
+                'v59.2026-02-09T12:00:03',
+                'v59.2026-02-09T12:00:04',
+                'v59.2026-02-09T12:00:05',
+                'v59.2026-02-09T12:00:06',
+                'v59.2026-02-09T12:00:07',
+                'v59.2026-02-09T12:00:08',
+                'v59.2026-02-09T12:00:09',
+                'v59.2026-02-09T12:00:10',
+                'v59.2026-02-09T12:00:11',
+                'v59.2026-02-09T12:00:12',
+                'v59.2026-02-09T12:00:13',
+                'v59.2026-02-09T12:00:14',
+                'v59.2026-02-16T12:00:00',
+                'v59.2026-02-17T12:00:00',
+                'v59.2026-02-17T12:00:01',
+                'v59.2026-02-17T12:01:02',
+                'v59.2026-02-17T12:01:03',
+                'v59.2026-02-17T12:01:04',
+                'v59.2026-03-03T12:00:00',
+                'v59.2026-03-06T00:00:00'
+              );
+      rollback: # nothing to undo - these rows should not exist in v60
