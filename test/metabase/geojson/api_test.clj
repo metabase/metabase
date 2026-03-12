@@ -9,7 +9,7 @@
    [metabase.util :as u]
    [ring.adapter.jetty :as ring-jetty])
   (:import
-   (java.net InetAddress URI)
+   (java.net InetAddress)
    (org.apache.http.impl.conn InMemoryDnsResolver)
    (org.eclipse.jetty.server Server)))
 
