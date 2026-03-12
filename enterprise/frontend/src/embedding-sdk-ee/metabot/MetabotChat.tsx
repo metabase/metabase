@@ -1,3 +1,4 @@
+import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import type { LegacyRef } from "react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -5,6 +6,9 @@ import { t } from "ttag";
 
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { ResizeWrapper } from "embedding-sdk-bundle/components/private/ResizeWrapper";
+import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
+import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
+import { InteractiveQuestion } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
 import { METABOT_CHAT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotChat/MetabotChat";
 import type {
   MetabotChatProps,
@@ -25,7 +29,11 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
-import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
+import {
+  AgentErrorMessage,
+  AgentMessage,
+  UserMessage,
+} from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
@@ -53,12 +61,48 @@ function ChatEmptyState() {
 }
 
 /**
+ * Inline chart rendered as part of the chat history.
+ * Each instance is fully independent — no shared question state.
+ */
+function InlineChart({ questionPath }: { questionPath: string }) {
+  return (
+    <div
+      style={{
+        height: "500px",
+        width: "100%",
+        flexShrink: 0,
+        borderRadius: "8px",
+        overflow: "hidden",
+        background: "var(--mb-color-background-secondary)",
+        marginBottom: "1rem",
+      }}
+    >
+      <SdkAdHocQuestion
+        questionPath={questionPath}
+        title={false}
+        height="500px"
+        isSaveEnabled={false}
+      >
+        <SdkQuestionDefaultView
+          height="500px"
+          withChartTypeSelector
+          withEditorButton={false}
+        />
+        {/* <InteractiveQuestion.QuestionVisualization /> */}
+      </SdkAdHocQuestion>
+    </div>
+  );
+}
+
+/**
  * Chat history sub-component — renders messages and auto-scrolls.
+ * Chart messages are rendered as independent inline ad-hoc questions.
  */
 function ChatHistory() {
   const metabot = useMetabotAgent();
   const { messages, errorMessages } = metabot;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const clipboard = useClipboard();
 
   const hasMessages = messages.length > 0 || errorMessages.length > 0;
 
@@ -78,13 +122,60 @@ function ChatHistory() {
       p="md"
     >
       {hasMessages ? (
-        <Messages
-          messages={messages}
-          errorMessages={errorMessages}
-          onRetryMessage={metabot.retryMessage}
-          isDoingScience={metabot.isDoingScience}
-          showFeedbackButtons={false}
-        />
+        <>
+          {messages.map((message, index) => {
+            if (message.role === "agent" && message.type === "chart") {
+              return (
+                <InlineChart
+                  key={message.id}
+                  questionPath={message.questionPath}
+                />
+              );
+            }
+
+            if (message.role === "agent") {
+              return (
+                <AgentMessage
+                  key={message.id}
+                  data-testid="metabot-chat-message"
+                  message={message}
+                  onRetry={metabot.retryMessage}
+                  onCopy={() =>
+                    clipboard.copy("message" in message ? message.message : "")
+                  }
+                  showFeedbackButtons={false}
+                  submittedFeedback={undefined}
+                  hideActions={
+                    metabot.isDoingScience ||
+                    messages[index + 1]?.role === "agent"
+                  }
+                />
+              );
+            }
+
+            return (
+              <UserMessage
+                key={message.id}
+                data-testid="metabot-chat-message"
+                message={message}
+                hideActions={
+                  metabot.isDoingScience && messages.length === index + 1
+                }
+                onCopy={() =>
+                  clipboard.copy("message" in message ? message.message : "")
+                }
+              />
+            );
+          })}
+
+          {errorMessages.map((message, index) => (
+            <AgentErrorMessage
+              key={"err-" + index}
+              data-testid="metabot-chat-message"
+              message={message}
+            />
+          ))}
+        </>
       ) : (
         <ChatEmptyState />
       )}
@@ -336,10 +427,12 @@ const FloatingActionButtonInner = ({
   );
 };
 
-METABOT_CHAT_SDK_EE_PLUGIN.FloatingActionButton =
-  withPublicComponentWrapper(FloatingActionButtonInner, {
+METABOT_CHAT_SDK_EE_PLUGIN.FloatingActionButton = withPublicComponentWrapper(
+  FloatingActionButtonInner,
+  {
     supportsGuestEmbed: false,
-  });
+  },
+);
 
 /**
  * CommandBar trigger — centered bottom bar that expands into a chat panel.
@@ -359,7 +452,10 @@ const CommandBarInner = ({
   const showPanel = isExpanded || hasMessages || metabot.isDoingScience;
 
   return (
-    <div className={cx(S.commandBarContainer, className)} style={{ ...style, width }}>
+    <div
+      className={cx(S.commandBarContainer, className)}
+      style={{ ...style, width }}
+    >
       {showPanel && (
         <div className={S.commandBarPanel} style={{ height: panelHeight }}>
           <Flex
@@ -367,11 +463,20 @@ const CommandBarInner = ({
             py="xs"
             align="center"
             justify="space-between"
-            style={{ borderBottom: "1px solid var(--mb-color-border)", flexShrink: 0 }}
+            style={{
+              borderBottom: "1px solid var(--mb-color-border)",
+              flexShrink: 0,
+            }}
           >
             <Flex align="center" gap="xs">
               <Icon name="ai" c="brand" size="1rem" />
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--mb-color-text-primary)" }}>
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "var(--mb-color-text-primary)",
+                }}
+              >
                 {t`Metabot`}
               </span>
             </Flex>

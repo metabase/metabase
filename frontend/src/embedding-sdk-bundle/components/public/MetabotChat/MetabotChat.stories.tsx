@@ -6,7 +6,10 @@ import { useMemo } from "react";
 import "embedding-sdk-bundle";
 
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
-import { getStorybookSdkAuthConfigForUser } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
+import {
+  CommonSdkStoryWrapper,
+  getStorybookSdkAuthConfigForUser,
+} from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import { MetabotChat } from "./MetabotChat";
@@ -261,6 +264,38 @@ const FullWidthDemo = () => (
 );
 
 // ============================================================================
+// Story 5: Inline Charts Layout
+//
+// Real MetabotChat — ask Metabot a question and it will render independent
+// inline SdkAdHocQuestion instances directly in the chat history.
+// Use a wider panel to give charts enough room to breathe.
+// ============================================================================
+
+const InlineChartsDemo = () => (
+  <div
+    style={{
+      ...fullPageStyle,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "#f5f5f5",
+    }}
+  >
+    <div
+      style={{
+        borderRadius: 16,
+        overflow: "hidden",
+        border: "1px solid #e0e0e0",
+        background: "#fff",
+        boxShadow: "0 8px 30px rgba(0,0,0,0.1)",
+      }}
+    >
+      <MetabotChat height={700} width={680} />
+    </div>
+  </div>
+);
+
+// ============================================================================
 // Storybook meta
 // ============================================================================
 
@@ -269,17 +304,24 @@ export default {
   parameters: {
     layout: "fullscreen",
   },
-  decorators: [DarkSdkWrapper],
 } satisfies Meta;
+
+export const InlineCharts: StoryFn = () => <InlineChartsDemo />;
+InlineCharts.storyName = "Inline Charts";
+InlineCharts.decorators = [CommonSdkStoryWrapper];
 
 export const StandalonePanel: StoryFn = () => <StandalonePanelDemo />;
 StandalonePanel.storyName = "Standalone Panel";
+StandalonePanel.decorators = [DarkSdkWrapper];
 
 export const FloatingActionButton: StoryFn = () => <FloatingActionButtonDemo />;
 FloatingActionButton.storyName = "Floating Action Button (Intercom)";
+FloatingActionButton.decorators = [DarkSdkWrapper];
 
 export const CommandBar: StoryFn = () => <CommandBarDemo />;
 CommandBar.storyName = "Command Bar (AI Bar)";
+CommandBar.decorators = [DarkSdkWrapper];
 
 export const FullWidthPanel: StoryFn = () => <FullWidthDemo />;
 FullWidthPanel.storyName = "Full-Width Bottom Panel";
+FullWidthPanel.decorators = [DarkSdkWrapper];
