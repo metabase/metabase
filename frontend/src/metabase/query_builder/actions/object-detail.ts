@@ -117,7 +117,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
         return null;
       }
 
-      const card: Card = getCard(state);
+      const card = getCard(state);
       const queryResult = getFirstQueryResult(state);
 
       async function getFKCount(
@@ -174,18 +174,20 @@ export const loadObjectDetailFKReferences = createThunkAction(
 
       // run a query on FK origin table where FK origin field = objectDetailIdValue
       const fkReferences: Record<FieldId, FKInfo | undefined> = {};
-      for (let i = 0; i < tableForeignKeys.length; i++) {
-        const fk = tableForeignKeys[i];
-        const info = await getFKCount(card, fk);
+      if (card) {
+        for (let i = 0; i < tableForeignKeys.length; i++) {
+          const fk = tableForeignKeys[i];
+          const info = await getFKCount(card, fk);
 
-        fkReferences[fk.origin_id] = info;
+          fkReferences[fk.origin_id] = info;
+        }
       }
 
       // It's possible that while we were running those queries, the object
       // detail id changed. If so, these fk reference are stale and we shouldn't
       // put them in state. The detail id is used in the query so we check that.
       const updatedQueryResult = getFirstQueryResult(getState());
-      if (!_.isEqual(queryResult.json_query, updatedQueryResult.json_query)) {
+      if (!_.isEqual(queryResult?.json_query, updatedQueryResult?.json_query)) {
         return null;
       }
       return fkReferences;

@@ -67,7 +67,7 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
     const outdatedCard = getCard(getState());
 
     const action = await dispatch(
-      Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
+      Questions.actions.fetch({ id: outdatedCard?.id }, { reload: true }),
     );
 
     return Questions.HACK_getObjectFromAction(action);
@@ -295,7 +295,7 @@ export const apiUpdateQuestion = (
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     if (!isNative) {
-      rerunQuery = rerunQuery ?? isResultDirty;
+      rerunQuery = rerunQuery ?? isResultDirty ?? false;
     }
 
     const submittableQuestion = getSubmittableQuestion(getState(), question);

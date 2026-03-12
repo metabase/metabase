@@ -1,6 +1,7 @@
 /*eslint no-use-before-define: "error"*/
 import { createSelector } from "@reduxjs/toolkit";
 import * as d3 from "d3";
+import dayjs from "dayjs";
 import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
@@ -46,14 +47,16 @@ import {
   normalizeParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
-import type { TimelineEvent } from "metabase-types/analytics";
 import type {
   Bookmark,
+  Dataset,
   DatasetColumn,
   DatasetQuery,
   Field,
   RowValue,
+  Series,
   Timeline,
+  TimelineEvent,
 } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import type { State } from "metabase-types/store";
@@ -252,7 +255,7 @@ const getModelMetadataDiff = createSelector(
 
 export const getQueryResults = createSelector(
   [getRawQueryResults, getModelMetadataDiff],
-  (queryResults, metadataDiff) => {
+  (queryResults, metadataDiff): Dataset[] | null => {
     if (!Array.isArray(queryResults) || !queryResults.length) {
       return null;
     }
@@ -519,15 +522,16 @@ export const getIsResultDirty = createSelector(
     const isEditable =
       !!currentQuestion &&
       Lib.queryDisplayInfo(currentQuestion.query()).isEditable;
-    return (
+    return Boolean(
       haveParametersChanged ||
-      (isEditable &&
-        !areQueriesEquivalent({
-          originalQuestion,
-          lastRunQuestion,
-          currentQuestion,
-          tableMetadata,
-        }))
+        (isEditable &&
+          tableMetadata &&
+          !areQueriesEquivalent({
+            originalQuestion,
+            lastRunQuestion,
+            currentQuestion,
+            tableMetadata,
+          })),
     );
   },
 );
@@ -693,9 +697,9 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
  */
 export const getRawSeries = createSelector(
   [getCard, getFirstQueryResult, getLastRunDatasetQuery, getIsShowingRawTable],
-  (card, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
+  (card, queryResult, lastRunDatasetQuery, isShowingRawTable): Series => {
     const rawSeries = createRawSeries({
-      card,
+      card: card!,
       queryResult,
       datasetQuery: lastRunDatasetQuery,
     });
@@ -733,12 +737,12 @@ const _getVisualizationTransformed = createSelector(
  */
 export const getTransformedSeries = createSelector(
   [_getVisualizationTransformed],
-  (transformed) => transformed && transformed.series,
+  (transformed) => transformed?.series,
 );
 
 export const getTransformedVisualization = createSelector(
   [_getVisualizationTransformed],
-  (transformed) => transformed && transformed.visualization,
+  (transformed) => transformed?.visualization,
 );
 
 /**
@@ -814,7 +818,7 @@ export const getTimeseriesXDomain = createSelector(
   [getIsTimeseries, getTimeseriesXValues],
   (isTimeseries, xValues) => {
     if (isTimeseries && Array.isArray(xValues) && xValues.length > 0) {
-      return d3.extent(xValues) as Domain;
+      return d3.extent(xValues as Array<d3.Numeric>);
     }
     return null;
   },
@@ -845,7 +849,12 @@ export const getTransformedTimelines = createSelector(
 );
 
 function isEventWithinDomain(event: TimelineEvent, xDomain: Domain) {
-  return event.timestamp.isBetween(xDomain[0], xDomain[1], undefined, "[]");
+  return dayjs(event.timestamp).isBetween(
+    xDomain[0],
+    xDomain[1],
+    undefined,
+    "[]",
+  );
 }
 
 function getXDomainForTimelines(
@@ -1099,11 +1108,7 @@ export function getEmbeddedParameterVisibility(state: State, slug: string) {
 }
 
 export const getSubmittableQuestion = (state: State, question: Question) => {
-  const card = getCard(state);
-  if (!card) {
-    return null;
-  }
-
+  const card = getCard(state) ?? question.card();
   const rawSeries = createRawSeries({
     card,
     queryResult: getFirstQueryResult(state),

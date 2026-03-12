@@ -49,7 +49,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     table,
     tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
-    zoomedRowID,
+    zoomedRowID: zoomedRowID ?? undefined,
     zoomedRow,
     canZoom: isZooming && !!zoomedRow,
     canZoomPreviousRow,

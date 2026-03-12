@@ -321,7 +321,9 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       trackCardBookmarkAdded(card);
     }
 
-    toggleBookmark(card.id);
+    if (card) {
+      toggleBookmark(card.id.toString());
+    }
   };
 
   /**
@@ -434,7 +436,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
       ) {
         showNotification(
           t`All Set! Your question is ready.`,
-          t`${card.name} is loaded.`,
+          t`${card?.name} is loaded.`,
         );
       }
     }

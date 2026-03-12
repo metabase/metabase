@@ -51,8 +51,8 @@ export interface QueryBuilderUIControls {
   isShowingAIQuestionAnalysisSidebar: boolean;
   initialChartSetting: InitialChartSettingState;
   isShowingRawTable: boolean;
-  queryBuilderMode: QueryBuilderMode | false;
-  previousQueryBuilderMode: QueryBuilderMode | false;
+  queryBuilderMode: QueryBuilderMode;
+  previousQueryBuilderMode: QueryBuilderMode | null;
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
@@ -64,11 +64,12 @@ export interface QueryBuilderUIControls {
     | NativeQuerySnippet
     | Partial<Omit<NativeQuerySnippet, "id">>
     | null;
-  dataReferenceStack: null;
+  dataReferenceStack: unknown[] | null;
   highlightedNativeQueryLineNumbers: number[];
   isShowingListViewConfiguration: boolean;
   scrollToLastColumn?: boolean;
-  questionDetailsTimelineDrawerState: string;
+  questionDetailsTimelineDrawerState: string | null;
+  recentlySaved?: boolean;
   nativeEditorSelectedRange: Range[];
 }
 
