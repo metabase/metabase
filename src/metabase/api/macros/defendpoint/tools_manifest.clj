@@ -55,8 +55,8 @@
 
 (defn- sanitize-ref [ref-str]
   (str/replace ref-str #"#/\$defs/(.+)"
-               (fn [[_ name]]
-                 (str "#/$defs/" (sanitize-def-name name)))))
+               (fn [[_ def-name]]
+                 (str "#/$defs/" (sanitize-def-name def-name)))))
 
 (defn- walk-sanitize-refs
   "Recursively walk a JSON Schema structure (maps and vectors) and apply [[sanitize-ref]]
@@ -115,24 +115,20 @@
                        explicit-annotations)]
     (merge defaults explicit)))
 
-(defn- schema->json-schema
-  "Convert a malli schema to JSON Schema, collecting definitions into `defs`."
-  [defs malli-schema]
-  (when malli-schema
-    (malli->json-schema defs malli-schema)))
-
 (defn- schema->properties-and-required
   "Extract `:properties` and `:required` from a malli schema's JSON Schema.
-  Returns nil if the schema doesn't have `:properties` (e.g., `:or`/`:oneOf`)."
+  Returns nil if the schema is nil or doesn't have `:properties` (e.g., `:or`/`:oneOf`)."
   [defs malli-schema]
-  (when-let [jss (schema->json-schema defs malli-schema)]
-    (when (:properties jss)
-      (select-keys jss [:properties :required]))))
+  (when malli-schema
+    (let [jss (malli->json-schema defs malli-schema)]
+      (when (:properties jss)
+        (select-keys jss [:properties :required])))))
 
 (defn- merge-input-schemas
   "Merge route, query, and body param schemas into a single inputSchema object.
   Route params are always required. For body schemas that aren't simple maps (e.g. `:or`),
-  the full JSON Schema is used directly."
+  the full JSON Schema is used directly. If route/query/body share a property name,
+  later sources (body > query > route) take precedence."
   [defs form]
   (let [route-parts (schema->properties-and-required defs (get-in form [:params :route :schema]))
         query-parts (schema->properties-and-required defs (get-in form [:params :query :schema]))
@@ -140,7 +136,7 @@
         body-parts  (schema->properties-and-required defs body-schema)
         ;; If the body schema doesn't yield properties (e.g. :or), use its full JSON Schema
         body-full   (when (and body-schema (nil? body-parts))
-                      (schema->json-schema defs body-schema))
+                      (malli->json-schema defs body-schema))
         all-props   (merge (:properties route-parts)
                            (:properties query-parts)
                            (:properties body-parts))
@@ -196,13 +192,13 @@
   conflicting name and the endpoints that share it."
   [tools]
   (let [dupes (into (sorted-map)
-                    (comp (filter (fn [[_ tools]] (< 1 (count tools))))
-                          (map (fn [[name tools]] [name (mapv :endpoint tools)])))
+                    (comp (filter (fn [[_ entries]] (< 1 (count entries))))
+                          (map (fn [[tool-name entries]] [tool-name (mapv :endpoint entries)])))
                     (group-by :name tools))]
     (when (seq dupes)
       (throw (ex-info (str "Duplicate tool names detected: "
-                           (str/join ", " (map (fn [[name endpoints]]
-                                                 (str name " -> " (pr-str endpoints)))
+                           (str/join ", " (map (fn [[tool-name endpoints]]
+                                                 (str tool-name " -> " (pr-str endpoints)))
                                                dupes)))
                       {:duplicates dupes})))))
 

@@ -425,7 +425,7 @@
   Standard userspace query limits are enforced (2000 rows for simple queries, 10000 for aggregated)."
   {:scope "agent:query:execute"
    :tool  {:name "execute_query"
-           :description "Execute a previously constructed query and return the results as a markdown table with row count and execution time."}}
+           :description "Execute a previously constructed query and return the results with column metadata, row count, and execution time."}}
   [_route-params
    _query-params
    {encoded-query :query} :- ::execute-query-request]
