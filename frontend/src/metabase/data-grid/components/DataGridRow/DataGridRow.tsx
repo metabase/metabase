@@ -41,8 +41,6 @@ export const DataGridRow = <TData,>({
   classNames,
   styles,
 }: DataGridRowProps<TData>) => {
-  const dataIndex = row.virtualItem?.index ?? row.origin.index;
-
   const rowPositionStyles = getRowPositionStyles(row);
 
   return (
@@ -51,7 +49,7 @@ export const DataGridRow = <TData,>({
       key={row.origin.id}
       ref={rowMeasureRef}
       data-dataset-index={row.origin.index}
-      data-index={dataIndex}
+      data-index={row.displayIndex}
       data-allow-page-break-after="true"
       data-row-selected={row.origin.getIsSelected()}
       className={cx(

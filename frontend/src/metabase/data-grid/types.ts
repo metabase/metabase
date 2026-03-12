@@ -332,6 +332,7 @@ export type MaybeVirtualRow<TData> = Row<TData> | VirtualRow<TData>;
 export type DataGridRowType<TData> = {
   origin: Row<TData>;
   virtualItem?: VirtualItem;
+  displayIndex: number;
 };
 
 export type DataGridColumnType<TData, TValue = unknown> = {

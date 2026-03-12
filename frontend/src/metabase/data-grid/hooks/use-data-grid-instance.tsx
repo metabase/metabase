@@ -510,18 +510,26 @@ export const useDataGridInstance = <TData, TValue>({
 
   const getPinnedRows = useCallback(
     (): DataGridRowType<TData>[] =>
-      table.getTopRows().map((row) => ({ origin: row })),
+      table.getTopRows().map((row, index) => ({
+        origin: row,
+        displayIndex: index,
+      })),
     [table],
   );
 
   const getCenterRows = useCallback((): DataGridRowType<TData>[] => {
     const centerRows = table.getCenterRows();
+    const pinnedRowsCount = table.getTopRows().length;
     if (!enableRowVirtualization) {
-      return centerRows.map((row) => ({ origin: row }));
+      return centerRows.map((row, index) => ({
+        origin: row,
+        displayIndex: index + pinnedRowsCount,
+      }));
     }
     return virtualGrid.virtualRows.map((virtualRow) => ({
       origin: centerRows[virtualRow.index],
       virtualItem: virtualRow,
+      displayIndex: virtualRow.index + pinnedRowsCount,
     }));
   }, [enableRowVirtualization, table, virtualGrid.virtualRows]);
 
