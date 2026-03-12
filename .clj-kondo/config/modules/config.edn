@@ -2295,7 +2295,6 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.mcp.api}
    :uses #{api
-           query-processor
            request
            server
            util
