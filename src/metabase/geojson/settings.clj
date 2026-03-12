@@ -27,20 +27,25 @@
   :default    true
   :audit      :getter)
 
+(defn builtin-geojson-definitions
+  "Map of built-in GeoJSON entries, independent of whether they are enabled."
+  []
+  {:us_states       {:name        "United States"
+                     :url         "app/assets/geojson/us-states.json"
+                     :region_key  "STATE"
+                     :region_name "NAME"
+                     :builtin     true}
+   :world_countries {:name        "World"
+                     :url         "app/assets/geojson/world.json"
+                     :region_key  "ISO_A2"
+                     :region_name "NAME"
+                     :builtin     true}})
+
 (defn builtin-geojson
   "Default GeoJSON maps when [[default-maps-enabled]]."
   []
   (if (default-maps-enabled)
-    {:us_states       {:name        "United States"
-                       :url         "app/assets/geojson/us-states.json"
-                       :region_key  "STATE"
-                       :region_name "NAME"
-                       :builtin     true}
-     :world_countries {:name        "World"
-                       :url         "app/assets/geojson/world.json"
-                       :region_key  "ISO_A2"
-                       :region_name "NAME"
-                       :builtin     true}}
+    (builtin-geojson-definitions)
     {}))
 
 (def ^:private CustomGeoJSON
@@ -62,7 +67,7 @@
   "Error message when a GeoJSON URL is invalid."
   []
   (str (if (allow-classpath-geojson?)
-         (tru "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath. Only classpath resources under geojson/custom/ are allowed.")
+         (tru "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to a file on the classpath.")
          (tru "Invalid GeoJSON file location: must start with http:// or https://."))
        " "
        (tru "URLs referring to hosts that supply internal hosting metadata are prohibited.")))

@@ -63,8 +63,14 @@
 
       :else (:body resp))))
 
+(def ^:private builtin-geojson-urls
+  "Set of URLs for built-in GeoJSON resources that are always allowed regardless of the
+   MB_ALLOW_CLASSPATH_GEOJSON env var."
+  (into #{} (map :url) (vals (geojson.settings/builtin-geojson-definitions))))
+
 (defn- url->reader [url]
-  (if-let [resource (and (geojson.settings/allow-classpath-geojson?)
+  (if-let [resource (and (or (geojson.settings/allow-classpath-geojson?)
+                             (builtin-geojson-urls url))
                          (io/resource url))]
     (io/reader resource)
     (url->geojson url)))
