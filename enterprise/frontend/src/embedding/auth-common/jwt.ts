@@ -90,8 +90,12 @@ const runFetchRequestToken = async (
 const refreshUserJwt = async (url: string) => {
   let clientBackendResponse;
   try {
-    // Use window.location.origin as base to support relative URLs like "/api/sso"
-    const urlWithSource = new URL(url, window.location.origin);
+    // Use window.location.origin as base to support relative URLs like "/api/sso".
+    // In sandboxed iframes, window.location.origin is the string "null" (not a valid URL),
+    // so we must omit the base in that case (the url must then be absolute).
+    const origin = window.location.origin;
+    const base = origin !== "null" ? origin : undefined;
+    const urlWithSource = new URL(url, base);
     urlWithSource.searchParams.set("response", "json");
     clientBackendResponse = await fetch(urlWithSource.toString(), {
       method: "GET",
