@@ -58,7 +58,7 @@ export const DataGridRow = <TData,>({
         S.row,
         {
           [S.withSeparator]: row.origin.index === pinnedRowsCount - 1,
-          [S.active]: zoomedRowIndex === dataIndex,
+          [S.active]: zoomedRowIndex === row.origin.index,
         },
         classNames?.row,
       )}

@@ -112,7 +112,6 @@ export const DataGrid = function DataGrid<TData>({
   const pinnedRows = getPinnedRows();
   const pinnedColumns = getPinnedColumns();
   const centerColumns = getCenterColumns();
-  const hasPinnedColumns = pinnedColumns.length > 0;
   const lastPinnedColumn = pinnedColumns.at(-1);
   const isLastPinnedColumnSpecial =
     lastPinnedColumn?.origin.columnDef.meta?.isUtilityColumn === true;
@@ -171,7 +170,7 @@ export const DataGrid = function DataGrid<TData>({
     height?: string;
   }) => (
     <>
-      {hasPinnedColumns && (
+      {pinnedColumns.length > 0 && (
         <div
           className={cx(S.pinnedColumnsSection, {
             [S.withSeparator]: hasSeparator,
@@ -267,21 +266,23 @@ export const DataGrid = function DataGrid<TData>({
               )}
               style={styles?.bodyContainer}
             >
-              <div
-                className={S.pinnedRowsSection}
-                style={{
-                  backgroundColor: stickyElementsBackgroundColor,
-                }}
-              >
-                {renderGridPanels({
-                  pinnedContent: pinnedRows.map((row, index) =>
-                    renderRow(row, pinnedColumns, `pinned-${index}`),
-                  ),
-                  centerContent: pinnedRows.map((row, index) =>
-                    renderRow(row, centerColumns, `center-${index}`),
-                  ),
-                })}
-              </div>
+              {pinnedRows.length && (
+                <div
+                  className={S.pinnedRowsSection}
+                  style={{
+                    backgroundColor: stickyElementsBackgroundColor,
+                  }}
+                >
+                  {renderGridPanels({
+                    pinnedContent: pinnedRows.map((row, index) =>
+                      renderRow(row, pinnedColumns, `pinned-${index}`),
+                    ),
+                    centerContent: pinnedRows.map((row, index) =>
+                      renderRow(row, centerColumns, `center-${index}`),
+                    ),
+                  })}
+                </div>
+              )}
               <div className={S.centerRowsSection}>
                 {renderGridPanels({
                   pinnedContent: centerRows.map((row, index) =>
