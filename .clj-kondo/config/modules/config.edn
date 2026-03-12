@@ -2291,15 +2291,6 @@
            collections
            premium-features}}
 
-  enterprise/mcp
-  {:team "Metabot"
-   :api  #{metabase-enterprise.mcp.api}
-   :uses #{api
-           request
-           server
-           util
-           enterprise/agent-api}}
-
   enterprise/llm
   {:team "Metabot"
    :api  #{metabase-enterprise.llm.api
@@ -2312,6 +2303,15 @@
            query-processor
            settings
            util}}
+
+  enterprise/mcp
+  {:team "Metabot"
+   :api  #{metabase-enterprise.mcp.api}
+   :uses #{api
+           request
+           server
+           util
+           enterprise/agent-api}}
 
   enterprise/metabot-v3
   {:team    "Metabot"
