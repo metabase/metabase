@@ -385,8 +385,9 @@
       (f))))
 
 (defn drop-dataset!
-  "Drop a test dataset by driver and name. Resolves the dataset name to its definition
-   and calls [[metabase.test.data.interface/destroy-db!]].
+  "Drop a test dataset by driver and name. Resolves the dataset name to its definition,
+   verifies it exists, calls [[metabase.test.data.interface/destroy-db!]], and confirms
+   it was deleted.
 
    Can be called from the REPL or via clojure -X:
 
@@ -398,7 +399,17 @@
                      (symbol dataset-name))
         dbdef       (tx/get-dataset-definition dataset-def)]
     #_{:clj-kondo/ignore [:discouraged-var]}
-    (println (format "[%s] Dropping dataset '%s'..." (name driver) dataset-name))
-    (tx/destroy-db! driver dbdef)
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (println (format "[%s] Done." (name driver)))))
+    (println (format "[%s] Checking if dataset '%s' exists..." (name driver) dataset-name))
+    (if-not (tx/dataset-already-loaded? driver dbdef)
+      (do
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println (format "[%s] Dataset '%s' does not exist, nothing to drop." (name driver) dataset-name)))
+      (do
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (println (format "[%s] Dataset '%s' exists. Dropping..." (name driver) dataset-name))
+        (tx/destroy-db! driver dbdef)
+        (if (tx/dataset-already-loaded? driver dbdef)
+          (throw (ex-info (format "[%s] Dataset '%s' still exists after drop!" (name driver) dataset-name) {}))
+          (do
+            #_{:clj-kondo/ignore [:discouraged-var]}
+            (println (format "[%s] Verified: dataset '%s' has been deleted." (name driver) dataset-name))))))))
