@@ -41,6 +41,16 @@
    [ring.util.codec]))
 
 ;;;;
+;;;; Tool endpoint registry
+;;;;
+
+(defonce ^{:doc "Registry of endpoints with `:tool` metadata. An atom holding a set of
+  `[ns-symbol unique-key]` tuples. Populated by [[update-ns-endpoints!]] when an endpoint has
+  `:tool` metadata; used by tools-manifest generation to discover which endpoints to expose."}
+  tool-endpoint-registry
+  (atom #{}))
+
+;;;;
 ;;;; Malli schema
 ;;;;
 
@@ -733,6 +743,12 @@
                (rebuild-handler [metadata]
                  (assoc metadata :api/handler (build-ns-handler (:api/endpoints metadata))))]
          (-> metadata update-info rebuild-handler))))
+    ;; Register endpoints with :tool metadata for tools-manifest generation
+    (let [ns-sym  (ns-name (the-ns nmspace))
+          tool-md (get-in info [:form :metadata :tool])]
+      (if tool-md
+        (swap! tool-endpoint-registry conj [ns-sym k])
+        (swap! tool-endpoint-registry disj [ns-sym k])))
     ;; Publish event for API handler update (e.g., for OpenAPI regeneration)
     ;; Set MB_ENABLE_OPENAPI_AUTO_REGEN=true to enable auto-regeneration on defendpoint evaluation
     (when (config/config-bool :mb-enable-openapi-auto-regen)
@@ -848,6 +864,9 @@
   ([]
    (reset-ns-routes! *ns*))
   ([nmspace]
+   (let [ns-sym (ns-name (the-ns nmspace))]
+     (swap! tool-endpoint-registry (fn [registry]
+                                     (into #{} (remove #(= (first %) ns-sym)) registry))))
    (alter-meta! (the-ns nmspace) dissoc :api/endpoints)))
 
 (mu/defn ns-routes :- ::ns-endpoints
