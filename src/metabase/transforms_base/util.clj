@@ -199,7 +199,7 @@
   [query source-range-params]
   (let [{:keys [checkpoint-filter-field-id lo hi column]} source-range-params
         table-id  (:table-id column)
-        tags      (get-in query [:stages 0 :template-tags])
+        tags      (lib/template-tags query)
         tag-name  (some (fn [[k v]]
                           (when (and (#{:table "table"} (:type v))
                                      (= table-id (:table-id v)))
@@ -231,7 +231,7 @@
     (when (and (= "table-incremental" (:type target))
                (native-query-transform? transform)
                (not (some (fn [[_k v]] (#{:table "table"} (:type v)))
-                          (get-in source [:query :stages 0 :template-tags]))))
+                          (lib/template-tags (:query source)))))
       (let [msg (i18n/tru (str "Incremental transform with a native query requires a table variable. "
                                "Please add a table variable to the query and update the checkpoint field."))]
         (throw (ex-info msg {:transform-message msg}))))
