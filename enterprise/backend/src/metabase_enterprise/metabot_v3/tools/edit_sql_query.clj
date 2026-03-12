@@ -2,8 +2,11 @@
   "Tool for editing existing SQL queries."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.metabot-v3.tools.sql.common :as metabot-v3.tools.sql.common]
+   [metabase-enterprise.metabot-v3.tools.sql.validation :as metabot-v3.tools.sql.validation]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,20 +19,6 @@
    (get-in query [:stages 0 :native])
    ;; Try legacy format
    (get-in query [:native :query])))
-
-(defn update-query-sql
-  "Update a dataset_query map with new SQL content."
-  [query new-sql]
-  (cond
-    (:stages query)
-    (assoc-in query [:stages 0 :native] new-sql)
-
-    (:native query)
-    (assoc-in query [:native :query] new-sql)
-
-    :else
-    (throw (ex-info (tru "Unsupported query format")
-                    {:agent-error? true}))))
 
 (defn- apply-sql-edit
   "Apply a targeted string replacement to SQL content."
@@ -57,7 +46,7 @@
       :else
       (str/replace-first sql old_string new_string))))
 
-(defn edit-sql-query
+(mu/defn edit-sql-query :- ::metabot-v3.tools.sql.common/operation-result
   "Edit an existing SQL query from in-memory state.
 
   Parameters:
@@ -66,10 +55,7 @@
   - name: New name for the query (optional)
   - description: New description for the query (optional)
 
-  Returns a map with:
-  - :query-id - The ID of the updated query
-  - :query-content - The updated SQL content
-  - :database - Database ID"
+  Returns an `operation-result` map. For details see its docstring."
   [{:keys [query-id edits queries-state]}]
   (log/info "Editing SQL query" {:query-id query-id :edit-count (count edits)})
 
@@ -88,10 +74,16 @@
                         {:agent-error? true
                          :query-id query-id})))
 
-      ;; Apply edits sequentially
-      (let [new-sql (reduce apply-sql-edit current-sql edits)
-            updated-query (update-query-sql query new-sql)]
-        {:query-id      query-id
-         :query-content new-sql
-         :query         updated-query
-         :database      (:database query)}))))
+      (let [;; Apply edits sequentially
+            new-sql (reduce apply-sql-edit current-sql edits)
+            dialect (metabot-v3.tools.sql.validation/query->dialect query)
+
+            {:keys [valid? transpiled-sql] :as validation-result}
+            (metabot-v3.tools.sql.validation/validate-sql dialect new-sql)]
+        (merge {:validation-result validation-result}
+               (when valid?
+                 (let [updated-query (metabot-v3.tools.sql.common/update-query-sql query transpiled-sql)]
+                   {:action-result {:query-id      query-id
+                                    :query-content transpiled-sql
+                                    :query         updated-query
+                                    :database      (:database query)}})))))))
