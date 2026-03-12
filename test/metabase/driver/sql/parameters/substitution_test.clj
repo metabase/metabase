@@ -143,7 +143,7 @@
 (deftest ^:parallel table-query-with-source-filters->replacement-snippet-test
   (testing "Table reference with a single source-filter produces a filtered subquery"
     (mt/with-metadata-provider meta/metadata-provider
-      (is (= {:replacement-snippet     "(SELECT * FROM \"PUBLIC\".\"ORDERS\" WHERE \"TOTAL\" > 100)"
+      (is (= {:replacement-snippet     "(SELECT * FROM \"PUBLIC\".\"ORDERS\" WHERE (\"TOTAL\" > 100))"
               :prepared-statement-args []}
              (sql.params.substitution/->replacement-snippet-info
               :h2
@@ -154,7 +154,7 @@
                                   :value    100}]}))))))
   (testing "Table reference with multiple source-filters joins them with AND"
     (mt/with-metadata-provider meta/metadata-provider
-      (is (= {:replacement-snippet     "(SELECT * FROM \"PUBLIC\".\"ORDERS\" WHERE \"TOTAL\" > 100 AND \"TOTAL\" <= 500)"
+      (is (= {:replacement-snippet     "(SELECT * FROM \"PUBLIC\".\"ORDERS\" WHERE (\"TOTAL\" > 100) AND (\"TOTAL\" <= 500))"
               :prepared-statement-args []}
              (sql.params.substitution/->replacement-snippet-info
               :h2
@@ -170,7 +170,7 @@
     (driver/with-driver ::temporal-unit-alignment-override
       (mt/with-metadata-provider meta/metadata-provider
         (let [ts (t/offset-date-time 2024 1 15 0 0 0 0 (t/zone-offset 0))]
-          (is (= {:replacement-snippet     "(SELECT * FROM \"PUBLIC\".\"ORDERS\" WHERE \"CREATED_AT\" > ?)"
+          (is (= {:replacement-snippet     "(SELECT * FROM \"PUBLIC\".\"ORDERS\" WHERE (\"CREATED_AT\" > ?))"
                   :prepared-statement-args [ts]}
                  (sql.params.substitution/->replacement-snippet-info
                   ::temporal-unit-alignment-override
