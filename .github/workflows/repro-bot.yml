@@ -162,88 +162,93 @@ jobs:
             - The GITHUB_ACTIONS_RUN_URL environment variable is set. If any phase fails catastrophically, follow the CI error handling in repro.md to post the error to Linear with the action run URL.
             - Docker is available for appdb (Postgres/MySQL/MariaDB) if needed.
             - Java 21 and Python/uv are pre-installed.
-          additional_permissions: |
-            Bash(base64 *)
-            Bash(cat *)
-            Bash(cd *)
-            Bash(clj-nrepl-eval *)
-            Bash(diff *)
-            Bash(echo *)
-            Bash(find *)
-            Bash(gh api repos/metabase/metabase/*)
-            Bash(gh issue list * --repo metabase/metabase *)
-            Bash(gh issue view * --repo metabase/metabase *)
-            Bash(gh release *)
-            Bash(gh search *)
-            Bash(git *)
-            Bash(grep *)
-            Bash(head *)
-            Bash(jq *)
-            Bash(kill *)
-            Bash(ls *)
-            Bash(mkdir *)
-            Bash(pgrep *)
-            Bash(printf *)
-            Bash(ps *)
-            Bash(python -m mcp.metabase_repro *)
-            Bash(python3 *)
-            Bash(sed *)
-            Bash(sort *)
-            Bash(strings *)
-            Bash(tail *)
-            Bash(wc *)
-            Bash(which *)
-            Bash(xargs *)
-            Bash(PGPASSWORD=*)
-            Bash(psql *)
-            Bash(docker *)
-            Bash(touch *)
-            Bash(tee *)
-            Bash(playwright-cli:*)
-            Bash(npx playwright-cli:*)
-            Edit(//./**)
-            Edit(repro/**)
-            Read(//.claude/**)
-            Read(repro/**)
-            Read(/tmp/**)
-            Write(/tmp/**)
-            Edit(/tmp/**)
-            WebFetch(domain:docs.metabase.com)
-            WebFetch(domain:metabase.com)
-            WebFetch(domain:www.metabase.com)
-            WebSearch
-            Write(//./**)
-            Write(repro/**)
-            mcp__metabase-repro__api_call
-            mcp__metabase-repro__check_setup
-            mcp__metabase-repro__check_setup_token
-            mcp__metabase-repro__create_env
-            mcp__metabase-repro__get_session_token
-            mcp__metabase-repro__get_status
-            mcp__metabase-repro__jar_download
-            mcp__metabase-repro__reset_metabase
-            mcp__metabase-repro__run_test
-            mcp__metabase-repro__save_test_patch
-            mcp__metabase-repro__setup_master_worktree
-            mcp__metabase-repro__setup_worktree
-            mcp__metabase-repro__start_appdb
-            mcp__metabase-repro__start_metabase
-            mcp__metabase-repro__stop_appdb_tool
-            mcp__metabase-repro__stop_metabase
-            mcp__metabase-repro__cleanup
-            mcp__metabase-repro__browser_snapshot
-            mcp__linear-server__create_attachment
-            mcp__linear-server__get_issue
-            mcp__linear-server__list_comments
-            mcp__linear-server__list_issues
-            mcp__linear-server__list_issue_labels
-            mcp__linear-server__save_comment
-            mcp__linear-server__save_issue
-            mcp__metabase-repro__repl_eval
-            Bash(cp *)
-            Bash(mv *)
-            Skill(*)
-          claude_args: '--disallowedTools "Bash(git push*),Bash(rm -rf /*)"'
+          claude_args: >-
+            --allowedTools
+            "Glob,
+            Grep,
+            Read,
+            ToolSearch,
+            Skill(*),
+            WebSearch,
+            WebFetch(domain:docs.metabase.com),
+            WebFetch(domain:metabase.com),
+            WebFetch(domain:www.metabase.com),
+            Edit(//./**),
+            Edit(repro/**),
+            Edit(/tmp/**),
+            Write(//./**),
+            Write(repro/**),
+            Write(/tmp/**),
+            Bash(base64 *),
+            Bash(cat *),
+            Bash(cd *),
+            Bash(clj-nrepl-eval *),
+            Bash(clojure *),
+            Bash(cp *),
+            Bash(diff *),
+            Bash(docker *),
+            Bash(echo *),
+            Bash(find *),
+            Bash(gh api repos/metabase/metabase/*),
+            Bash(gh issue list * --repo metabase/metabase *),
+            Bash(gh issue view * --repo metabase/metabase *),
+            Bash(gh release *),
+            Bash(gh search *),
+            Bash(git *),
+            Bash(grep *),
+            Bash(head *),
+            Bash(jar *),
+            Bash(jq *),
+            Bash(kill *),
+            Bash(ls *),
+            Bash(mkdir *),
+            Bash(mv *),
+            Bash(npx playwright-cli:*),
+            Bash(pgrep *),
+            Bash(playwright-cli:*),
+            Bash(printf *),
+            Bash(ps *),
+            Bash(psql *),
+            Bash(PGPASSWORD=*),
+            Bash(python -m mcp.metabase_repro *),
+            Bash(python3 *),
+            Bash(sed *),
+            Bash(sort *),
+            Bash(strings *),
+            Bash(tail *),
+            Bash(tee *),
+            Bash(touch *),
+            Bash(unzip *),
+            Bash(wc *),
+            Bash(which *),
+            Bash(xargs *),
+            mcp__metabase-repro__api_call,
+            mcp__metabase-repro__browser_snapshot,
+            mcp__metabase-repro__check_setup,
+            mcp__metabase-repro__check_setup_token,
+            mcp__metabase-repro__cleanup,
+            mcp__metabase-repro__create_env,
+            mcp__metabase-repro__get_session_token,
+            mcp__metabase-repro__get_status,
+            mcp__metabase-repro__jar_download,
+            mcp__metabase-repro__repl_eval,
+            mcp__metabase-repro__reset_metabase,
+            mcp__metabase-repro__run_test,
+            mcp__metabase-repro__save_test_patch,
+            mcp__metabase-repro__setup_master_worktree,
+            mcp__metabase-repro__setup_worktree,
+            mcp__metabase-repro__start_appdb,
+            mcp__metabase-repro__start_metabase,
+            mcp__metabase-repro__stop_appdb_tool,
+            mcp__metabase-repro__stop_metabase,
+            mcp__linear-server__create_attachment,
+            mcp__linear-server__get_issue,
+            mcp__linear-server__list_comments,
+            mcp__linear-server__list_issues,
+            mcp__linear-server__list_issue_labels,
+            mcp__linear-server__save_comment,
+            mcp__linear-server__save_issue"
+            --disallowedTools "Bash(git push*),Bash(rm -rf /*)"
 
       - name: Verify repro-bot completed successfully
         run: |
