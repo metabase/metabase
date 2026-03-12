@@ -601,10 +601,10 @@
   "Retrieves the binning settings for `a-column-or-clause`. Returns `nil` if binning is not set.
 
   > **Code health:** Healthy"
-  [a-column-or-clause :- ::lib.schema.metadata/column]
+  [a-column-or-clause :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (lib.core/binning a-column-or-clause))
 
-(mu/defn ^:export with-binning :- [:schema {:ts/same-as 0} ::lib.schema.metadata/column]
+(mu/defn ^:export with-binning :- [:schema {:ts/same-as 0} [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   "Given `a-column-or-clause` and a `binning-option`, return a new column/clause with its binning settings updated.
 
   If `binning-option` is `nil`, removes any binning options currently present on `a-column-or-clause`.
@@ -612,7 +612,7 @@
   `binning-option` should be one of the opaque values returned by [[available-binning-strategies]].
 
   > **Code health:** Healthy"
-  [a-column-or-clause :- ::lib.schema.metadata/column
+  [a-column-or-clause :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
    binning-option :- [:maybe [:or ::lib.schema.binning/binning ::lib.schema.binning/binning-option ::lib.schema.temporal-bucketing/option]]]
   (lib.core/with-binning a-column-or-clause binning-option))
 
@@ -701,16 +701,16 @@
   Returns `nil` if no temporal bucketing is set.
 
   > **Code health:** Healthy"
-  [a-clause-or-column :- ::lib.schema.metadata/column]
+  [a-clause-or-column :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   (lib.core/temporal-bucket a-clause-or-column))
 
-(mu/defn ^:export with-temporal-bucket :- [:schema {:ts/same-as 0} ::lib.schema.metadata/column]
+(mu/defn ^:export with-temporal-bucket :- [:schema {:ts/same-as 0} [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]]
   "Add the specified `bucketing-option` to `a-clause-or-column`, returning an updated form of the clause or column.
 
   If `bucketing-option` is `nil` (JS `undefined` or `null`), any existing temporal bucketing is removed.
 
   > **Code health:** Healthy"
-  [a-clause-or-column :- ::lib.schema.metadata/column
+  [a-clause-or-column :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
    bucketing-option :- [:maybe [:or ::lib.schema.temporal-bucketing/option ::lib.schema.temporal-bucketing/unit ::lib.schema.binning/binning]]]
   (lib.core/with-temporal-bucket a-clause-or-column bucketing-option))
 

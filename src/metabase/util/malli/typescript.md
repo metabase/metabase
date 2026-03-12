@@ -32,7 +32,7 @@ The core is a multimethod `-schema->ts` that dispatches on `(mc/type schema)`. S
 | `:int`, `:double`, `pos-int?`, `number?` | `number` |
 | `:boolean` | `boolean` |
 | `:nil` | `null` |
-| `:any` | `any` (unless annotated, see below) |
+| `:any` | `unknown` (unless annotated, see below) |
 | `[:maybe X]` | `X \| null` (or `X \| undefined \| null` in argument position) |
 | `[:sequential X]`, `[:vector X]` | `X[]` |
 | `[:set X]` | `Set<X>` |
@@ -42,7 +42,7 @@ The core is a multimethod `-schema->ts` that dispatches on `(mc/type schema)`. S
 | `[:or A B]` | `A \| B` |
 | `[:and A B]` | `A & B` |
 | `[:tuple A B]` | `[A, B]` |
-| `[:=> [:cat Args...] Return]` | `(arg0: Arg0, ...) => Return` |
+| `[:=> [:cat Args...] Return]` | `(arg0: Arg0, ...) => Return` (supports variadics as `...args: T[]`) |
 | `[:fn {:typescript "SomeType"}]` | `SomeType` (explicit override) |
 
 ### Registry refs
@@ -88,7 +88,7 @@ Generates:
 export function visible_columns(a_query: ..., stage_number: number): Metabase_Lib_Schema_Metadata_Column[];
 ```
 
-Without the annotation, the return type would be `any`.
+Without the annotation, the return type would be `unknown`.
 
 ### `{:ts/object-of <map-schema>}`
 
@@ -138,7 +138,7 @@ The `:any` defmethod checks for these properties:
 
       :else
       (do (record-weak-type! :any)
-          "any"))))
+          "unknown"))))
 ```
 
 The `[:any {:ts/array-of X}]` form is valid Malli — `:any` accepts any value at runtime, and the `{:ts/array-of X}` part is schema properties accessible via `mc/properties`. The TS generator reads the properties; Malli runtime validation ignores them.
@@ -152,6 +152,69 @@ For schemas that use `:fn` predicates (which have no structural type info), you 
 ```
 
 Without `:typescript`, `:fn` schemas produce `unknown`.
+
+## Unknown branches in composed types
+
+The generator preserves uncertainty when only *some* branches can be typed.
+
+Example:
+
+```clojure
+[:or :string [:fn {:typescript "unknown"} pred?]]
+```
+
+Generates:
+
+```typescript
+(string | { readonly __metabaseUnknownSchemaBranch: true })
+```
+
+This avoids over-confident narrowing (e.g. incorrectly collapsing to just `string`).
+The same marker is used in intersection-like compositions (`:and`, `:merge`) when mixed
+with typed branches.
+
+## Variadic functions (`& args`)
+
+Variadic CLJS functions are emitted as TS rest arguments.
+
+Example:
+
+```clojure
+(mu/defn ^:export drill-thru :- ::lib.schema/query
+  [a-query :- ::lib.schema/query
+   stage-number :- :int
+   card-id :- [:maybe ::lib.schema.id/card]
+   drill :- ::lib.schema.drill-thru/drill-thru
+   & args]
+  ...)
+```
+
+Generates:
+
+```typescript
+export function drill_thru(
+  a_query: ...,
+  stage_number: number,
+  card_id: ...,
+  drill: ...,
+  ...args: unknown[]
+): ...;
+```
+
+JSDoc `@param` tags also include rest params as `...args`.
+
+## SCI-unavailable fallback declarations
+
+Some schemas include `[:fn ...]` validators that require SCI and cannot be evaluated during JVM-side type generation.
+
+Instead of dropping exports, the generator now emits fallback declarations:
+
+- Function args: `unknown` (rest args become `unknown[]`)
+- Return type: `unknown`
+- Constants: `unknown`
+- JSDoc note indicating fallback mode
+
+This preserves API surface in `.d.ts` files and prevents downstream missing-export failures.
 
 ## Debugging
 
@@ -178,3 +241,19 @@ The generator tracks weak types via the `*weak-types*` dynamic var. Every time a
 **Memoization and argument context.** The generator memoizes `schema->ts` calls for performance, but bypasses the cache when `*argument-context*` is true (because `:maybe` produces different output). If you see incorrect `undefined` in return types, this is likely a memoization issue.
 
 **Multi-arity `mu/defn`.** For functions with multiple arities, the return schema goes after the function name. Arg schemas go on the longest arity's arglist. The `:function` schema type (wrapping multiple `:=>` children) handles this.
+
+## Precision opportunities
+
+The current generator is significantly more precise than before, but there are still places to improve:
+
+1. **Ref schemas are broad in TS**
+   `::lib.schema.ref/ref` currently expands to a very large union because it aliases the broad MBQL clause universe.
+   A dedicated narrower schema for "column-or-breakout-ref" would improve wrapper precision and reduce casts.
+
+2. **Per-function overload metadata for polymorphic APIs**
+   Some APIs return different object shapes depending on argument type (for example `display-info`).
+   Structured schema metadata for overload generation could reduce manual wrapper overloads and casts.
+
+3. **Richer TS metadata for predicate schemas**
+   `:fn` + `:typescript` works, but it is string-based and manual.
+   Additional structured metadata (e.g. tagged brands or standardized helper aliases) would make these types safer and easier to audit.

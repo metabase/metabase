@@ -12,9 +12,9 @@
       "{\n\ta: number;\n\tb: string;\n}"                [:map [:a :int] [:b :string]]
       "{\n\ttype: \"main\";\n\tvalue: string;\n}"       [:map [:type [:= :main]] [:value :string]]
       "(string | number)"                               [:or :string :int]
-      "Record<string, any>"                             [:map-of :keyword :any]
+      "Record<string, unknown>"                         [:map-of :keyword :any]
       "\"one\" | \"two\""                               [:enum :one :two]
-      "(Record<string, any> & {\n\tkey: string;\n})"    [:and
+      "(Record<string, unknown> & {\n\tkey: string;\n})" [:and
                                                          [:map-of :keyword :any]
                                                          [:map
                                                           [:key string?]]]
@@ -28,13 +28,24 @@
   (testing "unions containing 'any' simplify to 'any'"
     (is (= "any" (ts/schema->ts [:or :string :any])))
     (is (= "any" (ts/schema->ts [:or :int :string :any]))))
-  (testing "unions filter out 'unknown' branches, keeping known types"
-    (is (= "string" (ts/schema->ts [:or :string [:fn {:typescript "unknown"} any?]])))
-    (is (= "(string | number)"
+  (testing "unions preserve uncertainty from unknown branches"
+    (is (= "(string | { readonly __metabaseUnknownSchemaBranch: true })"
+           (ts/schema->ts [:or :string [:fn {:typescript "unknown"} any?]])))
+    (is (= "(string | number | { readonly __metabaseUnknownSchemaBranch: true })"
            (ts/schema->ts [:or :string :int [:fn {:typescript "unknown"} any?]]))))
   (testing "duplicate types are removed"
     (is (= "string" (ts/schema->ts [:or :string :string])))
     (is (= "(string | number)" (ts/schema->ts [:or :string :int :string])))))
+
+(deftest intersection-safety-test
+  (testing "intersections preserve uncertainty from unknown branches"
+    (is (= "(string & { readonly __metabaseUnknownSchemaBranch: true })"
+           (ts/schema->ts [:and :string [:fn {:typescript "unknown"} any?]]))))
+  (testing "merges preserve uncertainty from unknown branches"
+    (is (= "({\n\ta: string;\n} & { readonly __metabaseUnknownSchemaBranch: true })"
+           (ts/schema->ts [:merge
+                           [:map [:a :string]]
+                           [:fn {:typescript "unknown"} any?]])))))
 
 (deftest registry-type-names-test
   (testing "registry schemas return type names instead of inline expansions"
@@ -91,7 +102,13 @@
 (deftest format-ts-args-test
   (testing "formats function arguments correctly"
     (is (= "a: number, b: number | undefined | null"
-           (#'ts/format-ts-args '[a b] [:cat number? [:maybe number?]])))))
+           (#'ts/format-ts-args '[a b] [:cat number? [:maybe number?]]))))
+  (testing "formats variadic arguments as rest params"
+    (is (= "query: string, stage: number, ...args: unknown[]"
+           (#'ts/format-ts-args '[query stage & args] [:cat :string :int [:sequential :any]]))))
+  (testing "formats compiler-munged variadic placeholder as ...rest"
+    (is (= "query: string, ...rest: unknown[]"
+           (#'ts/format-ts-args '[query _AMPERSAND_] [:cat :string [:sequential :any]])))))
 
 (deftest fn->ts-test
   (testing "generates function declaration with JSDoc"
@@ -100,7 +117,39 @@
                 " * @returns {string | null}\n"
                 " */\n"
                 "export function some_fn(some_arg: string): string | null;")
-           (#'ts/-fn->ts "some-fn" '[some-arg] [:=> [:cat :string] [:maybe :string]])))))
+           (#'ts/-fn->ts "some-fn" '[some-arg] [:=> [:cat :string] [:maybe :string]]))))
+  (testing "generates variadic declaration with rest args"
+    (is (= (str "/**\n"
+                " * @param {string} query\n"
+                " * @param {number} stage\n"
+                " * @param {unknown[]} ...args\n"
+                " * @returns {string}\n"
+                " */\n"
+                "export function variadic_fn(query: string, stage: number, ...args: unknown[]): string;")
+           (#'ts/-fn->ts "variadic-fn"
+                         '[query stage & args]
+                         [:=> [:cat :string :int [:sequential :any]] :string])))))
+
+(deftest fallback-declarations-test
+  (testing "fallback function declarations preserve export and arity"
+    (is (= (str "/**\n"
+                " * NOTE: Generated fallback declaration due to unavailable schema validator during build\n"
+                " * @param {unknown} query\n"
+                " * @param {unknown} stage\n"
+                " * @param {unknown[]} ...args\n"
+                " * @returns {unknown}\n"
+                " */\n"
+                "export function drill_thru(query: unknown, stage: unknown, ...args: unknown[]): unknown;")
+           (#'ts/fallback-fn->ts {:name     'drill-thru
+                                  :arglists '([query stage & args])
+                                  :doc      nil}))))
+  (testing "fallback const declarations preserve export"
+    (is (= (str "/**\n"
+                " * NOTE: Generated fallback declaration due to unavailable schema validator during build\n"
+                " * @type {unknown}\n"
+                " */\n"
+                "export const SOME_CONST: unknown;")
+           (#'ts/fallback-const->ts {:name 'SOME_CONST :doc nil})))))
 
 (deftest js-interop-resolve-test
   (testing "resolve-var-refs transforms [:is-a js/X] to [:any {:ts/instance-of X}]"

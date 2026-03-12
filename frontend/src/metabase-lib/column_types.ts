@@ -51,7 +51,7 @@ export const isZipCode: TypeFn = TYPES.zip_code_QMARK_;
 export function legacyColumnTypeInfo(
   column: DatasetColumn | Field | ApiField,
 ): ColumnTypeInfo {
-  return ML.legacy_column__GT_type_info(column);
+  return ML.legacy_column__GT_type_info(column) as ColumnTypeInfo;
 }
 
 export function isAssignableType(

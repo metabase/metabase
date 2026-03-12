@@ -10,11 +10,12 @@ import type {
   Query,
 } from "./types";
 
+type TemporalBucketTarget = Parameters<typeof ML.temporal_bucket>[0];
+
 export function temporalBucket(
   column: ColumnMetadata | BreakoutClause,
 ): Bucket | null {
-  // CLJS core handles both columns and clauses via multimethod
-  return ML.temporal_bucket(column as ColumnMetadata);
+  return ML.temporal_bucket(column as TemporalBucketTarget);
 }
 
 export function availableTemporalBuckets(
@@ -36,8 +37,19 @@ export function isTemporalBucketable(
 export function withTemporalBucket(
   column: ColumnMetadata,
   bucket: Bucket | BucketOption | null,
-): ColumnMetadata {
-  return ML.with_temporal_bucket(column, bucket as Bucket | null);
+): ColumnMetadata;
+export function withTemporalBucket(
+  column: BreakoutClause,
+  bucket: Bucket | BucketOption | null,
+): BreakoutClause;
+export function withTemporalBucket(
+  column: ColumnMetadata | BreakoutClause,
+  bucket: Bucket | BucketOption | null,
+): ColumnMetadata | BreakoutClause {
+  return ML.with_temporal_bucket(
+    column as TemporalBucketTarget,
+    bucket as Bucket | null,
+  );
 }
 
 export function withDefaultTemporalBucket(

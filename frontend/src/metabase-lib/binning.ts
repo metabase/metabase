@@ -9,11 +9,12 @@ import type {
   Query,
 } from "./types";
 
+type BinningTarget = Parameters<typeof ML.binning>[0];
+
 export function binning(
   column: ColumnMetadata | BreakoutClause,
 ): Bucket | null {
-  // CLJS core handles both columns and clauses via multimethod
-  return ML.binning(column as ColumnMetadata);
+  return ML.binning(column as BinningTarget);
 }
 
 export function availableBinningStrategies(
@@ -35,8 +36,16 @@ export function isBinnable(
 export function withBinning(
   column: ColumnMetadata,
   binningStrategy: Bucket | BucketOption | null,
-): ColumnMetadata {
-  return ML.with_binning(column, binningStrategy);
+): ColumnMetadata;
+export function withBinning(
+  column: BreakoutClause,
+  binningStrategy: Bucket | BucketOption | null,
+): BreakoutClause;
+export function withBinning(
+  column: ColumnMetadata | BreakoutClause,
+  binningStrategy: Bucket | BucketOption | null,
+): ColumnMetadata | BreakoutClause {
+  return ML.with_binning(column as BinningTarget, binningStrategy);
 }
 
 export function withDefaultBinning(

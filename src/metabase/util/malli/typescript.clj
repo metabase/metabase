@@ -273,6 +273,9 @@
       (= s "unknown[]")
       (str/starts-with? s "unknown /*")))
 
+(def ^:private unknown-union-branch-type
+  "{ readonly __metabaseUnknownSchemaBranch: true }")
+
 (defn- simplify-union-types
   "Simplify a collection of union type strings:
    - If any type is 'any', return [\"any\"] (any absorbs everything)
@@ -283,16 +286,40 @@
     (some #(= % "any") types) ["any"]
     :else                     (vec (distinct types))))
 
+(defn- merge-union-types
+  "Merge union type strings while preserving information from unknown branches.
+   If unknown branches are present together with known branches, add a branded marker
+   type instead of erasing unknown branches entirely."
+  [types]
+  (let [known-types     (remove unknown-type? types)
+        unknown-present (not= (count known-types) (count types))
+        simplified      (simplify-union-types known-types)]
+    (cond
+      (some #(= % "any") simplified) ["any"]
+      (and unknown-present (seq simplified))
+      (conj simplified unknown-union-branch-type)
+      :else
+      simplified)))
+
+(defn- merge-intersection-types
+  "Merge intersection type strings, dropping unknown branches.
+   Unknown constraints in intersections (e.g. predicate-only schemas) cannot be represented
+   structurally in TS without poisoning assignability of known branches."
+  [types]
+  (let [known-types     (remove unknown-type? types)
+        simplified      (vec (distinct known-types))]
+    (cond
+      (empty? simplified)
+      ["unknown"]
+      :else
+      simplified)))
+
 (defmethod -schema->ts :or
   [schema]
   (let [children (mc/children schema)
-        ;; Filter out unknown types from union children before simplification.
-        ;; If a union branch produces unknown (e.g., from :fn schemas), we don't
-        ;; want it to invalidate the entire union - other branches may be useful.
         types    (->> children
                       (map schema->ts)
-                      (remove unknown-type?)
-                      simplify-union-types)]
+                      merge-union-types)]
     (case (count types)
       0 "unknown"
       1 (first types)
@@ -302,12 +329,10 @@
 (defmethod -schema->ts :orn
   [schema]
   (let [children (mc/children schema)
-        ;; Filter out unknown types from union children before simplification.
         types    (->> children
                       (map (fn [[_name _opts child-schema]]
                              (schema->ts child-schema)))
-                      (remove unknown-type?)
-                      simplify-union-types)]
+                      merge-union-types)]
     (case (count types)
       0 "unknown"
       1 (first types)
@@ -318,10 +343,8 @@
   [schema]
   (let [children (mc/children (mc/schema schema))
         types (->> (map schema->ts children)
-                   (remove unknown-type?)
-                   distinct)]
+                   merge-intersection-types)]
     (case (count types)
-      0 "unknown"
       1 (first types)
       (-> (str/join " & " types)
           (wrap "()")))))
@@ -388,10 +411,8 @@
   [schema]
   (let [children (mc/children (mc/schema schema))
         types    (->> (map schema->ts children)
-                      (remove unknown-type?)
-                      distinct)]
+                      merge-intersection-types)]
     (case (count types)
-      0 "unknown"
       1 (first types)
       (-> (str/join " & " types)
           (wrap "()")))))
@@ -423,14 +444,10 @@
 (defmethod -schema->ts :multi
   [schema]
   (let [children (mc/children (mc/schema schema))
-        ;; Filter out unknown types from multi children before simplification.
-        ;; Multi schemas often have a default/error case that produces unknown,
-        ;; but this shouldn't invalidate the entire union type.
         types    (->> children
                       (map (fn [[_key _opts child-schema]]
                              (schema->ts child-schema)))
-                      (remove unknown-type?)
-                      simplify-union-types)]
+                      merge-union-types)]
     (case (count types)
       0 "unknown"
       1 (first types)
@@ -554,6 +571,11 @@
    Handles simple symbols and destructuring forms (maps/vectors)."
   [arg-form index]
   (cond
+    ;; Compiler-munged variadic placeholder
+    (and (symbol? arg-form)
+         (= "_AMPERSAND_" (name arg-form)))
+    "rest"
+
     ;; Simple symbol
     (symbol? arg-form)
     (cljs-munge arg-form)
@@ -575,6 +597,78 @@
     :else
     (str "arg" index)))
 
+(defn- rest-marker?
+  "True for variadic markers in arglists.
+   Handles both canonical '& and compiler-munged '_AMPERSAND_' placeholders."
+  [arg-form]
+  (and (symbol? arg-form)
+       (or (= arg-form '&)
+           (= (name arg-form) "&")
+           (= (name arg-form) "_AMPERSAND_"))))
+
+(defn- munged-ampersand?
+  "True if this is the compiler-munged variadic placeholder symbol."
+  [arg-form]
+  (and (symbol? arg-form)
+       (= (name arg-form) "_AMPERSAND_")))
+
+(defn- arg-specs
+  "Pair arglist entries with schema children, handling variadic args.
+   Returns specs like:
+   {:arg-name x :arg-schema s :arg-idx 0 :rest? false}
+   {:arg-name args :arg-schema s :arg-idx 1 :rest? true}"
+  [arglist arg-schema]
+  (loop [remaining-args    (seq arglist)
+         remaining-schemas (seq (mc/children arg-schema))
+         arg-idx           0
+         specs             []]
+    (if (or (nil? remaining-args) (nil? remaining-schemas))
+      specs
+      (let [arg-name (first remaining-args)]
+        (if (rest-marker? arg-name)
+          (if (munged-ampersand? arg-name)
+            (recur (next remaining-args)
+                   (next remaining-schemas)
+                   (inc arg-idx)
+                   (conj specs {:arg-name   'rest
+                                :arg-schema (first remaining-schemas)
+                                :arg-idx    arg-idx
+                                :rest?      true}))
+            (if-let [_rest-name (second remaining-args)]
+              (conj specs {:arg-name   'rest
+                           :arg-schema (first remaining-schemas)
+                           :arg-idx    arg-idx
+                           :rest?      true})
+              specs))
+          (recur (next remaining-args)
+                 (next remaining-schemas)
+                 (inc arg-idx)
+                 (conj specs {:arg-name   arg-name
+                              :arg-schema (first remaining-schemas)
+                              :arg-idx    arg-idx
+                              :rest?      false})))))))
+
+(defn- fallback-arg-specs
+  "Build argument specs from arglist only, for fallback declarations."
+  [arglist]
+  (loop [remaining-args (seq arglist)
+         arg-idx        0
+         specs          []]
+    (if (nil? remaining-args)
+      specs
+      (let [arg-name (first remaining-args)]
+        (if (rest-marker? arg-name)
+          (if (munged-ampersand? arg-name)
+            (recur (next remaining-args)
+                   (inc arg-idx)
+                   (conj specs {:arg-name 'rest :arg-idx arg-idx :rest? true}))
+            (if-let [_rest-name (second remaining-args)]
+              (conj specs {:arg-name 'rest :arg-idx arg-idx :rest? true})
+              specs))
+          (recur (next remaining-args)
+                 (inc arg-idx)
+                 (conj specs {:arg-name arg-name :arg-idx arg-idx :rest? false})))))))
+
 (defn- format-ts-args
   "Format function arguments as TypeScript. If generic-arg-idx is provided,
    use 'T' for that argument instead of its schema type."
@@ -582,13 +676,15 @@
    (format-ts-args arglist arg-schema nil))
   ([arglist arg-schema generic-arg-idx]
    (binding [*argument-context* true]
-     (->> (map-indexed
-           (fn [idx [arg-name arg-schema]]
-             (str (extract-arg-name arg-name idx) ": "
-                  (if (= idx generic-arg-idx)
-                    "T"
-                    (schema->ts arg-schema))))
-           (map vector arglist (mc/children arg-schema)))
+     (->> (arg-specs arglist arg-schema)
+          (map (fn [{:keys [arg-name arg-schema arg-idx rest?]}]
+                 (let [arg-type (if (= arg-idx generic-arg-idx)
+                                  (if rest? "T[]" "T")
+                                  (schema->ts arg-schema))]
+                   (str (when rest? "...")
+                        (extract-arg-name arg-name arg-idx)
+                        ": "
+                        arg-type))))
           (str/join ", ")))))
 
 (defn- format-jsdoc
@@ -604,14 +700,16 @@
                          (str " * @template {" base-type-str "} T"))
          param-lines (binding [*argument-context* true]
                        (doall
-                        (map-indexed
-                         (fn [idx [arg-name arg-schema]]
+                        (map
+                         (fn [{:keys [arg-name arg-schema arg-idx rest?]}]
                            (str " * @param {"
-                                (if (= idx generic-arg-idx)
-                                  "T"
+                                (if (= arg-idx generic-arg-idx)
+                                  (if rest? "T[]" "T")
                                   (schema->ts arg-schema))
-                                "} " (extract-arg-name arg-name idx)))
-                         (map vector arglist (mc/children arg-schema)))))
+                                "} "
+                                (when rest? "...")
+                                (extract-arg-name arg-name arg-idx)))
+                         (arg-specs arglist arg-schema))))
          return-line (str " * @returns {" (if generic-arg-idx "T" (schema->ts return-schema)) "}")]
      (str "/**\n"
           (when (seq doc-lines)
@@ -622,6 +720,59 @@
           "\n"
           return-line
           "\n */\n"))))
+
+(defn- format-fallback-jsdoc
+  "Generate a fallback JSDoc block when schema cannot be resolved."
+  [doc arglist]
+  (let [doc-lines (when-not (str/blank? doc)
+                    (->> (str/split-lines doc)
+                         (map #(str " * " %))))
+        note-line " * NOTE: Generated fallback declaration due to unavailable schema validator during build"
+        param-lines (for [{:keys [arg-name arg-idx rest?]} (fallback-arg-specs arglist)]
+                      (str " * @param {unknown"
+                           (when rest? "[]")
+                           "} "
+                           (when rest? "...")
+                           (extract-arg-name arg-name arg-idx)))]
+    (str "/**\n"
+         (when (seq doc-lines)
+           (str (str/join "\n" doc-lines) "\n *\n"))
+         note-line
+         "\n"
+         (str/join "\n" param-lines)
+         "\n"
+         " * @returns {unknown}\n"
+         " */\n")))
+
+(defn- fallback-fn->ts
+  "Generate unknown-typed function declarations as a safe fallback."
+  [{:keys [arglists doc] fqname :name}]
+  (let [fnname   (cljs-munge (name fqname))
+        arglists (if (= (first arglists) 'quote) (second arglists) arglists)]
+    (->> arglists
+         (map (fn [arglist]
+                (let [ts-args (->> (fallback-arg-specs arglist)
+                                   (map (fn [{:keys [arg-name arg-idx rest?]}]
+                                          (str (when rest? "...")
+                                               (extract-arg-name arg-name arg-idx)
+                                               ": unknown"
+                                               (when rest? "[]"))))
+                                   (str/join ", "))]
+                  (str (format-fallback-jsdoc doc arglist)
+                       (format "export function %s(%s): unknown;" fnname ts-args)))))
+         (str/join "\n"))))
+
+(defn- fallback-const->ts
+  "Generate unknown-typed constant declaration as a safe fallback."
+  [{:keys [doc] fqname :name}]
+  (let [constname (cljs-munge (name fqname))]
+    (str "/**\n"
+         (when-not (str/blank? doc)
+           (str (str/join "\n" (map #(str " * " %) (str/split-lines doc))) "\n *\n"))
+         " * NOTE: Generated fallback declaration due to unavailable schema validator during build\n"
+         " * @type {unknown}\n"
+         " */\n"
+         (format "export const %s: unknown;" constname))))
 
 (defn- extract-generic-info
   "Extract generic type information from a return schema.
@@ -780,8 +931,8 @@
 
 (defn def->ts
   "Convert a def with schema metadata into TypeScript. Dispatches to fn->ts for functions
-   and const->ts for constants. Returns nil if the schema cannot be processed (e.g., contains
-   [:fn] validators that require SCI)."
+   and const->ts for constants. If schema processing fails due unavailable SCI validators,
+   emits a fallback declaration with unknown types so exports remain present."
   [defmeta]
   (try
     (indent-ts
@@ -790,9 +941,13 @@
        (const->ts defmeta)))
     (catch clojure.lang.ExceptionInfo e
       (if (= :malli.core/sci-not-available (:type (ex-data e)))
-        (do (log/warn "Skipping TypeScript generation for" (:name defmeta)
+        (do (log/warn "Using fallback TypeScript declaration for" (:name defmeta)
                       "- schema contains [:fn] validators requiring SCI")
-            nil)
+            (record-weak-type! :unknown)
+            (indent-ts
+             (if (function-schema? (:schema defmeta))
+               (fallback-fn->ts defmeta)
+               (fallback-const->ts defmeta))))
         (throw e)))))
 
 (defn- registry-schema?

@@ -27,8 +27,8 @@ export function availableDrillThrus(
     query,
     stageIndex,
     cardId,
-    column ?? null,
-    value ?? null,
+    column,
+    value,
     row,
     dimensions,
   );
@@ -42,7 +42,8 @@ export function drillThru(
   drillThru: DrillThru,
   ...args: unknown[]
 ): Query {
-  return ML.drill_thru(query, stageIndex, cardId, drillThru, args);
+  const drillThruFn = ML.drill_thru as (...rest: unknown[]) => Query;
+  return drillThruFn(query, stageIndex, cardId, drillThru, ...args);
 }
 
 export function filterDrillDetails(drillThru: DrillThru): FilterDrillDetails {
