@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [clojure.walk]
-   [malli.json-schema :as mjs]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.util.malli.registry :as mr])
@@ -29,20 +28,20 @@
             :idempotentHint true}
            (tools-manifest/infer-annotations :post {:read-only? true :idempotent? true})))))
 
-(deftest ^:parallel rewrite-tool-descriptions-test
+(deftest ^:parallel prefer-tool-descriptions-test
   (testing "tool/description replaces description in JSON schema output"
-    (let [rewritten (tools-manifest/rewrite-tool-descriptions
-                     [:map [:id [:int {:description      "Internal ID"
-                                       :tool/description "The ID of the saved question"}]]])
-          jss       (mjs/transform rewritten)]
-      (is (= "The ID of the saved question"
-             (get-in jss [:properties :id :description])))))
+    (binding [tools-manifest/*definitions* (atom (sorted-map))]
+      (let [jss (tools-manifest/mjs-collect-tool-definitions
+                 [:map [:id [:int {:description      "Internal ID"
+                                   :tool/description "The ID of the saved question"}]]])]
+        (is (= "The ID of the saved question"
+               (get-in jss [:properties :id :description]))))))
   (testing "schemas without tool/description keep original description"
-    (let [rewritten (tools-manifest/rewrite-tool-descriptions
-                     [:map [:id [:int {:description "Internal ID"}]]])
-          jss       (mjs/transform rewritten)]
-      (is (= "Internal ID"
-             (get-in jss [:properties :id :description]))))))
+    (binding [tools-manifest/*definitions* (atom (sorted-map))]
+      (let [jss (tools-manifest/mjs-collect-tool-definitions
+                 [:map [:id [:int {:description "Internal ID"}]]])]
+        (is (= "Internal ID"
+               (get-in jss [:properties :id :description])))))))
 
 (mr/def ::ref-target-a [:enum "x" "y"])
 (mr/def ::ref-target-b [:map [:nested ::ref-target-a]])

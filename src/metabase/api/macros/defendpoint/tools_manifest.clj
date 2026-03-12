@@ -19,22 +19,21 @@
 
 (set! *warn-on-reflection* true)
 
-(defn rewrite-tool-descriptions
-  "Walk a malli schema and replace `:description` with `:tool/description` where present.
-  This way `malli.json-schema/transform` picks up tool-facing text without affecting OpenAPI."
+(defn- prefer-tool-descriptions
+  "Pre-process a malli schema so that `:tool/description` takes precedence over `:description`
+  before JSON Schema generation, since `mjs/transform` only reads `:description`."
   [schema]
   (mc/walk
    schema
    (fn [node _path children _options]
-     (let [props (mc/properties node)]
-       (if-let [tool-desc (:tool/description props)]
-         (let [new-props (-> props
-                             (assoc :description tool-desc)
-                             (dissoc :tool/description))]
-           (mc/into-schema (mc/type node) new-props children (mc/options node)))
-         (if (seq children)
-           (mc/into-schema (mc/type node) props children (mc/options node))
-           node))))))
+     (let [props     (mc/properties node)
+           tool-desc (:tool/description props)
+           props     (cond-> props
+                       tool-desc (-> (assoc :description tool-desc)
+                                     (dissoc :tool/description)))]
+       (if (or tool-desc (seq children))
+         (mc/into-schema (mc/type node) props children (mc/options node))
+         node)))))
 
 (def ^:dynamic *definitions*
   "Dynamic var bound to an atom collecting `$defs` during manifest generation."
@@ -81,7 +80,7 @@
   "Transform a malli schema to JSON Schema. Uses `#/$defs/` as the definitions path.
   Collects shared definitions into [[*definitions*]]."
   [malli-schema]
-  (let [jss  (mjs/transform (rewrite-tool-descriptions malli-schema)
+  (let [jss  (mjs/transform (prefer-tool-descriptions malli-schema)
                             {::mjs/definitions-path "#/$defs/"})
         defs (:definitions jss)]
     (when (and *definitions* (seq defs))
