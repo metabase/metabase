@@ -225,14 +225,12 @@
   to the URL prefix its endpoints are served under."
   [namespace-prefixes]
   (binding [*definitions* (atom (sorted-map))]
-    (let [registry @api.macros/tool-endpoint-registry
-          tools    (into []
-                         (comp
-                          (filter (fn [[ns-sym _]] (contains? namespace-prefixes ns-sym)))
-                          (keep (fn [[ns-sym k]]
-                                  (when-let [endpoint (get (api.macros/ns-routes ns-sym) k)]
-                                    (endpoint->tool-definition (get namespace-prefixes ns-sym) endpoint)))))
-                         registry)]
+    (let [tools (into []
+                      (mapcat (fn [[ns-sym prefix]]
+                                (for [[_k endpoint] (api.macros/ns-routes ns-sym)
+                                      :when (get-in endpoint [:form :metadata :tool])]
+                                  (endpoint->tool-definition prefix endpoint))))
+                      namespace-prefixes)]
       (check-tool-uniqueness tools)
       (cond-> {:$schema "https://json-schema.org/draft/2020-12/schema"
                :version "1.0.0"
