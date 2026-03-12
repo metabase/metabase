@@ -61,7 +61,6 @@ jobs:
           MARIADB_DATABASE: mb_test
         options: >-
           --collation-server=utf8mb4_unicode_ci
-
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
       # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
