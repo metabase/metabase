@@ -1,0 +1,55 @@
+import { t } from "ttag";
+
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import type { TreeTableColumnDef } from "metabase/ui";
+import { EntityNameCell } from "metabase/ui";
+import type { SearchResult } from "metabase-types/api";
+
+export function getColumns(): TreeTableColumnDef<SearchResult>[] {
+  return [
+    {
+      id: "name",
+      header: t`Name`,
+      width: "auto",
+      minWidth: 120,
+      maxAutoWidth: 520,
+      enableSorting: true,
+      accessorFn: (result) => result.name,
+      cell: ({ row }) => (
+        <EntityNameCell icon="model" name={row.original.name} />
+      ),
+    },
+    {
+      id: "collection",
+      header: t`Collection`,
+      width: "auto",
+      minWidth: 100,
+      maxAutoWidth: 520,
+      enableSorting: true,
+      accessorFn: (result) => result.collection.name,
+      cell: ({ row }) => (
+        <Ellipsified tooltipProps={{ openDelay: 300 }}>
+          {row.original.collection.name}
+        </Ellipsified>
+      ),
+    },
+    {
+      id: "description",
+      header: t`Description`,
+      width: "auto",
+      minWidth: 100,
+      maxAutoWidth: 520,
+      enableSorting: true,
+      accessorFn: (result) => result.description ?? "",
+      cell: ({ row }) => (
+        <Ellipsified tooltipProps={{ openDelay: 300 }}>
+          {row.original.description ?? ""}
+        </Ellipsified>
+      ),
+    },
+  ];
+}
+
+export function getColumnWidths(): number[] {
+  return [0.3, 0.3, 0.4];
+}
