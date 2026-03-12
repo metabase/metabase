@@ -49,6 +49,9 @@ export function PermissionsEditorContent({
   preHeaderContent: PreHeaderContent = () => null,
 }) {
   const [filter, setFilter] = useState("");
+  //this needs to be state to trigger a rerender when it's set
+  const [scrollElement, setScrollElement] = useState(null);
+
   const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
 
   const filteredEntities = useMemo(() => {
@@ -93,13 +96,14 @@ export function PermissionsEditorContent({
         />
       </EditorFilterContainer>
 
-      <PermissionTableWrapper>
+      <PermissionTableWrapper ref={setScrollElement}>
         <PermissionsTable
           entities={filteredEntities || entities}
           columns={columns}
           onSelect={onSelect}
           onChange={onChange}
           onAction={onAction}
+          scrollElement={scrollElement}
           emptyState={
             <EditorEmptyStateContainer>
               <EmptyState message={t`Nothing here`} icon="folder" />
