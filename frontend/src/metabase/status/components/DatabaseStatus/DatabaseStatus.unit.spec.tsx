@@ -1,35 +1,25 @@
 import userEvent from "@testing-library/user-event";
 
-import { createMockEntitiesState } from "__support__/store";
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { Database, User } from "metabase-types/api";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import DatabaseStatus from "./DatabaseStatus";
-
+import { DatabaseStatus } from "./DatabaseStatus";
 interface SetupOpts {
-  user?: User;
   databases?: Database[];
+  user?: User;
 }
 
-const setup = ({ user, databases }: SetupOpts = {}) => {
-  const state = createMockState({
-    entities: createMockEntitiesState({ databases }),
-  });
-  const metadata = getMetadata(state);
+const setup = ({ databases = [], user }: SetupOpts = {}) => {
+  setupDatabasesEndpoints(databases);
 
-  renderWithProviders(
-    <DatabaseStatus
-      user={user}
-      databases={databases?.map(({ id }) =>
-        checkNotNull(metadata.database(id)),
-      )}
-    />,
-    { storeInitialState: state },
-  );
+  renderWithProviders(<DatabaseStatus />, {
+    storeInitialState: createMockState({
+      currentUser: user,
+    }),
+  });
 };
 
 describe("DatabaseStatus", () => {
