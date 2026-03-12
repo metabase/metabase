@@ -55,7 +55,7 @@
                     ;; this following test flakes in CI for unknown reasons
                     ;;"http://0xc0000200"                        true
                     ;; Classpath resources are NOT valid when env var is not set
-                    "c3p0.properties"                          false
+                    "app/assets/geojson/world.json"            false
                     ;; Other files are not
                     "./README.md"                              false
                     "file:///tmp"                              false
@@ -77,10 +77,10 @@
   (testing "When MB_ALLOW_CLASSPATH_GEOJSON is true"
     (mt/with-temp-env-var-value! [mb-allow-classpath-geojson "true"]
       (testing "classpath resources are accepted"
-        (let [geojson {:deadb33f {:name "Test" :url "c3p0.properties" :region_key nil :region_name nil}}]
+        (let [geojson {:deadb33f {:name "Test" :url "app/assets/geojson/world.json" :region_key nil :region_name nil}}]
           (is (#'geojson.settings/validate-geojson geojson geojson))))))
   (testing "When MB_ALLOW_CLASSPATH_GEOJSON is not set, classpath resources are rejected"
-    (let [geojson {:deadb33f {:name "Test" :url "c3p0.properties" :region_key nil :region_name nil}}]
+    (let [geojson {:deadb33f {:name "Test" :url "app/assets/geojson/world.json" :region_key nil :region_name nil}}]
       (is (thrown? clojure.lang.ExceptionInfo (#'geojson.settings/validate-geojson geojson geojson))))))
 
 (deftest custom-geojson-disallow-overriding-builtins-test
