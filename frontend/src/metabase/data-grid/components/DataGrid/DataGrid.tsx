@@ -14,6 +14,7 @@ import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import {
   ADD_COLUMN_BUTTON_WIDTH,
   DEFAULT_FONT_SIZE,
+  HEADER_HEIGHT,
   PINNED_BORDER_SEPARATOR_WIDTH,
 } from "../../constants";
 import { DataGridThemeProvider } from "../../hooks";
@@ -271,6 +272,7 @@ export const DataGrid = function DataGrid<TData>({
                   className={S.pinnedRowsSection}
                   style={{
                     backgroundColor: stickyElementsBackgroundColor,
+                    top: `${HEADER_HEIGHT}px`,
                   }}
                 >
                   {renderGridPanels({

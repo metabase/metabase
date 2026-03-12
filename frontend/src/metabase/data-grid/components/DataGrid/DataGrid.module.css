@@ -42,11 +42,6 @@
   align-items: flex-start;
 
   /*
-    must reflect .headerContainer height
-  */
-  top: 37px;
-
-  /*
    Since each cell already has border-bottom: 1px,
    the total horizontal separator is now 2px + 1px = 3px,
    matching the .pinnedColumnsSection.withSeparator at 3px.
