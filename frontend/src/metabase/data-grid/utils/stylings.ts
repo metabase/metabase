@@ -22,12 +22,15 @@ export const getRowPositionStyles = <TData>(
     return {
       position: "sticky",
       top: `${HEADER_HEIGHT + virtualRow.start + HEADER_BORDER_SIZE}px`,
+      minHeight: `${virtualRow.size}px`,
       zIndex: PINNED_ROW_Z_INDEX,
       backgroundColor: stickyElementsBackgroundColor,
     };
   }
   return {
     position: "absolute",
+    top: 0,
+    left: 0,
     minHeight: `${virtualRow.size}px`,
     transform: `translateY(${virtualRow.start}px)`,
   };

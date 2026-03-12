@@ -23,6 +23,7 @@ export interface DataGridRowProps<TData> extends DataGridStylesProps {
   rowMeasureRef?: ((element: HTMLElement | null) => void) | undefined;
   stickyElementsBackgroundColor: string;
   zoomedRowIndex: number | undefined;
+  pinnedRowsCount: number;
   selection: DataGridSelection;
   onBodyCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
@@ -35,6 +36,7 @@ export const DataGridRow = <TData,>({
   row: maybeVirtualRow,
   rowMeasureRef,
   columns,
+  pinnedRowsCount,
   stickyElementsBackgroundColor,
   zoomedRowIndex,
   selection,
@@ -52,7 +54,7 @@ export const DataGridRow = <TData,>({
     stickyElementsBackgroundColor,
   );
 
-  const dataIndex = virtualRow != null ? virtualRow.index : row.index;
+  const dataIndex = virtualRow?.index ?? row.index;
   const active = zoomedRowIndex === dataIndex;
 
   return (
@@ -64,9 +66,14 @@ export const DataGridRow = <TData,>({
       data-index={dataIndex}
       data-allow-page-break-after="true"
       data-row-selected={row.getIsSelected()}
-      className={cx(S.row, classNames?.row, {
-        [S.active]: active,
-      })}
+      className={cx(
+        S.row,
+        {
+          [S.active]: active,
+          [S.withSeparator]: row.index === pinnedRowsCount - 1,
+        },
+        classNames?.row,
+      )}
       style={{ ...rowPositionStyles, ...styles?.row }}
     >
       {columns.map((column) => {

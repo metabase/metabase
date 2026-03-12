@@ -484,6 +484,11 @@ export const useDataGridInstance = <TData, TValue>({
     return table.getRowModel().rows;
   }, [enableRowVirtualization, table, virtualGrid.virtualRows]);
 
+  const getPinnedRows = useCallback(
+    (): Row<TData>[] => table.getTopRows(),
+    [table],
+  );
+
   const getPinnedColumns = useCallback(
     (): DataGridColumn<TData>[] =>
       table.getLeftVisibleLeafColumns().map((column) => ({
@@ -579,6 +584,7 @@ export const useDataGridInstance = <TData, TValue>({
     getVisibleRows,
     getCentralColumns,
     getPinnedColumns,
+    getPinnedRows,
     enablePagination,
     sorting,
   };

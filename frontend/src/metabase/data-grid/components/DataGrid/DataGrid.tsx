@@ -58,6 +58,7 @@ export const DataGrid = function DataGrid<TData>({
   showRowsCount,
   getVisibleRows,
   getPinnedColumns,
+  getPinnedRows,
   getCentralColumns,
   emptyState,
   zoomedRowIndex,
@@ -108,6 +109,7 @@ export const DataGrid = function DataGrid<TData>({
       : backgroundColor);
 
   const visibleRows = getVisibleRows();
+  const pinnedRows = getPinnedRows();
   const pinnedColumns = getPinnedColumns();
   const centralColumns = getCentralColumns();
   const hasPinnedColumns = pinnedColumns.length > 0;
@@ -136,6 +138,7 @@ export const DataGrid = function DataGrid<TData>({
     <DataGridRow
       key={key}
       row={row}
+      pinnedRowsCount={pinnedRows.length}
       rowMeasureRef={rowMeasureRef}
       columns={columns}
       stickyElementsBackgroundColor={stickyElementsBackgroundColor}

@@ -29,6 +29,15 @@
   border-right: 3px solid var(--mb-color-border-subtle);
 }
 
+.row.withSeparator {
+  /*
+   Since each cell already has border-bottom: 1px,
+   the total horizontal separator is now 2px + 1px = 3px,
+   matching the .pinnedSection.withSeparator at 3px.
+ */
+  border-bottom: 2px solid var(--mb-color-border-subtle);
+}
+
 .centralSection {
   position: relative;
   flex: 0 0 auto;
@@ -161,19 +170,6 @@
 
 .bodyCell:hover .cellHoverVisible {
   visibility: visible;
-}
-
-.cellWithRightSeparator {
-  border-right: 3px solid var(--mb-color-border-subtle);
-}
-
-.rowWithBottomSeparator {
-  /*
-    Since each cell already has border-bottom: 1px,
-    the total horizontal separator is now 2px + 1px = 3px,
-    matching the vertical cellWithRightSeparator at 3px.
-  */
-  border-bottom: 2px solid var(--mb-color-border-subtle);
 }
 
 /** Used for storybook examples for class Styles Api */

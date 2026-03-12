@@ -306,6 +306,7 @@ export interface DataGridInstance<TData> {
   sorting: SortingState | undefined;
   getTotalHeight: () => number;
   getVisibleRows: () => MaybeVirtualRow<TData>[];
+  getPinnedRows: () => Row<TData>[];
   getPinnedColumns: () => DataGridColumn<TData>[];
   getCentralColumns: () => DataGridColumn<TData>[];
   onHeaderCellClick?: (
