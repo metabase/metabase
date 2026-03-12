@@ -28,6 +28,7 @@
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.llm.api]
+   [metabase-enterprise.mcp.api]
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
    [metabase-enterprise.permission-debug.api]
@@ -49,7 +50,8 @@
 
 (comment metabase-enterprise.advanced-config.api.logs/keep-me
          metabase-enterprise.llm.api/keep-me
-         metabase-enterprise.agent-api.api/keep-me)
+         metabase-enterprise.agent-api.api/keep-me
+         metabase-enterprise.mcp.api/keep-me)
 
 (def ^:private required-feature->message
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
@@ -93,6 +95,7 @@
 
   TODO -- Please fix them! See #22687"
   {"/agent"             (premium-handler metabase-enterprise.agent-api.api/routes :agent-api)
+   "/mcp"               (premium-handler metabase-enterprise.mcp.api/handler :agent-api)
    "/moderation-review" metabase-enterprise.content-verification.api.routes/routes
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})

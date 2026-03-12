@@ -2291,6 +2291,16 @@
            collections
            premium-features}}
 
+  enterprise/mcp
+  {:team "Metabot"
+   :api  #{metabase-enterprise.mcp.api}
+   :uses #{api
+           query-processor
+           request
+           server
+           util
+           enterprise/agent-api}}
+
   enterprise/llm
   {:team "Metabot"
    :api  #{metabase-enterprise.llm.api
@@ -2316,6 +2326,8 @@
               metabase-enterprise.metabot-v3.tools.filters
               metabase-enterprise.metabot-v3.tools.search
               metabase-enterprise.metabot-v3.util}
+   :friends #{enterprise/agent-api
+              enterprise/mcp}
    :uses    #{activity-feed
               analytics
               api
