@@ -12,8 +12,7 @@
 
 (def ^:private explicit-display-types
   "Display types that map directly to chart types."
-  {"histogram" :histogram
-   "scatter"   :scatter
+  {"scatter"   :scatter
    "scalar"    :unknown
    "waterfall" :unknown
    "funnel"    :categorical
@@ -66,9 +65,13 @@
            x-values (:x_values first-series)]
        (cond
          (temporal-column-type? x-type) :time-series
+         (and (numeric-column-type? x-type)
+              (= display_type "bar"))  :histogram
          (numeric-column-type? x-type) :scatter
          ;; 3. Heuristic from sample values
          (= :datetime (infer-type-from-sample x-values)) :time-series
+         (and (= :number (infer-type-from-sample x-values))
+              (= display_type "bar"))  :histogram
          (= :number (infer-type-from-sample x-values)) :scatter
          :else :categorical)))
 
