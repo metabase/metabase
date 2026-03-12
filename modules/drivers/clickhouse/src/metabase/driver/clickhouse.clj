@@ -1,5 +1,6 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -19,7 +20,8 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [not-empty]])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
    (java.sql Connection SQLException Statement PreparedStatement)
@@ -141,7 +143,8 @@
       ;; Default SELECT 1 is not enough for Metabase test suite,
       ;; as it works slightly differently than expected there
       (let [spec  (sql-jdbc.conn/connection-details->spec driver details)
-            db    (ddl.i/format-name driver (or (:dbname details) (:db details) "default"))]
+            dbname (not-empty (first (str/split (str/trim (or (:dbname details) "default")) #" ")))
+            db    (ddl.i/format-name driver (or dbname (:db details) "default"))]
         (sql-jdbc.execute/do-with-connection-with-options
          driver spec nil
          (fn [^java.sql.Connection conn]
