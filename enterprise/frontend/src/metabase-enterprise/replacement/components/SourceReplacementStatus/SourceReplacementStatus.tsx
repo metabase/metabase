@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useGetCardQuery } from "metabase/api";
+import { Api, useGetCardQuery } from "metabase/api";
 import { useGetTableQuery } from "metabase/api/table";
+import { useDispatch } from "metabase/lib/redux";
 import StatusLarge from "metabase/status/components/StatusLarge";
 import StatusSmall from "metabase/status/components/StatusSmall";
 import {
@@ -27,33 +28,61 @@ import type {
 const POLLING_INTERVAL = 2000;
 
 export const SourceReplacementStatus = () => {
-  const { data: runs = [] } = useListSourceReplacementRunsQuery({
-    "is-active": true,
-  });
-  const runIdRef = useRef<SourceReplacementRunId | null>(null);
+  const [runId, setRunId] = useState<SourceReplacementRunId | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+
+  const { data: runs = [] } = useListSourceReplacementRunsQuery(
+    {
+      "is-active": true,
+    },
+    {
+      pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
+    },
+  );
+  const dispatch = useDispatch();
+  const activeRun = runs[0];
   const isActive = runs.length > 0;
   const isVisible = useStatusVisibility(isActive);
 
-  if (isActive) {
-    runIdRef.current = runs[0].id;
-  }
-  if (!isVisible) {
-    runIdRef.current = null;
-  }
-  if (runIdRef.current == null) {
+  useLayoutEffect(() => {
+    if (activeRun != null) {
+      setRunId(activeRun.id);
+    }
+  }, [activeRun]);
+
+  useLayoutEffect(() => {
+    setIsPolling(isActive);
+  }, [isActive]);
+
+  useEffect(() => {
+    if (!isActive && isVisible) {
+      dispatch(
+        Api.util.invalidateTags([
+          "table",
+          "card",
+          "segment",
+          "measure",
+          "transform",
+        ]),
+      );
+    }
+  }, [isActive, isVisible, dispatch]);
+
+  if (runId == null || !isVisible) {
     return null;
   }
 
-  return <RunStatusContent runId={runIdRef.current} />;
+  return <RunStatusContent runId={runId} activeRun={activeRun} />;
 };
 
 type RunStatusContentProps = {
   runId: SourceReplacementRunId;
+  activeRun: SourceReplacementRun | undefined;
 };
 
-const RunStatusContent = ({ runId }: RunStatusContentProps) => {
-  const { data: run } = useGetSourceReplacementRunQuery(runId, {
-    pollingInterval: POLLING_INTERVAL,
+const RunStatusContent = ({ runId, activeRun }: RunStatusContentProps) => {
+  const { data: run = activeRun } = useGetSourceReplacementRunQuery(runId, {
+    skip: activeRun != null,
   });
   const [isExpanded, setIsExpanded] = useState(true);
 
