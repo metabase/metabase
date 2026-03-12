@@ -230,7 +230,8 @@
            :description "Get sample values and statistics for a field in a table."}}
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
-                             [:field-id ms/NonBlankString]]]
+                             [:field-id {:tool/description "Field identifier in the format '<prefix><entity-id>-<field-index>', e.g. 't123-0' for a table field."}
+                              ms/NonBlankString]]]
   (check-tool-result
    (field-stats/field-values
     {:entity-type "table"
@@ -267,7 +268,8 @@
            :description "Get sample values and statistics for a field in a metric."}}
   [{:keys [id field-id]} :- [:map
                              [:id       ms/PositiveInt]
-                             [:field-id ms/NonBlankString]]]
+                             [:field-id {:tool/description "Field identifier in the format '<prefix><entity-id>-<field-index>', e.g. 'c456-2' for a metric field."}
+                              ms/NonBlankString]]]
   (check-tool-result
    (field-stats/field-values
     {:entity-type "metric"
@@ -282,7 +284,8 @@
   Reciprocal Rank Fusion when both query types are provided."
   {:scope "agent:search"
    :tool  {:name "search"
-           :description "Search for tables and metrics in Metabase. Use term_queries for keyword search or semantic_queries for natural language search."}}
+           :description "Search for tables and metrics in Metabase. Use term_queries for keyword search or semantic_queries for natural language search."
+           :annotations {:read-only? true}}}
   [_route-params
    _query-params
    {term-queries     :term_queries
@@ -375,7 +378,8 @@
   For metrics, supports: filters, group_by (aggregation is defined by the metric)."
   {:scope "agent:query:construct"
    :tool  {:name "construct_query"
-           :description "Construct a query against a Metabase table or metric. Returns an opaque query string that can be executed with execute_query."}}
+           :description "Construct a query against a Metabase table or metric. Returns an opaque query string that can be executed with execute_query."
+           :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
    body :- ::construct-query-request]
@@ -388,7 +392,8 @@
 (mr/def ::execute-query-request
   "Request schema for /v1/execute. Accepts a base64-encoded MBQL query."
   [:map
-   [:query ms/NonBlankString]])
+   [:query {:tool/description "A base64-encoded query string returned by /v1/construct-query. Do not construct this value manually."}
+    ms/NonBlankString]])
 
 (mr/def ::column-metadata
   "Metadata for a single result column."

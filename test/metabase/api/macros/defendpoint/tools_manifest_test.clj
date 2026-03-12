@@ -125,7 +125,7 @@
    body :- [:map [:name :string]]]
   body)
 
-;; 3. DELETE with no explicit name — tests name inference + DELETE annotations
+;; 3. DELETE — tests DELETE annotations
 (api.macros/defendpoint :delete "/v1/test/:id"
   "Delete a test resource."
   {:tool {:name "delete_test"}}
@@ -159,7 +159,7 @@
    body :- [:map [:action :string]]]
   {:id id :status "active"})
 
-;; 6. PUT with route + query + body params, no explicit name — tests PUT annotations + name inference + 3-way merge
+;; 6. PUT with route + query + body params — tests PUT annotations + 3-way merge
 (api.macros/defendpoint :put "/v1/test-resource/:id"
   "Update a test resource."
   {:tool {:name "test_resource"}}
