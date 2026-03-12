@@ -546,6 +546,8 @@ export type WorkspaceTransformDryRunResponse = {
   data?: WorkspaceTransformDryRunData;
   /** Logs from Python transform execution (only present for Python transforms) */
   logs?: string;
+  /** The compiled native SQL that was actually executed (present on failure for SQL transforms) */
+  native_query?: string | null;
 };
 
 export type WorkspacePermissionsStatus = {

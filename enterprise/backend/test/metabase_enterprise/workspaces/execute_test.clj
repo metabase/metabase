@@ -124,6 +124,28 @@
                {:xf    (t2/count :model/Transform)
                 :xfrun (t2/count :model/TransformRun)}))))))
 
+(deftest dry-run-failed-transform-returns-native-query-test
+  (testing "When a dry-run fails, the response includes the compiled native SQL for debugging"
+    (let [workspace    (ws.tu/create-ready-ws! "Failed Dry-Run Test")
+          db-id        (:database_id workspace)
+          body         {:name   "Failing Transform"
+                        :source {:type  "query"
+                                 :query (mt/native-query {:query "SELECT * FROM non_existing_table_xyz"})}
+                        :target {:type     "table"
+                                 :database db-id
+                                 :schema   nil
+                                 :name     "ws_fail_test"}}
+          ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+          graph        (ws.impl/get-or-calculate-graph! workspace)]
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (ws.impl/dry-run-transform workspace graph ws-transform))]
+        (is (= :failed (:status result)))
+        (is (string? (:message result)))
+        (is (string? (:native_query result))
+            "Failed dry-run should include the compiled native SQL")
+        (is (str/includes? (:native_query result) "non_existing_table_xyz")
+            "native_query should contain the user's SQL (possibly with table remapping)")))))
+
 (deftest ^:mb/transforms-python-test dry-run-python-workspace-transform-test
   (testing "Dry-running a Python workspace transform returns rows without persisting"
     (mt/test-drivers #{:mysql :postgres}

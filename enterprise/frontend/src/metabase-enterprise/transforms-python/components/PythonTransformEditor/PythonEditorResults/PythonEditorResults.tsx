@@ -49,7 +49,10 @@ export function PythonEditorResults({
           {hasDataOrError &&
             tab === "results" &&
             (executionResult?.error ? (
-              <ErrorState error={executionResult.error.message} />
+              <ErrorState
+                error={executionResult.error.message}
+                nativeQuery={executionResult.native_query}
+              />
             ) : (
               <ExecutionOutputTable output={executionResult?.output} />
             ))}
@@ -129,7 +132,13 @@ function EmptyState() {
   );
 }
 
-function ErrorState({ error }: { error: string }) {
+function ErrorState({
+  error,
+  nativeQuery,
+}: {
+  error: string;
+  nativeQuery?: string | null;
+}) {
   return (
     <Stack gap="sm" h="100%" p="md" c="error" className={S.error}>
       <Group fw="bold" gap="sm">
@@ -139,6 +148,14 @@ function ErrorState({ error }: { error: string }) {
       <Box className={S.traceback} fz="sm">
         {error}
       </Box>
+      {nativeQuery && (
+        <Box className={S.traceback} fz="sm" c="text-primary">
+          <Text fw="bold" fz="sm" mb="xs" c="text-secondary">
+            {t`Executed SQL`}
+          </Text>
+          <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{nativeQuery}</pre>
+        </Box>
+      )}
     </Stack>
   );
 }

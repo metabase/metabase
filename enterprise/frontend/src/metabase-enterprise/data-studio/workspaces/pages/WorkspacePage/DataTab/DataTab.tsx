@@ -7,7 +7,7 @@ import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Box, Group, Icon, Stack, Tabs } from "metabase/ui";
+import { Box, Group, Icon, Stack, Tabs, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
 import { ExecutionOutputTable } from "metabase-enterprise/transforms-python/components/PythonTransformEditor/PythonEditorResults/ExecutionOutputTable";
@@ -148,7 +148,10 @@ function PythonPreviewResults({
 
         <Tabs.Panel h="100%" p="md" value="results">
           {executionResult?.error ? (
-            <ErrorState error={executionResult.error.message} />
+            <ErrorState
+              error={executionResult.error.message}
+              nativeQuery={executionResult.native_query}
+            />
           ) : (
             <Box h="100%" style={{ overflow: "auto" }}>
               <ExecutionOutputTable output={executionResult?.output} />
@@ -178,7 +181,15 @@ function PythonPreviewResults({
   );
 }
 
-function ErrorState({ error, title }: { error: string; title?: string }) {
+function ErrorState({
+  error,
+  title,
+  nativeQuery,
+}: {
+  error: string;
+  title?: string;
+  nativeQuery?: string | null;
+}) {
   return (
     <Stack gap="sm" h="100%" p="md" c="error">
       <Group fw="bold" gap="sm">
@@ -186,6 +197,14 @@ function ErrorState({ error, title }: { error: string; title?: string }) {
         {title ?? t`Error`}
       </Group>
       <Box fz="sm">{error}</Box>
+      {nativeQuery && (
+        <Box fz="sm" c="text-primary">
+          <Text fw="bold" fz="sm" mb="xs" c="text-secondary">
+            {t`Executed SQL`}
+          </Text>
+          <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{nativeQuery}</pre>
+        </Box>
+      )}
     </Stack>
   );
 }

@@ -430,6 +430,7 @@ function convertDryRunToTestResponse(
     return {
       error: { message: dryRun.message ?? "Transform failed" },
       logs: dryRun.logs ?? "",
+      native_query: dryRun.native_query,
     };
   }
 

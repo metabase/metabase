@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms-base.core :as transforms-base]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.log :as log]
@@ -119,6 +120,7 @@
                               (qp/userland-query)
                               (assoc :constraints {:max-results           row-limit
                                                    :max-results-bare-rows row-limit}))
+          native-query    (try (:query (qp.compile/compile query)) (catch Exception _ nil))
           result          (qp/process-query query)
           data            (:data result)]
       (if (= :completed (:status result))
@@ -126,8 +128,9 @@
          :data         (select-keys data [:rows :cols :results_metadata])
          :running_time (:running_time result)
          :started_at   (:started_at result)}
-        {:status  :failed
-         :message (or (:error result) "Query execution failed")}))
+        (cond-> {:status  :failed
+                 :message (or (:error result) "Query execution failed")}
+          native-query (assoc :native_query native-query))))
     (catch Exception e
       (log/error e error-context)
       {:status  :failed

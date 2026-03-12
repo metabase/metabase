@@ -277,6 +277,8 @@ export type TestPythonTransformResponse = {
     cols: { name: string }[];
     rows: Record<string, RowValue>[];
   };
+  /** The compiled native SQL that was actually executed (present on failure for SQL transforms) */
+  native_query?: string | null;
 };
 
 export type PythonLibrary = {
