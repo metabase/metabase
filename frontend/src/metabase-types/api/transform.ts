@@ -23,12 +23,14 @@ export type TransformOwner = Pick<
   "id" | "email" | "first_name" | "last_name"
 >;
 
+export type TransformType = "native" | "python" | "mbql";
+
 export type Transform = {
   id: TransformId;
   name: string;
   description: string | null;
   source: TransformSource;
-  source_type: "native" | "python" | "mbql";
+  source_type: TransformType;
   target: TransformTarget;
   collection_id: CollectionId | null;
   created_at: string;

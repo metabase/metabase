@@ -20,7 +20,7 @@ export const useHasCheckpointOptions = (source: TransformSource) => {
     isMbqlQuery: isMbqlQuery(source, metadata),
     isPythonTransform,
   })
-    .with({ isMbqlQuery: true }, () => "query" as const)
+    .with({ isMbqlQuery: true }, () => "mbql" as const)
     .with({ isPythonTransform: true }, () => "python" as const)
     .otherwise(() => "native" as const);
 
@@ -37,7 +37,7 @@ export const useHasCheckpointOptions = (source: TransformSource) => {
   const getHasCheckpointOptions = () => {
     try {
       return match(transformType)
-        .with("query", () =>
+        .with("mbql", () =>
           libQuery ? getSourceFieldOptions(libQuery).length > 0 : false,
         )
         .with("python", () => {
