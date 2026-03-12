@@ -3,6 +3,7 @@
    tool calls to existing agent API / metabot functions."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [metabase-enterprise.agent-api.api :as agent-api]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
@@ -22,6 +23,10 @@
            :description (:description tool)
            :inputSchema (:inputSchema tool)})
         (:tools @manifest)))
+
+(def ^:private tool-index
+  "Lookup from tool name to its full manifest definition."
+  (delay (into {} (map (juxt :name identity)) (:tools @manifest))))
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
@@ -54,30 +59,48 @@
                            (some-> response :body :error)
                            (str "Agent API error: " (:status response))))))))
 
-(defn- call-search [arguments]
-  (invoke-agent-api :post "/v1/search"
-                    {:term_queries     (or (:term_queries arguments) [])
-                     :semantic_queries (or (:semantic_queries arguments) [])}))
+(defn- interpolate-path
+  "Replace `{param}` placeholders in `path` with values from `arguments`.
+   Returns `[resolved-path remaining-args]` where remaining-args has path params removed."
+  [path arguments]
+  (let [params    (re-seq #"\{([^}]+)\}" path)
+        resolved  (reduce (fn [p [placeholder k]]
+                            (str/replace p placeholder (str (get arguments (keyword k)))))
+                          path
+                          params)
+        path-keys (set (map (comp keyword second) params))]
+    [resolved (apply dissoc arguments path-keys)]))
 
-(defn- call-get-table [arguments]
-  (invoke-agent-api :get (str "/v1/table/" (:table_id arguments))))
+(defn- strip-api-prefix
+  "Strip the `/api/agent` prefix from manifest paths, since `invoke-agent-api`
+   calls `agent-api/routes` directly which expects `/v1/...` paths."
+  [path]
+  (str/replace-first path #"^/api/agent" ""))
 
-(defn- call-get-metric [arguments]
-  (invoke-agent-api :get (str "/v1/metric/" (:metric_id arguments))))
+(defn- dispatch-via-agent-api
+  "Generic dispatch for tools whose responseFormat is \"json\".
+   Looks up method/path from the tool definition, interpolates path params,
+   and calls `invoke-agent-api`."
+  [tool-def arguments]
+  (let [{:keys [method path]} (:endpoint tool-def)
+        method                (keyword (str/lower-case method))
+        [resolved-path
+         remaining-args]      (interpolate-path path arguments)
+        api-path              (strip-api-prefix resolved-path)]
+    (if (= :post method)
+      (invoke-agent-api method api-path remaining-args)
+      (invoke-agent-api method api-path))))
 
-(defn- call-get-field-values [arguments]
-  (let [{:keys [entity_type entity_id field_id]} arguments]
-    (invoke-agent-api :get (str "/v1/" entity_type "/" entity_id "/field/" field_id "/values"))))
-
-(defn- call-construct-query [arguments]
-  (invoke-agent-api :post "/v1/construct-query" arguments))
-
-(defn- call-execute-query [arguments]
-  (let [query (-> (:query arguments)
-                  u/decode-base64
-                  json/decode+kw)
-        info  {:executed-by api/*current-user-id*
-               :context     :agent}
+(defn- execute-query
+  "Specialized handler for execute_query — the agent API's `/v1/execute` endpoint
+   uses streaming responses incompatible with `invoke-agent-api`'s promise-based
+   synthetic request, so we call `qp/process-query` directly."
+  [arguments]
+  (let [query  (-> (:query arguments)
+                   u/decode-base64
+                   json/decode+kw)
+        info   {:executed-by api/*current-user-id*
+                :context     :agent}
         result (qp/process-query
                 (-> query
                     (update-in [:middleware :js-int-to-string?] (fnil identity true))
@@ -85,21 +108,15 @@
                     (update :info merge info)))]
     (text-content result)))
 
-(def ^:private tool-handlers
-  {"search"           call-search
-   "get_table"        call-get-table
-   "get_metric"       call-get-metric
-   "get_field_values" call-get-field-values
-   "construct_query"  call-construct-query
-   "execute_query"    call-execute-query})
-
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
    Returns MCP content on success, or error content on failure."
   [tool-name arguments]
-  (if-let [handler (get tool-handlers tool-name)]
+  (if-let [tool-def (get @tool-index tool-name)]
     (try
-      (handler arguments)
+      (case (:responseFormat tool-def)
+        "query_result" (execute-query arguments)
+        (dispatch-via-agent-api tool-def arguments))
       (catch Exception e
         (error-content (or (ex-message e) "Internal error"))))
     (error-content (str "Unknown tool: " tool-name))))
