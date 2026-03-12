@@ -228,7 +228,7 @@
             [:name :string]
             [:description {:optional true} [:maybe :string]]
             [:source TransformSource]
-            #_[:target TransformTarget]]]
+            [:target TransformTarget]]]
   (ws.api.common/create-workspace-transform! ws-id body))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/archive" :- :nil
