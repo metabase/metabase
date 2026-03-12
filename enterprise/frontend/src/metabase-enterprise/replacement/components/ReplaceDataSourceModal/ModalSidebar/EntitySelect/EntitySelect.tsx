@@ -7,7 +7,7 @@ import {
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
 import { Box, Button, Icon, Input } from "metabase/ui";
-import type { DatabaseId, ReplaceSourceEntry } from "metabase-types/api";
+import type { DatabaseId, SourceReplacementEntry } from "metabase-types/api";
 
 import type { EntityItem } from "../../types";
 
@@ -32,7 +32,7 @@ type EntitySelectProps = {
   placeholder?: string;
   databaseId?: DatabaseId;
   disabledItem?: EntityItem;
-  onChange: (entry: ReplaceSourceEntry) => void;
+  onChange: (entry: SourceReplacementEntry) => void;
 };
 
 export function EntitySelect({

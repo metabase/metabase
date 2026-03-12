@@ -9,7 +9,7 @@ import {
   useCheckReplaceSourceQuery,
   useListNodeDependentsQuery,
 } from "metabase-enterprise/api";
-import type { ReplaceSourceEntry } from "metabase-types/api";
+import type { SourceReplacementEntry } from "metabase-types/api";
 
 import { ConfirmAndProgressModal } from "./ConfirmAndProgressModal";
 import { ModalBody } from "./ModalBody";
@@ -47,8 +47,8 @@ export function ReplaceDataSourceModal({
 }
 
 type ModalContentProps = {
-  initialSource: ReplaceSourceEntry | undefined;
-  initialTarget: ReplaceSourceEntry | undefined;
+  initialSource: SourceReplacementEntry | undefined;
+  initialTarget: SourceReplacementEntry | undefined;
   onClose: () => void;
 };
 
@@ -94,7 +94,7 @@ function ModalContent({
     }
   }, [selectedTab, canReplace]);
 
-  const handleSourceChange = (sourceEntry: ReplaceSourceEntry) => {
+  const handleSourceChange = (sourceEntry: SourceReplacementEntry) => {
     setSourceEntry(sourceEntry);
     setTargetEntry(undefined);
   };

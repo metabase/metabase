@@ -3,16 +3,16 @@ import { msgid, ngettext, t } from "ttag";
 
 import { Modal } from "metabase/ui";
 import type {
-  ReplaceSourceEntry,
-  ReplaceSourceRunId,
+  SourceReplacementEntry,
+  SourceReplacementRunId,
 } from "metabase-types/api";
 
 import { ConfirmModalContent } from "./ConfirmModalContent";
 import { ProgressModalContent } from "./ProgressModalContent";
 
 type ConfirmAndProgressModalProps = {
-  sourceEntry: ReplaceSourceEntry;
-  targetEntry: ReplaceSourceEntry;
+  sourceEntry: SourceReplacementEntry;
+  targetEntry: SourceReplacementEntry;
   dependentsCount: number;
   opened: boolean;
   onReplaceSuccess: (originalDependentsCount: number) => void;
@@ -29,7 +29,7 @@ export function ConfirmAndProgressModal({
   onReplaceFailure,
   onClose,
 }: ConfirmAndProgressModalProps) {
-  const [runId, setRunId] = useState<ReplaceSourceRunId>();
+  const [runId, setRunId] = useState<SourceReplacementRunId>();
   const { current: dependentsCount } = useRef(initialDependentsCount);
   const isStarted = runId != null;
 

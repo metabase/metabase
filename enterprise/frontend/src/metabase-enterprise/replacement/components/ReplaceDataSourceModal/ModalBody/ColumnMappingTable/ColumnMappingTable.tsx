@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
-import type { ReplaceSourceColumnMapping } from "metabase-types/api";
+import type { SourceReplacementColumnMapping } from "metabase-types/api";
 
 import type { EntityItem } from "../../types";
 
@@ -11,7 +11,7 @@ import { getColumns, getRows } from "./utils";
 type ColumnComparisonTableProps = {
   sourceItem: EntityItem | undefined;
   targetItem: EntityItem | undefined;
-  columnMappings: ReplaceSourceColumnMapping[];
+  columnMappings: SourceReplacementColumnMapping[];
 };
 
 export function ColumnComparisonTable({

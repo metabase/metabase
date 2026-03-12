@@ -4,10 +4,10 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { FixedSizeIcon, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { ReplaceSourceColumnInfo } from "metabase-types/api";
+import type { SourceReplacementColumnInfo } from "metabase-types/api";
 
 type NameCellProps = {
-  column: ReplaceSourceColumnInfo;
+  column: SourceReplacementColumnInfo;
 };
 
 export function NameCell({ column }: NameCellProps) {

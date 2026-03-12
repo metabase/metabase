@@ -4,15 +4,15 @@ import { Form, FormErrorMessage, FormProvider } from "metabase/forms";
 import { Box, Button, Group, Stack, Text } from "metabase/ui";
 import { useReplaceSourceMutation } from "metabase-enterprise/api/replacement";
 import type {
-  ReplaceSourceEntry,
-  ReplaceSourceRunId,
+  SourceReplacementEntry,
+  SourceReplacementRunId,
 } from "metabase-types/api";
 
 type ConfirmModalContentProps = {
-  sourceEntry: ReplaceSourceEntry;
-  targetEntry: ReplaceSourceEntry;
+  sourceEntry: SourceReplacementEntry;
+  targetEntry: SourceReplacementEntry;
   dependentsCount: number;
-  onSubmit: (runId: ReplaceSourceRunId) => void;
+  onSubmit: (runId: SourceReplacementRunId) => void;
   onCancel: () => void;
 };
 

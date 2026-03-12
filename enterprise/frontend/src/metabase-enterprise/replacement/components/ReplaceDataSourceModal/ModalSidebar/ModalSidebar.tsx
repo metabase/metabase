@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { Button, Group, Stack, Text, Title } from "metabase/ui";
 import type {
-  CheckReplaceSourceInfo,
-  ReplaceSourceEntry,
+  SourceReplacementCheckInfo,
+  SourceReplacementEntry,
 } from "metabase-types/api";
 
 import type { EntityItem } from "../types";
@@ -17,11 +17,11 @@ import { getSourceError, getSubmitLabel, getTargetError } from "./utils";
 type ModalSidebarProps = {
   sourceItem: EntityItem | undefined;
   targetItem: EntityItem | undefined;
-  checkInfo: CheckReplaceSourceInfo | undefined;
+  checkInfo: SourceReplacementCheckInfo | undefined;
   dependentsCount: number | undefined;
   canReplace: boolean;
-  onSourceChange: (sourceEntry: ReplaceSourceEntry) => void;
-  onTargetChange: (targetEntry: ReplaceSourceEntry) => void;
+  onSourceChange: (sourceEntry: SourceReplacementEntry) => void;
+  onTargetChange: (targetEntry: SourceReplacementEntry) => void;
   onSubmit: () => void;
   onCancel: () => void;
 };

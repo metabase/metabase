@@ -2,18 +2,18 @@ import type { CardId } from "./card";
 import type { Field } from "./field";
 import type { ConcreteTableId } from "./table";
 
-export type ReplaceSourceEntityId = ConcreteTableId | CardId;
+export type SourceReplacementEntityId = ConcreteTableId | CardId;
 
-export const REPLACE_SOURCE_ENTITY_TYPES = ["card", "table"] as const;
-export type ReplaceSourceEntityType =
-  (typeof REPLACE_SOURCE_ENTITY_TYPES)[number];
+export const SOURCE_REPLACEMENT_ENTITY_TYPES = ["card", "table"] as const;
+export type SourceReplacementEntityType =
+  (typeof SOURCE_REPLACEMENT_ENTITY_TYPES)[number];
 
-export type ReplaceSourceEntry = {
-  id: ReplaceSourceEntityId;
-  type: ReplaceSourceEntityType;
+export type SourceReplacementEntry = {
+  id: SourceReplacementEntityId;
+  type: SourceReplacementEntityType;
 };
 
-export type ReplaceSourceColumnInfo = Pick<
+export type SourceReplacementColumnInfo = Pick<
   Field,
   | "id"
   | "name"
@@ -23,52 +23,55 @@ export type ReplaceSourceColumnInfo = Pick<
   | "semantic_type"
 >;
 
-export const REPLACE_SOURCE_ERROR_TYPES = [
+export const SOURCE_REPLACEMENT_ERROR_TYPES = [
   "database-mismatch",
   "cycle-detected",
   "incompatible-implicit-joins",
 ] as const;
-export type ReplaceSourceErrorType =
-  (typeof REPLACE_SOURCE_ERROR_TYPES)[number];
+export type SourceReplacementErrorType =
+  (typeof SOURCE_REPLACEMENT_ERROR_TYPES)[number];
 
-export const REPLACE_SOURCE_COLUMN_ERROR_TYPES = [
+export const SOURCE_REPLACEMENT_COLUMN_ERROR_TYPES = [
   "column-type-mismatch",
   "missing-primary-key",
   "missing-foreign-key",
   "foreign-key-mismatch",
 ] as const;
-export type ReplaceSourceColumnErrorType =
-  (typeof REPLACE_SOURCE_COLUMN_ERROR_TYPES)[number];
+export type SourceReplacementColumnErrorType =
+  (typeof SOURCE_REPLACEMENT_COLUMN_ERROR_TYPES)[number];
 
-export type ReplaceSourceColumnMapping = {
-  source?: ReplaceSourceColumnInfo;
-  target?: ReplaceSourceColumnInfo;
-  errors?: ReplaceSourceColumnErrorType[];
+export type SourceReplacementColumnMapping = {
+  source?: SourceReplacementColumnInfo;
+  target?: SourceReplacementColumnInfo;
+  errors?: SourceReplacementColumnErrorType[];
 };
 
-export type CheckReplaceSourceInfo = {
+export type SourceReplacementCheckInfo = {
   success: boolean;
-  errors?: ReplaceSourceErrorType[];
-  column_mappings?: ReplaceSourceColumnMapping[];
+  errors?: SourceReplacementErrorType[];
+  column_mappings?: SourceReplacementColumnMapping[];
 };
 
-export type ReplaceSourceRunId = number;
+export type SourceReplacementRunId = number;
 
-export type ReplaceSourceRunStatus =
+export type SourceReplacementRunType = "replace" | "convert-to-transform";
+
+export type SourceReplacementRunStatus =
   | "started"
   | "succeeded"
   | "failed"
   | "canceled"
   | "timeout";
 
-export type ReplaceSourceRun = {
-  id: ReplaceSourceRunId;
-  status: ReplaceSourceRunStatus;
+export type SourceReplacementRun = {
+  id: SourceReplacementRunId;
+  run_type: SourceReplacementRunType;
+  status: SourceReplacementRunStatus;
   is_active: boolean | null;
-  source_entity_type: ReplaceSourceEntityType;
-  source_entity_id: ReplaceSourceEntityId;
-  target_entity_type: ReplaceSourceEntityType;
-  target_entity_id: ReplaceSourceEntityId;
+  source_entity_type: SourceReplacementEntityType;
+  source_entity_id: SourceReplacementEntityId;
+  target_entity_type: SourceReplacementEntityType;
+  target_entity_id: SourceReplacementEntityId;
   progress: number | null;
   message: string | null;
   user_id: number | null;
@@ -77,12 +80,16 @@ export type ReplaceSourceRun = {
 };
 
 export type ReplaceSourceRequest = {
-  source_entity_id: ReplaceSourceEntityId;
-  source_entity_type: ReplaceSourceEntityType;
-  target_entity_id: ReplaceSourceEntityId;
-  target_entity_type: ReplaceSourceEntityType;
+  source_entity_id: SourceReplacementEntityId;
+  source_entity_type: SourceReplacementEntityType;
+  target_entity_id: SourceReplacementEntityId;
+  target_entity_type: SourceReplacementEntityType;
 };
 
 export type ReplaceSourceResponse = {
-  run_id: ReplaceSourceRunId;
+  run_id: SourceReplacementRunId;
+};
+
+export type ListSourceReplacementRunsRequest = {
+  "is-active"?: boolean;
 };

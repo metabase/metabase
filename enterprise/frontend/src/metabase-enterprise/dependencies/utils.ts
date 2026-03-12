@@ -14,7 +14,7 @@ import type {
   DependencyNode,
   DependencyType,
   Field,
-  ReplaceSourceEntry,
+  SourceReplacementEntry,
   Transform,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -491,7 +491,7 @@ export function getNodeFieldsLabelWithCount(fieldCount: number) {
 
 export function getNodeDataSourceEntry(
   node: DependencyNode,
-): ReplaceSourceEntry | null {
+): SourceReplacementEntry | null {
   switch (node.type) {
     case "table":
       return { id: node.id, type: node.type };

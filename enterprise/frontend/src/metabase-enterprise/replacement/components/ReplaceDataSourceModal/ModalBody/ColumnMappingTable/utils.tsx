@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { TreeTableColumnDef } from "metabase/ui";
 import type {
-  ReplaceSourceColumnErrorType,
-  ReplaceSourceColumnMapping,
+  SourceReplacementColumnErrorType,
+  SourceReplacementColumnMapping,
 } from "metabase-types/api";
 
 import { getColumnErrorMessage } from "../../../../utils";
@@ -27,13 +27,13 @@ function getEntityHeader(entityName: string, columnCount: number): string {
 }
 
 function getSourceColumnCount(
-  columnMappings: ReplaceSourceColumnMapping[],
+  columnMappings: SourceReplacementColumnMapping[],
 ): number {
   return columnMappings.filter(({ source }) => source != null).length;
 }
 
 function getTargetColumnCount(
-  columnMappings: ReplaceSourceColumnMapping[],
+  columnMappings: SourceReplacementColumnMapping[],
 ): number {
   return columnMappings.filter(({ target }) => target != null).length;
 }
@@ -80,7 +80,7 @@ function getTargetColumn(
   };
 }
 
-function getErrorMessage(errors: ReplaceSourceColumnErrorType[]) {
+function getErrorMessage(errors: SourceReplacementColumnErrorType[]) {
   const messages = errors
     .map(getColumnErrorMessage)
     .filter((message) => message != null);
@@ -110,7 +110,7 @@ function getDetailsColumn(): TreeTableColumnDef<ColumnMappingItem> {
 export function getColumns(
   sourceItem: EntityItem | undefined,
   targetItem: EntityItem | undefined,
-  columnMappings: ReplaceSourceColumnMapping[],
+  columnMappings: SourceReplacementColumnMapping[],
 ): TreeTableColumnDef<ColumnMappingItem>[] {
   const sourceHeader = getEntityHeader(
     getEntityName(sourceItem),
@@ -129,7 +129,7 @@ export function getColumns(
 }
 
 export function getRows(
-  columnMappings: ReplaceSourceColumnMapping[],
+  columnMappings: SourceReplacementColumnMapping[],
 ): ColumnMappingItem[] {
   return columnMappings.map((columnMapping, index) => ({
     id: index,

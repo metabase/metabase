@@ -1,23 +1,25 @@
 import type {
-  CheckReplaceSourceInfo,
+  ListSourceReplacementRunsRequest,
   ReplaceSourceRequest,
   ReplaceSourceResponse,
-  ReplaceSourceRun,
-  ReplaceSourceRunId,
+  SourceReplacementCheckInfo,
+  SourceReplacementRun,
+  SourceReplacementRunId,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import {
   idTag,
   invalidateTags,
-  provideReplaceSourceRunTags,
+  provideSourceReplacementRunListTags,
+  provideSourceReplacementRunTags,
   tag,
 } from "./tags";
 
 export const replacementApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     checkReplaceSource: builder.query<
-      CheckReplaceSourceInfo,
+      SourceReplacementCheckInfo,
       ReplaceSourceRequest
     >({
       query: (body) => ({
@@ -42,12 +44,27 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_response, error) =>
         invalidateTags(error, [tag("table"), tag("card")]),
     }),
-    getReplaceSourceRun: builder.query<ReplaceSourceRun, ReplaceSourceRunId>({
+    getSourceReplacementRun: builder.query<
+      SourceReplacementRun,
+      SourceReplacementRunId
+    >({
       query: (id) => ({
         method: "GET",
         url: `/api/ee/replacement/runs/${id}`,
       }),
-      providesTags: (run) => (run ? provideReplaceSourceRunTags(run) : []),
+      providesTags: (run) => (run ? provideSourceReplacementRunTags(run) : []),
+    }),
+    listSourceReplacementRuns: builder.query<
+      SourceReplacementRun[],
+      ListSourceReplacementRunsRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/ee/replacement/runs",
+        params,
+      }),
+      providesTags: (runs) =>
+        runs ? provideSourceReplacementRunListTags(runs) : [],
     }),
   }),
 });
@@ -55,5 +72,6 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
 export const {
   useCheckReplaceSourceQuery,
   useReplaceSourceMutation,
-  useGetReplaceSourceRunQuery,
+  useGetSourceReplacementRunQuery,
+  useListSourceReplacementRunsQuery,
 } = replacementApi;

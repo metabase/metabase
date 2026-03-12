@@ -1,7 +1,7 @@
 import { Flex } from "metabase/ui";
 import type {
   DependencyNode,
-  ReplaceSourceColumnMapping,
+  SourceReplacementColumnMapping,
 } from "metabase-types/api";
 
 import type { EntityItem, TabType } from "../types";
@@ -17,7 +17,7 @@ type ModalBodyProps = {
   selectedTab: TabType;
   canReplace: boolean;
   dependents: DependencyNode[] | undefined;
-  columnMappings: ReplaceSourceColumnMapping[] | undefined;
+  columnMappings: SourceReplacementColumnMapping[] | undefined;
   onTabChange: (tab: TabType) => void;
 };
 

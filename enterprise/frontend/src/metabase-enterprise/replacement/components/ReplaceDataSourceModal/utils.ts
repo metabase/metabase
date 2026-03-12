@@ -3,17 +3,17 @@ import { msgid, ngettext, t } from "ttag";
 import { skipToken } from "metabase/api";
 import type {
   Card,
-  CheckReplaceSourceInfo,
   DatabaseId,
   DependencyNode,
-  ReplaceSourceEntry,
+  SourceReplacementCheckInfo,
+  SourceReplacementEntry,
   Table,
 } from "metabase-types/api";
 
 import type { EntityItem } from "./types";
 
 export function getEntityItem(
-  entry: ReplaceSourceEntry | undefined,
+  entry: SourceReplacementEntry | undefined,
   table: Table | undefined,
   card: Card | undefined,
 ): EntityItem | undefined {
@@ -44,21 +44,23 @@ export function getEntityDatabaseId(
   }
 }
 
-export function getTableRequest(entry: ReplaceSourceEntry | undefined) {
+export function getTableRequest(entry: SourceReplacementEntry | undefined) {
   return entry != null && entry.type === "table" ? { id: entry.id } : skipToken;
 }
 
-export function getCardRequest(entry: ReplaceSourceEntry | undefined) {
+export function getCardRequest(entry: SourceReplacementEntry | undefined) {
   return entry != null && entry.type === "card" ? { id: entry.id } : skipToken;
 }
 
-export function getDependentsRequest(entry: ReplaceSourceEntry | undefined) {
+export function getDependentsRequest(
+  entry: SourceReplacementEntry | undefined,
+) {
   return entry != null ? { id: entry.id, type: entry.type } : skipToken;
 }
 
 export function getCheckReplaceSourceRequest(
-  sourceEntry: ReplaceSourceEntry | undefined,
-  targetEntry: ReplaceSourceEntry | undefined,
+  sourceEntry: SourceReplacementEntry | undefined,
+  targetEntry: SourceReplacementEntry | undefined,
 ) {
   if (sourceEntry == null || targetEntry == null) {
     return skipToken;
@@ -73,7 +75,7 @@ export function getCheckReplaceSourceRequest(
 }
 
 export function canReplaceSource(
-  checkInfo: CheckReplaceSourceInfo | undefined,
+  checkInfo: SourceReplacementCheckInfo | undefined,
   dependents: DependencyNode[] | undefined,
 ) {
   return (

@@ -1,6 +1,6 @@
 import { msgid, ngettext, t } from "ttag";
 
-import type { CheckReplaceSourceInfo } from "metabase-types/api";
+import type { SourceReplacementCheckInfo } from "metabase-types/api";
 
 import {
   getGenericErrorMessage,
@@ -9,7 +9,7 @@ import {
 } from "../../../utils";
 
 export function getSourceError(
-  checkInfo: CheckReplaceSourceInfo | undefined,
+  checkInfo: SourceReplacementCheckInfo | undefined,
   dependentsCount: number | undefined,
 ) {
   if (dependentsCount != null && dependentsCount === 0) {
@@ -23,7 +23,9 @@ export function getSourceError(
   return errors.map(getSourceErrorMessage).find((error) => error != null);
 }
 
-export function getTargetError(checkInfo: CheckReplaceSourceInfo | undefined) {
+export function getTargetError(
+  checkInfo: SourceReplacementCheckInfo | undefined,
+) {
   if (checkInfo == null || checkInfo.success) {
     return undefined;
   }

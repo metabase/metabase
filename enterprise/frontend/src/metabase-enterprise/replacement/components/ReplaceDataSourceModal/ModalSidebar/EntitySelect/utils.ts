@@ -2,7 +2,7 @@ import type {
   OmniPickerItem,
   OmniPickerValue,
 } from "metabase/common/components/Pickers";
-import type { DatabaseId, ReplaceSourceEntry } from "metabase-types/api";
+import type { DatabaseId, SourceReplacementEntry } from "metabase-types/api";
 
 import { isSameEntity } from "../../../../utils";
 import type { CardEntityData, EntityItem, TableEntityData } from "../../types";
@@ -60,7 +60,7 @@ export function getIsPickerItemDisabled(
 
 export function getEntityItem(
   item: OmniPickerItem,
-): ReplaceSourceEntry | undefined {
+): SourceReplacementEntry | undefined {
   if (item.model === "table") {
     return { id: Number(item.id), type: "table" };
   }

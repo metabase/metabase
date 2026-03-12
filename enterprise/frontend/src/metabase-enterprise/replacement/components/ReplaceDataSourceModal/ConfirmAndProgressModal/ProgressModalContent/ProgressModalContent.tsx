@@ -5,15 +5,18 @@ import { msgid, ngettext } from "ttag";
 import { Api } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { Progress, Stack, Text } from "metabase/ui";
-import { useGetReplaceSourceRunQuery } from "metabase-enterprise/api/replacement";
-import type { ReplaceSourceRun, ReplaceSourceRunId } from "metabase-types/api";
+import { useGetSourceReplacementRunQuery } from "metabase-enterprise/api/replacement";
+import type {
+  SourceReplacementRun,
+  SourceReplacementRunId,
+} from "metabase-types/api";
 
 import { INVALIDATE_TAGS } from "../../constants";
 
 const POLLING_INTERVAL = 1000;
 
 type ProgressModalContentProps = {
-  runId: ReplaceSourceRunId;
+  runId: SourceReplacementRunId;
   onReplaceSuccess: () => void;
   onReplaceFailure: () => void;
 };
@@ -23,7 +26,7 @@ export function ProgressModalContent({
   onReplaceSuccess,
   onReplaceFailure,
 }: ProgressModalContentProps) {
-  const { data: run } = useGetReplaceSourceRunQuery(runId, {
+  const { data: run } = useGetSourceReplacementRunQuery(runId, {
     pollingInterval: POLLING_INTERVAL,
   });
   const elapsedSeconds = useElapsedSeconds();
@@ -48,7 +51,7 @@ export function ProgressModalContent({
   );
 }
 
-function getProgressValue(run: ReplaceSourceRun | undefined): number {
+function getProgressValue(run: SourceReplacementRun | undefined): number {
   if (run == null || run.progress == null) {
     return 0;
   }
