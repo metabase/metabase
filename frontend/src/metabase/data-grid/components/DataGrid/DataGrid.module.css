@@ -18,30 +18,11 @@
   scrollbar-gutter: stable;
 }
 
-.pinnedSection {
+.pinnedColumnsSection {
   flex-shrink: 0;
   position: sticky;
   left: 0;
   z-index: 2;
-}
-
-.pinnedSection.withSeparator {
-  border-right: 3px solid var(--mb-color-border-subtle);
-}
-
-.row.withSeparator {
-  /*
-   Since each cell already has border-bottom: 1px,
-   the total horizontal separator is now 2px + 1px = 3px,
-   matching the .pinnedSection.withSeparator at 3px.
- */
-  border-bottom: 2px solid var(--mb-color-border-subtle);
-}
-
-.centerSection {
-  position: relative;
-  flex: 0 0 auto;
-  min-width: 0;
 }
 
 .headerContainer {
@@ -57,9 +38,45 @@
   height: 37px;
 }
 
-.bodyContainer {
+.pinnedRowsSection {
+  position: sticky;
+  z-index: 3;
   display: flex;
   flex-direction: row;
+  align-items: flex-start;
+
+  /*
+    must reflect .headerContainer height
+  */
+  top: 37px;
+
+  /*
+   Since each cell already has border-bottom: 1px,
+   the total horizontal separator is now 2px + 1px = 3px,
+   matching the .pinnedColumnsSection.withSeparator at 3px.
+ */
+  border-bottom: 2px solid var(--mb-color-border-subtle);
+}
+
+.pinnedColumnsSection.withSeparator {
+  border-right: 3px solid var(--mb-color-border-subtle);
+}
+
+.centerRowsSection {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.centerColumnsSection {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.bodyContainer {
+  display: flex;
+  flex-direction: column;
   align-items: flex-start;
 }
 
@@ -73,6 +90,14 @@
   position: relative;
   padding-left: var(--virtual-padding-left, 0);
   padding-right: var(--virtual-padding-right, 0);
+
+  &.active {
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-brand),
+      transparent 90%
+    );
+  }
 }
 
 .headerCell {

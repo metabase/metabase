@@ -20,7 +20,6 @@ export interface DataGridRowProps<TData> extends DataGridStylesProps {
   row: DataGridRowType<TData>;
   columns: DataGridColumnType<TData>[];
   rowMeasureRef?: ((element: HTMLElement | null) => void) | undefined;
-  stickyElementsBackgroundColor: string;
   zoomedRowIndex: number | undefined;
   pinnedRowsCount: number;
   selection: DataGridSelection;
@@ -36,7 +35,6 @@ export const DataGridRow = <TData,>({
   rowMeasureRef,
   columns,
   pinnedRowsCount,
-  stickyElementsBackgroundColor,
   zoomedRowIndex,
   selection,
   onBodyCellClick,
@@ -44,13 +42,8 @@ export const DataGridRow = <TData,>({
   styles,
 }: DataGridRowProps<TData>) => {
   const dataIndex = row.virtualItem?.index ?? row.origin.index;
-  const active = zoomedRowIndex === dataIndex;
 
-  const rowPositionStyles = getRowPositionStyles(
-    row,
-    stickyElementsBackgroundColor,
-    active,
-  );
+  const rowPositionStyles = getRowPositionStyles(row);
 
   return (
     <div
@@ -65,6 +58,7 @@ export const DataGridRow = <TData,>({
         S.row,
         {
           [S.withSeparator]: row.origin.index === pinnedRowsCount - 1,
+          [S.active]: zoomedRowIndex === dataIndex,
         },
         classNames?.row,
       )}
