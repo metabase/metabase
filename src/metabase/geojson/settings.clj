@@ -1,6 +1,7 @@
 (ns metabase.geojson.settings
   (:require
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -60,9 +61,17 @@
   []
   (config/config-bool :mb-allow-classpath-geojson))
 
+(def ^:private user-configurable-classpath-prefixes
+  #{"geojson/custom/"})
+
+(def ^:private internal-use-classpath-prefixes
+  #{"app/assets/geojson/"})
+
 (def ^:private allowed-classpath-prefixes
   "Prefixes allowed for classpath GeoJSON resources."
-  #{"geojson/custom/" "app/assets/geojson/"})
+  (set/union
+   user-configurable-classpath-prefixes
+   internal-use-classpath-prefixes))
 
 (defn- normalize-path
   [path]
@@ -73,8 +82,8 @@
    with no path traversal, and the resource must exist."
   [path]
   (let [normalized (normalize-path path)]
-    (and (not (str/includes? normalized ".."))
-         (some #(str/starts-with? normalized %) allowed-classpath-prefixes)
+    (and (some #(str/starts-with? normalized %) allowed-classpath-prefixes)
+         (not (str/includes? normalized ".."))
          (some? (io/resource normalized)))))
 
 (defn- valid-geojson-classpath-resource?
@@ -82,7 +91,7 @@
    Must be under the geojson/custom/ prefix with no path traversal."
   [url]
   (let [normalized (normalize-path url)]
-    (and (str/starts-with? normalized "geojson/custom/")
+    (and (some #(str/starts-with? normalized %) user-configurable-classpath-prefixes)
          (not (str/includes? normalized ".."))
          (some? (io/resource normalized)))))
 
