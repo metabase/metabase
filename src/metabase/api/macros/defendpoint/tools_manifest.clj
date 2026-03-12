@@ -64,6 +64,20 @@
                (fn [[_ name]]
                  (str "#/$defs/" (sanitize-def-name name)))))
 
+(defn- walk-sanitize-refs
+  "Recursively walk a JSON Schema structure (maps and vectors) and apply [[sanitize-ref]]
+  to every `:$ref` value. This ensures nested `$ref`s inside `oneOf`, `anyOf`, definitions, etc.
+  are properly sanitized."
+  [schema]
+  (cond
+    (map? schema)    (into {} (map (fn [[k v]]
+                                     (if (= k :$ref)
+                                       [k (sanitize-ref v)]
+                                       [k (walk-sanitize-refs v)])))
+                           schema)
+    (vector? schema) (mapv walk-sanitize-refs schema)
+    :else            schema))
+
 (defn mjs-collect-tool-definitions
   "Transform a malli schema to JSON Schema. Uses `#/$defs/` as the definitions path.
   Collects shared definitions into [[*definitions*]]."
@@ -74,15 +88,16 @@
     (when (and *definitions* (seq defs))
       (swap! *definitions*
              (fn [existing]
-               (let [sanitized (into {} (map (fn [[k v]] [(sanitize-def-name k) v])) defs)]
+               (let [sanitized (into {} (map (fn [[k v]]
+                                               [(sanitize-def-name k) (walk-sanitize-refs v)]))
+                                     defs)]
                  (doseq [[k v] sanitized
                          :let [prev (get existing k)]
                          :when (and prev (not= prev v))]
                    (throw (ex-info (str "Conflicting $defs for " (pr-str k))
                                    {:key k :existing prev :new v})))
                  (merge existing sanitized)))))
-    (cond-> (dissoc jss :definitions)
-      (:$ref jss) (update :$ref sanitize-ref))))
+    (walk-sanitize-refs (dissoc jss :definitions))))
 
 ;;; ------------------------------------------------ Name inference --------------------------------------------------------
 
@@ -99,7 +114,10 @@
   [method prefix route-path]
   (let [full-path    (str prefix route-path)
         stripped     (str/replace full-path #".*/v\d+/" "")
-        segments     (remove #(str/starts-with? % ":") (str/split stripped #"/"))
+        segments     (->> (str/split stripped #"/")
+                          (remove str/blank?)
+                          (drop-while #(= % "api"))
+                          (remove #(str/starts-with? % ":")))
         base         (str/join "_" segments)
         with-prefix  (case method
                        :get    (str "get_" base)
