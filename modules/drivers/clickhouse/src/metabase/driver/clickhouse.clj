@@ -106,15 +106,7 @@
         details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
                            default-connection-details
                            details)
-        {:keys [user password dbname host port ssl clickhouse-settings max-open-connections additional-options]} details
-        additional-opts-map (sql-jdbc.common/additional-options->map additional-options :url)
-        prefixed-opts-map (into {}
-                                (map (fn [[k v]]
-                                       (if (str/starts-with?  k "clickhouse_setting_")
-                                         [k v]
-                                         [(str "clickhouse_setting_" k) v])))
-                                additional-opts-map)
-        prefixed-opts-str (sql-jdbc.common/additional-opts->string :url prefixed-opts-map)
+        {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
         host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
@@ -131,12 +123,13 @@
          :http_connection_provider       "HTTP_URL_CONNECTION"
          :jdbc_ignore_unsupported_values "true"
          :jdbc_schema_term               "schema"
+         :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
          ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
          :custom_http_params             (cond-> "select_sequential_consistency=1"
                                            (not (str/blank? clickhouse-settings))
                                            (str "," clickhouse-settings))}
-        (sql-jdbc.common/handle-additional-options (assoc details :additional-options prefixed-opts-str) :separator-style :url))))
+        (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
   (boolean (-> db clickhouse-version/dbms-version :cloud)))
