@@ -603,7 +603,6 @@ jobs:
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
-
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
       # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
