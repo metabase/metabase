@@ -2,6 +2,8 @@ import type { Row, RowPinningState } from "@tanstack/react-table";
 import type { RefObject } from "react";
 import { useMemo } from "react";
 
+import { HEADER_HEIGHT } from "../constants";
+
 import { useItemsLimiter } from "./use-items-limiter";
 
 type UseRowPinningByCountProps<TData> = {
@@ -20,7 +22,7 @@ export const useRowPinningByCount = <TData>({
   topRowHeights,
 }: UseRowPinningByCountProps<TData>): RowPinningState => {
   const pinnedRowSizes = useMemo(
-    () => topRowHeights.slice(0, top),
+    () => [HEADER_HEIGHT, ...topRowHeights.slice(0, top)],
     [topRowHeights, top],
   );
 
@@ -32,8 +34,9 @@ export const useRowPinningByCount = <TData>({
   });
 
   return useMemo(() => {
+    const actualPinnedCount = Math.max(0, effectivePinnedRowsCount - 1);
     const topIds = data
-      .slice(0, effectivePinnedRowsCount)
+      .slice(0, actualPinnedCount)
       .map((row, index) => getRowId(row, index));
     return { top: topIds };
   }, [effectivePinnedRowsCount, data, getRowId]);
