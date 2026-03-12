@@ -1,4 +1,5 @@
 (ns metabase.lib.binning.util
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.math :as math]
    [metabase.lib.metadata :as lib.metadata]
@@ -6,7 +7,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]]))
 
 (mu/defn- calculate-bin-width :- ::lib.schema.binning/bin-width
   "Calculate bin width required to cover interval [`min-value`, `max-value`] with `num-bins`."
@@ -36,7 +38,7 @@
     [:num-bins  ::lib.schema.binning/num-bins]]])
 
 (mu/defn- resolve-default-strategy :- ResolvedStrategy
-  "Determine the approprate strategy & options to use when `:default` strategy was specified."
+  "Determine the appropriate strategy & options to use when `:default` strategy was specified."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column
    min-value             :- number?

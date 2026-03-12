@@ -23,7 +23,7 @@
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.models.interface :as mi]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -132,7 +132,7 @@
          :fields-failed fields-failed}))))
 
 (mu/defn ^:always-validate classify-table!
-  "Run various classifiers on the `table`. These do things like inferring (and setting) entitiy type of `table`."
+  "Run various classifiers on the `table`. These do things like inferring (and setting) entity type of `table`."
   [table :- i/TableInstance]
   (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
                                                              (sync-util/name-for-logging table))

@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   padding: 0 0.75em;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   cursor: default;
   border-bottom: unset;
 }

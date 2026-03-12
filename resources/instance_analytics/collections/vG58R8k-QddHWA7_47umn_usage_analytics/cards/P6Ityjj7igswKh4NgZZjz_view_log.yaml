@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: 3
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_view_log
+table_id: [Internal Metabase Database, public, v_view_log]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -25,53 +22,29 @@ dataset_query:
   query:
     fields:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - id
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_view_log, id]
+      - {base-type: type/Integer}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - timestamp
-      - base-type: type/DateTimeWithLocalTZ
+      - [Internal Metabase Database, public, v_view_log, timestamp]
+      - {base-type: type/DateTimeWithLocalTZ}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - user_id
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_view_log, user_id]
+      - {base-type: type/Integer}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - entity_type
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_view_log, entity_type]
+      - {base-type: type/Text}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - entity_id
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_view_log, entity_id]
+      - {base-type: type/Integer}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - entity_qualified_id
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
+      - {base-type: type/Text}
     order-by:
     - - desc
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - timestamp
-        - base-type: type/DateTimeWithLocalTZ
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_view_log
+        - [Internal Metabase Database, public, v_view_log, timestamp]
+        - {base-type: type/DateTimeWithLocalTZ}
+    source-table: [Internal Metabase Database, public, v_view_log]
   type: query
 result_metadata:
 - base_type: type/Integer
@@ -81,17 +54,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_view_log
-    - id
-  - base-type: type/Integer
+  - [Internal Metabase Database, public, v_view_log, id]
+  - {base-type: type/Integer}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_view_log
-  - id
+  id: [Internal Metabase Database, public, v_view_log, id]
   name: id
   semantic_type: type/PK
   settings: null
@@ -103,18 +69,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_view_log
-    - timestamp
-  - base-type: type/DateTimeWithLocalTZ
-    temporal-unit: default
+  - [Internal Metabase Database, public, v_view_log, timestamp]
+  - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_view_log
-  - timestamp
+  id: [Internal Metabase Database, public, v_view_log, timestamp]
   name: timestamp
   semantic_type: type/CreationTimestamp
   settings: null
@@ -127,21 +85,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_view_log
-    - user_id
-  - base-type: type/Integer
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - user_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_view_log
-  - user_id
+  - [Internal Metabase Database, public, v_view_log, user_id]
+  - {base-type: type/Integer}
+  fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
+  id: [Internal Metabase Database, public, v_view_log, user_id]
   name: user_id
   semantic_type: type/FK
   settings: null
@@ -153,17 +100,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_view_log
-    - entity_type
-  - base-type: type/Text
+  - [Internal Metabase Database, public, v_view_log, entity_type]
+  - {base-type: type/Text}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_view_log
-  - entity_type
+  id: [Internal Metabase Database, public, v_view_log, entity_type]
   name: entity_type
   semantic_type: type/Category
   settings: null
@@ -175,17 +115,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_view_log
-    - entity_id
-  - base-type: type/Integer
+  - [Internal Metabase Database, public, v_view_log, entity_id]
+  - {base-type: type/Integer}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_view_log
-  - entity_id
+  id: [Internal Metabase Database, public, v_view_log, entity_id]
   name: entity_id
   semantic_type: null
   settings: null
@@ -197,36 +130,21 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_view_log
-    - entity_qualified_id
-  - base-type: type/Text
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_qualified_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_view_log
-  - entity_qualified_id
+  - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
+  - {base-type: type/Text}
+  fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_view_log, entity_qualified_id]
   name: entity_qualified_id
   semantic_type: type/FK
   settings: null
   visibility_type: normal
-visualization_settings:
-  column_settings: null
-  table.cell_column: user_id
-  table.pivot_column: details
+visualization_settings: {column_settings: null, table.cell_column: user_id, table.pivot_column: details}
+card_schema: 23
 serdes/meta:
-- id: P6Ityjj7igswKh4NgZZjz
-  label: view_log
-  model: Card
+- {id: P6Ityjj7igswKh4NgZZjz, label: view_log, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: null
-metabase_version: vUNKNOWN (7c47e04)
+document_id: null
+embedding_type: null
 source_card_id: null
 type: model

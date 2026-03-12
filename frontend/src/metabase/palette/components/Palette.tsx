@@ -1,5 +1,6 @@
-import { KBarPortal, VisualState, useKBar } from "kbar";
-import { type HTMLAttributes, forwardRef, useEffect, useRef } from "react";
+import type { Query } from "history";
+import { KBarPortal, KBarSearch, VisualState, useKBar } from "kbar";
+import { useEffect, useRef } from "react";
 import { type PlainRoute, withRouter } from "react-router";
 import { t } from "ttag";
 
@@ -7,12 +8,12 @@ import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
-import { Box, Card, Center, Overlay, type OverlayProps } from "metabase/ui";
+import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 
+import { useCommandPalette } from "../hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
 
-import { PaletteInput } from "./Palette.styled";
-import { PaletteFooter } from "./PaletteFooter";
+import S from "./Palette.module.css";
 import { PaletteResults } from "./PaletteResults";
 
 /** Command palette */
@@ -26,53 +27,82 @@ export const Palette = withRouter((props) => {
 
   useCommandPaletteBasicActions({ ...props, isLoggedIn });
 
-  //Disable when iframed in
   const { query } = useKBar();
+  const disabled =
+    isWithinIframe() || !isLoggedIn || disableCommandPaletteForRoute;
   useEffect(() => {
-    query.disable(
-      isWithinIframe() || !isLoggedIn || disableCommandPaletteForRoute,
-    );
-  }, [isLoggedIn, query, disableCommandPaletteForRoute]);
+    query.disable(disabled);
+  }, [disabled, query]);
 
   return (
     <KBarPortal>
-      <PaletteContainer />
+      <Overlay backgroundOpacity={0.5}>
+        <Center pt="10vh">
+          <PaletteContainer
+            disabled={disabled}
+            locationQuery={props.location.query}
+          />
+        </Center>
+      </Overlay>
     </KBarPortal>
   );
 });
 
-const PaletteContainer = () => {
-  const { query } = useKBar((state) => ({ actions: state.actions }));
-  const ref = useRef(null);
+export const PaletteContainer = withRouter(
+  ({
+    disabled,
+    locationQuery,
+  }: {
+    disabled: boolean;
+    locationQuery: Query;
+  }) => {
+    const { query } = useKBar((state) => ({ actions: state.actions }));
+    const ref = useRef(null);
 
-  useOnClickOutside(ref, () => {
-    query.setVisualState(VisualState.hidden);
-  });
+    const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
+      locationQuery,
+      disabled,
+    });
 
-  return (
-    <PaletteCard ref={ref}>
-      <Box w="100%" p="1.5rem" pb="0">
-        <PaletteInput
-          defaultPlaceholder={t`Search for anything or jump somewhere…`}
-        />
-      </Box>
-      <PaletteResults />
-      <PaletteFooter />
-    </PaletteCard>
-  );
-};
+    useOnClickOutside(ref, () => {
+      query.setVisualState(VisualState.hidden);
+    });
 
-export const PaletteCard = forwardRef<
-  HTMLDivElement,
-  OverlayProps & HTMLAttributes<HTMLDivElement>
->(function PaletteCard({ children, ...props }, ref) {
-  return (
-    <Overlay zIndex={500} backgroundOpacity={0.5} {...props}>
-      <Center>
-        <Card ref={ref} w="640px" mt="10vh" p="0" data-testid="command-palette">
-          {children}
-        </Card>
-      </Center>
-    </Overlay>
-  );
-});
+    return (
+      <Card
+        ref={ref}
+        w="640px"
+        p="0"
+        data-testid="command-palette"
+        bd="1px solid var(--mb-color-border)"
+      >
+        <Stack gap={rem(4)} pb="lg">
+          <Box pos="relative">
+            <KBarSearch
+              className={S.input}
+              defaultPlaceholder={t`Search for anything…`}
+            />
+
+            <Stack
+              className={S.iconContainer}
+              align="center"
+              left={36} // align this icon with results icons
+              pos="absolute"
+              top={26}
+            >
+              <Icon c="text-primary" name="search" />
+            </Stack>
+          </Box>
+
+          <PaletteResults
+            align="stretch"
+            locationQuery={locationQuery}
+            searchRequestId={searchRequestId}
+            searchResults={searchResults}
+            searchTerm={searchTerm}
+          />
+        </Stack>
+      </Card>
+    );
+  },
+);

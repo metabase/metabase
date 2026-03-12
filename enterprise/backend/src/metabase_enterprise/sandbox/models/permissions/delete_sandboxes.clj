@@ -23,7 +23,7 @@
                                                      :where     conditions}))))]
           (do
             (log/debugf "Deleting %d matching GTAPs: %s" (count gtap-ids) (pr-str gtap-ids))
-            (t2/delete! :model/GroupTableAccessPolicy :id [:in gtap-ids]))
+            (t2/delete! :model/Sandbox :id [:in gtap-ids]))
           (log/debug "No matching GTAPs need to be deleted."))
         (catch Throwable e
           (throw (ex-info (tru "Error deleting Sandboxes: {0}" (ex-message e))

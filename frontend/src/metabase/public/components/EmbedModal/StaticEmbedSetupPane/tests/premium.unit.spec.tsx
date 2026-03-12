@@ -21,7 +21,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
             resourceType,
           },
           activeTab: "Overview",
-          hasEnterprisePlugins: true,
+          enterprisePlugins: ["whitelabel"],
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
 
@@ -45,7 +45,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
             resourceType,
           },
           activeTab: "Look and Feel",
-          hasEnterprisePlugins: true,
+          enterprisePlugins: ["whitelabel"],
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
 
@@ -74,7 +74,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
             resourceType,
           },
           activeTab: "Look and Feel",
-          hasEnterprisePlugins: true,
+          enterprisePlugins: ["whitelabel"],
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
 
@@ -89,7 +89,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
             resourceType,
           },
           activeTab: "Look and Feel",
-          hasEnterprisePlugins: true,
+          enterprisePlugins: ["whitelabel"],
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
 
@@ -112,7 +112,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
             resource: getMockResource(resourceType, true),
           },
           activeTab: "Look and Feel",
-          hasEnterprisePlugins: true,
+          enterprisePlugins: ["whitelabel"],
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
 
@@ -139,7 +139,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
               resource: getMockResource(resourceType, true),
             },
             activeTab: "Look and Feel",
-            hasEnterprisePlugins: true,
+            enterprisePlugins: ["whitelabel"],
             tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
           });
 

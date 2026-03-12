@@ -39,10 +39,10 @@
                            (f nil)))]
       (do-with-card
        (fn [card-id]
-         (mt/with-temp [:model/GroupTableAccessPolicy _gtap {:group_id             (u/the-id group)
-                                                             :table_id             (data/id table-kw)
-                                                             :card_id              card-id
-                                                             :attribute_remappings remappings}]
+         (mt/with-temp [:model/Sandbox _gtap {:group_id             (u/the-id group)
+                                              :table_id             (data/id table-kw)
+                                              :card_id              card-id
+                                              :attribute_remappings remappings}]
            (data-perms/set-database-permission! group (data/id) :perms/view-data :unrestricted)
            (data-perms/set-table-permission! group (data/id table-kw) :perms/create-queries :query-builder)
            (do-with-gtap-defs! group more f)))))))

@@ -53,10 +53,10 @@
         first-stage (lib.util/query-stage query 0)
         first-join (first (lib/joins query 0))]
     (is (= 1 (count (:stages query))))
-    (is (not (contains? first-stage :fields)))
+    (is (contains? first-stage :fields))
     (is (not (contains? first-stage :order-by)))
     (is (= 1 (count (lib/joins query 0))))
-    (is (not (contains? first-join :fields))))
+    (is (contains? first-join :fields)))
   (testing "Already summarized query should be left alone"
     (let [query (-> (lib.tu/venues-query)
                     (lib/breakout (meta/field-metadata :venues :category-id))
@@ -66,6 +66,19 @@
           first-stage (lib.util/query-stage query 0)]
       (is (= 2 (count (:stages query))))
       (is (contains? first-stage :order-by)))))
+
+(deftest ^:parallel breakout-should-preserve-fields
+  (testing "adding and removing an aggregation keeps original fields"
+    (let [orig-query (-> (lib.tu/venues-query)
+                         (lib/with-fields [(meta/field-metadata :venues :price)])
+                         (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                        [(lib/=
+                                                          (meta/field-metadata :venues :category-id)
+                                                          (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
+                                       (lib/with-join-fields [(meta/field-metadata :categories :id)]))))
+          breakout-query (lib/breakout orig-query (meta/field-metadata :venues :category-id))
+          query (lib/remove-clause breakout-query (first (lib/breakouts breakout-query)))]
+      (is (= orig-query query)))))
 
 (deftest ^:parallel breakoutable-columns-test
   (let [query (lib.tu/venues-query)]
@@ -253,20 +266,20 @@
                    {:id (meta/id :venues :latitude) :name "LATITUDE"}
                    {:id (meta/id :venues :longitude) :name "LONGITUDE"}
                    {:id (meta/id :venues :price) :name "PRICE"}
-                   {:lib/type     :metadata/column
-                    :name         "ID"
-                    :display-name "ID"
-                    :source-alias "Cat"
-                    :id           (meta/id :categories :id)
-                    :table-id     (meta/id :categories)
-                    :base-type    :type/BigInteger}
-                   {:lib/type     :metadata/column
-                    :name         "NAME"
-                    :display-name "Name"
-                    :source-alias "Cat"
-                    :id           (meta/id :categories :name)
-                    :table-id     (meta/id :categories)
-                    :base-type    :type/Text}]
+                   {:lib/type                     :metadata/column
+                    :name                         "ID"
+                    :display-name                 "ID"
+                    :lib/join-alias "Cat"
+                    :id                           (meta/id :categories :id)
+                    :table-id                     (meta/id :categories)
+                    :base-type                    :type/BigInteger}
+                   {:lib/type                     :metadata/column
+                    :name                         "NAME"
+                    :display-name                 "Name"
+                    :lib/join-alias "Cat"
+                    :id                           (meta/id :categories :name)
+                    :table-id                     (meta/id :categories)
+                    :base-type                    :type/Text}]
                   (lib/breakoutable-columns query))))))))
 
 (deftest ^:parallel breakoutable-columns-source-card-test
@@ -545,7 +558,7 @@
             [nil          "PRICE"]
             ["Categories" "ID"] ; this column is not projected, but should still be returned.
             ["Categories" "NAME"]]
-           (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias)
+           (map (juxt :lib/join-alias :lib/source-column-alias)
                 (-> (lib.tu/venues-query)
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)

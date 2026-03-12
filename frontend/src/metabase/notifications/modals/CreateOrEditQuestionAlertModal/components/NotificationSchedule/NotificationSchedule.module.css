@@ -1,5 +1,5 @@
 .scheduleContainer {
-  background-color: var(--mb-base-color-orion-5);
+  background-color: var(--mb-color-background-secondary);
   padding: var(
     --notification-schedule-padding,
     var(--mantine-spacing-lg) var(--mantine-spacing-xl)

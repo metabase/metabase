@@ -132,7 +132,6 @@ export const DataAttributeMappingEditor = ({
                   onClick={() =>
                     handleChange(removeEntry<ValueType>(entries, index))
                   }
-                  color={"text"}
                   data-testid="remove-mapping"
                 />
               </td>
@@ -219,6 +218,7 @@ const ColumnPicker = ({
           placeholder={
             filterByTableColumn ? t`Pick a column` : t`Pick a parameter`
           }
+          includeSensitiveFields
         />
       </Box>
     );

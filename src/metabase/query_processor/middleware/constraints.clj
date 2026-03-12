@@ -1,8 +1,10 @@
 (ns metabase.query-processor.middleware.constraints
   "Middleware that adds default constraints to limit the maximum number of rows returned to queries that specify the
   `:add-default-userland-constraints?` `:middleware` option."
+  (:refer-clojure :exclude [get-in])
   (:require
-   [metabase.query-processor.settings :as qp.settings]))
+   [metabase.query-processor.settings :as qp.settings]
+   [metabase.util.performance :refer [get-in]]))
 
 ;; The following "defaults" are not applied to the settings themselves - why not? Because the existing behavior is
 ;; that, if you manually update the settings, queries are affected *WHETHER OR NOT* the

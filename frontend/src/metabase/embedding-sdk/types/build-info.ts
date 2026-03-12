@@ -6,6 +6,6 @@
 export type BuildInfo = {
   version?: string;
   gitBranch?: string;
-  gitCommit?: string;
+  gitCommitSha?: string;
   buildTime?: string;
 };

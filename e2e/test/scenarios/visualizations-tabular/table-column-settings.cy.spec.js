@@ -885,6 +885,114 @@ describe("scenarios > visualizations > table column settings", () => {
       _addColumn(taxColumn);
     });
   });
+
+  it("should handle duplicated values in table.columns viz settings (metabase#62053)", () => {
+    const nativeQuestionWithDuplicatedColumns = {
+      display: "table",
+      native: {
+        query: "SELECT ID, TAX FROM ORDERS LIMIT 5",
+      },
+      visualization_settings: {
+        "table.columns": [
+          {
+            name: "ID",
+            enabled: true,
+          },
+          // Duplicate ID column entry
+          {
+            name: "ID",
+            enabled: true,
+          },
+          {
+            name: "TAX",
+            enabled: true,
+          },
+        ],
+      },
+    };
+
+    H.createNativeQuestion(nativeQuestionWithDuplicatedColumns, {
+      visitQuestion: true,
+    });
+
+    // Verify the table renders correctly despite duplicated viz settings
+    visualization().should("be.visible");
+
+    // Verify expected columns are visible
+    visualization().findAllByText("ID").should("have.length", 1);
+    visualization().findByText("TAX").should("exist");
+
+    // Open settings to verify column settings work
+    openSettings();
+
+    // Verify that column controls are displayed correctly
+    visibleColumns()
+      .should("exist")
+      .within(() => {
+        cy.findByText("ID").should("exist");
+        cy.findByTestId("ID-hide-button").should("exist");
+
+        cy.findByText("TAX").should("exist");
+        cy.findByTestId("TAX-hide-button").should("exist");
+      });
+  });
+
+  it("should respect date_style column setting for week temporal unit", () => {
+    const questionWithWeekBreakout = {
+      display: "table",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        limit: 5,
+      },
+    };
+
+    H.createQuestion(questionWithWeekBreakout, { visitQuestion: true });
+
+    // Open visualization settings
+    H.openVizSettingsSidebar();
+
+    // Click on the "Created At: Week" column to open its settings
+    H.leftSidebar().findByTestId("Created At: Week-settings-button").click();
+
+    // Change date style to M/D/YYYY
+    H.popover().findByText("Date style").click();
+    H.popover()
+      .findByText(/^1\/31\/2018/)
+      .click();
+
+    // Verify the formatting changed to numeric style
+    H.tableInteractiveBody().within(() => {
+      cy.findAllByTestId("cell-data")
+        .first()
+        .invoke("text")
+        .should("match", /\d+\/\d+\/\d{4} – \d+\/\d+\/\d{4}/); // Format like "1/1/2025 - 1/7/2025"
+    });
+
+    // Change date style to YYYY/M/D
+    H.popover().findByText("Date style").click();
+    H.popover()
+      .findByText(/^2018\/1\/31/)
+      .click();
+
+    // Verify the formatting changed to day-first numeric style
+    H.tableInteractiveBody().within(() => {
+      cy.findAllByTestId("cell-data")
+        .first()
+        .invoke("text")
+        .should("match", /\d{4}\/\d+\/\d+ – \d{4}\/\d+\/\d+/); // Format like "2025/1/1 - 2025/1/7"
+    });
+
+    H.popover().findByText("YYYY.M.D").click();
+    // Verify separator formatting changed
+    H.tableInteractiveBody().within(() => {
+      cy.findAllByTestId("cell-data")
+        .first()
+        .invoke("text")
+        .should("match", /\d{4}\.\d+\.\d+ – \d{4}\.\d+\.\d+/); // Format like "2025.1.1 - 2025.1.7"
+    });
+  });
 });
 
 const showColumn = (column) => {

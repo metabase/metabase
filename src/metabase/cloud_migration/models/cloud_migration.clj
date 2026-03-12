@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
+   [metabase.store-api.core :as store-api]
    [metabase.task.bootstrap :as task.bootstrap]
    [metabase.task.core :as task]
    [metabase.util :as u]
@@ -76,7 +77,7 @@
 (defn migration-url
   "Store API URL for migrations."
   ([]
-   (str (cloud-migration.settings/store-api-url) "/api/v2/migration"))
+   (str (store-api/store-api-url) "/api/v2/migration"))
   ([external-id path]
    (str (migration-url) "/" external-id path)))
 
@@ -180,7 +181,12 @@
                           {:form-params  {:part_count (count parts)}
                            :content-type :json})
                 :body
-                json/decode+kw)
+                json/decode+kw
+                ;; This endpoint, and only this one in this ns, needs a backwards and forward compatible
+                ;; key conversion. This can be removed when Harbormaster does only underscores in the API,
+                ;; and the keys above (multipart-upload-id multipart-urls) renamed to use underscores.
+                ;; But it can also stay here indefinitely and will be correct.
+                u/deep-kebab-keys)
 
             etags
             (->> parts
@@ -208,7 +214,7 @@
   Will exit early if migration has been cancelled in any cluster instance.
   Should run in a separate thread since it can take a long time to complete."
   [{:keys [id external_id] :as migration} & {:keys [retry?]}]
-  ;; dump-to-h2 starts behaving oddly if you try to dump repeatly to the same file
+  ;; dump-to-h2 starts behaving oddly if you try to dump repeatedly to the same file
   ;; in the same process, so use a random name.
   ;; The docker image process runs in non-root, so write to a dir it can access.
   (let [dump-file (io/file (System/getProperty "java.io.tmpdir")
@@ -252,7 +258,7 @@
       (catch Exception e
         ;; See set-progress for when :terminal is set.
         (if (-> e ex-data :terminal)
-          (log/info "Migration interruped due to terminal state")
+          (log/info "Migration interrupted due to terminal state")
           (do
             (t2/update! :model/CloudMigration id {:state :error})
             (log/info "Migration failed")
@@ -279,7 +285,7 @@
 
   ;; test settings you might want to change manually
   ;; local HM store api url
-  #_(cloud-migration.settings/store-api-url! "http://localhost:5010")
+  #_(store-api/store-api-url! "http://localhost:5010")
   ;; make sure to use a version that store supports, and a dump for that version.
   #_(cloud-migration.settings/migration-dump-version! "v0.49.7")
   ;; make a new dump with any released metabase jar using the command below:

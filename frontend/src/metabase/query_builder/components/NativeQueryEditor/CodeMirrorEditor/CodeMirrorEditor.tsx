@@ -1,3 +1,4 @@
+import type { Extension } from "@codemirror/state";
 import type { ViewUpdate } from "@uiw/react-codemirror";
 import {
   forwardRef,
@@ -14,28 +15,11 @@ import {
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
 import { isEventOverElement } from "metabase/lib/dom";
+import { useLlmSqlGenerationEnabled } from "metabase/metabot/hooks";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
 
 import type { SelectionRange } from "../types";
-
-export type CodeMirrorEditorProps = {
-  query: Lib.Query;
-  highlightedLineNumbers?: number[];
-  placeholder?: string;
-  readOnly?: boolean;
-  onChange?: (queryText: string) => void;
-  onFormatQuery?: () => void;
-  onRunQuery?: () => void;
-  onCursorMoveOverCardTag?: (id: CardId) => void;
-  onRightClickSelection?: () => void;
-  onSelectionChange?: (range: SelectionRange[]) => void;
-};
-
-export interface CodeMirrorEditorRef {
-  focus: () => void;
-  getSelectionTarget: () => Element | null;
-}
 
 import S from "./CodeMirrorEditor.module.css";
 import { useExtensions } from "./extensions";
@@ -45,26 +29,64 @@ import {
   matchCardIdAtCursor,
 } from "./util";
 
+export type CodeMirrorEditorProps = {
+  query: Lib.Query;
+  proposedQuery?: Lib.Query;
+  highlightedLineNumbers?: number[];
+  placeholder?: string;
+  readOnly?: boolean;
+  extensions?: Extension[];
+  onChange?: (queryText: string) => void;
+  onFormatQuery?: () => void;
+  onRunQuery?: () => void;
+  onCursorMoveOverCardTag?: (id: CardId) => void;
+  onRightClickSelection?: () => void;
+  onSelectionChange?: (range: SelectionRange[]) => void;
+  onBlur?: () => void;
+};
+
+export interface CodeMirrorEditorRef {
+  focus: () => void;
+  getSelectionTarget: () => Element | null;
+}
+
 export const CodeMirrorEditor = forwardRef<
   CodeMirrorEditorRef,
   CodeMirrorEditorProps
 >(function CodeMirrorEditor(
   {
     query,
+    proposedQuery,
     highlightedLineNumbers,
-    placeholder = getPlaceholderText(Lib.engine(query)),
+    placeholder: placeholderProp,
     readOnly,
+    extensions: customExtensions,
     onChange,
     onRunQuery,
     onSelectionChange,
     onRightClickSelection,
     onCursorMoveOverCardTag,
     onFormatQuery,
+    onBlur,
   },
   ref,
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
-  const extensions = useExtensions({ query, onRunQuery });
+  const isLlmEnabled = useLlmSqlGenerationEnabled();
+  const placeholder =
+    placeholderProp ?? getPlaceholderText(Lib.engine(query), isLlmEnabled);
+  const baseExtensions = useExtensions({
+    query,
+    diff: !!proposedQuery,
+    onRunQuery,
+  });
+
+  const extensions = useMemo(() => {
+    if (customExtensions?.length) {
+      return [...baseExtensions, ...customExtensions];
+    }
+    return baseExtensions;
+  }, [baseExtensions, customExtensions]);
 
   useImperativeHandle(ref, () => {
     return {
@@ -128,13 +150,18 @@ export const CodeMirrorEditor = forwardRef<
     [highlightedLineNumbers],
   );
 
+  const value = useMemo(() => {
+    return Lib.rawNativeQuery(proposedQuery ?? query);
+  }, [proposedQuery, query]);
+
   return (
     <CodeMirror
       ref={editorRef}
       data-testid="native-query-editor"
       className={S.editor}
+      editable={!readOnly}
       extensions={extensions}
-      value={Lib.rawNativeQuery(query)}
+      value={value}
       readOnly={readOnly}
       onChange={onChange}
       height="100%"
@@ -144,6 +171,7 @@ export const CodeMirrorEditor = forwardRef<
       placeholder={placeholder}
       highlightRanges={highlightedRanges}
       onFormat={onFormatQuery}
+      onBlur={onBlur}
     />
   );
 });

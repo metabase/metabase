@@ -43,7 +43,7 @@ export const PublicLinkCopyPanel = ({
       readOnly
       data-testid="public-link-input"
       placeholder={loading ? t`Loading…` : undefined}
-      value={url ?? undefined}
+      value={url ?? ""}
       inputWrapperOrder={["label", "input", "error", "description"]}
       rightSection={url && <PublicLinkCopyButton value={url} onCopy={onCopy} />}
     />
@@ -85,7 +85,7 @@ export const PublicLinkCopyPanel = ({
                 data-testid="extension-option"
                 key={extension}
                 tt="uppercase"
-                c={extension === selectedExtension ? "brand" : "text-light"}
+                c={extension === selectedExtension ? "brand" : "text-tertiary"}
                 fw={700}
                 onClick={() =>
                   onChangeExtension?.(

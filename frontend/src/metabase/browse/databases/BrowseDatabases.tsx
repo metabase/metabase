@@ -7,7 +7,6 @@ import { useListDatabasesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { getEngineLogo } from "metabase/databases/utils/engine";
-import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { newDatabase } from "metabase/lib/urls";
@@ -69,7 +68,6 @@ export const BrowseDatabases = () => {
                   title={database.name}
                   icon="database"
                   size="lg"
-                  iconColor={color("accent2")} // can we change this?
                 />
               ))}
             {isAdmin && <AddDatabaseCard />}
@@ -89,11 +87,18 @@ const CardImageWrapper = ({ database }: { database: string }) => {
       className={CS.rounded}
       style={{
         boxShadow:
-          // eslint-disable-next-line no-color-literals
+          // eslint-disable-next-line metabase/no-color-literals
           "0px 0px 0px 1px rgba(0, 0, 0, 0.05), 0px 1px 4px 0px rgba(0, 0, 0, 0.10)",
       }}
     >
-      <img src={getEngineLogo(database)} alt={t`${database} database logo`} />
+      <Box
+        component="img"
+        src={getEngineLogo(database)}
+        alt={t`${database} database logo`}
+        h="xl"
+        w="xl"
+        p="xs"
+      />
     </Box>
   );
 };

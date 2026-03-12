@@ -1,5 +1,6 @@
 (ns metabase.search.appdb.core
   (:require
+   [clojure.string :as str]
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -15,6 +16,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.settings :as search.settings]
+   [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -42,10 +44,19 @@
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (and (or config/is-dev?
-           ;; if the default engine is semantic we want appdb to be available,
-           ;; as we want to mix results
+           ;; TODO (Chris 2025-11-07) This backwards dependency is unfortunate, we should find a better solution.
+           ;;                         Perhaps just an explicit setting for enabling it.
+           ;;                         This also opens us up to swapping out the fallback, e.g. to elastic search.
+           ;; if the default engine is semantic we want appdb to be available, as we want to mix results
            (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
+
+(defmethod search.engine/disjunction :search.engine/appdb [_ terms]
+  (when (seq terms)
+    (if (or (= (mdb/db-type) :h2)
+            (= 1 (count terms)))
+      terms
+      [(str/join " OR " (map #(str "(" % ")") terms))])))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
@@ -59,25 +70,36 @@
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (search.scoring/all-scores weights active-scorers index-row))
+      (dissoc :is_published)
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
 
 (defn add-table-where-clauses
-  "Add a `WHERE` clause to the query to only return tables the current user has access to"
+  "Add a `WHERE` clause to the query to only return tables the current user has access to.
+   Also adds any CTEs required for permission filtering."
   [search-ctx qry]
-  (sql.helpers/where qry
-                     [:or
-                      [:= :search_index.model nil]
-                      [:!= :search_index.model [:inline "table"]]
-                      [:and
-                       [:= :search_index.model [:inline "table"]]
-                       [:exists {:select [1]
-                                 :from   [[:metabase_table :mt_toplevel]]
-                                 :where  [:and [:= :mt_toplevel.id [:cast :search_index.model_id (case (mdb/db-type)
-                                                                                                   :mysql :signed
-                                                                                                   :integer)]]
-                                          (search.permissions/permitted-tables-clause search-ctx :mt_toplevel.id)]}]]]))
+  (let [model-id-col [:cast :search_index.model_id (case (mdb/db-type)
+                                                     :mysql :signed
+                                                     :integer)]
+        {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx model-id-col)]
+    (cond-> qry
+      (seq with) (update :with (fnil into []) with)
+      true       (sql.helpers/where
+                  [:or
+                   [:= :search_index.model nil]
+                   [:!= :search_index.model [:inline "table"]]
+                   [:and
+                    [:= :search_index.model [:inline "table"]]
+                    clause]]))))
+
+(def null-collection-id-should-be-ignored-for-unpublished-tables-clause
+  "For every model except tables, a null collection ID means the thing is in Our Analytics.
+
+  For tables, this means there is no associated collection and the collection_id should be completely ignored."
+  [:and
+   [:= :model [:inline "table"]]
+   [:= :is_published false]])
 
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
@@ -87,7 +109,10 @@
         permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
         personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
         excluded-models   (search.filter/models-without-collection)
-        or-null           #(vector :or [:in :search_index.model excluded-models] %)]
+        or-null           #(vector :or
+                                   [:in :search_index.model excluded-models]
+                                   null-collection-id-should-be-ignored-for-unpublished-tables-clause
+                                   %)]
     (cond-> qry
       true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
       true (sql.helpers/where (or-null permitted-clause))
@@ -101,7 +126,7 @@
           ;; Sync, in case we're just out of sync with the database.
           found-active (:active (#'search.index/sync-tracking-atoms!))
           ;; If there's really no index, and we're running in prod - gulp, try to initialize now.
-          init-now? (and (not found-active) config/is-prod?)]
+          init-now?    (and (not found-active) config/is-prod?)]
       (when init-now?
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
@@ -113,7 +138,7 @@
       (throw (ex-info "Search Index not found."
                       {:search-engine      search-engine
                        :db-type            (mdb/db-type)
-                       :version            @#'search.index/*index-version-id*
+                       :version            (search.spec/index-version-hash)
                        :lang_code          (i18n/site-locale-string)
                        :forced-init?       init-now?
                        :index-state-before index-state
@@ -131,13 +156,17 @@
           (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
 
     (let [weights (search.config/weights search-ctx)
-          scorers (search.scoring/scorers search-ctx)]
-      (->> (search.index/search-query search-string search-ctx [:legacy_input])
-           (add-collection-join-and-where-clauses search-ctx)
-           (add-table-where-clauses search-ctx)
-           (search.scoring/with-scores search-ctx scorers)
-           (search.filter/with-filters search-ctx)
-           t2/query
+          scorers (search.scoring/scorers search-ctx)
+          query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
+                       (add-collection-join-and-where-clauses search-ctx)
+                       (add-table-where-clauses search-ctx)
+                       (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
+                                               search-ctx
+                                               :search_index.model
+                                               :search_index.source_type)))
+                       (search.scoring/with-scores search-ctx scorers)
+                       (search.filter/with-filters search-ctx))]
+      (->> (t2/query query)
            (map (partial rehydrate weights (keys scorers)))))
     (catch Exception e
       ;; Rule out the error coming from stale index metadata.
@@ -156,6 +185,10 @@
         search-ctx         (assoc search-ctx :models applicable-models)]
     (->> (search.index/search-query (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
          (add-collection-join-and-where-clauses search-ctx)
+         (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
+                                 search-ctx
+                                 :search_index.model
+                                 :search_index.source_type)))
          (search.filter/with-filters search-ctx)
          t2/query
          (into #{} (map :model)))))
@@ -168,24 +201,28 @@
   (let [index-created (search.index/when-index-created)]
     (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
-        (log/debug "Forcing early reindex because existing index is old")
+        (log/info "Forcing early reindex because existing index is old")
         (search.engine/reindex! :search.engine/appdb {}))
 
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
-          (log/debug "Populating index")
-          (populate-index! :search/updating))))))
+          (log/info "Populating index")
+          (populate-index! (if created? :search/reindexing :search/updating)))))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
-  (search.index/ensure-ready!)
-  (if in-place?
-    (when-let [table (search.index/active-table)]
-      ;; keep the current table, just delete its contents
-      (t2/delete! table))
-    (search.index/maybe-create-pending!))
-  (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
-    (search.index/activate-table!)))
+  (try
+    (search.index/ensure-ready!)
+    (if in-place?
+      (when-let [table (search.index/active-table)]
+        ;; keep the current table, just delete its contents
+        (t2/delete! table))
+      (search.index/maybe-create-pending!))
+    (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
+      (search.index/activate-table!))
+    (catch Throwable e
+      (log/error e "Error during reindexing")
+      (throw e))))
 
 (derive :event/setting-update ::settings-changed-event)
 
@@ -193,4 +230,6 @@
   [_topic event]
   (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
     (log/info "Reindexing appdb index because the site locale changed.")
-    (search.engine/reindex! :search.engine/appdb {})))
+    (if search.ingestion/*force-sync*
+      (search.engine/reindex! :search.engine/appdb {})
+      (future (search.engine/reindex! :search.engine/appdb {})))))

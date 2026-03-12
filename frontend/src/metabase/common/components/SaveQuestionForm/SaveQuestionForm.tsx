@@ -2,8 +2,8 @@ import cx from "classnames";
 import { c, t } from "ttag";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
+import { getEntityTypeFromCardType } from "metabase/collections/utils";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import type { CollectionPickerModel } from "metabase/common/components/Pickers/CollectionPicker";
 import { getPlaceholder } from "metabase/common/components/SaveQuestionForm/util";
 import { FormDashboardTabSelect } from "metabase/dashboard/components/FormDashboardTabSelect";
 import {
@@ -16,13 +16,15 @@ import {
 } from "metabase/forms";
 import { Button, Radio, Stack, rem } from "metabase/ui";
 
+import type { OmniPickerItem } from "../Pickers";
+
 import S from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
 
 const labelStyles = {
   fontWeight: 900,
   fontSize: "0.77rem",
-  color: "var(--mb-color-text-medium)",
+  color: "var(--mb-color-text-secondary)",
   marginBottom: rem("7px"),
 };
 
@@ -52,7 +54,7 @@ export const SaveQuestionForm = ({
     ? t`Save changes`
     : t`Replace original question, "${originalQuestion?.displayName()}"`;
 
-  const models: CollectionPickerModel[] =
+  const models: OmniPickerItem["model"][] =
     question.type() === "question"
       ? ["collection", "dashboard"]
       : ["collection"];
@@ -70,7 +72,7 @@ export const SaveQuestionForm = ({
             label: {
               fontWeight: 900,
               fontSize: "0.77rem",
-              color: "var(--mb-color-text-medium)",
+              color: "var(--mb-color-text-secondary)",
               marginBottom: rem("7px"),
             },
           }}
@@ -123,14 +125,9 @@ export const SaveQuestionForm = ({
                 collectionIdFieldName="collection_id"
                 dashboardIdFieldName="dashboard_id"
                 title={t`Where do you want to save this?`}
+                entityType={getEntityTypeFromCardType(question.type())}
                 collectionPickerModalProps={{
                   models,
-                  recentFilter: (items) =>
-                    items.filter((item) => {
-                      // narrow type and make sure it's a dashboard or
-                      // collection that the user can write to
-                      return item.model !== "table" && item.can_write;
-                    }),
                 }}
               />
             )}

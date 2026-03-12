@@ -5,6 +5,7 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { skipToken, useListRevisionsQuery } from "metabase/api";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import {
   Sidesheet,
@@ -16,7 +17,6 @@ import { SidesheetEditableDescription } from "metabase/common/components/Sideshe
 import SidesheetS from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { Timeline } from "metabase/common/components/Timeline";
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useRevisionListQuery } from "metabase/common/hooks";
 import { revertToRevision, updateDashboard } from "metabase/dashboard/actions";
 import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "metabase/dashboard/constants";
 import {
@@ -81,9 +81,9 @@ export function DashboardInfoSidebarInner({
     setIsOpen(true);
   });
 
-  const { data: revisions } = useRevisionListQuery({
-    query: { model_type: "dashboard", model_id: dashboard?.id },
-  });
+  const { data: revisions } = useListRevisionsQuery(
+    dashboard ? { id: dashboard.id, entity: "dashboard" } : skipToken,
+  );
 
   const isIADashboard = useMemo(
     () =>
@@ -162,6 +162,7 @@ export function DashboardInfoSidebarInner({
               </Tabs.Panel>
               <Tabs.Panel value={Tab.History}>
                 <HistoryTab
+                  dashboard={dashboard}
                   canWrite={canWrite}
                   revisions={revisions}
                   currentUser={currentUser}
@@ -222,11 +223,13 @@ const OverviewTab = ({
 };
 
 const HistoryTab = ({
+  dashboard,
   canWrite,
   revisions,
   currentUser,
   moderationReviews,
 }: {
+  dashboard: Dashboard;
   canWrite: boolean;
   revisions?: Revision[];
   currentUser: User | null;
@@ -252,8 +255,11 @@ const HistoryTab = ({
       <Timeline
         events={events}
         data-testid="dashboard-history-list"
-        revert={(revision) => dispatch(revertToRevision(revision))}
+        revert={(revision) =>
+          dispatch(revertToRevision(dashboard.id, revision))
+        }
         canWrite={canWrite}
+        entity="dashboard"
       />
     </SidesheetCard>
   );

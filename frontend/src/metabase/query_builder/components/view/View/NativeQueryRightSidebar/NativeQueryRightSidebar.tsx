@@ -2,12 +2,12 @@ import { match } from "ts-pattern";
 
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
-import TimelineSidebar from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
+import { TimelineSidebar } from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {

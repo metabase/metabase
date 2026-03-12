@@ -1,10 +1,3 @@
-// eslint-disable-next-line no-restricted-imports
-import { css } from "@emotion/react";
-
-import GlobalDashboardS from "metabase/css/dashboard.module.css";
-import DashboardGridS from "metabase/dashboard/components/DashboardGrid.module.css";
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboard/constants";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isStorybookActive } from "metabase/env";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -17,42 +10,6 @@ import {
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
-export const SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS =
-  "saving-dom-image-display-none";
-
-export const saveDomImageStyles = css`
-  .${SAVING_DOM_IMAGE_CLASS} {
-    .${SAVING_DOM_IMAGE_HIDDEN_CLASS} {
-      visibility: hidden;
-    }
-    .${SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS} {
-      display: none;
-    }
-
-    .${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME} {
-      legend {
-        top: -9px;
-      }
-    }
-
-    .${DashboardGridS.DashboardCardContainer} .${GlobalDashboardS.Card} {
-      /* the renderer we use for saving to image/pdf doesn't support box-shadow
-        so we replace it with a border */
-      box-shadow: none;
-      border: 1px solid var(--mb-color-border);
-    }
-
-    /* the renderer for saving to image/pdf does not support text overflow
-     with line height in custom themes in the embedding sdk.
-     this is a workaround to make sure the text is not clipped vertically */
-    ${isEmbeddingSdk() &&
-    css`
-      .${DashboardGridS.DashboardCardContainer} .${GlobalDashboardS.Card} * {
-        overflow: visible !important;
-      }
-    `};
-  }
-`;
 
 interface Opts {
   selector: string;

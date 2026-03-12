@@ -17,10 +17,12 @@ export const DYNAMIC_CSS_VARIABLES: DynamicCssVarConfig = {
     light: { source: "background", darken: 0.1 },
     dark: { source: "background", lighten: 0.4 },
   },
-  "--mb-color-background-hover": {
-    dark: { source: "background", lighten: 0.5 },
+  "--mb-color-cartesian-grid-line": {
+    light: { source: "border", alpha: 0.5 },
+    dark: { source: "border" },
   },
-  "--mb-color-bg-error": {
-    dark: { source: "negative", alpha: 0.1 },
+  "--mb-color-table-border": {
+    light: { source: "border", alpha: 0.5 },
+    dark: { source: "border", alpha: 0.15 },
   },
 };

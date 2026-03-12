@@ -117,7 +117,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     // flakiness prevention
-    cy.findByTestId("chart-container").findByText("TOTAL").should("be.visible");
+    cy.findByTestId("chart-container").findByText("Total").should("be.visible");
     cy.findByTestId("view-footer")
       .findByText("Showing 4 rows")
       .should("be.visible");
@@ -172,7 +172,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("TOTAL").should("not.exist");
+      cy.findByText("Total").should("not.exist");
     });
 
     H.leftSidebar().within(() => {
@@ -180,44 +180,9 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("TOTAL").should("be.visible");
+      cy.findByText("Total").should("be.visible");
     });
   });
-
-  // Skipping since the mousemove trigger flakes too often, and there's already a loki
-  // test to cover truncation
-  it(
-    "should truncate the center dimension label if it overflows",
-    { tags: "@skip" },
-    () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          type: "query",
-          query: {
-            "source-table": PRODUCTS_ID,
-            expressions: {
-              category_foo: [
-                "concat",
-                ["field", PRODUCTS.CATEGORY, null],
-                " the quick brown fox jumps over the lazy dog",
-              ],
-            },
-            aggregation: [["count"]],
-            breakout: [["expression", "category_foo"]],
-          },
-          database: SAMPLE_DB_ID,
-        },
-        display: "pie",
-      });
-
-      H.chartPathWithFillColor("#A989C5").as("slice");
-      cy.get("@slice").trigger("mousemove");
-
-      cy.findByTestId("query-visualization-root")
-        .findByText("WIDGET THE QUICK BROWN FOX JUMP…")
-        .should("be.visible");
-    },
-  );
 
   it("should add new slices to the chart if they appear in the query result", () => {
     H.visitQuestionAdhoc({
@@ -254,7 +219,8 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.findByDisplayValue("Widget").type("{selectall}Woooget").realPress("Tab");
 
-    H.moveDnDKitElement(H.getDraggableElements().contains("Woooget"), {
+    H.getDraggableElements().contains("Woooget").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       vertical: 100,
     });
 
@@ -276,7 +242,8 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.findByTestId("Gadget-settings-button").click();
     cy.findByDisplayValue("Gadget").type("{selectall}Katget").realPress("Tab");
-    H.moveDnDKitElement(H.getDraggableElements().contains("Katget"), {
+    H.getDraggableElements().contains("Katget").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       vertical: 30,
     });
 
@@ -329,7 +296,7 @@ describe("scenarios > visualizations > pie chart", () => {
 
     H.openVizSettingsSidebar();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -341,7 +308,7 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
     );
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("chartsettings-field-picker")
       .last()
       .within(() => {
@@ -703,7 +670,7 @@ function ensurePieChartRendered(rows, middleRows, outerRows, totalValue) {
   cy.findByTestId("query-visualization-root").within(() => {
     // detail
     if (totalValue != null) {
-      cy.findByText("TOTAL").should("be.visible");
+      cy.findByText("Total").should("be.visible");
       cy.findByText(totalValue).should("be.visible");
     }
 
@@ -759,7 +726,7 @@ function confirmSliceClickBehavior(sliceLabel, value, elementIndex) {
     if (elementIndex == null) {
       cy.findByText(sliceLabel).click({ force: true });
     } else {
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByText(sliceLabel).eq(elementIndex).click({ force: true });
     }
   });

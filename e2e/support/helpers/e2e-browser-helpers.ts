@@ -5,7 +5,7 @@
  * clear the cache between tests. Use this helper if you need to clear the cache.
  */
 export function clearBrowserCache() {
-  cy.wrap(
+  return cy.wrap(
     Cypress.automation("remote:debugger:protocol", {
       command: "Network.clearBrowserCache",
     }),
@@ -21,3 +21,14 @@ export function grantClipboardPermissions() {
     },
   });
 }
+
+export function readClipboard() {
+  return cy.window().then((win) => {
+    return win.navigator.clipboard.readText();
+  });
+}
+
+const isMac = Cypress.platform === "darwin";
+
+export const metaKey = isMac ? "Meta" : "Control";
+export const holdMetaKey = isMac ? { metaKey: true } : { ctrlKey: true };

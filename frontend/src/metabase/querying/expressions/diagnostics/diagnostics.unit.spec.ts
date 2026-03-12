@@ -90,19 +90,19 @@ describe("diagnostics", () => {
 
       for (const leftToken of left) {
         for (const [rightToken, errToken] of right) {
-          it(`should catch mismatched adjecent tokens in: ${leftToken} ${rightToken}`, () => {
+          it(`should catch mismatched adjacent tokens in: ${leftToken} ${rightToken}`, () => {
             expect(err(`${leftToken} ${rightToken}`)).toBe(
               `Expecting operator but got ${errToken} instead`,
             );
           });
 
-          it(`should catch mismatched adjecent tokens in: concat(${leftToken} ${rightToken})`, () => {
+          it(`should catch mismatched adjacent tokens in: concat(${leftToken} ${rightToken})`, () => {
             expect(err(`concat(${leftToken} ${rightToken})`)).toBe(
               `Expecting operator but got ${errToken} instead`,
             );
           });
 
-          it(`should catch mismatched adjecent tokens in: 2 * (${leftToken} ${rightToken})`, () => {
+          it(`should catch mismatched adjacent tokens in: 2 * (${leftToken} ${rightToken})`, () => {
             expect(err(`2 * (${leftToken} ${rightToken})`)).toBe(
               `Expecting operator but got ${errToken} instead`,
             );

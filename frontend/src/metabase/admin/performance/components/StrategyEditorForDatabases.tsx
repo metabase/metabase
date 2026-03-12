@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import type { InjectedRouter, Route } from "react-router";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
@@ -22,13 +20,7 @@ import type { UpdateTargetId } from "../types";
 import { Panel, RoundedBox } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
 
-const StrategyEditorForDatabases_Base = ({
-  router,
-  route,
-}: {
-  router: InjectedRouter;
-  route?: Route;
-}) => {
+export const StrategyEditorForDatabases: React.FC = () => {
   const { canOverrideRootStrategy } = PLUGIN_CACHING;
 
   const [
@@ -37,7 +29,7 @@ const StrategyEditorForDatabases_Base = ({
     setTargetId,
   ] = useState<number | null>(null);
 
-  const configurableModels: CacheableModel[] = useMemo(() => {
+  const model: CacheableModel[] = useMemo(() => {
     const ret: CacheableModel[] = ["root"];
     if (canOverrideRootStrategy) {
       ret.push("database");
@@ -47,12 +39,11 @@ const StrategyEditorForDatabases_Base = ({
 
   const {
     configs,
-    setConfigs,
     rootStrategyOverriddenOnce,
     rootStrategyRecentlyOverridden,
     error: configsError,
-    loading: areConfigsLoading,
-  } = useCacheConfigs({ configurableModels });
+    isLoading: areConfigsLoading,
+  } = useCacheConfigs({ model });
 
   const databasesResult = useListDatabasesQuery();
   const databases = databasesResult.data?.data ?? [];
@@ -61,27 +52,37 @@ const StrategyEditorForDatabases_Base = ({
     rootStrategyOverriddenOnce || rootStrategyRecentlyOverridden;
 
   /** The config for the model currently being edited */
-  const targetConfig = findWhere(configs, {
+  const targetConfig = findWhere(configs ?? [], {
     model_id: targetId ?? undefined,
   });
-  const savedStrategy = targetConfig?.strategy;
 
-  if (savedStrategy?.type === "duration") {
-    savedStrategy.unit = CacheDurationUnit.Hours;
-  }
+  const savedStrategy = useMemo(() => {
+    const strategy = targetConfig?.strategy;
+    if (!strategy) {
+      return undefined;
+    }
+    if (strategy.type === "duration") {
+      return { ...strategy, unit: CacheDurationUnit.Hours };
+    }
+    return { ...strategy };
+  }, [targetConfig?.strategy]);
 
   const {
     askBeforeDiscardingChanges,
     confirmationModal,
     isStrategyFormDirty,
     setIsStrategyFormDirty,
-  } = useConfirmIfFormIsDirty(router, route);
+  } = useConfirmIfFormIsDirty();
 
   /** Update the targetId (the id of the currently edited model) but confirm if the form is unsaved */
   const updateTargetId: UpdateTargetId = (newTargetId, isFormDirty) => {
     if (targetId !== newTargetId) {
       const update = () => setTargetId(newTargetId);
-      isFormDirty ? askBeforeDiscardingChanges(update) : update();
+      if (isFormDirty) {
+        askBeforeDiscardingChanges(update);
+      } else {
+        update();
+      }
     }
   };
 
@@ -104,18 +105,13 @@ const StrategyEditorForDatabases_Base = ({
     const inheritingRootStrategy = ["inherit", undefined].includes(
       savedStrategy?.type,
     );
-    const rootConfig = findWhere(configs, { model_id: rootId });
+    const rootConfig = findWhere(configs ?? [], { model_id: rootId });
     const inheritingDoNotCache =
       inheritingRootStrategy && !rootConfig?.strategy;
     return !inheritingDoNotCache;
   }, [configs, savedStrategy?.type, targetId]);
 
-  const saveStrategy = useSaveStrategy(
-    targetId,
-    configs,
-    setConfigs,
-    "database",
-  );
+  const saveStrategy = useSaveStrategy(targetId, "database");
 
   const error = configsError || databasesResult.error;
   const loading = areConfigsLoading || databasesResult.isLoading;
@@ -140,8 +136,7 @@ const StrategyEditorForDatabases_Base = ({
         <RoundedBox twoColumns={canOverrideRootStrategy}>
           {canOverrideRootStrategy && (
             <PLUGIN_CACHING.StrategyFormLauncherPanel
-              configs={configs}
-              setConfigs={setConfigs}
+              configs={configs ?? []}
               targetId={targetId}
               updateTargetId={updateTargetId}
               databases={databases}
@@ -169,7 +164,3 @@ const StrategyEditorForDatabases_Base = ({
     </SettingsPageWrapper>
   );
 };
-
-export const StrategyEditorForDatabases = withRouter(
-  StrategyEditorForDatabases_Base,
-);

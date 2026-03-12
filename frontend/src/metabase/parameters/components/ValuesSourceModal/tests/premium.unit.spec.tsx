@@ -11,8 +11,8 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 function setup(opts: Partial<SetupOpts> = {}) {
   return baseSetup({
     ...opts,
-    hasEnterprisePlugins: true,
     tokenFeatures: { whitelabel: true },
+    enterprisePlugins: ["whitelabel"],
   });
 }
 

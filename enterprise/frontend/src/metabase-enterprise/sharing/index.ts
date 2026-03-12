@@ -2,7 +2,12 @@ import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metab
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { MutableParametersSection } from "metabase-enterprise/sharing/components/MutableParametersSection";
 
-if (hasPremiumFeature("dashboard_subscription_filters")) {
-  PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component =
-    MutableParametersSection;
+/**
+ * Initialize sharing plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("dashboard_subscription_filters")) {
+    PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component =
+      MutableParametersSection;
+  }
 }

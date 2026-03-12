@@ -1,0 +1,238 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "view_count": 1,
+      "collection_position": null,
+      "table_id": null,
+      "result_metadata": [
+        {
+          "display_name": "X",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Float"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 11,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -100,
+                "q1": -1,
+                "q3": 1,
+                "max": 100,
+                "sd": 50,
+                "avg": 0
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Float"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 11,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -100,
+                "q1": -1,
+                "q3": 1,
+                "max": 100,
+                "sd": 50,
+                "avg": 0
+              }
+            }
+          }
+        }
+      ],
+      "initially_published_at": null,
+      "can_write": true,
+      "trashed_from_collection_id": null,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "native",
+      "name": "Symlog Decimals Test",
+      "last_query_start": "2025-01-07T00:00:00.000000Z",
+      "dashboard_count": 0,
+      "last_used_at": "2025-01-07T00:00:00.000000Z",
+      "type": "question",
+      "average_query_time": 50,
+      "creator_id": 1,
+      "moderation_reviews": [],
+      "updated_at": "2025-01-07T00:00:00.000000Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select -100 as x, -100 as y union all select -10, -10 union all select -1, -1 union all select -0.5, -0.5 union all select -0.1, -0.1 union all select 0, 0 union all select 0.1, 0.1 union all select 0.5, 0.5 union all select 1, 1 union all select 10, 10 union all select 100, 100"
+        }
+      },
+      "id": 1,
+      "parameter_mappings": [],
+      "display": "line",
+      "archived_directly": false,
+      "entity_id": "test_symlog_decimals",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.x_axis.scale": "log",
+        "graph.y_axis.scale": "log",
+        "graph.show_values": true,
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"]
+      },
+      "collection": null,
+      "metabase_version": "v0.50.0",
+      "parameters": [],
+      "created_at": "2025-01-07T00:00:00.000000Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "can_delete": false
+    },
+    "data": {
+      "rows": [
+        [-100, -100],
+        [-10, -10],
+        [-1, -1],
+        [-0.5, -0.5],
+        [-0.1, -0.1],
+        [0, 0],
+        [0.1, 0.1],
+        [0.5, 0.5],
+        [1, 1],
+        [10, 10],
+        [100, 100]
+      ],
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Float"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Float",
+          "effective_type": "type/Float"
+        },
+        {
+          "display_name": "Y",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Float"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Float",
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "select -100 as x, -100 as y union all select -10, -10 union all select -1, -1 union all select -0.5, -0.5 union all select -0.1, -0.1 union all select 0, 0 union all select 0.1, 0.1 union all select 0.5, 0.5 union all select 1, 1 union all select 10, 10 union all select 100, 100"
+      },
+      "format-rows?": true,
+      "results_timezone": "UTC",
+      "requested_timezone": "UTC",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Float"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 11,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -100,
+                  "q1": -1,
+                  "q3": 1,
+                  "max": 100,
+                  "sd": 50,
+                  "avg": 0
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y",
+            "field_ref": [
+              "field",
+              "Y",
+              {
+                "base-type": "type/Float"
+              }
+            ],
+            "name": "Y",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 11,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -100,
+                  "q1": -1,
+                  "q3": 1,
+                  "max": 100,
+                  "sd": 50,
+                  "avg": 0
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

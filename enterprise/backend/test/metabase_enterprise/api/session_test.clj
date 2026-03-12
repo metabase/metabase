@@ -1,4 +1,5 @@
 (ns metabase-enterprise.api.session-test
+  ;; TODO (Cam 10/30/25) -- Move this somewhere better
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
@@ -18,13 +19,14 @@
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
+                              :library
                               :development-mode
-                              :documents
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
                               :embedding-sdk
                               :embedding-simple
+                              :embedding-hub
                               :hosting
                               :llm-autodescription
                               :metabot-v3
@@ -34,6 +36,7 @@
                               :no-upsell
                               :official-collections
                               :query-reference-validation
+                              :remote-sync
                               :sandboxes
                               :scim
                               :semantic-search
@@ -43,13 +46,20 @@
                               :sso-google
                               :sso-jwt
                               :sso-ldap
+                              :sso-oidc
                               :sso-saml
-                              :transforms
+                              :sso-slack
+                              :support-users
+                              :transforms-basic
+                              :transforms-python
                               :upload-management
                               :whitelabel
                               :collection-cleanup
                               :database-routing
-                              :cloud-custom-smtp}
+                              :tenants
+                              :cloud-custom-smtp
+                              :workspaces
+                              :writable-connection}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
             :audit_app                      true
@@ -61,8 +71,8 @@
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
+            :library                        true
             :development_mode               true
-            :documents                      true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
@@ -76,6 +86,7 @@
             :ai_sql_generation              true
             :official_collections           true
             :query_reference_validation     true
+            :remote_sync                    true
             :sandboxes                      true
             :scim                           true
             :semantic_search                true
@@ -85,14 +96,22 @@
             :sso_google                     true
             :sso_jwt                        true
             :sso_ldap                       true
+            :sso_oidc                       true
             :sso_saml                       true
+            :sso_slack                      true
+            :support-users                  true
             :table_data_editing             false
-            :transforms                     true
+            :transforms-basic               true
+            :transforms-python              true
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true
             :database_routing               true
+            :tenants                        true
             :cloud_custom_smtp              true
             :etl_connections                false
-            :etl_connections_pg             false}
+            :etl_connections_pg             false
+            :dependencies                   false
+            :workspaces                     true
+            :writable_connection            true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

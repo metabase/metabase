@@ -3,9 +3,9 @@ import cx from "classnames";
 import { Component } from "react";
 
 import LegendS from "./Legend.module.css";
-import LegendItem from "./LegendItem";
+import { LegendItem } from "./LegendItem";
 
-export default class LegendHorizontal extends Component {
+export class LegendHorizontal extends Component {
   constructor(props) {
     super(props);
 
@@ -18,6 +18,7 @@ export default class LegendHorizontal extends Component {
       className,
       titles,
       colors,
+      dotSize,
       hiddenIndices = [],
       hovered,
       onHoverChange,
@@ -53,6 +54,7 @@ export default class LegendHorizontal extends Component {
                 }}
                 title={title}
                 color={colors[index % colors.length]}
+                dotSize={dotSize}
                 isMuted={isMuted}
                 isVisible={isVisible}
                 showTooltip={false}

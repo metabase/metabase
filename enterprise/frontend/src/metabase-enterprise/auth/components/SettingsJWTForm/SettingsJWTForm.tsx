@@ -24,6 +24,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Flex, Stack } from "metabase/ui";
+import { provisioningOptions } from "metabase-enterprise/auth/utils";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 export type JWTFormValues = Pick<
@@ -72,7 +73,8 @@ export const SettingsJWTForm = () => {
           <AdminSettingInput
             name="jwt-user-provisioning-enabled?"
             title={t`User provisioning`}
-            inputType="boolean"
+            inputType="radio"
+            options={provisioningOptions("JWT")}
           />
         </SettingsSection>
       )}
@@ -143,6 +145,15 @@ export const SettingsJWTForm = () => {
                       settingDetails?.["jwt-attribute-groups"],
                     )}
                   />
+                  {settingValues["use-tenants"] && (
+                    <FormTextInput
+                      name="jwt-attribute-tenant"
+                      label={t`Tenant assignment attribute`}
+                      {...getExtraFormFieldProps(
+                        settingDetails?.["jwt-attribute-tenant"],
+                      )}
+                    />
+                  )}
                 </Stack>
               </FormSection>
               <FormSection title={"Group Sync"} data-testid="jwt-group-schema">
@@ -183,6 +194,7 @@ const getFormValues = (
     "jwt-attribute-firstname",
     "jwt-attribute-lastname",
     "jwt-attribute-groups",
+    "jwt-attribute-tenant",
   ]);
 
   if (jwtSettings["jwt-user-provisioning-enabled?"] == null) {

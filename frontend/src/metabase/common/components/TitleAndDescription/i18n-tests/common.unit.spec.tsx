@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { setupTranslateContentStringSpy } from "__support__/content-translation";
 import { screen } from "__support__/ui";
 
-import { setup } from "./utils";
+import { setup } from "./utils.spec";
 
 describe("TitleAndDescription component (OSS)", () => {
   const getContentTranslatorSpy = setupTranslateContentStringSpy();

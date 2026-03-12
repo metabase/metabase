@@ -3,11 +3,11 @@ import { useState } from "react";
 
 import { render, screen } from "__support__/ui";
 
-import Tab from "../Tab";
-import TabList from "../TabList";
-import TabPanel from "../TabPanel";
+import { Tab } from "../Tab";
+import { TabList } from "../TabList";
+import { TabPanel } from "../TabPanel";
 
-import TabContent from "./TabContent";
+import { TabContent } from "./TabContent";
 
 const TestTabContent = () => {
   const [value, setValue] = useState(1);

@@ -116,7 +116,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       });
     });
 
-    H.popover().findByLabelText("#DCDFE0").click();
+    H.popover().findByLabelText("#F9D45C").click();
 
     const assertUpdatedVizSettingsApplied = () => {
       H.goalLine().should("exist");
@@ -125,7 +125,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         cy.findByText("Series B").should("exist");
         cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("not.exist");
       });
-      H.chartPathWithFillColor("#DCDFE0");
+      H.chartPathWithFillColor("#F9D45C");
     };
 
     H.modal().within(() => {
@@ -331,6 +331,23 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
       H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
       H.chartLegendItems().should("have.length", 2);
+    });
+  });
+
+  it("should support trend lines (metabase #61197)", () => {
+    createDashboardWithVisualizerDashcards();
+    H.editDashboard();
+
+    H.showDashcardVisualizerModalSettings(0);
+
+    H.modal().within(() => {
+      cy.findByText("Trend line").click();
+      H.trendLine().should("have.length", 2);
+      cy.findByText("Save").click();
+    });
+
+    H.getDashboardCard(0).within(() => {
+      H.trendLine().should("have.length", 2);
     });
   });
 

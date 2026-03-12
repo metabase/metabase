@@ -50,7 +50,7 @@
     "embedding-iframe"       (prometheus/inc! :metabase-embedding-iframe/response {:status (str status)})
     (log/infof "Unknown client. client: %s" sdk-client)))
 
-(defn- embedding-context?
+(defn embedding-context?
   "Should we track this request as being made by an embedding client?"
   [client]
   (or (= client embedding-sdk-client)
@@ -62,8 +62,9 @@
   (fn embedding-mw-fn
     [request respond raise]
     (let [sdk-client (get-in request [:headers "x-metabase-client"])
-          version (get-in request [:headers "x-metabase-client-version"])]
-      (binding [*client* sdk-client
+          version (get-in request [:headers "x-metabase-client-version"])
+          preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")]
+      (binding [*client* (if preview? (str sdk-client "-preview") sdk-client)
                 *version* version]
         (handler request
                  (fn responder [response]

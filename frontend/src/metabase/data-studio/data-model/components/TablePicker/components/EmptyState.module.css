@@ -1,0 +1,8 @@
+.emptyState {
+  color: var(--mb-color-text-secondary);
+}
+
+.empyIcon {
+  background-color: var(--mb-color-background-tertiary);
+  border-radius: 100%;
+}

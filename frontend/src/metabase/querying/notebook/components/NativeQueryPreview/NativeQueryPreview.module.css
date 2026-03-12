@@ -1,0 +1,24 @@
+.ModalExternalLink {
+  color: var(--mb-color-brand);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: bold;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.code {
+  background-color: var(--mb-color-background-secondary);
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border);
+}
+
+.copyButton {
+  position: absolute;
+  top: var(--mantine-spacing-sm);
+  right: var(--mantine-spacing-sm);
+}

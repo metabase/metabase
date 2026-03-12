@@ -80,8 +80,9 @@ function AuditTable({
         dispatch={dispatch}
         {...rest}
       />
-      <PaginationControlsContainer>
-        {shouldShowPagination && (
+
+      {shouldShowPagination && (
+        <PaginationControlsContainer>
           <PaginationControls
             page={page}
             pageSize={pageSize}
@@ -89,11 +90,13 @@ function AuditTable({
             onNextPage={loadedCount === pageSize ? handleNextPage : null}
             onPreviousPage={handlePreviousPage}
           />
-        )}
-      </PaginationControlsContainer>
+        </PaginationControlsContainer>
+      )}
+
       {children}
     </div>
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(connect(mapStateToProps))(AuditTable);

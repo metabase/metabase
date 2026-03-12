@@ -38,17 +38,18 @@ function getTotalGraphicOption(
     family: renderingContext.fontFamily,
   };
 
+  const isChartHovered = hoveredSliceKeyPath != null;
+  const isLegendHovered = hoveredIndex != null;
+  const isShowingTotal =
+    settings["pie.show_total"] && !isChartHovered && !isLegendHovered;
+
   let valueText = "";
   let labelText = "";
 
-  const defaultLabelWillOverflow =
-    renderingContext.measureText(getTotalText(), fontStyle) >= innerRadius * 2;
-
-  if (settings["pie.show_total"] && !defaultLabelWillOverflow) {
+  if (settings["pie.show_total"]) {
     let sliceValueOrTotal = 0;
 
-    // chart hovered
-    if (hoveredSliceKeyPath != null) {
+    if (isChartHovered) {
       const { sliceTreeNode } = getSliceTreeNodesFromPath(
         chartModel.sliceTree,
         hoveredSliceKeyPath,
@@ -56,9 +57,7 @@ function getTotalGraphicOption(
 
       sliceValueOrTotal = checkNotNull(sliceTreeNode).rawValue;
       labelText = checkNotNull(sliceTreeNode?.name);
-
-      // legend hovered
-    } else if (hoveredIndex != null) {
+    } else if (isLegendHovered) {
       const slice = getArrayFromMapValues(chartModel.sliceTree)[hoveredIndex];
 
       sliceValueOrTotal = slice.rawValue;
@@ -72,7 +71,7 @@ function getTotalGraphicOption(
       renderingContext.measureText(
         formatters.formatMetric(sliceValueOrTotal),
         fontStyle,
-      ) > outerRadius; // innerRadius technically makes more sense, but looks too narrow in practice      ;
+      ) > outerRadius; // innerRadius technically makes more sense, but looks too narrow in practice
 
     valueText = truncateText(
       formatters.formatMetric(sliceValueOrTotal, valueWillOverflow),
@@ -80,22 +79,34 @@ function getTotalGraphicOption(
       renderingContext.measureText,
       fontStyle,
     );
-    labelText = truncateText(
-      labelText,
-      innerRadius * 2,
-      renderingContext.measureText,
-      fontStyle,
-    );
+
+    if (!isShowingTotal) {
+      labelText = truncateText(
+        labelText,
+        innerRadius * 2,
+        renderingContext.measureText,
+        fontStyle,
+      );
+    }
   }
 
   const valueTextWidth = renderingContext.measureText(valueText, fontStyle);
   const labelTextWidth = renderingContext.measureText(labelText, fontStyle);
   const totalWidth = Math.max(valueTextWidth, labelTextWidth);
 
+  let valueFontSize = DIMENSIONS.total.valueFontSize;
+
   const hasSufficientWidth = innerRadius * 2 >= totalWidth;
   if (!hasSufficientWidth) {
-    valueText = "";
-    labelText = "";
+    if (isShowingTotal) {
+      // Show the total value when a chart is too narrow,
+      // but hide the "Total" label
+      labelText = "";
+    } else {
+      valueText = "";
+      labelText = "";
+    }
+    valueFontSize = DIMENSIONS.total.valueFontSizeSm;
   }
 
   return {
@@ -107,12 +118,13 @@ function getTotalGraphicOption(
         // Value
         type: "text",
         cursor: "text",
+        top: labelText ? 0 : 8,
         style: {
-          fontSize: `${DIMENSIONS.total.valueFontSize}px`,
+          fontSize: `${valueFontSize}px`,
           fontWeight: "700",
           textAlign: "center",
           fontFamily: renderingContext.fontFamily,
-          fill: renderingContext.getColor("text-dark"),
+          fill: renderingContext.getColor("text-primary"),
           text: valueText,
         },
       },
@@ -126,7 +138,7 @@ function getTotalGraphicOption(
           fontWeight: "700",
           textAlign: "center",
           fontFamily: renderingContext.fontFamily,
-          fill: renderingContext.getColor("text-light"),
+          fill: renderingContext.getColor("text-secondary"),
           text: labelText,
         },
       },
@@ -267,7 +279,7 @@ function getSeriesDataFromSlices(
         blur: {
           itemStyle: {
             // We have to fade the slices through `color` rather than `opacity`
-            // becuase echarts' will apply the opacity to the white border,
+            // because echarts' will apply the opacity to the white border,
             // causing the underlying color to leak. It is safe to use non-hex
             // values here, since this value will never be used in batik
             // (there's no emphasis/blur for static viz).
@@ -276,7 +288,9 @@ function getSeriesDataFromSlices(
           },
           label: {
             opacity:
-              labelColor === renderingContext.getColor("text-dark") ? 0.3 : 1,
+              labelColor === renderingContext.getColor("text-primary")
+                ? 0.3
+                : 1,
           },
         },
       };

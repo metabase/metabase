@@ -18,7 +18,6 @@ import type {
   StackModel,
   StackTotalDataKey,
   StackedSeriesFormatters,
-  VizSettingsKey,
   WaterFallChartDataDensity,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getHexColor } from "metabase/visualizations/lib/color";
@@ -31,14 +30,16 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type {
-  CardId,
-  DatasetColumn,
-  DatasetData,
-  RawSeries,
-  RowValue,
-  SeriesSettings,
-  SingleSeries,
+import {
+  type CardId,
+  type DatasetColumn,
+  type DatasetData,
+  type RawSeries,
+  type RowValue,
+  type SeriesSettings,
+  type SingleSeries,
+  type VisualizationSettingKey,
+  getRowsForStableKeys,
 } from "metabase-types/api";
 
 import {
@@ -57,7 +58,7 @@ export const getSeriesVizSettingsKey = (
   metricsCount: number,
   breakoutName: string | null,
   cardName?: string,
-): VizSettingsKey => {
+): VisualizationSettingKey => {
   const isBreakoutSeries = breakoutName != null;
   const isSingleMetricCard = metricsCount === 1 && !isBreakoutSeries;
 
@@ -93,7 +94,27 @@ const createLegacySeriesObjectKey = (
 export const getBreakoutDistinctValues = (
   data: DatasetData,
   breakoutIndex: number,
-) => Array.from(new Set<RowValue>(data.rows.map((row) => row[breakoutIndex])));
+) => {
+  const rows = getRowsForStableKeys(data);
+  return Array.from(new Set<RowValue>(rows.map((row) => row[breakoutIndex])));
+};
+
+const getBreakoutDisplayValues = (
+  data: DatasetData,
+  breakoutIndex: number,
+): Map<RowValue, RowValue> => {
+  if (!data.untranslatedRows) {
+    return new Map();
+  }
+  const displayValues = new Map<RowValue, RowValue>();
+  data.untranslatedRows.forEach((untranslatedRow, index) => {
+    const key = untranslatedRow[breakoutIndex];
+    if (!displayValues.has(key)) {
+      displayValues.set(key, data.rows[index][breakoutIndex]);
+    }
+  });
+  return displayValues;
+};
 
 const getDefaultSeriesName = (
   columnDisplayNameOrFormattedBreakoutValue: string,
@@ -162,58 +183,65 @@ export const getCardSeriesModels = (
 
   // Charts without breakout have one series per selected metric column.
   if (!hasBreakout) {
-    return columns.metrics.map((metric) => {
-      const vizSettingsKey = getSeriesVizSettingsKey(
-        metric.column,
-        hasMultipleCards,
-        isFirstCard,
-        columns.metrics.length,
-        null,
-        card.name,
-      );
-      const legacySeriesSettingsObjectKey =
-        createLegacySeriesObjectKey(vizSettingsKey);
-
-      const customName = settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
-      const tooltipName = customName ?? metric.column.display_name;
-      const name =
-        customName ??
-        getDefaultSeriesName(
-          metric.column.display_name,
+    return columns.metrics
+      .filter((m) => !!m.column)
+      .map((metric) => {
+        const vizSettingsKey = getSeriesVizSettingsKey(
+          metric.column,
           hasMultipleCards,
+          isFirstCard,
           columns.metrics.length,
-          false,
+          null,
           card.name,
         );
+        const legacySeriesSettingsObjectKey =
+          createLegacySeriesObjectKey(vizSettingsKey);
 
-      const color = getHexColor(
-        settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
-      );
+        const customName =
+          settings[SERIES_SETTING_KEY]?.[vizSettingsKey]?.title;
+        const tooltipName = customName ?? metric.column.display_name;
+        const name =
+          customName ??
+          getDefaultSeriesName(
+            metric.column.display_name,
+            hasMultipleCards,
+            columns.metrics.length,
+            false,
+            card.name,
+          );
 
-      const dataKey = getDatasetKey(metric.column, cardId);
+        const color = getHexColor(
+          settings?.[SERIES_COLORS_SETTING_KEY]?.[vizSettingsKey],
+        );
 
-      return {
-        name,
-        tooltipName,
-        color,
-        visible: !hiddenSeries.includes(dataKey),
-        cardId,
-        column: metric.column,
-        columnIndex: metric.index,
-        dataKey,
-        vizSettingsKey,
-        legacySeriesSettingsObjectKey,
-        bubbleSizeDataKey:
-          hasBubbleSize && columns.bubbleSize != null
-            ? getDatasetKey(columns.bubbleSize.column, cardId)
-            : undefined,
-      };
-    });
+        const dataKey = getDatasetKey(metric.column, cardId);
+
+        return {
+          name,
+          tooltipName,
+          color,
+          visible: !hiddenSeries.includes(dataKey),
+          cardId,
+          column: metric.column,
+          columnIndex: metric.index,
+          dataKey,
+          vizSettingsKey,
+          legacySeriesSettingsObjectKey,
+          bubbleSizeDataKey:
+            hasBubbleSize && columns.bubbleSize != null
+              ? getDatasetKey(columns.bubbleSize.column, cardId)
+              : undefined,
+        };
+      });
   }
 
   // Charts with breakout have one series per a unique breakout value. They can have only one metric in such cases.
   const { metric, breakout } = columns;
   const breakoutValues = getBreakoutDistinctValues(data, breakout.index);
+  const breakoutDisplayValueMap = getBreakoutDisplayValues(
+    data,
+    breakout.index,
+  );
 
   return breakoutValues.map((breakoutValue) => {
     // Unfortunately, breakout series include formatted breakout values in the key
@@ -226,6 +254,12 @@ export const getCardSeriesModels = (
             }),
           )
         : NULL_DISPLAY_VALUE;
+
+    const displayValue = breakoutDisplayValueMap.get(breakoutValue);
+    const formattedDisplayValue =
+      displayValue != null
+        ? String(formatValue(displayValue, { column: breakout.column }))
+        : formattedBreakoutValue;
 
     const vizSettingsKey = getSeriesVizSettingsKey(
       metric.column,
@@ -243,7 +277,7 @@ export const getCardSeriesModels = (
     const name =
       customName ??
       getDefaultSeriesName(
-        formattedBreakoutValue,
+        formattedDisplayValue,
         hasMultipleCards,
         1, // only one metric when a chart has a breakout
         true,
@@ -420,18 +454,21 @@ export function getComboChartDataDensity(
   );
   const seriesWithSymbols = seriesModels.filter((seriesModel) => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
-    return ["area", "line"].includes(seriesSettings.display ?? "");
+    const display = seriesSettings.display;
+    return display && ["area", "line"].includes(display);
   });
   const seriesWithLabels = seriesModels.filter((seriesModel) => {
     const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
+    const display = seriesSettings.display;
     if (
-      ["area", "bar"].includes(seriesSettings.display ?? "") &&
+      display &&
+      ["area", "bar"].includes(display) &&
       settings["stackable.stack_type"] != null
     ) {
       return false;
     }
 
-    return seriesSettings["show_series_values"];
+    return seriesSettings?.show_series_values;
   });
 
   let totalNumberOfDots = 0;
@@ -547,20 +584,28 @@ export function getDisplaySeriesSettingsByDataKey(
   stackModels: StackModel[] | null,
   settings: ComputedVisualizationSettings,
 ) {
-  const seriesSettingsByKey = seriesModels.reduce(
-    (acc, seriesModel) => {
-      acc[seriesModel.dataKey] = settings.series(
-        seriesModel.legacySeriesSettingsObjectKey,
-      );
-      return acc;
-    },
-    {} as Record<DataKey, SeriesSettings>,
-  );
+  const seriesSettingsByKey = seriesModels.reduce<
+    Record<DataKey, SeriesSettings>
+  >((acc, seriesModel) => {
+    const seriesSettings = settings.series?.(
+      seriesModel.legacySeriesSettingsObjectKey,
+    );
+
+    if (seriesSettings) {
+      acc[seriesModel.dataKey] = seriesSettings;
+    }
+
+    return acc;
+  }, {});
 
   if (stackModels != null) {
     stackModels.forEach(({ display, seriesKeys }) => {
       seriesKeys.forEach((seriesKey) => {
-        seriesSettingsByKey[seriesKey].display = display;
+        const settings = seriesSettingsByKey[seriesKey];
+
+        if (settings) {
+          settings.display = display;
+        }
       });
     });
   }
@@ -709,7 +754,7 @@ const getSeriesLabelsFormatters = (
 
   const seriesModelsWithLabels = seriesModels.filter((seriesModel) => {
     const seriesSettings =
-      settings.series(seriesModel.legacySeriesSettingsObjectKey) ?? {};
+      settings.series?.(seriesModel.legacySeriesSettingsObjectKey) ?? {};
 
     return !!seriesSettings["show_series_values"];
   });

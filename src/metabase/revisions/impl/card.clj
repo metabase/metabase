@@ -7,11 +7,14 @@
   #{:cache_invalidated_at
     :created_at
     :creator_id
+    :dimension_mappings
+    :dimensions
     :document_id
     :entity_id
     :id
     :initially_published_at
     :last_used_at
+    :legacy_query
     :made_public_by_id
     :metabase_version
     :public_uuid

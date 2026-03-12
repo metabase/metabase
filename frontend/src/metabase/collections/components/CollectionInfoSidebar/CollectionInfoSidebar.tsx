@@ -59,6 +59,7 @@ export const CollectionInfoSidebar = ({
                 description={description}
                 onChange={handleChangeDescription}
                 canWrite={canWrite}
+                maxLength={255}
               />
             </Stack>
             <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelDisplay

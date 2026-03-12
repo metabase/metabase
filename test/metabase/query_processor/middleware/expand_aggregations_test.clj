@@ -2,44 +2,60 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt])
-  (:import (clojure.lang ExceptionInfo)))
+  (:import
+   (clojure.lang ExceptionInfo)))
+
+(defn- expand-aggregations-test-find-col [query col-name]
+  (->> (lib/aggregable-columns query nil)
+       (m/find-first (comp #{col-name} :display-name))))
+
+(defn- expand-aggregaations-test-find-sum-of-total [query]
+  (expand-aggregations-test-find-col query "Sum of Total"))
+
+(defn- expand-aggregations-test-query []
+  (let [mp (mt/metadata-provider)]
+    (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+      (lib/aggregate $ (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
+      (lib/aggregate $ (lib/with-expression-name (lib/* 2 (expand-aggregaations-test-find-sum-of-total $)) "2*sum")))))
 
 (deftest ^:parallel expand-aggregations-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-        find-col (fn [query col-name]
-                   (->> (lib/aggregable-columns query nil)
-                        (m/find-first (comp #{col-name} :display-name))))
-        find-sum-of-total (fn [query]
-                            (find-col query "Sum of Total"))
-        query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                (lib/aggregate $ (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
-                (lib/aggregate $ (lib/with-expression-name (lib/* 2 (find-sum-of-total $)) "2*sum")))]
+  (let [query (expand-aggregations-test-query)]
     (testing "simple reference"
       (is (= {:columns ["sum" "2*sum"]
               :rows [[1510617.7 3021235.4]]}
-             (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))
+             (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))
+
+(deftest ^:parallel expand-aggregations-test-2
+  (let [query (expand-aggregations-test-query)]
     (testing "multiple references"
       (is (= {:columns ["sum" "2*sum" "3*sum"]
               :rows [[1510617.7 3021235.4 4531853.1]]}
-             (let [query (lib/aggregate query (lib/with-expression-name (lib/* 3 (find-sum-of-total query)) "3*sum"))]
-               (mt/formatted-rows+column-names [2.0 2.0 2.0] (qp/process-query query))))))
+             (let [query (lib/aggregate query (lib/with-expression-name (lib/* 3 (expand-aggregaations-test-find-sum-of-total query)) "3*sum"))]
+               (mt/formatted-rows+column-names [2.0 2.0 2.0] (qp/process-query query))))))))
+
+(deftest ^:parallel expand-aggregations-test-3
+  (let [query (expand-aggregations-test-query)]
     (testing "multiple reference levels"
       (is (= {:columns ["sum" "2*sum" "6*sum"]
               :rows [[1510617.7 3021235.4 9063706.2]]}
-             (let [query (lib/aggregate query (lib/with-expression-name (lib/* 3 (find-col query "2*sum")) "6*sum"))]
-               (mt/formatted-rows+column-names [2.0 2.0 2.0] (qp/process-query query))))))
+             (let [query (lib/aggregate query (lib/with-expression-name (lib/* 3 (expand-aggregations-test-find-col query "2*sum")) "6*sum"))]
+               (mt/formatted-rows+column-names [2.0 2.0 2.0] (qp/process-query query))))))))
+
+(deftest ^:parallel expand-aggregations-test-4
+  (let [query (expand-aggregations-test-query)]
     (testing "combined references"
-      (let [query (lib/aggregate query (lib/with-expression-name (lib/* 3 (find-col query "2*sum")) "6*sum"))
-            query (lib/aggregate query (lib/with-expression-name
-                                         (lib/+ (find-col query "2*sum") (find-col query "6*sum"))
-                                         "8*sum"))]
+      (let [query (as-> query $query
+                    (lib/aggregate $query (lib/with-expression-name (lib/* 3 (expand-aggregations-test-find-col $query "2*sum")) "6*sum"))
+                    (lib/aggregate $query (lib/with-expression-name
+                                            (lib/+ (expand-aggregations-test-find-col $query "2*sum")
+                                                   (expand-aggregations-test-find-col $query "6*sum"))
+                                            "8*sum")))]
         (is (= {:columns ["sum" "2*sum" "6*sum" "8*sum"]
                 :rows [[1510617.7 3021235.4 9063706.2 12084941.6]]}
                (mt/formatted-rows+column-names [2.0 2.0 2.0 2.0] (qp/process-query query))))
@@ -54,39 +70,48 @@
                 query (assoc-in query [:stages 0 :aggregation 1 3 2] dangling-ref)]
             ;; this does not reach the expand-aggregations middleware, because the schema check fails earlier
             (is (thrown-with-msg? ExceptionInfo (re-pattern (str "no aggregation with uuid " dangling-ref))
-                                  (qp/process-query query)))))))
-    (testing "in card"
-      (mt/with-temp [:model/Card card {:dataset_query (lib.convert/->legacy-MBQL query)
-                                       :database_id (mt/id)
-                                       :name "Orders, Sum of Total and double Sum of Total"}]
-        (let [query (lib/query mp (lib.metadata/card mp (:id card)))]
-          (is (= {:columns ["sum" "2*sum"]
-                  :rows [[1510617.7 3021235.4]]}
-                 (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))))
+                                  (qp/process-query query)))))))))
+
+(deftest ^:parallel expand-aggregations-test-5
+  (testing "in card"
+    (let [query (expand-aggregations-test-query)
+          mp    (lib.tu/mock-metadata-provider
+                 (:lib/metadata query)
+                 {:cards [{:id            1
+                           :dataset-query query
+                           :database-id   (mt/id)
+                           :name          "Orders, Sum of Total and double Sum of Total"}]})
+          query (lib/query mp (lib.metadata/card mp 1))]
+      (is (= {:columns ["sum" "2*sum"]
+              :rows    [[1510617.7 3021235.4]]}
+             (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))
 
 (deftest ^:parallel expand-aggregations-metric-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-        find-col (fn [query col-name]
-                   (->> (lib/aggregable-columns query nil)
-                        (m/find-first (comp #{col-name} :display-name))))
-        metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
-    (testing "metrics can be referenced"
-      (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
-                                         :database_id (mt/id)
-                                         :name "Order Total"
-                                         :type :metric}]
-        (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        (lib/aggregate (lib.metadata/metric mp (:id metric))))
-              query (lib/aggregate query (lib/with-expression-name
-                                           (lib/* 2 (find-col query "Order Total"))
-                                           "2*total"))]
-          (is (= {:columns ["sum" "2*total"]
-                  :rows [[1510617.7 3021235.4]]}
-                 (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))))
+  (testing "metrics can be referenced"
+    (let [mp           (mt/metadata-provider)
+          find-col     (fn [query col-name]
+                         (->> (lib/aggregable-columns query nil)
+                              (m/find-first (comp #{col-name} :display-name))))
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))
+          mp           (lib.tu/mock-metadata-provider
+                        mp
+                        {:cards [{:id            1
+                                  :dataset-query metric-query
+                                  :database-id   (mt/id)
+                                  :name          "Order Total"
+                                  :type          :metric}]})
+          query        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib.metadata/metric mp 1))
+                           (as-> $query (lib/aggregate $query (lib/with-expression-name
+                                                                (lib/* 2 (find-col $query "Order Total"))
+                                                                "2*total"))))]
+      (is (= {:columns ["sum" "2*total"]
+              :rows    [[1510617.7 3021235.4]]}
+             (mt/formatted-rows+column-names [2.0 2.0] (qp/process-query query)))))))
 
 (deftest ^:parallel expand-aggregations-preserve-name-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp (mt/metadata-provider)
         find-col (fn [query col-name]
                    (->> (lib/aggregable-columns query nil)
                         (m/find-first (comp #{col-name} :display-name))))

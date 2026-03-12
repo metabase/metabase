@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import EntityItem from "metabase/common/components/EntityItem";
+import { EntityItem } from "metabase/common/components/EntityItem";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
@@ -21,8 +21,8 @@ import {
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import Bookmarks from "metabase/entities/bookmarks";
-import Questions from "metabase/entities/questions";
+import { Bookmarks } from "metabase/entities/bookmarks";
+import { Questions } from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -35,7 +35,7 @@ import {
   Repeat,
   Skeleton,
 } from "metabase/ui";
-import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import type { SortingOptions } from "metabase-types/api";
 
 import {
   Cell,
@@ -45,6 +45,7 @@ import {
   TableRow,
 } from "../components/BrowseTable.styled";
 
+import { trackMetricBookmarked } from "./analytics";
 import type { MetricResult, SortColumn } from "./types";
 import { getMetricDescription, sortMetrics } from "./utils";
 
@@ -55,7 +56,7 @@ type MetricsTableProps = {
 
 const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
   sort_column: "name",
-  sort_direction: SortDirection.Asc,
+  sort_direction: "asc",
 };
 
 export const itemsTableContainerName = "ItemsTableContainer";
@@ -188,7 +189,7 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       }
 
       const { id, name } = metric;
-      const url = Urls.metric({ id, name });
+      const url = Urls.metric({ id, name, type: "metric" });
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
       // TODO: metabase/metabse#47713
@@ -240,7 +241,9 @@ function NameCell({ metric }: { metric?: MetricResult }) {
     >
       <MaybeItemLink
         to={
-          metric ? Urls.metric({ id: metric.id, name: metric.name }) : undefined
+          metric
+            ? Urls.metric({ id: metric.id, name: metric.name, type: "metric" })
+            : undefined
         }
         style={{
           // To align the icons with "Name" in the <th>
@@ -360,6 +363,8 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
+
+          trackMetricBookmarked();
           dispatch(Bookmarks.actions.invalidateLists());
         },
       });
@@ -404,7 +409,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             variant="subtle"
             px="sm"
             aria-label={t`Metric options`}
-            c="text-dark"
+            c="text-primary"
           >
             <Icon name="ellipsis" />
           </Button>

@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.cloud-migration.settings :as cloud-migration.settings]
+   [metabase.config.core :as config]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -64,7 +65,7 @@
                  (dissoc @progress-calls :upload))
               "one progress call during other stages"))))))
 
-(deftest migrate!-test-menaged-scheduler
+(deftest migrate!-test-managed-scheduler
   (let [migration         (mock-external-calls! (mt/user-http-request :crowberto :post 200 "cloud-migration"))]
     (with-redefs [cloud-migration/cluster?     (constantly false)]
       (http-fake/with-fake-routes-in-isolation (fake-upload-route-handler migration)
@@ -95,3 +96,28 @@
   (mt/with-temporary-setting-values [read-only-mode true]
     (cloud-migration.settings/read-only-mode! true)
     (mt/client :post 200 "session" (mt/user->credentials :rasta))))
+
+(deftest ^:synchronized store-url-test
+  (testing "When not dev"
+    (testing "get production store"
+      (with-redefs [config/is-dev? false]
+        (is (= "https://store.metabase.com" (#'cloud-migration.settings/store-url-default)))))
+    (testing "Can force it with :mb-store-use-staging"
+      (with-redefs [config/is-dev? false
+                    config/config-bool (fn [k] (when (= k :mb-store-use-staging) true))]
+        (is (= "https://store.staging.metabase.com" (#'cloud-migration.settings/store-url-default))))))
+  (testing "When dev"
+    (with-redefs [config/is-dev? true]
+      (testing "uses staging url"
+        (is (= "https://store.staging.metabase.com" (#'cloud-migration.settings/store-url-default))))
+      (testing "But can force to prod"
+        (with-redefs [config/config-bool (fn [k] (when (= k :mb-store-use-staging) false))]
+          (is (= "https://store.metabase.com" (#'cloud-migration.settings/store-url-default)))))))
+  (testing "with custom url is set"
+    (with-redefs [config/config-str (fn [k] (when (= k :mb-store-url) "https://custom.store.com"))]
+      (testing "in dev is honored"
+        (with-redefs [config/is-dev? true]
+          (is (= "https://custom.store.com" (#'cloud-migration.settings/store-url-default)))))
+      (testing "not in dev is not honored"
+        (with-redefs [config/is-dev? false]
+          (is (= "https://store.metabase.com" (#'cloud-migration.settings/store-url-default))))))))

@@ -15,7 +15,7 @@ People all around the world use Metabase, and everyone has different preferences
 
 ## Field formatting
 
-_Admin settings > Table Metadata > Database > Table > Field > Formatting_
+_Admin > Table Metadata > Database > Table > Field > Formatting_
 
 You can override the global defaults for a specific field by going to the `Table Metadata` section of the Admin Panel. Select the database and table of the field in question, then click scroll down to the **Formatting**.
 
@@ -25,7 +25,7 @@ The options you'll see here will depend on the field's data type and it's [seman
 
 ## Text formatting options
 
-_Admin settings > Table Metadata > Database > Table > Field > Formatting_
+_Admin > Table Metadata > Database > Table > Field > Formatting_
 
 Options depend on the [semantic type](./semantic-types.md) you select for the field.
 
@@ -55,7 +55,7 @@ https://www.google.com/search?q=askew
 
 ## Dates and times
 
-_Admin settings > Table Metadata > Database > Table > Field > Formatting_
+_Admin > Table Metadata > Database > Table > Field > Formatting_
 
 Options depend on the [semantic type](./semantic-types.md) you select for the field.
 
@@ -73,8 +73,8 @@ Whether to display the values in the middle, left, or right in table cells.
 Choose how dates are displayed. Options include formats like:
 
 - January 31, 2018
-- 31/01/2018
-- 2018-01-31
+- 31/1/2018
+- 2018/1/31
 - And other regional date formats
 
 ### Abbreviate days and months
@@ -99,7 +99,7 @@ Choose between 12-hour and 24-hour time format:
 
 ## Numbers
 
-_Admin settings > Table Metadata > Database > Table > Field > Formatting_
+_Admin > Table Metadata > Database > Table > Field > Formatting_
 
 Options depend on the [semantic type](./semantic-types.md) you select for the field.
 
@@ -125,6 +125,15 @@ Lets you choose to display the number as a plain number, a percent, in scientifi
 - **Percent** - Display as a percentage
 - **Scientific notation** - Display in scientific format (e.g., 1.23e+4)
 - **Currency** - Display with currency formatting
+
+### Currency label style
+
+For fields with Style set to "Currency", choose how to display the currency label. For example, for Canadian dollars:
+
+- **Symbol**: `CA$` 
+- **Local symbol**: `$`
+- **Code**: `CAD`
+- **Name**: `Canadian dollars`
 
 ### Where to display the unit of currency
 

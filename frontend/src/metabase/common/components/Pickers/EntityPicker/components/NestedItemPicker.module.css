@@ -1,0 +1,16 @@
+.ListBox {
+  border-right: 1px solid var(--mb-color-border);
+  height: 100%;
+  min-width: 365px;
+  background-color: var(--mb-color-background-secondary);
+
+  &:last-child {
+    background-color: var(--mb-color-background-primary);
+  }
+}
+
+.singlePickerView {
+  border-top: 1px solid var(--mb-color-border);
+  flex-grow: 1;
+  height: 0;
+}

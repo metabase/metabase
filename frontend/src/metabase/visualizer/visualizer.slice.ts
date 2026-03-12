@@ -176,6 +176,7 @@ export const addDataSource = createAsyncThunk(
 
     let dataSource: VisualizerDataSource | null = null;
     let dataset: Dataset | null = null;
+    let vizSettings: VisualizationSettings | null = null;
 
     if (type === "card") {
       // TODO handle rejected requests
@@ -186,6 +187,7 @@ export const addDataSource = createAsyncThunk(
 
       const card = cardAction.payload as Card;
       dataset = cardQueryAction.payload as Dataset;
+      vizSettings = card.visualization_settings || null;
 
       if (
         !state.display ||
@@ -224,9 +226,9 @@ export const addDataSource = createAsyncThunk(
         settings,
       },
       settings,
-      state.datasets,
       dataSource,
       dataset,
+      vizSettings,
     );
   },
 );
@@ -427,7 +429,6 @@ const visualizerSlice = createSlice({
         addColumnToPieChart(
           state,
           settings,
-          state.datasets as Record<string, Dataset>,
           dataset.data.cols,
           column,
           columnRef,
@@ -643,20 +644,26 @@ const visualizerSlice = createSlice({
 function maybeCombineDataset(
   state: VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
-  datasets: Record<string, Dataset>,
   dataSource: VisualizerDataSource,
   dataset: Dataset,
+  vizSettings: VisualizationSettings | null,
 ) {
   if (!state.display) {
     return;
   }
 
   if (isCartesianChart(state.display)) {
-    combineWithCartesianChart(state, settings, datasets, dataset, dataSource);
+    combineWithCartesianChart(
+      state,
+      settings,
+      dataset,
+      dataSource,
+      vizSettings,
+    );
   }
 
   if (state.display === "pie") {
-    combineWithPieChart(state, settings, datasets, dataset, dataSource);
+    combineWithPieChart(state, settings, dataset, dataSource);
   }
 
   if (state.display === "funnel") {

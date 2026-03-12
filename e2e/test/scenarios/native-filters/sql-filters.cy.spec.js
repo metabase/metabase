@@ -253,7 +253,7 @@ describe("scenarios > filters > sql filters > basic filter types", () => {
     // resize window to mobile form factor
     cy.viewport(480, 800);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1 active filter").click();
 
     H.filterWidget()

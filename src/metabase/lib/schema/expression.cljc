@@ -1,4 +1,5 @@
 (ns metabase.lib.schema.expression
+  (:refer-clojure :exclude [some empty? #?(:clj for)])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -8,7 +9,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some empty? #?(:clj for)]]))
 
 (defmulti type-of-method
   "Impl for [[type-of]]. Use [[type-of]], but implement [[type-of-method]].
@@ -50,6 +52,28 @@
         (or (:effective-type (second expr))
             (:base-type (second expr))))
    (type-of-method expr)))
+
+(defn resolve-type
+  "Resolve a possibly-ambiguous type to a single keyword type.
+
+  [[type-of]] can return a set of types for ambiguous expressions (e.g. `#{:type/Text :type/Date}` for date-like
+  strings). This function collapses such sets to a single type using [[metabase.types.core/most-specific-common-ancestor]].
+  Also handles `::type.unknown` and other non-type keywords by returning `:type/*`."
+  [expr-type]
+  (cond
+    (and (keyword? expr-type) (isa? expr-type :type/*))
+    expr-type
+
+    (and (set? expr-type) (seq expr-type))
+    (reduce types/most-specific-common-ancestor (first expr-type) (rest expr-type))
+
+    :else
+    :type/*))
+
+(defn type-of-resolved
+  "Like [[type-of]], but always returns a single keyword type. Resolves ambiguous set types via [[resolve-type]]."
+  [expr]
+  (resolve-type (type-of expr)))
 
 (defmethod type-of-method :default
   [expr]
@@ -106,7 +130,7 @@
   [:and
    ;; vector = MBQL clause, anything else = not an MBQL clause
    [:multi
-    {:dispatch vector?}
+    {:dispatch sequential?}
     [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
     [false [:ref :metabase.lib.schema.literal/literal]]]
    [:fn

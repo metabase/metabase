@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+
+  - changeSet:
+      id: v58.2025-10-30T09:03:00
+      author: alice
+      comment: Modified by them
+      changes:
+        - addColumn:
+            tableName: test_table
+            columns:
+              - column:
+                  name: col1
+                  type: varchar(200)

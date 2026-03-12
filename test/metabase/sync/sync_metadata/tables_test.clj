@@ -42,6 +42,25 @@
              (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
                     (into {} table))))))))
 
+(deftest transform-temp-tables-are-skipped-without-premium-features
+  (let [temp-table   {:name   "mb_transform_temp_table_temp_123"
+                      :schema "public"}
+        normal-table {:name   "orders"
+                      :schema "public"}
+        db-metadata  {:tables #{temp-table normal-table}}]
+    (testing "with no premium features, table-set excludes transform temporary tables"
+      (mt/with-premium-features #{}
+        (is (= #{normal-table}
+               (#'sync-tables/table-set db-metadata)))))
+    (testing "when hosted, includes transform temporary tables"
+      (mt/with-premium-features #{:hosting}
+        (is (= #{normal-table temp-table}
+               (#'sync-tables/table-set db-metadata)))))
+    (testing "when hosted with `transforms` enabled, excludes the temp tables"
+      (mt/with-premium-features #{:hosting :transforms-basic}
+        (is (= #{normal-table}
+               (#'sync-tables/table-set db-metadata)))))))
+
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"
     (mt/with-temp [:model/Database db {}
@@ -256,3 +275,54 @@
           (is (not= (:id original-table) (:id new-table)))
           (is (= "sensitive_table" (:name new-table)))
           (is (nil? (:archived_at new-table))))))))
+
+(deftest computed-tables-not-marked-writable-by-sync-test
+  (testing "Sync should not mark computed tables as writable, even if the driver reports them as writable"
+    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}
+                   :model/Table computed-table {:name           "computed_table"
+                                                :db_id          (u/the-id db)
+                                                :data_authority :computed
+                                                :is_writable    false}
+                   :model/Table normal-table   {:name           "normal_table"
+                                                :db_id          (u/the-id db)
+                                                :data_authority :unconfigured
+                                                :is_writable    false}]
+      ;; Simulate what happens during sync: the driver reports both tables as writable
+      (let [select-cols (into [:model/Table :id :name :schema :data_authority] @#'sync-tables/keys-to-update)]
+        (#'sync-tables/update-table-metadata-if-needed!
+         {:name "computed_table" :schema nil :is_writable true}
+         (t2/select-one select-cols (:id computed-table))
+         db)
+        (#'sync-tables/update-table-metadata-if-needed!
+         {:name "normal_table" :schema nil :is_writable true}
+         (t2/select-one select-cols (:id normal-table))
+         db))
+      (testing "computed table should remain non-writable"
+        (is (false? (t2/select-one-fn :is_writable :model/Table (:id computed-table)))))
+      (testing "normal table should be updated to writable"
+        (is (true? (t2/select-one-fn :is_writable :model/Table (:id normal-table))))))))
+
+(deftest sample-database-tables-data-authority-test
+  (testing "Tables from sample databases should be marked as :ingested"
+    (mt/with-temp [:model/Database sample-db {:is_sample true}
+                   :model/Database normal-db {:is_sample false}]
+      (let [sample-table-metadata {:name "sample_table"}
+            normal-table-metadata {:name "normal_table"}]
+
+        (testing "creating a table in a sample database"
+          (let [created-table (sync-tables/create-table! sample-db sample-table-metadata)]
+            (is (= :ingested (:data_authority created-table)))))
+
+        (testing "creating a table in a normal database"
+          (let [created-table (sync-tables/create-table! normal-db normal-table-metadata)]
+            (is (= :unconfigured (:data_authority created-table)))))
+
+        (testing "reactivating a table in a sample database"
+          (mt/with-temp [:model/Table existing-table {:db_id          (:id sample-db)
+                                                      :name           "existing_sample_table"
+                                                      :active         false
+                                                      :data_authority :computed}]
+            (sync-tables/create-or-reactivate-table! sample-db {:name "existing_sample_table"})
+            (let [updated-table (t2/select-one :model/Table (:id existing-table))]
+              (is (= :ingested (:data_authority updated-table)))
+              (is (:active updated-table)))))))))

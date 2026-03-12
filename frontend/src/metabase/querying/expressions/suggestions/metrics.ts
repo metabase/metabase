@@ -11,10 +11,18 @@ export type Options = {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
+  availableMetrics?: Lib.MetricMetadata[];
 };
 
-export function suggestMetrics({ expressionMode, query, stageIndex }: Options) {
-  const metrics = Lib.availableMetrics(query, stageIndex)?.map((metric) => {
+export function suggestMetrics({
+  expressionMode,
+  query,
+  stageIndex,
+  availableMetrics,
+}: Options) {
+  const metrics = (
+    availableMetrics ?? Lib.availableMetrics(query, stageIndex)
+  )?.map((metric) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, metric);
     return {
       type: "metric",

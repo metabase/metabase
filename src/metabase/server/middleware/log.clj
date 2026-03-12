@@ -175,7 +175,7 @@
         (log-info (assoc info :async-status (name result)))))))
 
 (defn- logged-response
-  "Log an API response. Returns resonse, possibly modified (i.e., core.async channels will be wrapped); this value
+  "Log an API response. Returns response, possibly modified (i.e., core.async channels will be wrapped); this value
   should be passed to the normal `respond` function."
   [{{:keys [body], :as response} :response, :as info}]
   (condp instance? body
@@ -195,12 +195,13 @@
   "The set of URIs that should not be logged."
   []
   (cond-> #{"/api/logger/logs"}
-    (not (server.settings/health-check-logging-enabled)) (conj "/api/health")))
+    (not (server.settings/health-check-logging-enabled)) (into #{"/api/health" "/livez" "/readyz"})))
 
 (defn- should-log-request? [{:keys [uri], :as request}]
-  ;; don't log calls to /health or /logger/logs because they clutter up the logs (especially the window in admin) with
-  ;; useless lines
-  (and (request/api-call? request)
+  ;; don't log calls to health checks or /logger/logs because they clutter up the logs (especially the window in admin)
+  ;; with useless lines
+  (and (or (request/api-call? request)
+           (contains? #{"/livez" "/readyz"} uri))
        (not ((logging-disabled-uris) uri))))
 
 (defn log-api-call

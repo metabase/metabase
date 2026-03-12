@@ -1,10 +1,17 @@
 /* istanbul ignore file */
-import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
-import type { TokenFeatures, User } from "metabase-types/api";
+import type {
+  CollectionNamespace,
+  TokenFeatures,
+  User,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -23,33 +30,66 @@ const ROOT_COLLECTION = createMockCollection({
 export interface SetupOpts {
   user?: User;
   tokenFeatures?: TokenFeatures;
-  hasEnterprisePlugins?: boolean;
+  showAuthorityLevelPicker?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  parentCollectionNamespace?: CollectionNamespace | null;
 }
 
 export const setup = ({
   user = createMockUser({ is_superuser: true }),
   tokenFeatures = createMockTokenFeatures(),
-  hasEnterprisePlugins = false,
+  showAuthorityLevelPicker,
+  enterprisePlugins,
+  parentCollectionNamespace,
 }: SetupOpts = {}) => {
   const settings = mockSettings({ "token-features": tokenFeatures });
   const onCancel = jest.fn();
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  // Create a parent collection with the specified namespace if provided
+  const parentCollection = parentCollectionNamespace
+    ? createMockCollection({
+        id: 1,
+        name: "Parent Collection",
+        namespace: parentCollectionNamespace,
+        can_write: true,
+      })
+    : ROOT_COLLECTION;
+
+  const collections =
+    parentCollectionNamespace !== undefined
+      ? [ROOT_COLLECTION, parentCollection]
+      : [ROOT_COLLECTION];
+
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
   setupCollectionsEndpoints({
-    collections: [],
+    collections:
+      parentCollectionNamespace !== undefined ? [parentCollection] : [],
     rootCollection: ROOT_COLLECTION,
   });
-  renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
-    storeInitialState: createMockState({
-      currentUser: user,
-      settings,
-      entities: createMockEntitiesState({
-        collections: [ROOT_COLLECTION],
-      }),
-    }),
+
+  // Mock individual collection fetches
+  setupCollectionByIdEndpoint({
+    collections,
   });
+
+  renderWithProviders(
+    <CreateCollectionForm
+      onCancel={onCancel}
+      showAuthorityLevelPicker={showAuthorityLevelPicker}
+      collectionId={parentCollectionNamespace !== undefined ? 1 : undefined}
+    />,
+    {
+      storeInitialState: createMockState({
+        currentUser: user,
+        settings,
+        entities: createMockEntitiesState({
+          collections,
+        }),
+      }),
+    },
+  );
 
   return { onCancel };
 };

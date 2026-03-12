@@ -19,7 +19,8 @@
 
  [metabase.premium-features.token-check
    ;; TODO: move airgap code to a dedicated namespace?
-  airgap-check-user-count
+  assert-valid-airgap-user-count!
+  assert-airgap-allows-user-creation!
   assert-has-feature
   assert-has-any-features
   ee-feature-error
@@ -28,7 +29,10 @@
   log-enabled?
   max-users-allowed
   plan-alias
-  TokenStatus]
+  quotas
+  TokenStatus
+  clear-cache!
+  transform-stats]
 
  (metabase.premium-features.settings
   active-users-count
@@ -36,6 +40,7 @@
   can-disable-password-login?
   define-premium-feature
   development-mode?
+  enable-tenants?
   enable-advanced-permissions?
   enable-ai-entity-analysis?
   enable-ai-sql-fixer?
@@ -50,7 +55,8 @@
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
-  enable-documents?
+  enable-library?
+  enable-dependencies?
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
@@ -60,6 +66,7 @@
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?
+  enable-remote-sync?
   enable-sandboxes?
   enable-scim?
   enable-semantic-search?
@@ -69,10 +76,16 @@
   enable-sso-google?
   enable-sso-jwt?
   enable-sso-ldap?
+  enable-sso-oidc?
   enable-sso-saml?
-  enable-transforms?
+  enable-sso-slack?
+  enable-support-users?
+  enable-basic-transforms?
+  enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
+  enable-workspaces?
+  enable-writable-connection?
   has-attached-dwh?
   hide-embed-branding?
   is-hosted?

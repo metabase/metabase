@@ -102,10 +102,10 @@
           ;; Due to stemming, we do not distinguish between exact matches and those that differ slightly.
         (is (= [["card" 1 "orders"]
                 ["card" 4 "order"]
-                  ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
+                ;; We do not currently normalize the score based on the number of words in the vector / the coverage.
                 ["card" 5 "orders, invoices, other stuff"]
                 ["card" 6 "ordering"]
-                  ;; If the match is only in a secondary field, it is less preferred.
+                ;; If the match is only in a secondary field, it is less preferred.
                 ["card" 3 "classified"]]
                (search-results :text "order"))))
       :h2
@@ -184,11 +184,12 @@
        {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
        {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
       ;; fix some test flakes where dataset 3 exists and has some sort of recent views
-      (with-weights (assoc (search.config/weights {:search-engine "appdb"}) :user-recency 0)
-        (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
-                 {:model "card",      :id 1, :name "view card"}
-                 {:model "dataset",   :id 3, :name "view dataset"}]
-                (search-results** "view" {})))))))
+      (let [search-ctx {:search-engine "appdb", :weights {:user-recency 0}}]
+        (with-weights (search.config/weights search-ctx)
+          (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
+                   {:model "card", :id 1, :name "view card"}
+                   {:model "dataset", :id 3, :name "view dataset"}]
+                  (search-results** "view" {}))))))))
 
 (deftest view-count-edge-case-test
   (testing "view count max out at p99, outlier is not preferred"
@@ -234,7 +235,7 @@
 ;; ---- personalized rankers ---
 ;; These require some related appdb content
 
-(deftest ^:parallel bookmark-test
+(deftest bookmark-test
   (let [crowberto (mt/user->id :crowberto)
         rasta     (mt/user->id :rasta)]
     (mt/with-temp [:model/Card {c1 :id} {}
@@ -273,7 +274,7 @@
                     ["collection" c1 "collection normal"]]
                    (search-results :bookmarked "collection" {:current-user-id crowberto})))))))))
 
-(deftest ^:parallel user-recency-test
+(deftest user-recency-test
   (let [user-id     (mt/user->id :crowberto)
         right-now   (Instant/now)
         long-ago    (.minus right-now 10 ChronoUnit/DAYS)

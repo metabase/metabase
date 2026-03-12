@@ -1,6 +1,5 @@
-import { goBack } from "react-router-redux";
 import { useUnmount } from "react-use";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import {
   useForgotPasswordMutation,
@@ -9,7 +8,8 @@ import {
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import PasswordReveal from "metabase/common/components/PasswordReveal";
+import { PasswordReveal } from "metabase/common/components/PasswordReveal";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";
@@ -19,12 +19,12 @@ import type { User } from "metabase-types/api";
 import { clearTemporaryPassword } from "../people";
 import { getUserTemporaryPassword } from "../selectors";
 
-interface UserPasswordResetModalProps {
+interface UserPasswordResetModalInnerProps {
   clearTemporaryPassword: () => void;
   onClose: () => void;
   user: User;
   emailConfigured: boolean;
-  temporaryPassword: string;
+  temporaryPassword: string | null;
 }
 
 const UserPasswordResetModalInner = ({
@@ -33,17 +33,25 @@ const UserPasswordResetModalInner = ({
   onClose,
   temporaryPassword,
   user,
-}: UserPasswordResetModalProps) => {
+}: UserPasswordResetModalInnerProps) => {
   useUnmount(() => {
     clearTemporaryPassword();
   });
 
+  const [sendToast] = useToast();
   const [updatePassword] = useUpdatePasswordMutation();
   const [resetPasswordEmail] = useForgotPasswordMutation();
 
   const handleResetConfirm = async () => {
     if (emailConfigured) {
       await resetPasswordEmail(user.email).unwrap();
+
+      sendToast({
+        message: c("{0} is the name of the user")
+          .t`Password reset email sent to ${user.common_name}`,
+      });
+
+      onClose();
     } else {
       const password = generatePassword();
       await updatePassword({ id: user.id, password }).unwrap();
@@ -83,12 +91,12 @@ const UserPasswordResetModalInner = ({
 };
 
 interface UserPasswordResetModalProps {
-  params: { userId: string };
+  params: { userId?: string };
   onClose: () => void;
 }
 
 export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
-  const userId = parseInt(props.params.userId);
+  const userId = parseInt(props.params.userId ?? "");
 
   const dispatch = useDispatch();
 
@@ -102,7 +110,6 @@ export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
       {user && (
         <UserPasswordResetModalInner
           {...props}
-          onClose={() => dispatch(goBack())}
           clearTemporaryPassword={() =>
             dispatch(clearTemporaryPassword(user.id))
           }

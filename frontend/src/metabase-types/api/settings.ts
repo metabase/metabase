@@ -1,12 +1,20 @@
 import type { ReactNode } from "react";
 
-import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { CurrencyStyle } from "metabase/lib/formatting";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
 import type { UserId } from "./user";
+
+export interface OidcAuthProvider {
+  type: "oidc";
+  key: string;
+  "login-prompt": string;
+  "sso-url": string;
+}
 
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
@@ -27,7 +35,7 @@ export interface NumberFormattingSettings {
 
 export interface CurrencyFormattingSettings {
   currency?: string;
-  currency_style?: string;
+  currency_style?: CurrencyStyle;
   currency_in_header?: boolean;
 }
 
@@ -36,9 +44,9 @@ export const engineKeys = [
   "bigquery-cloud-sdk",
   "clickhouse",
   "databricks",
-  "druid",
   "druid-jdbc",
-  "databricks",
+  "druid",
+  "mongo",
   "mysql",
   "oracle",
   "postgres",
@@ -52,17 +60,61 @@ export const engineKeys = [
   "vertica",
 ] as const;
 
+export const providerNames = [
+  "Aiven",
+  "Amazon RDS",
+  "Azure",
+  "Crunchy Data",
+  "DigitalOcean",
+  "Fly.io",
+  "Neon",
+  "PlanetScale",
+  "Railway",
+  "Render",
+  "Scaleway",
+  "Supabase",
+  "Timescale",
+] as const;
+
+export type DatabaseProviderName = (typeof providerNames)[number];
+
+export type DatabaseProvider = {
+  name: DatabaseProviderName;
+  pattern: string;
+};
+
 export type EngineKey = (typeof engineKeys)[number];
+
+export type ContainerStyleType = "grid" | "component";
+export type ContainerStyle = [ContainerStyleType, string];
+
+export function isContainerStyle(value: unknown): value is ContainerStyle {
+  return (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    (value[0] === "grid" || value[0] === "component") &&
+    typeof value[1] === "string"
+  );
+}
+
+export interface DatabaseFieldGroup {
+  type: "group";
+  "container-style": unknown;
+  fields: EngineField[];
+}
+
+export type DatabaseFieldOrGroup = EngineField | DatabaseFieldGroup;
 
 export interface Engine {
   "driver-name": string;
-  "details-fields"?: EngineField[];
+  "details-fields"?: DatabaseFieldOrGroup[];
   source: EngineSource;
   "superseded-by": string | null;
   "extra-info": {
     "db-routing-info": {
       text: string;
     };
+    providers?: DatabaseProvider[];
   } | null;
 }
 
@@ -138,6 +190,8 @@ export type ScheduleDayType =
 
 export type ScheduleFrameType = "first" | "mid" | "last";
 
+export type ScheduleDisplayType = "cron/builder" | "cron/raw" | null;
+
 export interface FontFile {
   src: string;
   fontWeight: number;
@@ -188,6 +242,7 @@ export type GdrivePayload = {
   error?: string;
 };
 
+/* eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types */
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -206,6 +261,7 @@ const tokenStatusFeatures = [
   "embedding-sdk",
   "embedding",
   "embedding-simple",
+  "embedding-hub",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
@@ -224,11 +280,20 @@ const tokenStatusFeatures = [
   "sso-ldap",
   "sso-saml",
   "sso",
+  "transforms-basic",
+  "transforms-python",
   "upload-management",
   "whitelabel",
 ] as const;
 
 export type TokenStatusFeature = (typeof tokenStatusFeatures)[number];
+
+export const REMOTE_SYNC_TYPES = ["read-only", "read-write"] as const;
+export type RemoteSyncType = (typeof REMOTE_SYNC_TYPES)[number];
+
+interface TokenStatusStoreUsers {
+  email: string;
+}
 
 export interface TokenStatus {
   status: TokenStatusStatus;
@@ -237,6 +302,7 @@ export interface TokenStatus {
   "error-details"?: string;
   trial?: boolean;
   features?: TokenStatusFeature[];
+  "store-users"?: TokenStatusStoreUsers[];
 }
 
 export type DayOfWeekId =
@@ -267,6 +333,7 @@ export const tokenFeatures = [
   "sso_google",
   "sso_jwt",
   "sso_ldap",
+  "sso_oidc",
   "sso_saml",
   "session_timeout_config",
   "whitelabel",
@@ -286,9 +353,17 @@ export const tokenFeatures = [
   "development_mode",
   "etl_connections",
   "etl_connections_pg",
-  "documents",
+  "table_data_editing",
+  "remote_sync",
+  "dependencies",
   "semantic_search",
-  "transforms",
+  "transforms-python",
+  "transforms-basic",
+  "library",
+  "support-users",
+  "tenants",
+  "workspaces",
+  "writable_connection",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -297,6 +372,9 @@ export type TokenFeatures = Record<TokenFeature, boolean>;
 export type PasswordComplexity = {
   total?: number;
   digit?: number;
+  upper?: number;
+  lower?: number;
+  special?: number;
 };
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
@@ -372,6 +450,7 @@ interface InstanceSettings {
   "example-dashboard-id": number | null;
   "has-sample-database?"?: boolean; // Careful! This can be undefined during setup!
   "instance-creation": string;
+  "llm-anthropic-api-key-configured?": boolean;
   "read-only-mode": boolean;
   "search-typeahead-enabled": boolean;
   "show-homepage-data": boolean;
@@ -399,6 +478,7 @@ interface AdminSettings {
   "active-users-count"?: number;
   "custom-geojson-enabled": boolean;
   "deprecation-notice-version"?: string;
+  "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
   "redirect-all-requests-to-https": boolean;
   "query-caching-min-ttl": number;
@@ -406,6 +486,7 @@ interface AdminSettings {
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-configured": boolean;
   "premium-embedding-token": string | null;
+  "oidc-login-providers"?: OidcAuthProvider[];
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
@@ -414,8 +495,12 @@ interface AdminSettings {
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
   "show-simple-embed-terms": boolean | null;
+  "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
@@ -438,6 +523,7 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
   "application-font-files": FontFile[] | null;
@@ -489,6 +575,7 @@ interface PublicSettings {
   "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
   "ldap-group-membership-filter"?: string;
   "ldap-user-provisioning-enabled?": boolean;
+  "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
@@ -501,6 +588,8 @@ interface PublicSettings {
   "report-timezone-short": string;
   "session-cookies": boolean | null;
   "setup-token": string | null;
+  "metabot-enabled?": boolean;
+  "embedded-metabot-enabled?": boolean;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
   "show-google-sheets-integration": boolean;
@@ -510,10 +599,12 @@ interface PublicSettings {
   "snowplow-url": string;
   "start-of-week": DayOfWeekId;
   "token-features": TokenFeatures;
+  "transforms-enabled": boolean;
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
   "non-table-chart-generated": boolean;
+  "use-tenants": boolean;
 }
 
 export type UserSettings = {
@@ -522,10 +613,11 @@ export type UserSettings = {
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
   "last-used-native-database-id"?: number | null;
-  "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
+  "expand-collections-in-nav"?: boolean;
+  "expand-library-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
@@ -535,6 +627,7 @@ export type UserSettings = {
     SdkIframeEmbedSetupSettings,
     "theme" | "useExistingUserSession"
   > | null;
+  "color-scheme"?: string;
 };
 
 /**
@@ -587,9 +680,25 @@ export type DatabaseReplicationConnections = Record<
   { connection_id: string }
 >;
 
+export type SyncableEntity =
+  | "transform"
+  | "snippet"
+  | "dataset"
+  | "metric"
+  | "segment"
+  | "dashboard"
+  | "question";
+
 export interface EnterpriseSettings extends Settings {
   "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
+  "remote-sync-enabled"?: boolean | null;
+  "remote-sync-token"?: string | null;
+  "remote-sync-url"?: string | null;
+  "remote-sync-branch"?: string | null;
+  "remote-sync-type"?: RemoteSyncType | null;
+  "remote-sync-auto-import"?: boolean | null;
+  "remote-sync-transforms"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;
@@ -616,7 +725,10 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-firstname": string | null;
   "jwt-attribute-lastname": string | null;
   "jwt-attribute-groups": string | null;
+  "jwt-attribute-tenant": string | null;
   "jwt-group-sync": boolean | null;
+  "oidc-enabled": boolean;
+  "oidc-configured": boolean;
   "saml-enabled": boolean;
   "saml-configured": boolean;
   "saml-user-provisioning-enabled?": boolean;
@@ -630,11 +742,29 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-email": string | null;
   "saml-attribute-firstname": string | null;
   "saml-attribute-lastname": string | null;
+  "saml-attribute-tenant": string | null;
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
+  "embedding-hub-sso-auth-manual-tested": boolean;
+  "python-runner-url"?: string | null;
+  "python-runner-api-token"?: string | null;
+  "python-storage-s-3-endpoint"?: string | null;
+  "python-storage-s-3-region"?: string | null;
+  "python-storage-s-3-bucket"?: string | null;
+  "python-storage-s-3-prefix"?: string | null;
+  "python-storage-s-3-access-key"?: string | null;
+  "python-storage-s-3-secret-key"?: string | null;
+  "python-storage-s-3-container-endpoint"?: string | null;
+  "python-storage-s-3-path-style-access"?: boolean | null;
+  "python-runner-timeout-seconds"?: number | null;
+  "python-runner-test-run-timeout-seconds"?: number | null;
+  "llm-anthropic-api-key"?: string | null;
+  "llm-anthropic-model": string;
   /**
    * @deprecated
    */

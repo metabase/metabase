@@ -23,18 +23,21 @@
   (for [col (lib/returned-columns
              (lib/query meta/metadata-provider legacy-card-query))]
     (cond-> col
-      (:source-alias col)
+      (:lib/original-join-alias col)
       (update :display-name (fn [display-name]
-                              (str (:source-alias col) " → " display-name))))))
+                              (str (:lib/original-join-alias col) " → " display-name))))))
 
 (defn query-with-legacy-source-card
   "An MLv2 query that has a `:source-card` that has a legacy query, and legacy metadata."
-  [has-result-metadata?]
-  (let [metadata-provider (lib.tu/mock-metadata-provider
-                           meta/metadata-provider
-                           {:cards [(cond-> {:id            1
-                                             :database-id   (meta/id)
-                                             :name          "Card 1"
-                                             :dataset-query legacy-card-query}
-                                      has-result-metadata? (assoc :result-metadata (legacy-card-metadata)))]})]
-    (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))
+  ([has-result-metadata?]
+   (query-with-legacy-source-card has-result-metadata? :question))
+  ([has-result-metadata? card-type]
+   (let [metadata-provider (lib.tu/mock-metadata-provider
+                            meta/metadata-provider
+                            {:cards [(cond-> {:id            1
+                                              :database-id   (meta/id)
+                                              :name          "Card 1"
+                                              :type          card-type
+                                              :dataset-query legacy-card-query}
+                                       has-result-metadata? (assoc :result-metadata (legacy-card-metadata)))]})]
+     (lib/query metadata-provider (lib.metadata/card metadata-provider 1)))))

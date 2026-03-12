@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_group_members
+table_id: [Internal Metabase Database, public, v_group_members]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -23,10 +20,7 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_group_members
+    source-table: [Internal Metabase Database, public, v_group_members]
   type: query
 result_metadata:
 - base_type: type/Integer
@@ -36,21 +30,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_group_members
-    - user_id
+  - [Internal Metabase Database, public, v_group_members, user_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - user_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_group_members
-  - user_id
+  fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
+  id: [Internal Metabase Database, public, v_group_members, user_id]
   name: user_id
   semantic_type: type/FK
   settings: null
@@ -62,17 +45,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_group_members
-    - group_id
+  - [Internal Metabase Database, public, v_group_members, group_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_group_members
-  - group_id
+  id: [Internal Metabase Database, public, v_group_members, group_id]
   name: group_id
   semantic_type: type/PK
   settings: null
@@ -84,32 +60,21 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_group_members
-    - group_name
+  - [Internal Metabase Database, public, v_group_members, group_name]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_group_members
-  - group_name
+  id: [Internal Metabase Database, public, v_group_members, group_name]
   name: group_name
   semantic_type: type/Name
   settings: null
   visibility_type: normal
-visualization_settings:
-  column_settings: null
-  table.cell_column: group_name
-  table.pivot_column: group_id
+visualization_settings: {column_settings: null, table.cell_column: group_name, table.pivot_column: group_id}
+card_schema: 23
 serdes/meta:
-- id: lTp-ATFsCUFEr9I0fMEaO
-  label: group_members
-  model: Card
+- {id: lTp-ATFsCUFEr9I0fMEaO, label: group_members, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: null
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: null
 type: model

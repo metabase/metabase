@@ -62,7 +62,7 @@ If **Source Time** is stored as a `timestamp without time zone`, you _must_ prov
 convertTimezone([Source Time], 'EST', 'UTC')
 ```
 
-It's usually a good idea to label `convertTimezone` columns with the name of the target time zone (or add the target time zone to the metadata of a model). We promise this will make your life easier when someone inevitably asks why the numbers don't match.
+It's usually a good idea to label `convertTimezone` columns with the name of the target time zone (or add the target time zone to the metadata of a model). We promise this will make your life easier when someone inevitably questions why the numbers don't match.
 
 If you're not getting the results that you expect:
 

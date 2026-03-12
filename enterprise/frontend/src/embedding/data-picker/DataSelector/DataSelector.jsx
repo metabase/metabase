@@ -4,18 +4,18 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import Databases from "metabase/entities/databases";
-import Questions from "metabase/entities/questions";
-import Schemas from "metabase/entities/schemas";
-import Search from "metabase/entities/search";
-import Tables from "metabase/entities/tables";
+import { Databases } from "metabase/entities/databases";
+import { Questions } from "metabase/entities/questions";
+import { Schemas } from "metabase/entities/schemas";
+import { Search } from "metabase/entities/search";
+import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
-import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import { canUserCreateQueries } from "metabase/selectors/user";
 import { Box, Popover } from "metabase/ui";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
@@ -889,7 +889,7 @@ const DataSelector = _.compose(
       hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
         entityQuery: { include: "tables" },
       }),
-      hasDataAccess: getHasDataAccess(ownProps.databases ?? []),
+      hasDataAccess: canUserCreateQueries(state),
       hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
       selectedQuestion: Questions.selectors.getObject(state, {
         entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),

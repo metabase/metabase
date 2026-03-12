@@ -72,12 +72,12 @@
   :visibility :internal
   :export?    false
   :type       :integer
-  ;; for TESTS use a timeout time of 3 seconds. This is because we have some tests that check whether
+  ;; for TESTS use a timeout time of 5 seconds. This is because we have some tests that check whether
   ;; [[driver/can-connect?]] is failing when it should, and we don't want them waiting 10 seconds to fail.
   ;;
   ;; Don't set the timeout too low -- I've had Circle fail when the timeout was 1000ms on *one* occasion.
   :default    (if config/is-test?
-                3000
+                5000
                 10000)
   :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
   In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value as the
@@ -95,10 +95,24 @@
   :default    (if config/is-prod?
                 20
                 3)
-  :doc "Timeout in minutes for databases query execution, both Metabase application database and data connections.
-  If you have long-running queries, you might consider increasing this value.
-  Adjusting the timeout does not impact Metabase’s frontend.
+  :doc "Timeout in minutes for the database's query execution, both for the Metabase application database and any data connections.
+  If you have long-running queries, you might consider increasing this value. Adjusting the timeout does not impact Metabase’s frontend.
+
+  This setting also applies to individual queries executed within transforms, so make sure the duration is long enough
+  that it doesn't timeout any long-running queries in your transforms.
+
   Please be aware that other services (like Nginx) may still drop long-running queries.")
+
+;; This is normally set via the env var `MB_JDBC_NETWORK_TIMEOUT_MS`
+(defsetting jdbc-network-timeout-ms
+  "By default, this is 30 minutes."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    (max (if config/is-prod? 1800000 600000) (* 1000 60 (+ (db-query-timeout-minutes) 5)))
+  :doc "Timeout in milliseconds to wait for database operations to complete. This is used to free up threads that
+        are stuck waiting for a database response in a socket read. See the documentation for more details:
+        https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setNetworkTimeout-java.util.concurrent.Executor-int-")
 
 (defsetting jdbc-data-warehouse-max-connection-pool-size
   "Maximum size of the c3p0 connection pool."
@@ -117,6 +131,10 @@
 (def ^:dynamic ^Long *query-timeout-ms*
   "Maximum amount of time query is allowed to run, in ms."
   (u/minutes->ms (db-query-timeout-minutes)))
+
+(def ^:dynamic ^Long *network-timeout-ms*
+  "Maximum amount of time to wait for a response from the database, in ms."
+  (jdbc-network-timeout-ms))
 
 (def ^:dynamic *allow-testing-h2-connections*
   "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new
@@ -145,7 +163,7 @@
   "Tell c3p0 to log a stack trace for any connections killed due to exceeding the timeout specified in
   [[jdbc-data-warehouse-unreturned-connection-timeout-seconds]].
 
-  Note: You also need to update the com.mchange log level to INFO or higher in the log4j configs in order to see the
+  Note: You also need to update the com.mchange log level to INFO or higher in the Log4j configs in order to see the
   stack traces in the logs."
   :visibility :internal
   :type       :boolean

@@ -1,1 +1,0 @@
-export const DOCUMENT_TITLE_MAX_LENGTH = 100;

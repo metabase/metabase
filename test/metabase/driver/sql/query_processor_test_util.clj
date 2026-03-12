@@ -7,7 +7,8 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -101,7 +102,9 @@
                             query))
 
   ([_driver query]
-   (qp.compile/compile query)))
+   ;; for performance in tests: disable Malli validation.
+   (mu/disable-enforcement
+     (qp.compile/compile query))))
 
 (def ^{:arglists '([query] [driver query])} query->sql
   "Compile an MBQL query to 'pretty' SQL (i.e., remove quote marks and `public.` qualifiers)."

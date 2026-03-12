@@ -126,7 +126,7 @@ For an introduction to expressions, check out the [overview of custom expression
 
 ## Aggregations
 
-Aggregation expressions take into account all values in a field. They can only be used in the **Summarize** section of the query builder.
+Aggregation expressions consider all values in a field. They can only be used in the **Summarize** section of the query builder.
 
 ### Average
 
@@ -879,7 +879,7 @@ Related: [dayName](#dayname), [quarterName](#quartername).
 
 ### [now](./expressions/now.md)
 
-Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
+Returns the current date and time using your Metabase [instance default report timezone](../../configuring-metabase/localization.md#set-default-instance-report-timezone).
 
 Syntax: `now()`
 

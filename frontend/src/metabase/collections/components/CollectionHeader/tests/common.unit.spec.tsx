@@ -64,6 +64,26 @@ describe("CollectionHeader", () => {
       const input = screen.getByDisplayValue("Personal collection");
       expect(input).toBeDisabled();
     });
+
+    it("should truncate name if it exceeds 100 characters", async () => {
+      const collection = {
+        name: "Name",
+        can_write: true,
+      };
+
+      const { onUpdateCollection, collection: myCollection } = setup({
+        collection,
+      });
+
+      const input = screen.getByDisplayValue("Name");
+      await userEvent.clear(input);
+      const longName = "a".repeat(110);
+      await userEvent.type(input, `${longName}{Enter}`);
+
+      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
+        name: longName.slice(0, 100),
+      });
+    });
   });
 
   describe("collection description", () => {
@@ -137,6 +157,31 @@ describe("CollectionHeader", () => {
       const input = screen.getByDisplayValue("Description");
       expect(input).toBeInTheDocument();
       expect(input).toBeDisabled();
+    });
+
+    it("should truncate description if it exceeds 255 characters", async () => {
+      const collection = {
+        description: "Description",
+        can_write: true,
+      };
+
+      const { onUpdateCollection, collection: myCollection } = setup({
+        collection,
+      });
+
+      // show input
+      const editableText = screen.getByText("Description");
+      await userEvent.click(editableText);
+
+      const input = screen.getByDisplayValue("Description");
+      await userEvent.clear(input);
+      const longDescription = "a".repeat(256);
+      await userEvent.type(input, longDescription);
+      await userEvent.tab();
+
+      expect(onUpdateCollection).toHaveBeenCalledWith(myCollection, {
+        description: longDescription.slice(0, 255),
+      });
     });
   });
 

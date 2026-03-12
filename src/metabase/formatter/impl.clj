@@ -63,16 +63,14 @@
   ([value decimal]
    (if (zero? value)
      0
-     (let [val-string (-> (condp = (type value)
-                            java.math.BigDecimal (.toPlainString ^BigDecimal value)
-                            java.lang.Double     (format "%.20f" value)
-                            java.lang.Float      (format "%.20f" value)
+     (let [val-string (-> (if (instance? java.math.BigDecimal value)
+                            (.toPlainString ^BigDecimal value)
                             (str value))
                           (strip-trailing-zeroes (str decimal)))
            decimal-idx (str/index-of val-string decimal)]
-       (if decimal-idx
-         (- (count val-string) decimal-idx 1)
-         0)))))
+       (min 20 (if decimal-idx
+                 (- (count val-string) decimal-idx 1)
+                 0))))))
 
 (defn- sig-figs-after-decimal
   "Count the number of significant figures after the decimal point in a number.
@@ -297,7 +295,8 @@
    (cond
      ;; for numbers, return a format function that has already computed the differences.
      ;; todo: do the same for temporal strings
-     (and apply-formatting? (types/temporal-field? col))
+     (and apply-formatting?
+          #_{:clj-kondo/ignore [:deprecated-var]} (types/temporal-field? col)) ; legacy usage -- do not use going forward
      (datetime/make-temporal-str-formatter timezone-id col visualization-settings)
 
      (and apply-formatting? (isa? (:semantic_type col) :type/Coordinate))

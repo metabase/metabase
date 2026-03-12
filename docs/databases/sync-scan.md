@@ -15,16 +15,16 @@ Metabase periodically runs different types of queries on your data warehouse to 
 
 When Metabase first connects to your database, it performs a [sync](#how-database-syncs-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/semantic-types.md).
 
-You can follow the progress of these queries from **Gear icon** >**Admin settings** > **Tools** > **Tasks** and filtering by the various sync tasks.
+You can follow the progress of these queries from **grid icon** >**Admin** > **Tools** > **Tasks** and filtering by the various sync tasks.
 
-Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Table Metadata**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
+Once the queries are done running, you can view and edit the synced metadata from **Admin** > **Table Metadata**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
 
 ## Choose when syncs and scans happen
 
 By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, you might want to choose when syncs and scans happen.
 
-1. Click on the **Gear icon**.
-2. Select **Admin settings**.
+1. Click on the **grid icon**.
+2. Select **Admin**.
 3. Go to **Databases**.
 4. Select your database.
 5. In the **Connection and sync** section, click on **Edit connection details**.
@@ -48,27 +48,27 @@ Options include:
 
 - **Regularly, on a schedule** allows you to run [scan queries](#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when someone adds a new filter widget to a dashboard or SQL question (i.e., they add a parameter to their SQL query).
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large or which never really have new values added. Use the [Re-scan field values](#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large or which never have new values added. Use the [Re-scan field values](#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
 Regardless of which option you pick, if you [set a field to use a dropdown list in filter widgets](../data-modeling/metadata-editing.md#filtering), Metabase will need to get values for that dropdown. Whenever someone uses that filter widget, Metabase will first look for cached values (valid for fourteen days) to populate that dropdown; otherwise, it will re-scan that field for the most up-to-date values.
 
 ## Manually syncing tables and columns
 
-1. Go to **Admin settings** > **Databases** > your database.
+1. Go to **Admin** > **Databases** > your database.
 2. Click **Sync database schema**.
 
 ## Manually scanning column values
 
 To scan values from all the columns in a table:
 
-1. Go to **Admin settings** > **Table Metadata** > your database.
+1. Go to **Admin** > **Table Metadata** > your database.
 2. Select the table that you want to bring up to date with your database.
 3. Click the **gear icon** at the top of the page.
 4. Click **Re-scan this table**.
 
 To scan values from a specific column:
 
-1. Go to **Admin settings** > **Table Metadata** > your database.
+1. Go to **Admin** > **Table Metadata** > your database.
 2. Select the table.
 3. Find the column you want to bring up to date with your database.
 4. Click the **gear icon** in the panel for that column.
@@ -78,7 +78,7 @@ To scan values from a specific column:
 
 To clear the [scanned field values for a table](#syncing-and-scanning-databases):
 
-1. Go to **Admin settings** > **Table Metadata**.
+1. Go to **Admin** > **Table Metadata**.
 2. Select the database and table.
 3. Click the **gear icon** in the upper right.
 4. Click **Discard cached field values**.
@@ -89,7 +89,7 @@ You can also tell Metabase to forget the cached values for individual fields by 
 
 To prevent Metabase from running syncs and scans against a specific table, change the [table visibility](../data-modeling/metadata-editing.md#table-visibility) to **Hidden**:
 
-1. Go to **Admin settings** > **Table Metadata** > your database.
+1. Go to **Admin** > **Table Metadata** > your database.
 2. Hover over the table name in the sidebar.
 3. Click the **eye** icon.
 
@@ -115,7 +115,7 @@ To use this endpoint, you must pass a string via the `MB_API_KEY` environment va
 
 We created the `notify` endpoint so that people could tell their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/etl-landscape) finishes.
 
-See our [API docs](/docs/latest/api.html).
+See our [API docs](../api.html).
 
 ## How database syncs work
 
@@ -165,7 +165,7 @@ Cached column values are displayed in filter dropdown menus. If people type in t
 
 A scan is more intensive than a sync query, so it only runs once during setup and again once a day by default. If you [disable scans](#scanning-for-filter-values) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
 
-To reduce the number of tables and fields Metabase needs to scan in order to stay current with your connected database, Metabase will only scan values for fields that someone has used in the last fourteen days.
+To reduce the number of tables and fields Metabase needs to scan to stay current with your connected database, Metabase will only scan values for fields that someone has used in the last fourteen days.
 
 Here's the kind of data that scans get and why:
 

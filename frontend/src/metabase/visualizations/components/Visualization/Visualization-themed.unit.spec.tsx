@@ -25,7 +25,7 @@ describe("Themed Visualization", () => {
     ] as Series;
 
     renderWithProviders(<Visualization rawSeries={series} />, {
-      theme: { colors: { "text-dark": getColorShades(TEST_COLOR) } },
+      theme: { colors: { "text-primary": getColorShades(TEST_COLOR) } },
     });
 
     await delay(0);

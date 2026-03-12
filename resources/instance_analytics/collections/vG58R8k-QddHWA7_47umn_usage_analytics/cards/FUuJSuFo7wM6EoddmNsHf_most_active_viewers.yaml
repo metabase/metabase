@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_view_log
+table_id: [Internal Metabase Database, public, v_view_log]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -24,71 +21,46 @@ dataset_query:
   database: Internal Metabase Database
   query:
     aggregation:
-    - - count
+    - [count]
     breakout:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - full_name
-      - base-type: type/Text
-        join-alias: People - User
+      - [Internal Metabase Database, public, v_users, full_name]
+      - {base-type: type/Text, join-alias: People - User}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - user_id
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_view_log, user_id]
+      - {base-type: type/Integer}
     filter:
     - =
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - entity_type
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_view_log, entity_type]
+      - {base-type: type/Text}
     - card
     joins:
     - alias: People - User
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - user_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_view_log, user_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - user_id
-        - base-type: type/Integer
-          join-alias: People - User
+        - [Internal Metabase Database, public, v_users, user_id]
+        - {base-type: type/Integer, join-alias: People - User}
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     - alias: Group Members - User
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - user_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_view_log, user_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_group_members
-          - user_id
-        - base-type: type/Integer
-          join-alias: Group Members - User
+        - [Internal Metabase Database, public, v_group_members, user_id]
+        - {base-type: type/Integer, join-alias: Group Members - User}
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     order-by:
     - - desc
-      - - aggregation
-        - 0
+      - [aggregation, 0]
     source-table: P6Ityjj7igswKh4NgZZjz
   type: query
 result_metadata:
@@ -100,18 +72,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - full_name
-  - base-type: type/Text
-    join-alias: People - User
+  - [Internal Metabase Database, public, v_users, full_name]
+  - {base-type: type/Text, join-alias: People - User}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - full_name
+  id: [Internal Metabase Database, public, v_users, full_name]
   name: full_name
   remapped_from: user_id
   semantic_type: type/Name
@@ -125,21 +89,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - full_name
-  - source-field:
-    - Internal Metabase Database
-    - public
-    - v_view_log
-    - user_id
+  - [Internal Metabase Database, public, v_users, full_name]
+  - source-field: [Internal Metabase Database, public, v_view_log, user_id]
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - full_name
+  id: [Internal Metabase Database, public, v_users, full_name]
   name: full_name_2
   remapped_from: user_id
   semantic_type: type/Name
@@ -153,21 +106,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_view_log
-    - user_id
-  - base-type: type/Integer
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - user_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_view_log
-  - user_id
+  - [Internal Metabase Database, public, v_view_log, user_id]
+  - {base-type: type/Integer}
+  fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
+  id: [Internal Metabase Database, public, v_view_log, user_id]
   name: user_id
   remapped_to: full_name
   semantic_type: type/FK
@@ -177,42 +119,31 @@ result_metadata:
   database_type: int8
   display_name: Count
   effective_type: type/BigInteger
-  field_ref:
-  - aggregation
-  - 0
+  field_ref: [aggregation, 0]
   name: count
   semantic_type: type/Quantity
 visualization_settings:
   column_settings:
-    '["name","count"]':
-      column_title: Question views
-      show_mini_bar: true
-    '["name","user_id"]':
-      column_title: Person Name
+    '["name","count"]': {column_title: Question views, show_mini_bar: true}
+    '["name","user_id"]': {column_title: Person Name}
   table.cell_column: model_id
   table.columns:
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_view_log
-      - user_id
-    - base-type: type/Integer
+    - [Internal Metabase Database, public, v_view_log, user_id]
+    - {base-type: type/Integer}
     name: user_id
   - enabled: true
-    fieldRef:
-    - aggregation
-    - 0
+    fieldRef: [aggregation, 0]
     name: count
   table.pivot_column: end_timestamp
+card_schema: 23
 serdes/meta:
-- id: FUuJSuFo7wM6EoddmNsHf
-  label: most_active_viewers
-  model: Card
+- {id: FUuJSuFo7wM6EoddmNsHf, label: most_active_viewers, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: vFnGZMNN2K_KW1I0B52bq
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

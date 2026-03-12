@@ -8,7 +8,13 @@
  */
 
 import { KBAR_LISTBOX, getListboxItemId, useKBar } from "kbar";
-import * as React from "react";
+import {
+  type MouseEvent,
+  cloneElement,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 
 import type { PaletteActionImpl } from "../types";
 import { navigateActionIndex } from "../utils";
@@ -22,18 +28,21 @@ interface RenderParams<T = PaletteActionImpl | string> {
 
 interface PaletteResultListProps {
   items: (PaletteActionImpl | string)[];
-  onRender: (params: RenderParams) => React.ReactElement;
-  maxHeight?: number;
+  renderItem: (params: RenderParams) => React.ReactElement;
+  maxHeight: number;
+  minHeight: number;
 }
 
-export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
-  const activeRef = React.useRef<HTMLDivElement>(null);
-  const parentRef = React.useRef<HTMLDivElement>(null);
+export const PaletteResultList = (props: PaletteResultListProps) => {
+  const activeRef = useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
 
   // store a ref to all items so we do not have to pass
   // them as a dependency when setting up event listeners.
-  const itemsRef = React.useRef(props.items);
+  const itemsRef = useRef(props.items);
   itemsRef.current = props.items;
+
+  const hasUserInteractedRef = useRef(false);
 
   const { query, search, currentRootActionId, activeIndex, options } = useKBar(
     (state) => ({
@@ -43,7 +52,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
     }),
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (event.isComposing) {
         return;
@@ -51,6 +60,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
       if (event.key === "ArrowUp" || (event.ctrlKey && event.key === "p")) {
         event.preventDefault();
         event.stopPropagation();
+        hasUserInteractedRef.current = true;
         query.setActiveIndex((index) => {
           return navigateActionIndex(itemsRef.current, index, -1);
         });
@@ -60,6 +70,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
       ) {
         event.preventDefault();
         event.stopPropagation();
+        hasUserInteractedRef.current = true;
         query.setActiveIndex((index) => {
           return navigateActionIndex(itemsRef.current, index, 1);
         });
@@ -95,7 +106,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
       window.removeEventListener("keydown", handler, { capture: true });
   }, [query]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (activeIndex > 1) {
       activeRef.current?.scrollIntoView({
         behavior: "smooth",
@@ -106,22 +117,26 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
     }
   }, [activeIndex]);
 
-  React.useEffect(() => {
-    // TODO(tim): fix scenario where async actions load in
-    // and active index is reset to the first item. i.e. when
-    // users register actions and bust the `useRegisterActions`
-    // cache, we won't want to reset their active index as they
-    // are navigating the list.
-    query.setActiveIndex(
-      // avoid setting active index on a group
-      typeof props.items[START_INDEX] === "string"
-        ? START_INDEX + 1
-        : START_INDEX,
-    );
+  // Reset interaction tracking when search changes
+  useEffect(() => {
+    hasUserInteractedRef.current = false;
+  }, [search]);
+
+  useEffect(() => {
+    // Only auto-set the active index if the user hasn't interacted yet.
+    // This prevents resetting their selection when async search results load in.
+    if (!hasUserInteractedRef.current) {
+      query.setActiveIndex(
+        // avoid setting active index on a group
+        typeof props.items[START_INDEX] === "string"
+          ? START_INDEX + 1
+          : START_INDEX,
+      );
+    }
   }, [search, currentRootActionId, props.items, query]);
 
-  const execute = React.useCallback(
-    (item: RenderParams["item"], e?: React.MouseEvent) => {
+  const execute = useCallback(
+    (item: RenderParams["item"], e?: MouseEvent) => {
       if (typeof item === "string") {
         return;
       }
@@ -143,7 +158,8 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
     <div
       ref={parentRef}
       style={{
-        maxHeight: props.maxHeight || 400,
+        maxHeight: props.maxHeight,
+        minHeight: props.minHeight,
         overflow: "auto",
       }}
     >
@@ -158,10 +174,17 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
         {props.items.map((item, index) => {
           const handlers = typeof item !== "string" &&
             item.disabled !== true && {
-              onPointerMove: () =>
-                activeIndex !== index && query.setActiveIndex(index),
-              onPointerDown: () => query.setActiveIndex(index),
-              onClick: (e: React.MouseEvent) => execute(item, e),
+              onPointerMove: () => {
+                if (activeIndex !== index) {
+                  hasUserInteractedRef.current = true;
+                  query.setActiveIndex(index);
+                }
+              },
+              onPointerDown: () => {
+                hasUserInteractedRef.current = true;
+                query.setActiveIndex(index);
+              },
+              onClick: (e: MouseEvent) => execute(item, e),
             };
           const active = index === activeIndex;
 
@@ -174,8 +197,8 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = (props) => {
               key={typeof item === "string" ? item : item.id}
               {...handlers}
             >
-              {React.cloneElement(
-                props.onRender({
+              {cloneElement(
+                props.renderItem({
                   item,
                   active,
                 }),

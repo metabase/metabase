@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -18,16 +18,16 @@ export interface SetupOpts {
   database?: Database;
   card?: Card;
   showMetabaseLinks?: boolean;
-  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export const setup = ({
   database = createMockDatabase(),
   card = createMockCard(),
   showMetabaseLinks = true,
-  hasEnterprisePlugins,
   tokenFeatures = {},
+  enterprisePlugins = [],
 }: SetupOpts) => {
   const state = createMockState({
     entities: createMockEntitiesState({
@@ -40,9 +40,9 @@ export const setup = ({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   const metadata = createMockMetadata({
     questions: [card],

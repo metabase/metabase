@@ -2,34 +2,33 @@ import { dissoc } from "icepick";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import ModalContent from "metabase/common/components/ModalContent";
-import {
-  CopyDashboardFormConnected,
-  type CopyDashboardFormProperties,
-} from "metabase/dashboard/containers/CopyDashboardForm";
-import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
+import { CopyDashboardFormConnected } from "metabase/dashboard/containers/CopyDashboardForm";
+import { DocumentCopyForm } from "metabase/documents/components/DocumentCopyForm/DocumentCopyForm";
+import { CopyCardForm } from "metabase/questions/components/CopyCardForm/CopyCardForm";
+import { Modal } from "metabase/ui";
 
-interface EntityCopyModalProps {
-  entityType: string;
-  entityObject: any;
-  copy: (data: any) => Promise<any>;
-  title?: string;
-  onClose: () => void;
-  onSaved: (newEntityObject?: any) => void;
-  overwriteOnInitialValuesChange?: boolean;
-  onValuesChange?: (values: CopyDashboardFormProperties) => void;
-  form?: any;
-}
+import type {
+  CopyableEntityType,
+  EntityCopyModalProps,
+  GenericEntityCopyModalProps,
+} from "./EntityCopyModal.types";
 
-const EntityCopyModal = ({
-  entityType,
-  entityObject,
-  copy,
-  title,
-  onClose,
-  onSaved,
-  ...props
-}: EntityCopyModalProps) => {
+function EntityCopyModal<T extends CopyableEntityType>(
+  props: EntityCopyModalProps<T>,
+): React.JSX.Element;
+function EntityCopyModal(props: GenericEntityCopyModalProps): React.JSX.Element;
+function EntityCopyModal(props: GenericEntityCopyModalProps) {
+  const {
+    entityType,
+    entityObject,
+    copy,
+    title,
+    onClose,
+    onSaved,
+    onValuesChange,
+  } = props;
+
   const resolvedObject =
     typeof entityObject?.getPlainObject === "function"
       ? entityObject.getPlainObject()
@@ -38,19 +37,25 @@ const EntityCopyModal = ({
     resolvedObject?.collection?.id,
   );
 
-  if (defaultCollectionId) {
-    resolvedObject.collection_id = defaultCollectionId;
-  }
+  const resolvedObjectWithDefaultCollection = defaultCollectionId
+    ? { ...resolvedObject, collection_id: defaultCollectionId }
+    : resolvedObject;
 
   const initialValues = {
-    ...dissoc(resolvedObject, "id"),
-    name: resolvedObject.name + " - " + t`Duplicate`,
+    ...dissoc(resolvedObjectWithDefaultCollection, "id"),
+    name: resolvedObjectWithDefaultCollection.name + " - " + t`Duplicate`,
   };
 
+  useEscapeToCloseModal(onClose);
+
   return (
-    <ModalContent
-      title={title || t`Duplicate "${resolvedObject.name}"`}
+    <Modal
+      title={
+        title || t`Duplicate "${resolvedObjectWithDefaultCollection.name}"`
+      }
+      opened
       onClose={onClose}
+      closeOnEscape={false}
     >
       {entityType === "dashboards" && (
         <CopyDashboardFormConnected
@@ -58,23 +63,30 @@ const EntityCopyModal = ({
           onClose={onClose}
           onSaved={onSaved}
           initialValues={initialValues}
-          {...props}
-          originalDashboardId={resolvedObject.id}
+          onValuesChange={onValuesChange}
+          originalDashboardId={resolvedObjectWithDefaultCollection.id}
         />
       )}
-      {entityType === "questions" && (
-        <CopyQuestionForm
+      {entityType === "cards" && (
+        <CopyCardForm
           onSubmit={copy}
           onCancel={onClose}
           onSaved={onSaved}
           initialValues={initialValues}
           model={entityObject?.type}
-          {...props}
         />
       )}
-    </ModalContent>
+      {entityType === "documents" && (
+        <DocumentCopyForm
+          onSubmit={copy}
+          onCancel={onClose}
+          onSaved={onSaved}
+          initialValues={initialValues}
+        />
+      )}
+    </Modal>
   );
-};
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EntityCopyModal;

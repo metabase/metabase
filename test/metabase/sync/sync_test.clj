@@ -97,8 +97,8 @@
   true)
 
 (defmethod driver/mbql->native ::sync-test
-  [_ query]
-  query)
+  [_ _query]
+  {:query "SQL string"})
 
 (defn- ^:dynamic *execute-response*
   [query respond]
@@ -125,7 +125,9 @@
     :id          true
     :archived_at false
     :deactivated_at false
-    :updated_at  true}))
+    :updated_at  true
+    :owner_user_id false
+    :transform_id false}))
 
 (defn- field-defaults []
   (merge
@@ -221,7 +223,8 @@
           :display_name        "Movie"
           :initial_sync_status "complete"
           :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]
-          :description         nil}))
+          :description         nil
+          :collection_id       false}))
 
 (defn- expected-studio-table []
   (merge (table-defaults)
@@ -230,7 +233,8 @@
           :display_name        "Studio"
           :initial_sync_status "complete"
           :fields              [(field:studio-name) (field:studio-studio)]
-          :description         ""}))
+          :description         ""
+          :collection_id       false}))
 
 (deftest sync-database-test
   (doseq [supports-schemas? [true false]]

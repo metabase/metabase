@@ -5,6 +5,8 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+  setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -52,6 +54,8 @@ COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
 function setup({ mockCreateDashboardResponse = true } = {}) {
   mockGetBoundingClientRect();
   setupRecentViewsAndSelectionsEndpoints([]);
+  setupLibraryEndpoints();
+  setupDatabasesEndpoints([]);
   const onClose = jest.fn();
 
   const settings = mockSettings({});
@@ -231,8 +235,8 @@ describe("CreateDashboardModal", () => {
       await userEvent.click(collDropdown());
       await waitFor(() => expect(newCollBtn()).toBeInTheDocument());
       await userEvent.click(newCollBtn());
-      await screen.findByTestId("create-collection-on-the-go"),
-        await screen.findByText("Give it a name");
+      await screen.findByTestId("create-collection-on-the-go");
+      await screen.findByText("Give it a name");
     });
   });
 });

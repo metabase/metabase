@@ -1,11 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { color } from "metabase/ui/utils/colors";
 
 export const ParameterFormSection = styled.div`
-  margin-top: ${space(2)};
+  margin-top: var(--mantine-spacing-md);
 `;
 
 interface ParameterFormLabelProps {
@@ -13,18 +12,18 @@ interface ParameterFormLabelProps {
 }
 
 export const ParameterFormLabel = styled.label<ParameterFormLabelProps>`
-  color: ${(props) => (props.error ? color("error") : color("text-medium"))};
+  color: ${(props) => (props.error ? color("error") : color("text-secondary"))};
   font-size: 0.75rem;
   display: flex;
-  gap: ${space(1)};
+  gap: var(--mantine-spacing-sm);
   align-items: center;
-  margin-bottom: ${space(1)};
+  margin-bottom: var(--mantine-spacing-sm);
   font-weight: bold;
 `;
 
 export const ParameterFormBadge = styled.span`
-  color: var(--mb-color-text-dark);
-  background-color: var(--mb-color-bg-medium);
-  padding: ${space(0)} ${space(1)};
-  border-radius: ${space(0)};
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background-tertiary);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-spacing-xs);
 `;

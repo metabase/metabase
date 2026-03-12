@@ -115,7 +115,8 @@
 (defn- default-table-result [table-name]
   {:name        table-name
    :schema      nil
-   :description nil})
+   :description nil
+   :is_writable nil})
 
 (deftest timestamp-test-db
   (let [driver :sqlite]
@@ -136,16 +137,19 @@
                        (driver/describe-database driver db))))
 
               (testing "timestamp column should exist"
-                (is (= {:name "timestamp_table"
-                        :schema nil
-                        :fields #{{:name                       "created_at"
+                (is (=? {:name "timestamp_table"
+                         :schema nil
+                         :fields [{:name                       "created_at"
                                    :database-type              "TIMESTAMP"
                                    :base-type                  :type/DateTime
                                    :database-position          0
                                    :database-required          false
                                    :json-unfolding             false
-                                   :database-is-auto-increment false}}}
-                       (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))))))))))))
+                                   :database-is-auto-increment false
+                                   :database-is-nullable       true
+                                   :database-is-generated      false}]}
+                        (-> (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))
+                            (update :fields (partial sort-by :name)))))))))))))
 
 (deftest select-query-datetime
   (mt/test-driver :sqlite
@@ -211,14 +215,13 @@
 (deftest ^:parallel duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
-      (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+      (is (= '{:select   [source.CATEGORY AS CATEGORY
                           COUNT (*)         AS count]
-               :from     [{:select [products.category       AS category
-                                    products.category || ?  AS CATEGORY_2]
+               :from     [{:select [products.category || ? AS CATEGORY]
                            :from   [products]}
                           AS source]
-               :group-by [source.CATEGORY_2]
-               :order-by [source.CATEGORY_2 ASC]
+               :group-by [source.CATEGORY]
+               :order-by [source.CATEGORY ASC]
                :limit    [1]}
              (sql.qp-test-util/query->sql-map
               (mt/mbql-query products

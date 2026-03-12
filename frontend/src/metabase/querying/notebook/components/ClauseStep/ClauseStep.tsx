@@ -7,6 +7,7 @@ import { useMergedRef } from "@mantine/hooks";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { Icon } from "metabase/ui";
 
 import {
@@ -22,6 +23,7 @@ type RenderItemOpts<T> = {
   item: T;
   index: number;
   onOpen?: () => void;
+  hasPopover?: boolean;
 };
 
 type RenderPopoverOpts<T> = {
@@ -31,7 +33,7 @@ type RenderPopoverOpts<T> = {
 };
 
 export type ClauseStepProps<T> = {
-  color: string;
+  color: ColorName;
   items: T[];
   initialAddText?: string;
   readOnly?: boolean;
@@ -61,9 +63,19 @@ export const ClauseStep = <T,>({
   onReorder,
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
-  const renderItem = ({ item, index, onOpen }: RenderItemOpts<T>) => (
+  const renderItem = ({
+    item,
+    index,
+    onOpen,
+    hasPopover,
+  }: RenderItemOpts<T>) => (
     <ClauseStepDndItem index={index} readOnly={readOnly}>
-      <NotebookCellItem color={color} readOnly={readOnly} onClick={onOpen}>
+      <NotebookCellItem
+        color={color}
+        readOnly={readOnly}
+        onClick={onOpen}
+        hasPopover={hasPopover}
+      >
         {renderName(item, index)}
         {hasRemoveButton && (
           <Icon
@@ -94,7 +106,10 @@ export const ClauseStep = <T,>({
         {items.map((item, index) => (
           <ClausePopover
             key={index}
-            renderItem={(onOpen) => renderItem({ item, index, onOpen })}
+            disabled={readOnly}
+            renderItem={(onOpen, hasPopover) =>
+              renderItem({ item, index, onOpen, hasPopover })
+            }
             renderPopover={(onClose) => renderPopover({ item, index, onClose })}
           />
         ))}

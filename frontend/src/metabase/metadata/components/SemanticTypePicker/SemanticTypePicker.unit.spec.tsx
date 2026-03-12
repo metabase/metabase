@@ -99,7 +99,7 @@ const setup = ({
 };
 
 describe("SemanticTypePicker", () => {
-  describe("depreacted semantic types", () => {
+  describe("deprecated semantic types", () => {
     it("does not show deprecated semantic types", async () => {
       setup({ fieldId: TEMPORAL_FIELD.id });
 

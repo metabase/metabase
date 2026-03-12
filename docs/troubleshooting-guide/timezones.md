@@ -25,7 +25,7 @@ To fix this problem you'll need answers to these questions:
 Once you have these answers, look for cases like these:
 
 1. Your question or chart is comparing or sorting values with inconsistent or missing time zones. For example, if a flight's departure and arrival times are reported in local time, it can appear to arrive before it has left.
-2. Your question is aggregating timetsamps with different time zones: for example, the "daily" totals for your website's traffic include more than 24 hours worth of data because you are using the local dates from East Asia, Europe, and the Americas.
+2. Your question is aggregating timestamps with different time zones: for example, the "daily" totals for your website's traffic include more than 24 hours worth of data because you are using the local dates from East Asia, Europe, and the Americas.
 
 Once you think you have identified a problem, drill down to understand exactly what time zone conversion is causing the underlying problem. For example, suppose you're looking at a time series with daily values; if your error is happening with weekly totals, you can:
 
@@ -40,20 +40,22 @@ Once you think you have identified a problem, drill down to understand exactly w
 
 ## Is the Report Time Zone set incorrectly?
 
-**Root cause:** Wrong numbers in questions or charts can be caused by a mis-match in the time zone being used by Metabase and the time zone being used by the data warehouse.
+**Root cause:** Wrong numbers in questions or charts can be caused by a mismatch in the time zone being used by Metabase and the time zone being used by the data warehouse.
 
 **Steps to take:**
 
-1. Check the [report timezone setting](../configuring-metabase/localization.md#report-timezone) from **Admin settings** > **Settings** > **Localization**.
+1. Check the [report timezone setting](../configuring-metabase/localization.md#set-default-instance-report-timezone) from **Admin** > **Settings** > **Localization**.
 2. If you're using a database that doesn't support the report timezone setting, ensure that Metabase's time zone matches that of the database. Metabase's time zone is the Java Virtual Machine's time zone, typically set via a `-Duser.timezone<..>` parameter or the `JAVA_TIMEZONE` environment variable; exactly how it is set will depend on how you launch Metabase. Note that Metabase's time zone doesn't impact any databases that use a Report Time Zone.
 
 ## Are SQL queries not respecting the Reporting Time Zone setting?
 
-**Root cause:** We don't currently apply a reporting time zone to the results of SQL queries.
+**Root cause:** Database settings. Metabase sets a session time zone, but some databases ignore it.
 
 **Steps to take:**
 
-Set a reporting time zone explicitly in your SQL query.
+Contact your database administrator to allow setting the session time zone.
+
+Alternatively, you can also set a reporting time zone explicitly in your SQL query.
 
 For example, you can write something like this with PostgreSQL:
 

@@ -1,7 +1,7 @@
 (ns metabase.lib.remove-replace
+  (:refer-clojure :exclude [every? mapv run! some empty? not-empty get-in #?(:clj for)])
   (:require
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.equality :as lib.equality]
@@ -14,13 +14,16 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf :refer [every? mapv run! some empty? not-empty get-in #?(:clj for)]]))
 
 (defn- stage-paths
   [query stage-number]
@@ -87,9 +90,9 @@
         source-uuid->new-column (m/index-by :lib/source-uuid new-columns)]
     (lib.util/update-query-stage
      query-modified stage-number
-     #(lib.util.match/replace
+     #(lib.util.match/replace-lite
         %
-        :field
+        [:field & _]
         (let [old-matching-column (lib.equality/find-matching-column &match old-columns)]
           (if-let [new-column (some-> old-matching-column :lib/source-uuid source-uuid->new-column)]
             (assoc &match 2 ((some-fn :lib/source-column-alias :name) new-column))
@@ -160,10 +163,7 @@
             (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
-        (q :guard (and (vector? q)
-                       (or (= q [:breakout])
-                           (= q [:fields])
-                           (and (= (nth q 0) :joins) (= (nth q 2) :fields) (= (count q) 3)))))
+        (:or [:breakout] [:fields] [:joins _ :fields])
         (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
             (update-stale-references stage-number unmodified-query-for-stage))
 
@@ -178,10 +178,10 @@
                      (when-let [clauses (get-in stage location)]
                        (->> clauses
                             (keep (fn [clause]
-                                    (lib.util.match/match-lite-recursive clause
+                                    (lib.util.match/match-lite clause
                                       [(op :guard (= op target-op))
-                                       (_ :guard #(or (empty? target-opts)
-                                                      (set/subset? (set target-opts) (set %))))
+                                       (opts :guard (or (empty? target-opts)
+                                                        (set/subset? (set target-opts) (set opts))))
                                        (id :guard (= id target-ref-id))] [location clause]))))))
                    (stage-paths query stage-number))
         dead-joins (volatile! (transient []))]
@@ -194,7 +194,7 @@
                 (catch #?(:clj Exception :cljs js/Error) e
                   (let [{:keys [error join]} (ex-data e)]
                     (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
-                        ;; Return the stage unchanged, but keep track of the dead joins.
+                      ;; Return the stage unchanged, but keep track of the dead joins.
                       (do (vswap! dead-joins conj! join)
                           %1)
                       (throw e)))))))
@@ -226,7 +226,39 @@
              possible-location))))
      (stage-paths query stage-number))))
 
-(defn- remove-replace* [query stage-number target-clause remove-or-replace replacement]
+(defn- maybe-merge-first-stage [query]
+  ;; Note that this is a fairly narrowly-scoped change to fix #45041
+  ;; Merging more stages would be plausible, but this approach is enough to fix the current bug
+  ;; and I'm trying to minimize the chances of breaking anything else.
+  (let [first-stage (lib.util/query-stage query 0)
+        stage-keys (-> first-stage keys set)
+        next-stage (when-not (lib.util/last-stage? query 0)
+                     (lib.util/query-stage query 1))]
+    ;; if the first stage is empty and there are more stages after it, merge the first stage into the next stage
+    (if (and (or (= stage-keys
+                    #{:source-table :lib/type})
+                 (= stage-keys
+                    #{:source-card :lib/type}))
+             next-stage
+             (lib.util/mbql-stage? first-stage)
+             (lib.util/mbql-stage? next-stage))
+      (let [additional-stages (drop 2 (:stages query))
+            new-stages (vec (cons (merge next-stage first-stage)
+                                  additional-stages))]
+        (assoc query :stages new-stages))
+      query)))
+
+(mu/defn- remove-replace* :- :map
+  [query             :- :map
+   stage-number      :- :int
+   target-clause     :- ::lib.schema.mbql-clause/clause
+   remove-or-replace :- [:enum :remove :replace]
+   replacement       :- [:maybe [:or
+                                 ::lib.schema.mbql-clause/clause
+                                 ;; a metadata or `:lib/external-op` or something
+                                 [:map
+                                  [:lib/type qualified-keyword?]]]]]
+  {:pre [(vector? target-clause)]}
   (mu/disable-enforcement
     (let [target-clause (lib.common/->op-arg target-clause)
           location (find-location query stage-number target-clause)
@@ -270,7 +302,8 @@
                            ;; clean this up -- why don't we do that?
                            (lib.schema.util/distinct-mbql-clauses? (:breakout new-stage)))
                           ;; any change to something other than breakouts is always considered valid
-                          true)]
+                          true)
+          new-query (maybe-merge-first-stage new-query)]
       (if valid-change?
         new-query
         query))))
@@ -281,9 +314,14 @@
   ([query :- ::lib.schema/query
     target-clause]
    (remove-clause query -1 target-clause))
-  ([query :- ::lib.schema/query
-    stage-number :- :int
-    target-clause]
+
+  ([query         :- ::lib.schema/query
+    stage-number  :- :int
+    target-clause :- [:or
+                      ::lib.schema.mbql-clause/clause
+                      ;; TODO (Cam 9/10/25) -- why do we let you call `remove-clause` to remove a join?
+                      ::lib.schema.join/join]]
+   {:pre [(some? target-clause)]}
    (if (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
      (remove-join query stage-number target-clause)
      (remove-replace* query stage-number target-clause :remove nil))))
@@ -294,8 +332,8 @@
 
 (defn- local-replace-expression-references [stage target-ref-id replacement-ref]
   (let [replace-embedded-refs (fn replace-refs [stage]
-                                (lib.util.match/replace stage
-                                  [:expression _ target-ref-id]
+                                (lib.util.match/replace-lite stage
+                                  [:expression _ (id :guard (= id target-ref-id))]
                                   (-> replacement-ref
                                       fresh-ref)))]
     (replace-embedded-refs stage)))
@@ -317,8 +355,8 @@
   [stage target replacement]
   (->> (if (lib.util/expression-name target)
          (local-replace-expression stage target replacement)
-         (walk/postwalk #(if (= % target) replacement %) stage))
-       (walk/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
+         (perf/postwalk #(if (= % target) replacement %) stage))
+       (perf/postwalk #(if (= % (lib.options/uuid target)) (lib.options/uuid replacement) %))))
 
 (defn- returned-columns-at-stage
   [query stage-number]
@@ -336,9 +374,9 @@
   [query next-stage-number [col replaced-col]]
   (let [target-ref-id (:lib/desired-column-alias col)
         replaced-ref (lib.ref/ref (assoc replaced-col :lib/source :source/previous-stage))]
-    (map (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
-         (lib.util.match/match (lib.util/query-stage query next-stage-number)
-           [:field _ target-ref-id] &match))))
+    (mapv (fn [target-ref] [target-ref (fresh-ref replaced-ref)])
+          (lib.util.match/match-many (lib.util/query-stage query next-stage-number)
+            [:field _ (id :guard (= id target-ref-id))] &match))))
 
 (defn- typed-expression
   [query stage-number expression]
@@ -416,17 +454,15 @@
   "Checks if two sets of join conditions are the same. We ignore the current join-aliases as those may be changing,
    and we ignore effective-type since `tweak-expression` above may have already added it, and in this case it will be irrelevant."
   [new-join-alias new-join-conditions join-alias-b join-conditions-b]
-  (let [a-conds (lib.util.match/replace
-                  new-join-conditions
-                  (_ :guard (every-pred map? (comp #{new-join-alias} :join-alias)))
+  (let [a-conds (lib.util.match/replace-lite new-join-conditions
+                  {:join-alias (ja :guard (= ja new-join-alias))}
                   (dissoc &match :join-alias :effective-type)
-                  (_ :guard (every-pred map? :effective-type))
+                  {:effective-type (_ :guard identity)}
                   (dissoc &match :effective-type))
-        b-conds (lib.util.match/replace
-                  join-conditions-b
-                  (_ :guard (every-pred map? (comp #{join-alias-b} :join-alias)))
+        b-conds (lib.util.match/replace-lite join-conditions-b
+                  {:join-alias (ja :guard (= ja join-alias-b))}
                   (dissoc &match :join-alias :effective-type)
-                  (_ :guard (every-pred map? :effective-type))
+                  {:effective-type (_ :guard identity)}
                   (dissoc &match :effective-type))]
     (not (lib.equality/= a-conds b-conds))))
 
@@ -443,17 +479,23 @@
                                          (keep #(on-stage-path query %))
                                          distinct)]
                     (if (seq error-paths)
-                      (recur (reduce (fn [q path]
-                                       (try
-                                         (remove-clause q (second path) (get-in q path))
-                                         (catch #?(:clj Exception :cljs js/Error) e
-                                           (let [{:keys [error join]} (ex-data e)]
-                                             (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
-                                               ;; remove the dangling join
-                                               (remove-join q (second path) join)
-                                               (throw e))))))
-                                     query
-                                     error-paths))
+                      (recur (u/prog1 (reduce (fn [query path]
+                                                (try
+                                                  (let [clause (or (get-in query path)
+                                                                   (throw (ex-info (str "Cannot remove clause: no clause at path " (pr-str path))
+                                                                                   {:query query, :path path})))]
+                                                    (remove-clause query (second path) clause))
+                                                  (catch #?(:clj Exception :cljs js/Error) e
+                                                    (let [{:keys [error join]} (ex-data e)]
+                                                      (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
+                                                        ;; remove the dangling join
+                                                        (remove-join query (second path) join)
+                                                        (throw e))))))
+                                              query
+                                              error-paths)
+                               (when (= <> query)
+                                 (throw (ex-info "Error: remove-clause didn't remove anything, failed to remove expression"
+                                                 {:query query, :error-paths error-paths, :explanation explanation})))))
                       (if explanation
                         ;; there is an error we cannot fix, fall back to old way,
                         ;; i.e., remove all dependent parts
@@ -483,18 +525,19 @@
   with an updated version of itself. For example, changing the name or details of an expression; `SUM(subtotal)`
   changed to `SUM(total)`.
 
-  Of course you can completely change the clause - `Created At by month` into `User->Latitude by 0.1 degrees`, say -
-  but the *identity* of the clause is retained. That means the `:ident` of the `target-clause` is always retained,
-  even if the `new-clause` has a different one! If you want to drop the old clause and replace it, that's
-  [[remove-clause]] plus adding the new one with [[lib.expression/expression]] and similar."
-  ([query :- ::lib.schema/query
-    target-clause
-    new-clause]
+  If you want to drop the old clause and replace it, that's [[remove-clause]] plus adding the new one
+  with [[lib.expression/expression]] and similar."
+  ([query target-clause new-clause]
    (replace-clause query -1 target-clause new-clause))
-  ([query :- ::lib.schema/query
-    stage-number :- :int
-    target-clause
-    new-clause]
+
+  ([query         :- ::lib.schema/query
+    stage-number  :- :int
+    target-clause :- [:or
+                      ::lib.schema.mbql-clause/clause
+                      ::lib.schema.join/join]
+    ;; replacement can be basically anything, an MBQL clause or literal allowed in MBQL, or `nil` (to remove it), or a
+    ;; join, or a metadata that can get turned into a clause.
+    new-clause    :- :any]
    (cond
      (and (map? target-clause) (= (:lib/type target-clause) :mbql/join))
      (replace-join query stage-number target-clause new-clause)
@@ -512,8 +555,8 @@
 
 (defn- replace-join-alias
   [a-join old-name new-name]
-  (lib.util.match/replace a-join
-    (field :guard #(field-clause-with-join-alias? % old-name))
+  (lib.util.match/replace-lite a-join
+    (field :guard (field-clause-with-join-alias? field old-name))
     (lib.join/with-join-alias field new-name)))
 
 (defn- rename-join-in-stage
@@ -522,7 +565,7 @@
         [idx old-name] (when (< -1 idx (count the-joins))
                          [idx (get-in the-joins [idx :alias])])]
     (if (and idx (not= old-name new-name))
-      (let [unique-name-fn (lib.util/unique-name-generator)
+      (let [unique-name-fn (lib.util.unique-name-generator/unique-name-generator)
             _              (run! unique-name-fn (map :alias the-joins))
             unique-name    (unique-name-fn new-name)]
         (-> stage
@@ -577,7 +620,7 @@
                                   query-after
                                   query-before
                                   stage-number
-                                  (fn [column] [:field {:join-alias (::lib.join/join-alias column)} (:id column)]))]
+                                  (fn [column] [:field {:join-alias (:lib/join-alias column)} (:id column)]))]
     ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at
     ;; the next stage as well
     (if-let [next-stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]

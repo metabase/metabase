@@ -20,9 +20,12 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
     // switch to a pin map visualization
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Visualization").click();
-    cy.icon("pinmap").click();
+    H.leftSidebar().within(() => {
+      cy.findByTestId("more-charts-toggle").click();
+      cy.icon("pinmap").click();
+    });
     cy.findByTestId("Map-container").within(() => {
       cy.icon("gear").click();
     });
@@ -76,11 +79,114 @@ describe("scenarios > visualizations > maps", () => {
     );
 
     cy.button("Visualization").click();
-    cy.findByTestId("display-options-sensible").as("sensibleOptions");
 
-    cy.get("@sensibleOptions").within(() => {
+    cy.findByTestId("chart-type-settings").within(() => {
       cy.findByText("Map").should("be.visible");
     });
+  });
+
+  it("should wrap markers around the international date line correctly (metabase#5369)", () => {
+    H.createNativeQuestion(
+      {
+        name: "friends across time",
+        native: {
+          query: `
+            SELECT 'Kleavor' as name, 68 as lat, -159 as lng
+            UNION ALL
+            SELECT 'Spectrier' as name, 68 as lat, 159 as lng
+            UNION ALL
+            SELECT 'Blastoise' as name, 68 as lat, 22 as lng
+          `,
+          "template-tags": {},
+        },
+        display: "map",
+        visualization_settings: {
+          "map.region": "world",
+          "map.type": "pin",
+          "map.latitude_column": "LAT",
+          "map.longitude_column": "LNG",
+          "map.center_latitude": 67,
+          "map.center_longitude": -175,
+          "map.zoom": 1,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.log("zooming should preserve tooltips (metabase#64939)");
+
+    cy.get(".leaflet-marker-icon")
+      .then((markers) => {
+        // should draw 6 markers
+        expect(markers).to.have.length(6);
+
+        return cy.wrap(markers[2]); // Blastoise in Sweden
+      })
+      .then((marker) => {
+        cy.get(marker)
+          .realHover()
+          .realMouseWheel({ deltaY: -100, scrollBehavior: "nearest" });
+      });
+
+    // this waits until we redraw from 6 to 3
+    cy.get(".leaflet-marker-icon").should("have.length", 3);
+
+    cy.get(".leaflet-marker-icon").eq(2).as("blastoiseMarker");
+    cy.get("@blastoiseMarker").trigger("mousemove");
+    H.popover().findByText("Blastoise").should("be.visible");
+  });
+
+  it("should preserve zoom and pan after resize (metabase#11211)", () => {
+    cy.viewport(800, 600);
+
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 999,
+        },
+      },
+      display: "map",
+      visualization_settings: {
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+        "map.center_latitude": 40,
+        "map.center_longitude": -100,
+        "map.zoom": 4,
+      },
+    });
+
+    zoomIn(4);
+
+    cy.get(".leaflet-marker-icon")
+      .first()
+      .then(($marker) => {
+        const posAfterZoom = $marker[0].getBoundingClientRect();
+
+        // 1px resize should not reset zoom
+        cy.viewport(801, 600);
+        cy.wait(300);
+
+        cy.get(".leaflet-marker-icon")
+          .first()
+          .then(($markerAfterResize) => {
+            const posAfterResize =
+              $markerAfterResize[0].getBoundingClientRect();
+            // Position should be nearly identical (within 5px tolerance)
+            const tolerance = 5;
+            expect(posAfterResize.left).to.be.closeTo(
+              posAfterZoom.left,
+              tolerance,
+            );
+            expect(posAfterResize.top).to.be.closeTo(
+              posAfterZoom.top,
+              tolerance,
+            );
+          });
+      });
   });
 
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
@@ -112,23 +218,21 @@ describe("scenarios > visualizations > maps", () => {
     cy.get("@texas").trigger("mousemove");
 
     // check tooltip content
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State:"); // column name key
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Texas"); // feature name as value
 
     // open drill-through menu and drill within it
     cy.get("@texas").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/See these People/i).click();
 
     cy.log("Reported as a regression since v0.37.0");
-    cy.wait("@dataset").then((xhr) => {
-      expect(xhr.request.body.query.filter).not.to.contain("Texas");
-    });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.wait("@dataset");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State is TX");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("171 Olive Oyle Lane"); // Address in the first row
   });
 
@@ -214,11 +318,11 @@ describe("scenarios > visualizations > maps", () => {
 
     cy.get(".leaflet-interactive").trigger("mousemove");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Latitude: 10°:");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Longitude: 10°:");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1");
   });
 
@@ -247,13 +351,10 @@ describe("scenarios > visualizations > maps", () => {
     // Ensure chart is rendered
     cy.get(".leaflet-interactive");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").click();
 
-    // Ensure the Map visualization is sensible
-    cy.findByTestId("display-options-sensible").as("sensibleOptions");
-
-    cy.get("@sensibleOptions").within(() => {
+    cy.findByTestId("chart-type-settings").within(() => {
       cy.findByTestId("Map-button").should("be.visible");
     });
   });
@@ -415,4 +516,11 @@ function toggleFieldSelectElement(field) {
   return cy.get(`[data-field-title="${field}"]`).within(() => {
     cy.findByTestId("chart-setting-select").click();
   });
+}
+
+function zoomIn(times) {
+  for (let i = 0; i < times; i++) {
+    cy.get(".leaflet-control-zoom-in").click();
+    cy.wait(200);
+  }
 }

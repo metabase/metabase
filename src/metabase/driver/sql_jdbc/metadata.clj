@@ -1,10 +1,12 @@
 (ns metabase.driver.sql-jdbc.metadata
   "SQL JDBC implementation of [[metabase.driver/query-result-metadata]]."
+  (:refer-clojure :exclude [mapv])
   (:require
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]))
 
 (set! *warn-on-reflection* true)
 
@@ -34,5 +36,6 @@
                     {:lib/type      :metadata/column
                      :name          (.getColumnLabel rsmeta i)
                      :database-type database-type
-                     :base-type     (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))}))
+                     :base-type     (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
+                                        :type/*)}))
                 (range 1 (inc (.getColumnCount rsmeta))))))))))

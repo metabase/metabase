@@ -5,6 +5,7 @@ import {
 import { SaveQuestionProvider } from "metabase/common/components/SaveQuestionForm/context";
 import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionForm/types";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex, Modal, type ModalProps } from "metabase/ui";
 
 type SaveQuestionModalProps = Omit<SaveQuestionProps, "initialDashboardTabId"> &
@@ -14,6 +15,7 @@ export const SaveQuestionModal = ({
   multiStep,
   onCreate,
   onSave,
+  onClose,
   originalQuestion,
   question,
   closeOnSuccess,
@@ -21,7 +23,16 @@ export const SaveQuestionModal = ({
   targetCollection,
   ...modalProps
 }: SaveQuestionModalProps) => {
-  useEscapeToCloseModal(modalProps.onClose);
+  const {
+    checkData,
+    isConfirmationShown,
+    handleInitialSave,
+    handleSaveAfterConfirmation,
+  } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
+    onSave,
+  });
+  useEscapeToCloseModal(onClose);
+
   return (
     <SaveQuestionProvider
       question={question}
@@ -30,32 +41,51 @@ export const SaveQuestionModal = ({
         const newQuestion = await onCreate(question, options);
 
         if (closeOnSuccess) {
-          modalProps.onClose();
+          onClose();
         }
 
         return newQuestion;
       }}
-      onSave={onSave}
+      onSave={handleInitialSave}
+      onCancel={onClose}
       multiStep={multiStep}
       initialCollectionId={initialCollectionId}
       targetCollection={targetCollection}
     >
-      <Modal.Root padding="2.5rem" {...modalProps} closeOnEscape={false}>
+      <Modal.Root
+        padding="xl"
+        {...modalProps}
+        size={isConfirmationShown ? "xl" : undefined}
+        closeOnEscape={false}
+        onClose={onClose}
+      >
         <Modal.Overlay />
         <Modal.Content data-testid="save-question-modal">
-          <Modal.Header>
+          <Modal.Header px={isConfirmationShown ? "xl" : undefined}>
             <Modal.Title>
-              <SaveQuestionTitle />
+              {isConfirmationShown ? (
+                <PLUGIN_DEPENDENCIES.CheckDependenciesTitle />
+              ) : (
+                <SaveQuestionTitle />
+              )}
             </Modal.Title>
-            <Flex align="center" justify="flex-end" gap="sm">
+            <Flex justify="flex-end">
               <Modal.CloseButton />
             </Flex>
           </Modal.Header>
-          <Modal.Body>
-            <SaveQuestionForm
-              onSaveSuccess={() => closeOnSuccess && modalProps.onClose()}
-              onCancel={modalProps.onClose}
-            />
+          <Modal.Body px={isConfirmationShown ? 0 : undefined}>
+            {checkData != null && isConfirmationShown ? (
+              <PLUGIN_DEPENDENCIES.CheckDependenciesForm
+                checkData={checkData}
+                onSave={handleSaveAfterConfirmation}
+                onCancel={onClose}
+              />
+            ) : (
+              <SaveQuestionForm
+                onSaveSuccess={() => closeOnSuccess && onClose()}
+                onCancel={onClose}
+              />
+            )}
           </Modal.Body>
         </Modal.Content>
       </Modal.Root>

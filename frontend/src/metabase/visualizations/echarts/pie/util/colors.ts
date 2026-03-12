@@ -25,7 +25,7 @@ export function createHexToAccentNumberMap() {
     }
     const accentKey = extractAccentKey(colorKey);
     if (accentKey) {
-      hexToAccentNumber.set(hex, accentKey);
+      hexToAccentNumber.set(hex.toUpperCase(), accentKey);
     }
   }
 
@@ -36,7 +36,7 @@ export function createHexToAccentNumberMap() {
 
     const accentKey = extractAccentKey(colorKey);
     if (accentKey) {
-      hexToAccentNumber.set(hexGetter(colors), accentKey);
+      hexToAccentNumber.set(hexGetter(colors).toUpperCase(), accentKey);
     }
   }
 

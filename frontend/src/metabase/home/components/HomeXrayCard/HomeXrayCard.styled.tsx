@@ -2,8 +2,8 @@
 import styled from "@emotion/styled";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 export const CardIcon = styled(Icon)`
   display: block;
@@ -21,9 +21,9 @@ export const CardTitle = styled(Ellipsified)`
 `;
 
 export const CardTitlePrimary = styled.span`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 `;
 
 export const CardTitleSecondary = styled.span`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;

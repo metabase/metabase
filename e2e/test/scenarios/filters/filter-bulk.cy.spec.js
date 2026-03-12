@@ -133,7 +133,7 @@ describe("scenarios > filters > bulk filtering", () => {
     H.assertQueryBuilderRowCount(21);
   });
 
-  it("should add a filter for linked tables", { tags: "@flaky" }, () => {
+  it("should add a filter for linked tables", () => {
     H.visitQuestionAdhoc(rawQuestionDetails);
     H.filter();
     H.popover().within(() => {

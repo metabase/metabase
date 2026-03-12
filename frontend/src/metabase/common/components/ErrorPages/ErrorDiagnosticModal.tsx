@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSendBugReportMutation } from "metabase/api/bug-report";
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { downloadObjectAsJson } from "metabase/lib/download";
@@ -47,7 +48,7 @@ export const ErrorDiagnosticModal = ({
     return (
       <Modal opened onClose={onClose}>
         <Stack align="center" justify="center" mb="lg">
-          <Text w="bold" color="text-medium" mb="sm">
+          <Text w="bold" color="text-secondary" mb="sm">
             {c(
               "loading message indicating that we are gathering debugging information to aid in providing technical support",
             ).t`Gathering diagnostic information...`}
@@ -132,17 +133,17 @@ export const ErrorDiagnosticModal = ({
     return (
       <Modal opened onClose={onClose} size={550}>
         <Stack gap="sm" align="center" py="xl">
-          <img
-            src="app/assets/img/metabot-bug-report.svg"
+          <MetabotLogo
+            variant="bug"
             alt={c(
               "Alt text for image shown on successful bug report submission",
             ).t`Bug report submitted`}
-            style={{ width: 100, height: 100 }}
+            style={{ height: "100px", width: "100px" }}
           />
           <Text ta="center" size="lg" fw="bold">
             {t`Thank you for your feedback!`}
           </Text>
-          <Text ta="center" color="text-medium">
+          <Text ta="center" c="text-secondary">
             {t`Bug report submitted successfully.`}
           </Text>
           <Button mt="xl" onClick={onClose}>{t`Close`}</Button>

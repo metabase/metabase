@@ -7,7 +7,7 @@ import {
   BulkActionButton,
 } from "metabase/common/components/BulkActionBar";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { ClientSortableTable } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
@@ -142,7 +142,7 @@ export function UploadManagementTable() {
         </BulkActionBar>
       )}
       <SettingHeader id="upload-tables-list" title={t`Manage uploads`} />
-      <Text fw="bold" c="text-medium">
+      <Text fw="bold" c="text-secondary">
         {t`Uploaded tables`}
       </Text>
       <ClientSortableTable
@@ -204,7 +204,7 @@ const UploadTableRow = ({
             onClick={() => onTrash(item)}
             variant="subtle"
             className="Button Button--borderless"
-            color="text-medium"
+            color="text-secondary"
           >
             <Icon name="trash" />
           </Button>

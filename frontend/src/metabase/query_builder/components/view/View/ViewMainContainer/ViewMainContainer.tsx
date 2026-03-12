@@ -1,13 +1,14 @@
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { ResizableBoxProps } from "react-resizable";
 
-import DebouncedFrame from "metabase/common/components/DebouncedFrame";
+import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import type {
   SelectionRange,
   SidebarFeatures,
 } from "metabase/query_builder/components/NativeQueryEditor/types";
-import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import { QueryVisualization } from "metabase/query_builder/components/QueryVisualization";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
@@ -36,7 +37,6 @@ interface ViewMainContainerProps {
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
-  viewHeight: number;
   highlightedLineNumbers?: number[];
 
   isInitiallyOpen?: boolean;
@@ -106,6 +106,9 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     updateQuestion,
   } = props;
 
+  const { ref: mainRef, height: mainHeight } = useElementSize();
+  const { ref: footerRef, height: footerHeight } = useElementSize();
+
   if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode
     return;
@@ -115,6 +118,8 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
+  const availableHeight = mainHeight ? mainHeight - footerHeight : undefined;
+
   return (
     <Box
       component="main"
@@ -122,13 +127,15 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         [ViewMainContainerS.isSidebarOpen]: isSidebarOpen,
       })}
       data-testid="query-builder-main"
+      ref={mainRef}
     >
       {isNative ? (
-        <ViewNativeQueryEditor {...props} />
+        <ViewNativeQueryEditor {...props} availableHeight={availableHeight} />
       ) : (
         <SyncedParametersList
           className={ViewMainContainerS.StyledSyncedParametersList}
           parameters={parameters}
+          dashboardId={question.getDashboardProps().dashboardId}
           setParameterValue={setParameterValue}
           commitImmediately
         />
@@ -137,6 +144,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       <DebouncedFrame
         className={ViewMainContainerS.StyledDebouncedFrame}
         enabled={!isLiveResizable}
+        resetKey={props.isRunning}
       >
         <QueryVisualization
           {...props}
@@ -146,8 +154,10 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>
-      <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
-      <ViewFooter className={CS.flexNoShrink} />
+      <Box ref={footerRef} className={ViewMainContainerS.Footer}>
+        <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
+        <ViewFooter className={CS.flexNoShrink} />
+      </Box>
     </Box>
   );
 };

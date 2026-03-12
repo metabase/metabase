@@ -1,18 +1,24 @@
 (ns metabase.tiles.api
   "`/api/tiles` endpoints."
   (:require
-   [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   ;; TODO (Cam 10/10/25) -- update the tile API to use MBQL 5
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -28,6 +34,7 @@
 (def ^:private ^:const tile-size             256.0)
 (def ^:private ^:const pixel-origin          (double (/ tile-size 2)))
 (def ^:private ^:const pin-size              6)
+(def ^:private ^:const pin-size-half         (/ pin-size 2))
 (def ^:private ^:const pixels-per-lon-degree (double (/ tile-size 360)))
 (def ^:private ^:const pixels-per-lon-radian (double (/ tile-size (* 2 Math/PI))))
 
@@ -57,20 +64,23 @@
                                          (/ Math/PI 2)))]
     {:lat lat, :lon lon}))
 
-(defn- query-with-inside-filter
+(mu/defn- add-inside-filter :- ::lib.schema/query
   "Add an `INSIDE` filter to the given query to restrict results to a bounding box. The fields passed in can be either
   integer field ids or string field names. When a field name, the `base-type` will be set to `:type/Float`."
-  [details lat-field lon-field x y zoom]
+  [query     :- ::lib.schema/query
+   lat-field :- ::lib.schema.metadata/column
+   lon-field :- ::lib.schema.metadata/column
+   x y zoom]
   (let [top-left      (x+y+zoom->lat-lon      x       y  zoom)
         bottom-right  (x+y+zoom->lat-lon (inc x) (inc y) zoom)
-        inside-filter [:inside
+        inside-filter (lib/inside
                        lat-field
                        lon-field
                        (top-left :lat)
                        (top-left :lon)
                        (bottom-right :lat)
-                       (bottom-right :lon)]]
-    (update details :filter mbql.u/combine-filter-clauses inside-filter)))
+                       (bottom-right :lon))]
+    (lib/filter query inside-filter)))
 
 ;;; --------------------------------------------------- RENDERING ----------------------------------------------------
 
@@ -96,12 +106,15 @@
               map-pixel  {:x (int (Math/floor (* (point :x) num-tiles)))
                           :y (int (Math/floor (* (point :y) num-tiles)))}
               tile-pixel {:x (mod (map-pixel :x) tile-size)
-                          :y (mod (map-pixel :y) tile-size)}]
+                          :y (mod (map-pixel :y) tile-size)}
+              ;; cx/cy is needed to put center of a pin at the tile-pixel position
+              cx   (- (tile-pixel :x) pin-size-half)
+              cy   (- (tile-pixel :y) pin-size-half)]
           ;; now draw a "pin" at the given tile pixel location
           (.setColor graphics color-white)
-          (.fillRect graphics (tile-pixel :x) (tile-pixel :y) pin-size pin-size)
+          (.fillRect graphics cx cy pin-size pin-size)
           (.setColor graphics color-blue)
-          (.fillRect graphics (inc (tile-pixel :x)) (inc (tile-pixel :y)) (- pin-size 2) (- pin-size 2))))
+          (.fillRect graphics (inc cx) (inc cy) (- pin-size 2) (- pin-size 2))))
       (catch Throwable e
         (.printStackTrace e))
       (finally
@@ -121,65 +134,73 @@
         (u/ignore-exceptions
           (.close output-stream))))))
 
-(defn- native->source-query
-  "Adjust native queries to be an mbql from a source query so we can add the filter clause."
-  [query]
-  (if (contains? query :native)
-    (let [source-query (-> (:native query)
-                           (set/rename-keys {:query :native})
-                           (cond-> (:parameters query) (assoc :parameters (:parameters query))))]
-      {:database (:database query)
-       :type     :query
-       :query    {:source-query source-query}})
-    query))
-
 ;;; ---------------------------------------------------- ENDPOINTS ----------------------------------------------------
 
-(defn- tiles-query
+;; TODO (Cam 9/30/25) -- we should update these endpoints to accept Field IDs and/or desired column aliases instead of
+;; (or preferentially to) legacy refs
+(mr/def ::legacy-ref
+  "Form-encoded JSON-encoded legacy MBQL :field ref."
+  [:schema
+   {:decode/api (fn [field]
+                  (when (string? field)
+                    (let [deserialized (json/decode+kw field)]
+                      (when (sequential? deserialized)
+                        (mbql.normalize/normalize deserialized)))))}
+   [:ref ::mbql.s/field]])
+
+(mu/defn- resolve-field :- ::lib.schema.metadata/column
+  [query      :- ::lib.schema/query
+   legacy-ref :- ::legacy-ref]
+  (lib/metadata query (lib/->pMBQL legacy-ref)))
+
+(mu/defn- tiles-query :- ::lib.schema/query
   "Transform a card's query into a query finding coordinates in a particular region.
 
   - transform native queries into nested mbql queries from that native query
   - add [:inside lat lon bounding-region coordings] filter
   - limit query results to `tile-coordinate-limit` number of results
   - only select lat and lon fields rather than entire query's fields"
-  [query zoom x y lat-field-ref lon-field-ref]
-  (let [query (mbql.normalize/normalize query)]
+  [query                :- :map
+   zoom
+   x
+   y
+   lat-field-legacy-ref :- ::legacy-ref
+   lon-field-legacy-ref :- ::legacy-ref]
+  (let [query     (-> query
+                      lib-be/normalize-query
+                      lib/append-stage)
+        lat-field (resolve-field query lat-field-legacy-ref)
+        lon-field (resolve-field query lon-field-legacy-ref)]
     (-> query
-        native->source-query
-        (update :query query-with-inside-filter
-                lat-field-ref lon-field-ref
-                x y zoom)
-        (assoc-in [:query :fields] [lat-field-ref lon-field-ref])
-        (assoc-in [:query :limit] tile-coordinate-limit))))
-
-;;; TODO -- what if the field name contains a slash? Are we expected to URL-encode it? I don't think we have any code
-;;; that handles that.
-(mr/def :api.tiles/field-id-or-name
-  [:string {:api/regex #"[^/]+"}])
-
-(mr/def :api.tiles/route-params
-  [:map
-   [:zoom      ms/Int]
-   [:x         ms/Int]
-   [:y         ms/Int]
-   [:lat-field :string]
-   [:lon-field :string]])
+        (add-inside-filter lat-field lon-field x y zoom)
+        (lib/with-fields [lat-field lon-field])
+        (lib/limit tile-coordinate-limit))))
 
 (defn- result->points
-  [{{:keys [rows cols]} :data} lat-field-ref lon-field-ref]
-  (let [lat-key (qp.util/field-ref->key lat-field-ref)
-        lon-key (qp.util/field-ref->key lon-field-ref)
-        find-fn (fn [lat-or-lon-key]
-                  (first (keep-indexed
-                          (fn [idx col] (when (= (qp.util/field-ref->key (:field_ref col)) lat-or-lon-key) idx))
-                          cols)))
-        lat-idx (find-fn lat-key)
-        lon-idx (find-fn lon-key)]
+  [{{:keys [rows cols]} :data, :as qp-response} lat-field-ref lon-field-ref]
+  (when-not (= (:status qp-response) :completed)
+    (throw (ex-info (format "Error running tiles query: %s" (:error qp-response))
+                    (assoc qp-response :status-code 400))))
+  (let [lat-id-or-name (second lat-field-ref)
+        lon-id-or-name (second lon-field-ref)
+
+        find-fn        (fn [id-or-name]
+                         (or (first (keep-indexed
+                                     (fn [idx col]
+                                       (when (if (pos-int? id-or-name)
+                                               (= (:id col) id-or-name)
+                                               (= (:lib/deduplicated-name col) id-or-name))
+                                         idx))
+                                     cols))
+                             (throw (ex-info (format "Failed to find matching column in query results for column %s" (pr-str id-or-name))
+                                             {:id-or-name id-or-name, :cols cols, :status-code 500}))))
+        lat-idx        (find-fn lat-id-or-name)
+        lon-idx        (find-fn lon-id-or-name)]
     (for [row rows]
       [(nth row lat-idx) (nth row lon-idx)])))
 
-;; TODO - this should be async and stream results from the QP instead of requiring them all to be in memory at the same
-;; time
+;; TODO - this should be async and stream results from the QP instead of requiring them all to be in memory at the
+;; same time
 (defn- tiles-response
   [result zoom points]
   (if (= (:status result) :completed)
@@ -190,19 +211,38 @@
                       ;; `result` might be a `core.async` channel or something we're not expecting
                     (assoc (when (map? result) result) :status-code 400)))))
 
+(mr/def ::query
+  "Form-encoded JSON-encoded MBQL query."
+  [:schema
+   {:decode/api (fn [s]
+                  (when (string? s)
+                    (let [deserialized (json/decode+kw s)]
+                      (when (map? deserialized)
+                        (lib-be/normalize-query deserialized)))))}
+   [:ref ::lib.schema/query]])
+
 ;; These endpoints provides an image with the appropriate pins rendered given a MBQL `query` (passed as a GET query
 ;; string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the
 ;; appropriate ones. It's expected that to render a full map view several calls will be made to this endpoint in
 ;; parallel.
-(api.macros/defendpoint :get "/:zoom/:x/:y/:lat-field/:lon-field"
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:zoom/:x/:y"
   "Generates a single tile image for an ad-hoc query."
-  [{:keys [zoom x y lat-field lon-field]} :- :api.tiles/route-params
-   {:keys [query]} :- [:map
-                       [:query ms/JSONString]]]
-  (let [query         (json/decode+kw query)
-        lat-field     (mbql.normalize/normalize (json/decode+kw lat-field))
-        lon-field     (mbql.normalize/normalize (json/decode+kw lon-field))
-        updated-query (tiles-query query zoom x y lat-field lon-field)
+  [{:keys [zoom x y]} :- [:map
+                          [:zoom ms/Int]
+                          [:x ms/Int]
+                          [:y ms/Int]]
+   {:keys     [query]
+    lat-field :latField
+    lon-field :lonField} :- [:map
+                             [:query    ::query]
+                             [:latField ::legacy-ref]
+                             [:lonField ::legacy-ref]]]
+  (let [updated-query (tiles-query query zoom x y lat-field lon-field)
         result        (qp/process-query
                        (qp/userland-query updated-query {:executed-by api/*current-user-id*
                                                          :context     :map-tiles}))
@@ -253,34 +293,50 @@
         points (result->points result lat-field-ref lon-field-ref)]
     (tiles-response result zoom points)))
 
-(api.macros/defendpoint :get "/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
-  "Generates a single tile image for a saved Card."
-  [{:keys [card-id zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:card-id ms/PositiveInt]]]
-   {:keys [parameters]}
-   :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
-  (let [parameters (json/decode+kw parameters)
-        lat-field  (json/decode+kw lat-field)
-        lon-field  (json/decode+kw lon-field)]
-    (process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field)))
+(mr/def ::parameters
+  "Form-encoded JSON-encoded array of parameter maps."
+  [:schema
+   {:decode/api (fn [s]
+                  (when (string? s)
+                    (json/decode+kw s)))}
+   ::parameters.schema/parameters])
 
-(api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
-  "Generates a single tile image for a dashcard."
-  [{:keys [dashboard-id dashcard-id card-id zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:dashboard-id ms/PositiveInt]
-        [:dashcard-id ms/PositiveInt]
-        [:card-id   ms/PositiveInt]]]
-   {:keys [parameters]}
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:card-id/:zoom/:x/:y"
+  "Generates a single tile image for a saved Card."
+  [{:keys [card-id zoom x y]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
-  (let [parameters (json/decode+kw parameters)
-        lat-field  (json/decode+kw lat-field)
-        lon-field  (json/decode+kw lon-field)]
-    (process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field)))
+       [:card-id ::lib.schema.id/card]
+       [:zoom ms/Int]
+       [:x ms/Int]
+       [:y ms/Int]]
+   {:keys [parameters], lat-field :latField lon-field :lonField}
+   :- [:map
+       [:parameters {:optional true} ::parameters]
+       [:latField ::legacy-ref]
+       [:lonField ::legacy-ref]]]
+  (process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
+  "Generates a single tile image for a dashcard."
+  [{:keys [dashboard-id dashcard-id card-id zoom x y], :as _route-params}
+   :- [:map
+       [:dashboard-id ::lib.schema.id/dashboard]
+       [:dashcard-id ::lib.schema.id/dashcard]
+       [:card-id ::lib.schema.id/card]
+       [:zoom ms/Int]
+       [:x ms/Int]
+       [:y ms/Int]]
+   {:keys [parameters] lat-field :latField, lon-field :lonField, :as _query-params}
+   :- [:map
+       [:parameters {:optional true} ::parameters]
+       [:latField ::legacy-ref]
+       [:lonField ::legacy-ref]]]
+  (process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))

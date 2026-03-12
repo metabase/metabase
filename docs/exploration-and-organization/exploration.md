@@ -8,7 +8,7 @@ redirect_from:
 
 ## See what your teammates have made
 
-As long as you're not the very first user in your team's Metabase, the easiest way to start exploring your data is by looking at dashboards, charts, and lists that your teammates have already created. The best place to start is by checking out any dashboards that might be pinned on your home page, or in [collections][collections] you have access to.
+As long as you're not the first user in your team's Metabase, the easiest way to start exploring your data is by looking at dashboards, charts, and lists that your teammates have already created. The best place to start is by checking out any dashboards that might be pinned on your home page, or in [collections][collections] you have access to.
 
 ## Command palette
 
@@ -24,7 +24,7 @@ You can use the command palette to:
 
 So anytime you want to do or find anything in Metabase, just hit `cmd/ctrl + k` and start typing what you want to do.
 
-> The command palette is currently unavailable in [interactive embedding](../embedding/interactive-embedding.md) contexts.
+> The command palette is currently unavailable in [Modular embedding](../embedding/modular-embedding.md) and [full app embedding](../embedding/full-app-embedding.md) contexts.
 
 ## Advanced search
 
@@ -32,7 +32,7 @@ To filter your search results, hit `cmd/ctrl + k` to bring up the command palett
 
 ![Search results](./images/search-results.png)
 
-Searches take into account items’ titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it’s pinned. Note that you'll only ever see items in that are in collections you have permission to view.
+Searches consider items' titles, descriptions, and other metadata — you can even search the contents of your SQL queries. For example, you can search for things like `SELECT escape_pod FROM mothership` and find that one question you worked on six months ago. The results will display which collection each item is saved in, what kind of object it is, and whether it's pinned. Note that you'll only ever see items in that are in collections you have permission to view.
 
 You can search by:
 
@@ -96,11 +96,21 @@ Clicking on a table cell will often allow you to filter the results using a comp
 
 ![Comparison operator filters](images/comparison-operator-filters.png)
 
-Lastly, clicking on the ID of an item in a table gives you the option to go to a detail view for that single record. For example, you can click on a customer's ID to see the profile view for that customer.
+Lastly, clicking on the ID of an item in a table gives you the option to go to a [detail view](#view-details-of-a-record) for that single record. For example, you can click on a customer's ID to see the profile view for that customer.
 
 ![Detail view](images/detail-view.png)
 
 When you add questions to a dashboard, you can have even more control over what happens when people click on your chart. In addition to the default drill-through menu, you can add a [custom destination](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/custom-destinations) or [update a filter](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/cross-filtering). Check out [interactive dashboards](../dashboards/interactive.md).
+
+## View details of a record
+
+To see the details of an individual record when viewing unaggregated tables, click on a record and select "View details."
+
+To expand the details sidebar to a full page, click "Open in full page". Every record has a dedicated details page which you can link to.
+
+Admins and people with [table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) can set specific fields to display only in this details view. See [Table metadata](../data-modeling/metadata-editing.md).
+
+If your record has a field containing [an image link](../data-modeling/formatting.md), Metabase will show the image as the record's icon in the detail view. If the record has a field with the "Entity name" name semantic type, or a field called `Title` or `Name` , Metabase will show this field as the name of the record.
 
 ## Bookmarks
 

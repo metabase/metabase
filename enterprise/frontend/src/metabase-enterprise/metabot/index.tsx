@@ -1,75 +1,43 @@
-import { useMemo } from "react";
-import { IndexRoute } from "react-router";
-import { t } from "ttag";
+import { Route } from "react-router";
 
-import { createAdminRouteGuard } from "metabase/admin/utils";
-import { Route } from "metabase/hoc/Title";
-import type { PaletteAction } from "metabase/palette/types";
+import type { MetabotContext as MetabotContextType } from "metabase/metabot";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
-import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
+import { getAdminRoutes } from "./components/MetabotAdmin/MetabotAdminPage";
+import { getAdminRoutes as getAdminUpsellRoutes } from "./components/MetabotAdmin/MetabotPurchasePage";
+import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
+import { MetabotChat } from "./components/MetabotChat";
+import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
+import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
+import { MetabotDataStudioSidebar } from "./components/MetabotDataStudioSidebar";
+import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
-import { MetabotSearchButton } from "./components/MetabotSearchButton";
+import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
-import { useMetabotAgent } from "./hooks";
-import { getMetabotVisible, metabotReducer } from "./state";
+import { useMetabotSQLSuggestion as useMetabotSQLSuggestionEE } from "./hooks";
+import {
+  deactivateSuggestedTransform,
+  getMetabotSuggestedTransform,
+  getMetabotVisible,
+  metabotReducer,
+} from "./state";
 
-if (hasPremiumFeature("metabot_v3")) {
-  PLUGIN_METABOT.isEnabled = () => true;
-  PLUGIN_METABOT.Metabot = Metabot;
-
-  PLUGIN_METABOT.adminNavItem = [
-    {
-      name: t`AI`,
-      path: "/admin/metabot",
-      key: "metabot",
-    },
-  ];
-
-  PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
-
-  PLUGIN_METABOT.AdminRoute = (
-    <Route
-      key="metabot"
-      path="metabot"
-      component={createAdminRouteGuard("metabot")}
-    >
-      <IndexRoute component={MetabotAdminPage} />
-      <Route path=":metabotId" component={MetabotAdminPage} />
-    </Route>
+/**
+ * A wrapper component that renders MetabotQueryBuilder if metabot is enabled,
+ * otherwise falls back to the regular QueryBuilder.
+ */
+function MetabotQueryBuilderOrFallback(props: any) {
+  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  return isMetabotEnabled ? (
+    <MetabotQueryBuilder {...props} />
+  ) : (
+    <QueryBuilder {...props} />
   );
-
-  PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
-  PLUGIN_METABOT.MetabotContext = MetabotContext;
-  PLUGIN_METABOT.getMetabotProvider = () => MetabotProvider;
-  // TODO: make enterprise store + fix type
-  PLUGIN_METABOT.getMetabotVisible =
-    getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
-  PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
-    const { startNewConversation } = useMetabotAgent();
-
-    return useMemo(() => {
-      const ret: PaletteAction[] = [
-        {
-          id: "initialize_metabot",
-          name: searchText
-            ? t`Ask Metabot, "${searchText}"`
-            : t`Ask me to do something, or ask me a question`,
-          section: "metabot",
-          keywords: searchText,
-          icon: "metabot",
-          perform: () => startNewConversation(searchText),
-        },
-      ];
-      return ret;
-    }, [searchText, startNewConversation]);
-  };
-
-  PLUGIN_METABOT.SearchButton = MetabotSearchButton;
-
-  PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 }
 
 /**
@@ -81,6 +49,42 @@ if (hasPremiumFeature("metabot_v3")) {
  */
 PLUGIN_METABOT.getMetabotProvider = () => MetabotProvider;
 PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
-PLUGIN_METABOT.MetabotContext = MetabotContext;
+PLUGIN_METABOT.MetabotContext =
+  MetabotContext as React.Context<MetabotContextType>;
 
 PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
+
+/**
+ * Initialize metabot plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("metabot_v3")) {
+    Object.assign(PLUGIN_METABOT, {
+      // helpers
+      getNewMenuItemAIExploration,
+      getMetabotVisible,
+      // routes
+      getAdminRoutes,
+      getMetabotRoutes: getMetabotQuickLinks,
+      getMetabotQueryBuilderRoute: () => (
+        <Route path="ask" component={MetabotQueryBuilderOrFallback} />
+      ),
+      // components
+      Metabot,
+      MetabotChat,
+      MetabotAppBarButton,
+      MetabotDataStudioButton,
+      MetabotDataStudioSidebar,
+      MetabotThinkingStyles,
+      // hooks
+      useMetabotSQLSuggestion: useMetabotSQLSuggestionEE,
+      useLazyMetabotGenerateContentQuery,
+      getMetabotSuggestedTransform,
+      deactivateSuggestedTransform,
+    });
+  } else if (hasPremiumFeature("hosting")) {
+    Object.assign(PLUGIN_METABOT, {
+      getAdminRoutes: getAdminUpsellRoutes,
+    });
+  }
+}

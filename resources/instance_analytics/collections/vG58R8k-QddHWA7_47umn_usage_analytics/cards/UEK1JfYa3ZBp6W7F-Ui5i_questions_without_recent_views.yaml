@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_content
+table_id: [Internal Metabase Database, public, v_content]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -28,71 +25,48 @@ dataset_query:
       - datetime-diff
       - - field
         - max
-        - base-type: type/DateTimeWithLocalTZ
-          join-alias: Last content viewed at - Entity Qualified
-      - - now
+        - {base-type: type/DateTimeWithLocalTZ, join-alias: Last content viewed at - Entity Qualified}
+      - [now]
       - day
     fields:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - entity_id
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - created_at
-      - base-type: type/DateTimeWithLocalTZ
+      - [Internal Metabase Database, public, v_content, created_at]
+      - {base-type: type/DateTimeWithLocalTZ}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_content
-        - name
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text}
     - - expression
       - Days since last view
-      - base-type: type/Integer
+      - {base-type: type/Integer}
     filter:
     - and
     - - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_type
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_content, entity_type]
+        - {base-type: type/Text}
       - question
     - - not-null
       - - expression
         - Days since last view
-        - base-type: type/Integer
+        - {base-type: type/Integer}
     - - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - archived
-        - base-type: type/Boolean
+        - [Internal Metabase Database, public, v_content, archived]
+        - {base-type: type/Boolean}
       - false
     joins:
     - alias: Last content viewed at - Entity Qualified
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_content, entity_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Last content viewed at - Entity Qualified
+        - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Last content viewed at - Entity Qualified}
       fields: none
       source-table: tKEl86EXMyTDIoO9nyFTV
       strategy: left-join
@@ -101,7 +75,7 @@ dataset_query:
     - - desc
       - - expression
         - Days since last view
-        - base-type: type/Integer
+        - {base-type: type/Integer}
     source-table: AxSackBiyXVRUzM_TyyQY
   type: query
 result_metadata:
@@ -112,17 +86,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - entity_id
-  - base-type: type/Integer
+  - [Internal Metabase Database, public, v_content, entity_id]
+  - {base-type: type/Integer}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_id
+  id: [Internal Metabase Database, public, v_content, entity_id]
   name: entity_id
   semantic_type: type/PK
   settings: null
@@ -134,18 +101,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - created_at
-  - base-type: type/DateTimeWithLocalTZ
-    temporal-unit: default
+  - [Internal Metabase Database, public, v_content, created_at]
+  - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - created_at
+  id: [Internal Metabase Database, public, v_content, created_at]
   name: created_at
   semantic_type: type/CreationTimestamp
   settings: null
@@ -158,17 +117,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - name
-  - base-type: type/Text
+  - [Internal Metabase Database, public, v_content, name]
+  - {base-type: type/Text}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - name
+  id: [Internal Metabase Database, public, v_content, name]
   name: name
   semantic_type: type/Name
   settings: null
@@ -176,33 +128,22 @@ result_metadata:
 - base_type: type/Integer
   display_name: Days since last view
   effective_type: type/Integer
-  field_ref:
-  - expression
-  - Days since last view
+  field_ref: [expression, Days since last view]
   name: Days since last view
   semantic_type: null
 visualization_settings:
   column_settings:
-    '["ref",["expression","Days since last view"]]':
-      show_mini_bar: true
-    '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer"}]]':
-      column_title: Question ID
-      link_text: ''
-      link_url: /question/{{entity_id}}
-      view_as: link
-    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text"}]]':
-      link_text: ''
-      link_url: /question/{{entity_id}}
-      view_as: link
+    '["ref",["expression","Days since last view"]]': {show_mini_bar: true}
+    '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer"}]]': {column_title: Question ID, link_text: '', link_url: '/question/{{entity_id}}', view_as: link}
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text"}]]': {link_text: '', link_url: '/question/{{entity_id}}', view_as: link}
   table.cell_column: Days since last view
   table.pivot_column: created_at
+card_schema: 23
 serdes/meta:
-- id: UEK1JfYa3ZBp6W7F-Ui5i
-  label: questions_without_recent_views
-  model: Card
+- {id: UEK1JfYa3ZBp6W7F-Ui5i, label: questions_without_recent_views, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: BHyad8ZHCbeiBZpQxDwsP
-metabase_version: vUNKNOWN (901f705)
+document_id: null
+embedding_type: null
 source_card_id: AxSackBiyXVRUzM_TyyQY
 type: question

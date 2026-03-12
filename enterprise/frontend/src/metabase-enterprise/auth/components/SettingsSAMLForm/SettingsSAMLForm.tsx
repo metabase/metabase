@@ -16,9 +16,9 @@ import {
   useGetSettingsQuery,
 } from "metabase/api";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
 import {
   Form,
@@ -31,6 +31,7 @@ import {
 } from "metabase/forms";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import { useUpdateSamlMutation } from "metabase-enterprise/api";
+import { provisioningOptions } from "metabase-enterprise/auth/utils";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 export type SAMLFormSettings = Pick<
@@ -39,6 +40,7 @@ export type SAMLFormSettings = Pick<
   | "saml-attribute-email"
   | "saml-attribute-firstname"
   | "saml-attribute-lastname"
+  | "saml-attribute-tenant"
   | "saml-identity-provider-uri"
   | "saml-identity-provider-issuer"
   | "saml-identity-provider-certificate"
@@ -70,7 +72,7 @@ export function SettingsSAMLForm() {
     [updateSamlSettings],
   );
 
-  // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
   const { url: docsUrl } = useDocsUrl(
     "people-and-groups/authenticating-with-saml",
   );
@@ -100,7 +102,7 @@ export function SettingsSAMLForm() {
           {({ dirty }) => (
             <Form>
               <Title order={2}>{t`Set up SAML-based SSO`}</Title>
-              <Text c="text-medium" mb="xl">
+              <Text c="text-secondary" mb="xl">
                 {jt`Use the settings below to configure your SSO via SAML. If you have any questions, check out our ${(
                   <ExternalLink
                     key="link"
@@ -109,8 +111,8 @@ export function SettingsSAMLForm() {
                 )}.`}
               </Text>
               <FormSection title={t`Configure your identity provider (IdP)`}>
-                <Text c="text-medium" mb="xl">
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+                <Text c="text-secondary" mb="xl">
+                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
                   {t`Your identity provider will need the following info about Metabase.`}
                 </Text>
 
@@ -122,7 +124,7 @@ export function SettingsSAMLForm() {
                 />
 
                 <Title order={4} mt="xl">{t`SAML attributes`}</Title>
-                <Text c="text-medium" mb="md">
+                <Text c="text-secondary" mb="md">
                   {t`In most IdPs, you'll need to put each of these in an input box labeled "Name" in the attribute statements section.`}
                 </Text>
 
@@ -151,15 +153,25 @@ export function SettingsSAMLForm() {
                       settingDetails?.["saml-attribute-lastname"],
                     )}
                   />
+                  {settingValues["use-tenants"] && (
+                    <FormTextInput
+                      name="saml-attribute-tenant"
+                      label={t`Tenant assignment attribute`}
+                      hasCopyButton
+                      {...getExtraFormFieldProps(
+                        settingDetails?.["saml-attribute-tenant"],
+                      )}
+                    />
+                  )}
                 </Stack>
               </FormSection>
 
               <FormSection
-                // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+                // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
                 title={t`Tell Metabase about your identity provider`}
               >
-                <Text mb="xl" mt="sm" c="text-medium">
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+                <Text mb="xl" mt="sm" c="text-secondary">
+                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
                   {t`Metabase will need the following info about your provider.`}
                 </Text>
                 <Stack gap="md">
@@ -233,8 +245,8 @@ export function SettingsSAMLForm() {
               <FormSection
                 title={t`Synchronize group membership with your SSO`}
               >
-                <Text c="text-medium" mb="lg">
-                  {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
+                <Text c="text-secondary" mb="lg">
+                  {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
                   {t`To enable this, you'll need to create mappings to tell Metabase which group(s) your users should
                 be added to based on the SSO group they're in.`}
                 </Text>
@@ -284,6 +296,7 @@ const getFormValues = (
     "saml-attribute-email",
     "saml-attribute-firstname",
     "saml-attribute-lastname",
+    "saml-attribute-tenant",
     "saml-identity-provider-uri",
     "saml-identity-provider-issuer",
     "saml-identity-provider-certificate",
@@ -328,7 +341,8 @@ function SamlUserProvisioning() {
       <AdminSettingInput
         name="saml-user-provisioning-enabled?"
         title={t`User provisioning`}
-        inputType="boolean"
+        inputType="radio"
+        options={provisioningOptions("SAML")}
       />
     </SettingsSection>
   );

@@ -1,4 +1,4 @@
-import { Alert, type AlertProps, Icon, Text } from "metabase/ui";
+import { Alert, type AlertProps, Icon, Stack, Text } from "metabase/ui";
 
 const args = {
   icon: <Icon name="warning" />,
@@ -34,6 +34,66 @@ const DefaultTemplate = (args: AlertProps) => {
   );
 };
 
+const WarningColorTemplate = (args: AlertProps) => {
+  return (
+    <Alert {...args} color="warning">
+      <Text>
+        In a future release, if a group’s View data access for a database (or
+        any of its schemas or tables) is still set to No self-service
+        (deprecated), Metabase will automatically change that group’s View data
+        access for the entire database to Blocked.
+      </Text>
+    </Alert>
+  );
+};
+
+const multiColor = (args: AlertProps) => {
+  return (
+    <Stack>
+      <Alert {...args} color="info">
+        <Text>
+          In a future release, if a group’s View data access for a database (or
+          any of its schemas or tables) is still set to No self-service
+          (deprecated), Metabase will automatically change that group’s View
+          data access for the entire database to Blocked.
+        </Text>
+      </Alert>
+      <Alert {...args} color="warning">
+        <Text>
+          In a future release, if a group’s View data access for a database (or
+          any of its schemas or tables) is still set to No self-service
+          (deprecated), Metabase will automatically change that group’s View
+          data access for the entire database to Blocked.
+        </Text>
+      </Alert>
+      <Alert {...args} color="error">
+        <Text>
+          In a future release, if a group’s View data access for a database (or
+          any of its schemas or tables) is still set to No self-service
+          (deprecated), Metabase will automatically change that group’s View
+          data access for the entire database to Blocked.
+        </Text>
+      </Alert>
+      <Alert {...args} color="brand">
+        <Text>
+          In a future release, if a group’s View data access for a database (or
+          any of its schemas or tables) is still set to No self-service
+          (deprecated), Metabase will automatically change that group’s View
+          data access for the entire database to Blocked.
+        </Text>
+      </Alert>
+      <Alert {...args} color="success">
+        <Text>
+          In a future release, if a group’s View data access for a database (or
+          any of its schemas or tables) is still set to No self-service
+          (deprecated), Metabase will automatically change that group’s View
+          data access for the entire database to Blocked.
+        </Text>
+      </Alert>
+    </Stack>
+  );
+};
+
 export default {
   title: "Components/Feedback/Alert",
   component: Alert,
@@ -43,4 +103,22 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
+};
+
+export const Warning = {
+  render: WarningColorTemplate,
+};
+
+export const Light = {
+  render: multiColor,
+  args: {
+    theme: "light",
+  },
+};
+
+export const Dark = {
+  render: multiColor,
+  args: {
+    theme: "dark",
+  },
 };

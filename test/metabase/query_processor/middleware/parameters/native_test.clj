@@ -49,11 +49,11 @@
                             {:id            2
                              :collection-id nil
                              :dataset-query (mt/native-query
-                                              {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
-                                               :template-tags {"card" {:name         "card"
-                                                                       :display-name "card"
-                                                                       :type         :card
-                                                                       :card-id      1}}})}]})
+                                             {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                                              :template-tags {"card" {:name         "card"
+                                                                      :display-name "card"
+                                                                      :type         :card
+                                                                      :card-id      1}}})}]})
             query (lib/query
                    mp
                    (mt/native-query {:query                                 (mt/native-query-with-card-template-tag driver/*driver* "card")

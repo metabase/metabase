@@ -714,7 +714,9 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
         autoApplyFilters: false,
         parameters: [PARAMETER_A_DEFAULT_VALUE, PARAMETER_B_DEFAULT_VALUE],
       });
-      checkResetAllFiltersToDefaultWorksAcrossTabs({ autoApplyFilters: false });
+      checkResetAllFiltersToDefaultWorksAcrossTabs({
+        autoApplyFilters: false,
+      });
     });
   });
 
@@ -1253,7 +1255,7 @@ function addRangeFilter(
 ) {
   filter(label).click();
   H.popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
   H.popover().button("Add filter").click();
 }
@@ -1265,7 +1267,7 @@ function updateRangeFilter(
 ) {
   filter(label).click();
   H.popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
   H.popover().button("Update filter").click();
 }

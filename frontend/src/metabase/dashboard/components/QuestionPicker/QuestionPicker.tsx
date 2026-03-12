@@ -1,24 +1,27 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListDatabasesQuery } from "metabase/api";
 import { isPublicCollection } from "metabase/collections/utils";
-import Breadcrumbs from "metabase/common/components/Breadcrumbs";
-import Input from "metabase/common/components/Input";
-import SelectList from "metabase/common/components/SelectList";
+import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
+import { Input } from "metabase/common/components/Input";
+import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
+import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { getIcon } from "metabase/lib/icon";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-import { Button, Flex, Icon, type IconProps } from "metabase/ui";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
+import { Button, Flex, Icon } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
@@ -28,13 +31,11 @@ import { addDashboardQuestion } from "./actions";
 interface QuestionPickerInnerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
   collectionsById: Record<CollectionId, Collection>;
-  getCollectionIcon: (collection: Collection) => IconProps;
 }
 
 function QuestionPickerInner({
   onSelect,
   collectionsById,
-  getCollectionIcon,
 }: QuestionPickerInnerProps) {
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
@@ -61,13 +62,8 @@ function QuestionPickerInner({
     ? allCollections.filter(isPublicCollection)
     : allCollections;
 
-  const { data } = useListDatabasesQuery();
-  const databases = useMemo(() => data?.data ?? [], [data]);
-  const hasDataAccess = useMemo(() => getHasDataAccess(databases), [databases]);
-  const hasNativeWrite = useMemo(
-    () => getHasNativeWrite(databases),
-    [databases],
-  );
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
   const { onNewQuestion } = useDashboardContext();
   const onNewNativeQuestion = () => dispatch(addDashboardQuestion("native"));
@@ -88,8 +84,7 @@ function QuestionPickerInner({
         <Flex gap="sm" mb="md" data-testid="new-button-bar">
           {hasDataAccess && (
             <Button
-              variant="outline"
-              className={S.newButton}
+              w="50%"
               leftSection={<Icon aria-hidden name="insight" />}
               onClick={onNewQuestion}
             >
@@ -98,8 +93,7 @@ function QuestionPickerInner({
           )}
           {hasNativeWrite && !isEmbeddingSdk() && (
             <Button
-              variant="outline"
-              className={S.newButton}
+              w="50%"
               leftSection={<Icon aria-hidden name="sql" />}
               onClick={onNewNativeQuestion}
             >
@@ -118,11 +112,11 @@ function QuestionPickerInner({
           {collections.length > 0 && (
             <SelectList>
               {collections.map((collection) => {
-                const icon = getCollectionIcon(collection);
+                const icon = getIcon({ ...collection, model: "collection" });
                 const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
                   collection,
                 )
-                  ? "text-light"
+                  ? "text-tertiary"
                   : icon.color;
                 return (
                   <SelectList.Item
@@ -131,7 +125,7 @@ function QuestionPickerInner({
                     name={collection.name}
                     icon={{
                       ...icon,
-                      color: iconColor,
+                      c: iconColor,
                     }}
                     rightIcon="chevronright"
                     onSelect={(collectionId) =>
@@ -170,6 +164,5 @@ export const QuestionPicker = _.compose(
     collectionsById: (
       props.entity || Collections
     ).selectors.getExpandedCollectionsById(state),
-    getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
   })),
 )(QuestionPickerInner);

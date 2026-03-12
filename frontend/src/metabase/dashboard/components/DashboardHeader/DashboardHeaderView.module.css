@@ -8,10 +8,15 @@
   align-items: center;
   border-left: 1px solid transparent;
 
-  @media screen and (max-width: 40em) {
+  @container dashboard-header (max-width: 40rem) {
     flex-direction: column;
     align-items: baseline;
   }
+}
+
+.DashboardHeader {
+  container-type: inline-size;
+  container-name: dashboard-header;
 }
 
 .HeaderContainer {
@@ -19,27 +24,20 @@
     margin-right: var(--sidebar-width);
   }
 
-  @media screen and (max-width: 60em) {
+  @container dashboard-header (max-width: 40rem) {
     margin-right: 0;
   }
 }
 
 .HeaderButtonsContainer {
   align-items: center;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
-  @media screen and (min-width: 40em) {
+  @container dashboard-header (min-width: 40rem) {
     margin-left: auto;
   }
 
-  @media screen and (max-width: 60em) {
-    &.isNavBarOpen {
-      width: 100%;
-      margin-bottom: 6px;
-    }
-  }
-
-  @media screen and (max-width: 40em) {
+  @container dashboard-header (max-width: 40rem) {
     width: 100%;
     margin-bottom: 6px;
     padding-top: 0.375rem;
@@ -53,14 +51,7 @@
   align-items: center;
   gap: 0.5rem;
 
-  @media screen and (max-width: 60em) {
-    &.isNavBarOpen {
-      width: 100%;
-      justify-content: space-between;
-    }
-  }
-
-  @media screen and (max-width: 40em) {
+  @container dashboard-header (max-width: 40rem) {
     width: 100%;
     justify-content: space-between;
   }
@@ -69,7 +60,7 @@
 .HeaderLastEditInfoLabel {
   transition: opacity 400ms ease;
 
-  @media screen and (max-width: 40em) {
+  @container dashboard-header (max-width: 40rem) {
     margin-top: 4px;
   }
 }
@@ -85,6 +76,7 @@
 .HeaderContent {
   padding-top: 1rem;
   padding-bottom: 0.75rem;
+  min-width: 0;
 
   .HeaderCaptionContainer {
     top: 10px;
@@ -106,7 +98,7 @@
     }
   }
 
-  @media screen and (max-width: 40em) {
+  @container dashboard-header (max-width: 40rem) {
     padding-top: 0;
     padding-left: 1rem;
     padding-right: 1rem;
@@ -125,10 +117,12 @@
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.5rem;
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 .HeaderRow {
-  @media screen and (max-width: 40em) {
+  @container dashboard-header (max-width: 40rem) {
     padding-left: 0;
     padding-right: 0;
   }
@@ -139,14 +133,7 @@
   align-items: center;
   justify-items: apart;
 
-  @media screen and (max-width: 60em) {
-    &.isNavBarOpen {
-      flex-direction: column;
-      align-items: baseline;
-    }
-  }
-
-  @media screen and (max-width: 40em) {
+  @container dashboard-header (max-width: 40rem) {
     flex-direction: column;
     align-items: baseline;
   }

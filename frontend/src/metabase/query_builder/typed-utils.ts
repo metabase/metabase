@@ -11,15 +11,21 @@ export function getQueryBuilderModeFromLocation(
   location: LocationDescriptorObject,
 ): LocationQBModeResult {
   const { pathname } = location;
-  if (pathname?.endsWith("/notebook")) {
+  const lastPathSegment = pathname?.split("/").pop();
+
+  if (lastPathSegment === "notebook") {
     return {
       queryBuilderMode: "notebook",
     };
   }
-  if (pathname?.endsWith("/query") || pathname?.endsWith("/metadata")) {
+  if (
+    lastPathSegment === "query" ||
+    lastPathSegment === "metadata" ||
+    lastPathSegment === "columns"
+  ) {
     return {
       queryBuilderMode: "dataset",
-      datasetEditorTab: pathname.endsWith("/query") ? "query" : "metadata",
+      datasetEditorTab: lastPathSegment,
     };
   }
   return {

@@ -39,10 +39,10 @@ export const DashboardHeaderButtonRow = ({
   const {
     isFullscreen,
     onFullscreenChange,
-    hasNightModeToggle,
-    onNightModeChange,
     downloadsEnabled,
+    withSubscriptions,
     dashboardActions,
+    refreshPeriod,
   } = useDashboardContext();
 
   const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
@@ -79,9 +79,9 @@ export const DashboardHeaderButtonRow = ({
             config.enabled({
               isFullscreen,
               onFullscreenChange,
-              hasNightModeToggle,
-              onNightModeChange,
               downloadsEnabled,
+              withSubscriptions,
+              refreshPeriod,
               ...buttonComponentProps,
             })
           ) {

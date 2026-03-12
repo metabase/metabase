@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import { Badge } from "metabase/common/components/Badge";
+import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Flex } from "metabase/ui";
 
 import type { DataSourcePart } from "../QuestionDataSource/utils";
@@ -30,14 +31,15 @@ function getBadgeInactiveColor({
   variant: "head" | "subhead";
   isLast: boolean;
 }) {
-  return isLast && variant === "head" ? "text-dark" : "text-light";
+  return isLast && variant === "head" ? "text-primary" : "text-tertiary";
 }
 
 interface HeadBreadcrumbsProps {
+  className?: string;
   variant?: "head" | "subhead";
   parts: DataSourcePart[];
   divider?: string | ReactElement;
-  inactiveColor?: string;
+  inactiveColor?: ColorName;
   isObjectDetail?: boolean;
 }
 

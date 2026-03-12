@@ -47,24 +47,16 @@ jobs:
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
 
       - name: Compile CLJS
-        run: NODE_ENV=development yarn build-pure:cljs
-
-      - name: Build Storybook
-        # We won't be able to use Storybook play's `userEvent` with production build
-        # see https://github.com/storybookjs/storybook/issues/19758
-        run: NODE_ENV=development yarn build-storybook
+        run: NODE_ENV=development bun run build-pure:cljs
 
       - name: Run Loki Visual Tests
-        run: |
-          yarn loki --requireReference --reactUri file:./storybook-static --chromeFlags='--headless --disable-gpu' --verboseRenderer
+        run: bun run test-visual:loki:ci
 
       - name: Generate Visual Report on Failure
         if: failure()
-        run: yarn test-visual:loki-report
+        run: bun run test-visual:loki-report
 
       - name: Upload Artifact
         id: artifact-upload-step

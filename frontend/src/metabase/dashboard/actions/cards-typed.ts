@@ -2,7 +2,7 @@ import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Questions from "metabase/entities/questions";
+import { Questions } from "metabase/entities/questions";
 import {
   DEFAULT_CARD_SIZE,
   GRID_WIDTH,
@@ -37,11 +37,11 @@ import {
 } from "../analytics";
 import type { SectionLayout } from "../sections";
 import {
+  getCurrentDashcards,
   getDashCardById,
   getDashboard,
   getDashboardId,
   getDashboards,
-  getDashcardList,
   getDashcards,
   getSelectedTabId,
 } from "../selectors";
@@ -273,7 +273,9 @@ export const replaceCard =
     await dispatch(loadMetadataForCard(card));
     dispatch(showAutoWireToastNewCard({ dashcard_id: dashcardId }));
 
-    dashboardId && trackQuestionReplaced(dashboardId);
+    if (dashboardId) {
+      trackQuestionReplaced(dashboardId);
+    }
   };
 
 export const addCardWithVisualization =
@@ -471,7 +473,7 @@ export const removeCardFromDashboard = createThunkAction(
   }) =>
     (dispatch, getState) => {
       const dashboard = checkNotNull(getDashboard(getState()));
-      const dashcards = getDashcardList(getState());
+      const dashcards = getCurrentDashcards(getState());
       const dashcard = getDashCardById(getState(), dashcardId);
 
       const originalParameters = dashboard.parameters
@@ -514,7 +516,7 @@ export const removeCardFromDashboard = createThunkAction(
     },
 );
 
-const undoRemoveCardFromDashboard = createThunkAction(
+export const undoRemoveCardFromDashboard = createThunkAction(
   UNDO_REMOVE_CARD_FROM_DASH,
   ({ dashcardId, originalParameters }) =>
     (dispatch, getState) => {

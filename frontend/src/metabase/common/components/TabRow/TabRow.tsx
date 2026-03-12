@@ -14,6 +14,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useMergedRef } from "@mantine/hooks";
+import cx from "classnames";
 import {
   type ReactNode,
   type Ref,
@@ -25,7 +26,7 @@ import {
 } from "react";
 import { usePreviousDistinct } from "react-use";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { Icon } from "metabase/ui";
 
 import type { TabListProps } from "../TabList/TabList";
@@ -114,6 +115,12 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
         onScroll={(event) => setScrollPosition(event.currentTarget.scrollLeft)}
         ref={mergedRef}
         {...props}
+        className={cx(
+          {
+            scrollable: showScrollLeft || showScrollRight,
+          },
+          props.className,
+        )}
       >
         <DndContext
           onDragEnd={onDragEnd}
@@ -155,7 +162,7 @@ export function ScrollArrow({ direction, onClick }: ScrollArrowProps) {
       direction={direction}
       aria-label={`scroll tabs ${direction}`}
     >
-      <Icon name={`chevron${direction}`} color="brand" />
+      <Icon name={`chevron${direction}`} />
     </ScrollButton>
   );
 }

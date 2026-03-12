@@ -1,93 +1,72 @@
+import { assocIn } from "icepick";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { createMockState } from "metabase-types/store/mocks";
 
-import {
-  type MetabotState,
-  getLastAgentMessagesByType,
-  getMetabotInitialState,
-  getUserPromptForMessageId,
-} from "./index";
+import { getMetabotInitialState } from "./reducer-utils";
+import type { MetabotStoreState } from "./types";
 
-function setup(metabotState: Partial<MetabotState>) {
+import { type MetabotChatMessage, getUserPromptForMessageId } from "./index";
+
+function setup(messages: MetabotChatMessage[]): MetabotStoreState {
   setupEnterprisePlugins();
+
+  const state = getMetabotInitialState();
+  const visibleState = assocIn(
+    state,
+    ["conversations", "omnibot", "visible"],
+    true,
+  );
+  const withMessages = assocIn(
+    visibleState,
+    ["conversations", "omnibot", "messages"],
+    messages,
+  );
 
   return createMockState({
     plugins: {
-      metabotPlugin: {
-        ...getMetabotInitialState(),
-        visible: true,
-        ...metabotState,
-      },
+      metabotPlugin: withMessages,
     },
-  } as any);
+  } as any) as unknown as MetabotStoreState;
 }
 
 describe("metabot selectors", () => {
-  describe("getLastAgentMessagesByType", () => {
-    it("should not return any messages if there are none", () => {
-      const state = setup({ messages: [] });
-      const messages = getLastAgentMessagesByType(state as any);
-      expect(messages).toEqual([]);
-    });
-
-    it("should not return any messages if latest message is from a user", () => {
-      const state = setup({
-        messages: [{ id: "1", role: "user", message: "bleh" }],
-      });
-      const messages = getLastAgentMessagesByType(state as any);
-      expect(messages).toEqual([]);
-    });
-
-    it("should return latest agent reply messages only", () => {
-      const state = setup({
-        messages: [
-          { id: "1", role: "user", message: "bleh" },
-          { id: "2", role: "agent", message: "blah" },
-          { id: "3", role: "agent", message: "blah" },
-        ],
-      });
-      const messages = getLastAgentMessagesByType(state as any);
-      expect(messages).toEqual(["blah", "blah"]);
-    });
-
-    it("should return latest agent error messages only", () => {
-      const state = setup({
-        messages: [{ id: "1", role: "agent", message: "blah" }],
-        errorMessages: [
-          { type: "message", message: "BLAH" },
-          { type: "message", message: "BLAH" },
-        ],
-      });
-      const messages = getLastAgentMessagesByType(state as any);
-      expect(messages).toEqual(["BLAH", "BLAH"]);
-    });
-  });
-
   describe("getUserPromptForMessageId", () => {
     it("should return the message with the matching id if id is for a user message", () => {
-      const state = setup({
-        messages: [
-          { id: "1", role: "user", message: "bleh" },
-          { id: "2", role: "agent", message: "blah" },
-        ],
+      const state = setup([
+        { id: "1", role: "user", type: "text", message: "bleh" },
+        { id: "2", role: "agent", type: "text", message: "blah" },
+      ]);
+      const message = getUserPromptForMessageId(state, "omnibot", "1");
+      expect(message).toEqual({
+        id: "1",
+        role: "user",
+        type: "text",
+        message: "bleh",
       });
-      const message = getUserPromptForMessageId(state as any, "1");
-      expect(message).toEqual({ id: "1", role: "user", message: "bleh" });
     });
 
     it("should return the message with the matching id if id is for an agent message", () => {
-      const state = setup({
-        messages: [
-          { id: "1", role: "user", message: "bleh" },
-          { id: "2", role: "agent", message: "blah" },
-          { id: "3", role: "user", message: "bleh bleh" },
-          { id: "4", role: "agent", message: "blah blah" },
-        ],
+      const state = setup([
+        { id: "1", type: "text", role: "user", message: "bleh" },
+        { id: "2", type: "text", role: "agent", message: "blah" },
+        { id: "3", type: "text", role: "user", message: "bleh bleh" },
+        { id: "4", type: "text", role: "agent", message: "blah blah" },
+      ]);
+      const message1 = getUserPromptForMessageId(state, "omnibot", "2");
+      expect(message1).toEqual({
+        id: "1",
+        role: "user",
+        type: "text",
+        message: "bleh",
       });
-      const message1 = getUserPromptForMessageId(state as any, "2");
-      expect(message1).toEqual({ id: "1", role: "user", message: "bleh" });
-      const message2 = getUserPromptForMessageId(state as any, "4");
-      expect(message2).toEqual({ id: "3", role: "user", message: "bleh bleh" });
+      const message2 = getUserPromptForMessageId(state, "omnibot", "4");
+      expect(message2).toEqual({
+        id: "3",
+        role: "user",
+        type: "text",
+        message: "bleh bleh",
+      });
     });
   });
 });

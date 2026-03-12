@@ -91,10 +91,8 @@ describe("issue 12928", () => {
 
     H.visualize();
 
-    cy.get("@joinedQuestionId").then((joinedQuestionId) => {
+    cy.get("@joinedQuestionId").then(() => {
       H.assertJoinValid({
-        lhsTable: SOURCE_QUESTION_NAME,
-        rhsTable: JOINED_QUESTION_NAME,
         lhsSampleColumn: "Products → Category",
         rhsSampleColumn: `${JOINED_QUESTION_NAME} - Products → Category → Category`,
       });
@@ -165,7 +163,7 @@ describe("issue 14793", () => {
       .findByText(/^A closer look at/)
       .should("be.visible");
 
-    H.getDashboardCards().should("have.length", 18);
+    H.getDashboardCards().should("have.length", 35);
   });
 });
 
@@ -181,24 +179,23 @@ describe("issue 15342", { tags: "@external" }, () => {
 
   it("should correctly order joins for MySQL queries (metabase#15342)", () => {
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText(MYSQL_DB_NAME).click();
       cy.findByText("People").click();
     });
 
     cy.icon("join_left_outer").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText(MYSQL_DB_NAME).click();
       cy.findByText("Orders").click();
     });
     H.getNotebookStep("join").findByLabelText("Right column").click();
     H.popover().findByText("Product ID").click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.icon("join_left_outer").last().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText(MYSQL_DB_NAME).click();
       cy.findByText("Products").click();
     });
     H.getNotebookStep("join").icon("join_left_outer").click();
@@ -239,8 +236,8 @@ describe("issue 15578", () => {
     H.openProductsTable({ mode: "notebook" });
 
     cy.button("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(JOINED_QUESTION_NAME).click();
     });
 
@@ -271,8 +268,8 @@ describe("issue 17710", () => {
     H.openOrdersTable({ mode: "notebook" });
 
     cy.button("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
 
@@ -317,12 +314,12 @@ describe("issue 17767", () => {
 
     H.openNotebook();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
 
     // Join "Previous results" with
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Reviews").click();
     });
 
@@ -330,7 +327,7 @@ describe("issue 17767", () => {
       expect(response.body.error).to.not.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("xavier");
   });
 });
@@ -352,10 +349,10 @@ describe("issue 17968", () => {
       .click();
     H.popover().findByText("Created At").click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
     H.popover().findByText("Count").click();
@@ -398,16 +395,16 @@ describe("issue 18502", () => {
     H.startNewQuestion();
     H.selectSavedQuestionsToJoin("18502#1", "18502#2");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At: Month").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Birth Date: Month").click();
 
     H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("April 2022");
   });
 });
@@ -473,7 +470,7 @@ describe("issue 18512", () => {
       expect(response.body.error).to.not.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Products → Created At: Month");
   });
 });
@@ -481,8 +478,8 @@ describe("issue 18512", () => {
 describe("issue 18589", () => {
   function joinTable(table) {
     cy.findByText("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText(table).click();
     });
   }
@@ -509,7 +506,7 @@ describe("issue 18589", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2,860,368");
   });
 });
@@ -649,7 +646,7 @@ describe("issue 20519", () => {
 
   // Tightly related issue: metabase#17767
   it("should allow subsequent joins and nested query after summarizing on the implicit joins (metabase#20519)", () => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByLabelText("Custom column").last().click();
 
     H.enterCustomColumnDetails({
@@ -667,9 +664,9 @@ describe("issue 20519", () => {
       expect(response.body.error).not.to.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Doohickey");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Two");
   });
 });
@@ -757,8 +754,8 @@ describe("issue 22859 - multiple levels of nesting", () => {
 
   it("third level of nesting with joins should result in proper column aliasing (metabase#22859-2)", () => {
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("22859-Q2").click();
     });
 
@@ -806,15 +803,12 @@ describe("issue 23293", () => {
       .findByLabelText(/Where do you want to save this/)
       .click();
     H.pickEntity({
-      tab: "Browse",
       path: ["Our analytics"],
     });
     H.entityPickerModal().findByText("Select this collection").click();
     cy.findByTestId("save-question-modal").button("Save").click();
 
     cy.wait("@saveQuestion").then(({ response }) => {
-      cy.button("Not now").click();
-
       const id = response.body.id;
       const questionDetails = {
         query: {
@@ -849,12 +843,12 @@ describe("issue 23293", () => {
         "contain",
         "Orders → Category is Doohickey",
       );
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("header-cell")
         .last()
         .should("have.text", "Product → Category");
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByRole("grid")
         .last()
         .as("tableResults")
@@ -894,9 +888,9 @@ describe("issue 27380", () => {
     );
 
     // Doesn't really matter which 'circle" we click on the graph
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.cartesianChartCircle().last().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See this month by week").click();
     cy.wait("@dataset");
 
@@ -905,9 +899,9 @@ describe("issue 27380", () => {
     H.echartsContainer().findByText("Count");
 
     H.openNotebook();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product → Created At: Week");
   });
 });
@@ -978,8 +972,8 @@ describe("issue 29795", () => {
 
     cy.icon("join_left_outer").click();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(NATIVE_QUESTION).click();
     });
 
@@ -1125,8 +1119,8 @@ describe("issue 39448", () => {
   it("should load joined table metadata for suggested join conditions (metabase#39448)", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByTestId("action-buttons").button("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
     H.getNotebookStep("join").within(() => {
@@ -1141,7 +1135,7 @@ describe("issue 39448", () => {
 });
 
 // See TODO inside this test when unskipping
-describe("issue 27521", { tags: "@skip" }, () => {
+describe("issue 27521", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -1156,10 +1150,13 @@ describe("issue 27521", { tags: "@skip" }, () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Select all").click();
 
+    cy.log("close popover");
+    H.getNotebookStep("data").click();
+
     H.join();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
@@ -1185,8 +1182,8 @@ describe("issue 27521", { tags: "@skip" }, () => {
 
     cy.log("Create second question (Products + Q1)");
     H.newButton("Question").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("People").click();
     });
 
@@ -1195,8 +1192,8 @@ describe("issue 27521", { tags: "@skip" }, () => {
 
     H.join();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Q1").click();
     });
 
@@ -1204,26 +1201,29 @@ describe("issue 27521", { tags: "@skip" }, () => {
     H.popover().findByText("Orders → ID").should("be.visible").click();
     H.getNotebookStep("join")
       .findByLabelText("Right column")
-      .findByText("Orders → ID")
+      .findByText("Q1 → ID")
       .should("be.visible")
       .click();
-    H.popover().findByText("ID").should("be.visible").click();
+    H.popover()
+      .findAllByText("Q1 → ID")
+      .should("have.length", 2)
+      .first()
+      .click();
 
     H.visualize();
 
     assertTableHeader(0, "ID");
     assertTableHeader(1, "Q1 → ID");
-    assertTableHeader(2, "Q1 → Orders → ID");
+    assertTableHeader(2, "Q1 → ID");
 
     H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findAllByText("ID").should("have.length", 1);
-      cy.findAllByText("Q1 → ID").should("have.length", 1);
-      cy.findAllByText("Q1 → Orders → ID").should("have.length", 1);
+      cy.findAllByText("Q1 → ID").should("have.length", 2);
 
       cy.findByRole("button", { name: "Add or remove columns" }).click();
-      cy.findAllByText("ID").should("have.length", 2);
-      cy.findAllByText("Orders → ID").should("have.length", 1);
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Q1 → ID").should("have.length", 2);
 
       // TODO: add assertions for what happens when toggling all the columns here
       // See https://github.com/metabase/metabase/issues/27521#issuecomment-1948658757
@@ -1231,7 +1231,7 @@ describe("issue 27521", { tags: "@skip" }, () => {
   });
 
   function assertTableHeader(index, name) {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
   }
 });
@@ -1245,21 +1245,22 @@ describe("issue 42385", { tags: "@external" }, () => {
   it("should remove invalid draft join clause when query database changes (metabase#42385)", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Reviews").click();
     });
 
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
-    H.entityPickerModal().within(() => {
+    H.miniPickerHeader().click();
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("Reviews").click();
     });
 
     H.getNotebookStep("join").within(() => {
-      cy.findByLabelText("Right table")
-        .findByText("Pick data…")
-        .should("be.visible");
+      cy.findByPlaceholderText("Search for tables and more...").should(
+        "be.visible",
+      );
       cy.findByLabelText("Left column").should("not.exist");
       cy.findByLabelText("Right column").should("not.exist");
     });
@@ -1268,8 +1269,8 @@ describe("issue 42385", { tags: "@external" }, () => {
   it("should remove invalid join clause in incomplete draft state when query database changes (metabase#42385)", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
 
@@ -1278,10 +1279,11 @@ describe("issue 42385", { tags: "@external" }, () => {
       .findByText("Products")
       .click();
 
-    H.entityPickerModal().findByText("Reviews").click();
+    H.miniPicker().findByText("Reviews").click();
 
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
-    H.entityPickerModal().within(() => {
+    H.miniPickerHeader().click();
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("Reviews").click();
     });
@@ -1359,8 +1361,8 @@ describe("issue 46675", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
     H.getNotebookStep("data").findByLabelText("Join data").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Reviews").click();
     });
     H.popover().findByText("ID").click();
@@ -1369,23 +1371,22 @@ describe("issue 46675", () => {
   it("should reset the draft join state when the source table changes (metabase#46675)", () => {
     cy.log("change the source table and verify that the state was reset");
     H.getNotebookStep("data").findByText("Orders").click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("Products").click();
     });
     H.getNotebookStep("join").within(() => {
       cy.findByLabelText("Left table").should("have.text", "Products");
-      cy.findByLabelText("Right table").should("have.text", "Pick data…");
-      cy.findByLabelText("Left column").should("not.exist");
+      cy.findByPlaceholderText("Search for tables and more...").should(
+        "be.visible",
+      );
     });
 
     cy.log("complete the join and make sure the query can be executed");
     H.getNotebookStep("join")
-      .findByLabelText("Right table")
-      .findByText("Pick data…")
+      .findByPlaceholderText("Search for tables and more...")
       .click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.visualize();
@@ -1398,8 +1399,7 @@ describe("issue 46675", () => {
       .findByLabelText("Right table")
       .findByText("Reviews")
       .click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("Orders").click();
     });
     H.getNotebookStep("join").within(() => {

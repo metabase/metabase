@@ -18,9 +18,9 @@ driver:
       placeholder: "primary"
     - name: s3_staging_dir
       display-name: S3 staging directory
-      helper-text: This S3 staging directory must be in the same region you specify above.
+      helper-text: This S3 staging directory must be in the same region you specify above. Leave it empty if you use managed query results.
       placeholder: s3://your_bucket
-      required: true
+      required: false
     - merge:
       - dbname
       - name: catalog
@@ -36,6 +36,15 @@ driver:
         - name: secret_key
           display-name: Secret key
           helper-text: Leave this empty to authorize using AWS Credentials Provider Chain (Instance Profiles or IAM Roles for Tasks)
+    - name: hostname
+      display-name: Full hostname
+      placeholder: "Optional"
+      helper-text: "This is useful when Metabase is deployed on a VPC or AWS Secret Cloud."
+      required: false
+    - name: dbname
+      display-name: Specific database
+      helper-text: Specify a single database to enable features like DB routing
+      required: false
     - advanced-options-start
     - merge:
         - additional-options

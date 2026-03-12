@@ -79,7 +79,7 @@ export function ModelCacheManagementSection({ model }: Props) {
           justify="space-between"
           align="center"
           data-testid="model-cache-section"
-          c={canManageDB ? "text-dark" : "text-light"}
+          c={canManageDB ? "text-primary" : "text-tertiary"}
           fz="md"
         >
           <Box>
@@ -93,7 +93,7 @@ export function ModelCacheManagementSection({ model }: Props) {
             <Button
               variant="subtle"
               p="xs"
-              c="text-dark"
+              c="text-primary"
               size="xs"
               onClick={() => onRefresh(model.id())}
             >

@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_dashboardcard
+table_id: [Internal Metabase Database, public, v_dashboardcard]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -25,143 +22,203 @@ dataset_query:
   query:
     fields:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_dashboardcard
-        - created_at
-      - base-type: type/DateTimeWithLocalTZ
+      - [Internal Metabase Database, public, v_dashboardcard, created_at]
+      - {base-type: type/DateTimeWithLocalTZ}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_dashboardcard
-        - visualization_settings
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_dashboardcard, visualization_settings]
+      - {base-type: type/Text}
     joins:
     - alias: Content - Card Qualified
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_dashboardcard
-          - card_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_dashboardcard, card_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Card Qualified
+        - [Internal Metabase Database, public, v_content, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Content - Card Qualified}
       fields:
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_id
-        - base-type: type/Integer
-          join-alias: Content - Card Qualified
+        - [Internal Metabase Database, public, v_content, entity_id]
+        - {base-type: type/Integer, join-alias: Content - Card Qualified}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - name
-        - base-type: type/Text
-          join-alias: Content - Card Qualified
+        - [Internal Metabase Database, public, v_content, name]
+        - {base-type: type/Text, join-alias: Content - Card Qualified}
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Content - Dashboard Qualified
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_dashboardcard
-          - dashboard_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_dashboardcard, dashboard_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Dashboard Qualified
+        - [Internal Metabase Database, public, v_content, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Content - Dashboard Qualified}
       fields: none
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     order-by:
     - - desc
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_dashboardcard
-          - created_at
-        - base-type: type/DateTimeWithLocalTZ
-          temporal-unit: default
+        - [Internal Metabase Database, public, v_dashboardcard, created_at]
+        - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
     source-table: pKdvc0pwu1zDi8NqnyJkt
   type: query
-result_metadata: null
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_dashboardcard, created_at]
+  - null
+  id: [Internal Metabase Database, public, v_dashboardcard, created_at]
+  name: created_at
+  position: 5
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id: [Internal Metabase Database, public, v_dashboardcard]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 305
+  lib/deduplicated-name: created_at
+  lib/desired-column-alias: created_at
+  lib/model-display-name: Created At
+  lib/original-display-name: Created At
+  lib/original-name: created_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: created_at
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Visualization Settings
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_dashboardcard, visualization_settings]
+  - null
+  id: [Internal Metabase Database, public, v_dashboardcard, visualization_settings]
+  name: visualization_settings
+  position: 9
+  semantic_type: type/SerializedJSON
+  source: fields
+  table_id: [Internal Metabase Database, public, v_dashboardcard]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 305
+  lib/deduplicated-name: visualization_settings
+  lib/desired-column-alias: visualization_settings
+  lib/model-display-name: Visualization Settings
+  lib/original-display-name: Visualization Settings
+  lib/original-name: visualization_settings
+  lib/source: source/previous-stage
+  lib/source-column-alias: visualization_settings
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Content - Card Qualified → Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, entity_id]
+  - {join-alias: Content - Card Qualified}
+  id: [Internal Metabase Database, public, v_content, entity_id]
+  name: entity_id
+  options: {qp/ignore-coercion: true}
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  source_alias: Content - Card Qualified
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 279
+  lib/deduplicated-name: entity_id
+  lib/desired-column-alias: Content - Card Qualified__entity_id
+  lib/model-display-name: Entity ID
+  lib/original-display-name: Entity ID
+  lib/original-join-alias: Content - Card Qualified
+  lib/original-name: entity_id
+  lib/source: source/joins
+  lib/source-column-alias: entity_id
+  metabase.lib.join/join-alias: Content - Card Qualified
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Content - Card Qualified → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, name]
+  - {join-alias: Content - Card Qualified}
+  id: [Internal Metabase Database, public, v_content, name]
+  name: name
+  options: {qp/ignore-coercion: true}
+  position: 6
+  semantic_type: type/Name
+  source: fields
+  source_alias: Content - Card Qualified
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 279
+  lib/deduplicated-name: name
+  lib/desired-column-alias: Content - Card Qualified__name
+  lib/model-display-name: Name
+  lib/original-display-name: Name
+  lib/original-join-alias: Content - Card Qualified
+  lib/original-name: name
+  lib/source: source/joins
+  lib/source-column-alias: name
+  metabase.lib.join/join-alias: Content - Card Qualified
+  qp/implicit-field?: true
 visualization_settings:
   column_settings:
     ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
-    : column_title: Card ID
+    : {column_title: Card ID}
     ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
-    : column_title: Question name
-    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
-      column_title: Question Name
-    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35_2"}]]':
-      column_title: Dashboard Name
+    : {column_title: Question name}
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]': {column_title: Question Name}
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35_2"}]]': {column_title: Dashboard Name}
     ? '["ref",["field",["Internal Metabase Database","public","v_dashboardcard","created_at"],{"base-type":"type/DateTimeWithLocalTZ"}]]'
-    : column_title: Added At
+    : {column_title: Added At}
   table.cell_column: name
   table.columns:
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_dashboardcard
-      - created_at
-    - base-type: type/DateTimeWithLocalTZ
-      temporal-unit: default
+    - [Internal Metabase Database, public, v_dashboardcard, created_at]
+    - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
     name: created_at
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - entity_id
-    - base-type: type/Integer
-      join-alias: Content - Card Qualified
+    - [Internal Metabase Database, public, v_content, entity_id]
+    - {base-type: type/Integer, join-alias: Content - Card Qualified}
     name: entity_id
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - name
-    - base-type: type/Text
-      join-alias: Content - Card Qualified
+    - [Internal Metabase Database, public, v_content, name]
+    - {base-type: type/Text, join-alias: Content - Card Qualified}
     name: name
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_dashboardcard
-      - visualization_settings
-    - base-type: type/Text
+    - [Internal Metabase Database, public, v_dashboardcard, visualization_settings]
+    - {base-type: type/Text}
     name: visualization_settings
   table.pivot_column: name_2
+card_schema: 23
 serdes/meta:
-- id: yVr4oMzxq8BPWf5HLbdwL
-  label: questions_in_this_dashboard
-  model: Card
+- {id: yVr4oMzxq8BPWf5HLbdwL, label: questions_in_this_dashboard, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: bJEYb0o5CXlfWFcIztDwJ
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: pKdvc0pwu1zDi8NqnyJkt
 type: question

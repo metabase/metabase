@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_users
+table_id: [Internal Metabase Database, public, v_users]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -25,71 +22,275 @@ dataset_query:
   query:
     fields:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - user_id
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_users, user_id]
+      - {base-type: type/Integer}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - email
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_users, email]
+      - {base-type: type/Text}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - full_name
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_users, full_name]
+      - {base-type: type/Text}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - date_joined
-      - base-type: type/DateTimeWithLocalTZ
+      - [Internal Metabase Database, public, v_users, date_joined]
+      - {base-type: type/DateTimeWithLocalTZ}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - last_login
-      - base-type: type/DateTimeWithLocalTZ
+      - [Internal Metabase Database, public, v_users, last_login]
+      - {base-type: type/DateTimeWithLocalTZ}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - updated_at
-      - base-type: type/DateTime
+      - [Internal Metabase Database, public, v_users, updated_at]
+      - {base-type: type/DateTime}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - is_admin
-      - base-type: type/Boolean
+      - [Internal Metabase Database, public, v_users, is_admin]
+      - {base-type: type/Boolean}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - is_active
-      - base-type: type/Boolean
+      - [Internal Metabase Database, public, v_users, is_active]
+      - {base-type: type/Boolean}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - sso_source
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_users, sso_source]
+      - {base-type: type/Text}
     source-table: 0wVIfjBJWclD0lKeABYYl
   type: query
-result_metadata: null
-visualization_settings:
-  column_settings: null
+result_metadata:
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_users, user_id]
+  - null
+  id: [Internal Metabase Database, public, v_users, user_id]
+  name: user_id
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  table_id: [Internal Metabase Database, public, v_users]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 282
+  lib/deduplicated-name: user_id
+  lib/desired-column-alias: user_id
+  lib/model-display-name: User ID
+  lib/original-display-name: User ID
+  lib/original-name: user_id
+  lib/source: source/previous-stage
+  lib/source-column-alias: user_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: citext
+  display_name: Email
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_users, email]
+  - null
+  id: [Internal Metabase Database, public, v_users, email]
+  name: email
+  position: 3
+  semantic_type: type/Name
+  source: fields
+  table_id: [Internal Metabase Database, public, v_users]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 282
+  lib/deduplicated-name: email
+  lib/desired-column-alias: email
+  lib/model-display-name: Email
+  lib/original-display-name: Email
+  lib/original-name: email
+  lib/source: source/previous-stage
+  lib/source-column-alias: email
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Full Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_users, full_name]
+  - null
+  id: [Internal Metabase Database, public, v_users, full_name]
+  name: full_name
+  position: 6
+  semantic_type: type/Name
+  source: fields
+  table_id: [Internal Metabase Database, public, v_users]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 282
+  lib/deduplicated-name: full_name
+  lib/desired-column-alias: full_name
+  lib/model-display-name: Full Name
+  lib/original-display-name: Full Name
+  lib/original-name: full_name
+  lib/source: source/previous-stage
+  lib/source-column-alias: full_name
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Date Joined
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_users, date_joined]
+  - null
+  id: [Internal Metabase Database, public, v_users, date_joined]
+  name: date_joined
+  position: 7
+  semantic_type: type/JoinTimestamp
+  source: fields
+  table_id: [Internal Metabase Database, public, v_users]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 282
+  lib/deduplicated-name: date_joined
+  lib/desired-column-alias: date_joined
+  lib/model-display-name: Date Joined
+  lib/original-display-name: Date Joined
+  lib/original-name: date_joined
+  lib/source: source/previous-stage
+  lib/source-column-alias: date_joined
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Last Login
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_users, last_login]
+  - null
+  id: [Internal Metabase Database, public, v_users, last_login]
+  name: last_login
+  position: 8
+  source: fields
+  table_id: [Internal Metabase Database, public, v_users]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 282
+  lib/deduplicated-name: last_login
+  lib/desired-column-alias: last_login
+  lib/model-display-name: Last Login
+  lib/original-display-name: Last Login
+  lib/original-name: last_login
+  lib/source: source/previous-stage
+  lib/source-column-alias: last_login
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTime
+  database_type: timestamptz
+  display_name: Updated At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_users, updated_at]
+  - null
+  id: [Internal Metabase Database, public, v_users, updated_at]
+  name: updated_at
+  position: 9
+  semantic_type: type/UpdatedTimestamp
+  source: fields
+  table_id: [Internal Metabase Database, public, v_users]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 282
+  lib/deduplicated-name: updated_at
+  lib/desired-column-alias: updated_at
+  lib/model-display-name: Updated At
+  lib/original-display-name: Updated At
+  lib/original-name: updated_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: updated_at
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Boolean
+  database_type: bool
+  display_name: Is Admin
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_users, is_admin]
+  - null
+  id: [Internal Metabase Database, public, v_users, is_admin]
+  name: is_admin
+  position: 10
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_users]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 282
+  lib/deduplicated-name: is_admin
+  lib/desired-column-alias: is_admin
+  lib/model-display-name: Is Admin
+  lib/original-display-name: Is Admin
+  lib/original-name: is_admin
+  lib/source: source/previous-stage
+  lib/source-column-alias: is_admin
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Boolean
+  database_type: bool
+  display_name: Is Active
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_users, is_active]
+  - null
+  id: [Internal Metabase Database, public, v_users, is_active]
+  name: is_active
+  position: 11
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_users]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 282
+  lib/deduplicated-name: is_active
+  lib/desired-column-alias: is_active
+  lib/model-display-name: Is Active
+  lib/original-display-name: Is Active
+  lib/original-name: is_active
+  lib/source: source/previous-stage
+  lib/source-column-alias: is_active
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Sso Source
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_users, sso_source]
+  - null
+  id: [Internal Metabase Database, public, v_users, sso_source]
+  name: sso_source
+  position: 12
+  semantic_type: type/Source
+  source: fields
+  table_id: [Internal Metabase Database, public, v_users]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 282
+  lib/deduplicated-name: sso_source
+  lib/desired-column-alias: sso_source
+  lib/model-display-name: Sso Source
+  lib/original-display-name: Sso Source
+  lib/original-name: sso_source
+  lib/source: source/previous-stage
+  lib/source-column-alias: sso_source
+  qp/implicit-field?: true
+visualization_settings: {column_settings: null}
+card_schema: 23
 serdes/meta:
-- id: uEf4gbDzXkj9q1uvkaTny
-  label: person_detail
-  model: Card
+- {id: uEf4gbDzXkj9q1uvkaTny, label: person_detail, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
-metabase_version: vUNKNOWN (ad99d37)
+document_id: null
+embedding_type: null
 source_card_id: 0wVIfjBJWclD0lKeABYYl
 type: question

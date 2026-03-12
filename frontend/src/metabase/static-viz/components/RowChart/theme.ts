@@ -11,28 +11,28 @@ export const getStaticChartTheme = (
       ticks: {
         size: 12,
         weight: 700,
-        color: getColor("bg-dark"),
+        color: getColor("background-tertiary-inverse"),
         family: fontFamily,
       },
       label: {
         size: 14,
         weight: 700,
-        color: getColor("bg-dark"),
+        color: getColor("background-tertiary-inverse"),
         family: fontFamily,
       },
     },
     goal: {
-      lineStroke: getColor("text-medium"),
+      lineStroke: getColor("text-secondary"),
       label: {
         size: 14,
         weight: 700,
-        color: getColor("text-medium"),
+        color: getColor("text-secondary"),
         family: fontFamily,
       },
     },
     dataLabels: {
       weight: 700,
-      color: getColor("text-dark"),
+      color: getColor("text-primary"),
       size: 12,
       family: fontFamily,
     },

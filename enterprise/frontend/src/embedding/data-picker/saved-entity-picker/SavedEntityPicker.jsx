@@ -9,7 +9,8 @@ import {
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import CS from "metabase/css/core/index.css";
-import Collections, {
+import {
+  Collections,
   PERSONAL_COLLECTIONS,
   buildCollectionTree,
 } from "metabase/entities/collections";
@@ -111,7 +112,7 @@ function InnerSavedEntityPicker({
 
     return [
       ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
-      ...buildCollectionTree(preparedCollections, modelFilter),
+      ...buildCollectionTree(preparedCollections, { modelFilter }),
     ];
   }, [collections, rootCollection, currentUser, type]);
 
@@ -173,7 +174,11 @@ export const SavedEntityPicker = _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collections.loadList({
-    query: () => ({ tree: true, "exclude-archived": true }),
+    query: () => ({
+      tree: true,
+      "exclude-archived": true,
+      namespaces: ["", "shared-tenant-collection", "tenant-specific"],
+    }),
   }),
   connect(mapStateToProps),
 )(InnerSavedEntityPicker);

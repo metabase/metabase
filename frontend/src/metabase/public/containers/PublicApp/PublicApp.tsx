@@ -1,10 +1,12 @@
 import { useLayoutEffect } from "react";
 
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import { isWithinIframe } from "metabase/lib/dom";
-import { connect } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import { PublicError } from "metabase/public/components/PublicError";
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import { getErrorPage } from "metabase/selectors/app";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import { PublicStatusListing } from "metabase/status/components/PublicStatusListing";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
@@ -25,6 +27,10 @@ function mapStateToProps(state: State) {
 }
 
 function PublicApp({ errorPage, children }: Props) {
+  const applicationName = useSelector(getApplicationName);
+
+  usePageTitle(applicationName, { titleIndex: 0 });
+
   useLayoutEffect(() => {
     if (isWithinIframe()) {
       document.body.style.backgroundColor = "transparent";

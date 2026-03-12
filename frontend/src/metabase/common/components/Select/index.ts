@@ -1,5 +1,4 @@
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export { default, Option, OptionSection } from "./Select";
+export { Select, Option, OptionSection } from "./Select";
 export type {
   SelectProps,
   SelectOption,

@@ -1,6 +1,7 @@
+import Color from "color";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { color, staticVizOverrides } from "metabase/lib/colors";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DATA_SETTINGS,
@@ -16,6 +17,7 @@ import type {
   VisualizationProps,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 import { CartesianChart } from "../CartesianChart";
 import { getCartesianChartDefinition } from "../CartesianChart/chart-definition";
@@ -26,6 +28,18 @@ Object.assign(
     getUiName: () => t`Waterfall`,
     identifier: "waterfall",
     iconName: "waterfall",
+    isSensible: ({ cols, rows }) => {
+      const dimensionCount = cols.filter(
+        (col) => isDimension(col) && !isMetric(col),
+      ).length;
+      const metricCount = cols.filter(isMetric).length;
+      return (
+        rows.length > 1 &&
+        cols.length >= 2 &&
+        dimensionCount === 1 &&
+        metricCount > 0
+      );
+    },
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     noun: t`waterfall chart`,
     minSize: getMinSize("waterfall"),
@@ -66,7 +80,9 @@ Object.assign(
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         props: { title: t`Total color` },
         widget: "color",
-        getDefault: () => color("text-dark"),
+        // Unfortunately, to get static viz to look right, we need to avoid using alpha colors here
+        getDefault: () =>
+          Color(color("text-primary", staticVizOverrides)).hex(),
         getHidden: (_series: any, vizSettings: ComputedVisualizationSettings) =>
           vizSettings["waterfall.show_total"] !== true,
         readDependencies: ["waterfall.show_total"],

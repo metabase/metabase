@@ -1,6 +1,8 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-data-types-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]))
 
@@ -335,6 +337,73 @@
                     array_of_tuples_test
                     {})))))))))
 
+(deftest ^:parallel uuid-filtering-test
+  (mt/test-driver :clickhouse
+    (mt/dataset
+      (mt/dataset-definition
+       "nullable_uuids_dataset"
+       [["nullable_uuids"
+         [{:field-name "uuid1", :base-type {:native "Nullable(UUID)"}}]
+         [[#uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+          [#uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+          [nil]]]])
+      (let [mp (mt/metadata-provider)
+            uuid-field (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+            filter-rows (fn [filter]
+                          (-> (lib/query mp (lib.metadata/table mp (mt/id :nullable_uuids)))
+                              (lib/filter filter)
+                              mt/process-query
+                              mt/rows))]
+        (testing "can filter nullable uuids with equals and not equals"
+          (are [filter-fn exp-rows]
+               (= exp-rows (filter-rows (filter-fn uuid-field "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")))
+            lib/=  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            lib/!= [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                    [3 nil]]))
+        (testing "can filter nullable uuids with empty and not empty"
+          (are [filter-fn exp-rows]
+               (= exp-rows (filter-rows (filter-fn uuid-field)))
+            lib/is-empty  [[3 nil]]
+            lib/not-empty [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                           [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]]))
+        (testing "can filter nullable uuids with contains"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (cond-> (lib/contains uuid-field filter-str)
+                                          (not case-sensitive) lib/ignore-case)))
+            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "AAA" true  []
+            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
+        (testing "can filter nullable uuids with does not contain"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (cond-> (lib/does-not-contain uuid-field filter-str)
+                                          (not case-sensitive) lib/ignore-case)))
+            "aaa" true  [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]
+            "aaa" false [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]
+            "AAA" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                         [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]
+            "AAA" false [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]))
+        (testing "can filter nullable uuids with starts with"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (cond-> (lib/starts-with uuid-field filter-str)
+                                          (not case-sensitive) lib/ignore-case)))
+            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "AAA" true  []
+            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
+        (testing "can filter nullable uuids with ends with"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (cond-> (lib/ends-with uuid-field filter-str)
+                                          (not case-sensitive) lib/ignore-case)))
+            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "AAA" true  []
+            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))))))
+
 #_(deftest ^:parallel clickhouse-array-of-uuids
     (mt/test-driver :clickhouse
       (let [row1 (into-array (list "2eac427e-7596-11ed-a1eb-0242ac120002"
@@ -371,19 +440,19 @@
          [{:field-name "mystring" :base-type :type/Text}]
          [["foo"] ["bar"] ["   "] [""] [nil]]]])
       (testing "null strings count"
-        (is (= 2M
+        (is (= 2
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:is-null $mystring]
                       :aggregation [:count]})
                    mt/first-row last))))
       (testing "nullable strings not null filter"
-        (is (= 3M
+        (is (= 3
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:not-null $mystring]
                       :aggregation [:count]})
                    mt/first-row last))))
       (testing "filter nullable string by value"
-        (is (= 1M
+        (is (= 1
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:= $mystring "foo"]
                       :aggregation [:count]})
@@ -591,17 +660,8 @@
                   unsigned_int_types
                   {}))))))))
 
-;; FIXME: blocked by https://github.com/ClickHouse/clickhouse-java/issues/2218
-#_(deftest ^:parallel clickhouse-fixed-strings
-    (mt/test-driver
-      :clickhouse
-      (is (= [["val1" "val2" "val3" "val4"]]
-             (qp.test/formatted-rows
-              [str str str str]
-              :format-nil-values
-              (ctd/do-with-test-db
-               (fn [db]
-                 (data/with-db db
-                   (data/run-mbql-query
-                    fixed_strings
-                    {})))))))))
+(deftest ^:parallel clickhouse-fixed-strings
+  (mt/test-driver :clickhouse
+    (mt/dataset metabase_test
+      (is (= [[1 "val1" "val2" "val3" "val4"]]
+             (mt/rows (mt/run-mbql-query fixed_strings)))))))

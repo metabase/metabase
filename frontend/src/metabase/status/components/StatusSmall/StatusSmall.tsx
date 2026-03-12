@@ -1,14 +1,8 @@
 import type { IconName } from "metabase/ui";
-import { Tooltip } from "metabase/ui";
+import { Flex, Icon, Loader, Tooltip, UnstyledButton } from "metabase/ui";
 import type { InitialSyncStatus } from "metabase-types/api";
 
-import {
-  StatusContainer,
-  StatusIcon,
-  StatusIconContainer,
-  StatusRoot,
-  StatusSpinner,
-} from "./StatusSmall.styled";
+import Styles from "./StatusSmall.module.css";
 
 export interface StatusSmallProps {
   status: InitialSyncStatus;
@@ -27,14 +21,28 @@ const StatusSmall = ({
 }: StatusSmallProps): JSX.Element => {
   return (
     <Tooltip label={statusLabel}>
-      <StatusRoot role="status" aria-label={statusLabel} onClick={onExpand}>
-        <StatusContainer status={status}>
-          <StatusIconContainer status={status}>
-            <StatusIcon status={status} name={icon} />
-          </StatusIconContainer>
-        </StatusContainer>
-        {hasSpinner && <StatusSpinner size={48} />}
-      </StatusRoot>
+      <UnstyledButton
+        className={Styles.Root}
+        role="status"
+        aria-label={statusLabel}
+        data-status={status}
+        onClick={onExpand}
+      >
+        <Flex
+          align="center"
+          justify="center"
+          className={Styles.StatusContainer}
+        >
+          <Flex
+            align="center"
+            justify="center"
+            className={Styles.StatusIconContainer}
+          >
+            <Icon width={"sm"} name={icon} />
+          </Flex>
+        </Flex>
+        {hasSpinner && <Loader pos="absolute" inset={0} size={48} />}
+      </UnstyledButton>
     </Tooltip>
   );
 };

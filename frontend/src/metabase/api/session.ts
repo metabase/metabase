@@ -1,3 +1,7 @@
+import {
+  isValidColorScheme,
+  setUserColorSchemeAfterUpdate,
+} from "metabase/lib/color-scheme";
 import MetabaseSettings from "metabase/lib/settings";
 import { loadSettings } from "metabase/redux/settings";
 import type {
@@ -6,6 +10,9 @@ import type {
 } from "metabase-types/api";
 
 import { Api } from "./api";
+import { handleQueryFulfilled } from "./utils/lifecycle";
+
+export const sessionPropertiesPath = "/api/session/properties";
 
 export const sessionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -29,17 +36,23 @@ export const sessionApi = Api.injectEndpoints({
     getSessionProperties: builder.query<EnterpriseSettings, void>({
       query: () => ({
         method: "GET",
-        url: "/api/session/properties",
+        url: sessionPropertiesPath,
       }),
       providesTags: ["session-properties"],
-      onQueryStarted: async (_, { queryFulfilled, dispatch }) => {
-        const response = await queryFulfilled;
-        if (response.data) {
-          dispatch(loadSettings(response.data));
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) => {
+          dispatch(loadSettings(data));
           // compatibility layer for legacy settings on the window object
-          MetabaseSettings.setAll(response.data);
-        }
-      },
+          MetabaseSettings.setAll(data);
+
+          // Sync color-scheme setting to window.MetabaseUserColorScheme
+          if (
+            data["color-scheme"] &&
+            isValidColorScheme(data["color-scheme"])
+          ) {
+            setUserColorSchemeAfterUpdate(data["color-scheme"]);
+          }
+        }),
     }),
   }),
 });

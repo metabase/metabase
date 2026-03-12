@@ -1,7 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
 export const AppContainer = styled.div`
@@ -18,7 +17,9 @@ export const AppContentContainer = styled.div<{
   position: relative;
   overflow: hidden;
   background-color: ${(props) =>
-    props.isAdminApp ? "var(--mb-color-bg-white)" : color("content")};
+    props.isAdminApp
+      ? "var(--mb-color-background-primary)"
+      : "var(--mb-color-background-primary)"};
 
   @media print {
     height: 100%;

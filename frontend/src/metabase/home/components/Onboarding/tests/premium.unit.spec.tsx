@@ -4,8 +4,8 @@ import { type SetupProps, setup as baseSetup } from "./setup";
 
 function setup(opts?: SetupProps) {
   baseSetup({
-    hasEnterprisePlugins: true,
     tokenFeatures: { whitelabel: true },
+    enterprisePlugins: ["whitelabel"],
     ...opts,
   });
 }
@@ -87,7 +87,7 @@ describe("Onboarding (EE with token)", () => {
       expect(helpSection).toBeInTheDocument();
       expect(within(helpSection).getByRole("link")).toHaveAttribute(
         "href",
-        "https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=v1&diag=null",
+        "https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=menu&utm_campaign=help&instance_version=v1",
       );
       expect(
         within(helpSection).getByRole("button", { name: "Get Help" }),

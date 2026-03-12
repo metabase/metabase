@@ -2,6 +2,9 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { useLocale } from "metabase/common/hooks";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -71,19 +74,22 @@ export function SortStep({
         <SortDisplayName
           displayInfo={Lib.displayInfo(query, stageIndex, clause)}
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
+          disabled={readOnly}
         />
       )}
-      renderPopover={({ item: orderBy, index, onClose }) => (
-        <SortPopover
-          query={query}
-          stageIndex={stageIndex}
-          orderBy={orderBy}
-          orderByIndex={index}
-          onAddOrderBy={handleAddOrderBy}
-          onUpdateOrderByColumn={handleUpdateOrderByColumn}
-          onClose={onClose}
-        />
-      )}
+      renderPopover={({ item: orderBy, index, onClose }) =>
+        readOnly ? null : (
+          <SortPopover
+            query={query}
+            stageIndex={stageIndex}
+            orderBy={orderBy}
+            orderByIndex={index}
+            onAddOrderBy={handleAddOrderBy}
+            onUpdateOrderByColumn={handleUpdateOrderByColumn}
+            onClose={onClose}
+          />
+        )
+      }
       onReorder={handleReorderOrderBy}
       onRemove={handleRemoveOrderBy}
     />
@@ -130,10 +136,11 @@ const SortPopover = ({
       query={query}
       stageIndex={stageIndex}
       columnGroups={columnGroups}
-      color="text-dark"
+      color="text-primary"
       checkIsColumnSelected={(item) => checkColumnSelected(item, orderByIndex)}
       onSelect={(column: Lib.ColumnMetadata) => {
         const isUpdate = orderBy != null;
+
         if (isUpdate) {
           onUpdateOrderByColumn(orderBy, column);
         } else {
@@ -158,12 +165,16 @@ const checkColumnSelected = (
 interface SortDisplayNameProps {
   displayInfo: Lib.OrderByClauseDisplayInfo;
   onToggleSortDirection: () => void;
+  disabled?: boolean;
 }
 
 function SortDisplayName({
   displayInfo,
   onToggleSortDirection,
+  disabled,
 }: SortDisplayNameProps) {
+  const tc = useTranslateContent();
+  const { locale } = useLocale();
   const icon = displayInfo.direction === "asc" ? "arrow_up" : "arrow_down";
   return (
     <button
@@ -173,9 +184,16 @@ function SortDisplayName({
         event.stopPropagation();
         onToggleSortDirection();
       }}
+      disabled={disabled}
     >
       <Icon name={icon} />
-      <span>{displayInfo.longDisplayName}</span>
+      <span>
+        {PLUGIN_CONTENT_TRANSLATION.translateColumnDisplayName({
+          displayName: displayInfo.longDisplayName,
+          tc,
+          locale,
+        })}
+      </span>
     </button>
   );
 }

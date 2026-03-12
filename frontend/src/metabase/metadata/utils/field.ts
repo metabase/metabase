@@ -41,15 +41,16 @@ export function getRawTableFieldId(field: Field): FieldId {
   return field.id;
 }
 
-export function getFieldCurrency(field: Field): string {
-  if (field.settings?.currency) {
-    return field.settings.currency;
+export function getFieldCurrency(
+  fieldSettings?: FieldFormattingSettings,
+): string {
+  if (fieldSettings?.currency) {
+    return fieldSettings.currency;
   }
 
-  const settings: FieldFormattingSettings = getGlobalSettingsForColumn();
-
-  if (settings.currency) {
-    return settings.currency;
+  const globalSettings: FieldFormattingSettings = getGlobalSettingsForColumn();
+  if (globalSettings.currency) {
+    return globalSettings.currency;
   }
 
   return "USD";

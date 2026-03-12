@@ -2,7 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr])
@@ -24,19 +26,26 @@
 (deftest connection-reuse-test
   (testing "resilient context reuses reconnected connections"
     (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
-      (let [connection-count (volatile! 0)
+      (let [test-db-id (mt/id)  ;; Get the test database ID
+            connection-count (volatile! 0)
             orig-do-with-resolved-connection-data-source @#'sql-jdbc.execute/do-with-resolved-connection-data-source]
         (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                       (fn [driver db opts]
-                        (reify javax.sql.DataSource
-                          (getConnection [_]
-                            (vswap! connection-count inc)
-                            (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts)))))]
+                        ;; Only count connections for our test database because on startup the audit-db will be
+                        ;; synced, which causes this to fail intermittently because it creates connections (to db
+                        ;; 13371337)
+                        (if (= db test-db-id)
+                          (reify javax.sql.DataSource
+                            (getConnection [_]
+                              (vswap! connection-count inc)
+                              (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts))))
+                          ;; For other databases (like audit DB), just pass through
+                          (orig-do-with-resolved-connection-data-source driver db opts)))]
           (let [closed-conn (doto (.getConnection ^DataSource
-                                   (orig-do-with-resolved-connection-data-source driver/*driver* (mt/id) {}))
+                                   (orig-do-with-resolved-connection-data-source driver/*driver* test-db-id {}))
                               (.close))]
             (driver/do-with-resilient-connection
-             driver/*driver* (mt/id)
+             driver/*driver* test-db-id
              (fn [driver _]
                ;; reinit, as we it has been used for setup
                (vreset! connection-count 0)
@@ -47,6 +56,29 @@
                (.close (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn))
                (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)
                (is (= 2 @connection-count))))))))))
+
+(deftest resilient-reconnect-preserves-connection-type-test
+  (testing "resilient reconnection preserves *connection-type* binding"
+    (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+      (let [test-db-id               (mt/id)
+            captured-connection-type (volatile! nil)
+            orig-fn                  @#'sql-jdbc.execute/do-with-resolved-connection-data-source]
+        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                      (fn [driver db opts]
+                        (when (and (= db test-db-id) (:keep-open? opts))
+                          (vreset! captured-connection-type driver.conn/*connection-type*))
+                        (orig-fn driver db opts))]
+          (let [closed-conn (doto (.getConnection ^DataSource
+                                   (orig-fn driver/*driver* test-db-id {}))
+                              (.close))]
+            (driver.conn/with-write-connection
+              (driver/do-with-resilient-connection
+               driver/*driver*
+               test-db-id
+               (fn [driver _]
+                 (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)
+                 (is (= :write-data @captured-connection-type)
+                     "Reconnection should preserve write-data connection type"))))))))))
 
 (deftest try-ensure-open-conn-sets-non-recursive-options-test
   (testing "try-ensure-open-conn! sets connection options as non-recursive"
@@ -82,7 +114,9 @@
                        (setTransactionIsolation [level]
                          (vswap! connection-option-calls conj [:setTransactionIsolation level]))
                        (setHoldability [holdability]
-                         (vswap! connection-option-calls conj [:setHoldability holdability])))]
+                         (vswap! connection-option-calls conj [:setHoldability holdability]))
+                       (setNetworkTimeout [executor timeout-ms]
+                         (vswap! connection-option-calls conj [:setNetworkTimeout timeout-ms])))]
         (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                       (fn [driver db options]
                         (if (:keep-open? options)
@@ -111,7 +145,8 @@
                  (let [calls @connection-option-calls]
                    (is (some #(= [:setReadOnly true] %) calls))
                    (is (some #(= [:setAutoCommit true] %) calls))
-                   (is (some #(= (first %) :setHoldability) calls))))))))))))
+                   (is (some #(= (first %) :setHoldability) calls))
+                   (is (some #(= (first %) :setNetworkTimeout) calls))))))))))))
 
 (deftest is-conn-open-test
   (testing "is-conn-open with valid check"
@@ -136,3 +171,46 @@
         (is (false? (sql-jdbc.execute/is-conn-open? conn :check-valid? true)))
         (is (true? @close-called?) "Connection should be closed when invalid")
         (is (true? (.isClosed conn)))))))
+
+(deftest statement-is-closed-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    (testing "can check isClosed on statement"
+      (when (driver/database-supports? driver/*driver* :jdbc/statements nil)
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver/*driver* (mt/id) nil
+         (fn [^Connection conn]
+           (let [stmt (sql-jdbc.execute/statement driver/*driver* conn)]
+             (is (false? (.isClosed stmt)))
+             (.close stmt)
+             (is (true? (.isClosed stmt))))))))
+    (testing "can check isClosed on prepared statement"
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver* (mt/id) nil
+       (fn [^Connection conn]
+         (let [prepared-stmt (sql-jdbc.execute/prepared-statement driver/*driver* conn "select 1" [])]
+           (is (false? (.isClosed prepared-stmt)))
+           (.close prepared-stmt)
+           (is (true? (.isClosed prepared-stmt)))))))))
+
+(deftest write-op-metric-test
+  (testing "write-op counter tracks default connection acquisitions"
+    (mt/with-prometheus-system! [_ system]
+      (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver/*driver* (mt/id) nil
+         (fn [_conn] nil))
+        (is (pos? (mt/metric-value system :metabase-db-connection/write-op
+                                   {:connection-type "default"}))))))
+  (when config/ee-available?
+    (testing "write-op counter tracks write-data connection acquisitions"
+      (mt/with-premium-features #{:writable-connection}
+        (mt/with-prometheus-system! [_ system]
+          (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
+            (let [db (mt/db)]
+              (mt/with-temp-vals-in-db :model/Database (:id db) {:write_data_details (:details db)}
+                (driver.conn/with-write-connection
+                  (sql-jdbc.execute/do-with-connection-with-options
+                   driver/*driver* (mt/id) nil
+                   (fn [_conn] nil)))
+                (is (pos? (mt/metric-value system :metabase-db-connection/write-op
+                                           {:connection-type "write-data"})))))))))))

@@ -108,6 +108,9 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
       enableGoogleSheets: true,
       status: "error",
     });
+    expect(
+      await screen.findByRole("tab", { name: /CSV$/ }),
+    ).toBeInTheDocument();
     await assertSheetsOpened();
 
     const connectButton = await screen.findByRole("button", {
@@ -193,9 +196,11 @@ async function assertSheetsOpened({
 } = {}) {
   await userEvent.click(screen.getByRole("tab", { name: /Google Sheets$/ }));
 
-  isAdmin
-    ? expect(await screen.findByText("Manage imports")).toBeInTheDocument()
-    : expect(screen.queryByText("Manage imports")).not.toBeInTheDocument();
+  if (isAdmin) {
+    expect(await screen.findByText("Manage imports")).toBeInTheDocument();
+  } else {
+    expect(screen.queryByText("Manage imports")).not.toBeInTheDocument();
+  }
 
   expect(
     await screen.findByRole("heading", { name: title }),

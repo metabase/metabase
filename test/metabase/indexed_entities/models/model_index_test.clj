@@ -17,7 +17,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(defmacro ^:private with-scheduler-setup! [& body]
+(defmacro with-scheduler-setup! [& body]
   `(let [scheduler# (#'tu/in-memory-scheduler)]
      ;; need cross thread rebinding from with-redefs not a binding
      (with-redefs [task/scheduler (constantly scheduler#)]
@@ -187,8 +187,8 @@
                                                 [:concat $title "custom"]}})
                         [[[:expression "inc-id"] [:expression "full-name"]]]]
                        [:native (mt/native-query
-                                  (qp.compile/compile
-                                   (mt/mbql-query products {:fields [$id $title]})))]
+                                 (qp.compile/compile
+                                  (mt/mbql-query products {:fields [$id $title]})))]
                        (when (driver.u/supports? (:engine (mt/db)) :left-join (mt/db))
                          [:join (mt/mbql-query people
                                   {:joins [{:fields       :all,

@@ -289,3 +289,23 @@ export async function hasCommitBeenReleased({
 
   return lastTagSha === ref;
 }
+
+export async function getOpenBackportPrs({
+  github,
+  owner,
+  repo,
+  majorVersion,
+}: GithubProps & { majorVersion: number }) {
+  const backportBranch = `release-x.${majorVersion}.x`;
+  // query PR's targeting backport branch
+  const prs = await github.paginate(github.rest.pulls.list, {
+    owner,
+    repo,
+    state: "open",
+    base: backportBranch,
+    per_page: 100,
+  });
+
+  return prs;
+}
+

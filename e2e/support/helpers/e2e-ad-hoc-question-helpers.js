@@ -135,6 +135,8 @@ export function visitQuestionAdhoc(
 ) {
   const questionMode = mode === "notebook" ? "/notebook" : "";
 
+  cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
+
   const [url, alias] = getInterceptDetails(question, mode, autorun);
 
   cy.intercept(url).as(alias);
@@ -144,6 +146,7 @@ export function visitQuestionAdhoc(
   runQueryIfNeeded(question, autorun);
 
   if (mode !== "notebook" && !skipWaiting) {
+    cy.wait("@queryMetadata");
     return cy.wait("@" + alias).then((xhr) => callback && callback(xhr));
   }
 

@@ -1,4 +1,5 @@
 (ns metabase.query-processor.streaming.csv
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.data.csv]
    [medley.core :as m]
@@ -8,7 +9,7 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.performance :as perf])
+   [metabase.util.performance :as perf :refer [mapv]])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
@@ -27,17 +28,18 @@
     :write-keepalive-newlines? false}))
 
 (defn- write-csv
-  "Custom implementation of `clojure.data.csv/write-csv` with a more efficient quote? predicate and no support for
-  options (we don't use them)."
+  "Custom implementation of `clojure.data.csv/write-csv` with a more efficient quote? predicate and configurable
+  separator."
   [writer data]
-  (let [separator \,
+  (let [separator-str (qp.settings/csv-field-separator)
+        ^char separator (if (= separator-str "\\t") \tab (first separator-str))  ; Handle tab specially
         quote \"
         quote? (fn [^String s]
                  (let [n (.length s)]
                    (loop [i 0]
                      (if (>= i n) false
                          (let [ch (.charAt s (unchecked-int i))]
-                           (if (or (= ch \,) ;; separator
+                           (if (or (= ch separator)
                                    (= ch \") ;; quote
                                    (= ch \return)
                                    (= ch \newline))
@@ -128,7 +130,7 @@
             (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
             (if pivot-group
               ;; Non-pivoted pivot table: we have to remove the pivot-grouping column
-              (when (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int pivot-group))
+              (when (= qp.pivot.postprocess/non-pivot-row-group (int pivot-group))
                 (let [formatted-row (->> (perf/mapv (fn [formatter r]
                                                       (formatter (streaming.common/format-value r)))
                                                     @ordered-formatters ordered-row)

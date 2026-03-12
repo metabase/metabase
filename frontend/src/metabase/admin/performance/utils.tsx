@@ -300,11 +300,11 @@ export const getFieldsForStrategyType = (strategyType: CacheStrategyType) => {
   return fields;
 };
 
-export const translateConfig = (
-  config: CacheConfig,
+export const translateConfig = <T extends CacheConfig>(
+  config: T,
   direction: "fromAPI" | "toAPI",
-): CacheConfig => {
-  const translated: CacheConfig = { ...config };
+): T => {
+  const translated = { ...config, strategy: { ...config.strategy } } as T;
 
   // If strategy type is unsupported, use a fallback
   if (!isValidStrategyName(translated.strategy.type)) {
@@ -332,11 +332,11 @@ export const populateMinDurationSeconds = (strategy: AdaptiveStrategy) => ({
 });
 
 /** Translate a config from the API into a format the frontend can use */
-export const translateConfigFromAPI = (config: CacheConfig): CacheConfig =>
+export const translateConfigFromAPI = <T extends CacheConfig>(config: T): T =>
   translateConfig(config, "fromAPI");
 
 /** Translate a config from the frontend's format into the API's preferred format */
-export const translateConfigToAPI = (config: CacheConfig): CacheConfig =>
+export const translateConfigToAPI = <T extends CacheConfig>(config: T): T =>
   translateConfig(config, "toAPI");
 
 export const getPerformanceTabName = (tabId: PerformanceTabId) =>

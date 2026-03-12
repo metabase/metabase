@@ -1,14 +1,14 @@
 .Divider {
   height: 1px;
   width: 100%;
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
 }
 
 .MainFormContainer {
   padding: 1.5rem 1.5rem 0;
 
   .SelectButton {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
     transition: border 0.3s;
     outline: none;
 

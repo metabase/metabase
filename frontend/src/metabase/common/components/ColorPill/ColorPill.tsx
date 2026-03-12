@@ -3,6 +3,7 @@ import type { HTMLAttributes, MouseEvent } from "react";
 import { useCallback } from "react";
 
 import CS from "metabase/css/core/index.css";
+import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Center } from "metabase/ui";
 
 import ColorPillS from "./ColorPill.module.css";
@@ -14,12 +15,13 @@ export type ColorPillAttributes = Omit<
 >;
 
 export interface ColorPillProps extends ColorPillAttributes {
-  color: string;
+  color: ColorName | string;
   isAuto?: boolean;
   isSelected?: boolean;
   onSelect?: (newColor: string) => void;
   pillSize?: PillSize;
   "data-testid"?: string;
+  className?: string;
 }
 
 export const ColorPill = ({
@@ -31,6 +33,7 @@ export const ColorPill = ({
   onClick,
   onSelect,
   "data-testid": dataTestId,
+  className,
 }: ColorPillProps) => {
   const handleClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
@@ -46,13 +49,21 @@ export const ColorPill = ({
       aria-label={ariaLabel}
       role="button"
       onClick={handleClick}
-      className={cx(ColorPillS.ColorPill, CS.flexNoShrink, {
-        [ColorPillS.Small]: pillSize === "small",
-        [ColorPillS.Medium]: pillSize === "medium",
-        [ColorPillS.Selected]: isSelected,
-        [ColorPillS.Auto]: isAuto,
-      })}
+      className={cx(
+        ColorPillS.ColorPill,
+        CS.flexNoShrink,
+        {
+          [ColorPillS.XSmall]: pillSize === "xsmall",
+          [ColorPillS.Small]: pillSize === "small",
+          [ColorPillS.Medium]: pillSize === "medium",
+          [ColorPillS.Large]: pillSize === "large",
+          [ColorPillS.Selected]: isSelected,
+          [ColorPillS.Auto]: isAuto,
+        },
+        className,
+      )}
     >
+      {/* @ts-expect-error color pill needs access to arbitrary color values */}
       <Box bg={color} w="100%" h="100%" style={{ borderRadius: "50%" }}></Box>
     </Center>
   );

@@ -1,0 +1,42 @@
+.value {
+  overflow-wrap: break-word;
+  word-break: break-word;
+
+  a {
+    color: var(--mb-color-text-primary);
+    text-decoration: underline solid var(--mb-color-border) 1px;
+
+    &:hover {
+      color: var(--mb-color-brand);
+    }
+  }
+}
+
+.fk {
+  border-radius: 12px;
+  border: 1px solid var(--mb-color-border);
+
+  &:hover {
+    color: var(--mb-color-brand) !important;
+  }
+}
+
+.imageFrame {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px 0 hsla(220, 43%, 11%, 0.1);
+}
+
+.maxHeight {
+  max-height: 560px;
+  overflow: auto;
+}
+
+.json {
+  max-height: 200px;
+  width: 100%;
+  background-color: var(--mb-color-background-secondary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 4px;
+}

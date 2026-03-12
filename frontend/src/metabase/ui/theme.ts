@@ -2,6 +2,7 @@ import type { MantineThemeOverride } from "@mantine/core";
 import { rem } from "@mantine/core";
 
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
+import type { ColorSettings } from "metabase-types/api";
 
 import Styles from "./Theme.module.css";
 import {
@@ -10,7 +11,9 @@ import {
   alertOverrides,
   anchorOverrides,
   autocompleteOverrides,
+  avatarOverrides,
   badgeOverrides,
+  breadcrumbsOverrides,
   buttonOverrides,
   calendarOverrides,
   cardOverrides,
@@ -20,6 +23,7 @@ import {
   comboboxOverrides,
   dateInputOverrides,
   datePickerOverrides,
+  dateTimePickerOverrides,
   dividerOverrides,
   fileInputOverrides,
   hoverCardOverrides,
@@ -31,8 +35,10 @@ import {
   monthPickerOverrides,
   multiSelectOverrides,
   navLinkOverrides,
+  numberInputOverrides,
   overlayOverrides,
   paperOverrides,
+  passwordInputOverrides,
   pillOverrides,
   pillsInputOverrides,
   popoverOverrides,
@@ -43,16 +49,18 @@ import {
   segmentedControlOverrides,
   selectOverrides,
   skeletonOverrides,
+  sliderOverrides,
   switchOverrides,
   tabsOverrides,
   textInputOverrides,
   textOverrides,
   textareaOverrides,
   timeInputOverrides,
+  timelineOverrides,
   titleOverrides,
   tooltipOverrides,
 } from "./components";
-import { getThemeColors } from "./utils/colors";
+import { getMantineThemeColors } from "./utils/colors";
 
 export const breakpoints = {
   xs: "23em",
@@ -63,16 +71,25 @@ export const breakpoints = {
 };
 export type BreakpointName = keyof typeof breakpoints;
 
-export const getThemeOverrides = (): MantineThemeOverride => ({
+export const getThemeOverrides = (
+  colorScheme: "light" | "dark" = "light",
+  whitelabelColors?: ColorSettings | null,
+): MantineThemeOverride => ({
   focusClassName: Styles.focus,
   breakpoints,
-  colors: getThemeColors(),
+  colors: getMantineThemeColors(colorScheme, whitelabelColors),
   primaryColor: "brand",
   primaryShade: 0,
+  // Store colorScheme in other property for access later
+  other: {
+    ...DEFAULT_METABASE_COMPONENT_THEME,
+    colorScheme,
+  },
   shadows: {
-    // eslint-disable-next-line no-color-literals
+    xs: "0 0 0 0.5px var(--mb-color-border), 0 1px 2px 0 var(--mb-color-shadow)",
+    // eslint-disable-next-line metabase/no-color-literals
     sm: "0px 1px 4px 2px rgba(0, 0, 0, 0.08)",
-    // eslint-disable-next-line no-color-literals
+    // eslint-disable-next-line metabase/no-color-literals
     md: "0px 4px 20px 0px rgba(0, 0, 0, 0.05)",
   },
   spacing: {
@@ -138,7 +155,9 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...alertOverrides,
     ...anchorOverrides,
     ...autocompleteOverrides,
+    ...avatarOverrides,
     ...badgeOverrides,
+    ...breadcrumbsOverrides,
     ...buttonOverrides,
     ...calendarOverrides,
     ...cardOverrides,
@@ -148,6 +167,7 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...codeOverrides,
     ...dateInputOverrides,
     ...datePickerOverrides,
+    ...dateTimePickerOverrides,
     ...dividerOverrides,
     ...fileInputOverrides,
     ...inputOverrides,
@@ -157,9 +177,11 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...monthPickerOverrides,
     ...multiSelectOverrides,
     ...navLinkOverrides,
+    ...numberInputOverrides,
     ...radioOverrides,
     ...overlayOverrides,
     ...paperOverrides,
+    ...passwordInputOverrides,
     ...pillOverrides,
     ...pillsInputOverrides,
     ...popoverOverrides,
@@ -169,16 +191,17 @@ export const getThemeOverrides = (): MantineThemeOverride => ({
     ...segmentedControlOverrides,
     ...skeletonOverrides,
     ...selectOverrides,
+    ...sliderOverrides,
     ...switchOverrides,
     ...tabsOverrides,
     ...textareaOverrides,
     ...textInputOverrides,
     ...textOverrides,
     ...timeInputOverrides,
+    ...timelineOverrides,
     ...titleOverrides,
     ...tooltipOverrides,
     ...hoverCardOverrides,
     ...listOverrides,
   },
-  other: DEFAULT_METABASE_COMPONENT_THEME,
 });

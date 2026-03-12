@@ -5,16 +5,19 @@
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.view-log.events.view-log]]."
+  (:refer-clojure :exclude [every? empty? get-in])
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.events.core :as events]
+   [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? empty? get-in]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -86,7 +89,7 @@
   (merge
    (-> query-execution
        add-running-time
-       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native
+       (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :transform_id :lens_id :lens_params :pulse_id :result_rows :native
                :parameterized))
    (dissoc result :cache/details)
    {:cached                 (when (:cached cache) (:updated_at cache))
@@ -117,16 +120,16 @@
        (vswap! row-count inc)
        (rf result row)))))
 
-(defn- query-execution-info
+(mu/defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
-  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id]
+  [{{:keys       [executed-by query-hash context action-id card-id dashboard-id transform-id lens-id lens-params pulse-id]
      :pivot/keys [original-query]} :info
     database-id                    :database
     query-type                     :type
     parameters                     :parameters
     destination-database-id        :destination-database/id
-    :as                            query}]
+    :as                            query} :- ::qp.schema/any-query]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
                      (-> original-query
@@ -139,6 +142,9 @@
      :action_id         action-id
      :card_id           card-id
      :dashboard_id      dashboard-id
+     :transform_id      transform-id
+     :lens_id           lens-id
+     :lens_params       lens-params
      :pulse_id          pulse-id
      :context           context
      :hash              query-hash
@@ -164,8 +170,11 @@
 
   4. Submit a background job to analyze field usages"
   [qp :- ::qp.schema/qp]
-  (mu/fn [query :- ::qp.schema/query
+  (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
+    ;; Update a gauge metric with the present number of queries in the WeakHashMap it maintains.
+    ;; This has to live somewhere and while processing each query seems like a natural place.
+    (analytics/set! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
     (if-not (qp.util/userland-query? query)
       (qp query rff)
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))

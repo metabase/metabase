@@ -5,7 +5,6 @@ import _ from "underscore";
 import { Select, type SelectProps } from "metabase/ui";
 import type { Field } from "metabase-types/api";
 
-import S from "./SemanticTypePicker.module.css";
 import { getCompatibleSemanticTypes } from "./utils";
 
 const NO_SEMANTIC_TYPE = null;
@@ -39,7 +38,6 @@ export const SemanticTypePicker = ({
 
   return (
     <Select
-      className={S.semanticTypePicker}
       comboboxProps={{
         middlewares: {
           flip: true,

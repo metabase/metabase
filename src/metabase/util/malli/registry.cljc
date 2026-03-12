@@ -1,11 +1,14 @@
 (ns metabase.util.malli.registry
   (:refer-clojure :exclude [declare def])
   (:require
+   #?(:clj [metabase.config.core :as config])
    #?@(:clj ([malli.experimental.time :as malli.time]
+             [metabase.util.malli.registry.validator-cache :as mr.validator-cache]
              [net.cgrand.macrovich :as macros]))
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut])
+   [malli.util :as mut]
+   [metabase.util.performance :refer [postwalk]])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
@@ -14,17 +17,38 @@
   "Make schemas that aren't `=` to identical ones e.g.
 
     [:re #\"\\d{4}\"]
+    [:or :int [:re #\"\\d{4}\"]]
 
   work correctly as cache keys instead of creating new entries every time the code is evaluated."
   [x]
-  (if (and (vector? x)
-           (= (first x) :re))
-    (into (empty x)
-          (map (fn [child]
-                 (cond-> child
-                   (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) child) str)))
-          x)
-    x))
+  (postwalk
+   (fn [form]
+     (cond-> form
+       (instance? #?(:clj java.util.regex.Pattern :cljs js/RegExp) form)
+       str))
+   x))
+
+(def ^:dynamic *cache-miss-hook*
+  "A hook that is called whenever there is a cache miss, for side effects.
+  This is used in tests or to monitor cache misses."
+  ;; (fn [_k _schema _value] nil)
+  nil)
+
+(defn- deref-entry [ref-box value-thunk]
+  #?(:clj  (or (.get ^java.lang.ref.SoftReference @ref-box)
+               (let [v        (value-thunk)
+                     soft-ref (java.lang.ref.SoftReference. v)]
+                 (vreset! ref-box soft-ref)
+                 v))
+     :cljs (or (.deref @ref-box)
+               (let [v        (value-thunk)
+                     weak-ref (js/WeakRef. v)]
+                 (vreset! ref-box weak-ref)
+                 v))))
+
+(defn- cache-entry [value]
+  #?(:clj  (volatile! (java.lang.ref.SoftReference. value))
+     :cljs (volatile! (js/WeakRef. value))))
 
 (defn cached
   "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
@@ -35,23 +59,39 @@
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
   (let [schema-key (schema-cache-key schema)]
-    (or (get (get @cache k) schema-key)     ; get-in is terribly inefficient
+    (or (some-> (get (get @cache k) schema-key) (deref-entry value-thunk)) ; get-in is terribly inefficient
         (let [v (value-thunk)]
-          (swap! cache assoc-in [k schema-key] v)
+          (when *cache-miss-hook*
+            (*cache-miss-hook* k schema v))
+          (swap! cache assoc-in [k schema-key] (cache-entry v))
           v))))
+
+(defn- cached-schema [schema]
+  (if (mc/-reference? schema)
+    (cached :ref schema #(mc/-into-schema (mc/-ref-schema) {} [schema] {}))
+    (cached :schema schema #(mc/schema schema))))
 
 (defn validator
   "Fetch a cached [[mc/validator]] for `schema`, creating one if needed. The cache is flushed whenever the registry
   changes."
   [schema]
-  (letfn [(make-validator []
+  (letfn [(make-validator* []
             (try
               #_{:clj-kondo/ignore [:discouraged-var]}
-              (mc/validator schema)
+              (mc/validator (cached-schema schema))
               (catch #?(:clj Throwable :cljs :default) e
                 (throw (ex-info (str "Error making validator for " (pr-str schema) ":" (ex-message e))
                                 {:schema schema}
-                                e)))))]
+                                e)))))
+          (make-validator []
+            (let [validator (make-validator*)]
+              ;; Only memoize in tests/dev for now, in prod validation is mostly disabled and this stuff is fairly
+              ;; experimental, and we don't want to blow up instances because of the increased memory usage. Once it
+              ;; bakes a bit we can see whether it's useful to enable it in prod
+              #?(:clj  (if config/is-prod?
+                         validator
+                         (mr.validator-cache/memoized-validator validator))
+                 :cljs validator)))]
     (cached :validator schema make-validator)))
 
 (defn validate
@@ -66,8 +106,8 @@
   (letfn [(make-explainer []
             (try
               #_{:clj-kondo/ignore [:discouraged-var]}
-              (let [validator* (mc/validator schema)
-                    explainer* (mc/explainer schema)]
+              (let [validator* (validator schema)
+                    explainer* (mc/explainer (cached-schema schema))]
                 ;; for valid values, it's significantly faster to just call the validator. Let's optimize for the 99.9%
                 ;; of calls whose values are valid.
                 (fn schema-explainer [value]
@@ -84,8 +124,54 @@
   [schema value]
   ((explainer schema) value))
 
+(defn- cached-ref-schema
+  "Malli (as of 0.2.0) will re-allocate a specialised Schema object for a reference site
+   as well as the referent's Schema each time it is referenced.
+
+  The unique Schema object for the referent will then go on and re-allocate again for nested references,
+  In malli 0.2.0 this can go on forever at runtime, resembling a memory leak.
+  Even without significant runtime value complexity this very quickly leads to large heap memory usage
+  as we retain validator roots in our cache.
+
+  This custom :ref implementation dramatically reduces memory usage and OOM likely-hood:
+
+  We allow references to reuse a cached Schema object if the following conditions hold:
+
+  a. The registry is identical to the default, we refer to the same Schema object each time
+  b. The reference itself has no attributes that specialise it (such as documentation).
+
+  This means that most refs in our schemas will incur a pointer-like incremental cost,
+  rather than an inlining-the-whole-subgraph type exponential cost.
+
+  NOTE: At time of writing work is ongoing in malli to introduce knot-ties to validators/transformers.
+  However, it appears we still see exponential memory scaling without this [[cached-ref-schema]] fix.
+  We should revisit the need for this override with newer versions of malli."
+  ([]
+   (cached-ref-schema nil))
+  ([{:keys [type-properties]}]
+   (reify
+     mc/AST
+     (-from-ast [parent ast options] (mc/-from-value-ast parent ast options))
+     mc/IntoSchema
+     (-type [_] :ref)
+     (-type-properties [_] type-properties)
+     (-into-schema [_ properties [ref :as children] options]
+       (mc/-check-children! :ref properties children 1 1)
+       (when-not (mc/-reference? ref)
+         (mc/-fail! ::mc/invalid-ref {:ref ref}))
+       (let [reg (mc/-registry options)]
+         ;; we only want to use our cache if this reference is equivalent to any other i,e:
+         ;; - it must be placed in a context where the default registry is used.
+         ;;   (otherwise it might share a name with the globally registered schema but reference a different schema)
+         ;; - it cannot have any properties that specialise the reference.
+         (if (and (identical? reg mc/default-registry) (empty? properties))
+           (cached :ref ref #(mc/-into-schema (mc/-ref-schema) {} children options))
+           (mc/-into-schema (mc/-ref-schema) properties children options))))
+     #?@(:cljs [IPrintWithWriter (-pr-writer [this writer opts] (mc/pr-writer-into-schema this writer opts))]))))
+
 (defonce ^:private registry*
   (atom (merge (mc/default-schemas)
+               {:ref (cached-ref-schema)}
                (mut/schemas)
                #?(:clj (malli.time/schemas)))))
 
@@ -135,7 +221,6 @@
      ([type schema]
       `(register! ~type ~schema))
      ([type docstring schema]
-      (assert (string? docstring))
       `(metabase.util.malli.registry/def ~type
          ~(macros/case
            :clj `(-with-doc ~schema ~docstring)

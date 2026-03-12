@@ -1,0 +1,3 @@
+.plainLink > * {
+  pointer-events: none; /* prevents bold/italic/etc link children from messing with mouseover event delegation in LinkHoverMenu */
+}

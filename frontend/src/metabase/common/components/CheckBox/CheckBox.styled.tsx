@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import { DEFAULT_ICON_PADDING } from "./constants";
 import type {
@@ -71,7 +71,9 @@ export const CheckBoxIconContainer = styled.span<CheckBoxIconContainerProps>`
       color(props.checked ? props.checkedColor : props.uncheckedColor)};
   border-radius: 0.25rem;
   background-color: ${(props) =>
-    props.checked ? color(props.checkedColor) : "var(--mb-color-bg-white)"};
+    props.checked
+      ? color(props.checkedColor)
+      : "var(--mb-color-background-primary)"};
 `;
 
 export const CheckBoxLabel = styled.span<CheckBoxLabelProps>`

@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { EntityIdCard } from "metabase/common/components/EntityIdCard";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import {
   Sidesheet,
   SidesheetCard,
@@ -97,16 +97,19 @@ export const QuestionInfoSidebar = ({
           <Tabs.Panel value="overview">
             <Stack gap="lg">
               <SidesheetCard pb="md">
-                <Stack gap="sm">
+                <Stack gap={0}>
                   <SidesheetCardTitle>{t`Description`}</SidesheetCardTitle>
-                  <SidesheetEditableDescription
-                    description={description}
-                    onChange={handleSave}
-                    canWrite={canWrite}
-                  />
-                  <PLUGIN_MODERATION.ModerationReviewTextForQuestion
-                    question={question}
-                  />
+
+                  <Stack gap="sm">
+                    <SidesheetEditableDescription
+                      description={description}
+                      onChange={handleSave}
+                      canWrite={canWrite}
+                    />
+                    <PLUGIN_MODERATION.ModerationReviewTextForQuestion
+                      question={question}
+                    />
+                  </Stack>
                 </Stack>
               </SidesheetCard>
               <SidesheetCard>

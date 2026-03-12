@@ -1,6 +1,6 @@
 import { useDashboardContext } from "metabase/dashboard/context";
-import Bookmarks from "metabase/entities/bookmarks";
-import Dashboards from "metabase/entities/dashboards";
+import { Bookmarks } from "metabase/entities/bookmarks";
+import { Dashboards } from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 
 import { ArchivedEntityBanner } from "./ArchivedEntityBanner";

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 
 module.exports.WEBPACK_BUNDLE = WEBPACK_BUNDLE;

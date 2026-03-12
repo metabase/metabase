@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionPermissionsGraphEndpoint,
   setupCollectionsEndpoints,
@@ -12,11 +12,13 @@ import { renderWithProviders } from "__support__/ui";
 import type {
   Collection,
   CollectionPermissionsGraph,
-  Group,
+  GroupInfo,
+  Settings,
   TokenFeatures,
 } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockGroup,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
@@ -67,10 +69,26 @@ export const defaultRootCollection = createMockCollection({
   children: [collectionOne, collectionTwo],
 });
 
-const defaultPermissionGroups: Omit<Group, "members">[] = [
-  { id: 1, name: "All Users", member_count: 40 },
-  { id: 2, name: "Administrators", member_count: 2 },
-  { id: 3, name: "Other Users", member_count: 33 },
+export const defaultPermissionGroups: GroupInfo[] = [
+  {
+    id: 1,
+    name: "All internal users",
+    member_count: 40,
+    magic_group_type: "all-internal-users",
+  },
+  { id: 2, name: "Administrators", member_count: 2, magic_group_type: "admin" },
+  { id: 3, name: "Other Users", member_count: 33, magic_group_type: null },
+];
+
+const externalUsersGroup = createMockGroup({
+  id: 4,
+  name: "All tenant users",
+  magic_group_type: "all-external-users",
+});
+
+export const defaultPermissionGroupsWithTenants = [
+  ...defaultPermissionGroups,
+  externalUsersGroup,
 ];
 
 export const defaultPermissionsGraph: CollectionPermissionsGraph = {
@@ -103,33 +121,53 @@ export const defaultPermissionsGraph: CollectionPermissionsGraph = {
   },
 };
 
+export const defaultPermissionsGraphWithTenants: CollectionPermissionsGraph = {
+  ...defaultPermissionsGraph,
+  groups: {
+    ...defaultPermissionsGraph.groups,
+    4: {
+      // Tenant users
+      1: "none", // one
+      2: "none", // two
+      3: "none", // nested one
+      4: "none", // nested two
+      root: "none",
+    },
+  },
+};
+
 interface SetupOptions {
   initialRoute?: string;
   collections?: Collection[];
   rootCollection?: Collection;
   permissionsGraph?: CollectionPermissionsGraph;
-  permissionGroups?: Omit<Group, "members">[];
+  permissionGroups?: GroupInfo[];
   tokenFeatures?: Partial<TokenFeatures>;
+  settings?: Partial<Settings>;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export function setup({
-  initialRoute = "/admin/permissions/collections/root",
+  initialRoute = "/admin/permissions/collections",
   collections = defaultCollections,
   rootCollection = defaultRootCollection,
   permissionsGraph = defaultPermissionsGraph,
   permissionGroups = defaultPermissionGroups,
   tokenFeatures,
+  settings = {},
+  enterprisePlugins = [],
 }: Partial<SetupOptions> = {}) {
   const initialState = createMockState({
     settings: mockSettings({
       "application-colors": {},
       "token-features": createMockTokenFeatures(tokenFeatures ?? {}),
+      ...settings,
     }),
   });
 
-  if (tokenFeatures) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   setupCollectionsEndpoints({
     collections,
@@ -144,7 +182,7 @@ export function setup({
   renderWithProviders(
     <>
       <Route
-        path="/admin/permissions/collections/root"
+        path="/admin/permissions/collections"
         component={CollectionPermissionsPage}
       />
       <Route

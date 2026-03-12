@@ -10,6 +10,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
@@ -21,6 +22,12 @@
    (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
+
+;; `reindex!` below is ok in a parallel test since it's not actually executing anything
+#_{:clj-kondo/ignore [:metabase/validate-deftest]}
+(use-fixtures :each (fn [thunk]
+                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                        (thunk))))
 
 (defn- dir->contents-set [p ^File dir]
   (->> dir
@@ -179,6 +186,13 @@
                                                                                     :source-table 4}}}
                                                         {:table_id   [:t 100]
                                                          :creator_id [:u 10]})
+              :measure                  (many-random-fks 30 {:spec-gen {:definition {:lib/type :mbql/query
+                                                                                     :database 1
+                                                                                     :stages   [{:lib/type     :mbql.stage/mbql
+                                                                                                 :source-table 4
+                                                                                                 :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]}]}}}
+                                                         {:table_id   [:t 100]
+                                                          :creator_id [:u 10]})
               :native-query-snippet    (many-random-fks 10 {} {:creator_id    [:u 10]
                                                                :collection_id [:coll 10 100]})
               :timeline                (many-random-fks 10 {} {:creator_id    [:u 10]
@@ -343,6 +357,12 @@
                          (-> (ts/extract-one "Segment" entity_id)
                              clean-entity)))))
 
+              (testing "for measures"
+                (doseq [{:keys [entity_id] :as measure} (get @entities "Measure")]
+                  (is (= (clean-entity measure)
+                         (-> (ts/extract-one "Measure" entity_id)
+                             clean-entity)))))
+
               (testing "for native query snippets"
                 (doseq [{:keys [entity_id] :as snippet} (get @entities "NativeQuerySnippet")]
                   (is (= (clean-entity snippet)
@@ -402,7 +422,7 @@
                                                                                  :value_field [:field (:id field1s) nil]}}]}]
 
               (testing "make sure we insert ParameterCard when insert Dashboard/Card"
-                ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
+                ;; one for parameter on card card2s, and one for parameter on dashboard dash1s
                 (is (= 2 (t2/count :model/ParameterCard))))
 
               (testing "extract and store"
@@ -410,11 +430,12 @@
                   (is (= [{:id                   "abc",
                            :name                 "CATEGORY",
                            :type                 :category,
+                           :position             0,
                            :values_source_config {:card_id     (:entity_id card1s),
                                                   :value_field [:field
                                                                 ["my-db" nil "CUSTOMERS" (:name field1s)]
                                                                 nil]},
-                           :values_source_type   "card"}]
+                           :values_source_type   :card}]
                          (:parameters (first (by-model extraction "Dashboard")))))
 
                   ;; card1s has no parameters, card2s does.
@@ -422,11 +443,12 @@
                            [{:id                   "abc",
                              :name                 "CATEGORY",
                              :type                 :category,
+                             :position             0,
                              :values_source_config {:card_id     (:entity_id card1s),
                                                     :value_field [:field
                                                                   ["my-db" nil "CUSTOMERS" (:name field1s)]
                                                                   nil]},
-                             :values_source_type   "card"}]}
+                             :values_source_type   :card}]}
                          (set (map :parameters (by-model extraction "Card")))))
 
                   (storage/store! (seq extraction) dump-dir)))
@@ -449,7 +471,7 @@
                                  :parameters
                                  first
                                  :values_source_config)))
-                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+                      (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
 
                     (testing "parameter on card is loaded correctly"
                       (is (= {:card_id     (:id card1d),
@@ -458,7 +480,7 @@
                                  :parameters
                                  first
                                  :values_source_config)))
-                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
+                      (is (some? (t2/select-one :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -925,15 +947,14 @@
                   (is (int? new-coll-id))
                   (is (=? {:name "Metric Card"
                            :collection_id new-coll-id
-                           :dataset_query (mt/mbql-query orders
-                                            {:aggregation [[:count]]
-                                             :breakout    [$product_id->products.category $created_at]})}
+                           :dataset_query {:stages [{:aggregation [[:count {}]]
+                                                     :breakout    [[:field {} (mt/id :products :category)]
+                                                                   [:field {} (mt/id :orders :created_at)]]}]}}
                           new-metric))
                   (is (=? {:name "Metric Consuming Question Card"
                            :collection_id new-coll-id
-                           :dataset_query (mt/mbql-query orders
-                                            {:aggregation [[:metric (:id new-metric)]]
-                                             :breakout    [[:field %orders.user_id nil]]})}
+                           :dataset_query {:stages [{:aggregation [[:metric {} (:id new-metric)]]
+                                                     :breakout    [[:field {} (mt/id :orders :user_id)]]}]}}
                           (t2/select-one :model/Card :name "Metric Consuming Question Card"))))))))))))
 
 (deftest schema-coercion-test

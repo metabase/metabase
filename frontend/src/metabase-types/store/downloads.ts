@@ -5,4 +5,7 @@ export interface Download {
   error?: string;
 }
 
-export type DownloadsState = Download[];
+export type DownloadsState = {
+  isDownloadingToImage: boolean;
+  datasetRequests: Download[];
+};

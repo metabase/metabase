@@ -24,7 +24,7 @@ export const AppBanner = () => {
   const isAdmin = useSelector(getUserIsAdmin);
   const isHosted = useSelector(getIsHosted);
   const tokenStatus = useSetting("token-status");
-  const readOnly = useSetting("read-only-mode");
+  const migrateReadOnly = useSetting("read-only-mode");
   const isDevMode = useSetting("development-mode?");
 
   const { shouldShowLicenseTokenMissingBanner, dismissBanner } =
@@ -41,10 +41,14 @@ export const AppBanner = () => {
 
   // Most banners are only visible to admins, but DevModeBanner gets shown to all users
   if (!isAdmin) {
-    return isDevMode ? <DevModeBanner /> : null;
+    return migrateReadOnly ? (
+      <ReadOnlyBanner />
+    ) : isDevMode ? (
+      <DevModeBanner />
+    ) : null;
   }
 
-  if (readOnly) {
+  if (migrateReadOnly) {
     return <ReadOnlyBanner />;
   }
 

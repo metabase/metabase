@@ -3,20 +3,21 @@
 
   Drill-thrus are not part of MBQL; they are a set of actions one can take to transform a query.
   For example, adding a filter like `created_at < 2022-01-01`, or following a foreign key."
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.schema :as-alias lib.schema]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.extraction :as lib.schema.extraction]
-   [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]))
 
 (mr/def ::pivot-types
   [:enum :category :location :time])
@@ -159,7 +160,6 @@
    ::drill-thru.common.with-column
    [:map
     [:type         [:= :drill-thru/column-filter]]
-    [:initial-op   [:maybe ::lib.schema.filter/operator]]
     [:column       [:ref ::lib.schema.metadata/column]]
     [:query        [:ref ::lib.schema/query]]
     [:stage-number number?]]])
@@ -193,8 +193,8 @@
   [:merge
    ::drill-thru.common
    [:map
-    [:type     [:= :drill-thru/automatic-insights]]
-    [:lib/type [:= :metabase.lib.drill-thru/drill-thru]]
+    [:type       [:= :drill-thru/automatic-insights]]
+    [:lib/type   [:= :metabase.lib.drill-thru/drill-thru]]
     [:column-ref [:maybe [:ref ::lib.schema.ref/ref]]]
     [:dimensions [:ref ::context.row]]]])
 

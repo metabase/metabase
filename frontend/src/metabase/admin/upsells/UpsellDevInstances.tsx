@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
+import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { useSetting, useStoreUrl } from "metabase/common/hooks";
 import { Text } from "metabase/ui";
-
-import { UpsellBanner } from "./components";
 
 type LOCATION = "embedding-page" | "settings-general";
 
@@ -25,7 +24,7 @@ export function UpsellDevInstances({ location }: { location: LOCATION }) {
       location={location}
       dismissible
     >
-      <Text c="text-medium" lh="md">
+      <Text c="text-secondary" lh="md">
         {t`Test out code in staging in a separate Metabase instance before deploying to production.`}
       </Text>
     </UpsellBanner>

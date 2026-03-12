@@ -58,7 +58,7 @@ const PlaceholderPropTypes = {
   editorContext: PropTypes.oneOf(["action", "question"]),
 };
 
-const DataSourceSelectors = ({
+export const DataSourceSelectors = ({
   isNativeEditorOpen,
   query,
   question,
@@ -74,7 +74,7 @@ const DataSourceSelectors = ({
     const allDatabases = query
       .metadata()
       .databasesList({ savedQuestions: false })
-      .filter((db) => db.canWrite());
+      .filter((db) => db.canWrite() && !db.is_audit);
 
     if (editorContext === "action") {
       return allDatabases.filter((database) => database.hasActionsEnabled());
@@ -174,7 +174,8 @@ const DatabaseSelector = ({
       QueryBuilderS.GuiBuilderData,
       CS.flex,
       CS.alignCenter,
-      CS.ml2,
+      CS.ml1,
+      readOnly && CS.pointerEventsNone,
     )}
     data-testid="gui-builder-data"
   >
@@ -193,7 +194,7 @@ DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
 const SingleDatabaseName = ({ database }) => (
   <Flex
-    h="55px"
+    h="3rem"
     px="md"
     align="center"
     fw="bold"
@@ -212,7 +213,7 @@ const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
       QueryBuilderS.GuiBuilderData,
       CS.flex,
       CS.alignCenter,
-      CS.ml2,
+      CS.ml1,
     )}
     data-testid="gui-builder-data"
   >
@@ -238,7 +239,7 @@ const Placeholder = ({ query, editorContext }) => {
   return (
     <Flex
       align="center"
-      h="55px"
+      h="3rem"
       className={cx(CS.textNoWrap, CS.ml2, CS.px2, CS.textMedium)}
     >
       {t`This question is written in ${language}.`}
@@ -247,5 +248,3 @@ const Placeholder = ({ query, editorContext }) => {
 };
 
 Placeholder.propTypes = PlaceholderPropTypes;
-
-export default DataSourceSelectors;

@@ -1,3 +1,6 @@
+import cx from "classnames";
+
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BooleanFilterPicker } from "../BooleanFilterPicker";
@@ -8,6 +11,8 @@ import { NumberFilterPicker } from "../NumberFilterPicker";
 import { StringFilterPicker } from "../StringFilterPicker";
 import { TimeFilterPicker } from "../TimeFilterPicker";
 import type { FilterChangeOpts } from "../types";
+
+import S from "./FilterPickerBody.module.css";
 
 interface FilterPickerBodyProps {
   autoFocus?: boolean;
@@ -20,6 +25,7 @@ interface FilterPickerBodyProps {
   withSubmitButton?: boolean;
   onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
+  readOnly?: boolean;
 }
 
 export function FilterPickerBody({
@@ -33,6 +39,7 @@ export function FilterPickerBody({
   withSubmitButton = true,
   onChange,
   onBack,
+  readOnly,
 }: FilterPickerBodyProps) {
   const FilterWidget = getFilterWidget(column);
   if (!FilterWidget) {
@@ -40,18 +47,21 @@ export function FilterPickerBody({
   }
 
   return (
-    <FilterWidget
-      autoFocus={autoFocus}
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      filter={filter}
-      isNew={isNew}
-      withAddButton={withAddButton}
-      withSubmitButton={withSubmitButton}
-      onChange={onChange}
-      onBack={onBack}
-    />
+    <Box className={cx({ [S.readOnly]: readOnly })}>
+      <FilterWidget
+        autoFocus={autoFocus}
+        query={query}
+        stageIndex={stageIndex}
+        column={column}
+        filter={filter}
+        isNew={isNew}
+        withAddButton={withAddButton}
+        withSubmitButton={withSubmitButton && !readOnly}
+        onChange={onChange}
+        onBack={onBack}
+        readOnly={readOnly}
+      />
+    </Box>
   );
 }
 

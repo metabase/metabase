@@ -27,8 +27,6 @@ jobs:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: 'update-be-deps'
       - name: Open PRs to Upgrade Backend Deps
         uses: ./.github/actions/upgrade-backend-deps
         with:

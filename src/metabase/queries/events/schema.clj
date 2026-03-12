@@ -10,8 +10,13 @@
    [:object   [:fn #(t2/instance-of? :model/Card %)]]])
 
 (mr/def :event/card-create ::card)
-(mr/def :event/card-update ::card)
 (mr/def :event/card-delete ::card)
+
+(mr/def :event/card-update
+  [:map {:closed true}
+   [:user-id         [:maybe pos-int?]]
+   [:object          [:fn #(t2/instance-of? :model/Card %)]]
+   [:previous-object [:fn #(t2/instance-of? :model/Card %)]]])
 
 (mr/def :event/card-read
   [:map {:closed true}
@@ -25,3 +30,13 @@
    [:card-id pos-int?]
    [:user-id [:maybe pos-int?]]
    [:context {:optional true} :any]])
+
+(mr/def :event/card-public-link-created
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object-id pos-int?]])
+
+(mr/def :event/card-public-link-deleted
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object-id pos-int?]])

@@ -10,7 +10,7 @@ import {
   getSchemasPermission,
   hasPermissionValueInSubgraph,
 } from "metabase/admin/permissions/utils/graph";
-import Alert from "metabase/common/components/Alert";
+import { Alert } from "metabase/common/components/Alert";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { Flex, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";

@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_query_log
+table_id: [Internal Metabase Database, public, v_query_log]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -25,49 +22,28 @@ dataset_query:
   query:
     fields:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - started_at
-      - base-type: type/DateTimeWithLocalTZ
+      - [Internal Metabase Database, public, v_query_log, started_at]
+      - {base-type: type/DateTimeWithLocalTZ}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - running_time_seconds
-      - base-type: type/Float
+      - [Internal Metabase Database, public, v_query_log, running_time_seconds]
+      - {base-type: type/Float}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - result_rows
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_query_log, result_rows]
+      - {base-type: type/Integer}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - is_native
-      - base-type: type/Boolean
+      - [Internal Metabase Database, public, v_query_log, is_native]
+      - {base-type: type/Boolean}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - query_source
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_query_log, query_source]
+      - {base-type: type/Text}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - error
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_query_log, error]
+      - {base-type: type/Text}
     filter:
     - =
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_query_log
-        - query_source
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_query_log, query_source]
+      - {base-type: type/Text}
     - csv-download
     - json-download
     - xlsx-download
@@ -76,143 +52,80 @@ dataset_query:
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_query_log
-          - card_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_query_log, card_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Card Qualified
+        - [Internal Metabase Database, public, v_content, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Content - Card Qualified}
       fields:
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - name
-        - base-type: type/Text
-          join-alias: Content - Card Qualified
+        - [Internal Metabase Database, public, v_content, name]
+        - {base-type: type/Text, join-alias: Content - Card Qualified}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_id
-        - base-type: type/Integer
-          join-alias: Content - Card Qualified
+        - [Internal Metabase Database, public, v_content, entity_id]
+        - {base-type: type/Integer, join-alias: Content - Card Qualified}
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Content - Dashboard Qualified
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_query_log
-          - dashboard_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_query_log, dashboard_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Dashboard Qualified
+        - [Internal Metabase Database, public, v_content, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Content - Dashboard Qualified}
       fields:
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - name
-        - base-type: type/Text
-          join-alias: Content - Dashboard Qualified
+        - [Internal Metabase Database, public, v_content, name]
+        - {base-type: type/Text, join-alias: Content - Dashboard Qualified}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_id
-        - base-type: type/Integer
-          join-alias: Content - Dashboard Qualified
+        - [Internal Metabase Database, public, v_content, entity_id]
+        - {base-type: type/Integer, join-alias: Content - Dashboard Qualified}
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Databases - Database Qualified
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_query_log
-          - database_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_query_log, database_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_databases
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Databases - Database Qualified
+        - [Internal Metabase Database, public, v_databases, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Databases - Database Qualified}
       fields:
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_databases
-          - entity_id
-        - base-type: type/Integer
-          join-alias: Databases - Database Qualified
+        - [Internal Metabase Database, public, v_databases, entity_id]
+        - {base-type: type/Integer, join-alias: Databases - Database Qualified}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_databases
-          - name
-        - base-type: type/Text
-          join-alias: Databases - Database Qualified
+        - [Internal Metabase Database, public, v_databases, name]
+        - {base-type: type/Text, join-alias: Databases - Database Qualified}
       source-table: -19557ZnrWiDgG4h4cKxF
       strategy: left-join
     - alias: People - User
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_query_log
-          - user_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_query_log, user_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - user_id
-        - base-type: type/Integer
-          join-alias: People - User
+        - [Internal Metabase Database, public, v_users, user_id]
+        - {base-type: type/Integer, join-alias: People - User}
       fields:
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - user_id
-        - base-type: type/Integer
-          join-alias: People - User
+        - [Internal Metabase Database, public, v_users, user_id]
+        - {base-type: type/Integer, join-alias: People - User}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - full_name
-        - base-type: type/Text
-          join-alias: People - User
+        - [Internal Metabase Database, public, v_users, full_name]
+        - {base-type: type/Text, join-alias: People - User}
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     limit: 200
     order-by:
     - - desc
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_query_log
-          - started_at
-        - base-type: type/DateTimeWithLocalTZ
+        - [Internal Metabase Database, public, v_query_log, started_at]
+        - {base-type: type/DateTimeWithLocalTZ}
     source-table: QOtZaiTLf2FDD4AT6Oinb
   type: query
 result_metadata:
@@ -223,18 +136,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - started_at
-  - base-type: type/DateTimeWithLocalTZ
-    temporal-unit: default
+  - [Internal Metabase Database, public, v_query_log, started_at]
+  - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - started_at
+  id: [Internal Metabase Database, public, v_query_log, started_at]
   name: started_at
   nfc_path: null
   parent_id: null
@@ -242,10 +147,7 @@ result_metadata:
   semantic_type: type/CreationTimestamp
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
+  table_id: [Internal Metabase Database, public, v_query_log]
   unit: default
   visibility_type: normal
 - base_type: type/Float
@@ -255,17 +157,10 @@ result_metadata:
   effective_type: type/Float
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - running_time_seconds
-  - base-type: type/Float
+  - [Internal Metabase Database, public, v_query_log, running_time_seconds]
+  - {base-type: type/Float}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - running_time_seconds
+  id: [Internal Metabase Database, public, v_query_log, running_time_seconds]
   name: running_time_seconds
   nfc_path: null
   parent_id: null
@@ -273,10 +168,7 @@ result_metadata:
   semantic_type: null
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
+  table_id: [Internal Metabase Database, public, v_query_log]
   visibility_type: normal
 - base_type: type/Integer
   coercion_strategy: null
@@ -285,17 +177,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - result_rows
-  - base-type: type/Integer
+  - [Internal Metabase Database, public, v_query_log, result_rows]
+  - {base-type: type/Integer}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - result_rows
+  id: [Internal Metabase Database, public, v_query_log, result_rows]
   name: result_rows
   nfc_path: null
   parent_id: null
@@ -303,10 +188,7 @@ result_metadata:
   semantic_type: null
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
+  table_id: [Internal Metabase Database, public, v_query_log]
   visibility_type: normal
 - base_type: type/Boolean
   coercion_strategy: null
@@ -315,17 +197,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - is_native
-  - base-type: type/Boolean
+  - [Internal Metabase Database, public, v_query_log, is_native]
+  - {base-type: type/Boolean}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - is_native
+  id: [Internal Metabase Database, public, v_query_log, is_native]
   name: is_native
   nfc_path: null
   parent_id: null
@@ -333,10 +208,7 @@ result_metadata:
   semantic_type: type/Category
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
+  table_id: [Internal Metabase Database, public, v_query_log]
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
@@ -345,17 +217,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - query_source
-  - base-type: type/Text
+  - [Internal Metabase Database, public, v_query_log, query_source]
+  - {base-type: type/Text}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - query_source
+  id: [Internal Metabase Database, public, v_query_log, query_source]
   name: query_source
   nfc_path: null
   parent_id: null
@@ -363,10 +228,7 @@ result_metadata:
   semantic_type: type/Source
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
+  table_id: [Internal Metabase Database, public, v_query_log]
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
@@ -375,17 +237,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_query_log
-    - error
-  - base-type: type/Text
+  - [Internal Metabase Database, public, v_query_log, error]
+  - {base-type: type/Text}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - error
+  id: [Internal Metabase Database, public, v_query_log, error]
   name: error
   nfc_path: null
   parent_id: null
@@ -393,10 +248,7 @@ result_metadata:
   semantic_type: null
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
+  table_id: [Internal Metabase Database, public, v_query_log]
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
@@ -405,18 +257,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - name
-  - base-type: type/Text
-    join-alias: Content - Card Qualified
+  - [Internal Metabase Database, public, v_content, name]
+  - {base-type: type/Text, join-alias: Content - Card Qualified}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - name
+  id: [Internal Metabase Database, public, v_content, name]
   name: name
   nfc_path: null
   parent_id: null
@@ -424,10 +268,7 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_content
+  table_id: [Internal Metabase Database, public, v_content]
   visibility_type: normal
 - base_type: type/Integer
   coercion_strategy: null
@@ -436,18 +277,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - entity_id
-  - base-type: type/Integer
-    join-alias: Content - Card Qualified
+  - [Internal Metabase Database, public, v_content, entity_id]
+  - {base-type: type/Integer, join-alias: Content - Card Qualified}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_id
+  id: [Internal Metabase Database, public, v_content, entity_id]
   name: entity_id
   nfc_path: null
   parent_id: null
@@ -455,10 +288,7 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_content
+  table_id: [Internal Metabase Database, public, v_content]
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
@@ -467,18 +297,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - name
-  - base-type: type/Text
-    join-alias: Content - Dashboard Qualified
+  - [Internal Metabase Database, public, v_content, name]
+  - {base-type: type/Text, join-alias: Content - Dashboard Qualified}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - name
+  id: [Internal Metabase Database, public, v_content, name]
   name: name_2
   nfc_path: null
   parent_id: null
@@ -486,10 +308,7 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_content
+  table_id: [Internal Metabase Database, public, v_content]
   visibility_type: normal
 - base_type: type/Integer
   coercion_strategy: null
@@ -498,18 +317,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_content
-    - entity_id
-  - base-type: type/Integer
-    join-alias: Content - Dashboard Qualified
+  - [Internal Metabase Database, public, v_content, entity_id]
+  - {base-type: type/Integer, join-alias: Content - Dashboard Qualified}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_id
+  id: [Internal Metabase Database, public, v_content, entity_id]
   name: entity_id_2
   nfc_path: null
   parent_id: null
@@ -517,10 +328,7 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_content
+  table_id: [Internal Metabase Database, public, v_content]
   visibility_type: normal
 - base_type: type/Integer
   coercion_strategy: null
@@ -529,18 +337,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_databases
-    - entity_id
-  - base-type: type/Integer
-    join-alias: Databases - Database Qualified
+  - [Internal Metabase Database, public, v_databases, entity_id]
+  - {base-type: type/Integer, join-alias: Databases - Database Qualified}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_databases
-  - entity_id
+  id: [Internal Metabase Database, public, v_databases, entity_id]
   name: entity_id_3
   nfc_path: null
   parent_id: null
@@ -548,10 +348,7 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_databases
+  table_id: [Internal Metabase Database, public, v_databases]
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
@@ -560,18 +357,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_databases
-    - name
-  - base-type: type/Text
-    join-alias: Databases - Database Qualified
+  - [Internal Metabase Database, public, v_databases, name]
+  - {base-type: type/Text, join-alias: Databases - Database Qualified}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_databases
-  - name
+  id: [Internal Metabase Database, public, v_databases, name]
   name: name_3
   nfc_path: null
   parent_id: null
@@ -579,10 +368,7 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_databases
+  table_id: [Internal Metabase Database, public, v_databases]
   visibility_type: normal
 - base_type: type/Integer
   coercion_strategy: null
@@ -591,18 +377,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - user_id
-  - base-type: type/Integer
-    join-alias: People - User
+  - [Internal Metabase Database, public, v_users, user_id]
+  - {base-type: type/Integer, join-alias: People - User}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - user_id
+  id: [Internal Metabase Database, public, v_users, user_id]
   name: user_id
   nfc_path: null
   parent_id: null
@@ -610,10 +388,7 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_users
+  table_id: [Internal Metabase Database, public, v_users]
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
@@ -622,18 +397,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - full_name
-  - base-type: type/Text
-    join-alias: People - User
+  - [Internal Metabase Database, public, v_users, full_name]
+  - {base-type: type/Text, join-alias: People - User}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - full_name
+  id: [Internal Metabase Database, public, v_users, full_name]
   name: full_name
   nfc_path: null
   parent_id: null
@@ -641,181 +408,111 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_users
+  table_id: [Internal Metabase Database, public, v_users]
   visibility_type: normal
 visualization_settings:
   column_settings:
-    '["name","entity_id"]':
-      column_title: Question ID
-    '["name","entity_id_2"]':
-      column_title: Dashboard ID
-    '["name","entity_id_3"]':
-      column_title: Database ID
-    '["name","full_name"]':
-      column_title: User name
-    '["name","name"]':
-      column_title: Question name
-      link_text: ''
-      link_url: /question/{{entity_id}}
-      view_as: link
-    '["name","name_2"]':
-      column_title: Dashboard name
-      link_url: /dashboard/{{entity_id_2}}
-      view_as: link
-    '["name","name_3"]':
-      column_title: Database name
-      link_url: /browse/{{entity_id_3}}
-      view_as: link
-    '["name","user_id"]':
-      column_title: User ID
+    '["name","entity_id"]': {column_title: Question ID}
+    '["name","entity_id_2"]': {column_title: Dashboard ID}
+    '["name","entity_id_3"]': {column_title: Database ID}
+    '["name","full_name"]': {column_title: User name}
+    '["name","name"]': {column_title: Question name, link_text: '', link_url: '/question/{{entity_id}}', view_as: link}
+    '["name","name_2"]': {column_title: Dashboard name, link_url: '/dashboard/{{entity_id_2}}', view_as: link}
+    '["name","name_3"]': {column_title: Database name, link_url: '/browse/{{entity_id_3}}', view_as: link}
+    '["name","user_id"]': {column_title: User ID}
   table.cell_column: running_time_seconds
   table.columns:
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_query_log
-      - started_at
-    - base-type: type/DateTimeWithLocalTZ
-      temporal-unit: default
+    - [Internal Metabase Database, public, v_query_log, started_at]
+    - {base-type: type/DateTimeWithLocalTZ, temporal-unit: default}
     name: started_at
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - full_name
-    - base-type: type/Text
-      join-alias: People - User
+    - [Internal Metabase Database, public, v_users, full_name]
+    - {base-type: type/Text, join-alias: People - User}
     name: full_name
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_query_log
-      - query_source
-    - base-type: type/Text
+    - [Internal Metabase Database, public, v_query_log, query_source]
+    - {base-type: type/Text}
     name: query_source
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - name
-    - base-type: type/Text
-      join-alias: Content - Card Qualified
+    - [Internal Metabase Database, public, v_content, name]
+    - {base-type: type/Text, join-alias: Content - Card Qualified}
     name: name
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - name
-    - base-type: type/Text
-      join-alias: Content - Dashboard Qualified
+    - [Internal Metabase Database, public, v_content, name]
+    - {base-type: type/Text, join-alias: Content - Dashboard Qualified}
     name: name_2
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_databases
-      - name
-    - base-type: type/Text
-      join-alias: Databases - Database Qualified
+    - [Internal Metabase Database, public, v_databases, name]
+    - {base-type: type/Text, join-alias: Databases - Database Qualified}
     name: name_3
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_query_log
-      - is_native
-    - base-type: type/Boolean
+    - [Internal Metabase Database, public, v_query_log, is_native]
+    - {base-type: type/Boolean}
     name: is_native
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_query_log
-      - running_time_seconds
-    - base-type: type/Float
+    - [Internal Metabase Database, public, v_query_log, running_time_seconds]
+    - {base-type: type/Float}
     name: running_time_seconds
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_query_log
-      - result_rows
-    - base-type: type/Integer
+    - [Internal Metabase Database, public, v_query_log, result_rows]
+    - {base-type: type/Integer}
     name: result_rows
   - enabled: false
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - entity_id
-    - base-type: type/Integer
-      join-alias: Content - Card Qualified
+    - [Internal Metabase Database, public, v_content, entity_id]
+    - {base-type: type/Integer, join-alias: Content - Card Qualified}
     name: entity_id
   - enabled: false
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_content
-      - entity_id
-    - base-type: type/Integer
-      join-alias: Content - Dashboard Qualified
+    - [Internal Metabase Database, public, v_content, entity_id]
+    - {base-type: type/Integer, join-alias: Content - Dashboard Qualified}
     name: entity_id_2
   - enabled: false
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_databases
-      - entity_id
-    - base-type: type/Integer
-      join-alias: Databases - Database Qualified
+    - [Internal Metabase Database, public, v_databases, entity_id]
+    - {base-type: type/Integer, join-alias: Databases - Database Qualified}
     name: entity_id_3
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_query_log
-      - error
-    - base-type: type/Text
+    - [Internal Metabase Database, public, v_query_log, error]
+    - {base-type: type/Text}
     name: error
   - enabled: false
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_users
-      - user_id
-    - base-type: type/Integer
-      join-alias: People - User
+    - [Internal Metabase Database, public, v_users, user_id]
+    - {base-type: type/Integer, join-alias: People - User}
     name: user_id
   table.pivot_column: error
+card_schema: 23
 serdes/meta:
-- id: 7FLoE9kUELG4Ess6DsSEY
-  label: last_downloads
-  model: Card
+- {id: 7FLoE9kUELG4Ess6DsSEY, label: last_downloads, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
-metabase_version: vUNKNOWN (a98530f)
+document_id: null
+embedding_type: null
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

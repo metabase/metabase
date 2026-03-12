@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_view_log
+table_id: [Internal Metabase Database, public, v_view_log]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -27,14 +24,11 @@ dataset_query:
     - - max
       - - field
         - timestamp
-        - base-type: type/DateTimeWithLocalTZ
-          temporal-unit: minute
-          original-temporal-unit: month
-          inherited-temporal-unit: default
+        - {base-type: type/DateTimeWithLocalTZ, temporal-unit: minute, original-temporal-unit: month, inherited-temporal-unit: default}
     breakout:
     - - field
       - entity_qualified_id
-      - base-type: type/Text
+      - {base-type: type/Text}
     source-table: P6Ityjj7igswKh4NgZZjz
   type: query
 result_metadata:
@@ -46,44 +40,28 @@ result_metadata:
   field_ref:
   - field
   - entity_qualified_id
-  - base-type: type/Text
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_qualified_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_view_log
-  - entity_qualified_id
+  - {base-type: type/Text}
+  fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_view_log, entity_qualified_id]
   name: entity_qualified_id
   position: 5
   semantic_type: type/FK
   source: breakout
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_view_log
+  table_id: [Internal Metabase Database, public, v_view_log]
   visibility_type: normal
 - base_type: type/DateTimeWithLocalTZ
   display_name: 'Max of Timestamp: Minute'
-  field_ref:
-  - aggregation
-  - 0
+  field_ref: [aggregation, 0]
   name: max
   semantic_type: type/CreationTimestamp
   source: aggregation
-visualization_settings:
-  column_settings: null
-  table.cell_column: max
+visualization_settings: {column_settings: null, table.cell_column: max}
+card_schema: 23
 serdes/meta:
-- id: tKEl86EXMyTDIoO9nyFTV
-  label: last_content_viewed_at
-  model: Card
+- {id: tKEl86EXMyTDIoO9nyFTV, label: last_content_viewed_at, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: null
-metabase_version: vUNKNOWN (38e44a2)
+document_id: null
+embedding_type: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

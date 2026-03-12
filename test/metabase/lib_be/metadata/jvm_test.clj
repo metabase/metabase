@@ -10,6 +10,7 @@
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -22,7 +23,7 @@
 
 (deftest ^:parallel fetch-database-test
   (is (=? {:lib/type :metadata/database, :features set?}
-          (lib.metadata/database (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
+          (lib.metadata/database (mt/metadata-provider))))
   (testing "Should return nil correctly"
     (is (nil? (lib.metadata.protocols/database (lib.metadata.jvm/application-database-metadata-provider Integer/MAX_VALUE))))))
 
@@ -32,7 +33,7 @@
                            :source-table $$categories
                            :condition    [:= $category_id &Cat.categories.id]
                            :alias        "Cat"}]})
-        query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id)) query)]
+        query (lib/query (mt/metadata-provider) query)]
     (is (=? [{:lib/desired-column-alias "ID"}
              {:lib/desired-column-alias "NAME"}
              {:lib/desired-column-alias "CATEGORY_ID"}
@@ -53,7 +54,7 @@
                                 :fields       [&Orders.orders.product_id
                                                &Orders.*sum/Integer]}]
                       :fields [$id]})
-        mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        mlv2-query (lib/query (mt/metadata-provider)
                               (lib.convert/->pMBQL query))]
     (is (=? [{:base-type                :type/BigInteger
               :semantic-type            :type/PK
@@ -65,7 +66,7 @@
               :id                       (mt/id :products :id)
               :lib/desired-column-alias "ID"
               :display-name             "ID"}
-             {:metabase.lib.join/join-alias "Orders"
+             {:lib/join-alias "Orders"
               :base-type                    :type/Integer
               :semantic-type                :type/FK
               :table-id                     (mt/id :orders)
@@ -76,8 +77,8 @@
               :id                           (mt/id :orders :product_id)
               :lib/desired-column-alias     "Orders__PRODUCT_ID"
               :display-name                 "Orders → Product ID"
-              :source-alias                 "Orders"}
-             {:metabase.lib.join/join-alias "Orders"
+              :lib/original-join-alias      "Orders"}
+             {:lib/join-alias "Orders"
               :lib/type                     :metadata/column
               :base-type                    :type/Integer
               :name                         "sum"
@@ -86,7 +87,7 @@
               :effective-type               :type/Integer
               :lib/desired-column-alias     "Orders__sum"
               :display-name                 "Orders → Sum of Quantity"
-              :source-alias                 "Orders"}]
+              :lib/original-join-alias      "Orders"}]
             (binding [lib.metadata.calculation/*display-name-style* :long]
               (lib.metadata.calculation/returned-columns mlv2-query))))))
 
@@ -102,7 +103,7 @@
     (let [query      {:database (mt/id)
                       :type     :query
                       :query    {:source-card (u/the-id card)}}
-          mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          mlv2-query (lib/query (mt/metadata-provider)
                                 (lib.convert/->pMBQL query))
           breakouts  (lib/breakoutable-columns mlv2-query)
           agg-query  (-> mlv2-query
@@ -165,7 +166,7 @@
                                   :name     "ID [external remap]"
                                   :field-id (mt/id :categories :name)}}
             (lib.metadata/field
-             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+             (mt/metadata-provider)
              (mt/id :venues :id))))))
 
 (deftest ^:synchronized internal-remap-metadata-test
@@ -178,7 +179,7 @@
                                   :values                [1 2 3 4]
                                   :human-readable-values ["African" "American" "Artisan" "BBQ"]}}
             (lib.metadata/field
-             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+             (mt/metadata-provider)
              (mt/id :venues :id))))))
 
 (deftest ^:synchronized persisted-info-metadata-test
@@ -195,16 +196,16 @@
                                   :query-hash string?
                                   :table-name string?}}
             (lib.metadata/card
-             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+             (mt/metadata-provider)
              card-id)))))
 
 (deftest ^:parallel equality-test
-  (is (= (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-         (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))
+  (is (= (mt/metadata-provider)
+         (mt/metadata-provider))))
 
 (deftest ^:synchronized all-methods-call-go-through-invocation-tracker-first-test
   (binding [lib.metadata.invocation-tracker/*to-track-metadata-types* #{:metadata/column}]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+    (let [mp (mt/metadata-provider)]
       (testing "sanity check"
         (is (empty? (lib.metadata/invoked-ids mp :metadata/column))))
       (testing "getting card should invoke the tracker"
@@ -216,7 +217,7 @@
 
 (deftest ^:parallel tables-present-test
   (testing "`tables` function returns visible tables (the call includes app db call)"
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [mp (mt/metadata-provider)
           display-names ["Checkins" "Categories" "Orders" "People" "Products" "Reviews" "Users" "Venues"]
           metadata-fns (for [expected-display-name display-names]
                          (fn [{:keys [id display-name active visibility-type] :as _metadata}]
@@ -231,9 +232,77 @@
   (testing "Non-visible tables are not returned from `tables` function (includes app db call)"
     (doseq [visibility-type table/visibility-types]
       (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:visibility_type visibility-type}
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
+        (let [mp (mt/metadata-provider)]
           (testing visibility-type
             (is (not-any? (fn [{:keys [display-name] :as metadata}]
                             (when (= "Orders" display-name)
                               metadata))
                           (lib.metadata/tables mp)))))))))
+
+(deftest ^:parallel metadatas-sanity-check-test
+  (testing "Make sure various supported metadata specs compile to valid SQL and we are able to run a query against the app DB with them"
+    (let [mp (mt/metadata-provider)]
+      (are [metadata-spec] (sequential? (lib.metadata.protocols/metadatas mp metadata-spec))
+        {:lib/type :metadata/table}
+        {:lib/type :metadata/table, :id #{1}}
+        {:lib/type :metadata/table, :name #{"Table"}}
+        {:lib/type :metadata/column, :id #{1}}
+        {:lib/type :metadata/column, :name #{"Field"}}
+        {:lib/type :metadata/column, :table-id 1}
+        {:lib/type :metadata/card, :id #{1}}
+        {:lib/type :metadata/card, :name #{"Card"}}
+        {:lib/type :metadata/metric, :id #{1}}
+        {:lib/type :metadata/metric, :name #{"Metric"}}
+        {:lib/type :metadata/metric, :table-id 1}
+        {:lib/type :metadata/metric, :card-id 1}
+        {:lib/type :metadata/segment, :id #{1}}
+        {:lib/type :metadata/segment, :name #{"Segment"}}
+        {:lib/type :metadata/segment, :table-id 1}
+        {:lib/type :metadata/native-query-snippet, :id #{1}}
+        {:lib/type :metadata/native-query-snippet, :name #{"Snippet"}}))))
+
+(deftest ^:parallel return-database-require-filter-test
+  (mt/with-temp [:model/Database db       {:engine :h2}
+                 :model/Table    buyer    {:name "BUYER" :database_require_filter true :db_id (:id db)}
+                 :model/Field    buyer-id {:name "ID" :table_id (:id buyer) :base_type :type/Integer :database_partitioned true}]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:id db))]
+      (is (=? {:database-require-filter true}
+              (lib.metadata/table mp (:id buyer))))
+      (is (=? {:database-partitioned true}
+              (lib.metadata/field mp (:id buyer-id)))))))
+
+(deftest ^:parallel instance->metadata-normalize-column-test
+  (testing "instance->metadata should normalize column metadata"
+    (let [legacy-col {:active                                            true
+                      :base_type                                         :type/BigInteger
+                      :database_type                                     "BIGINT"
+                      :display_name                                      "ID"
+                      :effective_type                                    :type/BigInteger
+                      :field_ref                                         [:field 760 nil]
+                      :id                                                760
+                      :lib/deduplicated-name                             "ID"
+                      :lib/desired-column-alias                          "ID"
+                      :lib/original-display-name                         "ID"
+                      :lib/original-name                                 "ID"
+                      :lib/source                                        :source/table-defaults
+                      :lib/source-column-alias                           "ID"
+                      :lib/transformation-added-base-type true
+                      :name                                              "ID"
+                      :position                                          0
+                      :semantic_type                                     :type/PK
+                      :source                                            :fields
+                      :table_id                                          227
+                      :visibility_type                                   :normal}
+          metadata   (lib.metadata.jvm/instance->metadata legacy-col :metadata/column)]
+      (is (mr/validate ::lib.schema.metadata/column metadata))
+      (is (not (:field-ref metadata))
+          "Legacy keys like :field_ref/:field-ref should have been removed"))))
+
+(deftest ^:parallel database-local-settings-test
+  (testing "JVM metadata provider should return database-local Settings"
+    (let [global-value (setting/get :unaggregated-query-row-limit)
+          local-value  (inc (or global-value 0))]
+      (mt/with-temp [:model/Database {db-id :id} {:settings {:unaggregated-query-row-limit local-value}}]
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
+          (is (= local-value
+                 (lib.metadata/setting mp :unaggregated-query-row-limit))))))))

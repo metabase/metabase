@@ -13,26 +13,12 @@
   }
 
   &.isSticky {
-    background-color: var(--mb-color-bg-light);
-
-    &.isNightMode {
-      background-color: var(--mb-color-bg-black);
-    }
+    background-color: var(--mb-color-background-secondary);
 
     &.isEmbeddingSdk {
       background-color: var(--mb-color-bg-dashboard);
     }
 
     border-bottom-color: var(--mb-color-border);
-  }
-
-  &.isNightMode {
-    --mb-color-text-secondary: color-mix(
-      in srgb,
-      var(--mb-base-color-white) 65%,
-      transparent
-    );
-    --mb-color-border: var(--mb-base-color-orion-60);
-    --mb-color-background: var(--mb-color-bg-black);
   }
 }

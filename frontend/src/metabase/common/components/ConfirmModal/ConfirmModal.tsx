@@ -11,9 +11,9 @@ import {
   Text,
 } from "metabase/ui";
 
-interface ConfirmModal extends ModalProps {
+interface ConfirmModal extends Omit<ModalProps, "content"> {
   title?: string | ReactNode;
-  content?: string;
+  content?: string | ReactNode;
   message?: string | ReactNode;
   onConfirm?: () => void | Promise<void>;
   confirmButtonText?: string;
@@ -39,16 +39,19 @@ export const ConfirmModal = ({
   const [confirming, setConfirming] = useState(false);
   const handleConfirm = async () => {
     const confirm = onConfirm();
-    if (confirm instanceof Promise) {
-      setConfirming(true);
-      await confirm;
+    try {
+      if (confirm instanceof Promise) {
+        setConfirming(true);
+        await confirm;
+      }
+    } finally {
+      setConfirming(false);
     }
-    setConfirming(false);
   };
 
   return (
     <Modal title={title} onClose={onClose} size="lg" {...props}>
-      <Flex direction="column" gap="lg" mt="lg">
+      <Flex direction="column" gap="lg" mt="md">
         {content ? <Text>{content}</Text> : null}
         <Text>{message}</Text>
         <Flex align="center" justify="space-between" gap="md">

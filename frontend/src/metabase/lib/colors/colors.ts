@@ -1,53 +1,35 @@
-/* eslint-disable no-color-literals */
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
-// NOTE: KEEP SYNCHRONIZED WITH:
-// frontend/src/metabase/css/core/colors.module.css
-// frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
-// frontend/src/metabase/styled-components/theme/css-variables.ts
-// NOTE: this file is used in the embedding SDK, so it should not contain anything else except the `colors` constant.
-export const colors = {
-  brand: "#509EE3",
-  summarize: "#88BF4D",
-  filter: "#7172AD",
-  accent0: "#509EE3",
-  accent1: "#88BF4D",
-  accent2: "#A989C5",
-  accent3: "#EF8C8C",
-  accent4: "#F9D45C",
-  accent5: "#F2A86F",
-  accent6: "#98D9D9",
-  accent7: "#7172AD",
-  "accent-gray": "#F3F3F4", // Orion 10 (--mb-base-color-orion-10)
-  "accent-gray-light": "#FAFAFB", // Orion 5 (--mb-base-color-orion-5)
-  "accent-gray-dark": "#DCDFE0", // Orion 20 (--mb-base-color-orion-20)
-  "admin-navbar": "#7172AD",
-  white: "#FFFFFF",
-  success: "#84BB4C",
-  // --mb-base-color-lobster-50
-  danger: "hsla(358, 71%, 62%, 1)",
-  error: "hsla(358, 71%, 62%, 1)",
-  warning: "#F9CF48",
-  "text-dark": "#4C5773",
-  "text-medium": "#696E7B",
-  "text-light": "#949AAB",
-  "text-white": "#FFFFFF",
-  "text-secondary-inverse": "#B7BCBF",
-  "bg-black": "#2E353B",
-  "bg-dark": "#93A1AB",
-  "bg-medium": "#EDF2F5",
-  "bg-light": "#F9FBFC",
-  "bg-white": "#FFFFFF",
-  "bg-yellow": "#FFFCF2",
-  "bg-night": "#42484E",
-  // --mb-base-color-lobster-10
-  "bg-error": "hsla(0, 76%, 97%, 1)",
-  shadow: "rgba(0,0,0,0.08)",
-  border: "#EEECEC",
 
-  /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
-  "saturated-blue": "#2D86D4",
-  "saturated-green": "#70A63A",
-  "saturated-purple": "#885AB1",
-  "saturated-red": "#ED6E6E",
-  "saturated-yellow": "#F9CF48",
+import type { ColorSettings } from "metabase-types/api/settings";
+
+import { getBaseColorsForThemeDefinitionOnly } from "./constants/base-colors";
+import { deriveFullMetabaseTheme } from "./derive-theme";
+import type { MetabaseColorKey } from "./types/color-keys";
+
+const win = typeof window !== "undefined" ? window : ({} as Window);
+const tokenFeatures = win.MetabaseBootstrap?.["token-features"] ?? {};
+const shouldWhitelabel = !!tokenFeatures["whitelabel"];
+const whitelabelColors =
+  (shouldWhitelabel && win.MetabaseBootstrap?.["application-colors"]) || {};
+
+const baseColors = getBaseColorsForThemeDefinitionOnly();
+
+export const getColors = (whitelabelColors?: ColorSettings) =>
+  deriveFullMetabaseTheme({ colorScheme: "light", whitelabelColors }).colors;
+
+export const colors: Record<MetabaseColorKey, string> =
+  getColors(whitelabelColors);
+
+export const mutateColors = (whitelabelColors: ColorSettings) => {
+  // Empty the `colors` object to make sure we don't hold onto previously defined (now undefined) values
+  Object.keys(colors).forEach((key) => {
+    delete colors[key as keyof typeof colors];
+  });
+  Object.assign(colors, getColors(whitelabelColors));
+};
+
+export const staticVizOverrides = {
+  "text-primary": baseColors.orion[80],
+  "text-secondary": baseColors.orion[60],
+  "text-tertiary": baseColors.orion[40],
 };

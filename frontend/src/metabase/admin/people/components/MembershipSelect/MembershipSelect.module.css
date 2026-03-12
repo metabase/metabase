@@ -1,43 +1,18 @@
-.membershipSelectContainer {
-  padding: 0.5rem 0;
-  width: 300px;
-  max-height: 600px;
-}
-
 .membershipSelectItem {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  cursor: pointer;
   padding: 0.5rem 1.5rem;
-  background-color: var(--mb-color-bg-white);
-  color: var(--mb-color-text-medium);
-  font-weight: 700;
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-secondary);
+  font-weight: bold;
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-filter);
 
     :global(.Icon) {
-      color: var(--mb-color-text-white) !important;
+      color: var(--mb-color-text-primary-inverse) !important;
     }
   }
-}
-
-.membershipSelectItemDisabled {
-  cursor: not-allowed;
-}
-
-.membershipSelectHeader {
-  padding: 0.75rem 1.5rem 0.5rem 1.5rem;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--mb-color-filter);
-}
-
-.membershipActionsContainer {
-  padding-left: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
 }

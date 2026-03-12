@@ -5,14 +5,43 @@ import { USERS } from "e2e/support/cypress_data";
 import {
   AUTH_PROVIDER_URL,
   JWT_SHARED_SECRET,
-  METABASE_INSTANCE_URL,
   activateToken,
   restore,
+  updateSetting,
 } from "e2e/support/helpers";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
-export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
+export const getSignedJwtForUser = async ({
+  user = USERS.admin,
+  expiredInSeconds = 60 * 10, // 10 minutes expiration,
+}: {
+  user?: { email: string; first_name: string; last_name: string };
+  expiredInSeconds?: number;
+}) => {
+  const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
+
+  return new jose.SignJWT({
+    email: user.email,
+    first_name: user.first_name,
+    last_name: user.last_name,
+    exp: Math.round(Date.now() / 1000) + expiredInSeconds,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .sign(secret);
+};
+
+export const mockAuthProviderAndJwtSignIn = (
+  user = USERS.admin,
+  {
+    jwt,
+    waitForPromise,
+  }: { jwt?: string; waitForPromise?: () => Promise<any> } = {},
+) => {
   cy.intercept("GET", `${AUTH_PROVIDER_URL}**`, async (req) => {
+    const p = waitForPromise ? waitForPromise() : Promise.resolve();
+
+    await p;
+
     try {
       const url = new URL(req.url);
       const responseParam = url.searchParams.get("response");
@@ -26,15 +55,7 @@ export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
         return;
       }
 
-      const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
-      const jwt = await new jose.SignJWT({
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
-      })
-        .setProtectedHeader({ alg: "HS256" })
-        .sign(secret);
+      jwt = jwt || (await getSignedJwtForUser({ user }));
 
       req.reply({
         statusCode: 200,
@@ -51,8 +72,6 @@ export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
 };
 
 export function signInAsAdminAndEnableEmbeddingSdk() {
-  Cypress.config("baseUrl", METABASE_INSTANCE_URL);
-
   restore();
 
   cy.signInAsAdmin();
@@ -61,6 +80,19 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
   cy.request("PUT", "/api/setting", {
     "enable-embedding-sdk": true,
   });
+}
+
+export function signInAsAdminAndSetupGuestEmbedding({
+  token,
+}: {
+  token: "starter" | "pro-cloud" | "bleeding-edge";
+}) {
+  restore();
+
+  cy.signInAsAdmin();
+
+  activateToken(token);
+  updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
 }
 
 const MOCK_SAML_IDP_URI = "https://example.test/saml";

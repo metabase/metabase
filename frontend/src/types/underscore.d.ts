@@ -3,7 +3,7 @@
  * This version rearranges and the type in a logical way and adds an extra overrides to handle a case where we pass `any` type to `_.compose`.
  */
 
-declare module _ {
+declare namespace _ {
   interface UnderscoreStatic {
     compose<TArgs extends any[], R1>(
       f1: (...args: TArgs) => R1,

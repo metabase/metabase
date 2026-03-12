@@ -137,6 +137,26 @@
       (underive :event/update-permission-failure ::permission-failure-event)
       (underive :event/create-permission-failure ::permission-failure-event))))
 
+;;; ---------------------------------------- query-check tests ----------------------------------------
+
+(deftest query-check-returns-object-when-user-has-query-permissions-test
+  (testing "query-check returns object when user has query permissions"
+    (mt/with-temp [:model/Card card {}]
+      (with-redefs [mi/can-query? (constantly true)]
+        (is (= card (api/query-check card)))))))
+
+(deftest query-check-throws-403-when-user-lacks-query-permissions-test
+  (testing "query-check throws 403 when user lacks query permissions"
+    (mt/with-temp [:model/Card card {}]
+      (with-redefs [mi/can-query? (constantly false)]
+        (is (thrown-with-msg? ExceptionInfo #"permissions"
+                              (api/query-check card)))))))
+
+(deftest query-check-throws-404-for-nil-object-test
+  (testing "query-check throws 404 for nil object"
+    (is (thrown-with-msg? ExceptionInfo #"Not found"
+                          (api/query-check nil)))))
+
 (deftest present-items-works
   (testing "order is preserved"
     (is (= [{:id 1 :model :foo} {:id 2 :model :foo} {:id 3 :model :foo}]

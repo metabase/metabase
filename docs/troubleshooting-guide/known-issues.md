@@ -38,7 +38,7 @@ If the functionality you're looking for simply doesn't exist (i.e., it hasn't su
 
    > Add additional keywords to the search bar above the list of results. Hit Enter/Return to run the search.
 
-   > Click **Sort** and select the thumbs up emoji (👍) to view the most highly requested features.
+   > Click **Sort** and select the thumbs up emoji (👍) to view the most requested features.
 
 4. If you find a feature request that matches what you want to do, add a thumbs up emoji to help the team prioritize it.
 

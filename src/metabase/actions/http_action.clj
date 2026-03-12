@@ -2,8 +2,8 @@
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.parse :as params.parse]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -102,7 +102,7 @@
 (defn apply-json-query
   "Executes a jq query on [[object]]."
   [object jq-query]
-  ;; TODO this is pretty ineficient. We parse with `:as :json`, then reencode within a response
+  ;; TODO this is pretty inefficient. We parse with `:as :json`, then re-encode within a response
   ;; I couldn't find a way to get JSONNode out of cheshire, so we fall back to jackson.
   ;; Should jackson be added explicitly to deps.edn?
   (let [json-node (.readTree ^ObjectMapper @object-mapper (json/encode object))

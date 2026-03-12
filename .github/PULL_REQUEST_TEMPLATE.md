@@ -3,7 +3,7 @@
 
 > **Warning**
 >
-> If that is your first contribution to Metabase, please sign the [Contributor License Agreement](https://docs.google.com/a/metabase.com/forms/d/1oV38o7b9ONFSwuzwmERRMi9SYrhYeOrkbmNaq9pOJ_E/viewform) (unless it's a tiny documentation change). Also, if you're attempting to fix a translation issue, please submit your changes to our [Crowdin project](https://crowdin.com/project/metabase-i18n) instead of opening a PR.
+> If that is your first contribution to Metabase, please sign the [Contributor License Agreement](https://docs.google.com/a/metabase.com/forms/d/1oV38o7b9ONFSwuzwmERRMi9SYrhYeOrkbmNaq9pOJ_E/viewform). Also, if you're attempting to fix a translation issue, please submit your changes to our [Crowdin project](https://crowdin.com/project/metabase-i18n) instead of opening a PR.
 
 Closes https://github.com/metabase/metabase/issues/[issue_number]
 
@@ -25,3 +25,4 @@ _Upload a demo video or before/after screenshots if sensible or remove the secti
 ### Checklist
 
 - [ ] Tests have been added/updated to cover changes in this PR
+- [ ] If adding new Loki tests: they pass [stress testing](https://github.com/metabase/metabase/actions/workflows/loki-stress-test-flake-fix.yml)

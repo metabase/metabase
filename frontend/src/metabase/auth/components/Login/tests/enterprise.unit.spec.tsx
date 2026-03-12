@@ -8,7 +8,6 @@ describe("Login", () => {
     setup({
       isPasswordLoginEnabled: false,
       isGoogleAuthEnabled: true,
-      hasEnterprisePlugins: true,
     });
 
     expect(screen.getByText("Sign in with email")).toBeInTheDocument();

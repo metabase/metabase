@@ -1,7 +1,7 @@
 (ns metabase.lib.drill-thru.fk-filter-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -10,12 +10,13 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
+
 (deftest ^:parallel fk-filter-availability-test
-  (testing "fk-filter is available for cell clicks on FKs with non-NULL values"
+  (testing "fk-filter is available for cell clicks on FKs with any value including NULL"
     (doseq [[test-case context {:keys [click column-type]}] (canned/canned-clicks)]
       (if (and (= click :cell)
-               (= column-type :fk)
-               (not= (:value context) :null))
+               (= column-type :fk))
         (is (canned/returned test-case context :drill-thru/fk-filter))
         (is (not (canned/returned test-case context :drill-thru/fk-filter)))))))
 
@@ -52,23 +53,19 @@
       :query-type  :aggregated
       :column-name "max"})))
 
-(deftest ^:parallel do-not-return-fk-filter-for-null-fk-test
-  (testing "#13957 if this is an FK column but the value clicked is NULL, don't show the FK filter drill"
+(deftest ^:parallel return-fk-filter-for-null-fk-test
+  (testing "#35561 FK filter drill should be available for NULL FK values to filter by IS NULL"
     (let [test-case            {:drill-type  :drill-thru/fk-filter
                                 :click-type  :cell
                                 :query-type  :unaggregated
                                 :column-name "PRODUCT_ID"
                                 :expected    {:type :drill-thru/fk-filter}}
-          ;{:keys [query row]}  (lib.drill-thru.tu/query-and-row-for-test-case test-case)
-          ;context              (lib.drill-thru.tu/test-case-context query row test-case)
-          ;drill-types          #(->> % (lib/available-drill-thrus query) (map :type) set)
           row        (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row])]
       (testing "returned with non-NULL value"
         (lib.drill-thru.tu/test-returns-drill test-case))
-      (testing "not returned with NULL value"
-        (-> test-case
-            (assoc :custom-row (assoc row "PRODUCT_ID" nil))
-            (dissoc :expected))))))
+      (testing "returned with NULL value"
+        (lib.drill-thru.tu/test-returns-drill
+         (assoc test-case :custom-row (assoc row "PRODUCT_ID" nil)))))))
 
 (deftest ^:parallel fk-filter-on-model-test
   (testing "FK filter drill should not appear on native query models (#35689, #36633)"
@@ -175,4 +172,20 @@
                                                        ["ORDERS" :aggregated :row "PRODUCT_ID"])]]}]}
         :expected-native {:stages [{:filters [[:= {} [:field {} "PRODUCT_ID"]
                                                (get-in lib.drill-thru.tu/test-queries
-                                                       ["ORDERS" :aggregated :row "PRODUCT_ID"])]]}]}}))))
+                                                       ["ORDERS" :aggregated :row "PRODUCT_ID"])]]}]}})))
+
+  (testing "adds an is-null filter for NULL FK values"
+    (let [row (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row])]
+      (lib.drill-thru.tu/test-drill-application
+       {:click-type     :cell
+        :query-type     :unaggregated
+        :column-name    "PRODUCT_ID"
+        :custom-row     (assoc row "PRODUCT_ID" nil)
+        :drill-type     :drill-thru/fk-filter
+        :expected       {:lib/type  :metabase.lib.drill-thru/drill-thru
+                         :type      :drill-thru/fk-filter
+                         :column-name "Product ID"
+                         :table-name  string?}
+        :expected-query {:stages [{:filters [[:is-null {}
+                                              [:field {} (lib.drill-thru.tu/field-key=
+                                                          "PRODUCT_ID" (meta/id :orders :product-id))]]]}]}}))))

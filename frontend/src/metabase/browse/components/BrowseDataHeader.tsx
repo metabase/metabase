@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { trackDataReferenceClicked } from "metabase/collections/analytics";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { Flex, Group, Icon, Text, Title } from "metabase/ui";
 
@@ -23,9 +23,9 @@ export const BrowseDataHeader = () => {
           justify="space-between"
           align="center"
         >
-          <Title order={2} c="text-dark">
+          <Title order={2} c="text-primary">
             <Group gap="sm">
-              <Icon size={24} color={color("brand")} name="database" />
+              <Icon size={24} c="brand" name="database" />
               {t`Databases`}
             </Group>
           </Title>
@@ -38,7 +38,7 @@ export const BrowseDataHeader = () => {
 
 const LearnAboutDataLink = () => (
   <Flex p=".75rem" justify="flex-end" align="center" gap="md">
-    <Link to="reference">
+    <Link to="reference" onClick={trackDataReferenceClicked}>
       <BrowseHeaderIconContainer>
         <LearnAboutDataIcon size={14} name="reference" />
         <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">

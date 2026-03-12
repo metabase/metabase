@@ -146,7 +146,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: Auto binned");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total: Auto binned").click();
       openBinningListForDimension("Total", "Auto binned");
 
@@ -162,7 +162,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Month");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At: Month").click();
       openBinningListForDimension("Created At", "by month");
 
@@ -182,7 +182,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: Auto binned");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Longitude: Auto binned").click();
       openBinningListForDimension("Longitude", "Auto binned");
 
@@ -195,25 +195,18 @@ describe("scenarios > binning > binning options", () => {
   });
 
   context("via time series footer (metabase#11183)", () => {
-    // TODO: enable again when metabase#35546 is completed
-    it(
-      "should render time series binning options correctly",
-      { tags: "@skip" },
-      () => {
-        H.openTable({ table: ORDERS_ID });
-
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Created At").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Distribution").click();
-
-        getTitle("Count by Created At: Month");
-
-        // Check all binning options from the footer
-        cy.findAllByTestId("select-button-content").contains("Month").click();
-        getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
-      },
-    );
+    it("should render time series binning options correctly", () => {
+      H.openTable({ table: ORDERS_ID });
+      H.tableHeaderClick("Created At");
+      H.popover().findByText("Distribution").click();
+      getTitle("Count by Created At: Month");
+      cy.findByTestId("timeseries-bucket-button").click();
+      H.popover().within(() => {
+        cy.findByText("Month")
+          .parent()
+          .should("have.attr", "aria-selected", "true");
+      });
+    });
   });
 
   context("implicit joins (metabase#16674)", { tags: "@skip" }, () => {
@@ -329,7 +322,7 @@ function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
   // Custom question has two popovers open.
   // The binning options are in the latest (last) one.
   // Using `.last()` works even when only one popover is open so it covers both scenarios.
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   H.popover()
     .last()
     .within(() => {
@@ -342,10 +335,10 @@ function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
         cy.findByText(option);
       });
 
-      isSelected &&
-        cy
-          .findByText(selectedOption)
+      if (isSelected) {
+        cy.findByText(selectedOption)
           .closest("li")
           .should("have.attr", "aria-selected", "true");
+      }
     });
 }

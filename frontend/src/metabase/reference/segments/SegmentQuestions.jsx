@@ -3,10 +3,10 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import AdminAwareEmptyState from "metabase/common/components/AdminAwareEmptyState";
-import List from "metabase/common/components/List";
+import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
+import { List } from "metabase/common/components/List";
 import S from "metabase/common/components/List/List.module.css";
-import ListItem from "metabase/common/components/ListItem";
+import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useQuestionListQuery } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
@@ -43,7 +43,7 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-export const SegmentQuestions = ({ style, table, segment, metadata }) => {
+const SegmentQuestionsInner = ({ style, table, segment, metadata }) => {
   const {
     data = [],
     isLoading,
@@ -92,11 +92,14 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
   );
 };
 
-SegmentQuestions.propTypes = {
+SegmentQuestionsInner.propTypes = {
   table: PropTypes.object,
   segment: PropTypes.object.isRequired,
   style: PropTypes.object.isRequired,
   metadata: PropTypes.object.isRequired,
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(SegmentQuestions);
+export const SegmentQuestions = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(SegmentQuestionsInner);

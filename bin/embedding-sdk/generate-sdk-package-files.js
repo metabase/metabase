@@ -36,7 +36,7 @@ function generateSdkPackage() {
 
   const sdkPackageTemplateJson = fs.readFileSync(
     path.resolve(
-      "./enterprise/frontend/src/embedding-sdk/package.template.json",
+      "./enterprise/frontend/src/embedding-sdk-package/package.template.json",
     ),
     "utf-8",
   );
@@ -87,5 +87,8 @@ if (!fs.existsSync(SDK_DIST_DIR)) {
 
 generateSdkPackage();
 copyFileToOutput("LICENSE.txt");
-copyFileToOutput("frontend/src/embedding-sdk/README.md", "README.md");
-copyFileToOutput("frontend/src/embedding-sdk/CHANGELOG.md", "CHANGELOG.md");
+copyFileToOutput("frontend/src/embedding-sdk-package/README.md", "README.md");
+copyFileToOutput(
+  "frontend/src/embedding-sdk-package/CHANGELOG.md",
+  "CHANGELOG.md",
+);

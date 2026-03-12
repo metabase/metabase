@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars -- used for types */
 const DOUBLE_QUOTE = '"';
 const SINGLE_QUOTE = "'";
 const OPEN_BRACKET = "[";

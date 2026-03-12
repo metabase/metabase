@@ -17,7 +17,7 @@ describe("getIcon", () => {
   });
 
   it("should return the correct icon for a schema", () => {
-    expect(getIcon({ model: "schema" })).toEqual({ name: "folder" });
+    expect(getIcon({ model: "schema" })).toEqual({ name: "folder_database" });
   });
 
   it("should return the correct icon for a table", () => {
@@ -36,12 +36,16 @@ describe("getIcon", () => {
     expect(getIcon({ model: "indexed-entity" })).toEqual({ name: "index" });
   });
 
+  it("should return the correct icon for a python library", () => {
+    expect(getIcon({ model: "pythonlibrary" })).toEqual({ name: "code_block" });
+  });
+
   it("should return the correct icon for a dashboard", () => {
     expect(getIcon({ model: "dashboard" })).toEqual({ name: "dashboard" });
   });
 
   it("should return the correct icon for a card without a display type", () => {
-    expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+    expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
   });
 
   it("should return the default icon for an invalid model", () => {
@@ -58,10 +62,10 @@ describe("getIcon", () => {
     });
 
     it("should return the default icon for no display type", () => {
-      expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+      expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
     });
 
-    it("should return the correct icon for a card with a table chare", () => {
+    it("should return the correct icon for a card with a table chart", () => {
       expect(getIcon({ model: "card", display: "table" })).toEqual({
         name: "table2",
       });
@@ -103,7 +107,33 @@ describe("getIcon", () => {
       });
     });
 
-    it("should return the correct icon for a card with anobject detail chart", () => {
+    it("should return the correct icon for a personal collection root", () => {
+      expect(
+        getIcon({ model: "collection", is_personal: true, location: "/" }),
+      ).toEqual({
+        name: "person",
+      });
+    });
+
+    it("should return the correct icon for a nested personal collection", () => {
+      expect(
+        getIcon({
+          model: "collection",
+          is_personal: true,
+          location: "/123/456",
+        }),
+      ).toEqual({
+        name: "folder",
+      });
+    });
+
+    it("should return the correct icon for all personal collections", () => {
+      expect(getIcon({ model: "collection", id: "personal" })).toEqual({
+        name: "group",
+      });
+    });
+
+    it("should return the correct icon for a card with an object detail chart", () => {
       expect(getIcon({ model: "card", display: "object" })).toEqual({
         name: "document",
       });

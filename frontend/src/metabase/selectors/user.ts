@@ -12,6 +12,11 @@ export const getUserIsAdmin = createSelector(
   (user) => user?.is_superuser || false,
 );
 
+export const getUserIsAnalyst = createSelector(
+  [getUser],
+  (user) => !!user?.is_data_analyst,
+);
+
 export const canManageSubscriptions = createSelector(
   [
     getUserIsAdmin,
@@ -32,10 +37,35 @@ export const canAccessSettings = createSelector(
 
 export const getUserAttributes = createSelector(
   [getUser],
-  (user) => user?.login_attributes || {},
+  (user) => user?.attributes || {},
 );
 
 export const getUserPersonalCollectionId = createSelector(
   [getUser],
   (user) => user?.personal_collection_id,
+);
+
+export const getUserTenantCollectionId = createSelector(
+  [getUser],
+  (user) => user?.tenant_collection_id,
+);
+
+export const canUserCreateQueries = createSelector(
+  [getUser],
+  (user) => user?.permissions?.can_create_queries ?? false,
+);
+
+export const canUserCreateNativeQueries = createSelector(
+  [getUser],
+  (user) => user?.permissions?.can_create_native_queries ?? false,
+);
+
+export const getUserCanWriteToCollections = createSelector(
+  [getUser],
+  (user) => user?.can_write_any_collection,
+);
+
+export const getIsTenantUser = createSelector(
+  [getUser],
+  (user) => user?.tenant_id != null,
 );

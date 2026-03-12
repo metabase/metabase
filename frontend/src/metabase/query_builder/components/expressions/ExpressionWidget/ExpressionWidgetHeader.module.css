@@ -1,5 +1,5 @@
 .Header {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--mb-color-border);
   display: flex;
@@ -7,10 +7,15 @@
   height: 3rem;
 
   .HeaderButton {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
 
-    &:hover {
+    &:not(:disabled):hover {
       color: var(--mb-color-brand);
+    }
+
+    &:disabled {
+      opacity: 1;
+      cursor: default;
     }
   }
 }

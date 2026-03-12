@@ -1,5 +1,7 @@
 (ns metabase.util.humanization
+  #?(:clj (:refer-clojure :exclude [for]))
   (:require
+   #?(:clj [metabase.util.performance :refer [for]])
    [clojure.string :as str]
    [metabase.util :as u]))
 
@@ -8,7 +10,7 @@
 
     (name->human-readable-name :simple \"cool_toucans\") ;-> \"Cool Toucans\"
 
-    ;; specifiy a different strategy:
+    ;; specify a different strategy:
     (name->human-readable-name :none \"cool_toucans\") ;-> \"cool_toucans\""
   {:arglists '([strategy s])}
   (fn [strategy _s]

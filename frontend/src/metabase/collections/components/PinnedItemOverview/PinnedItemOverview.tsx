@@ -10,9 +10,8 @@ import type {
   DeleteBookmark,
 } from "metabase/collections/types";
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
-import ItemDragSource from "metabase/common/components/dnd/ItemDragSource";
+import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 import { Box, Group, Icon, Stack } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -283,10 +282,10 @@ function SectionTitle({ title, description, icon }: SectionTitleProps) {
   return (
     <Stack gap="sm" pb="md">
       <Group gap="sm">
-        {icon && <Icon name={icon} color={color("brand")} />}
+        {icon && <Icon name={icon} c="brand" />}
         <h3>{title}</h3>
       </Group>
-      {description && <Box c="text-medium">{description}</Box>}
+      {description && <Box c="text-secondary">{description}</Box>}
     </Stack>
   );
 }

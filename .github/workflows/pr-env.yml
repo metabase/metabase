@@ -3,6 +3,17 @@ run-name: Building Dynamic PR Environment for ${{ github.ref_name }} by @${{ git
 
 on:
   workflow_call:
+    inputs:
+      self_hosting:
+        description: 'Deploy self-hosting stack'
+        required: false
+        type: boolean
+        default: false
+      analytics_dev_mode:
+        description: 'Enable analytics development mode'
+        required: false
+        type: boolean
+        default: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -29,7 +40,8 @@ jobs:
       - name: Retrieve uberjar artifact for ee
         uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          commit: ${{ github.event.pull_request.head.sha || github.sha }}
+          edition: ee
           extract-path: "target/uberjar"
           output-name: "metabase.jar"
       - name: Move uberjar to bin/docker
@@ -113,8 +125,10 @@ jobs:
           | grep -q 1 \
           || psql -c "CREATE DATABASE hosting_pr${{ github.event.number }}"
       - name: Download Deployment YAML template
+        if: ${{ !inputs.self_hosting }}
         run: aws s3 cp s3://metabase-pr-env/metabase.yml.tmpl ./metabase.yml.tmpl
       - name: Render Deployment YAML
+        if: ${{ !inputs.self_hosting }}
         uses: nowactions/envsubst@v1
         with:
           input: ./metabase.yml.tmpl
@@ -124,9 +138,55 @@ jobs:
           PR_NUMBER: ${{ github.event.number }}
           MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
       - name: Deploy PR Review ENV
+        if: ${{ !inputs.self_hosting }}
         run: |
           kubectl apply -f ./metabase.yml
+      - name: Download Helm values template (self-hosting)
+        if: ${{ inputs.self_hosting }}
+        run: aws s3 cp s3://metabase-pr-env/values.yaml.tmpl ./values.yaml.tmpl
+      - name: Render Helm values (self-hosting)
+        if: ${{ inputs.self_hosting }}
+        uses: nowactions/envsubst@v1
+        with:
+          input: ./values.yaml.tmpl
+          output: ./values.yaml
+        env:
+          IMAGE_TAG: pr${{ github.event.number }}
+          PR_NUMBER: ${{ github.event.number }}
+          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+          QUAY_PASSWORD: ${{ secrets.QUAY_PASSWORD }}
+          OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
+          DB_HOST: ${{ secrets.PR_ENV_DB_HOST }}
+          DB_USERNAME: ${{ secrets.PR_ENV_DB_USER }}
+          DB_PASSWORD: ${{ secrets.PR_ENV_DB_PASSWORD }}
+          CONFIG: ${{ secrets.PR_ENV_CONFIG }}
+          MB_ANALYTICS_DEV_MODE: ${{ inputs.analytics_dev_mode && 'true' || 'false' }}
+
+      - name: Setup Helm
+        if: ${{ inputs.self_hosting }}
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+      - name: Login to Quay.io
+        if: ${{ inputs.self_hosting }}
+        run: |
+          helm registry login quay.io \
+            --username ${{ secrets.QUAY_USERNAME }} \
+            --password ${{ secrets.QUAY_PASSWORD }}
+      - name: Deploy PR Review ENV (self-hosting)
+        if: ${{ inputs.self_hosting }}
+        run: |
+          helm upgrade --install hosting-pr${{ github.event.number }} \
+            oci://quay.io/enterprisemetabase/chart-metabase-stack \
+            --namespace hosting-pr${{ github.event.number }} \
+            --create-namespace \
+            --values ./values.yaml \
+            --atomic \
+            --timeout 10m
   preview_links:
     runs-on: ubuntu-latest
     needs: [deploy_pr]
@@ -139,3 +199,4 @@ jobs:
             ✅ Preview:
                 https://pr${{ github.event.number }}.coredev.metabase.com
             🗒️ [login instructions](https://www.notion.so/metabase/Ephemeral-PR-Environments-c74a3710c87a460dbf4fc0007a001458)
+            📦 Deployment type: ${{ inputs.self_hosting && 'PR-Env-self-hosting' || (inputs.analytics_dev_mode && 'PR-Env-analytics-dev' || 'PR-Env') }}

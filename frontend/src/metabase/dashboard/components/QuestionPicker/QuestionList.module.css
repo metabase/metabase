@@ -3,8 +3,18 @@
     flex: 1;
   }
 
+  &:hover {
+    .QuestionListItemIcon {
+      color: var(--mb-color-text-primary);
+    }
+  }
+
   .QuestionListItemLabel {
     overflow: hidden;
+  }
+
+  .QuestionListItemIcon {
+    color: var(--mb-color-brand);
   }
 
   .QuestionListItemIcon:last-child {
@@ -14,11 +24,11 @@
   .VisualizerButton {
     visibility: hidden;
     background-color: var(--mb-color-brand);
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     cursor: pointer;
 
     &:hover {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
       background-color: var(--mb-color-brand);
     }
   }

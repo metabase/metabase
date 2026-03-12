@@ -49,7 +49,7 @@
                   :select    [[:card.id :card_id]
                               [:card.name :card_name]
                               [error-substr :error_substr]
-                              :collection_id
+                              [:card.collection_id :collection_id]
                               [coll-name :collection_name]
                               :card.database_id
                               [:db.name :database_name]

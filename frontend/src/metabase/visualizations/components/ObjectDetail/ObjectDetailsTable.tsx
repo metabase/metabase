@@ -4,11 +4,10 @@ import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
-import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import type { ClickObject } from "metabase-lib";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -19,11 +18,12 @@ import {
   isa,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
-  DatasetData,
+  DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { ExpandableString } from "./ExpandableString";
 import {
   FitImage,
   GridCell,
@@ -105,8 +105,9 @@ export function DetailsTableCell({
     value.startsWith("http");
 
   const handleClick = (e: MouseEvent<HTMLSpanElement>) => {
-    if (onVisualizationClick && visualizationIsClickable(clicked)) {
-      onVisualizationClick({ ...clicked, element: e.currentTarget });
+    const clickData = { ...clicked, element: e.currentTarget };
+    if (onVisualizationClick && visualizationIsClickable(clickData)) {
+      onVisualizationClick(clickData);
     }
   };
 
@@ -133,7 +134,7 @@ export function DetailsTableCell({
 }
 
 export interface DetailsTableProps {
-  data: DatasetData;
+  columns: DatasetColumn[];
   zoomedRow: RowValue[];
   settings: VisualizationSettings;
   onVisualizationClick: OnVisualizationClickType;
@@ -141,19 +142,19 @@ export interface DetailsTableProps {
 }
 
 export function DetailsTable({
-  data,
+  columns,
   zoomedRow,
   settings,
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableProps): JSX.Element {
-  const { cols: columns } = data;
   const columnSettings = settings["table.columns"];
 
   const { cols, row } = useMemo(() => {
     if (!columnSettings) {
       return { cols: columns, row: zoomedRow };
     }
+
     const columnIndexes = findColumnIndexesForColumnSettings(
       columns,
       columnSettings.filter(({ enabled }) => enabled),

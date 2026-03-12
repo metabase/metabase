@@ -15,9 +15,9 @@ import {
   useListDatabaseSchemaTablesQuery,
   useListTablesQuery,
 } from "metabase/api";
-import Fields from "metabase/entities/fields";
-import Questions from "metabase/entities/questions";
-import Segments from "metabase/entities/segments";
+import { Fields } from "metabase/entities/fields";
+import { Questions } from "metabase/entities/questions";
+import { Segments } from "metabase/entities/segments";
 import { color } from "metabase/lib/colors";
 import {
   createEntity,
@@ -33,7 +33,6 @@ import {
   withCachedDataAndRequestState,
   withNormalize,
 } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { TableSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -58,7 +57,7 @@ export const UPDATE_TABLE_FIELD_ORDER =
 /**
  * @deprecated use "metabase/api" instead
  */
-const Tables = createEntity({
+export const Tables = createEntity({
   name: "tables",
   nameOne: "table",
   path: "/api/table",
@@ -280,9 +279,7 @@ const Tables = createEntity({
 
       if (state[virtualTableId]) {
         const virtualTable = state[virtualTableId];
-        const virtualSchemaId = getCollectionVirtualSchemaId(card.collection, {
-          isDatasets: card.type === "model",
-        });
+        const virtualSchemaId = getCollectionVirtualSchemaId(card.collection);
         const virtualSchemaName = getCollectionVirtualSchemaName(
           card.collection,
         );
@@ -351,11 +348,6 @@ const Tables = createEntity({
     return state;
   },
   objectSelectors: {
-    getUrl: (table) =>
-      Urls.tableRowsQuery(table.database_id, table.table_id, null),
-    getIcon: (table, { variant = "primary" } = {}) => ({
-      name: variant === "primary" ? "table" : "database",
-    }),
     getColor: (table) => color("accent2"),
   },
 
@@ -477,5 +469,3 @@ function getUseListQueryEndpoint(dbId, schemaName) {
 
   return "listTables";
 }
-
-export default Tables;

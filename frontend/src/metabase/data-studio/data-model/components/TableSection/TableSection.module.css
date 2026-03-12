@@ -1,0 +1,14 @@
+.header {
+  z-index: 3;
+}
+
+.box {
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-md);
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+}
+
+.EmptyState {
+  padding-bottom: 128px;
+}

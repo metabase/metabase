@@ -35,6 +35,7 @@
 
  [metabase.analytics.sdk
 
+  embedding-context?
   embedding-mw
   include-sdk-info
   with-client! get-client
@@ -42,6 +43,7 @@
 
  [metabase.analytics.settings
 
+  analytics-uuid
   anon-tracking-enabled
   anon-tracking-enabled!
   instance-creation]

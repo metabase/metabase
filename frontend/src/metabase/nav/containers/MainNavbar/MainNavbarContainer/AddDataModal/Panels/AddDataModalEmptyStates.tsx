@@ -90,7 +90,7 @@ export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
     .exhaustive();
 
   return (
-    <Alert icon={<Icon name="info_filled" />} maw={CONTENT_MAX_WIDTH}>
+    <Alert icon={<Icon name="info" />} maw={CONTENT_MAX_WIDTH}>
       <Text fz="md" lh="lg">
         {getAlertCopy}
       </Text>
@@ -127,7 +127,7 @@ const AddDataEmptyState = ({
         <Title order={2} size="h4" mb="xs">
           {title}
         </Title>
-        <Text c="text-medium">{subtitle}</Text>
+        <Text c="text-secondary">{subtitle}</Text>
       </Box>
       {ctaLink && (
         <Button
@@ -175,6 +175,11 @@ export const CSVPanelEmptyState = ({
       contactAdminReason: ContactReason;
       upsell?: never;
     }) => {
+  const text = (
+    <Text component="span" td="underline">{c(
+      "in the sentence 'To work with CSVs, enable file uploads in your database.'",
+    ).t`your database`}</Text>
+  );
   const ctaSubtitle = c("{0} refers to the string 'your database'")
     .jt`To work with CSVs, enable file uploads in ${(
     <Tooltip
@@ -184,7 +189,7 @@ export const CSVPanelEmptyState = ({
       label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
       key="database-tooltip"
     >
-      <Text component="span" td="underline">{t`your database`}</Text>
+      {text}
     </Tooltip>
   )}.`;
 

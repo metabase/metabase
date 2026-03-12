@@ -1,3 +1,5 @@
+import Color from "color";
+
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 import { color } from "metabase/lib/colors";
 import type { MantineThemeOther } from "metabase/ui";
@@ -8,16 +10,12 @@ function getPieBorderColor(
   dashboardCardBg: string,
   questionBg: string,
   isDashboard: boolean | undefined,
-  isNightMode: boolean | undefined,
 ) {
-  if (isDashboard && isNightMode) {
-    return "var(--mb-color-bg-night)";
-  }
   if (isDashboard) {
     return dashboardCardBg;
   }
   if (questionBg === "transparent") {
-    return "var(--mb-color-bg-white)";
+    return "var(--mb-color-background-primary)";
   }
   return questionBg;
 }
@@ -28,12 +26,10 @@ function getPieBorderColor(
 export function getVisualizationTheme({
   theme,
   isDashboard,
-  isNightMode,
   isStaticViz,
 }: {
   theme: Partial<MantineThemeOther>;
   isDashboard?: boolean;
-  isNightMode?: boolean;
   isStaticViz?: boolean;
 }): VisualizationTheme {
   const { cartesian, dashboard, question } = theme;
@@ -58,21 +54,18 @@ export function getVisualizationTheme({
       splitLine: {
         lineStyle: {
           color: isStaticViz
-            ? color("border")
-            : isNightMode
-              ? "var(--mb-color-border-alpha-30)"
-              : cartesian.splitLine.lineStyle.color,
+            ? Color(color("border")).hex()
+            : cartesian.splitLine.lineStyle.color,
         },
       },
     },
     pie: {
       borderColor: isStaticViz
-        ? color("text-white")
+        ? Color(color("text-primary-inverse")).hex()
         : getPieBorderColor(
             dashboard.card.backgroundColor,
             question.backgroundColor,
             isDashboard,
-            isNightMode,
           ),
     },
   };

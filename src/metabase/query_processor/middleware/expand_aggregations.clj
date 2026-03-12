@@ -1,21 +1,23 @@
 (ns metabase.query-processor.middleware.expand-aggregations
+  (:refer-clojure :exclude [select-keys])
   (:require
    [medley.core :as m]
+   [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.util :as lib.util]
-   [metabase.lib.walk :as lib.walk]))
+   [metabase.lib.walk :as lib.walk]
+   [metabase.util.performance :refer [select-keys]]))
 
 (defn- expand-aggregation-ref
   [aggregation-ref aggregation]
   (let [name-opts  (-> aggregation-ref lib.options/options (select-keys [:name :display-name]))]
     (-> aggregation
         (lib.options/update-options merge name-opts)
-        lib.util/fresh-uuids)))
+        lib/fresh-uuids)))
 
 (defn- unroll-form
   [form aggregations expanded expanding]
   (cond
-    (lib.util/clause-of-type? form :aggregation)
+    (lib/clause-of-type? form :aggregation)
     (let [ref (get form 2)
           expansion (get expanded ref)
           definition (get aggregations ref)]

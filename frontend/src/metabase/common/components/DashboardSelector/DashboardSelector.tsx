@@ -3,10 +3,7 @@ import { t } from "ttag";
 
 import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import {
-  DashboardPickerModal,
-  type DashboardPickerValueItem,
-} from "metabase/common/components/Pickers/DashboardPicker";
+import { DashboardPickerModal } from "metabase/common/components/Pickers/DashboardPicker";
 import { Flex, Group, Icon } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
@@ -15,11 +12,13 @@ import { DashboardPickerButton } from "./DashboardSelector.styled";
 interface DashboardSelectorProps {
   onChange: (value?: DashboardId) => void;
   value?: DashboardId;
+  fullWidth?: boolean;
 }
 
 export const DashboardSelector = ({
   onChange,
   value,
+  fullWidth = true,
 }: DashboardSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const {
@@ -45,7 +44,7 @@ export const DashboardSelector = ({
 
   if (error) {
     return (
-      <Group bg="bg-light" p="1rem">
+      <Group bg="background-secondary" p="1rem">
         <Icon name="warning" />
         {t`Error loading dashboard.`}
         {"  "}
@@ -53,27 +52,28 @@ export const DashboardSelector = ({
       </Group>
     );
   }
-  ``;
+
   return (
     <Flex>
-      <DashboardPickerButton onClick={() => setIsOpen(true)}>
-        {dashboard?.name || t`Select a dashboard`}
+      <DashboardPickerButton
+        fullWidth={fullWidth}
+        onClick={() => setIsOpen(true)}
+      >
+        {dashboard?.name || t`Pick a dashboard`}
       </DashboardPickerButton>
       {isOpen && (
         <DashboardPickerModal
-          title={t`Choose a dashboard`}
           value={
             dashboard?.id ? { model: "dashboard", id: dashboard.id } : undefined
           }
-          onChange={(dashboard: DashboardPickerValueItem) => {
+          onChange={(dashboard) => {
             onChange(dashboard.id);
             setIsOpen(false);
           }}
           onClose={() => setIsOpen(false)}
           options={{
-            showPersonalCollections: false,
-            showRootCollection: true,
-            allowCreateNew: false,
+            hasPersonalCollections: false,
+            hasRootCollection: true,
             hasConfirmButtons: false,
           }}
         />

@@ -43,11 +43,13 @@ import { hasActiveSnippet, useInitialClause } from "./utils";
 type EditorProps = {
   id?: string;
   clause?: Lib.Expressionable | null;
+  initialClause?: Lib.Expressionable | null;
   query: Lib.Query;
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
   expressionIndex?: number;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
   reportTimezone?: string;
   readOnly?: boolean;
   error?: ExpressionError | Error | null;
@@ -73,6 +75,7 @@ export function Editor(props: EditorProps) {
     stageIndex,
     query,
     availableColumns,
+    availableMetrics,
     readOnly,
     error,
     reportTimezone,
@@ -124,6 +127,7 @@ export function Editor(props: EditorProps) {
     query,
     stageIndex,
     availableColumns,
+    availableMetrics,
     metadata,
     extensions: [customTooltip],
   });
@@ -252,8 +256,10 @@ function useExpression({
   expressionIndex,
   query,
   availableColumns,
+  availableMetrics,
   metadata,
   onChange,
+  initialClause,
 }: EditorProps & {
   metadata: Metadata;
 }) {
@@ -323,6 +329,7 @@ function useExpression({
         expressionIndex,
         metadata,
         availableColumns,
+        availableMetrics,
       });
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
@@ -340,13 +347,14 @@ function useExpression({
       handleChange,
       debouncedOnChange,
       availableColumns,
+      availableMetrics,
     ],
   );
 
   useMount(() => {
     // format the source when the component mounts
     formatExpression({
-      initial: true,
+      initial: clause === initialClause,
     });
   });
 

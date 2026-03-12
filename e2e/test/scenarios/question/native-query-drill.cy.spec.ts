@@ -104,7 +104,6 @@ describe("scenarios > question > native query drill", () => {
         cy.button("Save").click();
         cy.wait("@saveCard");
       });
-      H.modal().findByText("Not now").click();
 
       H.tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
       H.popover().within(() => {
@@ -421,7 +420,7 @@ describe("scenarios > question > native query drill", () => {
         questionDetails: timeseriesLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 100, right: 300 }),
+        applyBrushFilter({ left: 150, right: 300 }),
       );
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(4);
@@ -432,7 +431,7 @@ describe("scenarios > question > native query drill", () => {
         questionDetails: numericLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 100, right: 300 }),
+        applyBrushFilter({ left: 100, right: 320 }),
       );
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(6);
@@ -444,10 +443,7 @@ function applyBrushFilter({ left, right }: { left: number; right: number }) {
   H.ensureEchartsContainerHasSvg();
   cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
-  H.echartsContainer()
-    .trigger("mousedown", left, 100)
-    .trigger("mousemove", left, 100)
-    .trigger("mouseup", right, 100);
+  H.applyBrush(left, right);
 }
 
 function applyBoxFilter({

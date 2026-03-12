@@ -1,8 +1,8 @@
 (ns metabase.lib.drill-thru.column-extract-test
-  "See also [[metabase.query-processor-test.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
+  "See also [[metabase.query-processor.drill-thru-e2e-test/quick-filter-on-bucketed-date-test]]"
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.column-extract :as lib.drill-thru.column-extract]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -12,6 +12,8 @@
    [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (def ^:private time-extraction-units
   [{:tag :hour-of-day, :display-name "Hour of day"}])
@@ -319,9 +321,9 @@
 
 (deftest ^:parallel column-extract-url-requires-regex-test
   (let [query-regex    (lib/query (homepage-provider) (meta/table-metadata :people))
-        no-regex       (homepage-provider (meta/updated-metadata-provider update :features disj :regex))
+        no-regex       (homepage-provider (meta/updated-metadata-provider update :features disj :regex/lookaheads-and-lookbehinds))
         query-no-regex (lib/query no-regex (meta/table-metadata :people))]
-    (testing "when the database supports :regex URL extraction is available"
+    (testing "when the database supports `:regex/lookaheads-and-lookbehinds` URL extraction is available"
       (lib.drill-thru.tu/test-drill-application
        {:drill-type     :drill-thru/column-extract
         :click-type     :header
@@ -337,7 +339,7 @@
         :drill-args     ["subdomain"]
         :expected-query {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
                                                   exp-homepage]]}]}}))
-    (testing "when the database does not support :regex URL extraction is not available"
+    (testing "when the database does not support `:regex/lookaheads-and-lookbehinds` URL extraction is not available"
       (lib.drill-thru.tu/test-drill-not-returned
        {:drill-type     :drill-thru/column-extract
         :click-type     :header
@@ -347,9 +349,9 @@
 
 (deftest ^:parallel column-extract-email-requires-regex-test
   (let [query-regex    (lib/query meta/metadata-provider (meta/table-metadata :people))
-        no-regex       (meta/updated-metadata-provider update :features disj :regex)
+        no-regex       (meta/updated-metadata-provider update :features disj :regex/lookaheads-and-lookbehinds)
         query-no-regex (lib/query no-regex (meta/table-metadata :people))]
-    (testing "when the database supports :regex email extraction is available"
+    (testing "when the database supports `:regex/lookaheads-and-lookbehinds` email extraction is available"
       (lib.drill-thru.tu/test-drill-application
        {:drill-type     :drill-thru/column-extract
         :click-type     :header
@@ -364,7 +366,7 @@
         :expected-query {:stages [{:expressions [[:domain {:lib/expression-name "Domain"}
                                                   [:field {} (lib.drill-thru.tu/field-key=
                                                               "EMAIL" (meta/id :people :email))]]]}]}}))
-    (testing "when the database does not support :regex email extraction is not available"
+    (testing "when the database does not support `:regex/lookaheads-and-lookbehinds` email extraction is not available"
       (lib.drill-thru.tu/test-drill-not-returned
        {:drill-type     :drill-thru/column-extract
         :click-type     :header

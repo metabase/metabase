@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupAuditInfoEndpoint,
   setupDashboardEndpoints,
@@ -27,13 +27,13 @@ import { DashboardInfoSidebar } from "../DashboardInfoSidebar";
 export interface SetupOpts {
   dashboard?: Dashboard;
   settings?: Settings;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 
 export async function setup({
   dashboard = createMockDashboard(),
   settings = createMockSettings(),
-  hasEnterprisePlugins,
+  enterprisePlugins = [],
 }: SetupOpts = {}) {
   const setDashboardAttribute = jest.fn();
   const onClose = jest.fn();
@@ -59,9 +59,9 @@ export async function setup({
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
-  }
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
 
   renderWithProviders(
     <Route
@@ -99,6 +99,5 @@ export const setupEnterprise = (
         ...tokenFeatures,
       }),
     }),
-    hasEnterprisePlugins: true,
   });
 };

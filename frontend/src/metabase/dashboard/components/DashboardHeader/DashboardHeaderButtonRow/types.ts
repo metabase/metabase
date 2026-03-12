@@ -37,8 +37,8 @@ export type DashboardActionButton = {
         | "downloadsEnabled"
         | "isFullscreen"
         | "onFullscreenChange"
-        | "onNightModeChange"
-        | "hasNightModeToggle"
+        | "withSubscriptions"
+        | "refreshPeriod"
       >,
   ) => boolean;
 };

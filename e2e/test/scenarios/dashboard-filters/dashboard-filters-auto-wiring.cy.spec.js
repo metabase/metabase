@@ -430,7 +430,10 @@ describe("dashboard filters auto-wiring", () => {
 
       goToFilterMapping();
 
-      H.findDashCardAction(H.getDashboardCard(1), "Replace").click();
+      H.getDashboardCard(1)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Replace")
+        .click();
 
       H.modal().findByText("Orders, Count").click();
 
@@ -499,13 +502,13 @@ describe("dashboard filters auto-wiring", () => {
       goToFilterMapping("ID");
 
       H.undoToastList()
-        .findByText("Auto-connect “Orders Question” to “ID”?")
+        .contains("Auto-connect “Orders Question” to “ID”?")
         .closest("[data-testid='toast-undo']")
         .findByRole("button", { name: "Auto-connect" })
         .click();
 
       H.undoToastList()
-        .findByText("Auto-connect “Reviews Question” to “ID”?")
+        .contains("Auto-connect “Reviews Question” to “ID”?")
         .closest("[data-testid='toast-undo']")
         .findByRole("button", { name: "Auto-connect" })
         .click();
@@ -798,7 +801,7 @@ function getTableCell(columnName, rowIndex) {
     const columnHeaderIndex = $columnHeaders
       .toArray()
       .findIndex(($columnHeader) => $columnHeader.textContent === columnName);
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("row")
       .eq(rowIndex)
       .findAllByTestId("cell-data")
@@ -818,11 +821,7 @@ function addQuestionFromQueryBuilder({
   H.openQuestionActions();
   H.popover().findByText("Add to dashboard").click();
 
-  H.entityPickerModal().within(() => {
-    H.modal().findByText("Dashboards").click();
-    H.modal().findByText("36275").click();
-    cy.button("Select").click();
-  });
+  H.pickEntity({ path: ["Our analytics", "36275"], select: true });
 
   H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
   H.undoToast().should("contain", "Undo");

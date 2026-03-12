@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_group_members
+table_id: [Internal Metabase Database, public, v_group_members]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -25,34 +22,21 @@ dataset_query:
   query:
     fields:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_group_members
-        - group_id
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_group_members, group_id]
+      - {base-type: type/Integer}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_group_members
-        - group_name
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_group_members, group_name]
+      - {base-type: type/Text}
     joins:
     - alias: People - User
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_group_members
-          - user_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_group_members, user_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - user_id
-        - base-type: type/Integer
-          join-alias: People - User
+        - [Internal Metabase Database, public, v_users, user_id]
+        - {base-type: type/Integer, join-alias: People - User}
       fields: none
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
@@ -66,17 +50,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_group_members
-    - group_id
-  - base-type: type/Integer
+  - [Internal Metabase Database, public, v_group_members, group_id]
+  - {base-type: type/Integer}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_group_members
-  - group_id
+  id: [Internal Metabase Database, public, v_group_members, group_id]
   name: group_id
   nfc_path: null
   parent_id: null
@@ -84,10 +61,7 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_group_members
+  table_id: [Internal Metabase Database, public, v_group_members]
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
@@ -96,17 +70,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_group_members
-    - group_name
-  - base-type: type/Text
+  - [Internal Metabase Database, public, v_group_members, group_name]
+  - {base-type: type/Text}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_group_members
-  - group_name
+  id: [Internal Metabase Database, public, v_group_members, group_name]
   name: group_name
   nfc_path: null
   parent_id: null
@@ -114,10 +81,7 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  table_id:
-  - Internal Metabase Database
-  - public
-  - v_group_members
+  table_id: [Internal Metabase Database, public, v_group_members]
   visibility_type: normal
 visualization_settings:
   column_settings: null
@@ -126,29 +90,22 @@ visualization_settings:
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_group_members
-      - group_id
+    - [Internal Metabase Database, public, v_group_members, group_id]
     - null
     name: group_id
   - enabled: true
     fieldRef:
     - field
-    - - Internal Metabase Database
-      - public
-      - v_group_members
-      - group_name
+    - [Internal Metabase Database, public, v_group_members, group_name]
     - null
     name: group_name
   table.pivot_column: group_id
+card_schema: 23
 serdes/meta:
-- id: zn_VtBXm5-teZmXpwGcNu
-  label: member_of
-  model: Card
+- {id: zn_VtBXm5-teZmXpwGcNu, label: member_of, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: lTp-ATFsCUFEr9I0fMEaO
 type: question

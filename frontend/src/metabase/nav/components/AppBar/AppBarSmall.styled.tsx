@@ -3,10 +3,6 @@ import styled from "@emotion/styled";
 
 import { APP_BAR_HEIGHT, APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 
-export const AppBarRoot = styled.div`
-  background-color: var(--mb-color-bg-white);
-`;
-
 interface AppBarHeaderProps {
   isSubheaderVisible?: boolean;
 }
@@ -33,14 +29,6 @@ export const AppBarSubheader = styled.div<AppBarSubheaderProps>`
       props.isNavBarOpen ? "var(--mb-color-border)" : "transparent"};
 `;
 
-export const AppBarMainContainer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  height: 100%;
-`;
-
 export const AppBarToggleContainer = styled.div`
   flex: 0 0 auto;
 `;
@@ -65,5 +53,5 @@ export const AppBarLogoContainer = styled.div<AppBarLogoContainerProps>`
 `;
 
 export const AppBarProfileLinkContainer = styled.div`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 `;

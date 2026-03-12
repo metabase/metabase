@@ -6,6 +6,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.core :as mdb]
+   [metabase.lib-be.core :as lib-be]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -51,11 +52,43 @@
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
-  (->> (:search-terms (search.spec/spec (:model m)))
-       (keep m)
-       (map str/trim)
-       (remove str/blank?)
-       (str/join " ")))
+  (let [search-terms (:search-terms (search.spec/spec (:model m)))
+        getter       (if (map? search-terms)
+                       (fn [[k tx]]
+                         (let [tx (if (true? tx) identity tx)]
+                           (some-> (get m k) tx)))
+                       m)
+        xf           (comp (keep getter)
+                           (map str/trim)
+                           (remove str/blank?))]
+    (->> (into [] xf search-terms)
+         (str/join " "))))
+
+(defn- embeddable-text
+  "Generate labeled text for semantic search embeddings.
+  Format:
+    [model]
+    field1: value1
+    field2: value2
+
+  Note: Unlike searchable-text, transformation functions in search-terms
+  (e.g., explode-camel-case) are NOT applied. Transformations like camel-case
+  explosion are specific to full-text search optimization."
+  [m]
+  (let [search-terms (:search-terms (search.spec/spec (:model m)))
+        field-keys   (cond-> search-terms (map? search-terms) keys)
+        header       (str "[" (:model m) "]")
+        fields        (keep (fn [k]
+                              (let [v (get m k)]
+                                (when (not (str/blank? (str v)))
+                                  (str (name k) ": " (str/trim (str v))))))
+                            field-keys)]
+    (str header "\n" (str/join "\n" fields))))
+
+(defn- search-term-columns
+  "Extract column names from search-terms spec for SQL query generation"
+  [search-terms]
+  (if (map? search-terms) (keys search-terms) search-terms))
 
 (defn- display-data [m]
   (perf/select-keys m [:name :display_name :description :collection_name]))
@@ -64,8 +97,12 @@
   "Execute a single function attribute and return the result"
   [attr-key attr-def record]
   (try
-    (let [f (:fn attr-def)]
-      (f record))
+    (let [f (:fn attr-def)
+          fields (:fields attr-def)
+          input (if fields
+                  (select-keys record fields)
+                  record)]
+      (f input))
     (catch Exception e
       (log/warn e "Function execution failed for attribute" attr-key)
       false)))
@@ -92,7 +129,8 @@
                         (assoc
                          :display_data (display-data m)
                          :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
-                         :searchable_text (searchable-text m)))]
+                         :searchable_text (searchable-text m)
+                         :embeddable_text (embeddable-text m)))]
     (merge fn-results sql-results)))
 
 (defn- attrs->select-items [attrs]
@@ -103,22 +141,21 @@
 
 (defn- spec-index-query*
   [search-model]
-  (let [spec (search.spec/spec search-model)
-        fn-deps (search.spec/collect-fn-attr-req-fields spec)
-        fn-selects (map (fn [field]
-                          [(keyword (str "this." (name field))) field])
-                        fn-deps)]
+  (let [spec         (search.spec/spec search-model)
+        fn-deps      (search.spec/collect-fn-attr-req-fields spec)
+        fn-selects   (map (fn [field]
+                            [(keyword (str "this." (name field))) field])
+                          fn-deps)
+        search-terms (set (search-term-columns (:search-terms spec)))]
     (u/remove-nils
      {:select    (search.spec/qualify-columns :this
                                               (concat
                                                (map (fn [term] [(searchable-value-trim-sql (keyword (str "this." (name term))))
                                                                 term])
-                                                    (:search-terms spec))
+                                                    search-terms)
                                                (mapcat (fn [k] (attrs->select-items
-                                                                (let [search-terms (set (:search-terms spec))]
-                                                                  (->> k
-                                                                       (get spec)
-                                                                       (remove (comp search-terms key))))))
+                                                                (->> (get spec k)
+                                                                     (remove (comp search-terms key)))))
                                                        [:attrs :render-terms])
                                                fn-selects))
       :from      [[(t2/table-name (:model spec)) :this]]
@@ -234,23 +271,24 @@
 (defn bulk-ingest!
   "Process the given search model updates."
   [updates]
-  (if (seq (search.engine/active-engines))
-    (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
-                           (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-                         ;; init collection is only for clj-kondo, as we know that the list is non-empty
-                         (reduce u/rconcat [])
-                         query->documents)
-          passed-documents (map extract-model-and-id updates)
-          indexed-documents (map (juxt :model (comp str :id)) (into [] documents))
-          ;; TODO: The list of documents to delete is not completely accurate.
-          ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
-          ;; This will not work for cases like indexed-entries with compound PKs,
-          ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
-          ;; Long-term, we should find a better approach to knowing what to purge.
-          to-delete (remove (set indexed-documents) passed-documents)]
+  (lib-be/with-metadata-provider-cache
+    (if (seq (search.engine/active-engines))
+      (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+                             (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
+                           ;; init collection is only for clj-kondo, as we know that the list is non-empty
+                           (reduce u/rconcat [])
+                           query->documents)
+            passed-documents (map extract-model-and-id updates)
+            indexed-documents (map (juxt :model (comp str :id)) (into [] documents))
+            ;; TODO: The list of documents to delete is not completely accurate.
+            ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
+            ;; This will not work for cases like indexed-entries with compound PKs,
+            ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
+            ;; Long-term, we should find a better approach to knowing what to purge.
+            to-delete (remove (set indexed-documents) passed-documents)]
 
-      (update! documents to-delete))
-    {}))
+        (update! documents to-delete))
+      {})))
 
 (defn- track-queue-size! []
   (analytics/set! :metabase-search/queue-size (.size queue)))

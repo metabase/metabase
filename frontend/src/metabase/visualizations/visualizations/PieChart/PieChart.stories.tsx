@@ -70,11 +70,6 @@ export const EmbeddedQuestion = {
     isDashboard: false,
     backgroundColor: "#ebe6e2",
   },
-
-  parameters: {
-    // TODO unskip this and the next story once rendering delay is completely gone.
-    loki: { skip: true },
-  },
 };
 
 export const EmbeddedDashcard = {
@@ -84,11 +79,15 @@ export const EmbeddedDashcard = {
     isDashboard: true,
     backgroundColor: "#dee9e9",
   },
-
-  parameters: {
-    loki: { skip: true },
-  },
 };
+
+export const DarkTheme: StoryFn = () => (
+  <VisualizationWrapper displayTheme="dark">
+    <Box h={500}>
+      <Visualization rawSeries={data.defaultSettings as unknown as Series} />
+    </Box>
+  </VisualizationWrapper>
+);
 
 export const Watermark: StoryFn = () => (
   <VisualizationWrapper

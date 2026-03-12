@@ -18,7 +18,7 @@
   (env :mb-pgvector-db-url))
 
 ;; See metabase.app-db.connection-pool-setup for more details on these properties
-;; TODO: not sure if we need the MetabaseConnectionCustomizer like in the app DB connection pool seutp
+;; TODO: not sure if we need the MetabaseConnectionCustomizer like in the app DB connection pool setup
 (def ^:private semantic-search-connection-pool-props
   "Connection pool properties for semantic search database using c3p0."
   {"idleConnectionTestPeriod"     60

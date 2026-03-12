@@ -5,6 +5,9 @@ import type {
   DatabaseId,
   FieldId,
   FieldReference,
+  MeasureId,
+  MetricId,
+  NativeQuerySnippet,
   SchemaId,
   SegmentId,
   SettingKey,
@@ -16,6 +19,8 @@ import type Question from "../Question";
 
 import type Database from "./Database";
 import type Field from "./Field";
+import type Measure from "./Measure";
+import type Metric from "./Metric";
 import type Schema from "./Schema";
 import type Segment from "./Segment";
 import type Table from "./Table";
@@ -28,6 +33,7 @@ interface MetadataOpts {
   tables?: Record<string, Table>;
   fields?: Record<string, Field>;
   segments?: Record<string, Segment>;
+  measures?: Record<string, Measure>;
   questions?: Record<string, Question>;
   settings?: Settings;
 }
@@ -44,7 +50,10 @@ class Metadata {
   tables: Record<string, Table> = {};
   fields: Record<string, Field> = {};
   segments: Record<string, Segment> = {};
+  measures: Record<string, Measure> = {};
+  metrics: Record<string, Metric> = {};
   questions: Record<string, Question> = {};
+  snippets: Record<string, NativeQuerySnippet> = {};
   settings?: Settings;
 
   constructor(opts?: MetadataOpts) {
@@ -88,6 +97,34 @@ class Metadata {
    */
   segment(segmentId: SegmentId | undefined | null): Segment | null {
     return (segmentId != null && this.segments[segmentId]) || null;
+  }
+
+  /**
+   * @deprecated load data via RTK Query - useListMeasuresQuery
+   */
+  measuresList(): Measure[] {
+    return Object.values(this.measures);
+  }
+
+  /**
+   * @deprecated load data via RTK Query - useGetMeasureQuery
+   */
+  measure(measureId: MeasureId | undefined | null): Measure | null {
+    return (measureId != null && this.measures[measureId]) || null;
+  }
+
+  /**
+   * @deprecated load data via RTK Query - useListMetricsQuery
+   */
+  metricsList(): Metric[] {
+    return Object.values(this.metrics);
+  }
+
+  /**
+   * @deprecated load data via RTK Query - useGetMetricQuery
+   */
+  metric(metricId: MetricId | undefined | null): Metric | null {
+    return (metricId != null && this.metrics[metricId]) || null;
   }
 
   /**

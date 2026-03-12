@@ -64,6 +64,7 @@ export const createMockSearchResults = ({
     offset: 0,
     table_db_id: null,
     total: items.length,
+    engine: "search.engine/appdb",
     ...options,
   };
 };

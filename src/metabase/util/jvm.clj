@@ -149,6 +149,17 @@
    nil
    (full-exception-chain e)))
 
+(defn all-ex-messages
+  "Returns a list of all non-nil messages in an exception, starting from the outermost and working inward.
+  If no messages are found, returns nil."
+  [^Throwable e]
+  (loop [ex e
+         messages []]
+    (if ex
+      (recur (.getCause ex)
+             (conj messages (.getMessage ex)))
+      (seq (remove nil? messages)))))
+
 (defn do-with-auto-retries
   "Execute `f`, a function that takes no arguments, and return the results.
    If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.
@@ -254,7 +265,7 @@
   tends to break like running Liquibase migrations.)
 
   Note that because `Locale/setDefault` and `Locale/getDefault` aren't thread-local (as far as I know) I've had to put
-  a lock in place to prevent race conditions where threads simulataneously attempt to fetch and change the default
+  a lock in place to prevent race conditions where threads simultaneously attempt to fetch and change the default
   Locale. Thus this macro should be used sparingly, and only in places that are already single-threaded (such as the
   launch code that runs Liquibase).
 
@@ -333,7 +344,7 @@
        [#"[^\d,.-]+"          ""]
        ;; now strip out any thousands separators
        [#"(?<=\d)[,.](\d{3})" "$1"]
-       ;; now replace a comma decimal seperator with a period
+       ;; now replace a comma decimal separator with a period
        [#","                  "."]
        ;; move minus sign at end to front
        [#"(^[^-]+)-$"         "-$1"]]))))

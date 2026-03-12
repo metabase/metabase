@@ -1,9 +1,14 @@
 (ns metabase.query-processor.parameters.dates
-  "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
+  "Shared code for handling datetime parameters, used by both MBQL and native params implementations.
+
+  TODO -- move this into the `lib-be` module since it's not really QP-specific, it's something that would live in Lib
+  if it didn't have dependencies on [[metabase.util.date-2]]."
+  (:refer-clojure :exclude [every? some get-in])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver.common :as driver.common]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -15,6 +20,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every? some get-in]]
    [metabase.util.time :as u.time])
   (:import
    (java.time.temporal Temporal)))
@@ -161,7 +167,7 @@
     (when-let [regex-result (re-matches regex param-value)]
       (into {} (mapcat expand-parser-groups group-labels (rest regex-result))))))
 
-;; Decorders consist of:
+;; Decoders consist of:
 ;; 1) Parser which tries to parse the date parameter string
 ;; 2) Range decoder which takes the parser output and produces a date range relative to the given datetime
 ;; 3) Filter decoder which takes the parser output and produces a mbql clause for a given mbql field reference
@@ -253,7 +259,7 @@
               (let [last-unit (t/minus (maybe-reduce-resolution unit dt) (to-period 1))]
                 (unit-range last-unit last-unit)))
     :filter (fn [{:keys [unit]} field-clause]
-              [:time-interval field-clause :last (keyword unit)])}
+              (lib/time-interval field-clause :last (keyword unit)))}
 
    {:parser (regex->parser (re-pattern (str #"this" temporal-units-regex))
                            [:unit])
@@ -261,7 +267,7 @@
               (let [dt-adj (maybe-reduce-resolution unit dt)]
                 (unit-range dt-adj dt-adj)))
     :filter (fn [{:keys [unit]} field-clause]
-              [:time-interval field-clause :current (keyword unit)])}])
+              (lib/time-interval field-clause :current (keyword unit)))}])
 
 (defn- ->iso-8601-date [t]
   (t/format :iso-local-date t))
@@ -297,18 +303,24 @@
         i))
     (catch NumberFormatException _)))
 
-(defn- excluded-datetime [unit date exclusion]
-  (let [year (t/year date)]
-    (case unit
-      :hour (when-let [hour (parse-int-in-range exclusion 0 23)]
-              (format "%sT%02d:00:00Z" date hour))
-      :day (when-let [day (short-day->day exclusion)]
-             (str (t/adjust date :next-or-same-day-of-week day)))
-      :month (when-let [month (short-month->month exclusion)]
-               (format "%s-%02d-01" year month))
-      :quarter (when-let [quarter (parse-int-in-range exclusion 1 4)]
-                 (format "%s-%02d-01" year (inc (* 3 (dec quarter)))))
-      nil)))
+(def ^:private day->index
+  "0-based index of each day keyword in the canonical week order (Monday=0 ... Sunday=6),
+  matching [[metabase.driver.common/days-of-week]]."
+  {:monday 0, :tuesday 1, :wednesday 2, :thursday 3, :friday 4, :saturday 5, :sunday 6})
+
+(defn- excluded-datetime
+  "Return a numeric value for an exclusion filter. For `:day` exclusions, computes the Metabase-convention
+  day-of-week number (1 = start-of-week, 7 = day before start-of-week)."
+  [unit exclusion]
+  (case unit
+    :hour    (parse-int-in-range exclusion 0 23)
+    :day     (when-let [day (short-day->day exclusion)]
+               (let [day-idx (day->index day)
+                     sow-idx (driver.common/start-of-week->int)]
+                 (inc (mod (- day-idx sow-idx) 7))))
+    :month   (short-month->month exclusion)
+    :quarter (parse-int-in-range exclusion 1 4)
+    nil))
 
 (def ^:private excluded-temporal-unit
   {:hour    :hour-of-day
@@ -378,7 +390,7 @@
    {:parser (regex->parser date-exclude-regex [:unit :exclusions])
     :filter (fn [{:keys [unit exclusions]} field-clause]
               (let [unit (keyword unit)
-                    exclusions (map (partial excluded-datetime unit (t/local-date))
+                    exclusions (map (partial excluded-datetime unit)
                                     (str/split exclusions #"-"))]
                 (when (and (seq exclusions) (every? some? exclusions))
                   (apply lib/!= (with-temporal-unit-if-field field-clause (excluded-temporal-unit unit)) exclusions))))}])

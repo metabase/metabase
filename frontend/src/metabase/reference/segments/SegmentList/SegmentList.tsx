@@ -2,10 +2,10 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 import { t } from "ttag";
 
-import AdminAwareEmptyState from "metabase/common/components/AdminAwareEmptyState";
-import List from "metabase/common/components/List";
+import { AdminAwareEmptyState } from "metabase/common/components/AdminAwareEmptyState";
+import { List } from "metabase/common/components/List";
 import S from "metabase/common/components/List/List.module.css";
-import ListItem from "metabase/common/components/ListItem";
+import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";

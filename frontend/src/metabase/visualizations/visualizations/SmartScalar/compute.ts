@@ -5,6 +5,7 @@ import _ from "underscore";
 import { formatValue } from "metabase/lib/formatting";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import type { OptionsType } from "metabase/lib/formatting/types";
+import { isNumber } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import type {
@@ -12,13 +13,17 @@ import type {
   ColumnSettings,
 } from "metabase/visualizations/types";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
-import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
-import * as Lib from "metabase-lib";
+import {
+  formatChange,
+  formatPreviousPeriodOptionName,
+} from "metabase/visualizations/visualizations/SmartScalar/utils";
+import type { ClickObject } from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
-  DatasetQuery,
   DateTimeAbsoluteUnit,
+  LegacyDatasetQuery,
   RowValue,
   RowValues,
   Series,
@@ -40,20 +45,38 @@ export type ComparisonResult = {
   comparisonValue: RowValue | undefined;
   display: {
     percentChange: string;
-    comparisonValue: string | number | JSX.Element | null;
+    comparisonValue: SmartScalarDisplayValue;
   };
   percentChange: number | undefined;
+};
+
+export type SmartScalarDisplayValue = string | number | JSX.Element | null;
+
+export type Trend = {
+  value: RowValue;
+  clicked: ClickObject;
+  formatOptions: ColumnSettings;
+  display: {
+    value: SmartScalarDisplayValue;
+    date: SmartScalarDisplayValue;
+  };
+  comparisons: ComparisonResult[];
+};
+
+export type ComputeTrendResult = {
+  trend?: Trend;
+  error?: Error;
 };
 
 interface DateUnitSettings {
   dateColumn: DatasetColumn;
   dateColumnSettings: ColumnSettings;
   dateUnit?: DateTimeAbsoluteUnit;
-  queryType: DatasetQuery["type"];
+  queryType: LegacyDatasetQuery["type"];
 }
 
 interface MetricData {
-  clicked: Lib.ClickObject;
+  clicked: ClickObject;
   date: string;
   dateUnitSettings: DateUnitSettings;
   formatOptions: ColumnSettings;
@@ -70,7 +93,7 @@ export function computeTrend(
   insights: Insight[] | null | undefined,
   settings: VisualizationSettings,
   { getColor }: { getColor: ColorGetter },
-) {
+): ComputeTrendResult {
   try {
     const comparisons = settings["scalar.comparisons"] || [];
     const currentMetricData = getCurrentMetricData({
@@ -134,9 +157,10 @@ function buildComparisonObject({
       series,
     }) || {};
 
-  const percentChange = !isEmpty(comparisonValue)
-    ? computeChange(comparisonValue, value)
-    : undefined;
+  const percentChange =
+    isNumber(comparisonValue) && isNumber(value)
+      ? computeChange(comparisonValue, value)
+      : undefined;
 
   const {
     changeType,
@@ -226,9 +250,7 @@ function getCurrentMetricData({
 }): MetricData {
   const [
     {
-      card: {
-        dataset_query: { type: queryType },
-      },
+      card,
       data: { rows, cols },
     },
   ] = series;
@@ -275,11 +297,12 @@ function getCurrentMetricData({
   dateColumnWithUnit.unit ??= dateUnit;
   const dateColumnSettings = settings?.column?.(dateColumnWithUnit) ?? {};
 
+  const question = new Question(card);
   const dateUnitSettings: DateUnitSettings = {
     dateColumn: dateColumnWithUnit,
     dateColumnSettings,
     dateUnit,
-    queryType,
+    queryType: question.isNative() ? "native" : "query",
   };
 
   const formatOptions = {
@@ -287,7 +310,7 @@ function getCurrentMetricData({
     compact: settings["scalar.compact_primary_number"],
   };
 
-  const clicked: Lib.ClickObject = {
+  const clicked: ClickObject = {
     value,
     column: cols[metricColIndex],
     dimensions: [
@@ -502,10 +525,6 @@ function computeComparisonPeriodsAgo({
   dateUnitSettings: DateUnitSettings;
   dateUnitsAgo: number;
 }) {
-  const dateUnitDisplay = Lib.describeTemporalUnit(
-    dateUnitSettings.dateUnit,
-  ).toLowerCase();
-
   const computedPrevDate = dayjs
     .parseZone(nextDate)
     .subtract(dateUnitsAgo, dateUnitSettings.dateUnit)
@@ -521,12 +540,19 @@ function computeComparisonPeriodsAgo({
     rows,
   });
 
+  const getPreviousPeriodStr = () => {
+    const { dateUnit } = dateUnitSettings;
+    const previousPeriodStr =
+      dateUnit && formatPreviousPeriodOptionName(dateUnit);
+    return (previousPeriodStr || t`Previous`).toLocaleLowerCase();
+  };
+
   const prevDate = !isEmpty(rowPeriodsAgo)
     ? (rowPeriodsAgo?.[dimensionColIndex] as string)
     : computedPrevDate;
   const comparisonDescStr =
     dateUnitsAgo === 1
-      ? t`vs. previous ${dateUnitDisplay}`
+      ? t`vs. ${getPreviousPeriodStr()}`
       : computeComparisonStrPreviousValue({
           dateUnitSettings,
           nextDate,

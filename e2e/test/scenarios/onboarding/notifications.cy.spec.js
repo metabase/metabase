@@ -80,7 +80,7 @@ describe("scenarios > account > notifications", () => {
     it("should be able to see help info", () => {
       openUserNotifications();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Not seeing one here?").click();
 
       H.modal().within(() => {
@@ -167,7 +167,7 @@ describe("scenarios > account > notifications", () => {
           H.createQuestionAlert({
             admin_id,
             card_id,
-            cron_schedule: "0 0 2 * * ?",
+            cron_schedule: "0 0 3 * * ?",
             handlers: [
               {
                 channel_type: "channel/email",
@@ -187,11 +187,11 @@ describe("scenarios > account > notifications", () => {
       openUserNotifications();
 
       cy.findByTestId("notifications-list").within(() => {
-        cy.findByText("Check daily at 2:00 AM").should("exist");
+        cy.findByText("Check daily at 3:00 AM").should("exist");
 
         const notificationCard = () =>
           cy
-            .findByText("Check daily at 2:00 AM")
+            .findByText("Check daily at 3:00 AM")
             .closest("[data-testid=notification-alert-item]")
             .should("exist");
 
@@ -219,7 +219,7 @@ describe("scenarios > account > notifications", () => {
     it("should be able to see help info", () => {
       openUserNotifications();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Not seeing one here?").click();
 
       H.modal().within(() => {
@@ -233,18 +233,18 @@ describe("scenarios > account > notifications", () => {
     it("should be able to see pulses notifications", () => {
       openUserNotifications();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Subscription");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Slack’d hourly", { exact: false });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created by you", { exact: false });
     });
 
     it("should be able to unsubscribe and delete a pulse when the user has created it", () => {
       openUserNotifications();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Subscription");
       clickUnsubscribe();
 
@@ -253,7 +253,7 @@ describe("scenarios > account > notifications", () => {
         cy.findByText("Yes, delete this subscription").click();
       });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Subscription").should("not.exist");
     });
   });

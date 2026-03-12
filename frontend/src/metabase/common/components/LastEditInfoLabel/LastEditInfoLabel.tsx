@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
-import DateTime from "metabase/common/components/DateTime";
+import { DateTime } from "metabase/common/components/DateTime";
 import { connect } from "metabase/lib/redux";
 import type { NamedUser } from "metabase/lib/user";
 import { getFullName } from "metabase/lib/user";
@@ -42,7 +42,7 @@ function formatEditorName(lastEditInfo: NamedUser) {
   return name || lastEditInfo.email;
 }
 
-function LastEditInfoLabel({
+function LastEditInfoLabelInner({
   prefix,
   item,
   user,
@@ -107,7 +107,7 @@ function LastEditInfoLabel({
           className={className}
           size="sm"
           fw="bold"
-          c="var(--mb-color-text-secondary)"
+          c="text-secondary"
           data-testid="revision-history-text"
         >
           {children}
@@ -117,5 +117,6 @@ function LastEditInfoLabel({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(LastEditInfoLabel);
+export const LastEditInfoLabel = connect(mapStateToProps)(
+  LastEditInfoLabelInner,
+);

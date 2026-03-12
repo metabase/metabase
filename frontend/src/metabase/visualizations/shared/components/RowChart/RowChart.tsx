@@ -155,6 +155,7 @@ export const RowChart = <TDatum,>({
         yLabel,
         hasXAxis,
         hasYAxis,
+        width,
       ),
     [
       seriesData,
@@ -167,6 +168,7 @@ export const RowChart = <TDatum,>({
       yLabel,
       hasXAxis,
       hasYAxis,
+      width,
     ],
   );
 
@@ -271,6 +273,7 @@ export const RowChart = <TDatum,>({
       xLabel={xLabel}
       hasXAxis={hasXAxis}
       hasYAxis={hasYAxis}
+      measureTextWidth={measureTextWidth}
       onClick={onClick}
       onHover={onHover}
     />

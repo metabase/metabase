@@ -5,10 +5,14 @@ import type { ConnectedProps } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
+import {
+  type OmniPickerItem,
+  type OmniPickerQuestionItem,
+  isInDbTree,
+} from "metabase/common/components/Pickers";
 import {
   QuestionPickerModal,
-  type QuestionPickerValueItem,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
@@ -41,10 +45,8 @@ import type {
   Dashboard,
   DashboardCard,
   DashboardTabId,
-  RecentItem,
   VisualizerVizDefinition,
 } from "metabase-types/api";
-import { isRecentCollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type { SetDashCardAttributesOpts } from "../actions";
@@ -144,7 +146,6 @@ type DashboardGridContext = {
   | "isEditing"
   | "isEditingParameter"
   | "isFullscreen"
-  | "isNightMode"
   | "clickBehaviorSidebarDashcard"
   | "getClickActionMode"
   | "navigateToNewCardFromDashboard"
@@ -387,9 +388,9 @@ class DashboardGridInner extends Component<
       !!replaceCardModalDashCard &&
       isQuestionDashCard(replaceCardModalDashCard);
 
-    const handleSelect = (nextCard: QuestionPickerValueItem) => {
-      if (!hasValidDashCard) {
-        return;
+    const handleSelect = (nextCard: OmniPickerQuestionItem) => {
+      if (!hasValidDashCard || typeof nextCard.id === "string") {
+        throw new Error(t`Invalid card selected`);
       }
 
       replaceCard({
@@ -409,15 +410,18 @@ class DashboardGridInner extends Component<
       handleClose();
     };
 
-    const replaceCardModalRecentFilter = (items: RecentItem[]) => {
-      return items.filter((item) => {
-        if (isRecentCollectionItem(item) && item.dashboard) {
-          if (item.dashboard.id !== dashboard.id) {
-            return false;
-          }
+    const shouldDisableItem = (item: OmniPickerItem) => {
+      // don't allow adding items that are already saved in a different dashboard
+      // proably only applicable to search and recents
+      if (!isInDbTree(item) && item.dashboard_id) {
+        if (item.dashboard_id !== dashboard.id) {
+          return true;
         }
+      }
+      if (item.model === "dashboard" && item.id !== dashboard.id) {
         return true;
-      });
+      }
+      return false;
     };
 
     const handleClose = () => {
@@ -436,10 +440,11 @@ class DashboardGridInner extends Component<
             ? getQuestionPickerValue(replaceCardModalDashCard.card)
             : undefined
         }
-        models={["card", "dataset", "metric"]}
+        models={["card", "dataset", "metric", "dashboard"]}
+        options={{ hasConfirmButtons: false }}
         onChange={handleSelect}
         onClose={handleClose}
-        recentFilter={replaceCardModalRecentFilter}
+        isDisabledItem={shouldDisableItem}
       />
     );
   }
@@ -708,14 +713,13 @@ const getUndoReplaceCardMessage = ({ type }: Card) => {
 const DashboardGrid = forwardRef<
   HTMLDivElement,
   DashboardGridForwardedRefProps
->(function _DashboardGrid({ width = 0, ...restProps }, ref) {
+>(function DashboardGridBase({ width = 0, ...restProps }, ref) {
   const {
     dashboard,
     selectedTabId,
     slowCards,
     isEditing = false,
     isEditingParameter = false,
-    isNightMode = false,
     isFullscreen,
     clickBehaviorSidebarDashcard,
     getClickActionMode,
@@ -740,7 +744,6 @@ const DashboardGrid = forwardRef<
       slowCards={slowCards}
       isEditing={isEditing}
       isEditingParameter={isEditingParameter}
-      isNightMode={isNightMode}
       isFullscreen={isFullscreen}
       clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
       getClickActionMode={getClickActionMode}

@@ -2,7 +2,7 @@
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 import {
   getComputedSettings,
@@ -65,7 +65,12 @@ export function hasColumnSettingsWidgets({ value, ...props }) {
   return getWidgets({ storedSettings, ...props }).length > 0;
 }
 
-const ColumnSettings = ({ style, value, variant = "default", ...props }) => {
+export const ColumnSettings = ({
+  style,
+  value,
+  variant = "default",
+  ...props
+}) => {
   const storedSettings = value || {};
   const widgets = getWidgets({ storedSettings, ...props });
 
@@ -90,5 +95,3 @@ const ColumnSettings = ({ style, value, variant = "default", ...props }) => {
     </div>
   );
 };
-
-export default ColumnSettings;

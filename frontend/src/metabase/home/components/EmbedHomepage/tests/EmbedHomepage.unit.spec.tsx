@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 
 import {
   getLastFeedbackCall,
@@ -21,14 +21,21 @@ describe("EmbedHomepage (OSS)", () => {
     );
   });
 
-  it("should link to the docs for interactive embedding", () => {
+  it("should link to the docs for embed js embedding", () => {
     setup();
 
-    expect(
-      screen.getAllByRole("link", { name: "Read the docs" })[2],
-    ).toHaveAttribute(
+    const embedJsSection = screen.getByRole("region", {
+      name: "Modular embedding",
+    });
+
+    // Then find the "Read the docs" button within that section
+    const readEmbedJsDocsLink = within(embedJsSection).getByRole("link", {
+      name: "Read the docs",
+    });
+
+    expect(readEmbedJsDocsLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/interactive-embedding.html?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
+      "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js.html?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
     );
   });
 
@@ -46,9 +53,15 @@ describe("EmbedHomepage (OSS)", () => {
   it("should link to the SDK docs", () => {
     setup();
 
-    expect(
-      screen.getAllByRole("link", { name: "Read the docs" })[1],
-    ).toHaveAttribute(
+    const sdkSection = screen.getByRole("region", {
+      name: "Embedded analytics SDK for React",
+    });
+
+    const readSdkDocsLink = within(sdkSection).getByRole("link", {
+      name: "Read the docs",
+    });
+
+    expect(readSdkDocsLink).toHaveAttribute(
       "href",
       "https://metaba.se/sdk-docs?utm_source=product&source_plan=oss&utm_content=embedding-homepage",
     );
@@ -187,5 +200,28 @@ describe("EmbedHomepage (OSS)", () => {
         await screen.findByText("Your feedback was submitted, thank you."),
       ).toBeInTheDocument();
     });
+  });
+
+  it("should show the advanced embeds upsell for OSS users", () => {
+    setup({ isAdmin: true });
+
+    expect(screen.getByText("More advanced embeds")).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "Give your customers the full power of Metabase in your own app, with SSO, advanced permissions, customization, and more.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("link", { name: "Try Metabase Pro" }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("link", { name: "Try Metabase Pro" }),
+    ).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=advanced-embeds&utm_content=embedding-homepage&source_plan=oss",
+    );
   });
 });

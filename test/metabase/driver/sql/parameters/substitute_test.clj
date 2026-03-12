@@ -4,8 +4,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.parse :as params.parse]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
@@ -318,9 +318,16 @@
 
 (deftest ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
-    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
-      (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-             (substitute query {"snippet:symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet: symbol_is_A")]]
+      (is (=? ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
+              (substitute query {"snippet: symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
+
+(deftest ^:parallel substitute-recursive-native-query-snippets-test
+  (testing "Recursive native query snippet substitution"
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet: outer")]]
+      (is (=? ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
+              (substitute query {"snippet: outer" (params/->ReferencedQuerySnippet 123 "{{snippet:symbol_is_A}}")
+                                 "snippet: symbol_is_A" (params/->ReferencedQuerySnippet 124 "symbol = 'A'")}))))))
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
@@ -825,11 +832,7 @@
                         "        month"
                         "        from"
                         "          \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "      ) <> extract("
-                        "        month"
-                        "        from"
-                        "          ?"
-                        "      )"
+                        "      ) <> 1"
                         "    )"
                         "    OR ("
                         "      extract("
@@ -839,7 +842,7 @@
                         "      ) IS NULL"
                         "    )"
                         "  );"]
-                :params [#t "2016-01-01"]}
+                :params []}
                (-> (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan"})
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
@@ -859,11 +862,7 @@
                         "          month"
                         "          from"
                         "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "        ) <> extract("
-                        "          month"
-                        "          from"
-                        "            ?"
-                        "        )"
+                        "        ) <> 1"
                         "      )"
                         "      OR ("
                         "        extract("
@@ -879,11 +878,7 @@
                         "          month"
                         "          from"
                         "            \"PUBLIC\".\"CHECKINS\".\"DATE\""
-                        "        ) <> extract("
-                        "          month"
-                        "          from"
-                        "            ?"
-                        "        )"
+                        "        ) <> 2"
                         "      )"
                         "      OR ("
                         "        extract("
@@ -894,8 +889,7 @@
                         "      )"
                         "    )"
                         "  );"]
-                :params [#t "2016-01-01"
-                         #t "2016-02-01"]}
+                :params []}
                (-> (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan-Feb"})
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 

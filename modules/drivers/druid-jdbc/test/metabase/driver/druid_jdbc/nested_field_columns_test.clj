@@ -155,7 +155,7 @@
                 (testing "yet json_unfolding is enabled by default at the field level"
                   (is (true? (:json_unfolding (get-field)))))
                 (testing "nested fields are added automatically when json unfolding is enabled for the field,
-                            and json unfolding is alread enabled for the DB"
+                            and json unfolding is already enabled for the DB"
                   (set-json-unfolding-for-field! false)
                   (set-json-unfolding-for-db! true)
                   (set-json-unfolding-for-field! true)

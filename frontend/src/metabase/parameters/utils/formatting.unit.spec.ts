@@ -37,7 +37,7 @@ const categoryField = checkNotNull(metadata.field(PRODUCTS.CATEGORY));
 const remappedField = checkNotNull(metadata.field(REMAPPED_FIELD_ID));
 
 describe("metabase/parameters/utils/formatting", () => {
-  describe("formatParameterValue", () => {
+  describe("formatParameterValue without settings", () => {
     const cases = [
       {
         type: "date/single",
@@ -62,12 +62,12 @@ describe("metabase/parameters/utils/formatting", () => {
       {
         type: "date/range",
         value: "2018-01-01~2018-01-10T08:15:00",
-        expected: "January 1, 2018 12:00 AM - January 10, 2018 08:15 AM",
+        expected: "January 1, 2018 12:00 AM - January 10, 2018 8:15 AM",
       },
       {
         type: "date/range",
         value: "2018-01-01T12:30:00~2018-01-10T08:15:00",
-        expected: "January 1, 2018 12:30 PM - January 10, 2018 08:15 AM",
+        expected: "January 1, 2018 12:30 PM - January 10, 2018 8:15 AM",
       },
       {
         type: "date/all-options",
@@ -187,6 +187,215 @@ describe("metabase/parameters/utils/formatting", () => {
         fields: [remappedField],
       });
       expect(formatParameterValue(123456789, parameter)).toEqual("A");
+    });
+  });
+
+  describe("formatParameterValue with settings", () => {
+    const cases = [
+      {
+        type: "date/single",
+        value: "2018-01-01",
+        expected: "1 January, 2018",
+      },
+      {
+        type: "date/single",
+        value: "2018-01-01T12:30:00",
+        expected: "1 January, 2018 12:30 pm",
+      },
+      {
+        type: "date/range",
+        value: "1995-01-01~1995-01-10",
+        expected: "1 January, 1995 - 10 January, 1995",
+      },
+      {
+        type: "date/range",
+        value: "2018-01-01T12:30:00~2018-01-10",
+        expected: "1 January, 2018 12:30 pm - 10 January, 2018 12:00 am",
+      },
+      {
+        type: "date/range",
+        value: "2018-01-01~2018-01-10T08:15:00",
+        expected: "1 January, 2018 12:00 am - 10 January, 2018 08:15 am",
+      },
+      {
+        type: "date/range",
+        value: "2018-01-01T12:30:00~2018-01-10T08:15:00",
+        expected: "1 January, 2018 12:30 pm - 10 January, 2018 08:15 am",
+      },
+      {
+        type: "date/all-options",
+        value: "2018-01-01",
+        expected: "On 1 January, 2018",
+      },
+      {
+        type: "date/month-year",
+        value: "2018-01",
+        expected: "January 2018",
+      },
+      {
+        type: "date/quarter-year",
+        value: "Q1-2018",
+        expected: "Q1 2018",
+      },
+      {
+        type: "date/relative",
+        value: "past30days",
+        expected: "Previous 30 days",
+      },
+      {
+        type: "date/month-year",
+        value: "thisday",
+        expected: "Today",
+      },
+      {
+        type: "date/month-year",
+        value: "thisweek",
+        expected: "This week",
+      },
+      {
+        type: "date/month-year",
+        value: "past1days",
+        expected: "Yesterday",
+      },
+      {
+        type: "date/month-year",
+        value: "past1weeks",
+        expected: "Previous week",
+      },
+      {
+        type: "date/month-year",
+        value: "2023-10-02~2023-10-24",
+        expected: "2 October, 2023 - 24 October, 2023",
+      },
+    ];
+
+    const formattingSettings = {
+      "type/Temporal": {
+        date_style: "D MMMM, YYYY",
+        time_style: "hh:mm a",
+      },
+    };
+
+    test.each(cases)(
+      "should format $type parameter",
+      ({ value, expected, ...parameterProps }) => {
+        const parameter = createMockUiParameter(parameterProps);
+        expect(
+          formatParameterValue(value, parameter, formattingSettings),
+        ).toEqual(expected);
+      },
+    );
+  });
+
+  describe("formatParameterValue with settings and abbreviated dates", () => {
+    const cases = [
+      {
+        type: "date/single",
+        value: "2018-01-01",
+        expected: "1 Jan, 2018",
+      },
+      {
+        type: "date/single",
+        value: "2018-01-01T12:30:00",
+        expected: "1 Jan, 2018 12:30 pm",
+      },
+      {
+        type: "date/range",
+        value: "1995-01-01~1995-01-10",
+        expected: "1 Jan, 1995 - 10 Jan, 1995",
+      },
+      {
+        type: "date/range",
+        value: "2018-01-01T12:30:00~2018-01-10",
+        expected: "1 Jan, 2018 12:30 pm - 10 Jan, 2018 12:00 am",
+      },
+      {
+        type: "date/range",
+        value: "2018-01-01~2018-01-10T08:15:00",
+        expected: "1 Jan, 2018 12:00 am - 10 Jan, 2018 08:15 am",
+      },
+      {
+        type: "date/range",
+        value: "2018-01-01T12:30:00~2018-01-10T08:15:00",
+        expected: "1 Jan, 2018 12:30 pm - 10 Jan, 2018 08:15 am",
+      },
+      {
+        type: "date/all-options",
+        value: "2018-01-01",
+        expected: "On 1 Jan, 2018",
+      },
+      {
+        type: "date/month-year",
+        value: "2018-01",
+        expected: "Jan 2018",
+      },
+      {
+        type: "date/quarter-year",
+        value: "Q1-2018",
+        expected: "Q1 2018",
+      },
+      {
+        type: "date/relative",
+        value: "past30days",
+        expected: "Previous 30 days",
+      },
+      {
+        type: "date/month-year",
+        value: "thisday",
+        expected: "Today",
+      },
+      {
+        type: "date/month-year",
+        value: "thisweek",
+        expected: "This week",
+      },
+      {
+        type: "date/month-year",
+        value: "past1days",
+        expected: "Yesterday",
+      },
+      {
+        type: "date/month-year",
+        value: "past1weeks",
+        expected: "Previous week",
+      },
+      {
+        type: "date/month-year",
+        value: "2023-10-02~2023-10-24",
+        expected: "2 Oct, 2023 - 24 Oct, 2023",
+      },
+    ];
+
+    const formattingSettings = {
+      "type/Temporal": {
+        date_style: "D MMMM, YYYY",
+        time_style: "hh:mm a",
+        date_abbreviate: true,
+      },
+    };
+
+    test.each(cases)(
+      "should format $type parameter",
+      ({ value, expected, ...parameterProps }) => {
+        const parameter = createMockUiParameter(parameterProps);
+        expect(
+          formatParameterValue(value, parameter, formattingSettings),
+        ).toEqual(expected);
+      },
+    );
+  });
+
+  describe("formatParameterValue with unset settings", () => {
+    it("should render a sensical value even if the date style is unset", () => {
+      const parameter = createMockUiParameter({ type: "date/month-year" });
+      const value = "2023-10-02~2023-10-24";
+      const expected = "October 2, 2023 - October 24, 2023";
+
+      expect(formatParameterValue(value, parameter)).toEqual(expected);
+      expect(formatParameterValue(value, parameter, undefined)).toEqual(
+        expected,
+      );
+      expect(formatParameterValue(value, parameter, {})).toEqual(expected);
     });
   });
 });

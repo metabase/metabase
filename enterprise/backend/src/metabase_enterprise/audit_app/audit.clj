@@ -7,8 +7,10 @@
    [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -21,24 +23,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- running-from-jar?
-  "Returns true iff we are running from a jar.
-
-  .getResource will return a java.net.URL, and those start with \"jar:\" if and only if the app is running from a jar.
-
-  More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
-  []
-  (= "jar" (.. (Thread/currentThread)
-               getContextClassLoader
-               (getResource ".keep-me")
-               getProtocol)))
-
 (defn- get-jar-path
   "Returns the path to the currently running jar file.
 
   More info: https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file"
   []
-  (assert (running-from-jar?) "Can only get-jar-path when running from a jar.")
+  (assert (config/jar?) "Can only get-jar-path when running from a jar.")
   (-> (class {})
       (.getProtectionDomain)
       (.getCodeSource)
@@ -74,6 +64,10 @@
   "Default Dashboard Overview (this is a dashboard) entity id."
   "bJEYb0o5CXlfWFcIztDwJ")
 
+(def default-db-name
+  "Default Audit DB name"
+  "Internal Metabase Database")
+
 (defn- install-database!
   "Creates the audit db, a clone of the app db used for auditing purposes.
 
@@ -82,7 +76,7 @@
   [engine id]
   (t2/insert! :model/Database {:is_audit         true
                                :id               id
-                               :name             "Internal Metabase Database"
+                               :name             default-db-name
                                :description      "Internal Audit DB used to power metabase analytics."
                                :engine           engine
                                :is_full_sync     true
@@ -104,6 +98,10 @@
   (let [table-ids-to-update (t2/query {:select [:table.id]
                                        :from [[(t2/table-name :model/Table) :table]]
                                        :where [:and [:= :table.db_id audit-db-id]
+                                               ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
+                                               [:not= :table.name [:inline "DATABASECHANGELOG"]]
+                                               [:not= :table.name [:inline "DATABASECHANGELOGLOCK"]] ;; new instances do not get this file, but existing instances may have it
+                                               [:not [:like :table.name [:inline "QRTZ_%"]]]
                                                [:not [:exists {:select [1]
                                                                :from [[(t2/table-name :model/Table) :self_table]]
                                                                :where [:and
@@ -122,6 +120,8 @@
                                        :inner-join [[(t2/table-name :model/Table) :table]
                                                     [:= :table.id :field.table_id]]
                                        :where [:and [:= :table.db_id audit-db-id]
+                                               [:not= :table.name [:inline "DATABASECHANGELOG"]]
+                                               [:not [:like :table.name [:inline "QRTZ_%"]]]
                                                [:not [:exists {:select [1]
                                                                :from [[(t2/table-name :model/Field) :self_field]]
                                                                :inner-join [[(t2/table-name :model/Table) :self_table]
@@ -185,21 +185,21 @@
   "A resource dir containing analytics content created by Metabase to load into the app instance on startup."
   (io/resource "instance_analytics"))
 
-(defn- instance-analytics-plugin-dir
+(defn instance-analytics-plugin-dir
   "The directory analytics content is unzipped or moved to, and subsequently loaded into the app from on startup."
   [plugins-dir]
   (fs/path (fs/absolutize plugins-dir) "instance_analytics"))
 
 (def ^:private jar-resource-path "instance_analytics/")
 
-(defn- ia-content->plugins
+(defn ia-content->plugins
   "Load instance analytics content (collections/dashboards/cards/etc.) from resources dir or a zip file
    and copies it into the provided directory (by default, plugins/instance_analytics)."
   [plugins-dir]
   (let [ia-dir (instance-analytics-plugin-dir plugins-dir)]
     (when (fs/exists? (u.files/relative-path ia-dir))
       (fs/delete-tree (u.files/relative-path ia-dir)))
-    (if (running-from-jar?)
+    (if (config/jar?)
       (let [path-to-jar (get-jar-path)]
         (log/info "The app is running from a jar, starting copy...")
         (log/info (str "Copying " path-to-jar "::" jar-resource-path " -> " plugins-dir))
@@ -213,13 +213,13 @@
                       {:replace-existing true})
         (log/info "Copying complete.")))))
 
-(def ^:constant SKIP_CHECKSUM_FLAG
-  "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload the
-  analytics data."
+(def ^:private skip-checksum-flag
+  "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload
+  the analytics data."
   -1)
 
 (defn- should-skip-checksum? [last-checksum]
-  (= SKIP_CHECKSUM_FLAG last-checksum))
+  (= skip-checksum-flag last-checksum))
 
 (defn analytics-checksum
   "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
@@ -239,11 +239,12 @@
            (not= last-checksum current-checksum))))
 
 (defn- get-last-and-current-checksum
-  "Gets the previous and current checksum for the analytics directory, respecting the `-1` flag for skipping checksums entirely."
+  "Gets the previous and current checksum for the analytics directory, respecting the `-1` flag for skipping checksums
+  entirely."
   []
   (let [last-checksum (audit/last-analytics-checksum)]
     (if (should-skip-checksum? last-checksum)
-      [SKIP_CHECKSUM_FLAG SKIP_CHECKSUM_FLAG]
+      [skip-checksum-flag skip-checksum-flag]
       [last-checksum (analytics-checksum)])))
 
 (defn- maybe-load-analytics-content!
@@ -265,10 +266,24 @@
             (do
               (log/info (str "Loading Analytics Content Complete (" (count (:seen report)) ") entities loaded."))
               (audit/last-analytics-checksum! current-checksum))))
-        (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
-          (adjust-audit-db-to-host! audit-db))))))
+        (when-let [{:keys [engine] :as audit-db} (t2/select-one :model/Database :is_audit true)]
+          (let [original-engine engine]
+            (adjust-audit-db-to-host! audit-db)
+            ;; Only sync if we actually changed the engine type
+            (when (not= original-engine (mdb/db-type))
+              (when-let [updated-audit-db (t2/select-one :model/Database :is_audit true)]
+                ;; Sync the audit database to update field metadata to match the host database engine
+                ;; This ensures fields with PostgreSQL-specific types (like timestamptz) get updated
+                ;; to the correct types for the host database (e.g., datetime for MySQL)
+                (log/info "Starting Sync of Audit DB fields to update metadata for host engine")
+                (let [sync-future (future
+                                    (log/with-no-logs (sync/sync-database! updated-audit-db {:scan :schema}))
+                                    (log/info "Audit DB field sync complete."))]
+                  (when config/is-test?
+                    ;; Tests need the sync to complete before they run
+                    @sync-future))))))))))
 
-(defn- maybe-install-audit-db
+(defn- maybe-install-audit-db!
   []
   (let [audit-db (t2/select-one :model/Database :is_audit true)]
     (cond
@@ -294,7 +309,7 @@
   content if it is available."
   :feature :none
   []
-  (u/prog1 (maybe-install-audit-db)
+  (u/prog1 (maybe-install-audit-db!)
     (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       ;; prevent sync while loading
       ((sync-util/with-duplicate-ops-prevented

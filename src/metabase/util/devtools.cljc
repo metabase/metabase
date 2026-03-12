@@ -15,6 +15,13 @@
      (devtools/install!)
      (js/console.log "CLJS Devtools loaded")
 
+     (defn- frontend-dev-port
+       "Gets the frontend dev port from environment variable, defaulting to 8080"
+       []
+       (or (when-let [port-str (.. js/process -env -MB_FRONTEND_DEV_PORT)]
+             (js/parseInt port-str))
+           8080))
+
      (defonce unload-handler-set? (atom false))
 
      (defn- ^:dev/after-load on-reload []
@@ -23,7 +30,7 @@
          (.addEventListener js/window "beforeunload"
                             (fn [_event]
                               (js/console.log "invalidating webpack build")
-                              (js/fetch "http://localhost:8080/webpack-dev-server/invalidate")
+                              (js/fetch (str "http://localhost:" (frontend-dev-port) "/webpack-dev-server/invalidate"))
                               ;; HACK: Spin-lock to buy time for webpack to actually start rebuilding. Without this
                               ;; there's a race between the invalidation and the refreshed page loading the bundles.
                               (let [target (+ (js/performance.now) 500)]

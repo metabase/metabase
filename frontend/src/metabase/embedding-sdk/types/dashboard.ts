@@ -1,4 +1,9 @@
 export type ParameterValues = Record<
   string,
-  string | string[] | undefined | null
+  | string
+  | number
+  | boolean
+  | Array<string | number | boolean | null>
+  | null
+  | undefined
 >;

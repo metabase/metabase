@@ -9,6 +9,7 @@
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
    [metabase-enterprise.semantic-search.db.migration.impl :as semantic.db.migration.impl]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
@@ -21,15 +22,15 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
-(use-fixtures :each #'semantic.tu/ensure-no-migration-table-fixture)
 
 (deftest migration-table-versions-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-test-db! semantic.tu/default-test-db
+    (semantic.tu/with-test-db-defaults!
       (letfn [(migrate-and-get-db-version
                 [attempted-version]
-                (with-redefs [semantic.db.migration.impl/schema-version attempted-version
-                              semantic.db.migration.impl/migrate-schema! (constantly nil)]
+                (with-redefs [semantic.db.migration.impl/schema-version          attempted-version
+                              semantic.db.migration.impl/migrate-schema!         (constantly nil)
+                              semantic.db.migration.impl/migrate-dynamic-schema! (constantly nil)]
                   (log.capture/with-log-messages-for-level [messages [metabase-enterprise.semantic-search.db.migration :info]]
                     (semantic.db.connection/with-migrate-tx [tx]
                       (semantic.db.migration/maybe-migrate! tx nil)
@@ -54,24 +55,45 @@
             (is (m/find-first (comp #{"Migration already performed, skipping."} :message)
                               (:messages <>)))))))))
 
+(defn- executions-overlap?
+  "Check if any two executions overlap in time. Each entry is [tid :started/:ended timestamp].
+   Returns true if there's any overlap (which would indicate lock failure)."
+  [log]
+  (let [by-thread (group-by first log)]
+    (when (= 2 (count by-thread))
+      (let [[[_tid1 entries1] [_tid2 entries2]] (seq by-thread)
+            get-time (fn [entries event]
+                       (->> entries (filter #(= event (second %))) first last))
+            start1 (get-time entries1 :started)
+            end1 (get-time entries1 :ended)
+            start2 (get-time entries2 :started)
+            end2 (get-time entries2 :ended)]
+        (when (and start1 end1 start2 end2)
+          ;; Overlap occurs if one execution starts before the other ends AND vice versa
+          ;; i.e., start1 < end2 AND start2 < end1
+          (and (t/before? start1 end2)
+               (t/before? start2 end1)))))))
+
 (deftest migration-lock-coordination-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-test-db! semantic.tu/default-test-db
-      (testing "Migration of simultaneous init attempt is blocked"
+    (semantic.tu/with-test-db-defaults!
+      (testing "Database lock prevents concurrent migration execution"
         (let [original-write-fn @#'semantic.db.migration/write-successful-migration!
-              original-migrate-fn @#'semantic.db.connection/do-with-migrate-tx
+              original-maybe-migrate @#'semantic.db.migration/maybe-migrate!
               results (atom {:executed-migrations 0
                              :log []})]
-          (with-redefs-fn {;; TODO: why in ci init index won't succeed -- http on embedding
-                           #'semantic.pgvector-api/index-documents! (constantly nil)
-                           #'semantic.db.connection/do-with-migrate-tx
+          (with-redefs-fn {#'semantic.pgvector-api/index-documents! (constantly nil)
+                           ;; Wrap maybe-migrate! to log timestamps AFTER lock is acquired
+                           ;; (maybe-migrate! is called inside with-migrate-tx, after the lock)
+                           #'semantic.db.migration/maybe-migrate!
                            (fn [& args]
                              (let [tid (.getId (Thread/currentThread))]
-                               ;; leaving in the timestamp for repl purposes
                                (swap! results update :log conj [tid :started (t/local-date-time)])
-                               (apply original-migrate-fn args)
-                               (swap! results update :log conj [tid :ended (t/local-date-time)]))
-                             nil)
+                               (try
+                                 (Thread/sleep 200)
+                                 (apply original-maybe-migrate args)
+                                 (finally
+                                   (swap! results update :log conj [tid :ended (t/local-date-time)])))))
                            #'semantic.db.migration/write-successful-migration!
                            (fn [& args]
                              (Thread/sleep 2000)
@@ -80,26 +102,17 @@
                              nil)}
             (fn []
               (let [;; thread 1 attempts migration on clean db
-                    f1 (future
-                         (swap! results assoc :tid-first (.getId (Thread/currentThread)))
-                         (semantic.core/init! (semantic.tu/mock-documents) nil))
-                    ;; thread 2 attempts migration
-                    f2 (future
-                         (swap! results assoc :tid-second (.getId (Thread/currentThread)))
-                         (Thread/sleep 100)
-                         (semantic.core/init! (semantic.tu/mock-documents) nil))]
-              ;; wait for completion
+                    f1 (future (semantic.core/init! (semantic.tu/mock-documents) nil))
+                    ;; thread 2 attempts migration concurrently
+                    f2 (future (semantic.core/init! (semantic.tu/mock-documents) nil))]
+                ;; wait for completion
                 @f1
                 @f2
                 (testing "Single migration performed"
-                  (= 1 (:executed-migrations @results)))
-                (testing "Database locks acquired in expected order"
-                  (let [{:keys [tid-first tid-second]} @results]
-                    (is (=? [[tid-first :started any?]
-                             [tid-second :started any?]
-                             [tid-first :ended any?]
-                             [tid-second :ended any?]]
-                            (:log @results)))))))))))))
+                  (is (= 1 (:executed-migrations @results))))
+                (testing "Executions do not overlap"
+                  (is (not (executions-overlap? (:log @results)))
+                      "Executions should not overlap - lock should serialize them"))))))))))
 
 (defn- map-contains-keys?
   [m kseq]
@@ -114,12 +127,12 @@
 (deftest expected-db-schema-after-migration-test
   (try
     (mt/with-premium-features #{:semantic-search}
-      (semantic.tu/with-test-db! semantic.tu/default-test-db
+      (semantic.tu/with-test-db-defaults!
         (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
           (semantic.core/init! (semantic.tu/mock-documents) nil)
           (testing "migration table has expected columns"
             (is (map-contains-keys?
-                 (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                 (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                     (sql/format {:select [:*]
                                                  :from [:migration]}))
                  (qualify :migration [:migrated_at
@@ -127,7 +140,7 @@
                                       :version]))))
           (testing "control table has expected columns"
             (is (map-contains-keys?
-                 (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
+                 (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                     (sql/format {:select [:*]
                                                  :from [:index_control]}))
                  (qualify :index_control [:active_id
@@ -136,7 +149,7 @@
                                           :version]))))
           (testing "metadata table has expected columns"
             (is  (map-contains-keys?
-                  (jdbc/execute-one! semantic.tu/db
+                  (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                      (sql/format {:select [:*]
                                                   :from [:index_metadata]}))
                   (qualify :index_metadata [:id
@@ -178,12 +191,13 @@
                         "model_updated_at"
                         "name"
                         "official_collection"
+                        "personal_owner_id"
                         "pinned"
                         "text_search_vector"
                         "text_search_with_native_query_vector"
                         "verified"
                         "view_count"}
-                      (->>  (jdbc/execute! semantic.tu/db
+                      (->>  (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                                            (sql/format {:select [:column_name]
                                                         :from [:information_schema.columns]
                                                         :where [[:= :table_name [:inline index-table]]]}))
@@ -191,7 +205,7 @@
                             set)))))
           (testing "index table has expected columns"
             (is (= ["document" "document_hash" "gated_at" "id" "model" "model_id" "updated_at"]
-                   (->> (jdbc/execute! semantic.tu/db
+                   (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                                        (sql/format {:select [:column_name]
                                                     :from [:information_schema.columns]
                                                     :where [[:= :table_name [:inline "index_gate"]]]}))
@@ -212,7 +226,7 @@
 
 (deftest dynamic-schema-migration-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-test-db! semantic.tu/default-test-db
+    (semantic.tu/with-test-db-defaults!
       (with-redefs [semantic.pgvector-api/index-documents! (constantly nil)]
         (semantic.core/init! (semantic.tu/mock-documents) nil)
              ;; add column to index table

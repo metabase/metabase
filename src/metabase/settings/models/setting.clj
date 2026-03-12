@@ -31,14 +31,22 @@
    (java.util.concurrent TimeUnit)
    (java.util.concurrent.locks ReentrantLock)))
 
+(def ^:dynamic *database*
+  "The database upon which we are operating, from which [[*database-local-values*]] are taken.
+  This is used to do a just-in-time check whether a given setting is enabled for the given database, so that we can
+  revert to the default value even if there is a vestigial value saved against it.
+
+  This is normally bound automatically in Query Processor context by [[metabase.query-processor.setup/do-with-database]].
+  You may need to manually bind it in other places where you want to use Database-local values."
+  nil)
+
 (def ^:dynamic *database-local-values*
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
   `Database.settings` in the application DB. When bound, any Setting that *can* be Database-local will have a value
   from this map returned preferentially to the site-wide value.
 
-  This is normally bound automatically in Query Processor context
-  by [[metabase.query-processor.setup/do-with-database-local-settings]]. You may need to manually bind it in other
-  places where you want to use Database-local values."
+  This is normally bound automatically in Query Processor context by [[metabase.query-processor.setup/do-with-database]].
+  You may need to manually bind it in other places where you want to use Database-local values."
   nil)
 
 (def ^:dynamic *user-local-values*
@@ -103,7 +111,7 @@
      (contains? (set (keys (methods get-value-of-type))) a-type))])
 
 (def ^:private Visibility
-  [:enum :public :authenticated :settings-manager :admin :internal])
+  [:enum :public :authenticated :settings-manager :admin-write-authed-read :admin :internal])
 
 (defmulti default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
@@ -147,6 +155,34 @@
                                 (.getCanonicalName ^Class klass))
                         {:tag klass}))))))
 
+(defn- warning?
+  "Warnings don't block you saving a setting, but the value won't be used until the warning is resolved."
+  [reason]
+  (= (:type reason) :warning))
+
+(defn disabled-for-db-reasons
+  "Return the reasons, if any, for the given setting being disabled."
+  [setting-def database]
+  (when-let [f (:enabled-for-db? setting-def)]
+    (try (when-not (f database)
+           [{:key     :disabled-for-db
+             :type    :error
+             :message (tru "This database does not support this setting")}])
+         (catch ExceptionInfo e
+           (or (:setting/disabled-reasons (ex-data e))
+               (throw e))))))
+
+(defn- disabled-for-db-reasons? [setting-def database]
+  (seq (remove warning? (disabled-for-db-reasons setting-def database))))
+
+(defn custom-disabled-reasons!
+  "Expose custom reasons for a setting being disabled to the admin panel.
+  For convenience, we strip nil reasons, and no-op with a truthy return if nothing remains."
+  [reasons]
+  (if-let [reasons (seq (remove nil? reasons))]
+    (throw (ex-info "Setting is not enabled for this database" {:setting/disabled-reasons reasons}))
+    true))
+
 ;; This is called `LocalOption` rather than `DatabaseLocalOption` or something like that because we intend to also add
 ;; User-Local Settings at some point in the future. The will use the same options
 (def ^:private LocalOption
@@ -162,7 +198,7 @@
 
    ;; description is validated via the macro, not schema
    ;; Use `:doc` to include a map with additional documentation, for use when generating the environment variable docs
-   ;; from source. To exclude a setting from documenation, set to `false`. See metabase.cmd.env-var-dox.
+   ;; from source. To exclude a setting from documentation, set to `false`. See metabase.cmd.env-var-dox.
    [:description :any]
 
    [:doc     :any]
@@ -639,6 +675,11 @@
 (defn- default-getter-for-type [setting-type]
   (partial get-value-of-type (keyword setting-type)))
 
+(defn- throw-or-log
+  "Given an error that should never happen, throw it for us, log it for customers."
+  [e]
+  (if config/is-prod? (log/warn e) (throw e)))
+
 (defn get
   "Fetch the value of `setting-definition-or-name`. What this means depends on the Setting's `:getter`; by default, this
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
@@ -647,11 +688,28 @@
   Note: If the setting has an initializer, and this is the first time accessing, a value will be generated and saved
   unless *disable-init* has been bound to a truthy value."
   [setting-definition-or-name]
-  (let [{:keys [cache? getter enabled? default feature]} (resolve-setting setting-definition-or-name)
-        disable-cache?                                   (or config/*disable-setting-cache* (not cache?))]
+  (let [setting-def                       (resolve-setting setting-definition-or-name)
+        {:keys [getter enabled? feature]} setting-def
+        disable-cache?                    (or config/*disable-setting-cache* (not (:cache? setting-def)))]
+
+    ;; Reading database-local settings is failure prone, so catch easy mistakes.
+    (when (= :only (:database-local setting-def))
+      (cond
+        (not *database-local-values*)
+        (throw-or-log
+         (ex-info (format "Trying to read database-local setting %s without surrounding [[setting/with-database]] call."
+                          (:name setting-def))
+                  {:setting setting-def}))
+
+        ;; This likely means we're in a test using hand-crafted metadata. Just stub the instance too.
+        (and (:enabled-for-db? setting-def) (not *database*))
+        (log/warnf "Skipping enabled-for-db? check for %s as we don't have the underlying toucan2 db instance."
+                   (:name setting-def))))
+
     (if (or (and feature (not (has-feature? feature)))
-            (and enabled? (not (enabled?))))
-      default
+            (and enabled? (not (enabled?)))
+            (and *database* (disabled-for-db-reasons? setting-def *database*)))
+      (:default setting-def)
       (if (= config/*disable-setting-cache* disable-cache?) ;; Optimization: only bind dynvar if necessary.
         (getter)
         (binding [config/*disable-setting-cache* disable-cache?]
@@ -888,22 +946,6 @@
        (when (= setter :none)
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
 
-(defn disabled-for-db-reasons
-  "Return the reasons, if any, for the given setting being disabled."
-  [setting-def database]
-  (when-let [f (:enabled-for-db? setting-def)]
-    (try (when-not (f database)
-           [{:key     :disabled-for-db
-             :message "This database does not support this setting"}])
-         (catch ExceptionInfo e
-           (or (:setting/disabled-reasons (ex-data e))
-               (throw e))))))
-
-(defn custom-disabled-reasons!
-  "Expose custom reasons for a setting being disabled to the admin panel."
-  [reasons]
-  (throw (ex-info "Setting is not enabled for this database" {:setting/disabled-reasons reasons})))
-
 (defn validate-settable-for-db!
   "Check whether the given setting can be set for the given database."
   [setting-definition-or-name database driver-supports?]
@@ -915,11 +957,14 @@
                       {:setting s-name
                        :required-feature driver-feature
                        :database-id (:id database)})))
+    ;; Warnings are only for display and shouldn't block writing the setting.
+    ;; They imply that the setting won't work until the issue is resolved, but often it is a transient problem.
     (when-let [reasons (disabled-for-db-reasons setting database)]
-      (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
-                      {:setting     s-name
-                       :database-id (:id database)
-                       :reasons     reasons})))))
+      (when (not-every? warning? (disabled-for-db-reasons setting database))
+        (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
+                        {:setting     s-name
+                         :database-id (:id database)
+                         :reasons     reasons}))))))
 
 (defn set!
   "Set the value of `setting-definition-or-name`. What this means depends on the Setting's `:setter`; by default, this
@@ -1193,15 +1238,16 @@
 
   ###### `:visibility`
 
-  Controls where this setting is visibile, and who can update it. Possible values are:
+  Controls where this setting is visible, and who can update it. Possible values are:
 
-    Visibility       | Who Can See It?              | Who Can Update It?
-    ---------------- | ---------------------------- | --------------------
-    :public          | The entire world             | Admins and Settings Managers
-    :authenticated   | Logged-in Users              | Admins and Settings Managers
-    :settings-manager| Admins and Settings Managers | Admins and Settings Managers
-    :admin           | Admins                       | Admins
-    :internal        | Nobody                       | No one (usually for env-var-only settings)
+    Visibility               | Who Can See It?              | Who Can Update It?
+    ------------------------ | ---------------------------- | --------------------
+    :public                  | The entire world             | Admins and Settings Managers
+    :authenticated           | Logged-in Users              | Admins and Settings Managers
+    :settings-manager        | Admins and Settings Managers | Admins and Settings Managers
+    :admin-write-authed-read | Logged-in Users              | Admins
+    :admin                   | Admins                       | Admins
+    :internal                | Nobody                       | No one (usually for env-var-only settings)
 
   'Settings Managers' are non-admin users with the 'settings' permission, which gives them access to the Settings page
   in the Admin Panel.
@@ -1230,7 +1276,7 @@
 
   Is this a sensitive setting, such as a password, that we should never return in plaintext? (Default: `false`).
   Obfuscation is not done by getter functions, but instead by functions that ultimately return these values via the
-  API, such as [[writable-settings]] below. (In other words, code in the backend can continute to consume
+  API, such as [[writable-settings]] below. (In other words, code in the backend can continue to consume
   sensitive Settings normally; sensitivity is a purely user-facing option.)
 
   ###### `:database-local`
@@ -1302,6 +1348,11 @@
   A map which can provide values for any of the above options, except for :export?.
   Any top level options will override what's in this base map.
   The use case for this map is sharing strongly coupled options between similar settings, see [[uuid-nonce-base]].
+
+  ##### `:can-read-from-env?`
+
+  Boolean that determines if this setting can be configured from an environment variable.
+  If false, a value set in an environment variable will be ignored.
   "
   {:style/indent 1}
   [setting-symbol description & {:as options}]
@@ -1352,7 +1403,9 @@
   (try
     (t2/with-transaction [_conn]
       (doseq [[k v] settings]
-        (metabase.settings.models.setting/set! k v)))
+        (if (registered? k)
+          (metabase.settings.models.setting/set! k v)
+          (log/infof "Skipping unregistered setting: %s" (name k)))))
     settings
     (catch Throwable e
       (setting.cache/restore-cache!)
@@ -1420,7 +1473,8 @@
   []
   (set (concat [:public]
                (when @api/*current-user*
-                 [:authenticated])
+                 [:authenticated
+                  :admin-write-authed-read])
                (when (has-advanced-setting-access?)
                  [:settings-manager])
                (when api/*is-superuser?*
@@ -1433,7 +1487,7 @@
                (when (has-advanced-setting-access?)
                  [:settings-manager :authenticated :public])
                (when api/*is-superuser?*
-                 [:admin]))))
+                 [:admin :admin-write-authed-read]))))
 
 (defn- user-facing-settings-matching
   "Returns the user facing view of the registered settings satisfying the given predicate"

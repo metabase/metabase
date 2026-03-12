@@ -63,9 +63,11 @@ jobs:
         exit 1
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Get Release Version
       uses: actions/github-script@v7
       id: canonical_version
@@ -108,9 +110,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Send publish start message
         uses: actions/github-script@v7
         env:
@@ -140,10 +144,12 @@ jobs:
     - uses: actions/checkout@v4
       with:
         sparse-checkout: .github
-    - name: Retrieve test build uberjar artifact for ${{ matrix.edition }}
+    - name: Retrieve release uberjar artifact for ${{ matrix.edition }}
       uses: ./.github/actions/fetch-artifact
       with:
-        name: metabase-release-${{ matrix.edition }}-${{ inputs.commit }}-uberjar
+        commit: ${{ inputs.commit }}
+        edition: ${{ matrix.edition }}
+        release: "true"
     - name: Check JAR version properties
       run: |
         # ensure actual jar checksum matches checksum file
@@ -187,9 +193,11 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: prepare release scripts
-      run: cd release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - uses: actions/download-artifact@v4
       name: Retrieve uberjar artifact
       with:
@@ -211,13 +219,15 @@ jobs:
           return version_path;
 
     - name: Upload to S3
-      run: aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
+      run: |
+        aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
+        aws s3 cp ./SHA256.sum s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.sha256
 
     - name: Create cloudfront invalidation
       run: |
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_DOWNLOADS_ID }} \
-        --paths /${{ steps.version_path.outputs.result }}/metabase.jar
+        --paths "/${{ steps.version_path.outputs.result }}/*"
 
   verify-s3-download:
     runs-on: ubuntu-22.04
@@ -257,20 +267,22 @@ jobs:
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-release-oss-${{ inputs.commit }}-uberjar
+      edition: oss
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}
       tag: ${{ needs.check-version.outputs.oss }}
+      release: "true"
 
   containerize-ee:
     needs: check-version
     uses: ./.github/workflows/containerize-jar.yml
     secrets: inherit
     with:
-      artifact-name: metabase-release-ee-${{ inputs.commit }}-uberjar
+      edition: ee
       commit: ${{ inputs.commit }}
       repo: ${{ vars.DOCKERHUB_OWNER }}/${{ vars.DOCKERHUB_REPO }}-enterprise
       tag: ${{ needs.check-version.outputs.ee }}
+      release: "true"
 
   push-tags:
     permissions: write-all
@@ -280,9 +292,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: prepare release scripts
-      run: cd release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Tag Release
       uses: actions/github-script@v7
       with:
@@ -312,9 +326,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: prepare release scripts
-        run: cd release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Get extra tags
         id: taglist
         uses: actions/github-script@v7
@@ -324,10 +340,11 @@ jobs:
             const { getExtraTagsForVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const version = '${{ inputs.version }}';
+            const latestMajorVersion = '${{ vars.LATEST_MAJOR_VERSION }}';
 
-            const extra_tags = getExtraTagsForVersion({ version });
+            const extra_tags = getExtraTagsForVersion({ version, latestMajorVersion });
 
-            console.log({ extra_tags });
+            console.log({ extra_tags, latestMajorVersion });
             core.setOutput('extra_tags', JSON.stringify(extra_tags));
 
   add-extra-tags:
@@ -345,9 +362,11 @@ jobs:
     with:
       version: ${{ inputs.version }}
       tag_name: ${{ matrix.tag }}
-      tag_ee: ${{ contains(matrix.tag, 'v1') }}
-      tag_oss: ${{ contains(matrix.tag, 'v0') }}
-      dot-x-tag: true
+      # For version tags (v0.x, v1.x), apply to matching edition only
+      # For non-version tags like "latest", apply to both editions
+      tag_ee: ${{ contains(matrix.tag, 'v1') || !startsWith(matrix.tag, 'v') }}
+      tag_oss: ${{ contains(matrix.tag, 'v0') || !startsWith(matrix.tag, 'v') }}
+      dot-x-tag: ${{ startsWith(matrix.tag, 'v') }}
 
   trigger-cloud-issues:
     if: ${{ !inputs.auto }}
@@ -357,9 +376,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Find milestone
         id: find-milestone
         uses: actions/github-script@v7
@@ -435,9 +456,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: prepare release scripts
-        run: cd release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Publish draft release notes to github
         uses: actions/github-script@v7
         with:
@@ -514,9 +537,11 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Publish version info
       uses: actions/github-script@v7
       id: new_version_info
@@ -571,9 +596,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
       - name: Send publish complete message
         uses: actions/github-script@v7
         env:
@@ -602,9 +629,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
     - name: Update milestones
       uses: actions/github-script@v7
       with:

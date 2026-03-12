@@ -14,8 +14,8 @@ export interface AlertProps {
   variant?: AlertVariant;
   onClose?: () => void;
 }
-
-const Alert = ({
+/** @deprecated - use metabase/ui alert instead **/
+export const Alert = ({
   children,
   hasBorder = true,
   icon,
@@ -46,6 +46,3 @@ const Alert = ({
     </AlertRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Alert;

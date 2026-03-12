@@ -4,7 +4,7 @@ import { downloadsEnabledTestData, setup } from "./setup";
 
 describe("[OSS] resource downloads plugin", () => {
   beforeAll(() => {
-    setup({ hasEnterprisePlugins: false });
+    setup({});
   });
 
   describe("areDownloadsEnabled - should always return true on OSS", () => {

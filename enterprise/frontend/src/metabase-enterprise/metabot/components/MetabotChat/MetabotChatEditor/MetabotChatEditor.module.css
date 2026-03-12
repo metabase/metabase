@@ -1,0 +1,77 @@
+.editorContainer {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+}
+
+.iconContainer {
+  padding-top: 12px;
+  width: 2.375rem;
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+}
+
+.button {
+  margin-bottom: 0.625rem;
+  margin-right: -0.125rem;
+  background: var(--mb-color-brand);
+  border-radius: 50%;
+  align-self: flex-end;
+  margin-left: 2px;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition:
+    opacity 300ms ease,
+    background 150ms ease,
+    transform 150ms ease;
+
+  &:hover,
+  &:active {
+    opacity: 0.7;
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
+}
+
+.buttonHidden {
+  opacity: 0;
+  transition: opacity 0ms ease;
+  user-select: none;
+  cursor: default;
+
+  &:hover,
+  &:active {
+    opacity: 0;
+  }
+}
+
+.buttonResponding {
+  border: 1px solid var(--mb-color-brand);
+  background: transparent;
+}
+
+.sendIcon {
+  color: var(--mb-color-background-primary);
+  width: 0.8rem;
+  transition: color 150ms ease;
+}
+
+.stopIcon {
+  color: var(--mb-color-brand);
+  width: 0.5rem;
+  height: 0.5rem;
+  transition: color 150ms ease;
+}
+
+.contentWrapper {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}

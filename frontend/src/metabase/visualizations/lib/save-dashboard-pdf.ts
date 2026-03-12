@@ -1,6 +1,9 @@
+import Color from "color";
 import { t } from "ttag";
 
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { isStorybookActive } from "metabase/env";
+import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -151,22 +154,30 @@ const PARAMETERS_MARGIN_BOTTOM = 12;
 const PAGE_PADDING = 16;
 
 interface SavePdfProps {
+  fileName: string;
   selector: string;
   dashboardName: string;
   includeBranding: boolean;
 }
 
+async function isValidColor(str: string) {
+  const { default: jspdf } = await import("jspdf");
+  const pdf = new jspdf();
+  try {
+    pdf.setFillColor(str);
+    return true;
+  } catch {
+    console.warn(`Unsupported color string: "${str}"`);
+    return false;
+  }
+}
+
 export const saveDashboardPdf = async ({
+  fileName,
   selector,
   dashboardName,
   includeBranding,
 }: SavePdfProps) => {
-  const originalFileName = `${dashboardName}.pdf`;
-  const fileName = includeBranding
-    ? // eslint-disable-next-line no-literal-metabase-strings -- Used explicitly in non-whitelabeled instances
-      `Metabase - ${originalFileName}`
-    : originalFileName;
-
   const dashboardRoot = document.querySelector(selector);
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 
@@ -204,9 +215,17 @@ export const saveDashboardPdf = async ({
     headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
-  const backgroundColor = getComputedStyle(document.documentElement)
+  const rawBackgroundColor = getComputedStyle(document.documentElement)
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
+  let backgroundColor =
+    rawBackgroundColor === "transparent"
+      ? "transparent"
+      : Color(rawBackgroundColor).hex();
+
+  if (!(await isValidColor(backgroundColor))) {
+    backgroundColor = "white"; // Fallback to white if the color is invalid
+  }
 
   const { default: html2canvas } = await import("html2canvas-pro");
   const image = await html2canvas(gridNode, {
@@ -215,6 +234,14 @@ export const saveDashboardPdf = async ({
     useCORS: true,
     backgroundColor,
     scale: window.devicePixelRatio || 1,
+    /**
+     * html2canvas-pro creates inline <style> elements that can be blocked by
+     * CSP (observed from Firefox). We created a temporary patch to support
+     * nonce until the library officially implements it.
+     *
+     * @see https://github.com/metabase/metabase/issues/66234
+     */
+    nonce: window.MetabaseNonce,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.height = `${contentHeight}px`;
@@ -246,6 +273,17 @@ export const saveDashboardPdf = async ({
       }
     },
   });
+
+  // For Storybook/Loki visual testing, display the canvas as an image and skip PDF generation
+  if (isStorybookActive) {
+    const blob = await new Promise<Blob | null>((resolve) =>
+      image.toBlob(resolve, "image/png"),
+    );
+    if (blob) {
+      openImageBlobOnStorybook({ canvas: image, blob });
+    }
+    return;
+  }
 
   const { default: jspdf } = await import("jspdf");
 

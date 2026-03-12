@@ -1,0 +1,14 @@
+.refreshLink {
+  color: var(--mb-color-text-tertiary);
+  cursor: pointer;
+  padding: 0.5rem;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+
+  &.disabled:hover {
+    color: var(--mb-color-text-tertiary);
+    cursor: unset;
+  }
+}

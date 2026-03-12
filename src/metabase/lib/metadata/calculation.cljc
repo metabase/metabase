@@ -1,9 +1,11 @@
 (ns metabase.lib.metadata.calculation
+  (:refer-clojure :exclude [select-keys mapv empty? #?(:clj for)])
   (:require
    #?(:clj  [metabase.config.core :as config]
       :cljs [metabase.lib.cache :as lib.cache])
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.computed :as lib.computed]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -13,7 +15,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.expression :as lib.schema.expresssion]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -22,7 +24,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [select-keys mapv empty? #?(:clj for)]]))
 
 (mr/def ::display-name-style
   "Schema for valid values of `display-name-style` as passed to [[display-name-method]].
@@ -106,7 +109,11 @@
            :cljs-dev     true
            :cljs-release false)
     (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
-               (pr-str x)
+               ;; TODO: (Braden 11/04/2025) This logic would make sense in [[metabase.util]].
+               (let [s (pr-str x)]
+                 (if (> (count s) 2000)
+                   (str (subs s 0 1500) " ... " (subs s (- (count s) 500)))
+                   s))
                `display-name-method
                (lib.dispatch/dispatch-value x)))
   (if (and (vector? x)
@@ -176,7 +183,7 @@
 (defmulti type-of-method
   "Calculate the effective type of something. This differs from [[metabase.lib.schema.expression/type-of]] in that it is
   called with a query/MetadataProvider and a stage number, allowing us to fully resolve information and return
-  complete, unambigous type information. Default implementation calls [[metabase.lib.schema.expression/type-of]]."
+  complete, unambiguous type information. Default implementation calls [[metabase.lib.schema.expression/type-of]]."
   {:arglists '([query stage-number expr])}
   (fn [_query _stage-number expr]
     (lib.dispatch/dispatch-value expr))
@@ -205,16 +212,14 @@
       ;; otherwise if `:base-type` is specified, we can return that.
       (:base-type options)
       ;; if none of the special cases are true, fall back to [[type-of-method]].
-      (let [calculated-type (type-of-method query stage-number x)]
-        ;; if calculated type is not a true type but a placeholder like `:metabase.lib.schema.expression/type.unknown`
-        ;; or a union of types then fall back to `:type/*`, an actual type.
-        (if (isa? calculated-type :type/*)
-          calculated-type
-          :type/*))))))
+      (lib.computed/with-cache-ephemeral* query [:expression-types/by-clause stage-number x]
+        (fn []
+          (let [calculated-type (type-of-method query stage-number x)]
+            (lib.schema.expression/resolve-type calculated-type))))))))
 
 (defmethod type-of-method :default
   [_query _stage-number expr]
-  (lib.schema.expresssion/type-of expr))
+  (lib.schema.expression/type-of expr))
 
 ;;; for MBQL clauses whose type is the same as the type of the first arg. Also used
 ;;; for [[metabase.lib.schema.expression/type-of]].
@@ -226,20 +231,24 @@
   [query stage-number [_tag _opts expr :as clause]]
   (if (string? expr)
     ;; If a string, get the type filtered by this expression (eg. `:datetime-add`).
-    (lib.schema.expresssion/type-of clause)
+    (lib.schema.expression/type-of clause)
     ;; Otherwise, just get the type of this first arg.
     (type-of query stage-number expr)))
 
-(defn- cache-key
+(defn cacheable-options
+  "Includes some dynamic variables etc. in the `options` so the `[[returned-columns]]` can be safely cached."
+  [options]
+  (assoc options
+         ::display-name-style              *display-name-style*
+         ::propagate-binning-and-bucketing (boolean *propagate-binning-and-bucketing*)
+         ::ref-style                       lib.ref/*ref-style*))
+
+(defn cache-key
   "Create a cache key to use with [[lib.metadata.cache]]. This includes a few extra keys for the three dynamic variables
   that can affect metadata calculation."
   [unique-key query stage-number x options]
   (lib.metadata.cache/cache-key
-   unique-key query stage-number x
-   (assoc options
-          ::display-name-style              *display-name-style*
-          ::propagate-binning-and-bucketing (boolean *propagate-binning-and-bucketing*)
-          ::ref-style                       lib.ref/*ref-style*)))
+   unique-key query stage-number x (cacheable-options options)))
 
 (defmulti metadata-method
   "Impl for [[metadata]]. Implementations that call [[display-name]] should use the `:default` display name style."
@@ -427,7 +436,7 @@
         :is-breakout            (boolean (:lib/breakout? x-metadata))})
      (when-some [selected (:selected? x-metadata)]
        {:selected selected})
-     (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :temporal-unit) x-metadata)]
+     (when-let [temporal-unit ((some-fn :lib/temporal-unit :temporal-unit) x-metadata)]
        {:is-temporal-extraction
         (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
              (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
@@ -453,9 +462,9 @@
     [:lib/source ::lib.schema.metadata/column.source]]])
 
 (mr/def ::returned-column
+  "Schema for a returned column as returned by [[returned-columns]]; includes all the normal metadata but is also
+  guaranteed to have `:lib/source`, `:lib/source-column-alias`, and `:lib/desired-column-alias`."
   [:merge
-   ;; visible column is just the normal column metadata schema but also requires `:lib/source` and
-   ;; `:lib/source-column-alias`
    [:ref ::visible-column]
    [:map
     [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]])
@@ -480,7 +489,8 @@
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
   [:and
    [:map
-    [:include-remaps? {:optional true, :default false} :boolean]]
+    [:include-remaps?           {:optional true, :default false} :boolean]
+    [:include-sensitive-fields? {:optional true, :default false} :boolean]]
    [:fn
     {:error/message "unique-name-fn is no longer allowed as an option."}
     (complement :unique-name-fn)]
@@ -548,8 +558,7 @@
      ;; `returned-columns` purposes. As a bonus, this means undocumented options keys that aren't part of the schema
      ;; will effectively be ignored, which sorta forces people to actually go document them.
      (let [options (select-keys options returned-columns-options-keys)]
-       (lib.metadata.cache/with-cached-value query (cache-key ::returned-columns query stage-number x options)
-         (returned-columns-method query stage-number x options))))))
+       (returned-columns-method query stage-number x options)))))
 
 (mr/def ::visible-column
   "Schema for a column that should be returned by [[visible-columns]]. A visible column is a column metadata that is
@@ -586,7 +595,8 @@
   {:include-joined?                              true
    :include-expressions?                         true
    :include-implicitly-joinable?                 true
-   :include-implicitly-joinable-for-source-card? true})
+   :include-implicitly-joinable-for-source-card? true
+   :include-sensitive-fields?                    false})
 
 ;;; TODO (Cam 8/7/25) -- historically `visible-columns` worked on a bunch of stuff besides just a stage, but Braden
 ;;; pointed out that it really only makes any sense at all for a stage here
@@ -643,8 +653,14 @@
              (lib.util/first-stage? query stage-number))
     (let [existing-ids (into #{} (keep :id) source-cols)]
       (for [column source-cols
+            :let   [fk-id (:fk-target-field-id column)]
+            :when  fk-id
+            :let   [fk-field (lib.metadata/field query fk-id)]
+            :when  (not (contains? #{:sensitive :retired} (:visibility-type fk-field)))
             :let   [remapped (lib.metadata/remapped-field query column)]
             :when  (and remapped
+                        (not (false? (:active remapped)))
+                        (not (contains? #{:sensitive :retired} (:visibility-type remapped)))
                         (not (existing-ids (:id remapped))))]
         (merge
          remapped
@@ -652,7 +668,7 @@
           :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped)}
          ;; if a remap is of a joined column then we should do the remap in the join itself; columns with
          ;; `:lib/source` `:source/joins` need to have a join alias.
-         (select-keys column [:metabase.lib.join/join-alias]))))))
+         (select-keys column [:lib/join-alias]))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
@@ -682,13 +698,15 @@
         id->target-fields (m/index-by :id (lib.metadata/bulk-metadata
                                            query :metadata/column (into #{} (map :fk-target-field-id) fk-fields)))
         target-fields (into []
-                            (comp (map (fn [{source-field-id :id
-                                             :keys [fk-target-field-id]
-                                             :as   source}]
-                                         (-> (id->target-fields fk-target-field-id)
-                                             (assoc ::fk-field-id   source-field-id
-                                                    ::fk-field-name (lib.field.util/inherited-column-name source)
-                                                    ::fk-join-alias (:metabase.lib.join/join-alias source)))))
+                            (comp (keep (fn [{source-field-id :id
+                                              :keys [fk-target-field-id]
+                                              :as   source}]
+                                          ;; the target field might not exist
+                                          (when-let [target (id->target-fields fk-target-field-id)]
+                                            (assoc target
+                                                   ::fk-field-id   source-field-id
+                                                   ::fk-field-name (lib.field.util/inherited-column-name source)
+                                                   ::fk-join-alias (:lib/join-alias source)))))
                                   (remove #(contains? existing-table-ids (:table-id %))))
                             fk-fields)
         id->table (m/index-by :id (lib.metadata/bulk-metadata
@@ -718,3 +736,26 @@
     (into [] (remove (comp #{:source/joins :source/implicitly-joinable}
                            :lib/source))
           (returned-columns no-fields stage-number))))
+
+(mu/defn primary-source-table :- [:maybe ::lib.schema.metadata/table]
+  "If this query has an MBQL first stage with a `:source-table` ID, return the `:metadata/table` for it.
+
+  Returns nil if the query is native or has a `:source-card`."
+  [query]
+  (some->> query lib.util/source-table-id (lib.metadata/table query)))
+
+(mu/defn primary-source-card :- [:maybe ::lib.schema.metadata/card]
+  "If this query has an MBQL first stage with a `:source-card` ID, return the `:metadata/card` for it.
+
+  Returns nil if the query is native or has a `:source-table`."
+  [query]
+  (some->> query lib.util/source-card-id (lib.metadata/card query)))
+
+(mu/defn primary-source :- [:maybe [:or ::lib.schema.metadata/card ::lib.schema.metadata/table]]
+  "If this query has an MBQL first stage with a `:source-table` or `:source-card`, return the corresponding
+  `:metadata/table` or `:metadata/card`.
+
+  Returns nil if the query is native."
+  [query]
+  (or (primary-source-table query)
+      (primary-source-card  query)))

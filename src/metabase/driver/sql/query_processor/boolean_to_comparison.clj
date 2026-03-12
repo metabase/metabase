@@ -5,9 +5,11 @@
 
   Drivers can call boolean->comparison to convert boolean literals and refs into comparison expressions. See the
   sqlserver or oracle drivers for examples."
+  (:refer-clojure :exclude [some mapv update-keys])
   (:require
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.sql.query-processor :as sql.qp]))
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.util.performance :refer [some mapv update-keys]]))
 
 ;; Oracle and SQLServer (and maybe others) use 0 and 1 for boolean constants, but, for example, none of the following
 ;; queries are valid in such databases:

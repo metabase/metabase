@@ -3,7 +3,7 @@ import type {
   UseEntityQueryResult,
 } from "metabase/common/hooks/entity-framework/use-entity-query";
 import { useEntityQuery } from "metabase/common/hooks/entity-framework/use-entity-query";
-import Dashboards from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 
 /**

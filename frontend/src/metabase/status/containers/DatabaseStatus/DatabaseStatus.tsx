@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import Databases from "metabase/entities/databases";
+import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { getUser } from "metabase/selectors/user";

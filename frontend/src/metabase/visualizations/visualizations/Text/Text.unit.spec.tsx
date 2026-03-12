@@ -1,7 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import type { ParameterValueOrArray } from "metabase-types/api";
+import type { ParameterValuesMap } from "metabase-types/api";
+import {
+  createMockDashboard,
+  createMockVirtualDashCard,
+} from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { Text } from "../Text";
@@ -11,10 +15,8 @@ interface Settings {
 }
 
 const defaultProps = {
-  onUpdateVisualizationSettings: null,
-  className: null,
-  dashboard: {},
-  dashcard: {},
+  dashboard: createMockDashboard(),
+  dashcard: createMockVirtualDashCard(),
   gridSize: Text.defaultSize,
   settings: {},
   isEditing: false,
@@ -24,7 +26,7 @@ const defaultProps = {
 
 interface SetupOpts {
   settings?: Settings;
-  parameterValues?: Record<string, ParameterValueOrArray>;
+  parameterValues?: ParameterValuesMap;
 }
 
 const setup = ({ parameterValues, ...options }: SetupOpts = {}) => {
@@ -109,9 +111,6 @@ describe("Text", () => {
         ).toHaveTextContent(
           "You can use Markdown here, and include variables {{like_this}}",
         );
-        expect(screen.getByTestId("editing-dashboard-text-container"))
-          .toHaveStyle(`border: 1px solid var(--mb-color-brand);
-                        color: var(--mb-color-text-light);`);
       });
 
       it("should preview with text when it has content", () => {

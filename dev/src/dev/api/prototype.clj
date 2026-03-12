@@ -40,7 +40,7 @@
 (api.macros/defendpoint :get "/:type/"
   "Gets all records of the given type.
   Any parameters passed will be used for equals filters"
-  [{:keys [type]}
+  [{:keys [type]} :- [:map [:type ms/NonBlankString]]
    query-args]
   (filter (fn [obj]
             (every? (fn [[query-k query-v]]

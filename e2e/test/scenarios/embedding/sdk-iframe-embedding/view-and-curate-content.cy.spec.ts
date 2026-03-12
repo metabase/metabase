@@ -11,7 +11,7 @@ const setupEmbed = (elementHtml: string) => {
 describe("scenarios > embedding > sdk iframe embedding > view and curate content", () => {
   beforeEach(() => {
     cy.signInAsAdmin();
-    H.prepareSdkIframeEmbedTest({ withTokenFeatures: true });
+    H.prepareSdkIframeEmbedTest({ withToken: "bleeding-edge" });
   });
 
   describe("<metabase-browser> (read-only mode)", () => {
@@ -34,8 +34,12 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .click();
 
       cy.log("should show question view");
+      cy.get("iframe[data-metabase-embed]").should(($iframe) => {
+        const body = $iframe.contents().find("body");
+        expect(body).to.exist;
+      });
       H.getSimpleEmbedIframeContent()
-        .findByTestId("query-visualization-root")
+        .findByTestId("query-visualization-root", { timeout: 20_000 })
         .should("be.visible");
     });
 
@@ -43,7 +47,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       setupEmbed('<metabase-browser initial-collection="root" />');
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Exploration")
+        .findByText("New exploration")
         .should("be.visible")
         .click();
 
@@ -89,7 +93,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       `);
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Exploration")
+        .findByText("New exploration")
         .should("not.exist");
     });
   });
@@ -101,7 +105,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       );
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Dashboard")
+        .findByText("New dashboard")
         .should("be.visible")
         .click();
 
@@ -121,7 +125,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .findByText("Our analytics")
         .should("be.visible");
 
-      H.getSimpleEmbedIframeContent().findByText("New Dashboard").click();
+      H.getSimpleEmbedIframeContent().findByText("New dashboard").click();
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("change collection to save dashboard in");
@@ -160,7 +164,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       );
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Exploration")
+        .findByText("New exploration")
         .should("be.visible")
         .click();
 
@@ -175,7 +179,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         '<metabase-browser initial-collection="root" read-only="false" />',
       );
 
-      H.getSimpleEmbedIframeContent().findByText("New Exploration").click();
+      H.getSimpleEmbedIframeContent().findByText("New exploration").click();
 
       cy.log("select data model");
       H.getSimpleEmbedIframeContent().findByText("Orders").click();
@@ -205,7 +209,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       `);
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Dashboard")
+        .findByText("New dashboard")
         .should("not.exist");
     });
 
@@ -215,25 +219,23 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       );
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Dashboard")
+        .findByText("New dashboard")
         .should("be.visible")
         .click();
 
       H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByRole("dialog").within(() => {
-          cy.findByPlaceholderText("What is the name of your dashboard?").type(
-            "Foo Bar Dashboard",
-          );
+        H.modal().within(() => {
+          cy.findByText("New dashboard").should("be.visible");
 
           cy.log("open the collection picker");
           cy.findByText("Our analytics").click();
         });
 
-        cy.findByText("Collections").click();
-        cy.findByText("New collection").click();
+        cy.button("New collection").should("be.enabled").click();
 
-        cy.findAllByRole("dialog")
-          .eq(2)
+        H.modal()
+          .contains("header", "Create a new collection", { timeout: 10_000 })
+          .parent()
           .within(() => {
             cy.findByPlaceholderText("My new collection").type(
               "Foo Collection",
@@ -243,8 +245,13 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
         cy.findByText("Select").click();
 
-        cy.log("create new dashboard");
-        cy.findByRole("dialog").within(() => {
+        H.modal().within(() => {
+          cy.findByPlaceholderText("What is the name of your dashboard?").type(
+            "Foo Bar Dashboard",
+            { delay: 0 },
+          );
+
+          cy.log("create new dashboard");
           cy.findByText("Create").click();
         });
       });
@@ -263,13 +270,13 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       cy.log("breadcrumbs show the new dashboard");
       H.getSimpleEmbedIframeContent()
         .findByTestId("sdk-breadcrumbs")
-        .findByText("Foo Bar Dashboard")
+        .findByText("Foo Bar Dashboard", { timeout: 10_000 })
         .should("be.visible");
 
       cy.log("dashboard title is visible in header");
       H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-header")
-        .findByText("Foo Bar Dashboard")
+        .findByText("Foo Bar Dashboard", { timeout: 10_000 })
         .should("be.visible");
     });
 
@@ -283,7 +290,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       `);
 
       H.getSimpleEmbedIframeContent()
-        .findByText("New Exploration")
+        .findByText("New exploration")
         .should("not.exist");
     });
 
@@ -296,7 +303,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         />
       `);
 
-      H.getSimpleEmbedIframeContent().findByText("New Exploration").click();
+      H.getSimpleEmbedIframeContent().findByText("New exploration").click();
 
       cy.log("should show data picker with limited entity types");
       H.getSimpleEmbedIframeContent()
@@ -315,7 +322,7 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
       cy.log("should show initial breadcrumb");
       H.getSimpleEmbedIframeContent()
-        .findByText("Our analytics")
+        .findByText("Our analytics", { timeout: 10_000 })
         .should("be.visible");
 
       H.getSimpleEmbedIframeContent().findAllByText("Orders").first().click();

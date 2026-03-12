@@ -109,7 +109,7 @@ jobs:
         junit-name: 'be-tests-druid-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
-  be-tests-mariadb-10-2-ee:
+  be-tests-mariadb-10-6-ee:
     if: inputs.driver == 'Maria DB'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
@@ -124,15 +124,15 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:10.2.23
+        image: circleci/mariadb:10.6
         ports:
           - "3306:3306"
     steps:
     - uses: actions/checkout@v4
-    - name: Test MariaDB driver (10.2)
+    - name: Test MariaDB driver (10.6)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mariadb-10-2-ee'
+        junit-name: 'be-tests-mariadb-10-6-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mariadb-latest-ee:
@@ -298,7 +298,7 @@ jobs:
         junit-name: 'be-tests-mongo-latest-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
-  be-tests-mysql-8-0-ee:
+  be-tests-mysql-8-4-ee:
     if: inputs.driver == 'MySQL'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
@@ -313,15 +313,15 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mysql:
-        image: cimg/mysql:8.0
+        image: cimg/mysql:8.4
         ports:
           - "3306:3306"
     steps:
     - uses: actions/checkout@v4
-    - name: Test MySQL driver (8.0)
+    - name: Test MySQL driver (8.4)
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mysql-8-0-ee'
+        junit-name: 'be-tests-mysql-8-4-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
   be-tests-mysql-latest-ee:
@@ -438,7 +438,7 @@ jobs:
       MB_POSTGRESQL_TEST_USER: mb_test
     services:
       postgres:
-        image: postgres:12-alpine
+        image: postgres:14-alpine
         ports:
           - "5432:5432"
         env:
@@ -447,7 +447,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
     - uses: actions/checkout@v4
-    - name: Test Postgres driver (12)
+    - name: Test Postgres driver (14)
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-postgres-ee'
@@ -689,18 +689,51 @@ jobs:
         junit-name: 'be-tests-starburst-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
 
+  login-to-ecr:
+    if: inputs.driver == 'Vertica'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.CI_IAM_ROLE }}
+        role-session-name: GitHub_to_AWS_via_FederatedOIDC
+        aws-region: us-east-1
+    - name: Get ECR password
+      id: login-ecr
+      run: |
+        PASSWORD=$(aws ecr get-login-password --region us-east-1)
+
+        REGISTRY="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com"
+
+        echo "docker_username=AWS" >> $GITHUB_OUTPUT
+        echo "docker_password=$PASSWORD" >> $GITHUB_OUTPUT
+        echo "registry=$REGISTRY" >> $GITHUB_OUTPUT
+    outputs:
+      registry: ${{ steps.login-ecr.outputs.registry }}
+      docker_username: ${{ steps.login-ecr.outputs.docker_username }}
+      docker_password: ${{ steps.login-ecr.outputs.docker_password }}
+
   be-tests-vertica-ee:
     if: inputs.driver == 'Vertica'
     runs-on: ubuntu-22.04
+    needs: login-to-ecr
     timeout-minutes: 90
     env:
       CI: 'true'
       DRIVERS: vertica
     services:
       vertica:
-        image: vertica/vertica-ce:12.0.2-0
+        image: ${{ needs.login-to-ecr.outputs.registry }}/vertica-ce:25.3.0-0
         ports:
           - "5433:5433"
+        credentials:
+          username: ${{ needs.login-to-ecr.outputs.docker_username }}
+          password: ${{ needs.login-to-ecr.outputs.docker_password }}
     steps:
     - uses: actions/checkout@v4
     - name: Make plugins directory

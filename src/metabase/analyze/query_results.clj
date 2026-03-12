@@ -7,7 +7,7 @@
    [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.analyze.fingerprint.insights :as insights]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.query-processor.schema :as query-processor.schema]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -16,7 +16,7 @@
 
 (def ^:private ResultColumnMetadata
   "Result metadata for a single column"
-  [:ref ::mbql.s/legacy-column-metadata])
+  [:ref ::query-processor.schema/result-metadata.column])
 
 (mr/def ::ResultsMetadata
   (mu/with-api-error-message
@@ -35,7 +35,7 @@
    col
    :semantic_type
    (fn [original-value]
-     ;; If we already know the semantic type, becouse it is stored, don't classify again, but try to refine semantic
+     ;; If we already know the semantic type, because it is stored, don't classify again, but try to refine semantic
      ;; type set upstream for aggregation cols (which come back as :type/Number).
      (case original-value
        (nil :type/Number) (classifiers.name/infer-semantic-type-by-name col)

@@ -14,7 +14,7 @@ const { H } = cy;
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > embed parameters";
 
-H.describeWithSnowplow(suiteTitle, () => {
+describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -22,6 +22,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.activateToken("bleeding-edge");
     H.enableTracking();
     H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-static", false);
     H.mockEmbedJsToDevServer();
   });
 
@@ -55,6 +56,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Parameters",
+        preselectSso: true,
       });
 
       getEmbedSidebar().within(() => {
@@ -84,10 +86,12 @@ H.describeWithSnowplow(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Parameters",
+        preselectSso: true,
       });
 
       cy.log("set default value for id");
-      getEmbedSidebar().findByLabelText("ID").type("123").blur();
+      getEmbedSidebar().findByLabelText("ID").type("123");
+      H.popover().findByText("Add filter").click();
 
       H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
@@ -95,34 +99,37 @@ H.describeWithSnowplow(suiteTitle, () => {
         .should("contain", "123");
 
       cy.log("set default value for product id");
-      getEmbedSidebar().findByLabelText("Product ID").type("456").blur();
+      getEmbedSidebar().findByLabelText("Product ID").type("456");
+      H.popover().findByText("Add filter").click();
 
       H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
         .findByLabelText("Product ID")
         .should("contain", "456");
 
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "embed_wizard_option_changed",
-          event_detail: "initialParameters",
-        },
-        2,
-      );
-
       cy.log("both default values should be in the code snippet");
       getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
+        cy.findByText("Get code").click();
         codeBlock().should("contain", "initial-parameters=");
-        codeBlock().should("contain", '"id":"123"');
-        codeBlock().should("contain", '"product_id":"456"');
+        codeBlock().should("contain", '"id":[123]');
+        codeBlock().should("contain", '"product_id":[456]');
       });
+
+      cy.get("metabase-dashboard")
+        .invoke("attr", "initial-parameters")
+        .then((attr) => {
+          expect(JSON.parse(attr!)).to.deep.equal({
+            id: [123],
+            product_id: [456],
+          });
+        });
     });
 
     it("can hide dashboard parameters", () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Dashboard with Parameters",
+        preselectSso: true,
       });
 
       cy.log("hide both parameters");
@@ -136,21 +143,19 @@ H.describeWithSnowplow(suiteTitle, () => {
         .findByTestId("dashboard-parameters-widget-container")
         .should("not.exist");
 
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "embed_wizard_option_changed",
-          event_detail: "hiddenParameters",
-        },
-        2,
-      );
-
       cy.log("code snippet should contain the hidden parameters");
       getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
+        cy.findByText("Get code").click();
         codeBlock().should("contain", "hidden-parameters=");
         codeBlock().should("contain", '"id"');
         codeBlock().should("contain", '"product_id"');
       });
+
+      cy.get("metabase-dashboard")
+        .invoke("attr", "hidden-parameters")
+        .then((attr) => {
+          expect(JSON.parse(attr!)).to.have.members(["id", "product_id"]);
+        });
     });
   });
 
@@ -177,6 +182,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "chart",
         resourceName: "Question with Parameters",
+        preselectSso: true,
       });
 
       getEmbedSidebar().within(() => {
@@ -189,7 +195,8 @@ H.describeWithSnowplow(suiteTitle, () => {
         .should("exist");
 
       getEmbedSidebar().within(() => {
-        cy.findByLabelText("ID").type("123").blur();
+        cy.findByLabelText("ID").type("123");
+        cy.press("Tab"); //.blur() doesn't easily work here
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -200,17 +207,18 @@ H.describeWithSnowplow(suiteTitle, () => {
         cy.findAllByText("75.41").first().should("be.visible");
       });
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_option_changed",
-        event_detail: "initialSqlParameters",
-      });
-
       getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
+        cy.findByText("Get code").click();
         codeBlock().should("contain", "initial-sql-parameters=");
         codeBlock().should("not.contain", "hidden-parameters="); // not supported for questions yet
         codeBlock().should("contain", '"id":"123"');
       });
+
+      cy.get("metabase-question")
+        .invoke("attr", "initial-sql-parameters")
+        .then((attr) => {
+          expect(JSON.parse(attr!)).to.deep.equal({ id: "123" });
+        });
     });
   });
 
@@ -219,6 +227,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "dashboard",
         resourceName: "Orders in a dashboard",
+        preselectSso: true,
       });
 
       getEmbedSidebar().within(() => {
@@ -232,6 +241,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       navigateToEmbedOptionsStep({
         experience: "chart",
         resourceName: "Orders, Count",
+        preselectSso: true,
       });
 
       getEmbedSidebar().within(() => {
@@ -242,7 +252,10 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     it("should not show parameter settings for exploration template", () => {
-      navigateToEntitySelectionStep({ experience: "exploration" });
+      navigateToEntitySelectionStep({
+        experience: "exploration",
+        preselectSso: true,
+      });
 
       getEmbedSidebar().within(() => {
         cy.log("go to embed options step");

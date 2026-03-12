@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -49,7 +48,7 @@ export const BehaviorOption = ({
           [S.isSelected]: selected,
         })}
         name={selected ? "check" : icon}
-        color={selected ? color("text-white") : color("brand")}
+        c={selected ? "text-primary-inverse" : "brand"}
       />
       <SidebarItem.Content>
         <SidebarItem.Name>{behaviorOptionName}</SidebarItem.Name>

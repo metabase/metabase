@@ -1,6 +1,6 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
-import Dashboards from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import { createAsyncThunk } from "metabase/lib/redux";
 import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions/modal";
 import { UserApi } from "metabase/services";
@@ -52,6 +52,7 @@ export const currentUser = createReducer<User | null>(null, (builder) => {
     .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
       const { dashboard } = payload;
       if (
+        dashboard &&
         state != null &&
         state.custom_homepage?.dashboard_id === dashboard.id &&
         dashboard.archived

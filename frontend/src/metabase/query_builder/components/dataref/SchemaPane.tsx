@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { msgid, ngettext } from "ttag";
 
-import Schemas from "metabase/entities/schemas";
-import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { Schemas } from "metabase/entities/schemas";
+import { SidebarContent } from "metabase/query_builder/components/SidebarContent";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { State } from "metabase-types/store";
 
@@ -23,7 +23,7 @@ interface SchemaPaneProps {
   schema: Schema;
 }
 
-const SchemaPane = ({
+const SchemaPaneInner = ({
   onBack,
   onClose,
   onItemClick,
@@ -68,7 +68,6 @@ const SchemaPane = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Schemas.load({
+export const SchemaPane = Schemas.load({
   id: (_state: State, props: SchemaPaneProps) => props.schema.id,
-})(SchemaPane);
+})(SchemaPaneInner);

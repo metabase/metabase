@@ -29,7 +29,7 @@ export const PublicOrEmbeddedDashCardMenu = ({
   const store = useStore();
   const token = getDashcardTokenId(dashcard);
   const uuid = getDashcardUuid(dashcard);
-  const { dashboardId } = useDashboardContext();
+  const { dashboard, dashboardId } = useDashboardContext();
 
   const [menuView, setMenuView] = useState<string | null>(null);
   const [isOpen, { close, toggle }] = useDisclosure(false, {
@@ -48,7 +48,8 @@ export const PublicOrEmbeddedDashCardMenu = ({
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question: question,
     result,
-    dashboardId: checkNotNull(dashboardId),
+    // dashboardId can be an entityId and the download endpoint expects a numeric id
+    dashboardId: checkNotNull(dashboard?.id ?? dashboardId),
     dashcardId: dashcard.id,
     uuid,
     token,
@@ -75,9 +76,10 @@ export const PublicOrEmbeddedDashCardMenu = ({
           <QuestionDownloadWidget
             question={question}
             result={result}
-            onDownload={(opts) => {
+            onDownload={async (opts) => {
               close();
-              handleDownload(opts);
+
+              await handleDownload(opts);
             }}
           />
         ) : (

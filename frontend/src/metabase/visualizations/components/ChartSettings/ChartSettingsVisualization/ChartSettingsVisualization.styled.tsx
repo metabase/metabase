@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
-import Warnings from "metabase/query_builder/components/Warnings";
+import { Warnings } from "metabase/query_builder/components/Warnings";
 
 export const SectionWarnings = styled(Warnings)`
   color: ${() => color("accent4")};

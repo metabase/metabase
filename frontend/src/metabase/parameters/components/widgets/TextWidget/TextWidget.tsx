@@ -46,8 +46,10 @@ export class TextWidget extends Component<TextWidgetProps, State> {
   UNSAFE_componentWillReceiveProps(nextProps: TextWidgetProps) {
     if (nextProps.value !== this.props.value) {
       this.setState({ value: nextProps.value }, () => {
-        // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5335
-        forceRedraw(this.inputRef.current);
+        if (this.inputRef.current) {
+          // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5335
+          forceRedraw(this.inputRef.current);
+        }
       });
     }
   }
@@ -91,10 +93,7 @@ export class TextWidget extends Component<TextWidgetProps, State> {
             return;
           }
           const target = e.target as HTMLInputElement;
-          if (e.key === "Escape") {
-            target.blur();
-          } else if (e.key === "Enter") {
-            setValue(this.state.value ?? null);
+          if (e.key === "Enter") {
             target.blur();
           }
         }}

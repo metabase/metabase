@@ -3,9 +3,10 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 interface TreeNodeRootProps {
   isSelected: boolean;
@@ -16,7 +17,7 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
   display: flex;
   align-items: center;
   color: ${(props) =>
-    props.isSelected ? color("text-white") : color("brand")};
+    props.isSelected ? color("text-primary-inverse") : color("brand")};
   background-color: ${(props) => (props.isSelected ? color("brand") : "unset")};
   padding-left: ${(props) => props.depth + 0.5}rem;
   padding-right: 0.5rem;

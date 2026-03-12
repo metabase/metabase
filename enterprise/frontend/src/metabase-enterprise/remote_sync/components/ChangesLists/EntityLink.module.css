@@ -1,0 +1,5 @@
+.entityLink:hover .icon,
+.entityLink:hover .anchor,
+.entityLink:has(.anchor:hover) .icon {
+  color: var(--mb-color-brand) !important;
+}

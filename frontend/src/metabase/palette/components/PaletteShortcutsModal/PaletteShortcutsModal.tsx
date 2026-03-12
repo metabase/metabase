@@ -24,7 +24,9 @@ const groupedShortcuts = _.groupBy(
   "shortcutGroup",
 );
 
-const shortcutGroups = Object.keys(groupedShortcuts) as ShortcutGroup[];
+const shortcutGroups = Object.keys(groupedShortcuts).filter(
+  (val) => !!val,
+) as ShortcutGroup[];
 
 export const PaletteShortcutsModal = ({
   onClose,
@@ -75,7 +77,9 @@ export const PaletteShortcutsModal = ({
           >
             <ScrollArea h="100%" pr="lg">
               {(() => {
-                const shortcuts = groupedShortcuts[shortcutGroup];
+                const shortcuts = groupedShortcuts[shortcutGroup].filter(
+                  (shortcut: ShortcutDef) => !shortcut.hide,
+                );
 
                 const shortcutContexts = _.groupBy(
                   shortcuts,

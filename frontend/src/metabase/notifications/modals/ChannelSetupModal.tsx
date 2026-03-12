@@ -11,7 +11,7 @@ const CHANNELS_CONFIG: {
 }[] = [
   {
     get title() {
-      return t`Set up SMTP`;
+      return t`Set up email`;
     },
     icon: "mail",
     link: "/admin/settings/email",
@@ -24,7 +24,9 @@ const CHANNELS_CONFIG: {
     link: "/admin/settings/notifications",
   },
   {
-    title: "Add a webhook",
+    get title() {
+      return t`Add a webhook`;
+    },
     icon: "webhook",
     link: "/admin/settings/notifications",
     testId: "alerts-channel-create-webhook",
@@ -51,8 +53,8 @@ export const ChannelSetupModal = ({
       <Stack gap="0.5rem">
         <Text mb="1rem">
           {userCanAccessSettings
-            ? t`To get notified when something happens, or to send this chart on a schedule, first set up SMTP, Slack, or a webhook.`
-            : t`To get notified when something happens, or to send this chart on a schedule, ask your Admin to set up SMTP or Slack.`}
+            ? t`To get notified when something happens, or to send this chart on a schedule, first set up email, Slack, or a webhook.`
+            : t`To get notified when something happens, or to send this chart on a schedule, ask your admin to set up email, Slack, or a webhook.`}
         </Text>
 
         {userCanAccessSettings &&

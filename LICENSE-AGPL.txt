@@ -676,14 +676,11 @@ If you modify this Program, or any covered work, by linking or combining it with
 * environ
 * hiccup
 * junit
-* korma
 * medley
 * org.clojure/clojure
 * org.clojure/clojurescript
 * org.clojure/core.async
 * org.clojure/core.cache
-* org.clojure/core.incubator
-* org.clojure/core.logic
 * org.clojure/core.match
 * org.clojure/core.memoize
 * org.clojure/data.csv
@@ -702,10 +699,8 @@ If you modify this Program, or any covered work, by linking or combining it with
 * org.tcrawley/dynapath
 * quoin
 * refactor-nrepl
-* robert/hooke
 * scout
 * slingshot
 * stencil
-* swiss-arrows
 * tigris
 * instaparse

@@ -77,11 +77,15 @@ const NodeListItemIcon = (props: IconProps & { disabled?: boolean }) => {
 const NodeListItemLink = (
   props: AnchorHTMLAttributes<HTMLAnchorElement> & { disabled?: boolean },
 ) => {
-  const { disabled, ...rest } = props;
+  const { disabled, className, ...rest } = props;
 
   return (
     <a
-      className={cx(S.NodeListItemLink, { [S.isDisabled]: disabled })}
+      className={cx(
+        S.NodeListItemLink,
+        { [S.isDisabled]: disabled },
+        className,
+      )}
       {...rest}
     />
   );

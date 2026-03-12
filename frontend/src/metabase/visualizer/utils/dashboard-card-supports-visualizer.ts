@@ -24,3 +24,13 @@ export function isVisualizerSupportedVisualization(
 
   return visualizations.get(display)?.supportsVisualizer;
 }
+
+export function isDisabledForVisualizer(
+  display: VisualizationDisplay | null | undefined,
+) {
+  if (!display) {
+    return false;
+  }
+
+  return visualizations.get(display)?.disableVisualizer;
+}

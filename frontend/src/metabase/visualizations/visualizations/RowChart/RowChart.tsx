@@ -1,8 +1,7 @@
-import type * as React from "react";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
@@ -14,11 +13,14 @@ import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import {
+  getBreakoutCardinality,
+  validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
 import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
@@ -39,8 +41,10 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
+  ComputedVisualizationSettings,
   RemappingHydratedChartData,
   VisualizationProps,
+  VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import {
   getClickData,
@@ -78,7 +82,7 @@ interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
 
 function RowChartRendererInner(props: RowChartRendererProps) {
   return (
-    <RowChartContainer>
+    <RowChartContainer data-testid="row-chart-container">
       <RowChart {...props} />
     </RowChartContainer>
   );
@@ -110,6 +114,7 @@ const RowChartVisualization = ({
   width: outerWidth,
   height: outerHeight,
   getHref,
+  hideLegend,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -128,8 +133,7 @@ const RowChartVisualization = ({
   );
 
   const groupedData = useMemo(
-    () =>
-      getGroupedDataset(data.rows, chartColumns, settings, formatColumnValue),
+    () => getGroupedDataset(data, chartColumns, settings, formatColumnValue),
     [chartColumns, data, settings, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
@@ -137,7 +141,6 @@ const RowChartVisualization = ({
   const theme = useRowChartTheme(
     `${fontFamily}, Arial, sans-serif`,
     isDashboard,
-    isFullscreen,
   );
 
   const chartWarnings = useMemo(
@@ -210,12 +213,10 @@ const RowChartVisualization = ({
   };
 
   const handleSelectSeries = (event: React.MouseEvent, seriesIndex: number) => {
-    const clickData = getLegendClickData(
-      seriesIndex,
-      series,
-      settings,
-      chartColumns,
-    );
+    const clickData = {
+      ...getLegendClickData(seriesIndex, series, settings, chartColumns),
+      element: event.currentTarget,
+    };
 
     const areMultipleCards = rawMultipleSeries.length > 1;
     if (areMultipleCards) {
@@ -224,10 +225,7 @@ const RowChartVisualization = ({
     }
 
     if ("breakout" in chartColumns && visualizationIsClickable(clickData)) {
-      onVisualizationClick({
-        ...clickData,
-        element: event.currentTarget,
-      });
+      onVisualizationClick(clickData);
     } else if (isDashboard) {
       openQuestion();
     }
@@ -247,8 +245,8 @@ const RowChartVisualization = ({
   const canSelectTitle = !!onChangeCardAndRun;
 
   const legendItems = useMemo(
-    () => getLegendItems(series, seriesColors, settings),
-    [series, seriesColors, settings],
+    () => getLegendItems(series, seriesColors),
+    [series, seriesColors],
   );
 
   const { xLabel, yLabel } = useMemo(() => getLabels(settings), [settings]);
@@ -275,7 +273,7 @@ const RowChartVisualization = ({
 
   const hasBreakout =
     settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
-  const hasLegend = series.length > 1 || hasBreakout;
+  const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
 
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
@@ -340,10 +338,11 @@ RowChartVisualization.noHeader = true;
 RowChartVisualization.minSize = getMinSize("row");
 RowChartVisualization.defaultSize = getDefaultSize("row");
 
-RowChartVisualization.settings = {
+const settings: VisualizationSettingsDefinitions = {
   ...ROW_CHART_SETTINGS,
   ...GRAPH_DATA_SETTINGS,
 };
+RowChartVisualization.settings = settings;
 
 RowChartVisualization.isSensible = ({ cols, rows }: DatasetData) => {
   return (
@@ -378,39 +377,47 @@ RowChartVisualization.settings["graph.dimensions"] = {
  */
 RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
   const [series] = originalMultipleSeries;
-  const settings: any = getComputedSettingsForSeries(originalMultipleSeries);
+  const settings: ComputedVisualizationSettings = getComputedSettingsForSeries(
+    originalMultipleSeries,
+  );
   const { card, data } = series;
 
-  if (series.card._transformed || !hasValidColumnsSelected(settings, data)) {
+  if (card._transformed || !hasValidColumnsSelected(settings, data)) {
+    return originalMultipleSeries;
+  }
+
+  const cardinality = getBreakoutCardinality(data.cols, data.rows, settings);
+  if (cardinality != null && cardinality > MAX_SERIES) {
     return originalMultipleSeries;
   }
 
   const chartColumns = getCartesianChartColumns(data.cols, settings);
-
-  const computedSeries = getSeries(
+  const seriesDefinitions = getSeries(
     data,
     chartColumns,
     getColumnValueFormatter(),
-  ).map((series) => {
-    const seriesCard = {
-      ...card,
-      name: series.seriesName,
-      _seriesKey: series.seriesKey,
-      _transformed: true,
-    };
+    settings,
+  );
 
-    const newData = {
+  const transformedSeries = seriesDefinitions.map((seriesDef) => ({
+    card: {
+      ...card,
+      name: seriesDef.seriesName,
+      _seriesKey: seriesDef.seriesKey,
+      _transformed: true,
+    },
+    data: {
       ...data,
       cols: [
-        series.seriesInfo?.dimensionColumn,
-        series.seriesInfo?.metricColumn,
+        seriesDef.seriesInfo?.dimensionColumn,
+        seriesDef.seriesInfo?.metricColumn,
       ],
-    };
+    },
+  }));
 
-    return { card: seriesCard, data: newData };
-  });
-
-  return computedSeries.length > 0 ? computedSeries : originalMultipleSeries;
+  return transformedSeries.length > 0
+    ? transformedSeries
+    : originalMultipleSeries;
 };
 
 RowChartVisualization.checkRenderable = (
@@ -418,6 +425,7 @@ RowChartVisualization.checkRenderable = (
   settings: VisualizationSettings,
 ) => {
   validateDatasetRows(series);
+  validateBreakoutSeriesCount(series, settings);
   validateChartDataSettings(settings);
   validateStacking(settings);
 };
@@ -426,5 +434,4 @@ RowChartVisualization.hasEmptyState = true;
 
 RowChartVisualization.getUiName = () => t`Row`;
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default RowChartVisualization;
+export { RowChartVisualization as RowChart };

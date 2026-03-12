@@ -1,0 +1,31 @@
+name: Embedding SDK Package Build
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: embedding-sdk-package-${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build-sdk-package:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build Embedding SDK package
+        run: |
+          # Remove the matchers to not report false positives on every PR
+          # unrelated to embedding (EMB-765)
+          echo "::remove-matcher owner=tsc::"
+          bun run build-embedding-sdk-package
+      - name: Prepare Embedding SDK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: resources/embedding-sdk

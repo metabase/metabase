@@ -1,7 +1,9 @@
 import fs from 'fs';
 
+import { Octokit } from '@octokit/rest';
 import { $ } from 'zx';
 
+import { getOpenBackportPrs } from './github';
 import { issueNumberRegex } from './linked-issues';
 
 type CommitInfo = {
@@ -18,7 +20,7 @@ export async function gitLog(majorVersion: number) {
   const { stdout: baseCommit } = await $`git merge-base origin/release-x.${previousMajorVersion}.x origin/master`;
   const { stdout } = await $`git log ${baseCommit.trim()}..origin/release-x.${majorVersion}.x --pretty='format:%(decorate:prefix=,suffix=)||%s||%H||%ah'`;
   const processedCommits = stdout.split('\n').map(processCommit);
-  return buildTable(processedCommits, majorVersion);
+  return buildTable(processedCommits);
 }
 
 export function processCommit(commitLine: string): CommitInfo {
@@ -57,9 +59,8 @@ function tableRow(commit: CommitInfo) {
   </tr>`;
 }
 
-function buildTable(commits: CommitInfo[], majorVersion: number) {
+function buildTable(commits: CommitInfo[]) {
   const rows = commits.map(tableRow).join('\n');
-  const currentTime = new Date().toLocaleString();
   const tableHtml = `
     <table>
       <thead>
@@ -73,10 +74,42 @@ function buildTable(commits: CommitInfo[], majorVersion: number) {
         ${rows}
       </tbody>
     </table>`;
-  return tablePageTemplate
-    .replace(/{{release-table}}/, tableHtml)
-    .replace(/{{major-version}}/g, majorVersion.toString())
-    .replace(/{{current-time}}/, currentTime);
+
+  return tableHtml;
+}
+
+type PullRequest = {
+  html_url: string,
+  number: number,
+  title: string,
+  assignee: { login: string },
+  created_at: string,
+}
+
+function createBackportTable(prs: PullRequest[]) {
+  const rows = prs.map(pr => {
+    const assignee = pr.assignee ? pr.assignee.login : '?';
+    return `<tr>
+      <td><a href="${pr.html_url}" target="_blank">#${pr.number}</a></td>
+      <td>${linkifyIssueNumbers(pr.title)}</td>
+      <td>@${assignee}</td>
+      <td>${new Date(pr.created_at).toLocaleString()}</td>
+    </tr>`;
+  }).join('\n');
+
+  return `<table>
+    <thead>
+      <tr>
+        <th>PR</th>
+        <th>Title</th>
+        <th>Assignee</th>
+        <th>Created At</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+    </tbody>
+  </table>`;
 }
 
 
@@ -88,6 +121,24 @@ export async function generateReleaseLog() {
     process.exit(1);
   }
 
-  console.log(await gitLog(version));
-}
+  const github = new Octokit({
+    auth: process.env.GITHUB_TOKEN,
+  });
 
+  const backportPRs = await getOpenBackportPrs({
+    github,
+    owner: 'metabase',
+    repo: 'metabase',
+    majorVersion: version,
+  });
+
+  const backportTable = createBackportTable(backportPRs as PullRequest[]);
+
+  const commitTable = await gitLog(version);
+
+  return tablePageTemplate
+    .replace(/{{release-table}}/, commitTable)
+    .replace(/{{backport-table}}/, backportTable)
+    .replace(/{{major-version}}/g, version.toString())
+    .replace(/{{current-time}}/, new Date().toLocaleString());
+}

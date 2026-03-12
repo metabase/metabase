@@ -1,0 +1,21 @@
+.resizing {
+  cursor: ew-resize;
+  user-select: none;
+}
+
+.column {
+  overflow: auto;
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.footer {
+  border-top: 1px solid var(--mb-color-border);
+}
+
+.preview {
+  box-shadow: 0 10px 30px 0 hsla(0, 0%, 0%, 0.1);
+}
+
+.header {
+  z-index: 10;
+}

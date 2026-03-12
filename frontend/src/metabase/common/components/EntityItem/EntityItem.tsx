@@ -21,10 +21,10 @@ import {
   isItemPinned,
   isPreviewShown,
 } from "metabase/collections/utils";
-import CheckBox from "metabase/common/components/CheckBox";
+import { CheckBox } from "metabase/common/components/CheckBox";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import EntityMenu from "metabase/common/components/EntityMenu";
-import Swapper from "metabase/common/components/Swapper";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
+import { Swapper } from "metabase/common/components/Swapper";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import type { IconName, IconProps } from "metabase/ui";
@@ -81,7 +81,7 @@ const EntityIconCheckBox = ({
           defaultElement={
             <Icon
               name={icon.name}
-              color={icon.color ?? "inherit"}
+              c={icon.color ?? "inherit"}
               size={iconSize}
             />
           }
@@ -89,11 +89,7 @@ const EntityIconCheckBox = ({
           isSwapped={selected || showCheckbox}
         />
       ) : (
-        <Icon
-          name={icon.name}
-          color={icon.color ?? "inherit"}
-          size={iconSize}
-        />
+        <Icon name={icon.name} c={icon.color ?? "inherit"} size={iconSize} />
       )}
     </EntityIconWrapper>
   );
@@ -238,7 +234,7 @@ function EntityItemMenu({
         action: onDeletePermanently,
         color: "danger",
         hoverColor: "danger",
-        hoverBgColor: "bg-error",
+        hoverBgColor: "background-error",
       });
     }
 
@@ -276,7 +272,7 @@ function EntityItemMenu({
   );
 }
 
-const EntityItem = ({
+export const EntityItem = ({
   name,
   iconName,
   onPin,
@@ -355,6 +351,3 @@ const EntityItem = ({
 EntityItem.IconCheckBox = EntityIconCheckBox;
 EntityItem.Name = EntityItemName;
 EntityItem.Menu = EntityItemMenu;
-
-// eslint-disable-next-line import/no-default-export
-export default EntityItem;

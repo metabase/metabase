@@ -1,8 +1,13 @@
-import { Group, type SelectProps } from "metabase/ui";
+import type { ReactNode } from "react";
+import { t } from "ttag";
+
+import { Group, Icon, type SelectProps, Tooltip } from "metabase/ui";
 import type {
   GroupTableAccessPolicy,
   StructuredUserAttributes,
   Table,
+  Tenant,
+  UnsavedCard,
 } from "metabase-types/api";
 
 import type {
@@ -10,6 +15,16 @@ import type {
   MappingEditorEntry,
   MappingType,
 } from "./types";
+
+const TENANT_SLUG_ATTRIBUTE = "@tenant.slug";
+
+const GET_USER_ATTRIBUTE_ICON_MAP: () => Record<string, ReactNode> = () => ({
+  [TENANT_SLUG_ATTRIBUTE]: (
+    <Tooltip label={t`This attribute is system defined`}>
+      <Icon data-testid="system-defined-tooltip-icon" name="info" />
+    </Tooltip>
+  ),
+});
 
 export const getPolicyKeyFromParams = ({
   groupId,
@@ -19,12 +34,14 @@ export const getPolicyKeyFromParams = ({
 export const getPolicyKey = (policy: GroupTableAccessPolicy) =>
   `${policy.group_id}:${policy.table_id}`;
 
-export const getRawDataQuestionForTable = (table: Table) => ({
+export const getRawDataQuestionForTable = (table: Table): UnsavedCard => ({
+  display: "table",
   dataset_query: {
     type: "query",
     database: table?.db_id,
     query: { "source-table": table?.id },
   },
+  visualization_settings: {},
 });
 
 export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
@@ -32,6 +49,7 @@ export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
 }) => (
   <Group flex="1" p="sm" gap="xs" justify="space-between">
     {option.label}
+    {GET_USER_ATTRIBUTE_ICON_MAP()[option.value]}
   </Group>
 );
 
@@ -85,6 +103,28 @@ export const buildMapping = <T,>(
 
 export const getExtraAttributes = (
   structuredAttributes?: StructuredUserAttributes,
+  tenant?: Tenant,
 ): StructuredUserAttributes | undefined => {
-  return structuredAttributes;
+  if (!tenant || structuredAttributes?.[TENANT_SLUG_ATTRIBUTE]) {
+    return structuredAttributes;
+  }
+
+  // for newly created tenant users, we want to pre-populate their inherited attributes
+  return {
+    [TENANT_SLUG_ATTRIBUTE]: {
+      value: tenant.slug,
+      source: "tenant",
+      frozen: true,
+    },
+    ...Object.fromEntries(
+      Object.entries(tenant.attributes ?? {}).map(([key, value]) => [
+        key,
+        {
+          value,
+          source: "tenant",
+          frozen: false,
+        },
+      ]),
+    ),
+  };
 };

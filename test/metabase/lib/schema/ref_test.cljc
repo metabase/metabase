@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.malli.registry :as mr]))
@@ -50,3 +52,47 @@
         (are [schema] (not (me/humanize (mr/explain schema field-ref)))
           :mbql.clause/field
           ::lib.schema.ref/ref)))))
+
+(deftest ^:parallel normalize-original-binning-test
+  (is (= [:field
+          {:base-type            :type/Float
+           :effective-type       :type/Float
+           :lib/original-binning {:num-bins 50, :strategy :num-bins}
+           :lib/uuid             "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"}
+          "TOTAL_2"]
+         (lib/normalize ["field"
+                         {"base-type"            "type/Float"
+                          "lib/uuid"             "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"
+                          "effective-type"       "type/Float"
+                          "lib/original-binning" {"strategy" "num-bins", "num-bins" 50}}
+                         "TOTAL_2"]))))
+
+(deftest ^:parallel normalize-field-ref-remove-nil-values-test
+  (is (= [:field {:lib/uuid "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"} 100]
+         (lib/normalize ["field" {"temporal-unit" nil, "lib/uuid" "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"} 100]))))
+
+(deftest ^:parallel rename-old-long-namespaced-keys-in-field-options-test
+  (testing "Old long-namespaced keys in field ref options should be renamed to :lib/* equivalents"
+    (let [id        "d01f4c83-0fe5-4329-80f3-2bbea1f27c3b"
+          base-opts {:lib/uuid id}
+          renames   @#'lib.schema.common/deprecated-lib-key-renames]
+      (are [old-key value] (= [:field (assoc base-opts (renames old-key) value) 123]
+                              (lib/normalize [:field {old-key value, :lib/uuid id} 123]))
+        :metabase.lib.field/original-effective-type        :type/Text
+        :metabase.lib.query/transformation-added-base-type :type/Integer)
+
+      (testing "new key already present takes precedence"
+        (is (= [:field (assoc base-opts :lib/original-effective-type :type/Integer) 123]
+               (lib/normalize [:field {:lib/uuid                                   id
+                                       :metabase.lib.field/original-effective-type :type/Text
+                                       :lib/original-effective-type                :type/Integer} 123]))))
+
+      (testing "old keys are disallowed by the schema"
+        (are [old-key value] (not (mr/validate :mbql.clause/field
+                                               [:field (assoc base-opts old-key value) 123]))
+          :metabase.lib.join/join-alias                      "Products"
+          :metabase.lib.field/temporal-unit                  :month
+          :metabase.lib.field/binning                        {:strategy :default, :num-bins 10}
+          :metabase.lib.field/original-effective-type        :type/Text
+          :metabase.lib.field/simple-display-name            "Category: Name"
+          :metabase.lib.query/transformation-added-base-type :type/Integer)))))

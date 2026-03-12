@@ -1,12 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { useSdkDashboardContext } from "embedding-sdk/components/public/dashboard/context";
-/* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
+import { useSdkDashboardContext } from "embedding-sdk-bundle/components/public/dashboard/context";
 import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
 import { useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -25,6 +23,7 @@ type DashCardMenuItemsProps = {
   onDownload: () => void;
   onEditVisualization?: () => void;
   dashcardId?: DashCardId;
+  canEdit?: boolean;
 };
 export const DashCardMenuItems = ({
   question,
@@ -33,12 +32,15 @@ export const DashCardMenuItems = ({
   onDownload,
   onEditVisualization,
   dashcardId,
+  canEdit,
 }: DashCardMenuItemsProps) => {
   const dispatch = useDispatch();
 
   const {
-    onEditQuestion = (question, mode = "notebook") =>
-      dispatch(editQuestion(question, mode)),
+    onEditQuestion = (
+      question: Question,
+      mode: "query" | "view" | "notebook" = "notebook",
+    ) => dispatch(editQuestion(question, mode)),
   } = useSdkDashboardContext();
 
   const { dashcardMenu } = useDashboardContext();
@@ -57,14 +59,14 @@ export const DashCardMenuItems = ({
       key: string;
     })[] = [];
 
-    if (withEditLink && onEditVisualization) {
+    if (withEditLink && canEdit && onEditVisualization) {
       items.push({
         key: "MB_EDIT_VISUALIZER_QUESTION",
         iconName: "lineandbar",
         label: t`Edit visualization`,
         onClick: onEditVisualization,
       });
-    } else if (withEditLink && canEditQuestion(question)) {
+    } else if (withEditLink && canEdit && canEditQuestion(question)) {
       const type = question.type();
       if (type === "question") {
         items.push({
@@ -138,6 +140,7 @@ export const DashCardMenuItems = ({
     onEditVisualization,
     dashcardId,
     dispatch,
+    canEdit,
   ]);
 
   return menuItems.map((item) => {

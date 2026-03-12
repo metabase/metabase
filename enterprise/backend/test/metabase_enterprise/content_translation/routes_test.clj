@@ -4,10 +4,10 @@
    [buddy.sign.jwt :as jwt]
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
-   [crypto.random :as crypto-random]
    [metabase-enterprise.content-translation.utils :as ct-utils]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.util.random :as u.random]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -116,7 +116,7 @@
                                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                         {:file csv-with-invalid-locale}))))))))
 
-(defn random-embedding-secret-key [] (crypto-random/hex 32))
+(defn random-embedding-secret-key [] (u.random/secure-hex 32))
 
 (defn do-with-new-secret-key! [f]
   (let [secret-key (random-embedding-secret-key)]
@@ -176,3 +176,31 @@
                      (client/client :get 400 (str (embedded-dictionary-url
                                                    (jwt/sign {} (random-embedding-secret-key)))
                                                   "?locale=sv")))))))))))
+
+(deftest authenticated-dictionary-test
+  (testing "GET /api/ee/content-translation/dictionary"
+    (ct-utils/with-clean-translations!
+      (mt/with-premium-features #{:content-translation}
+        (testing "requires authentication"
+          (is (= "Unauthenticated"
+                 (client/client :get 401 "ee/content-translation/dictionary?locale=sv"))))
+        (testing "requires locale parameter"
+          (is (=? {:errors {:locale some?}}
+                  (mt/user-http-request :rasta :get 400 "ee/content-translation/dictionary"))))
+        (testing "returns translations for authenticated user"
+          (mt/with-temp [:model/ContentTranslation _ {:locale "sv" :msgid "blueberry" :msgstr "blåbär"}]
+            (is (=? {:data [{:locale "sv"
+                             :msgid "blueberry"
+                             :msgstr "blåbär"}]}
+                    (mt/user-http-request :rasta :get 200 "ee/content-translation/dictionary?locale=sv")))))
+        (testing "normalizes locale"
+          (mt/with-temp [:model/ContentTranslation _ {:locale "pt_BR" :msgid "blueberry" :msgstr "mirtilo"}]
+            (is (=? {:data [{:locale "pt_BR"
+                             :msgid "blueberry"
+                             :msgstr "mirtilo"}]}
+                    (mt/user-http-request :rasta :get 200 "ee/content-translation/dictionary?locale=pt-BR")))))))
+    (testing "requires content-translation feature"
+      (mt/with-premium-features #{}
+        (mt/assert-has-premium-feature-error
+         "Content translation"
+         (mt/user-http-request :rasta :get 402 "ee/content-translation/dictionary?locale=sv"))))))

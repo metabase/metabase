@@ -2,6 +2,8 @@ import type { Location } from "history";
 import _ from "underscore";
 
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
+import type { StaticEmbeddingEntityError } from "metabase/lib/errors/types";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import {
@@ -9,6 +11,7 @@ import {
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
+import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   areParameterValuesIdentical,
@@ -37,7 +40,7 @@ import type {
 import type { SelectedTabId } from "metabase-types/store";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
-  if (after.parameters && before.embedding_params) {
+  if (after.parameters && before.embedding_params && before.enable_embedding) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
       const slugParam = _.find(before.parameters, (param) => {
         return param.slug === embedSlug;
@@ -198,7 +201,11 @@ export function getInlineParameterTabMap(dashboard: Dashboard) {
 
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
   // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-  return dashcard.card.dataset_query?.type === "native";
+  if (dashcard.card.dataset_query == null) {
+    return false;
+  }
+  const question = new Question(dashcard.card);
+  return question.isNative();
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
@@ -207,11 +214,9 @@ export function showVirtualDashCardInfoText(
   dashcard: DashboardCard,
   isMobile: boolean,
 ) {
-  if (isVirtualDashCard(dashcard)) {
-    return isMobile || dashcard.size_y > 2 || dashcard.size_x > 5;
-  } else {
-    return true;
-  }
+  const dashcardAreaSize = dashcard.size_y * dashcard.size_x;
+
+  return isMobile || (dashcardAreaSize >= 12 && dashcard.size_x > 3);
 }
 
 export function getAllDashboardCards(dashboard: Dashboard) {
@@ -261,6 +266,23 @@ export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
   try {
     return await dataPromise;
   } catch (error) {
+    // For 4xx errors from streaming query endpoints, the error response body
+    // contains the actual error data that should be displayed (just like the old
+    // 202-with-error-in-body behavior). Treat these as successful responses.
+    if (
+      error &&
+      typeof error === "object" &&
+      "status" in error &&
+      typeof error.status === "number" &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      "data" in error &&
+      typeof error.data === "object"
+    ) {
+      // Return the error data as if it were a successful response
+      return error.data;
+    }
+    // For 5xx errors or other errors, maintain the original behavior
     return { error };
   }
 }
@@ -281,7 +303,10 @@ export function isDashcardLoading(
   return cardData.length === 0 || cardData.some((data) => data == null);
 }
 
-export function getDashcardResultsError(datasets: Dataset[]) {
+export function getDashcardResultsError(
+  datasets: Dataset[],
+  isGuestEmbed: boolean,
+) {
   const isAccessRestricted = datasets.some(
     (s) =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
@@ -292,6 +317,19 @@ export function getDashcardResultsError(datasets: Dataset[]) {
     return {
       message: getPermissionErrorMessage(),
       icon: "key" as const,
+    };
+  }
+
+  const staticEntityLoadingError = datasets.find((dataset) =>
+    isStaticEmbeddingEntityLoadingError(dataset.error, {
+      isGuestEmbed,
+    }),
+  )?.error as StaticEmbeddingEntityError | undefined;
+
+  if (staticEntityLoadingError) {
+    return {
+      message: staticEntityLoadingError.data,
+      icon: "warning" as const,
     };
   }
 
@@ -354,7 +392,7 @@ const shouldHideCard = (
 
   return (
     !hasRows(dashcardData) &&
-    !getDashcardResultsError(Object.values(dashcardData))
+    !getDashcardResultsError(Object.values(dashcardData), false)
   );
 };
 

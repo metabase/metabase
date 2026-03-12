@@ -2,7 +2,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { Form, FormProvider } from "metabase/forms";
 
-import FormFileInput from "./FormFileInput";
+import { FormFileInput } from "./FormFileInput";
 
 export default {
   title: "Components/Ask Before Using/FormFileInput",

@@ -1,19 +1,12 @@
 .DashCardVisualization {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .VirtualDashCardOverlayText {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .InlineParametersList *,
 .InlineParametersMenuTrigger * {
   pointer-events: all;
-}
-
-.isNightMode {
-  & .invertInNightMode {
-    border-color: var(--mb-color-text-white-alpha-85);
-    background-color: var(--mb-color-bg-night);
-  }
 }

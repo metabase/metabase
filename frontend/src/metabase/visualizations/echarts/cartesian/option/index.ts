@@ -1,4 +1,5 @@
 import type { EChartsCoreOption } from "echarts/core";
+import type { YAXisOption } from "echarts/types/dist/shared";
 import type { OptionSourceData } from "echarts/types/src/util/types";
 
 import {
@@ -22,7 +23,7 @@ import type { ChartMeasurements } from "../chart-measurements/types";
 import { CHART_STYLE } from "../constants/style";
 import { getBarSeriesDataLabelKey } from "../model/util";
 
-import { getGoalLineSeriesOption } from "./goal-line";
+import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 import { getTrendLinesOption } from "./trend-line";
 import type { EChartsSeriesOption } from "./types";
 
@@ -43,6 +44,11 @@ export const getSharedEChartsOptions = (isAnimated: boolean) => ({
 });
 
 type Axes = ReturnType<typeof buildAxes>;
+
+type NonCategoryYAxisOption = Exclude<YAXisOption, { type?: "category" }>;
+const isNonCategoryYAxisOption = (
+  axis: YAXisOption,
+): axis is NonCategoryYAxisOption => axis.type !== "category";
 
 export const ensureRoomForLabels = (
   axes: Axes,
@@ -68,6 +74,12 @@ export const ensureRoomForLabels = (
       const innerHeight = Math.abs(bounds.bottom - bounds.top);
       const labelPct = CHART_STYLE.seriesLabels.size / innerHeight;
       const lowerBoundaryGap = labelPct / 2; // `/ 2` because it's okay if the bar label overlaps the axis *line*, we just don't want it to overlap the axis *labels*
+
+      // Only apply numeric boundaryGap to non-category axes
+      if (!isNonCategoryYAxisOption(axis)) {
+        return axis;
+      }
+
       return { ...axis, boundaryGap: [lowerBoundaryGap, 0] };
     }
     return axis;
@@ -101,7 +113,7 @@ export const getCartesianChartOption = (
     renderingContext,
   );
   const goalSeriesOption = getGoalLineSeriesOption(
-    chartModel,
+    getGoalLineParams(chartModel),
     settings,
     renderingContext,
   );
@@ -145,7 +157,8 @@ export const getCartesianChartOption = (
       source: chartModel.trendLinesModel?.dataset as OptionSourceData,
       dimensions: [
         X_AXIS_DATA_KEY,
-        ...chartModel.trendLinesModel?.seriesModels.map((s) => s.dataKey),
+        ...(chartModel.trendLinesModel?.seriesModels?.map((s) => s.dataKey) ??
+          []),
       ],
     });
   }
@@ -154,6 +167,7 @@ export const getCartesianChartOption = (
     ...getSharedEChartsOptions(isAnimated),
     grid: {
       ...chartMeasurements.padding,
+      outerBoundsMode: "none",
     },
     dataset: echartsDataset,
     series: seriesOption,

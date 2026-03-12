@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -39,8 +39,12 @@ const EVENT_SCHEMA = Yup.object({
   timestamp: Yup.string().required(Errors.required),
   time_matters: Yup.boolean(),
   icon: Yup.string().required(Errors.required),
-  timeline_id: Yup.number(),
+  timeline_id: Yup.string(),
 });
+
+type TimelineEventFormData = Omit<TimelineEventData, "timeline_id"> & {
+  timeline_id: string | undefined;
+};
 
 export interface EventFormOwnProps {
   initialValues: TimelineEventData;
@@ -78,11 +82,31 @@ const EventForm = ({
     }));
   }, [timelines]);
 
+  const preparedInitialValues: TimelineEventFormData = {
+    ...initialValues,
+    timestamp: initialValues.timestamp || dayjs().utc(true).toISOString(),
+    timeline_id: initialValues.timeline_id
+      ? String(initialValues.timeline_id)
+      : undefined,
+  };
+
+  const handleSubmit = useCallback(
+    (values: TimelineEventFormData) => {
+      return onSubmit({
+        ...values,
+        timeline_id: values.timeline_id
+          ? parseInt(values.timeline_id, 10)
+          : undefined,
+      });
+    },
+    [onSubmit],
+  );
+
   return (
     <FormProvider
-      initialValues={initialValues}
+      initialValues={preparedInitialValues}
       validationSchema={EVENT_SCHEMA}
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       {({ dirty, values, setFieldValue }) => (
         <Form disabled={!dirty} data-testid="event-form">
@@ -99,6 +123,19 @@ const EventForm = ({
                 title={t`Date`}
                 flex={1}
                 valueFormat={dateSettings?.date_style}
+                onChange={(date) => {
+                  if (values.time_matters) {
+                    // if time matters, preserve the time part of the timestamp
+                    // when changing the date part
+                    const timePart = dayjs.tz(values.timestamp);
+                    const newDate = parseTimestamp(date)
+                      .set("hour", timePart.hour())
+                      .set("minute", timePart.minute());
+                    setFieldValue("timestamp", newDate.toISOString());
+                  } else {
+                    setFieldValue("timestamp", dayjs(date).toISOString());
+                  }
+                }}
               />
               {values.time_matters ? (
                 <Flex gap="xs" align="end">
@@ -149,10 +186,10 @@ const EventForm = ({
                 </Group>
               )}
             />
-            {timelines.length > 1 && (
+            {timelines?.length > 1 && (
               <FormSelect
                 name="timeline_id"
-                title={t`Timeline`}
+                label={t`Timeline`}
                 data={timelineOptions}
               />
             )}

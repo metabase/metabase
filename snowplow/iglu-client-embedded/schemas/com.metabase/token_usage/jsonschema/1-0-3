@@ -1,0 +1,96 @@
+{
+    "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+    "self": {
+        "vendor": "com.metabase",
+        "name": "token_usage",
+        "format": "jsonschema",
+        "version": "1-0-3"
+    },
+    "type": "object",
+    "description": "Event to capture the token usage of individual LLM invocations. Created for billing purposes.",
+    "properties": {
+        "hashed_metabase_license_token": {
+            "type": "string",
+            "description": "The hashed value of the Metabase license token for instances with a token. For Open Source instances, this will use the snowplow anonymous uuid in the form `oss_<anonymous_uuid>` to allow unique counts of instances.",
+            "maxLength": 255
+        },
+        "user_id": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "description": "The ID of the user that send the request",
+            "minimum": 0,
+            "maximum": 2147483647
+        },
+        "request_id": {
+            "type": "string",
+            "description": "Unique ID that is assigned to each incoming request. Can be used to aggregate usage for a single request.",
+            "maxLength": 255
+        },
+        "session_id": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "An identifier for the conversation or session in which the tokens were used. This can help group related requests together. Can be null for non-conversational use cases.",
+            "maxLength": 255
+        },
+        "model_id": {
+            "type": "string",
+            "description": "The ID of the model that was used to generate the tokens",
+            "maxLength": 255
+        },
+        "total_tokens": {
+            "type": "integer",
+            "description": "The total number of tokens",
+            "minimum": 0,
+            "maximum": 2147483647
+        },
+        "prompt_tokens": {
+            "type": "integer",
+            "description": "The number of prompt tokens",
+            "minimum": 0,
+            "maximum": 2147483647
+        },
+        "completion_tokens": {
+            "type": "integer",
+            "description": "The number of completion tokens",
+            "minimum": 0,
+            "maximum": 2147483647
+        },
+        "estimated_costs_usd": {
+            "type": "number",
+            "description": "The estimated cost of for the tokens in USD",
+            "minimum": 0,
+            "maximum": 2147483647
+        },
+        "duration_ms": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "description": "The time it took to (in milliseconds) to receive an answer from the LLM.",
+            "minimum": 0,
+            "maximum": 2147483647
+        },
+        "tag": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "A classifier indicating the specific purpose or functionality for which the tokens were used.",
+            "maxLength": 255
+        }
+    },
+    "required": [
+        "hashed_metabase_license_token",
+        "request_id",
+        "model_id",
+        "total_tokens",
+        "prompt_tokens",
+        "completion_tokens",
+        "estimated_costs_usd"
+    ],
+    "additionalProperties": false
+}

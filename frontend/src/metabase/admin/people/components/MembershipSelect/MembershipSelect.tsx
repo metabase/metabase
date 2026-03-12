@@ -1,44 +1,46 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
-import { Fragment } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
   getGroupNameLocalized,
   isAdminGroup,
+  isDataAnalystGroup,
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { Box, Flex, Icon, Popover } from "metabase/ui";
-import type { Group, Member } from "metabase-types/api";
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
+import { Box, Divider, Flex, Icon, Popover } from "metabase/ui";
+import type { GroupInfo, Member } from "metabase-types/api";
 
 import { GroupSummary } from "../GroupSummary";
 
 import S from "./MembershipSelect.module.css";
 
-const getGroupSections = (groups: Omit<Group, "members">[]) => {
-  const defaultGroup = groups.find(isDefaultGroup);
+const getGroupSections = (groups: GroupInfo[]) => {
+  const defaultGroup = groups.find(
+    (g) => isDefaultGroup(g) || PLUGIN_TENANTS.isExternalUsersGroup(g),
+  );
   const adminGroup = groups.find(isAdminGroup);
-  const pinnedGroups = [defaultGroup, adminGroup].filter(isNotNull);
+  const dataAnalystGroup = groups.find(isDataAnalystGroup);
+  const pinnedGroups = [defaultGroup, adminGroup, dataAnalystGroup].filter(
+    isNotNull,
+  );
   const regularGroups = groups.filter(
-    (group) => !isAdminGroup(group) && !isDefaultGroup(group),
+    (group) =>
+      !isAdminGroup(group) &&
+      !isDataAnalystGroup(group) &&
+      !isDefaultGroup(group) &&
+      !PLUGIN_TENANTS.isExternalUsersGroup(group),
   );
 
-  if (pinnedGroups.length > 0) {
-    return [
-      { groups: pinnedGroups },
-      { groups: regularGroups, header: t`Groups` },
-    ];
-  }
-
-  return [{ groups: regularGroups }];
+  return { pinnedGroups, regularGroups };
 };
 
-type Memberships = Map<Group["id"], Partial<Member>>;
+type Memberships = Map<GroupInfo["id"], Partial<Member>>;
 
 interface MembershipSelectProps {
-  groups: Omit<Group, "members">[];
+  groups: GroupInfo[];
   memberships: Memberships;
   isCurrentUser?: boolean;
   isUserAdmin: boolean;
@@ -63,7 +65,10 @@ export const MembershipSelect = ({
   const [popoverOpened, { open: openPopover, toggle: togglePopover }] =
     useDisclosure();
   const selectedGroupIds = Array.from(memberships.keys());
-  const groupSections = getGroupSections(groups);
+  const { pinnedGroups, regularGroups } = useMemo(
+    () => getGroupSections(groups),
+    [groups],
+  );
 
   const handleToggleMembership = (groupId: number) => {
     if (memberships.has(groupId)) {
@@ -80,13 +85,61 @@ export const MembershipSelect = ({
     onChange(groupId, membershipData);
   };
 
+  const renderGroup = (group: GroupInfo) => {
+    const isDisabled =
+      (isAdminGroup(group) && isCurrentUser) ||
+      isDefaultGroup(group) ||
+      PLUGIN_TENANTS.isExternalUsersGroup(group);
+    const isMember = memberships.has(group.id);
+    const canEditMembershipType =
+      isMember &&
+      !isUserAdmin &&
+      !isDisabled &&
+      !PLUGIN_TENANTS.isTenantGroup(group) &&
+      !isAdminGroup(group);
+
+    return (
+      <li
+        className={S.membershipSelectItem}
+        key={group.id}
+        aria-label={group.name}
+        onClick={() =>
+          isDisabled ? undefined : handleToggleMembership(group.id)
+        }
+        style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}
+      >
+        <span>{getGroupNameLocalized(group)}</span>
+        <Flex pl="md" align="center" justify="end">
+          {canEditMembershipType && (
+            <PLUGIN_GROUP_MANAGERS.UserTypeToggle
+              tooltipPlacement="bottom"
+              isManager={memberships.get(group.id)?.is_group_manager}
+              onChange={(is_group_manager: boolean) =>
+                handleChangeMembership(group.id, {
+                  is_group_manager,
+                })
+              }
+            />
+          )}
+          <span
+            style={{
+              visibility: isMember ? "visible" : "hidden",
+            }}
+          >
+            <Icon name="check" />
+          </span>
+        </Flex>
+      </li>
+    );
+  };
+
   return (
     <Popover
       opened={popoverOpened}
       // prevent clicks on the confirm modal from closing this popover
       closeOnClickOutside={!isConfirmModalOpen}
       onChange={togglePopover}
-      position="bottom-end"
+      position="bottom-start"
     >
       <Popover.Target>
         <Flex
@@ -100,75 +153,33 @@ export const MembershipSelect = ({
             groups={groups}
             selectedGroupIds={selectedGroupIds}
           />
-          <Icon c="text-light" name="chevrondown" size={10} />
+          <Icon c="text-tertiary" name="chevrondown" size={10} />
         </Flex>
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown w="300px" mah="600px" py="sm">
         {groups.length === 0 && (
           <Box component="span" p="sm">
             {emptyListMessage}
           </Box>
         )}
-        {groups.length > 0 && (
-          <ul className={S.membershipSelectContainer}>
-            {groupSections.map((section, index) => (
-              <Fragment key={index}>
-                {section.header && (
-                  <li className={S.membershipSelectHeader}>{section.header}</li>
-                )}
-                {section.groups.map((group) => {
-                  const isDisabled =
-                    (isAdminGroup(group) && isCurrentUser) ||
-                    isDefaultGroup(group);
-                  const isMember = memberships.has(group.id);
-                  const canEditMembershipType =
-                    isMember &&
-                    !isUserAdmin &&
-                    !isDisabled &&
-                    !isAdminGroup(group);
 
-                  return (
-                    <li
-                      className={cx(S.membershipSelectItem, {
-                        [S.membershipSelectItemDisabled]: isDisabled,
-                      })}
-                      key={group.id}
-                      aria-label={group.name}
-                      onClick={() =>
-                        isDisabled
-                          ? undefined
-                          : handleToggleMembership(group.id)
-                      }
-                    >
-                      <span>{getGroupNameLocalized(group)}</span>
-                      <div className={S.membershipActionsContainer}>
-                        {canEditMembershipType && (
-                          <PLUGIN_GROUP_MANAGERS.UserTypeToggle
-                            tooltipPlacement="bottom"
-                            isManager={
-                              memberships.get(group.id)?.is_group_manager
-                            }
-                            onChange={(is_group_manager: boolean) =>
-                              handleChangeMembership(group.id, {
-                                is_group_manager,
-                              })
-                            }
-                          />
-                        )}
-                        <span
-                          style={{
-                            visibility: isMember ? "visible" : "hidden",
-                          }}
-                        >
-                          <Icon name="check" />
-                        </span>
-                      </div>
-                    </li>
-                  );
-                })}
-              </Fragment>
-            ))}
+        {pinnedGroups.length > 0 && (
+          <ul>
+            {pinnedGroups.map((group) => {
+              return renderGroup(group);
+            })}
           </ul>
+        )}
+
+        {regularGroups.length > 0 && (
+          <>
+            <Divider my="sm" />
+            <ul>
+              {regularGroups.map((group) => {
+                return renderGroup(group);
+              })}
+            </ul>
+          </>
         )}
       </Popover.Dropdown>
     </Popover>

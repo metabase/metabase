@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { type ReactNode, useMemo, useState } from "react";
-import { t } from "ttag";
 
 import { Sortable } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
@@ -11,7 +10,6 @@ import S from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   isBooleanParameter,
@@ -23,7 +21,7 @@ import {
   areParameterValuesIdentical,
   parameterHasNoDisplayValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import type { Dashboard, ParameterId } from "metabase-types/api";
+import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 import {
   ParameterDropdownWidget,
@@ -43,8 +41,8 @@ export type ParameterValueWidgetProps = {
   isFullscreen?: boolean;
   className?: string;
   parameters?: UiParameter[];
-  dashboard?: Dashboard | null;
-  question?: Question;
+  cardId?: CardId;
+  dashboardId?: DashboardId;
   setParameterValueToDefault?: (parameterId: ParameterId) => void;
   // This means the widget will take care of the default value.
   // Should be used for dashboards and native questions in the parameter bar,
@@ -58,7 +56,6 @@ export type ParameterValueWidgetProps = {
 export const ParameterValueWidget = ({
   className,
   commitImmediately = false,
-  dashboard,
   enableRequiredBehavior,
   focusChanged,
   isEditing = false,
@@ -68,7 +65,8 @@ export const ParameterValueWidget = ({
   parameter,
   parameters,
   placeholder,
-  question,
+  cardId,
+  dashboardId,
   setParameterValueToDefault,
   setValue,
   value,
@@ -201,6 +199,8 @@ export const ParameterValueWidget = ({
     ) : null;
   }, [hasValue, isEditing, isFocused, noPopover, parameterTypeIcon]);
 
+  const translatedPlaceholder = tc(placeholder);
+
   if (noPopover) {
     return (
       <Sortable
@@ -219,12 +219,12 @@ export const ParameterValueWidget = ({
           <ParameterDropdownWidget
             parameter={parameter}
             parameters={parameters}
-            question={question}
-            dashboard={dashboard}
+            cardId={cardId}
+            dashboardId={dashboardId}
             value={value}
             setValue={setValue}
             isEditing={isEditing}
-            placeholder={placeholder}
+            placeholder={translatedPlaceholder}
             focusChanged={setIsFocused}
             isFullscreen={isFullscreen}
             commitImmediately={commitImmediately}
@@ -239,14 +239,6 @@ export const ParameterValueWidget = ({
     );
   }
 
-  const translatedPlaceholder = tc(placeholder);
-
-  const placeholderText = isEditing
-    ? isDateParameter(parameter)
-      ? t`Select a default value…`
-      : t`Enter a default value…`
-    : translatedPlaceholder || t`Select…`;
-
   return (
     <Popover
       opened={isOpen}
@@ -254,6 +246,7 @@ export const ParameterValueWidget = ({
       position="bottom-start"
       trapFocus
       middlewares={{ flip: true, shift: true }}
+      clickOutsideEvents={["mousedown", "touchstart", "pointerdown"]}
       {...popoverProps}
     >
       <Popover.Target>
@@ -261,6 +254,7 @@ export const ParameterValueWidget = ({
           data-testid="parameter-value-widget-target"
           onClick={toggle}
           className={CS.cursorPointer}
+          maw="100%"
         >
           <Sortable
             id={parameter.id}
@@ -273,21 +267,27 @@ export const ParameterValueWidget = ({
               className={className}
               ariaLabel={placeholder}
               mimicMantine={mimicMantine}
+              hasPopover
             >
               {typeIcon}
               {prefix && <div className={S.Prefix}>{prefix}</div>}
               <div
                 className={CS.mr1}
                 style={
-                  isStringParameter(parameter) ? { maxWidth: "190px" } : {}
+                  isStringParameter(parameter)
+                    ? { maxWidth: "190px" }
+                    : {
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }
                 }
               >
                 <FormattedParameterValue
                   parameter={parameter}
                   value={value}
-                  cardId={question?.id()}
-                  dashboardId={dashboard?.id}
-                  placeholder={placeholderText}
+                  cardId={cardId}
+                  dashboardId={dashboardId}
+                  placeholder={translatedPlaceholder}
                   isPopoverOpen={isOpen}
                 />
               </div>
@@ -305,8 +305,8 @@ export const ParameterValueWidget = ({
         <ParameterDropdownWidget
           parameter={parameter}
           parameters={parameters}
-          question={question}
-          dashboard={dashboard}
+          cardId={cardId}
+          dashboardId={dashboardId}
           value={value}
           setValue={setValue}
           isEditing={isEditing}

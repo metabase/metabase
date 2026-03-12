@@ -5,11 +5,11 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 
-import DropArea from "./DropArea";
+import { DropArea } from "./DropArea";
 
 import { MoveableDragTypes } from ".";
 
-const CollectionDropTarget = DropTarget(
+export const CollectionDropTarget = DropTarget(
   MoveableDragTypes,
   {
     drop(props) {
@@ -18,7 +18,10 @@ const CollectionDropTarget = DropTarget(
     canDrop(props, monitor) {
       const { collection } = props;
       const { item } = monitor.getItem();
-      if (collection.can_write === false) {
+      if (
+        !isRootTrashCollection(collection) &&
+        collection.can_write === false
+      ) {
         return false;
       }
       const droppingToTrashFromTrash =
@@ -39,5 +42,3 @@ const CollectionDropTarget = DropTarget(
     connectDropTarget: connect.dropTarget(),
   }),
 )(DropArea);
-
-export default CollectionDropTarget;

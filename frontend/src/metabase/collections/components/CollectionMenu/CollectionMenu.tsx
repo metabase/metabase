@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
+  isDedicatedTenantCollectionRoot,
   isInstanceAnalyticsCustomCollection,
   isPersonalCollection,
   isRootCollection,
@@ -9,11 +10,10 @@ import {
 } from "metabase/collections/utils";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useHasDashboardQuestionCandidates } from "metabase/common/components/MoveQuestionsIntoDashboardsModal/hooks";
-import { UserHasSeen } from "metabase/common/components/UserHasSeen/UserHasSeen";
 import { UserHasSeenAll } from "metabase/common/components/UserHasSeen/UserHasSeenAll";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { ActionIcon, Badge, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
+import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
+import { ActionIcon, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 export interface CollectionMenuProps {
@@ -45,11 +45,14 @@ export const CollectionMenu = ({
   const isPersonal = isPersonalCollection(collection);
   const isInstanceAnalyticsCustom =
     isInstanceAnalyticsCustomCollection(collection);
+  const isSharedTenantCollection =
+    PLUGIN_TENANTS.isTenantCollection(collection);
 
   const canWrite = collection.can_write;
   const canMove =
     !isRoot &&
     !isRootPersonalCollection(collection) &&
+    !isDedicatedTenantCollectionRoot(collection) &&
     canWrite &&
     !isInstanceAnalyticsCustom;
 
@@ -78,7 +81,12 @@ export const CollectionMenu = ({
     );
   }
 
-  if (isAdmin && !isPersonal) {
+  if (
+    isAdmin &&
+    !isPersonal &&
+    !isDedicatedTenantCollectionRoot(collection) &&
+    !isSharedTenantCollection
+  ) {
     editItems.push(
       <Menu.Item
         key="collection-edit"
@@ -96,17 +104,11 @@ export const CollectionMenu = ({
 
   if (hasDqCandidates) {
     cleanupItems.push(
-      <UserHasSeen key="move-to-dashboard" id="move-to-dashboard">
-        {({ hasSeen, ack }) => (
-          <Menu.Item
-            leftSection={<Icon name="add_to_dash" />}
-            component={ForwardRefLink}
-            to={`${url}/move-questions-dashboard`}
-            onClick={ack}
-            rightSection={!hasSeen ? <Badge>{t`New`}</Badge> : null}
-          >{t`Move questions into their dashboards`}</Menu.Item>
-        )}
-      </UserHasSeen>,
+      <Menu.Item
+        leftSection={<Icon name="add_to_dash" />}
+        component={ForwardRefLink}
+        to={`${url}/move-questions-dashboard`}
+      >{t`Move questions into their dashboards`}</Menu.Item>,
     );
   }
 
@@ -150,7 +152,7 @@ export const CollectionMenu = ({
                 data-testid="menu-indicator-root"
               >
                 <ActionIcon size={32} variant="viewHeader">
-                  <Icon name="ellipsis" color="text-dark" />
+                  <Icon name="ellipsis" c="text-primary" />
                 </ActionIcon>
               </Indicator>
             </Tooltip>

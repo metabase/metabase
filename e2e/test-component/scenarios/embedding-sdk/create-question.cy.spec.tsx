@@ -2,6 +2,8 @@ import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -9,7 +11,6 @@ import {
   assertSdkNotebookEditorUsable,
   createQuestion,
   entityPickerModal,
-  entityPickerModalTab,
   modal,
   popover,
 } from "e2e/support/helpers";
@@ -17,7 +18,6 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Flex } from "metabase/ui";
 
 const { H } = cy;
 
@@ -32,9 +32,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     cy.intercept("POST", "/api/card").as("createCard");
 
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" />
-      </Flex>,
+      </div>,
     );
 
     assertSdkNotebookEditorUsable();
@@ -53,7 +53,6 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
 
     entityPickerModal().within(() => {
-      entityPickerModalTab("Browse").click();
       cy.findByText("First collection").click();
       cy.button("Select this collection").click();
     });
@@ -76,9 +75,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     mockAuthProviderAndJwtSignIn();
 
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" />
-      </Flex>,
+      </div>,
     );
 
     getSdkRoot().within(() => {
@@ -99,6 +98,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
 
     getSdkRoot().findByText(expectedQuestionName).should("be.visible");
+    getSdkRoot().findByTestId("visualization-root").should("be.visible");
   });
 
   it("can save a question in a dashboard", () => {
@@ -117,9 +117,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     cy.intercept("POST", "/api/card").as("createCard");
 
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" />
-      </Flex>,
+      </div>,
     );
 
     // Wait until the entity picker modal is visible
@@ -153,7 +153,6 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
 
     entityPickerModal().within(() => {
-      entityPickerModalTab("Browse").click();
       cy.findByText("Orders in a dashboard").click();
       cy.button("Select this dashboard").click();
     });
@@ -186,9 +185,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     cy.log('1. `entityTypes` = ["table"]');
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" entityTypes={["table"]} />
-      </Flex>,
+      </div>,
     );
 
     // Wait until the entity picker modal is visible
@@ -202,9 +201,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     cy.log('2. `entityTypes` = ["model"]');
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion questionId="new" entityTypes={["model"]} />
-      </Flex>,
+      </div>,
     );
 
     // Wait until the entity picker modal is visible
@@ -218,12 +217,12 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     cy.log('3. `entityTypes` = ["model", "table]');
     mountSdkContent(
-      <Flex p="xl">
+      <div style={{ display: "flex", padding: "20px" }}>
         <InteractiveQuestion
           questionId="new"
           entityTypes={["model", "table"]}
         />
-      </Flex>,
+      </div>,
     );
 
     // Wait until the entity picker modal is visible
@@ -233,6 +232,90 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       cy.findByRole("link", { name: "Orders" }).should("be.visible");
       cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
       cy.findAllByRole("link").should("have.length", MODEL_COUNT + TABLE_COUNT);
+    });
+  });
+
+  [
+    {
+      targetCollectionId: "personal",
+      respondedCollectionId: ADMIN_PERSONAL_COLLECTION_ID,
+    },
+    {
+      targetCollectionId: FIRST_COLLECTION_ENTITY_ID,
+      respondedCollectionId: FIRST_COLLECTION_ID,
+    },
+  ].forEach(({ targetCollectionId, respondedCollectionId }) => {
+    it(`can create a question in a collection passing the \`${targetCollectionId}\` as a target collection id (metabase#64584)`, () => {
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+      cy.intercept("POST", "/api/card").as("createCard");
+
+      mountSdkContent(
+        <div style={{ display: "flex", padding: "20px" }}>
+          <InteractiveQuestion
+            questionId="new"
+            targetCollection={targetCollectionId}
+          />
+        </div>,
+      );
+
+      assertSdkNotebookEditorUsable();
+
+      getSdkRoot().within(() => {
+        // Should be able to save to a new question right away
+        cy.findByRole("button", { name: "Save" }).click();
+      });
+
+      modal().within(() => {
+        cy.findByPlaceholderText("What is the name of your question?")
+          .clear()
+          .type("My Orders");
+      });
+
+      modal().button("Save").click();
+
+      cy.wait("@createCard").then(({ response }) => {
+        expect(response?.statusCode).to.equal(200);
+        expect(response?.body.name).to.equal("My Orders");
+        expect(response?.body?.dashboard_id).to.equal(null);
+        expect(response?.body?.collection_id).to.equal(respondedCollectionId);
+      });
+
+      // The question title's header should be updated.
+      getSdkRoot().contains("My Orders");
+    });
+  });
+
+  it("should show columns from joined table when there is no FK relationship (metabase#EMB-1102)", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion questionId="new" />
+      </div>,
+    );
+
+    popover().within(() => {
+      cy.findByText("Orders").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.button("Join data").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Reviews").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("ID").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+      cy.findByText("Reviewer").should("be.visible");
+      cy.findByText("Custom Expression").should("be.visible");
     });
   });
 });

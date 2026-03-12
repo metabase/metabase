@@ -1,10 +1,11 @@
 ---
-title: Embedded analytics SDK - config
+title: Modular embedding SDK - config
+summary: Configure the Metabase modular embedding SDK with MetabaseProvider, set up authentication, handle global events, and reload embedded components.
 ---
 
-# Embedded analytics SDK - config
+# Modular embedding SDK - config
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
 ## Passing a configuration object to `MetabaseProvider`
 

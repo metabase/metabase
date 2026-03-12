@@ -88,7 +88,6 @@ export const FunnelStart = styled.div<SharedProps>`
 `;
 
 interface FunnelNormalRootProps {
-  isNarrow: boolean;
   isSmall: boolean;
 }
 

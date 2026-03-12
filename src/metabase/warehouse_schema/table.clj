@@ -1,221 +1,27 @@
 (ns metabase.warehouse-schema.table
   (:require
-   [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.types.core :as types]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru deferred-trun]]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- nil-if-unreadable
+  [instance]
+  (when (and instance (mi/can-read? instance))
+    instance))
 
 (defn present-table
   "Given a table, shape it for the API."
   [table]
   (-> table
       (update :db dissoc :router_database_id)
+      (m/update-existing :collection nil-if-unreadable)
       (update :schema str)))
-
-(def ^:private auto-bin-str (deferred-tru "Auto bin"))
-(def ^:private dont-bin-str (deferred-tru "Don''t bin"))
-
-;;; Apparently `msgcat` is not cool with us using a string as both a singular message ID and a plural message ID, and
-;;; since we're using stuff like `Minute` as a plural string elsewhere (see [[metabase.lib.temporal-bucket]]) we're
-;;; forced to use `*-trun` here as well
-(def ^:private unit->deferred-i18n-description
-  {:minute          (deferred-trun "Minute" "Minutes" 1)
-   :hour            (deferred-trun "Hour" "Hours" 1)
-   :day             (deferred-trun "Day" "Days" 1)
-   :week            (deferred-trun "Week" "Weeks" 1)
-   :month           (deferred-trun "Month" "Months" 1)
-   :quarter         (deferred-trun "Quarter" "Quarters" 1)
-   :year            (deferred-trun "Year" "Years" 1)
-   :minute-of-hour  (deferred-trun "Minute of hour" "Minutes of hour" 1)
-   :hour-of-day     (deferred-trun "Hour of day" "Hours of day" 1)
-   :day-of-week     (deferred-trun "Day of week" "Days of week" 1)
-   :day-of-month    (deferred-trun "Day of month" "Days of month" 1)
-   :day-of-year     (deferred-trun "Day of year" "Days of year" 1)
-   :week-of-year    (deferred-trun "Week of year" "Weeks of year" 1)
-   :month-of-year   (deferred-trun "Month of year" "Months of year" 1)
-   :quarter-of-year (deferred-trun "Quarter of year" "Quarters of year" 1)})
-
-;; note the order of these options corresponds to the order they will be shown to the user in the UI
-(def ^:private time-options
-  (mapv (fn [unit]
-          [(unit->deferred-i18n-description unit) (name unit)])
-        [:minute :hour :minute-of-hour]))
-
-(def ^:private datetime-options
-  (mapv (fn [unit]
-          [(unit->deferred-i18n-description unit) (name unit)])
-        [:minute
-         :hour
-         :day
-         :week
-         :month
-         :quarter
-         :year
-         :minute-of-hour
-         :hour-of-day
-         :day-of-week
-         :day-of-month
-         :day-of-year
-         :week-of-year
-         :month-of-year
-         :quarter-of-year]))
-
-(def ^:private date-options
-  (mapv (fn [unit]
-          [(unit->deferred-i18n-description unit) (name unit)])
-        [:day
-         :week
-         :month
-         :quarter
-         :year
-         :day-of-week
-         :day-of-month
-         :day-of-year
-         :week-of-year
-         :month-of-year
-         :quarter-of-year]))
-
-(def ^:private dimension-options
-  (let [default-entry [auto-bin-str ["default"]]]
-    (into (ordered-map/ordered-map)
-          (comp cat
-                (map-indexed vector))
-          [(map (fn [[name param]]
-                  {:name name
-                   :mbql [:field nil {:temporal-unit param}]
-                   :type :type/Date})
-                date-options)
-           (map (fn [[name param]]
-                  {:name name
-                   :mbql [:field nil {:temporal-unit param}]
-                   :type :type/DateTime})
-                datetime-options)
-           (map (fn [[name param]]
-                  {:name name
-                   :mbql [:field nil {:temporal-unit param}]
-                   :type :type/Time})
-                time-options)
-           (map (fn [[name [strategy param]]]
-                  {:name name
-                   :mbql [:field nil {:binning (merge {:strategy strategy}
-                                                      (when param
-                                                        {strategy param}))}]
-                   :type :type/Number})
-                [default-entry
-                 [(deferred-tru "10 bins") ["num-bins" 10]]
-                 [(deferred-tru "50 bins") ["num-bins" 50]]
-                 [(deferred-tru "100 bins") ["num-bins" 100]]])
-           [{:name dont-bin-str
-             :mbql nil
-             :type :type/Number}]
-           (map (fn [[name [strategy param]]]
-                  {:name name
-                   :mbql [:field nil {:binning (merge {:strategy strategy}
-                                                      (when param
-                                                        {strategy param}))}]
-                   :type :type/Coordinate})
-                [default-entry
-                 [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
-                 [(deferred-tru "Bin every 1 degree") ["bin-width" 1.0]]
-                 [(deferred-tru "Bin every 10 degrees") ["bin-width" 10.0]]
-                 [(deferred-tru "Bin every 20 degrees") ["bin-width" 20.0]]])
-           [{:name dont-bin-str
-             :mbql nil
-             :type :type/Coordinate}]])))
-
-(def ^:private dimension-options-for-response
-  (m/map-keys str dimension-options))
-
-(defn- create-dim-index-seq [dim-type]
-  (->> dimension-options
-       (m/filter-vals (fn [v] (= (:type v) dim-type)))
-       keys
-       sort
-       (map str)))
-
-(def ^:private datetime-dimension-indexes
-  (create-dim-index-seq :type/DateTime))
-
-(def ^:private time-dimension-indexes
-  (create-dim-index-seq :type/Time))
-
-(def ^:private date-dimension-indexes
-  (create-dim-index-seq :type/Date))
-
-(def ^:private numeric-dimension-indexes
-  (create-dim-index-seq :type/Number))
-
-(def ^:private coordinate-dimension-indexes
-  (create-dim-index-seq :type/Coordinate))
-
-(defn- dimension-index-for-type [dim-type pred]
-  (let [dim' (keyword dim-type)]
-    (first (m/find-first (fn [[_k v]]
-                           (and (= dim' (:type v))
-                                (pred v))) dimension-options-for-response))))
-
-(def ^:private datetime-default-index
-  (dimension-index-for-type :type/DateTime #(= (str (unit->deferred-i18n-description :day)) (str (:name %)))))
-
-(def ^:private date-default-index
-  (dimension-index-for-type :type/Date #(= (str (unit->deferred-i18n-description :day)) (str (:name %)))))
-
-(def ^:private time-default-index
-  (dimension-index-for-type :type/Time #(= (str (unit->deferred-i18n-description :hour)) (str (:name %)))))
-
-(def ^:private numeric-default-index
-  (dimension-index-for-type :type/Number #(.contains ^String (str (:name %)) (str auto-bin-str))))
-
-(def ^:private coordinate-default-index
-  (dimension-index-for-type :type/Coordinate #(.contains ^String (str (:name %)) (str auto-bin-str))))
-
-(defn- supports-numeric-binning? [db]
-  (and db (driver.u/supports? (:engine db) :binning db)))
-
-;; TODO: Remove all this when the FE is fully ported to [[metabase.lib.binning/available-binning-strategies]].
-(defn- assoc-field-dimension-options [{:keys [base_type semantic_type fingerprint] :as field} db]
-  (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
-        [default-option all-options] (cond
-                                       (types/field-is-type? :type/Time field)
-                                       [time-default-index time-dimension-indexes]
-
-                                       (types/field-is-type? :type/Date field)
-                                       [date-default-index date-dimension-indexes]
-
-                                       (types/temporal-field? field)
-                                       [datetime-default-index datetime-dimension-indexes]
-
-                                       (and min_value max_value
-                                            (isa? semantic_type :type/Coordinate)
-                                            (supports-numeric-binning? db))
-                                       [coordinate-default-index coordinate-dimension-indexes]
-
-                                       (and min_value max_value
-                                            (isa? base_type :type/Number)
-                                            (not (isa? semantic_type :Relation/*))
-                                            (supports-numeric-binning? db))
-                                       [numeric-default-index numeric-dimension-indexes]
-
-                                       :else
-                                       [nil []])]
-    (assoc field
-           :default_dimension_option default-option
-           :dimension_options        all-options)))
-
-(defn- assoc-dimension-options [resp db]
-  (-> resp
-      (assoc :dimension_options dimension-options-for-response)
-      (update :fields (fn [fields]
-                        (mapv #(assoc-field-dimension-options % db) fields)))))
 
 (defn- format-fields-for-response [resp]
   (update resp :fields
@@ -225,18 +31,28 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
+(defn- can-access-table-for-query-metadata?
+  "Returns true if the current user can access this table for query metadata.
+  Uses can-read? which checks data permissions, metadata management permissions,
+  and collection permissions for published tables."
+  [table]
+  (mi/can-read? table))
+
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
+  (api/check-404 table)
   (if include-editable-data-model?
     (api/write-check table)
-    (api/read-check table))
-  (let [db (t2/select-one :model/Database :id (:db_id table))]
+    (api/check-403 (can-access-table-for-query-metadata? table)))
+  (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
+                                [:segments :definition_description] [:measures :definition_description] :metrics :collection]
+                         (premium-features/has-feature? :transforms-basic) (conj :transform))]
     (-> table
-        (t2/hydrate :db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics)
+        (update :collection nil-if-unreadable)
+        (#(apply t2/hydrate % hydration-keys))
         (m/dissoc-in [:db :details])
-        (assoc-dimension-options db)
         format-fields-for-response
         present-table
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
@@ -246,21 +62,28 @@
                                             true)))))))
 
 (defn batch-fetch-query-metadatas*
-  "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`."
-  [ids]
-  (when (seq ids)
-    (let [tables (->> (t2/select :model/Table :id [:in ids])
-                      (filter mi/can-read?))
-          tables (t2/hydrate tables
-                             [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                             :segments
-                             :metrics)]
-      (for [table tables]
-        (-> table
-            (m/dissoc-in [:db :details])
-            format-fields-for-response
-            present-table
-            (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %)))))))
+  "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`.
+  Options:
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+  ([ids]
+   (batch-fetch-query-metadatas* ids nil))
+  ([ids {:keys [include-sensitive-fields?]}]
+   (when (seq ids)
+     (let [tables (->> (t2/select :model/Table :id [:in ids])
+                       (filter can-access-table-for-query-metadata?))
+           tables (t2/hydrate tables
+                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
+                              :segments
+                              :measures
+                              :metrics)
+           excluded-visibility-types (cond-> #{:hidden}
+                                       (not include-sensitive-fields?) (conj :sensitive))]
+       (for [table tables]
+         (-> table
+             (m/dissoc-in [:db :details])
+             format-fields-for-response
+             present-table
+             (update :fields #(remove (comp excluded-visibility-types :visibility_type) %))))))))
 
 (defenterprise fetch-table-query-metadata
   "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,
@@ -270,16 +93,18 @@
   (fetch-query-metadata* (t2/select-one :model/Table :id id) opts))
 
 (defenterprise batch-fetch-table-query-metadatas
-  "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`."
+  "Returns the query metadatas used to power the Query Builder for the tables specified by `ids`.
+  Options:
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
   metabase-enterprise.sandbox.api.table
-  [ids]
-  (batch-fetch-query-metadatas* ids))
+  [ids opts]
+  (batch-fetch-query-metadatas* ids opts))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database.
   `metadata-fields` can be nil."
-  [card-id database metadata metadata-fields]
+  [card-id metadata metadata-fields]
   (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
                                          (-> (t2/select :model/Field :id [:in ids])
@@ -290,15 +115,19 @@
                      (merge (select-keys (underlying col-id)
                                          [:semantic_type :fk_target_field_id :has_field_values :target :dimensions :name_field]))
                      (assoc
-                      :table_id     (str "card__" card-id)
-                      :id           (or col-id
-                                        ;; TODO -- what????
-                                        [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
-                      ;; Assoc semantic_type at least temprorarily. We need the correct semantic type in place to make
+                      :table_id      (str "card__" card-id)
+                      :id            (or col-id
+                                         ;; TODO -- what????
+                                         [:field (:name col) {:base-type (or (:base_type col) :type/*)}])
+                      ;; Assoc semantic_type at least temporarily. We need the correct semantic type in place to make
                       ;; decisions about what kind of dimension options should be added. PK/FK values will be removed
                       ;; after we've added the dimension options
                       :semantic_type (keyword (:semantic_type col)))
-                     (assoc-field-dimension-options database)))]
+                     (m/assoc-some
+                      ;; If the semantic type is a FK, and the target is defined, keep it too.
+                      :fk_target_field_id (when (and (:semantic_type col)
+                                                     (isa? (keyword (:semantic_type col)) :type/FK))
+                                            (:fk_target_field_id col)))))]
     fields))
 
 (defn root-collection-schema-name
@@ -335,7 +164,6 @@
 
       include-fields?
       (assoc :fields (card-result-metadata->virtual-fields (u/the-id card)
-                                                           database
                                                            (:result_metadata card)
                                                            (when card-id->metadata-fields
                                                              (card-id->metadata-fields (u/the-id card))))))))
@@ -393,13 +221,14 @@
                                          cards)
           readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
       (for [card readable-cards]
-        ;; a native model can have columns with keys as semantic types only if a user configured them
-        (let [trust-semantic-keys? (and (= (:type card) :model)
-                                        (= (-> card :dataset_query :type) :native))]
+        ;; Models can have user configured FK columns which, for MBQL models, we cannot distinguish from
+        ;; stale data that remained there from a time when the given column was still FK. We assume
+        ;; treating a not-FK-anymore column as FK is not that bad as not supporting user defined FK
+        ;; settings, so we trust the model's information.
+        (let [trust-semantic-keys? (= (:type card) :model)]
           (-> card
               (card->virtual-table :include-database? include-database?
                                    :include-fields? true
                                    :databases dbs
                                    :card-id->metadata-fields card-id->metadata-fields)
-              (assoc-dimension-options (-> card :database_id dbs))
               (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?})))))))

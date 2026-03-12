@@ -7,17 +7,17 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
-   [metabase.driver.bigquery-cloud-sdk.query-processor-test.reconciliation-test-util
-    :as bigquery.qp.reconciliation-tu]
+   [metabase.driver.bigquery-cloud-sdk.query-processor-test.reconciliation-test-util :as bigquery.qp.reconciliation-tu]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -52,11 +52,11 @@
            (mt/rows
             (qp/process-query
              (mt/native-query
-               {:query (with-test-db-name
-                         (str "SELECT `v4_test_data.venues`.`id` "
-                              "FROM `v4_test_data.venues` "
-                              "ORDER BY `v4_test_data.venues`.`id` DESC "
-                              "LIMIT 2;"))})))))))
+              {:query (with-test-db-name
+                        (str "SELECT `v4_test_data.venues`.`id` "
+                             "FROM `v4_test_data.venues` "
+                             "ORDER BY `v4_test_data.venues`.`id` DESC "
+                             "LIMIT 2;"))})))))))
 
 (deftest ^:parallel native-query-test-2
   (mt/test-driver :bigquery-cloud-sdk
@@ -179,7 +179,13 @@
                        "  COUNT(*) AS `count`"
                        "FROM"
                        "  `v4_test_data.venues`"
-                       "  LEFT JOIN `v4_test_data.categories` AS `categories__via__category_id` ON `v4_test_data.venues`.`category_id` = `categories__via__category_id`.`id`"
+                       "  LEFT JOIN ("
+                       "    SELECT"
+                       "      `v4_test_data.categories`.`id` AS `id`,"
+                       "      `v4_test_data.categories`.`name` AS `name`"
+                       "    FROM"
+                       "      `v4_test_data.categories`"
+                       "  ) AS `categories__via__category_id` ON `v4_test_data.venues`.`category_id` = `categories__via__category_id`.`id`"
                        "GROUP BY"
                        "  `categories__via__category_id__name`"
                        "ORDER BY"
@@ -304,11 +310,11 @@
              (mt/rows
               (qp/process-query
                (mt/native-query
-                 {:query  (with-test-db-name
-                            (str "SELECT `v4_test_data.venues`.`name` AS `name` "
-                                 "FROM `v4_test_data.venues` "
-                                 "WHERE `v4_test_data.venues`.`name` = ?"))
-                  :params ["Red Medicine"]}))))))))
+                {:query  (with-test-db-name
+                           (str "SELECT `v4_test_data.venues`.`name` AS `name` "
+                                "FROM `v4_test_data.venues` "
+                                "WHERE `v4_test_data.venues`.`name` = ?"))
+                 :params ["Red Medicine"]}))))))))
 
 (deftest ^:parallel temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
@@ -318,10 +324,10 @@
       [:field "x" {:base-type :type/DateTime, :temporal-unit :day-of-week}] nil
       (meta/field-metadata :checkins :date)                                 :date)))
 
-(deftest reconcile-temporal-types-test
+(deftest ^:parallel reconcile-temporal-types-test
   (doseq [test-case (bigquery.qp.reconciliation-tu/test-cases)]
-    (testing (str \newline (u/pprint-to-str (list `bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation! test-case)))
-      (bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation! test-case))))
+    (testing (str \newline (u/pprint-to-str (list `bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation test-case)))
+      (bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation test-case))))
 
 (deftest reconcile-temporal-types-date-extraction-filters-test
   (mt/with-report-timezone-id! nil
@@ -348,7 +354,7 @@
       (mt/with-report-timezone-id! nil
         (mt/dataset test-data
           (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                            (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                            (mt/metadata-provider)
                                             {:fields [{:id                (mt/id :reviews :rating)
                                                        :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
                                                        :effective-type    :type/Instant}]})
@@ -940,26 +946,37 @@
    [:datetime_tz true     true    true  true  true  true   true     true  true            true         true         true          true         true          true           true]])
 
 (defn- can-breakout?! [field unit report-timezone]
-  (try
-    (mt/test-driver :bigquery-cloud-sdk
-      (mt/dataset attempted-murders
-        (mt/with-report-timezone-id! report-timezone
-          (mt/run-mbql-query attempts
-            {:aggregation [[:count]]
-             :breakout    [[:field (mt/id :attempts field) {:temporal-unit unit}]]}))))
-    true
-    (catch Throwable _
-      false)))
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/dataset attempted-murders
+      (mt/with-report-timezone-id! report-timezone
+        (let [query  (mt/mbql-query attempts
+                       {:aggregation [[:count]]
+                        :breakout    [[:field (mt/id :attempts field) {:temporal-unit unit}]]})
+              bucket (lib/raw-temporal-bucket (first (lib/breakouts (qp.preprocess/preprocess query))))]
+          ;; if the bucket was removed automatically by normalization or swapped with something correct (see for
+          ;; example [[metabase.lib.schema.ref/valid-temporal-unit-for-base-type?]]) or somewhere else in
+          ;; preprocessing then we don't even need to run the query to know that that sort of breakout isn't
+          ;; supported.
+          (if (or (nil? bucket)
+                  (not= bucket unit))
+            false
+            (try
+              (qp/process-query query)
+              true
+              (catch Throwable _
+                false))))))))
 
 (defn- run-breakout-test-table-tests-for-field!
   [field report-timezone]
   (testing "Make sure datetime breakouts like :minute-of-hour work correctly for different temporal types"
-    (doseq [test-case (test-table-seq breakout-test-table)
-            :when     (= (:row test-case) field)
-            :let      [unit (:col test-case)]]
-      (if (:expected test-case)
-        (is (can-breakout?! field unit report-timezone))
-        (is (not (can-breakout?! field unit report-timezone)))))))
+    (mt/test-driver :bigquery-cloud-sdk
+      (doseq [test-case (test-table-seq breakout-test-table)
+              :when     (= (:row test-case) field)
+              :let      [unit (:col test-case)]]
+        (testing (pr-str test-case)
+          (if (:expected test-case)
+            (is (can-breakout?! field unit report-timezone))
+            (is (not (can-breakout?! field unit report-timezone)))))))))
 
 (deftest breakout-by-bucketed-datetimes-e2e-time-test      (run-breakout-test-table-tests-for-field! :time nil))
 (deftest breakout-by-bucketed-datetimes-e2e-datetime-test  (run-breakout-test-table-tests-for-field! :datetime nil))
@@ -980,19 +997,22 @@
                 [int]
                 (mt/run-mbql-query venues
                   {:aggregation [[:count]]
-                   :filter      [:= $name "x\\\\' OR 1 = 1 -- "]})))))
+                   :filter      [:= $name "x\\\\' OR 1 = 1 -- "]}))))))))
 
+(deftest ^:parallel string-escape-test-2
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Make sure single quotes in parameters are escaped properly to prevent SQL injection\n"
       (testing "native query"
         (is (= [[0]]
                (mt/formatted-rows
                 [int]
                 (qp/process-query
                  (mt/native-query
-                   {:query  (with-test-db-name
-                              (str "SELECT count(*) AS `count` "
-                                   "FROM `v4_test_data.venues` "
-                                   "WHERE `v4_test_data.venues`.`name` = ?"))
-                    :params ["x\\\\' OR 1 = 1 -- "]})))))))))
+                  {:query  (with-test-db-name
+                             (str "SELECT count(*) AS `count` "
+                                  "FROM `v4_test_data.venues` "
+                                  "WHERE `v4_test_data.venues`.`name` = ?"))
+                   :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
 (deftest ^:parallel escape-alias-test
   (testing "`escape-alias` should generate valid field identifiers"
@@ -1022,7 +1042,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
       (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                        (mt/metadata-provider)
                                         {:tables [{:id (mt/id :venues), :name "Organização"}]})
         (let [query (mt/mbql-query checkins
                       {:fields [$id $venue-id->venues.name]
@@ -1033,7 +1053,17 @@
                                  "  `Organizacao__via__venue_id`.`name` AS `Organizacao__via__venue_id__name`"
                                  "FROM"
                                  "  `v4_test_data.checkins`"
-                                 "  LEFT JOIN `v4_test_data.Organização` AS `Organizacao__via__venue_id` ON `v4_test_data.checkins`.`venue_id` = `Organizacao__via__venue_id`.`id`"
+                                 "  LEFT JOIN ("
+                                 "    SELECT"
+                                 "      `v4_test_data.Organização`.`id` AS `id`,"
+                                 "      `v4_test_data.Organização`.`name` AS `name`,"
+                                 "      `v4_test_data.Organização`.`category_id` AS `category_id`,"
+                                 "      `v4_test_data.Organização`.`latitude` AS `latitude`,"
+                                 "      `v4_test_data.Organização`.`longitude` AS `longitude`,"
+                                 "      `v4_test_data.Organização`.`price` AS `price`"
+                                 "    FROM"
+                                 "      `v4_test_data.Organização`"
+                                 "  ) AS `Organizacao__via__venue_id` ON `v4_test_data.checkins`.`venue_id` = `Organizacao__via__venue_id`.`id`"
                                  "LIMIT"
                                  "  1"]
                     :params     nil
@@ -1218,7 +1248,7 @@
 
 (deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
   (mt/test-driver :bigquery-cloud-sdk
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
           orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -1280,3 +1310,63 @@
                                 [[[:= $name "Won"] [:datetime-add $created_at 0 :month]]]
                                 {:default [:datetime-add $birth_date 0 :month]}]}
                  :filter [:time-interval [:expression "asdfdsa"] -12 :month]}))))))
+
+(mt/defdataset timestamp-dataset
+  [["ts_table" [{:field-name "user_id"
+                 :base-type :type/Integer}
+                {:field-name "created_at"
+                 :base-type :type/DateTimeWithLocalTZ}]
+    [[1 #t "2025-03-01 23:30:00Z"]
+     [2 #t "2025-03-01 23:30:00Z"]
+     [3 #t "2025-03-01 23:30:00Z"]
+     [1 #t "2025-03-08 23:30:00Z"]
+     [2 #t "2025-03-08 23:30:00Z"]
+     [1 #t "2025-03-15 23:30:00Z"]
+     [3 #t "2025-03-15 23:30:00Z"]
+     [2 #t "2025-03-22 23:30:00Z"]
+     [3 #t "2025-03-22 23:30:00Z"]
+     [1 #t "2025-03-29 23:30:00Z"]
+     [2 #t "2025-03-29 23:30:00Z"]
+     [3 #t "2025-03-29 23:30:00Z"]]]
+   ["dt_table" [{:field-name "user_id"
+                 :base-type :type/Integer}
+                {:field-name "created_at"
+                 :base-type :type/DateTime}]
+    [[1 #t "2025-03-01 23:30:00"]
+     [2 #t "2025-03-01 23:30:00"]
+     [3 #t "2025-03-01 23:30:00"]
+     [1 #t "2025-03-08 23:30:00"]
+     [2 #t "2025-03-08 23:30:00"]
+     [1 #t "2025-03-15 23:30:00"]
+     [3 #t "2025-03-15 23:30:00"]
+     [2 #t "2025-03-22 23:30:00"]
+     [3 #t "2025-03-22 23:30:00"]
+     [1 #t "2025-03-29 23:30:00"]
+     [2 #t "2025-03-29 23:30:00"]
+     [3 #t "2025-03-29 23:30:00"]]]])
+
+(deftest timestamp-aggregation-with-timezone-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/dataset timestamp-dataset
+      (doseq [table [:ts_table :dt_table]
+              timezone ["Europe/Paris" "Database default"]]
+        (let [mp (mt/metadata-provider)
+              the-table (lib.metadata/table mp (mt/id table))
+              user-id-col (lib.metadata/field mp (mt/id table :user_id))
+              created-at-col (lib.metadata/field mp (mt/id table :created_at))
+              base-query (-> (lib/query mp the-table)
+                             (lib/expression "created_at_year" (lib/get-year created-at-col)))
+              query (-> base-query
+                        (lib/aggregate (lib/distinct user-id-col))
+                        (lib/breakout (lib/with-temporal-bucket created-at-col :week-of-year))
+                        (lib/breakout (lib.expression/expression-ref base-query 0 "created_at_year")))]
+          (mt/with-report-timezone-id! timezone
+            (let [exp-rows (cond->> [[8 2025 3]
+                                     [9 2025 2]
+                                     [10 2025 2]
+                                     [11 2025 2]
+                                     [12 2025 3]]
+                             (and (= table :ts_table) (= timezone "Europe/Paris"))
+                             (mapv #(update % 0 inc)))]
+              (is (= exp-rows
+                     (mt/formatted-rows [int int int] (qp/process-query query)))))))))))

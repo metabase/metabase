@@ -25,7 +25,6 @@ import type {
   DataKey,
   DateRange,
   DimensionModel,
-  Extent,
   NumericAxisScaleTransforms,
   NumericXAxisModel,
   SeriesExtents,
@@ -45,9 +44,12 @@ import {
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric";
+import { getLineAreaBarComparisonSettings } from "metabase/visualizations/lib/settings";
 import type {
   ColumnSettings,
   ComputedVisualizationSettings,
+  Extent,
+  VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type {
   DatasetColumn,
@@ -55,7 +57,6 @@ import type {
   NumericScale,
   RawSeries,
   RowValue,
-  SeriesSettings,
   StackType,
 } from "metabase-types/api";
 import { numericScale } from "metabase-types/api";
@@ -66,31 +67,6 @@ import type { ShowWarning } from "../../types";
 import { getAxisTransforms } from "./transforms";
 import { getFormattingOptionsWithoutScaling } from "./util";
 
-const KEYS_TO_COMPARE = new Set([
-  "number_style",
-  "currency",
-  "currency_style",
-  "number_separators",
-  "decimals",
-  "scale",
-  "prefix",
-  "suffix",
-]);
-
-function getLineAreaBarComparisonSettings(
-  columnSettings: Record<string, unknown>,
-) {
-  return _.pick(columnSettings, (value, key) => {
-    if (!KEYS_TO_COMPARE.has(key)) {
-      return false;
-    }
-    if ((key === "prefix" || key === "suffix") && value === "") {
-      return false;
-    }
-    return true;
-  });
-}
-
 const uniqueCards = (seriesModels: SeriesModel[]) =>
   _.uniq(seriesModels.map(({ cardId }) => cardId)).length;
 
@@ -99,7 +75,7 @@ const getMetricColumnsCount = (seriesModels: SeriesModel[]) => {
     .length;
 };
 
-function shouldAutoSplitYAxis(
+export function shouldAutoSplitYAxis(
   settings: ComputedVisualizationSettings,
   seriesModels: SeriesModel[],
   seriesExtents: SeriesExtents,
@@ -291,7 +267,7 @@ const getYAxisSplit = (
 
   const axisBySeriesKey = seriesModels.reduce(
     (acc, seriesModel) => {
-      const seriesSettings: SeriesSettings = settings.series(
+      const seriesSettings = settings.series?.(
         seriesModel.legacySeriesSettingsObjectKey,
       );
 
@@ -520,16 +496,28 @@ function getYAxisExtent(
   return combinedExtent != null ? combinedExtent : [0, 0];
 }
 
+interface YAxisModelOptions {
+  stackModels?: StackModel[];
+  stackType?: StackType;
+  formattingOptions?: OptionsType;
+  gridSize?: VisualizationGridSize;
+}
+
 export function getYAxisModel(
   seriesKeys: string[],
   seriesNames: string[],
-  stackModels: StackModel[],
   transformedDataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   columnByDataKey: Record<DataKey, DatasetColumn>,
-  stackType: StackType,
-  formattingOptions?: OptionsType,
+  options: YAxisModelOptions = {},
 ): YAxisModel | null {
+  const {
+    stackModels = [],
+    stackType = null,
+    formattingOptions,
+    gridSize,
+  } = options;
+
   if (seriesKeys.length === 0) {
     return null;
   }
@@ -568,7 +556,9 @@ export function getYAxisModel(
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
         ? settings["graph.y_axis.split_number"]
-        : undefined,
+        : gridSize?.height && gridSize.height <= 5
+          ? 2 // Use fewer ticks for small dashboard charts
+          : 5, // Default to 5 ticks for consistent behavior between single and multiple series
   };
 }
 
@@ -581,6 +571,7 @@ export function getYAxesModels(
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
   isCompactFormatting: boolean,
+  gridSize?: VisualizationGridSize,
 ) {
   const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
   const extents = getDatasetExtents(seriesDataKeys, dataset);
@@ -620,24 +611,31 @@ export function getYAxesModels(
     leftAxisModel: getYAxisModel(
       leftAxisSeriesKeys,
       leftAxisSeriesNames,
-      leftStackModels,
       transformedDataset,
       settings,
       columnByDataKey,
-      settings["stackable.stack_type"] ?? null,
-      { compact: isCompactFormatting },
+      {
+        stackModels: leftStackModels,
+        stackType: settings["stackable.stack_type"] ?? null,
+        formattingOptions: { compact: isCompactFormatting },
+        gridSize,
+      },
     ),
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
       rightAxisSeriesNames,
-      rightStackModels,
       transformedDataset,
       settings,
       columnByDataKey,
-      settings["stackable.stack_type"] === "normalized"
-        ? null
-        : (settings["stackable.stack_type"] ?? null),
-      { compact: isCompactFormatting },
+      {
+        stackModels: rightStackModels,
+        stackType:
+          settings["stackable.stack_type"] === "normalized"
+            ? null
+            : (settings["stackable.stack_type"] ?? null),
+        formattingOptions: { compact: isCompactFormatting },
+        gridSize,
+      },
     ),
   };
 }
@@ -874,31 +872,36 @@ export function getXAxisModel(
   };
 }
 
-const getXAxisDateRangeFromSortedXAxisValues = (
+export const getXAxisDateRangeFromSortedXAxisValues = (
   xValues: RowValue[],
 ): DateRange | undefined => {
-  if (xValues.length === 0) {
+  const filteredXValues = xValues.filter((x) => x !== undefined);
+
+  if (filteredXValues.length === 0) {
     return undefined;
   }
 
   // Find the first non-null date from the start
   let minDateIndex = 0;
   while (
-    minDateIndex < xValues.length &&
-    tryGetDate(xValues[minDateIndex]) === null
+    minDateIndex < filteredXValues.length &&
+    tryGetDate(filteredXValues[minDateIndex]) === null
   ) {
     minDateIndex++;
   }
 
   // Find the first non-null date from the end
-  let maxDateIndex = xValues.length - 1;
-  while (maxDateIndex >= 0 && tryGetDate(xValues[maxDateIndex]) === null) {
+  let maxDateIndex = filteredXValues.length - 1;
+  while (
+    maxDateIndex >= 0 &&
+    tryGetDate(filteredXValues[maxDateIndex]) === null
+  ) {
     maxDateIndex--;
   }
 
   // Assume the dataset is sorted
-  const minDate = tryGetDate(xValues[minDateIndex]);
-  const maxDate = tryGetDate(xValues[maxDateIndex]);
+  const minDate = tryGetDate(filteredXValues[minDateIndex]);
+  const maxDate = tryGetDate(filteredXValues[maxDateIndex]);
 
   if (minDate == null || maxDate == null) {
     return undefined;

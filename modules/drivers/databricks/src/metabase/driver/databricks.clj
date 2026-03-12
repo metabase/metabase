@@ -1,4 +1,5 @@
 (ns metabase.driver.databricks
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -6,6 +7,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -18,6 +20,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.performance :refer [not-empty]]
    [ring.util.codec :as codec])
   (:import
    [java.sql
@@ -25,7 +28,8 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
-    Statement]
+    Statement
+    Types]
    [java.time
     LocalDate
     LocalDateTime
@@ -75,9 +79,10 @@
 
 (defmethod driver/adjust-schema-qualification :databricks
   [_driver database schema]
-  (let [multi-level? (get-in database [:details :multi-level-schema])
-        catalog (get-in database [:details :catalog])
-        prefix (str catalog ".")]
+  (let [details      (driver.conn/effective-details database)
+        multi-level? (:multi-level-schema details)
+        catalog      (:catalog details)
+        prefix       (str catalog ".")]
     (cond
       (and multi-level? (not (str/includes? schema ".")))
       (str prefix schema)
@@ -131,7 +136,7 @@
        (into
         #{}
         (filter (comp included? :schema))
-        (sql-jdbc.execute/reducible-query database (get-tables-sql driver (:details database)))))}
+        (sql-jdbc.execute/reducible-query database (get-tables-sql driver (driver.conn/effective-details database)))))}
     (catch Throwable e
       (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
                       {}
@@ -190,10 +195,6 @@
                             [:= :c.column_name :cs.column_name]]]
                :where [:and
                        (when-not multi-level-schema [:= :c.table_catalog catalog])
-                       ;; Ignore `timestamp_ntz` type columns. Columns of this type are not recognizable from
-                       ;; `timestamp` columns when fetching the data. This exception should be removed when the problem
-                       ;; is resolved by Databricks in underlying jdbc driver.
-                       [:not= :c.full_data_type [:inline "timestamp_ntz"]]
                        [:not [:startswith :c.table_catalog [:inline "__databricks"]]]
                        [:not [:in :c.table_schema [[:inline "information_schema"]]]]
                        (schema-names-filter schema-names multi-level-schema :c.table_catalog :c.table_schema)
@@ -387,7 +388,7 @@
   (set-parameter-to-local-date-time driver prepared-statement index object))
 
 ;;
-;; `set-parameter` is implmented also for LocalTime and OffsetTime, even though Databricks does not support time types.
+;; `set-parameter` is implemented also for LocalTime and OffsetTime, even though Databricks does not support time types.
 ;; It enables creation of `attempted-murders` dataset, hence making the driver compatible with more of existing tests.
 ;;
 
@@ -499,3 +500,12 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :databricks
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:databricks Types/ARRAY]
+  [_driver ^java.sql.ResultSet rs _rsmeta ^Integer i]
+  ;; This differs from the sql-jdbc implementation due to a change in
+  ;; Databricks' JDBC driver from 2.7.3 to 3.0.1. It returns the type
+  ;; of an array column as Types/ARRAY now, but the object is a
+  ;; java.lang.String, so we can't call .getArray on it and instead
+  ;; should return it as is.
+  (fn [] (.getObject rs i)))

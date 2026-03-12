@@ -270,9 +270,9 @@ describe(
         cy.wait("@executeAction");
 
         cy.findByLabelText("User ID").should("not.exist");
-        cy.findByLabelText("User ID: This User_id does not exist.").should(
-          "exist",
-        );
+        cy.findByLabelText(
+          'User ID: This value does not exist in table "people".',
+        ).should("exist");
 
         cy.findByText("Unable to update the record.").should("exist");
       });
@@ -812,9 +812,11 @@ function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
 }
 
 function assertQueryEditorDisabled() {
-  // Ace doesn't act as a normal input, so we can't use `should("be.disabled")`
-  // Instead we'd assert that a user can't type in the editor
-  H.fillActionQuery("QWERTY");
+  H.NativeEditor.get().click();
+  H.NativeEditor.get().should("not.be.focused");
+  H.NativeEditor.get().should("have.attr", "contenteditable", "false");
+
+  H.NativeEditor.type("QWERTY", { focus: false });
   cy.findByText("QWERTY").should("not.exist");
 }
 

@@ -6,20 +6,11 @@ import {
   databaseApi,
   useGetDatabaseMetadataQuery,
   useGetDatabaseQuery,
-  useListDatabaseIdFieldsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import {
-  compose,
-  createThunkAction,
-  fetchData,
-  withAction,
-  withCachedDataAndRequestState,
-  withNormalize,
-} from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { createThunkAction, fetchData } from "metabase/lib/redux";
 import { DatabaseSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -31,20 +22,10 @@ import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions"
 export const FETCH_DATABASE_METADATA =
   "metabase/entities/database/FETCH_DATABASE_METADATA";
 
-export const FETCH_DATABASE_SCHEMAS =
-  "metabase/entities/database/FETCH_DATABASE_SCHEMAS";
-export const FETCH_DATABASE_IDFIELDS =
-  "metabase/entities/database/FETCH_DATABASE_IDFIELDS";
-
-const transformFetchIdFieldsResponse = (data, query) => ({
-  idFields: data,
-  id: query.id,
-});
-
 /**
  * @deprecated use "metabase/api" instead
  */
-const Databases = createEntity({
+export const Databases = createEntity({
   name: "databases",
   path: "/api/database",
   schema: DatabaseSchema,
@@ -57,14 +38,6 @@ const Databases = createEntity({
       if (fetchType === "fetchDatabaseMetadata") {
         return {
           useGetQuery: useGetDatabaseMetadataQuery,
-        };
-      }
-
-      if (fetchType === "fetchIdFields") {
-        return {
-          action: FETCH_DATABASE_IDFIELDS,
-          transformResponse: transformFetchIdFieldsResponse,
-          useGetQuery: useListDatabaseIdFieldsQuery,
         };
       }
 
@@ -132,28 +105,10 @@ const Databases = createEntity({
             reload,
           }),
     ),
-    fetchIdFields: compose(
-      withAction(FETCH_DATABASE_IDFIELDS),
-      withCachedDataAndRequestState(
-        ({ id }) => [...Databases.getObjectStatePath(id)],
-        ({ id }) => [...Databases.getObjectStatePath(id), "idFields"],
-        (entityQuery) => Databases.getQueryKey(entityQuery),
-      ),
-      withNormalize(DatabaseSchema),
-    )(({ id, ...params }) => async (dispatch) => {
-      const idFields = await entityCompatibleQuery(
-        { id, ...params },
-        dispatch,
-        databaseApi.endpoints.listDatabaseIdFields,
-      );
-      return { id, idFields };
-    }),
   },
 
   objectSelectors: {
     getName: (db) => db && db.name,
-    getUrl: (db) => db && Urls.browseDatabase(db),
-    getIcon: (db) => ({ name: "database" }),
     getColor: (db) => color("database"),
   },
 
@@ -189,5 +144,3 @@ const Databases = createEntity({
     ),
   },
 });
-
-export default Databases;

@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 
-import Dashboards from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import { resourceListToMap } from "metabase/lib/redux";
 import {
   getShallowDatabases as getDatabases,
@@ -10,7 +10,7 @@ import {
   getShallowTables as getTables,
 } from "metabase/selectors/metadata";
 
-import { databaseToForeignKeys, idsToObjectMap } from "./utils";
+import { idsToObjectMap } from "./utils";
 
 // import { getDatabases, getTables, getFields, getSegments } from "metabase/selectors/metadata";
 
@@ -100,32 +100,6 @@ export const getTableQuestions = createSelector(
     Object.values(questions).filter(
       (question) => question.table_id === table.id,
     ),
-);
-
-const getDatabaseBySegment = createSelector(
-  [getSegment, getTables, getDatabases],
-  (segment, tables, databases) =>
-    (segment &&
-      segment.table_id &&
-      tables[segment.table_id] &&
-      databases[tables[segment.table_id].db_id]) ||
-    {},
-);
-
-const getForeignKeysBySegment = createSelector(
-  [getDatabaseBySegment],
-  databaseToForeignKeys,
-);
-
-const getForeignKeysByDatabase = createSelector(
-  [getDatabase],
-  databaseToForeignKeys,
-);
-
-export const getForeignKeys = createSelector(
-  [getSegmentId, getForeignKeysBySegment, getForeignKeysByDatabase],
-  (segmentId, foreignKeysBySegment, foreignKeysByDatabase) =>
-    segmentId ? foreignKeysBySegment : foreignKeysByDatabase,
 );
 
 export const getLoading = (state, props) => state.reference.isLoading;

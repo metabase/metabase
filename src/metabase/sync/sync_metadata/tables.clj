@@ -65,7 +65,6 @@
     #"^router.*"
     #"^semaphore$"
     #"^sequences$"
-    #"^sessions$"
     #"^watchdog$"
     ;; Rails / Active Record
     #"^schema_migrations$"
@@ -99,8 +98,8 @@
   (let [is-crufty? (if (and (= sync-stage ::update)
                             (not (:is_attached_dwh database)))
                      ;; TODO: we should add an updated_by column to metabase_table in
-                     ;; [[metabase.warehouse-schema.api.table/update-table!*]] to track occasions where the table was
-                     ;; updated by an admin, and respect their choices during an update.
+                     ;; [[metabase.warehouse-schema-rest.api.table/update-table!*]] to track occasions where the table
+                     ;; was updated by an admin, and respect their choices during an update.
                      ;;
                      ;; This will fix the issue where a table is marked as visible, but cruftiness settings keep re-hiding it
                      ;; during update steps. This is also how we handled this before the addition of auto-cruft-tables.
@@ -134,7 +133,15 @@
            :database_require_filter (:database_require_filter table)
            :display_name            (or (:display_name table)
                                         (humanization/name->human-readable-name (:name table)))
-           :name                    (:name table)})))
+           :name                    (:name table)
+           :is_writable             (:is_writable table)}
+          (when (:data_source table)
+            {:data_source (:data_source table)})
+          (when (:data_authority table)
+            {:data_authority (:data_authority table)})
+          (when (:is_sample database)
+            {:data_authority :ingested
+             :data_source    :ingested}))))
 
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
@@ -153,7 +160,11 @@
                                              (dissoc :visibility_type)
 
                                              true
-                                             (assoc :active true))))
+                                             (assoc :active true)
+
+                                             (:is_sample database)
+                                             (assoc :data_authority :ingested
+                                                    :data_source    :ingested))))
     ;; otherwise create a new Table
     (create-table! database table)))
 
@@ -186,14 +197,13 @@
                 {:active false})))
 
 (def ^:private keys-to-update
-  [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status])
+  [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
 
 (mu/defn- update-table-metadata-if-needed!
   "Update the table metadata if it has changed."
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)
    metabase-database :- (ms/InstanceOf :model/Database)]
-  (log/infof "Updating table metadata for %s" (sync-util/name-for-logging metabase-table))
   (let [old-table               (select-keys metabase-table keys-to-update)
         new-table               (-> (zipmap keys-to-update (repeat nil))
                                     (merge table-metadata
@@ -212,7 +222,12 @@
                                    (some? (:visibility_type old-table))
                                    ;; noop
                                    (= (:visibility_type new-table) (:visibility_type old-table)))
-                                  (dissoc changes :visibility_type))]
+                                  (dissoc changes :visibility_type)
+
+                                  ;; don't mark computed tables as writable — they are derived
+                                  ;; and should never be editable, regardless of what the driver reports
+                                  (= :computed (:data_authority metabase-table))
+                                  (dissoc changes :is_writable))]
     (doseq [[k v] changes]
       (log/infof "%s of %s changed from %s to %s"
                  k
@@ -238,7 +253,9 @@
   Get set of user tables only, excluding metabase metadata tables."
   [db-metadata :- i/DatabaseMetadata]
   (into #{}
-        (remove metabase-metadata/is-metabase-metadata-table?)
+        (remove (fn [table]
+                  (or (metabase-metadata/is-metabase-metadata-table? table)
+                      (sync-util/is-temp-transform-table? table))))
         (:tables db-metadata)))
 
 (mu/defn- select-tables :- [:set (ms/InstanceOf :model/Table)]
@@ -247,8 +264,7 @@
    & filters]
   (set (apply
         t2/select
-        [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count
-         :visibility_type :initial_sync_status]
+        (into [:model/Table :id :name :schema :data_authority] keys-to-update)
         :db_id (u/the-id database)
         filters)))
 
@@ -298,7 +314,7 @@
         ;; we're just using this as a cheap namespace
         suffix (str "__mbarchiv__" (.toEpochSecond (t/offset-date-time)))
         threshold-expr (apply
-                        (requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
+                        (requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
                         (mdb/db-type) :%now archive-tables-threshold)
         tables-to-archive (t2/select :model/Table
                                      :db_id (u/the-id database)

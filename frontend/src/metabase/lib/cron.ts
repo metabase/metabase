@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { memoize } from "underscore";
 
 import MetabaseSettings from "metabase/lib/settings";
-import { has24HourModeSetting } from "metabase/lib/time";
+import { has24HourModeSetting } from "metabase/lib/time-dayjs";
 
 function translateErrorMessage(message: string) {
   const errorMessageMap: Record<string, string> = {
@@ -65,6 +65,7 @@ export function explainCronExpression(cronExpression: string) {
     verbose: false,
     locale: MetabaseSettings.get("site-locale"),
     use24HourTimeFormat: has24HourModeSetting(),
+    dayOfWeekStartIndexZero: false,
   });
 }
 

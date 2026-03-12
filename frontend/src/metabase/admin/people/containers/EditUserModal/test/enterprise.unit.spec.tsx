@@ -7,7 +7,10 @@ import { defaultUser, setup } from "./setup";
 
 describe("EditUserModal - enterprise", () => {
   it("can add a user attribute", async () => {
-    setup({ userData: defaultUser, hasEnterprisePlugins: true });
+    setup({
+      userData: defaultUser,
+      enterprisePlugins: ["sandboxes"],
+    });
 
     const submitButton = await screen.findByText("Update");
     const addAttributeButton = await screen.findByText("Add an attribute");
@@ -48,7 +51,7 @@ describe("EditUserModal - enterprise", () => {
         first_name: null,
         last_name: null,
       },
-      hasEnterprisePlugins: true,
+      enterprisePlugins: ["sandboxes"],
     });
 
     const submitButton = await screen.findByText("Update");

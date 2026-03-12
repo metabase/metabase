@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { Button } from "metabase/common/components/Button";
 import { Flex } from "metabase/ui";
 
 import ExpressionWidgetHeaderS from "./ExpressionWidgetHeader.module.css";
@@ -11,7 +11,7 @@ const DEFAULT_SECTION_NAME = t`Custom Expression`;
 interface Props {
   title?: string;
 
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export const ExpressionWidgetHeader = ({
@@ -22,9 +22,10 @@ export const ExpressionWidgetHeader = ({
     <Flex className={ExpressionWidgetHeaderS.Header}>
       <Button
         className={ExpressionWidgetHeaderS.HeaderButton}
-        icon="chevronleft"
+        icon={onBack ? "chevronleft" : undefined}
         onlyText
         onClick={onBack}
+        disabled={!onBack}
       >
         {title}
       </Button>

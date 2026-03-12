@@ -1,20 +1,20 @@
 import { useCallback, useState } from "react";
 
+import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
+import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
-import { ProfileLink } from "../ProfileLink";
+import { AppSwitcher } from "../AppSwitcher";
+import { SearchButton } from "../search/SearchButton/SearchButton";
 
 import { AppBarLogo } from "./AppBarLogo";
 import {
   AppBarHeader,
   AppBarLogoContainer,
-  AppBarMainContainer,
-  AppBarProfileLinkContainer,
-  AppBarRoot,
   AppBarSearchContainer,
   AppBarSubheader,
   AppBarToggleContainer,
@@ -22,38 +22,38 @@ import {
 import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarSmallProps {
+  detailView: DetailViewState | null;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
-  isProfileLinkVisible?: boolean;
+  isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
-  onLogout: () => void;
 }
 
 const AppBarSmall = ({
+  detailView,
   isNavBarOpen,
   isNavBarEnabled,
   isLogoVisible,
   isSearchVisible,
   isEmbeddingIframe,
-  isProfileLinkVisible,
+  isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
   onCloseNavbar,
-  onLogout,
 }: AppBarSmallProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
 
   const [isSearchActive, setSearchActive] = useState(false);
   const isInfoVisible = isQuestionLineageVisible || isCollectionPathVisible;
   const isHeaderVisible =
-    isLogoVisible || isNavBarEnabled || isSearchVisible || isProfileLinkVisible;
+    isLogoVisible || isNavBarEnabled || isSearchVisible || isAppSwitcherVisible;
   const isSubheaderVisible = !isNavBarVisible && isInfoVisible;
 
   const handleSearchActive = useCallback(() => {
@@ -66,10 +66,10 @@ const AppBarSmall = ({
   }, []);
 
   return (
-    <AppBarRoot>
+    <Box bg="background-primary">
       {isHeaderVisible && (
         <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
-          <AppBarMainContainer>
+          <Flex justify="space-between" align="center" gap="sm" h="100%">
             <AppBarToggleContainer>
               <AppBarToggle
                 isSmallAppBar
@@ -87,16 +87,13 @@ const AppBarSmall = ({
                   />
                 ) : (
                   <Flex justify="end">
-                    <PLUGIN_METABOT.SearchButton />
+                    <SearchButton />
                   </Flex>
                 ))}
             </AppBarSearchContainer>
-            {isProfileLinkVisible && (
-              <AppBarProfileLinkContainer>
-                <ProfileLink onLogout={onLogout} />
-              </AppBarProfileLinkContainer>
-            )}
-          </AppBarMainContainer>
+            {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
+            {isAppSwitcherVisible && <AppSwitcher />}
+          </Flex>
           <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
             <AppBarLogo
               isSmallAppBar
@@ -109,14 +106,19 @@ const AppBarSmall = ({
       )}
       {isSubheaderVisible && (
         <AppBarSubheader isNavBarOpen={isNavBarVisible}>
-          {isQuestionLineageVisible ? (
+          {detailView ? (
+            <DetailViewNav
+              rowName={detailView.rowName}
+              table={detailView.table}
+            />
+          ) : isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />
           ) : null}
         </AppBarSubheader>
       )}
-    </AppBarRoot>
+    </Box>
   );
 };
 

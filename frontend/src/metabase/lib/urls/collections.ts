@@ -13,6 +13,13 @@ import { appendSlug, extractEntityId } from "./utils";
 
 export const otherUsersPersonalCollections = () => "/collection/users";
 
+export const tenantSpecificCollections = () => "/collection/tenant-specific";
+
+export const tenantUsersPersonalCollections = () => "/collection/tenant-users";
+
+export const tenantUsersPersonalCollectionsForTenant = (tenantId: number) =>
+  `/collection/tenant-users/${tenantId}`;
+
 type Collection = Pick<
   BaseCollection,
   "id" | "name" | "originalName" | "personal_owner_id" | "type"
@@ -65,7 +72,12 @@ export function isCollectionPath(path: string) {
 }
 
 export function extractCollectionId(slug = ""): CollectionId | undefined {
-  if (slug === "root" || slug === "users") {
+  if (
+    slug === "root" ||
+    slug === "users" ||
+    slug === "tenant-specific" ||
+    slug === "tenant-users"
+  ) {
     return slug;
   }
   return extractEntityId(slug);

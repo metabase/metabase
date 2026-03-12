@@ -5,8 +5,8 @@ import { c, t } from "ttag";
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Markdown from "metabase/common/components/Markdown";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Markdown } from "metabase/common/components/Markdown";
 import { useDispatch } from "metabase/lib/redux";
 import { getUserName } from "metabase/lib/user";
 import {
@@ -141,7 +141,7 @@ function GoogleSheetsConnectModal({
         fullWidth
         autoContrast
         color="brand"
-        c="var(--mb-color-text-white)"
+        c="text-primary-inverse"
         value={linkType}
         onChange={setLinkType}
         data={
@@ -152,7 +152,7 @@ function GoogleSheetsConnectModal({
         }
       />
       <Flex
-        bg="bg-light"
+        bg="background-secondary"
         style={{ borderRadius: "0.5rem" }}
         p="md"
         direction="column"
@@ -194,7 +194,7 @@ function GoogleSheetsConnectModal({
                 : "https://docs.google.com/spreadsheets/d/abc123-xyz456"
             }
           />
-          <Text size="sm" color="secondary">
+          <Text size="sm" c="text-secondary">
             {copyInstruction}
           </Text>
         </Box>
@@ -240,7 +240,7 @@ function GoogleSheetsDisconnectModal({
     <ModalWrapper onClose={onClose} title={title}>
       <Stack gap="md">
         <DriveConnectionDisplay />
-        <Text c="text-medium" pb="md">
+        <Text c="text-secondary" pb="md">
           {bodyCopy}
         </Text>
         <Flex w="100%" gap="sm" justify="space-between">
@@ -303,7 +303,7 @@ export const DriveConnectionDisplay = () => {
   return (
     <MaybeLink href={folderUrl ?? ""}>
       <Flex
-        bg="bg-light"
+        bg="background-secondary"
         w="100%"
         gap="sm"
         p="md"
@@ -313,7 +313,7 @@ export const DriveConnectionDisplay = () => {
         <Box>
           <Text fw="bold">{t`Google Drive connected`}</Text>
           {!!userName && (
-            <Text c="text-medium" fz="sm" lh="140%">
+            <Text c="text-secondary" fz="sm" lh="140%">
               {t`Connected by ${userName} ${relativeConnectionTime}`}
             </Text>
           )}

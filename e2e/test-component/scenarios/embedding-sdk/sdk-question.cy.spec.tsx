@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import {
   InteractiveQuestion,
   type MetabaseQuestion,
@@ -9,6 +8,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ENTITY_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -29,7 +29,6 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { Box, Button, Modal } from "metabase/ui";
 const { H } = cy;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -67,6 +66,35 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  it("should not show the expand button (metabase#68975)", () => {
+    mountInteractiveQuestion();
+
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+      cy.findByText("Max of Quantity").should("be.visible");
+
+      cy.findByTestId("viz-settings-button").click();
+
+      H.popover().within(() => {
+        cy.findByText("Show row index").click();
+      });
+
+      // close the popover
+      cy.findByTestId("viz-settings-button").click();
+
+      cy.findByText("#").should("be.visible");
+
+      cy.findByTestId("table-body")
+        .get("[data-index='0']")
+        .within(() => {
+          cy.get("[data-column-id$='_INDEX']")
+            .realHover({ scrollBehavior: false })
+            .findByTestId("detail-shortcut")
+            .should("not.exist");
+        });
+    });
+  });
+
   it("should show a watermark in development mode", () => {
     cy.intercept("/api/session/properties", (req) => {
       req.continue((res) => {
@@ -98,7 +126,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       expect(response?.statusCode).to.equal(202);
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("cell-data").last().click();
 
     cy.on("uncaught:exception", (error) => {
@@ -223,14 +251,14 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     const TestSuiteComponent = ({ questionId }: { questionId: string }) => (
-      <Box p="lg">
+      <div style={{ padding: "16px" }}>
         <InteractiveQuestion questionId={questionId}>
-          <Box>
+          <div>
             <InteractiveQuestion.FilterDropdown />
             <InteractiveQuestion.QuestionVisualization />
-          </Box>
+          </div>
         </InteractiveQuestion>
-      </Box>
+      </div>
     );
 
     cy.get<string>("@questionId").then((questionId) => {
@@ -259,7 +287,9 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       onBeforeSave,
       onSave,
     }: InteractiveQuestionProps) => {
-      const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
+      const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+      const toggle = () => setIsSaveModalOpen((v) => !v);
+      const close = () => setIsSaveModalOpen(false);
 
       const handleSave = (
         question: MetabaseQuestion | undefined,
@@ -279,14 +309,14 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
           onBeforeSave={onBeforeSave}
           onSave={handleSave}
         >
-          <Box p="lg">
-            <Button onClick={toggle}>Save</Button>
-          </Box>
+          <div style={{ padding: "16px" }}>
+            <button onClick={toggle}>Save</button>
+          </div>
 
           {isSaveModalOpen && (
-            <Modal opened={isSaveModalOpen} onClose={close}>
+            <div role="dialog" data-testid="modal">
               <InteractiveQuestion.SaveQuestionForm onCancel={close} />
-            </Modal>
+            </div>
           )}
 
           {!isSaveModalOpen && <InteractiveQuestion.QuestionVisualization />}
@@ -520,10 +550,10 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       );
 
       return (
-        <Box>
+        <div>
           <InteractiveQuestion questionId={questionId} />
-          <Button onClick={() => setQuestionId("new")}>New Question</Button>
-        </Box>
+          <button onClick={() => setQuestionId("new")}>New Question</button>
+        </div>
       );
     };
 
@@ -570,6 +600,169 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       cy.log("back to previous result button should not be visible");
       cy.findByText("No results!").should("be.visible");
       cy.findByText("Back to previous results").should("not.exist");
+    });
+  });
+
+  it("should show the `Save` button when a visualization type was changed (metabase#62396)", () => {
+    mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("chart-type-selector-button").click();
+
+      cy.findByTestId("sdk-question-save-button").should("not.exist");
+
+      cy.findByRole("listbox").within(() => {
+        cy.findByText("Trend").click();
+      });
+
+      cy.findByTestId("interactive-question-top-toolbar").within(() => {
+        cy.findByText("Save").should("exist");
+      });
+    });
+  });
+
+  it("should show the `Save` button when a visualization setting was changed (metabase#62396)", () => {
+    mountSdkContent(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
+
+    getSdkRoot().within(() => {
+      H.openVizSettingsSidebar();
+
+      cy.findByTestId("sdk-question-save-button").should("not.exist");
+
+      cy.findByTestId("chartsettings-sidebar").within(() => {
+        cy.findByTestId("User ID-hide-button").click();
+      });
+
+      cy.findByTestId("interactive-question-top-toolbar").within(() => {
+        cy.findByText("Save").should("exist");
+      });
+    });
+  });
+
+  it("downloads should work when using entity IDs", () => {
+    cy.intercept("POST", "/api/card/*/query/xlsx").as("questionDownload");
+
+    cy.get<string>("@questionEntityId").then((questionEntityId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={questionEntityId} withDownloads />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("interactive-question-result-toolbar")
+        .findByTestId("question-download-widget-button")
+        .click();
+
+      cy.findByText(".xlsx").click();
+      cy.findByTestId("download-results-button").click();
+    });
+
+    cy.wait("@questionDownload").then((interception) => {
+      expect(interception.response?.statusCode).to.equal(200);
+    });
+  });
+
+  it("should stay in editor mode after adding a filter for the first time for an existing saved question (EMB-1077)", () => {
+    cy.get<string>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("notebook-button").click();
+
+      cy.findByRole("button", { name: "Visualize" }).should("exist");
+
+      cy.findByTestId("step-data-0-0").within(() => {
+        cy.findAllByTestId("action-buttons").find(".Icon-filter").click();
+      });
+    });
+
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.findByText("Previous 7 days").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByRole("button", { name: "Visualize" }).should("exist");
+    });
+  });
+
+  it("should close the editor after modifying and saving an existing question in-place", () => {
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={questionId} isSaveEnabled />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("visualization-root").should("be.visible");
+      cy.findByTestId("notebook-button").click();
+
+      cy.findByTestId("step-data-0-0").within(() => {
+        cy.findAllByTestId("action-buttons").find(".Icon-filter").click();
+      });
+    });
+
+    H.popover().findByText("Product ID").click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter an ID").type("1");
+      cy.findByText("Add filter").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("be.visible");
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    H.modal().within(() => {
+      cy.findByText(/Replace original question/).click();
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("not.exist");
+      cy.findByTestId("visualization-root").should("be.visible");
+    });
+  });
+
+  it("should close the editor after modifying and saving an existing question as a new question", () => {
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={questionId} isSaveEnabled />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("visualization-root").should("be.visible");
+      cy.findByTestId("notebook-button").click();
+
+      cy.findByTestId("step-data-0-0").within(() => {
+        cy.findAllByTestId("action-buttons").find(".Icon-filter").click();
+      });
+    });
+
+    H.popover().findByText("Product ID").click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter an ID").type("1");
+      cy.findByText("Add filter").click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("be.visible");
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    H.modal().within(() => {
+      cy.findByText("Save as new question").click();
+      cy.findByPlaceholderText("What is the name of your question?")
+        .clear()
+        .type("Orders Copy");
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Back to visualization").should("not.exist");
+      cy.findByTestId("visualization-root").should("be.visible");
     });
   });
 });

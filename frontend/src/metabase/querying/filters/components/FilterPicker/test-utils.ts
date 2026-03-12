@@ -6,8 +6,9 @@ import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import {
-  createQuery as _createQuery,
+  DEFAULT_TEST_QUERY,
   columnFinder,
+  createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
@@ -29,8 +30,12 @@ const SEGMENT_1 = createMockSegment({
   name: "Discounted",
   description: "Discounted",
   definition: {
-    "source-table": ORDERS_ID,
-    filter: ["not-null", ["field", ORDERS.DISCOUNT, null]],
+    type: "query",
+    database: 1,
+    query: {
+      "source-table": ORDERS_ID,
+      filter: ["not-null", ["field", ORDERS.DISCOUNT, null]],
+    },
   },
 });
 
@@ -40,8 +45,12 @@ const SEGMENT_2 = createMockSegment({
   name: "Many items",
   description: "Orders with more than 5 items",
   definition: {
-    "source-table": ORDERS_ID,
-    filter: [">", ["field", ORDERS.QUANTITY, null], 20],
+    type: "query",
+    database: 1,
+    query: {
+      "source-table": ORDERS_ID,
+      filter: [">", ["field", ORDERS.QUANTITY, null], 20],
+    },
   },
 });
 
@@ -116,9 +125,10 @@ export const storeInitialState = createMockState({
 });
 
 export const metadata = getMetadata(storeInitialState);
+const provider = createMetadataProvider({ metadata });
 
 export function createQuery() {
-  return _createQuery({ metadata });
+  return Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
 }
 
 export function createFilteredQuery(

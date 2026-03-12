@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { ConfirmationState } from "metabase/common/hooks/use-confirmation";
+import type { CollectionTreeItem } from "metabase/entities/collections";
 import type { Member, Membership, User } from "metabase-types/api";
 
 export interface AuthProvider {
@@ -46,4 +47,15 @@ export type PluginGroupManagersType = {
   deleteGroup: any;
   confirmDeleteMembershipAction: any;
   confirmUpdateMembershipAction: any;
+};
+
+export type SyncedCollectionsSidebarSectionProps = {
+  onItemSelect: VoidFunction;
+  selectedId?: number | string;
+  syncedCollections: CollectionTreeItem[];
+};
+
+export type GitSyncSetupMenuItemProps = {
+  isNavbarOpened: boolean;
+  onClick: VoidFunction;
 };

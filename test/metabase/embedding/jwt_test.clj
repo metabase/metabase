@@ -2,9 +2,9 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer :all]
-   [crypto.random :as crypto-random]
    [metabase.embedding.jwt :as embed]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.random :as u.random]))
 
 (def ^:private ^String token-with-alg-none
   "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJhZG1pbiI6dHJ1ZX0.3Dbtd6Z0yuSfw62fOzBGHyiL0BJp3pod_PZE-BBdR-I")
@@ -16,7 +16,7 @@
 
 (deftest disallow-unsigned-tokens-test
   (testing "check that we disallow tokens signed with alg = none"
-    (mt/with-temporary-setting-values [embedding-secret-key (crypto-random/hex 32)]
+    (mt/with-temporary-setting-values [embedding-secret-key (u.random/secure-hex 32)]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"JWT `alg` cannot be `none`"

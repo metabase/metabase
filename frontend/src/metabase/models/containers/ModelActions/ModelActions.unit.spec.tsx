@@ -6,6 +6,7 @@ import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
+  setupCardsUsingModelEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
@@ -18,7 +19,7 @@ import {
   within,
 } from "__support__/ui";
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-import Models from "metabase/entities/questions";
+import { Questions as Models } from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { checkNotNull } from "metabase/lib/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -199,13 +200,7 @@ async function setup({
   const modelUpdateSpy = jest.spyOn(Models.actions, "update");
 
   setupDatabasesEndpoints(databases);
-
-  fetchMock.get({
-    url: "path:/api/card",
-    query: { f: "using_model", model_id: card.id },
-    response: usedBy,
-  });
-
+  setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
     card,
@@ -215,7 +210,7 @@ async function setup({
         createMockTable({
           id: `card__${card.id}`,
           name: card.name,
-          fields: card.result_metadata,
+          fields: card.result_metadata ?? [],
         }),
       ],
     }),

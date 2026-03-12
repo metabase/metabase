@@ -4,6 +4,7 @@
   `metabase.driver.sql-jdbc.execute.old-impl`, which will be removed in a future release; implementations of methods
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
+  (:refer-clojure :exclude [mapv empty? get-in])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.async :as a]
@@ -13,6 +14,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
@@ -24,7 +26,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [mapv empty? get-in]]
    [potemkin :as p])
   (:import
    (java.sql
@@ -44,6 +46,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime)
+   (java.util.concurrent Executors)
    (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
@@ -136,7 +139,7 @@
     [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
 
-;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statment]] and [[statement]]
+;; TODO -- maybe like [[do-with-connection-with-options]] we should replace [[prepared-statement]] and [[statement]]
 ;; with `do-with-prepared-statement` and `do-with-statement` methods -- that way you can't accidentally forget to wrap
 ;; things in a `try-catch` and call `.close` (metabase#40010)
 
@@ -149,17 +152,8 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-;;; TODO -- we should just make this a FEATURE!!!!!1
-(defmulti ^Statement statement-supported?
-  "Indicates whether the given driver supports creating a java.sql.Statement, via the Connection. By default, this is
-  true for all :sql-jdbc drivers.  If the underlying driver does not support Statement creation, override this as
-  false."
-  {:added "0.39.0", :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
 (defmulti ^Statement statement
-  "Create a Statement object using the given connection. Only called if statement-supported? above returns true. This
+  "Create a Statement object using the given connection. Only called if the `:jdbc/statements` feature is supported. This
   is to be used to execute native queries, which implies there are no parameters. As with prepared-statement, you
   shouldn't need to override the default implementation for this method; if you do, take care to set options to maximize
   result set read performance (e.g. `ResultSet/TYPE_FORWARD_ONLY`); refer to the default implementation."
@@ -179,6 +173,12 @@
   `.execute()` for the given sql on the given statement, and then `.getResultSet()` if that returns true (throwing an
   exception if not). It is unlikely you will need to override this."
   {:added "0.39.0", :arglists '(^java.sql.ResultSet [driver ^java.sql.Statement stmt ^String sql])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmulti db-type-name
+  "Return the type name of a column given the rsmeta and the column-index. The default implementation fetches this information from rsmeta."
+  {:added "0.59.0" :arglists '([driver ^java.sql.ResultSetMetaData rsmeta column-index])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -354,6 +354,9 @@
           (with-open [conn ^Connection (get-conn)]
             (f conn)))))))
 
+(defonce ^:private network-timeout-executor
+  (delay (Executors/newCachedThreadPool)))
+
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
   Connection."
@@ -371,13 +374,16 @@
                   (u/id db-or-id-or-spec)     db-or-id-or-spec
                   ;; otherwise it's a spec and we can't get the db
                   :else nil)]
-    (set-role-if-supported! driver conn db)
-    (driver/set-database-used! driver conn db))
+    (set-role-if-supported! driver conn db))
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (let [read-only? (not write?)]
+    (let [read-only? (not (or write?
+                              ;; we need to set autoCommit to false which causes postgresql
+                              ;; to enforce readOnly which will break queries that rely on
+                              ;; ddl statements, etc (#61892)
+                              (and (-> options :download?) (= driver :postgres))))]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
         ;; to be a hint to the driver to enable database optimizations
@@ -410,6 +416,12 @@
             (.setAutoCommit conn false)
             (catch Throwable e
               (log/debug e "Error setting connection autoCommit to false"))))
+    (try
+      ;; setNetworkTimeout sets Socket.setSoTimeout() which releases from blocked socker reads.
+      ;; This is necessary because .close() doesn't interrupt threads stuck in native socket reads
+      (.setNetworkTimeout conn @network-timeout-executor driver.settings/*network-timeout-ms*)
+      (catch Throwable e
+        (log/debug e "Error setting network timeout for connection")))
     (try
       (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
@@ -519,11 +531,6 @@
         (.close stmt)
         (throw e)))))
 
-;; by default, drivers support .createStatement
-(defmethod statement-supported? :sql-jdbc
-  [_]
-  true)
-
 (defmethod statement :sql-jdbc
   [_ ^Connection conn]
   (let [stmt (.createStatement conn
@@ -570,7 +577,7 @@
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
 
 (defn- use-statement? [driver params]
-  (and (statement-supported? driver) (empty? params)))
+  (and (driver/database-supports? driver :jdbc/statements nil) (empty? params)))
 
 (defn- statement* ^Statement [driver conn canceled-chan]
   (doto (statement driver conn)
@@ -595,7 +602,8 @@
                     {:sql sql :driver driver}))))
 
 (defn- execute-statement-or-prepared-statement! ^ResultSet [driver ^Statement stmt max-rows params sql]
-  (let [st (doto stmt (.setMaxRows max-rows))]
+  (let [max-rows (or max-rows 0) ; 0 means no limit
+        st (doto stmt (.setMaxRows max-rows))]
     (if (use-statement? driver params)
       (execute-statement! driver st sql)
       (execute-prepared-statement! driver st))))
@@ -619,7 +627,7 @@
 
 (defn- arrays->vectors
   [obj]
-  (if (.isArray (class obj))
+  (if (some-> obj class .isArray)
     (mapv arrays->vectors obj)
     obj))
 
@@ -645,7 +653,9 @@
   [_ rs _ i]
   (get-object-of-class-thunk rs i java.time.OffsetTime))
 
-(defn- column-range [^ResultSetMetaData rsmeta]
+(defn column-range
+  "Return a sequence of all the column indexes in a JDBC result set. Column indexes in JDBC start at `1`."
+  [^ResultSetMetaData rsmeta]
   (range 1 (inc (.getColumnCount rsmeta))))
 
 (defn- log-readers [driver ^ResultSetMetaData rsmeta fns]
@@ -680,6 +690,7 @@
           (thunk))))))
 
 (defn- resolve-missing-base-types
+  "Resolve missing base types in initial column `metadatas` using [[driver/dynamic-database-types-lookup]]."
   [driver metadatas]
   (if (driver-api/initialized?)
     (let [missing (keep (fn [{:keys [database_type base_type]}]
@@ -697,12 +708,16 @@
         metadatas))
     metadatas))
 
+(defmethod db-type-name :sql-jdbc
+  [_driver ^ResultSetMetaData rsmeta column-index]
+  (.getColumnTypeName rsmeta column-index))
+
 (defmethod column-metadata :sql-jdbc
   [driver ^ResultSetMetaData rsmeta]
   (->> (mapv
         (fn [^Long i]
           (let [col-name     (.getColumnLabel rsmeta i)
-                db-type-name (.getColumnTypeName rsmeta i)
+                db-type-name (db-type-name driver rsmeta i)
                 base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
             (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
                         i col-name db-type-name base-type driver)
@@ -716,10 +731,7 @@
              :database_type db-type-name}))
         (column-range rsmeta))
        (resolve-missing-base-types driver)
-       (mapv (fn [{:keys [base_type] :as metadata}]
-               (if (nil? base_type)
-                 (assoc metadata :base_type :type/*)
-                 metadata)))))
+       (mapv #(u/assoc-default % :base_type :type/*))))
 
 (defn reducible-rows
   "Returns an object that can be reduced to fetch the rows and columns in a `ResultSet` in a driver-specific way (e.g.
@@ -743,7 +755,7 @@
 
 ;  Combines the original SQL query with query remarks. Most databases using sql-jdbc based drivers support prepending the
 ;  remark to the SQL statement, so we have it as a default. However, some drivers do not support it, so we allow it to
-;  be overriden.
+;  be overridden.
 (defmethod inject-remark :default
   [_ sql remark]
   (str "-- " remark "\n" sql))
@@ -752,7 +764,8 @@
   [context :- [:maybe ::lib.schema.info/context]]
   (let [download-contexts #{:csv-download :xlsx-download :json-download
                             :public-csv-download :public-xlsx-download :public-json-download
-                            :embedded-csv-download :embedded-xlsx-download :embedded-json-download}]
+                            :embedded-csv-download :embedded-xlsx-download :embedded-json-download
+                            :pulse}]
     (boolean (download-contexts context))))
 
 (defn execute-reducible-query
@@ -761,7 +774,7 @@
   [driver {{sql :query, params :params} :native, :as outer-query} _context respond]
   {:pre [(string? sql) (seq sql)]}
   (let [database (driver-api/database (driver-api/metadata-provider))
-        sql      (if (get-in database [:details :include-user-id-and-hash] true)
+        sql      (if (get-in (driver.conn/effective-details database) [:include-user-id-and-hash] true)
                    (->> (driver-api/query->remark driver outer-query)
                         (inject-remark driver sql))
                    sql)
@@ -777,17 +790,19 @@
                                    (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                    (catch Throwable e
                                      (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                     {:driver driver
-                                                      :sql    (str/split-lines (driver/prettify-native-form driver sql))
-                                                      :params params
-                                                      :type   driver-api/qp.error-type.invalid-query}
+                                                     (cond-> {:driver driver
+                                                              :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                                                              :params params
+                                                              :type   driver-api/qp.error-type.invalid-query}
+                                                       (driver/query-canceled? driver e)
+                                                       (assoc :query/query-canceled? true))
                                                      e))))]
          (let [rsmeta           (.getMetaData rs)
                results-metadata {:cols (column-metadata driver rsmeta)}]
            (try (respond results-metadata (reducible-rows driver rs rsmeta (driver-api/canceled-chan)))
-                ;; Following cancels the statment on the dbms side.
+                ;; Following cancels the statement on the dbms side.
                 ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
-                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
+                ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
                 ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
                 ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
                 (finally
@@ -867,11 +882,11 @@
                       (.executeUpdate stmt sql))}))
 
 (defmethod driver/execute-raw-queries! :sql-jdbc
-  [driver connection-details queries]
+  [driver conn-spec queries]
   (try
     (do-with-connection-with-options
      driver
-     connection-details
+     conn-spec
      {:write? true}
      (fn [^Connection conn]
        (.setAutoCommit conn false)

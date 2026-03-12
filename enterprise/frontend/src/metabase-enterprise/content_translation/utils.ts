@@ -1,10 +1,19 @@
 import * as I from "icepick";
 import { useCallback, useMemo } from "react";
+import { P, match } from "ts-pattern";
 import _ from "underscore";
 
+import { useLocale } from "metabase/common/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { isCartesianChart } from "metabase/visualizations";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type { DictionaryArray, Series } from "metabase-types/api";
+import * as Lib from "metabase-lib";
+import type {
+  DictionaryArray,
+  MaybeTranslatedSeries,
+  RowValue,
+  Series,
+} from "metabase-types/api";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
@@ -43,8 +52,11 @@ export const translateContentString: TranslateContentStringFunction = (
     return msgid;
   }
 
+  const lowerCaseMsgId = msgid.toLowerCase();
+
   const msgstr = dictionary?.find(
-    (row) => row.locale === locale && row.msgid === msgid,
+    (row) =>
+      row.locale === locale && row.msgid.toLowerCase() === lowerCaseMsgId,
   )?.msgstr;
 
   if (!msgstr || !msgstr.trim()) {
@@ -54,33 +66,110 @@ export const translateContentString: TranslateContentStringFunction = (
   return msgstr;
 };
 
+/**
+ * Translates a column display name by parsing it into translatable and static
+ * parts, translating only the translatable parts, and reassembling.
+ *
+ * Parsing is done on the CLJ side via `Lib.parseColumnDisplayNameParts` which
+ * handles aggregations, joins, implicit joins, temporal buckets, filters,
+ * compound filters, binning, and RTL/wrapped locale patterns.
+ *
+ * If parsing yields no actual translations (e.g. the column name itself has no
+ * entry in the dictionary), falls back to translating the whole string via tc().
+ *
+ * The `locale` field used for caching on the CLJS side
+ *
+ * @example
+ * translateColumnDisplayName({ displayName: "Sum of Total", tc, locale: "en" })
+ * // => "Sum of " + tc("Total")
+ * translateColumnDisplayName({ displayName: "Products → Created At: Month", tc, locale: "en" })
+ * // => tc("Products") + " → " + tc("Created At") + ": " + "Month"
+ */
+export const translateColumnDisplayName = ({
+  displayName,
+  tc,
+  locale,
+}: {
+  displayName: string;
+  tc: ContentTranslationFunction;
+  locale: string;
+}): string => {
+  if (!hasTranslations(tc)) {
+    return displayName;
+  }
+
+  const parts = Lib.parseColumnDisplayNameParts(displayName, locale);
+
+  let anyTranslated = false;
+  const translated = parts.map((part) => {
+    if (part.type === "translatable") {
+      const result = tc(part.value);
+
+      if (result !== part.value) {
+        anyTranslated = true;
+      }
+
+      return result;
+    }
+
+    return part.value;
+  });
+
+  // Fall back to translating the whole string if no part was individually
+  // translated — covers mis-parsing or simply missing dictionary entries.
+  return anyTranslated ? translated.join("") : tc(displayName);
+};
+
 const isRecord = (obj: unknown): obj is Record<string, unknown> =>
   _.isObject(obj) && Object.keys(obj).every((key) => typeof key === "string");
 
 /** Walk through obj and translate any display name fields */
-export const translateDisplayNames = <T>(
-  obj: T,
-  tc: ContentTranslationFunction,
+export const translateDisplayNames = <T>({
+  obj,
+  tc,
+  locale,
   fieldsToTranslate = ["display_name", "displayName"],
-): T => {
+}: {
+  obj: T;
+  tc: ContentTranslationFunction;
+  locale: string;
+  fieldsToTranslate?: string[];
+}): T => {
   if (!hasTranslations(tc)) {
     return obj;
   }
-  const traverse = (o: T): T => {
-    if (Array.isArray(o)) {
-      return o.map((item) => traverse(item)) as T;
+
+  const traverse = (element: T): T => {
+    if (Array.isArray(element)) {
+      return element.map((item) => traverse(item)) as T;
     }
-    if (isRecord(o)) {
-      return Object.entries(o).reduce((acc, [key, value]) => {
-        const newValue =
-          fieldsToTranslate.includes(key as string) && typeof value === "string"
-            ? tc(value)
-            : traverse(value as T);
+
+    if (isRecord(element)) {
+      return Object.entries(element).reduce((acc, [key, value]) => {
+        const shouldTranslate =
+          fieldsToTranslate.includes(key as string) &&
+          typeof value === "string";
+
+        // We can't detect if an element has a special pattern (aggregation, binning, temporal bucket) or not here.
+        // We can't rely on the `source` field as for cases when a question containing aggregations is a base for another question,
+        // the `source` field contains the `fields` value, not the `aggregation` one.
+        // As the solution, we always try to translate the display name using pattern matching,
+        // and inside `translateColumnDisplayName` we fallback to regular tc() call if no pattern is matched.
+        const newValue = shouldTranslate
+          ? translateColumnDisplayName({
+              displayName: value as string,
+              tc,
+              locale,
+            })
+          : traverse(value as T);
+
         return I.assoc(acc, key, newValue);
-      }, o);
+      }, element);
     }
-    return o;
+
+    return element;
   };
+
   return traverse(obj);
 };
 
@@ -116,7 +205,7 @@ export const useTranslateFieldValuesInHoveredObject = (
 export const translateFieldValuesInSeries = (
   series: Series,
   tc: ContentTranslationFunction,
-) => {
+): MaybeTranslatedSeries => {
   if (!hasTranslations(tc)) {
     return series;
   }
@@ -124,12 +213,68 @@ export const translateFieldValuesInSeries = (
     if (!singleSeries.data) {
       return singleSeries;
     }
-    const translatedRows = singleSeries.data.rows.map((row) =>
-      row.map((value) => tc(value)),
-    );
+    const untranslatedRows = singleSeries.data.rows.concat();
+
+    const defaultFn = () => {
+      return singleSeries.data.rows.map((row) => row.map((value) => tc(value)));
+    };
+
+    const translatedRows: RowValue[][] = match(singleSeries.card?.display)
+      .with("pie", () => {
+        const pieRows =
+          singleSeries.card.visualization_settings?.["pie.rows"] ?? [];
+        const keyToNameMap = Object.fromEntries(
+          pieRows.map((row) => [row.key, row.name]),
+        );
+
+        // The pie chart relies on the rows to generate its legend,
+        // which is why we need to translate them too
+        // They're in the format of:
+        // [
+        //   ["Doohickey", 123],
+        //   ["Widget", 456],
+        //   ...
+        // ]
+        //
+        return singleSeries.data.rows.map((row) =>
+          row.map((value) => {
+            if (
+              typeof value === "string" &&
+              keyToNameMap[value] !== undefined
+            ) {
+              return tc(keyToNameMap[value]);
+            }
+            return tc(value);
+          }),
+        );
+      })
+      .with(P.when(isCartesianChart), () => {
+        // cartesian charts have series settings that can provide display names
+        // for fields, which we should translate if available
+        const seriesSettings =
+          singleSeries.card.visualization_settings?.series_settings ?? {};
+
+        return singleSeries.data.rows.map((row) =>
+          row.map((value) => {
+            if (
+              typeof value === "string" &&
+              seriesSettings[value]?.title !== undefined
+            ) {
+              return tc(seriesSettings[value].title);
+            }
+            return tc(value);
+          }),
+        );
+      })
+      .otherwise(defaultFn);
+
     return {
       ...singleSeries,
-      data: { ...singleSeries.data, rows: translatedRows },
+      data: {
+        ...singleSeries.data,
+        untranslatedRows,
+        rows: translatedRows,
+      },
     };
   });
 };
@@ -148,11 +293,17 @@ export const translateCardNames = (
 
 export const useTranslateSeries = (series: Series) => {
   const tc = useTranslateContent();
+  const { locale } = useLocale();
+
   return useMemo(() => {
     if (!hasTranslations(tc)) {
       return series;
     }
-    const withTranslatedDisplayNames = translateDisplayNames(series, tc);
+    const withTranslatedDisplayNames = translateDisplayNames({
+      obj: series,
+      tc,
+      locale,
+    });
 
     const withTranslatedCardNames = translateCardNames(
       withTranslatedDisplayNames,
@@ -166,7 +317,7 @@ export const useTranslateSeries = (series: Series) => {
     }
 
     return translateFieldValuesInSeries(withTranslatedCardNames, tc);
-  }, [series, tc]);
+  }, [series, tc, locale]);
 };
 
 /** Returns a function that can be used to sort user-generated strings in an

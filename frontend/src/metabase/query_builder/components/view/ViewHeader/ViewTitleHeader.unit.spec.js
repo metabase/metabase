@@ -3,11 +3,13 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import _ from "underscore";
 
+import { setupTableEndpoints } from "__support__/server-mocks";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import MetabaseSettings from "metabase/lib/settings";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
@@ -27,6 +29,7 @@ import { ViewTitleHeader } from "./ViewTitleHeader";
 console.warn = jest.fn();
 console.error = jest.fn();
 
+const ORDERS_TABLE = createOrdersTable();
 const PRODUCTS_TABLE = createProductsTable();
 const HIDDEN_ORDERS_TABLE = createOrdersTable({
   visibility_type: "hidden",
@@ -121,6 +124,8 @@ function setup({
 } = {}) {
   mockSettings(settings);
 
+  setupTableEndpoints(ORDERS_TABLE);
+  setupTableEndpoints(PRODUCTS_TABLE);
   setupGetUserKeyValueEndpoint({
     namespace: "user_acknowledgement",
     key: "turn_into_model_modal",
@@ -297,11 +302,13 @@ describe("ViewTitleHeader", () => {
       const { card, questionType } = testCase;
 
       describe(questionType, () => {
-        it("displays database and table names", () => {
+        it("displays database and table names", async () => {
           setup({ card });
 
-          expect(screen.getByText("Sample Database")).toBeInTheDocument();
-          expect(screen.getByText("Orders")).toBeInTheDocument();
+          expect(
+            await screen.findByText("Sample Database"),
+          ).toBeInTheDocument();
+          expect(await screen.findByText("Orders")).toBeInTheDocument();
         });
 
         it("offers to filter query results", () => {
@@ -422,11 +429,14 @@ describe("ViewTitleHeader", () => {
 });
 
 describe("ViewHeader | Ad-hoc GUI question", () => {
-  it("does not open details sidebar on table name click", () => {
+  it("does not open details sidebar on table name click", async () => {
     const { question, onOpenModal } = setupAdHoc();
-    const tableName = question.legacyQueryTable().displayName();
+    const table = question
+      .metadata()
+      .table(Lib.sourceTableOrCardId(question.query()));
+    const tableName = table.displayName();
 
-    fireEvent.click(screen.getByText(tableName));
+    fireEvent.click(await screen.findByText(tableName));
 
     expect(onOpenModal).not.toHaveBeenCalled();
   });

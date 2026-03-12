@@ -338,8 +338,8 @@
 
 (deftest clickhouse-native-query-with-uuid-filter-test
   (mt/test-driver :clickhouse
-    (let [uuid-1 (random-uuid)
-          uuid-2 (random-uuid)]
+    (let [uuid-1 #uuid "3127abff-e634-4114-a015-59893b49ae74"
+          uuid-2 #uuid "a65e1a3b-4710-4136-b5b7-63a747e17a5a"]
       (mt/dataset
         (mt/dataset-definition "uuid_filter_db"
                                [["uuid_filter_table"

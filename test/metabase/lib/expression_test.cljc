@@ -126,6 +126,17 @@
     (is (= "Date - 1 day"
            (lib/display-name (lib.tu/venues-query) -1 clause)))))
 
+(deftest ^:parallel datetime-subtract-names-test
+  (let [clause [:datetime-subtract
+                {}
+                (lib.tu/field-clause :checkins :date {:base-type :type/Date})
+                1
+                :day]]
+    (is (= "DATE_minus_1_day"
+           (lib/column-name (lib.tu/venues-query) -1 clause)))
+    (is (= "Date - 1 day"
+           (lib/display-name (lib.tu/venues-query) -1 clause)))))
+
 (deftest ^:parallel expression-reference-names-test
   (let [query (-> (lib.tu/venues-query)
                   (lib/expression "double-price"
@@ -758,3 +769,16 @@
   (testing "Should be able to create a :relative-datetime clause with one arg (:current)"
     (is (=? [:relative-datetime {:lib/uuid string?} :current]
             (lib.expression/relative-datetime :current)))))
+
+(deftest ^:parallel relative-datetime-raw-temporal-bucket-test
+  (are [clause expected] (= expected
+                            (lib/raw-temporal-bucket clause))
+    [:relative-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} 0 :month]
+    :month
+
+    [:relative-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} :current]
+    nil))
+
+(deftest ^:parallel absolute-datetime-raw-temporal-bucket-test
+  (is (= :day
+         (lib/raw-temporal-bucket [:absolute-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} "2025-09-08" :day]))))

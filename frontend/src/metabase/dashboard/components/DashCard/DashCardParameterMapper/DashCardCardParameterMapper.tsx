@@ -25,6 +25,7 @@ import type {
   DashboardCard,
   Parameter,
   ParameterTarget,
+  VirtualCard,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -52,15 +53,15 @@ const mapStateToProps = (
 };
 
 interface DashcardCardParameterMapperProps {
-  card: Card;
+  card: Card | VirtualCard;
   dashcard: DashboardCard;
-  editingParameter: Parameter | null | undefined;
-  target: ParameterTarget | null | undefined;
+  editingParameter?: Parameter | null | undefined;
+  target?: ParameterTarget | null | undefined;
   isMobile: boolean;
   // virtual cards will not have question
   question?: Question;
-  mappingOptions: ParameterMappingOption[];
-  isRecentlyAutoConnected: boolean;
+  mappingOptions?: ParameterMappingOption[];
+  isRecentlyAutoConnected?: boolean;
   editingParameterInlineDashcard?: DashboardCard;
   compact?: boolean;
 }
@@ -72,8 +73,8 @@ export function DashCardCardParameterMapper({
   target,
   isMobile,
   question,
-  mappingOptions,
-  isRecentlyAutoConnected,
+  mappingOptions = [],
+  isRecentlyAutoConnected = false,
   editingParameterInlineDashcard,
   compact,
 }: DashcardCardParameterMapperProps) {
@@ -97,14 +98,24 @@ export function DashCardCardParameterMapper({
   const shouldShowAutoConnectHint =
     isRecentlyAutoConnected && !!selectedMappingOption;
 
+  const additionalActionParametersContent =
+    target && isParameterVariableTarget(target) && isAction
+      ? editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
+        ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+        : t`Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+      : undefined;
+
+  const shouldShowActionParametersWarningInTooltip =
+    isMobile || dashcard.size_y * dashcard.size_x <= 30 || dashcard.size_x < 4;
+
   return (
     <Flex
       direction="column"
       align="center"
       w="100%"
-      p="xs"
       pos="relative"
       my={!isMobile && dashcard.size_y < 2 ? "0" : "0.5rem"}
+      py="lg"
     >
       {hasSeries && (
         <Box maw="100px" mb="sm" fz="0.83em" className={S.CardLabel}>
@@ -127,6 +138,11 @@ export function DashCardCardParameterMapper({
         shouldShowAutoConnectHint={shouldShowAutoConnectHint}
         layoutHeight={layoutHeight}
         compact={compact}
+        additionalActionParametersContent={
+          (shouldShowActionParametersWarningInTooltip &&
+            additionalActionParametersContent) ||
+          undefined
+        }
       />
       <Transition
         mounted={shouldShowAutoConnectHint && layoutHeight > 3}
@@ -141,7 +157,7 @@ export function DashCardCardParameterMapper({
               mt="sm"
               align="center"
               pos="absolute"
-              bottom={-20}
+              bottom={0}
               style={styles}
             >
               <Icon name="sparkles" size="16" />
@@ -151,19 +167,16 @@ export function DashCardCardParameterMapper({
                 fw="bold"
                 fz="sm"
                 lh={1}
-                color="text-light"
+                color="text-tertiary"
               >{t`Auto-connected`}</Text>
             </Flex>
           );
         }}
       </Transition>
-      {target && isParameterVariableTarget(target) && isAction && (
-        <span className={S.Warning}>
-          {editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
-            ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
-            : t`Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
-        </span>
-      )}
+      {additionalActionParametersContent &&
+        !shouldShowActionParametersWarningInTooltip && (
+          <span className={S.Warning}>{additionalActionParametersContent}</span>
+        )}
     </Flex>
   );
 }

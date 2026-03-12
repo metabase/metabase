@@ -121,7 +121,7 @@
     metabase-embedded-session-cookie))
 
 (defn- use-permanent-cookies?
-  "Check if we should use permanent cookies for a given request, which are not cleared when a browser sesion ends."
+  "Check if we should use permanent cookies for a given request, which are not cleared when a browser session ends."
   [request]
   (if (session.settings/session-cookies)
     ;; Disallow permanent cookies if MB_SESSION_COOKIES is set
@@ -136,20 +136,39 @@
    {session-key :key
     session-type :type
     anti-csrf-token :anti_csrf_token
+    session-expires-at :expires_at
     :as _session-instance} :- [:map [:key [:or
                                            uuid?
                                            [:re u/uuid-regex]]]]
    request-time]
-  (let [cookie-options (merge
+  (let [;; Calculate max-age based on session expiration if present
+        max-age-seconds (when session-expires-at
+                          (let [expires-time (if (instance? java.time.OffsetDateTime session-expires-at)
+                                               session-expires-at
+                                               (t/offset-date-time session-expires-at))
+                                now (t/offset-date-time request-time)
+                                seconds-until-expiration (t/time-between now expires-time :seconds)]
+                            (when (pos? seconds-until-expiration)
+                              seconds-until-expiration)))
+        default-max-age-seconds (* 60 (config/config-int :max-session-age))
+        cookie-options (merge
                         (default-session-cookie-attributes session-type request)
                         {:http-only true}
-                        ;; If permanent cookies should be used, set the `Max-Age` directive; cookies with no
-                        ;; `Max-Age` and no `Expires` directives are session cookies, and are deleted when the
-                        ;; browser is closed.
-                        ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#define_the_lifetime_of_a_cookie
-                        ;; max-session age-is in minutes; Max-Age= directive should be in seconds
-                        (when (use-permanent-cookies? request)
-                          {:max-age (* 60 (config/config-int :max-session-age))}))]
+                        ;; If session has expires_at, use it to calculate max-age
+                        ;; This overrides permanent cookie settings
+                        (cond
+                          ;; Session expires_at takes precedence
+                          max-age-seconds
+                          {:max-age (min max-age-seconds default-max-age-seconds)}
+
+                          ;; Otherwise use permanent cookies if requested
+                          ;; If permanent cookies should be used, set the `Max-Age` directive; cookies with no
+                          ;; `Max-Age` and no `Expires` directives are session cookies, and are deleted when the
+                          ;; browser is closed.
+                          ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#define_the_lifetime_of_a_cookie
+                          ;; max-session age-is in minutes; Max-Age= directive should be in seconds
+                          (use-permanent-cookies? request)
+                          {:max-age default-max-age-seconds}))]
     (when (and (= (request.settings/session-cookie-samesite) :none) (not (request.util/https? request)))
       (log/warn
        (str "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection."

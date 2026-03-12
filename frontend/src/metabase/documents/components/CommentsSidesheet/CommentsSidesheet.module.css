@@ -1,0 +1,34 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.content {
+  &:not([data-css-specificity-hack="🤷‍♀️"]) {
+    position: fixed;
+    height: 100dvh;
+    max-height: 100dvh;
+    inset-inline-end: 0;
+    border-radius: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    box-shadow:
+      -2px 0 4px -2px rgba(16, 24, 40, 0.06),
+      -4px 0 8px -2px rgba(16, 24, 40, 0.1);
+  }
+}
+
+.tabsList {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: var(--mb-color-background-primary);
+}
+
+.tabPanel {
+  height: calc(100dvh - 160px);
+  overflow-y: auto;
+}

@@ -6,7 +6,7 @@ import {
   EDIT_QUESTION,
   NAVIGATE_TO_NEW_CARD,
 } from "metabase/dashboard/actions";
-import TimelineEvents from "metabase/entities/timeline-events";
+import { TimelineEvents } from "metabase/entities/timeline-events";
 import { copy } from "metabase/lib/utils";
 
 import {
@@ -69,8 +69,8 @@ import {
 } from "./actions";
 import {
   CLOSED_NATIVE_EDITOR_SIDEBARS,
-  DEFAULT_DASHBOARD_STATE,
   DEFAULT_LOADING_CONTROLS,
+  DEFAULT_PARENT_ENTITY_STATE,
   DEFAULT_QUERY_STATUS,
   DEFAULT_UI_CONTROLS,
   UI_CONTROLS_SIDEBAR_DEFAULTS,
@@ -270,6 +270,7 @@ export const uiControls = handleActions(
     [onOpenQuestionInfo]: (state) =>
       setUIControls(state, {
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingQuestionInfoSidebar: true,
         queryBuilderMode: "view",
       }),
@@ -470,23 +471,27 @@ export const currentState = handleActions(
   null,
 );
 
-export const parentDashboard = handleActions(
+export const parentEntity = handleActions(
   {
     [NAVIGATE_TO_NEW_CARD]: {
-      next: (state, { payload: { dashboardId } }) => ({
-        dashboardId,
+      next: (_state, { payload: { id, model, name } }) => ({
+        id,
+        model,
+        name,
         isEditing: false,
       }),
     },
     [EDIT_QUESTION]: {
-      next: (state, { payload: { dashboardId } }) => ({
-        dashboardId,
+      next: (_state, { payload: { id, model, name } }) => ({
+        id,
+        model,
+        name,
         isEditing: true,
       }),
     },
-    [CLOSE_QB]: { next: () => DEFAULT_DASHBOARD_STATE },
+    [CLOSE_QB]: { next: () => DEFAULT_PARENT_ENTITY_STATE },
   },
-  DEFAULT_DASHBOARD_STATE,
+  DEFAULT_PARENT_ENTITY_STATE,
 );
 
 export const visibleTimelineEventIds = handleActions(

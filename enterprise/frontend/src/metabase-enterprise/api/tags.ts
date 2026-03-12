@@ -1,11 +1,34 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
-import { TAG_TYPES } from "metabase/api/tags";
-import type {
-  Transform,
-  TransformJob,
-  TransformRun,
-  TransformTag,
+import type { TagType } from "metabase/api/tags";
+import {
+  TAG_TYPES,
+  provideCollectionTags,
+  provideDatabaseTags,
+  provideFieldListTags,
+  provideTableTags,
+  provideUserTags,
+} from "metabase/api/tags";
+import {
+  type CardDependencyNode,
+  DEPENDENCY_TYPES,
+  type DashboardDependencyNode,
+  type DependencyGraph,
+  type DependencyNode,
+  type DocumentDependencyNode,
+  type ExternalTransform,
+  type MeasureDependencyNode,
+  type PythonLibrary,
+  type ReplaceSourceRun,
+  type SandboxDependencyNode,
+  type SegmentDependencyNode,
+  type SnippetDependencyNode,
+  type SupportAccessGrant,
+  type TableDependencyNode,
+  type TransformDependencyNode,
+  type Workspace,
+  type WorkspaceAllowedDatabase,
+  type WorkspaceItem,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -15,14 +38,26 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "gsheets-status",
-  "document",
-  "transform",
-  "transform-tag",
-  "transform-job",
-  "transform-run",
+  "sandbox",
+  "workspace-transforms",
+  "workspace-transform",
+  "workspace-tables",
+  "git-tree",
+  "git-file-content",
+  "collection-dirty-entities",
+  "collection-is-dirty",
+  "remote-sync-branches",
+  "remote-sync-current-task",
+  "remote-sync-has-remote-changes",
+  "replace-source-run",
+  "python-transform-library",
+  "workspace",
+  "support-access-grant",
+  "support-access-grant-current",
+  "library-collection",
 ] as const;
 
-export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
+export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
 
 export function tag(
   type: EnterpriseTagType,
@@ -50,53 +85,204 @@ export function invalidateTags(
   return !error ? tags : [];
 }
 
-export function provideTransformTags(
-  transform: Transform,
+export function provideWorkspacesTags(
+  workspaces: Workspace[],
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("transform", transform.id)];
+  return [listTag("workspace"), ...workspaces.flatMap(provideWorkspaceTags)];
 }
 
-export function provideTransformListTags(
-  transforms: Transform[],
+export function provideWorkspaceTags(
+  workspace: Workspace | WorkspaceItem,
 ): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform"), ...transforms.flatMap(provideTransformTags)];
+  return [idTag("workspace", workspace.id)];
 }
 
-export function provideTransformRunTags(
-  run: TransformRun,
+export function provideExternalTransformTags(
+  transform: ExternalTransform,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("external-transform", transform.id)];
+}
+
+export function provideExternalTransformListTags(
+  transforms: ExternalTransform[],
 ): TagDescription<EnterpriseTagType>[] {
   return [
-    idTag("transform-run", run.id),
-    ...(run.transform ? provideTransformTags(run.transform) : []),
+    listTag("external-transform"),
+    ...transforms.flatMap(provideExternalTransformTags),
   ];
 }
 
-export function provideTransformRunListTags(
-  runs: TransformRun[],
+export function providePythonLibraryTags(
+  library: PythonLibrary,
 ): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform-run"), ...runs.flatMap(provideTransformRunTags)];
+  return [idTag("python-transform-library", library.path)];
 }
 
-export function provideTransformTagTags(
-  tag: TransformTag,
+function provideCardDependencyNodeTags(
+  node: CardDependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("transform-tag", tag.id)];
+  return [
+    idTag("card", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data["last-edit-info"] != null
+      ? provideUserTags(node.data["last-edit-info"])
+      : []),
+    ...(node.data.collection != null
+      ? provideCollectionTags(node.data.collection)
+      : []),
+    ...(node.data.dashboard != null
+      ? [idTag("dashboard", node.data.dashboard.id)]
+      : []),
+  ];
 }
 
-export function provideTransformTagListTags(
-  tags: TransformTag[],
+function provideTableDependencyNodeTags(
+  node: TableDependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
+  return [
+    idTag("table", node.id),
+    ...(node.data.db != null ? provideDatabaseTags(node.data.db) : []),
+    ...(node.data.fields != null ? provideFieldListTags(node.data.fields) : []),
+  ];
 }
 
-export function provideTransformJobTags(
-  job: TransformJob,
+function provideTransformDependencyNodeTags(
+  node: TransformDependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("transform-job", job.id)];
+  return [
+    idTag("transform", node.id),
+    ...(node.data.table != null ? provideTableTags(node.data.table) : []),
+  ];
 }
 
-export function provideTransformJobListTags(
-  jobs: TransformJob[],
+function provideSnippetDependencyNodeTags(
+  node: SnippetDependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
-  return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
+  return [idTag("snippet", node.id)];
+}
+
+function provideDashboardDependencyNodeTags(
+  node: DashboardDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("dashboard", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data["last-edit-info"] != null
+      ? provideUserTags(node.data["last-edit-info"])
+      : []),
+    ...(node.data.collection != null
+      ? provideCollectionTags(node.data.collection)
+      : []),
+  ];
+}
+
+function provideDocumentDependencyNodeTags(
+  node: DocumentDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("document", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.collection != null
+      ? provideCollectionTags(node.data.collection)
+      : []),
+  ];
+}
+
+function provideSandboxDependencyNodeTags(
+  node: SandboxDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("sandbox", node.id),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
+function provideSegmentDependencyNodeTags(
+  node: SegmentDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("segment", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
+function provideMeasureDependencyNodeTags(
+  node: MeasureDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("measure", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
+export function provideDependencyNodeTags(
+  node: DependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  switch (node.type) {
+    case "card":
+      return provideCardDependencyNodeTags(node);
+    case "table":
+      return provideTableDependencyNodeTags(node);
+    case "transform":
+      return provideTransformDependencyNodeTags(node);
+    case "snippet":
+      return provideSnippetDependencyNodeTags(node);
+    case "dashboard":
+      return provideDashboardDependencyNodeTags(node);
+    case "document":
+      return provideDocumentDependencyNodeTags(node);
+    case "sandbox":
+      return provideSandboxDependencyNodeTags(node);
+    case "segment":
+      return provideSegmentDependencyNodeTags(node);
+    case "measure":
+      return provideMeasureDependencyNodeTags(node);
+    case "workspace-transform":
+      return [idTag("workspace-transform", node.id)];
+  }
+}
+
+export function provideDependencyNodeListTags(nodes: DependencyNode[]) {
+  return [
+    ...DEPENDENCY_TYPES.map(listTag),
+    ...nodes.flatMap(provideDependencyNodeTags),
+  ];
+}
+
+export function provideDependencyGraphTags(
+  graph: DependencyGraph,
+): TagDescription<EnterpriseTagType>[] {
+  return provideDependencyNodeListTags(graph.nodes);
+}
+
+export function provideSupportAccessGrantTags(
+  grant: SupportAccessGrant,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("support-access-grant", grant.id)];
+}
+
+export function provideSupportAccessGrantListTags(
+  grants: SupportAccessGrant[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("support-access-grant"),
+    ...grants.flatMap(provideSupportAccessGrantTags),
+  ];
+}
+
+export function provideWorkspaceAllowedDatabaseTags(
+  databases: WorkspaceAllowedDatabase[],
+) {
+  return [
+    listTag("database"),
+    ...databases.map((db) => idTag("database", db.id)),
+  ];
+}
+
+export function provideReplaceSourceRunTags(
+  run: ReplaceSourceRun,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("replace-source-run", run.id)];
 }
