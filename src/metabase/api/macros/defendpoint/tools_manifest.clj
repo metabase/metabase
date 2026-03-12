@@ -14,7 +14,10 @@
    [malli.core :as mc]
    [malli.json-schema :as mjs]
    [metabase.api.macros :as api.macros]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ Description rewriting -------------------------------------------------
 
@@ -188,9 +191,9 @@
                            (:properties query-parts)
                            (:properties body-parts))
         all-req     (into [] (comp cat (distinct))
-                         [(:required route-parts)
-                          (:required query-parts)
-                          (:required body-parts)])]
+                          [(:required route-parts)
+                           (:required query-parts)
+                           (:required body-parts)])]
     (cond
       (and body-full (empty? all-props)) body-full
       (seq all-props)                    (cond-> {:type "object" :properties all-props}
@@ -232,7 +235,7 @@
         task-support (:task-support tool-md)]
     (cond-> {:name        tool-name
              :description description
-             :endpoint    {:method (str/upper-case (name method))
+             :endpoint    {:method (u/upper-case-en (name method))
                            :path   full-path}}
       input-schema      (assoc :inputSchema input-schema)
       resp-schema       (assoc :responseSchema resp-schema)

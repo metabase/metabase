@@ -160,7 +160,8 @@
 (api.macros/defendpoint :delete "/v1/test/:id"
   "Delete a test resource."
   {:tool {}}
-  [{:keys [id]} :- [:map [:id :int]]]
+  [#_{:clj-kondo/ignore [:unused-binding]}
+   {:keys [id]} :- [:map [:id :int]]]
   nil)
 
 ;; 4. GET with query params (including tool/description) and response schema
@@ -169,11 +170,12 @@
   "Search for things."
   {:tool {:name "test_search"}}
   [_route-params
+   #_{:clj-kondo/ignore [:unused-binding]}
    {:keys [q limit]} :- [:map
-                          [:q :string]
-                          [:limit {:optional true}
-                           [:int {:description      "Max results"
-                                  :tool/description "Maximum number of results to return"}]]]]
+                         [:q :string]
+                         [:limit {:optional true}
+                          [:int {:description      "Max results"
+                                 :tool/description "Maximum number of results to return"}]]]]
   {:results []})
 
 ;; 5. POST with route + body params, task-support, and registered schema in response
@@ -184,6 +186,7 @@
           :task-support :parallel}}
   [{:keys [id]} :- [:map [:id :int]]
    _query-params
+   #_{:clj-kondo/ignore [:unused-binding]}
    body :- [:map [:action :string]]]
   {:id id :status "active"})
 
@@ -192,6 +195,7 @@
   "Update a test resource."
   {:tool {}}
   [{:keys [id]} :- [:map [:id :int]]
+   #_{:clj-kondo/ignore [:unused-binding]}
    {:keys [dry-run]} :- [:map [:dry-run {:optional true} [:maybe :boolean]]]
    body :- [:map [:name :string]]]
   {:id id :name (:name body)})
