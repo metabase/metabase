@@ -124,7 +124,7 @@ jobs:
       MB_MYSQL_TEST_USER: root
     services:
       mariadb:
-        image: image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
+        image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
         ports:
           - "3306:3306"
         env:
