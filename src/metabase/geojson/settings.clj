@@ -1,16 +1,13 @@
 (ns metabase.geojson.settings
   (:require
    [clojure.java.io :as io]
-   [clojure.set :as set]
-   [clojure.string :as str]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
-   (java.net InetAddress URI URL)
-   (java.nio.file Paths)))
+   (java.net InetAddress URI URL)))
 
 (set! *warn-on-reflection* true)
 
@@ -61,40 +58,6 @@
   []
   (config/config-bool :mb-allow-classpath-geojson))
 
-(def ^:private user-configurable-classpath-prefixes
-  #{"geojson/custom/"})
-
-(def ^:private internal-use-classpath-prefixes
-  #{"app/assets/geojson/"})
-
-(def ^:private allowed-classpath-prefixes
-  "Prefixes allowed for classpath GeoJSON resources."
-  (set/union
-   user-configurable-classpath-prefixes
-   internal-use-classpath-prefixes))
-
-(defn- normalize-path
-  [path]
-  (str (.normalize (Paths/get path (into-array String [])))))
-
-(defn allowed-classpath-resource?
-  "Checks if a classpath resource path is allowed. The path must be under one of the [[allowed-classpath-prefixes]]
-   with no path traversal, and the resource must exist."
-  [path]
-  (let [normalized (normalize-path path)]
-    (and (some #(str/starts-with? normalized %) allowed-classpath-prefixes)
-         (not (str/includes? normalized ".."))
-         (some? (io/resource normalized)))))
-
-(defn- valid-geojson-classpath-resource?
-  "Checks if a URL string is a valid classpath resource for custom GeoJSON.
-   Must be under the geojson/custom/ prefix with no path traversal."
-  [url]
-  (let [normalized (normalize-path url)]
-    (and (some #(str/starts-with? normalized %) user-configurable-classpath-prefixes)
-         (not (str/includes? normalized ".."))
-         (some? (io/resource normalized)))))
-
 (defn invalid-location-msg
   "Error message when a GeoJSON URL is invalid."
   []
@@ -134,10 +97,10 @@
 
 (defn valid-geojson-url?
   "Whether GeoJSON `url` points to a valid resource. Does not check whether the contents are valid GeoJSON or not.
-   Classpath resources are only allowed when MB_ALLOW_CLASSPATH_GEOJSON is true, and must be under `geojson/custom/`."
+   Classpath resources are only allowed when MB_ALLOW_CLASSPATH_GEOJSON is true."
   [url]
   (or (and (allow-classpath-geojson?)
-           (valid-geojson-classpath-resource? url))
+           (io/resource url))
       (valid-url? url)))
 
 (defn- valid-geojson-urls?

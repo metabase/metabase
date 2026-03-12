@@ -1,6 +1,5 @@
 (ns metabase.geojson.settings-test
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.geojson.settings :as geojson.settings]
@@ -77,22 +76,12 @@
 (deftest classpath-geojson-env-var-test
   (testing "When MB_ALLOW_CLASSPATH_GEOJSON is true"
     (mt/with-temp-env-var-value! [mb-allow-classpath-geojson "true"]
-      (let [valid? #'geojson.settings/validate-geojson
-            make-geojson (fn [url] {:deadb33f {:name "Test" :url url :region_key nil :region_name nil}})]
-        (testing "classpath resources under geojson/custom/ are accepted"
-          (with-redefs [io/resource (constantly (Object.))]
-            (let [geojson (make-geojson "geojson/custom/my-map.json")]
-              (is (valid? geojson geojson)))))
-        (testing "classpath resources outside geojson/custom/ are rejected"
-          (let [geojson (make-geojson "c3p0.properties")]
-            (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson)))))
-        (testing "path traversal is blocked"
-          (let [geojson (make-geojson "geojson/custom/../../etc/passwd")]
-            (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson))))))))
+      (testing "classpath resources are accepted"
+        (let [geojson {:deadb33f {:name "Test" :url "c3p0.properties" :region_key nil :region_name nil}}]
+          (is (#'geojson.settings/validate-geojson geojson geojson))))))
   (testing "When MB_ALLOW_CLASSPATH_GEOJSON is not set, classpath resources are rejected"
-    (let [valid? #'geojson.settings/validate-geojson
-          geojson {:deadb33f {:name "Test" :url "geojson/custom/my-map.json" :region_key nil :region_name nil}}]
-      (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson))))))
+    (let [geojson {:deadb33f {:name "Test" :url "c3p0.properties" :region_key nil :region_name nil}}]
+      (is (thrown? clojure.lang.ExceptionInfo (#'geojson.settings/validate-geojson geojson geojson))))))
 
 (deftest custom-geojson-disallow-overriding-builtins-test
   (testing "We shouldn't let people override the builtin GeoJSON and put weird stuff in there; ignore changes to them"

@@ -1,11 +1,9 @@
 (ns metabase.geojson.api-test
   (:require
    [clj-http.fake :as fake]
-   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.geojson.api :as api.geojson]
    [metabase.geojson.settings :as geojson.settings]
-   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -95,28 +93,17 @@
                       "URLs referring to hosts that supply internal hosting metadata are prohibited.")
                  (mt/user-http-request :crowberto :put 400 "setting/custom-geojson"
                                        {:value resource-geojson}))))))
-    (testing "it accepts classpath resources under geojson/custom/ when MB_ALLOW_CLASSPATH_GEOJSON is true"
-      (mt/with-temp-env-var-value! [mb-allow-classpath-geojson "true"]
-        (let [resource-geojson {(first (keys test-custom-geojson))
-                                (assoc (first (vals test-custom-geojson))
-                                       :url "geojson/custom/test.json")}]
-          (with-redefs [io/resource (fn [path]
-                                      (when (= path "geojson/custom/test.json")
-                                        (.toURL (URI. "file:///tmp/test.json"))))]
-            (is (= (merge (@#'geojson.settings/builtin-geojson) resource-geojson)
-                   (u/auto-retry 3
-                     (mt/with-temporary-setting-values [custom-geojson nil]
-                       (mt/user-http-request :crowberto :put 204 "setting/custom-geojson"
-                                             {:value resource-geojson})
-                       (mt/user-http-request :crowberto :get 200 "setting/custom-geojson")))))))))
-    (testing "it rejects classpath resources outside geojson/custom/ even with env var"
+    (testing "it accepts classpath resources when MB_ALLOW_CLASSPATH_GEOJSON is true"
       (mt/with-temp-env-var-value! [mb-allow-classpath-geojson "true"]
         (let [resource-geojson {(first (keys test-custom-geojson))
                                 (assoc (first (vals test-custom-geojson))
                                        :url "c3p0.properties")}]
-          (mt/with-temporary-setting-values [custom-geojson nil]
-            (is (string? (mt/user-http-request :crowberto :put 400 "setting/custom-geojson"
-                                               {:value resource-geojson})))))))))
+          (is (= (merge (@#'geojson.settings/builtin-geojson) resource-geojson)
+                 (u/auto-retry 3
+                   (mt/with-temporary-setting-values [custom-geojson nil]
+                     (mt/user-http-request :crowberto :put 204 "setting/custom-geojson"
+                                           {:value resource-geojson})
+                     (mt/user-http-request :crowberto :get 200 "setting/custom-geojson"))))))))))
 
 (deftest ^:parallel url-proxy-endpoint-test
   (with-geojson-mocks
@@ -198,21 +185,6 @@
         (testing "fetching a broken URL should fail"
           (is (= "GeoJSON URL failed to load"
                  (mt/user-http-request :rasta :get 400 "geojson/middle-earth"))))))))
-
-(deftest pre-existing-classpath-resource-geojson-test
-  (testing "A classpath-resource-based GeoJSON saved before this changeset should still work after upgrade,
-            even without MB_ALLOW_CLASSPATH_GEOJSON set."
-    ;; Simulate a pre-existing DB entry by writing directly to the setting, bypassing validation.
-    ;; This is what the DB would look like for an instance that saved a classpath resource before the upgrade.
-    (let [legacy-resource-path "c3p0.properties"
-          legacy-geojson      {:legacy-map {:name        "Legacy Map"
-                                            :url         legacy-resource-path
-                                            :region_key  nil
-                                            :region_name nil}}]
-      (mt/with-temporary-setting-values [custom-geojson nil]
-        (setting/set-value-of-type! :json :custom-geojson legacy-geojson)
-        (testing "The key endpoint should serve the pre-existing classpath resource"
-          (is (some? (mt/user-http-request :rasta :get 200 "geojson/legacy-map"))))))))
 
 (deftest disable-custom-geojson-test
   (testing "Should be able to disable GeoJSON proxying endpoints by env var"
