@@ -1,6 +1,5 @@
 import type { Row } from "@tanstack/react-table";
 import {
-  type ComponentProps,
   type PropsWithChildren,
   useCallback,
   useEffect,
@@ -37,7 +36,6 @@ import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import {
-  Box,
   Card,
   EntityNameCell,
   Flex,
@@ -45,7 +43,6 @@ import {
   Icon,
   Stack,
   TextInput,
-  Tooltip,
   TreeTable,
   type TreeTableColumnDef,
   TreeTableSkeleton,
@@ -195,16 +192,6 @@ export const TransformListPage = ({
   );
 
   const columnDefs = useMemo<TreeTableColumnDef<TreeNode>[]>(() => {
-    type EllipsifiedProps = ComponentProps<
-      typeof EntityNameCell
-    >["ellipsifiedProps"];
-    const unreadableTransformEllipsifiedProps: EllipsifiedProps = {
-      alwaysShowTooltip: true,
-      tooltipProps: {
-        openDelay: 300,
-        label: t`Sorry, you don’t have permission to see that.`,
-      },
-    };
     return [
       {
         id: "name",
@@ -213,40 +200,12 @@ export const TransformListPage = ({
         minWidth: 280,
         maxAutoWidth: 800,
         enableSorting: true,
-        cell: ({ row }) => {
-          const isLibraryWithoutFeature =
-            row.original.nodeType === "library" && !hasPythonTransformsFeature;
-          const warningTooltip = row.original.transformId
-            ? warningsByTransformId.get(row.original.transformId)
-            : undefined;
-          const nameCell = (
-            <EntityNameCell
-              data-testid="tree-node-name"
-              icon={warningTooltip ? "warning" : row.original.icon}
-              iconColor={
-                warningTooltip ? "warning" : getNodeIconColor(row.original)
-              }
-              name={row.original.name}
-              ellipsifiedProps={
-                isRowDisabled(row)
-                  ? unreadableTransformEllipsifiedProps
-                  : undefined
-              }
-            />
-          );
-          return (
-            <Group gap="sm" wrap="nowrap" miw={0}>
-              {warningTooltip ? (
-                <Tooltip label={warningTooltip} maw={300} multiline>
-                  <Box>{nameCell}</Box>
-                </Tooltip>
-              ) : (
-                nameCell
-              )}
-              {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
-            </Group>
-          );
-        },
+        cell: ({ row }) =>
+          getNameCell({
+            row,
+            hasPythonTransformsFeature,
+            warningsByTransformId,
+          }),
       },
       {
         id: "owner",
@@ -421,3 +380,56 @@ export const TransformListPage = ({
     </PageContainer>
   );
 };
+
+function getNameCell({
+  row,
+  hasPythonTransformsFeature,
+  warningsByTransformId,
+}: {
+  row: Row<TreeNode>;
+  hasPythonTransformsFeature: boolean;
+  warningsByTransformId: Map<number, string>;
+}) {
+  const getTooltipProps = (message: string | undefined) => {
+    if (!message) {
+      return undefined;
+    }
+
+    return {
+      alwaysShowTooltip: true,
+      tooltipProps: {
+        openDelay: 300,
+        label: message,
+      },
+    };
+  };
+
+  const getWarningMessage = () => {
+    if (isRowDisabled(row)) {
+      return t`Sorry, you don’t have permission to see that.`;
+    }
+
+    if (row.original.transformId) {
+      return warningsByTransformId.get(row.original.transformId);
+    }
+    return undefined;
+  };
+
+  const isLibraryWithoutFeature =
+    row.original.nodeType === "library" && !hasPythonTransformsFeature;
+
+  const hasWarning = !!getWarningMessage();
+
+  return (
+    <Group gap="sm" wrap="nowrap" miw={0}>
+      <EntityNameCell
+        data-testid="tree-node-name"
+        icon={hasWarning ? "warning" : row.original.icon}
+        iconColor={hasWarning ? "warning" : getNodeIconColor(row.original)}
+        name={row.original.name}
+        ellipsifiedProps={{ ...getTooltipProps(getWarningMessage()) }}
+      />
+      {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
+    </Group>
+  );
+}
