@@ -1,7 +1,7 @@
 (ns metabase.oauth-server.api
   "Routes for the embedded OAuth/OIDC provider endpoints."
   (:require
-   [compojure.core :refer [GET context routes]]
+   [compojure.core :refer [GET POST context routes]]
    [metabase.oauth-server.core :as oauth-server]))
 
 (def ^:private not-found-response
@@ -16,4 +16,10 @@
            not-found-response))
      (GET "/jwks" request
        (or (oauth-server/jwks-handler request)
+           not-found-response))
+     (POST "/register" request
+       (or (oauth-server/dynamic-register-handler request)
+           not-found-response))
+     (GET "/register/:client-id" [client-id :as request]
+       (or (oauth-server/dynamic-client-read-handler request client-id)
            not-found-response)))))

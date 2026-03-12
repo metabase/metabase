@@ -22,9 +22,13 @@
             result (proto/register-client cs config)]
         (testing "register-client returns config with client-id"
           (is (= (:client-id config) (:client-id result))))
-        (testing "client secret is hashed, not stored in plaintext"
+        (testing "client secret is hashed and plaintext preserved in return value"
           (is (some? (:client-secret-hash result)))
-          (is (nil? (:client-secret result))))
+          (is (= "super-secret" (:client-secret result))))
+        (testing "get-client returns only the hash, not plaintext secret"
+          (let [fetched (proto/get-client cs (:client-id config))]
+            (is (some? (:client-secret-hash fetched)))
+            (is (nil? (:client-secret fetched)))))
         (testing "get-client returns the registered client"
           (let [fetched (proto/get-client cs (:client-id config))]
             (is (= (:client-id config) (:client-id fetched)))
@@ -99,6 +103,29 @@
           (let [fetched (proto/get-client cs (:client-id config))]
             (is (nil? (:client-secret-hash fetched)))
             (is (= "none" (:token-endpoint-auth-method fetched)))))))))
+
+(deftest client-store-registration-access-token-hashing-test
+  (mt/with-premium-features #{:metabot-v3}
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [cs     (store/create-client-store)
+            rat    "my-registration-access-token"
+            config {:client-id                 (str (random-uuid))
+                    :redirect-uris             ["https://example.com/callback"]
+                    :grant-types               ["authorization_code"]
+                    :response-types            ["code"]
+                    :scopes                    ["openid"]
+                    :registration-access-token rat}
+            result (proto/register-client cs config)]
+        (testing "register-client returns hash and preserves plaintext for response building"
+          (is (some? (:registration-access-token-hash result)))
+          (is (= rat (:registration-access-token result))))
+        (testing "get-client returns only the hash, not plaintext"
+          (let [fetched (proto/get-client cs (:client-id config))]
+            (is (some? (:registration-access-token-hash fetched)))
+            (is (nil? (:registration-access-token fetched)))))
+        (testing "stored hash verifies against original token"
+          (let [fetched (proto/get-client cs (:client-id config))]
+            (is (oidc-util/verify-client-secret rat (:registration-access-token-hash fetched)))))))))
 
 ;;; ----------------------------------------- AuthorizationCodeStore ---------------------------------------------------
 

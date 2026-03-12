@@ -5,6 +5,7 @@
    [metabase-enterprise.oauth-server.models.oauth-authorization-code]
    [metabase-enterprise.oauth-server.models.oauth-client]
    [metabase-enterprise.oauth-server.models.oauth-refresh-token]
+   [metabase.util :as u]
    [oidc-provider.protocol :as proto]
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2]))
@@ -13,73 +14,65 @@
 
 ;;; ------------------------------------------------- Helpers ----------------------------------------------------------
 
+(def ^:private client-db-columns
+  "DB columns to select/project for OAuthClient rows."
+  [:client_id :redirect_uris :grant_types :response_types :scopes :registration_type
+   :client_secret_hash :token_endpoint_auth_method :client_name :client_uri :logo_uri
+   :contacts :registration_access_token_hash])
+
+(defn- select-and-kebab-keys
+  "Select `ks` from `row`, convert keys to kebab-case, and remove nil values."
+  [row ks]
+  (-> (select-keys row ks)
+      (update-keys u/->kebab-case-en)
+      (->> (into {} (remove (comp nil? val))))))
+
+(defn- kebab->snake-keys
+  "Convert all keys in `m` from kebab-case to snake_case."
+  [m]
+  (update-keys m u/->snake_case_en))
+
 (defn- db-row->client-config
   "Convert a DB row from :model/OAuthClient to the protocol's ClientConfig shape."
   [row]
   (when row
-    (cond-> {:client-id                    (:client_id row)
-             :redirect-uris                (vec (:redirect_uris row))
-             :grant-types                  (vec (:grant_types row))
-             :response-types               (vec (:response_types row))
-             :scopes                       (vec (:scopes row))
-             :registration-type            (:registration_type row)}
-      (:client_secret_hash row)              (assoc :client-secret-hash (:client_secret_hash row))
-      (:token_endpoint_auth_method row)      (assoc :token-endpoint-auth-method (:token_endpoint_auth_method row))
-      (:client_name row)                     (assoc :client-name (:client_name row))
-      (:client_uri row)                      (assoc :client-uri (:client_uri row))
-      (:logo_uri row)                        (assoc :logo-uri (:logo_uri row))
-      (:contacts row)                        (assoc :contacts (vec (:contacts row)))
-      (:registration_access_token_hash row)  (assoc :registration-access-token-hash (:registration_access_token_hash row)))))
+    (select-and-kebab-keys row client-db-columns)))
 
 (defn- client-config->db-row
   "Convert a protocol ClientConfig map to DB column format for insert/update."
   [config]
-  (cond-> {:client_id         (:client-id config)
-           :redirect_uris     (:redirect-uris config)
-           :grant_types       (:grant-types config)
-           :response_types    (:response-types config)
-           :scopes            (:scopes config)
-           :registration_type (or (:registration-type config) "static")}
-    (contains? config :client-secret-hash)              (assoc :client_secret_hash (:client-secret-hash config))
-    (contains? config :token-endpoint-auth-method)      (assoc :token_endpoint_auth_method (:token-endpoint-auth-method config))
-    (contains? config :client-name)                     (assoc :client_name (:client-name config))
-    (contains? config :client-uri)                      (assoc :client_uri (:client-uri config))
-    (contains? config :logo-uri)                        (assoc :logo_uri (:logo-uri config))
-    (contains? config :contacts)                        (assoc :contacts (:contacts config))
-    (contains? config :registration-access-token-hash)  (assoc :registration_access_token_hash (:registration-access-token-hash config))))
+  (-> config
+      (update :registration-type #(or % "static"))
+      (select-keys (map u/->kebab-case-en client-db-columns))
+      kebab->snake-keys))
+
+(def ^:private auth-code-db-columns
+  [:user_id :client_id :redirect_uri :scope :nonce :expiry
+   :code_challenge :code_challenge_method :resource])
 
 (defn- db-row->auth-code
   "Convert a DB row from :model/OAuthAuthorizationCode to the protocol's map shape."
   [row]
   (when row
-    (cond-> {:user-id      (:user_id row)
-             :client-id    (:client_id row)
-             :redirect-uri (:redirect_uri row)
-             :scope        (vec (:scope row))
-             :nonce        (:nonce row)
-             :expiry       (:expiry row)}
-      (:code_challenge row)        (assoc :code-challenge (:code_challenge row))
-      (:code_challenge_method row) (assoc :code-challenge-method (:code_challenge_method row))
-      (:resource row)              (assoc :resource (vec (:resource row))))))
+    (select-and-kebab-keys row auth-code-db-columns)))
+
+(def ^:private access-token-db-columns
+  [:user_id :client_id :scope :expiry :resource])
 
 (defn- db-row->access-token
   "Convert a DB row from :model/OAuthAccessToken to the protocol's map shape."
   [row]
   (when row
-    (cond-> {:user-id   (:user_id row)
-             :client-id (:client_id row)
-             :scope     (vec (:scope row))
-             :expiry    (:expiry row)}
-      (:resource row) (assoc :resource (vec (:resource row))))))
+    (select-and-kebab-keys row access-token-db-columns)))
+
+(def ^:private refresh-token-db-columns
+  [:user_id :client_id :scope :resource])
 
 (defn- db-row->refresh-token
   "Convert a DB row from :model/OAuthRefreshToken to the protocol's map shape."
   [row]
   (when row
-    (cond-> {:user-id   (:user_id row)
-             :client-id (:client_id row)
-             :scope     (vec (:scope row))}
-      (:resource row) (assoc :resource (vec (:resource row))))))
+    (select-and-kebab-keys row refresh-token-db-columns)))
 
 ;;; ------------------------------------------------ ClientStore -------------------------------------------------------
 
@@ -92,15 +85,23 @@
   (register-client [_ client-config]
     (let [client-id    (or (:client-id client-config)
                            (str (java.util.UUID/randomUUID)))
-          secret-hash  (when-let [secret (:client-secret client-config)]
-                         (oidc-util/hash-client-secret secret))
+          secret       (:client-secret client-config)
+          rat          (:registration-access-token client-config)
+          secret-hash  (when secret (oidc-util/hash-client-secret secret))
+          rat-hash     (when rat (oidc-util/hash-client-secret rat))
           config       (-> client-config
                            (assoc :client-id client-id)
-                           (cond-> secret-hash (assoc :client-secret-hash secret-hash))
-                           (dissoc :client-secret))
+                           (cond-> secret-hash (assoc :client-secret-hash secret-hash)
+                                   rat-hash    (assoc :registration-access-token-hash rat-hash))
+                           (dissoc :client-secret :registration-access-token))
           row          (client-config->db-row config)]
       (t2/insert! :model/OAuthClient row)
-      config))
+      ;; Return config with plaintext values preserved for response building
+      ;; (e.g. handle-registration-request needs them for the wire response).
+      ;; These are NOT stored in the DB — only hashes are persisted.
+      (cond-> config
+        secret (assoc :client-secret secret)
+        rat    (assoc :registration-access-token rat))))
 
   (update-client [_ client-id updated-config]
     (let [existing (t2/select-one :model/OAuthClient :client_id client-id)]
