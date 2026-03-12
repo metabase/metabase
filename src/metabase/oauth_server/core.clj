@@ -15,3 +15,15 @@
   metabase-enterprise.oauth-server.api
   [_request]
   nil)
+
+(defenterprise dynamic-register-handler
+  "Handles dynamic client registration (RFC 7591), or returns nil if unavailable."
+  metabase-enterprise.oauth-server.api
+  [_request]
+  nil)
+
+(defenterprise dynamic-client-read-handler
+  "Handles client configuration read (RFC 7592), or returns nil if unavailable."
+  metabase-enterprise.oauth-server.api
+  [_request _client-id]
+  nil)
