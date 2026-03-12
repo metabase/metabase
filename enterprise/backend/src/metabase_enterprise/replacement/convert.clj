@@ -35,7 +35,7 @@
         transform  (transforms/create-transform!
                     {:name        transform-name
                      :description (:description card)
-                     :source      {:type  "query"
+                     :source      {:type  :query
                                    :query (:dataset_query card)}
                      :target      transform-target})
         _          (replacement-run/update-transform-id! run-id (:id transform))
