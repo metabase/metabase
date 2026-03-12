@@ -73,14 +73,6 @@
   position: relative;
   padding-left: var(--virtual-padding-left, 0);
   padding-right: var(--virtual-padding-right, 0);
-
-  &.active {
-    background-color: color-mix(
-      in srgb,
-      var(--mb-color-brand),
-      transparent 90%
-    );
-  }
 }
 
 .headerCell {

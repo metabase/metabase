@@ -48,14 +48,15 @@ export const DataGridRow = <TData,>({
     ? maybeVirtualRow
     : { row: maybeVirtualRow, virtualRow: undefined };
 
+  const dataIndex = virtualRow?.index ?? row.index;
+  const active = zoomedRowIndex === dataIndex;
+
   const rowPositionStyles = getRowPositionStyles(
     row,
     virtualRow,
     stickyElementsBackgroundColor,
+    active,
   );
-
-  const dataIndex = virtualRow?.index ?? row.index;
-  const active = zoomedRowIndex === dataIndex;
 
   return (
     <div
@@ -69,7 +70,6 @@ export const DataGridRow = <TData,>({
       className={cx(
         S.row,
         {
-          [S.active]: active,
           [S.withSeparator]: row.index === pinnedRowsCount - 1,
         },
         classNames?.row,

@@ -9,22 +9,38 @@ import {
 } from "../constants";
 import type { DataGridColumn } from "../types";
 
+const getActiveBackground = (base: string): string =>
+  `color-mix(in srgb, var(--mb-color-brand) 10%, ${base})`;
+
 export const getRowPositionStyles = <TData>(
   row: Row<TData>,
   virtualRow: VirtualItem | undefined,
   stickyElementsBackgroundColor: string,
+  active: boolean,
 ): React.CSSProperties => {
-  if (!virtualRow) {
-    return {};
-  }
   const pinnedPosition = row.getIsPinned();
+
+  const baseBackgroundColor = pinnedPosition
+    ? stickyElementsBackgroundColor
+    : "transparent";
+
+  const backgroundColor = active
+    ? getActiveBackground(baseBackgroundColor)
+    : baseBackgroundColor;
+
+  if (!virtualRow) {
+    return {
+      backgroundColor,
+    };
+  }
+
   if (pinnedPosition === "top") {
     return {
       position: "sticky",
       top: `${HEADER_HEIGHT + virtualRow.start + HEADER_BORDER_SIZE}px`,
       minHeight: `${virtualRow.size}px`,
       zIndex: PINNED_ROW_Z_INDEX,
-      backgroundColor: stickyElementsBackgroundColor,
+      backgroundColor,
     };
   }
   return {
@@ -33,6 +49,7 @@ export const getRowPositionStyles = <TData>(
     left: 0,
     minHeight: `${virtualRow.size}px`,
     transform: `translateY(${virtualRow.start}px)`,
+    backgroundColor,
   };
 };
 

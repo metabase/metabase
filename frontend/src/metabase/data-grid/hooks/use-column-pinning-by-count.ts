@@ -21,11 +21,13 @@ export const useColumnPinningByCount = ({
 }: UseColumnPinningByCountProps) => {
   const [isEnabled, setIsEnabled] = useState<boolean>(false);
 
-  const pinnedColumnSizes = useMemo(() => {
-    return columnOrder
-      .slice(0, pinnedColumnsCount)
-      .map((id) => columnSizingMap[id] ?? 0);
-  }, [columnOrder, pinnedColumnsCount, columnSizingMap]);
+  const pinnedColumnSizes = useMemo(
+    () =>
+      columnOrder
+        .slice(0, pinnedColumnsCount)
+        .map((id) => columnSizingMap[id] ?? 0),
+    [columnOrder, pinnedColumnsCount, columnSizingMap],
+  );
 
   const effectivePinnedColumnsCount = useItemsLimiter({
     containerRef: gridRef,
