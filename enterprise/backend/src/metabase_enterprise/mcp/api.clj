@@ -7,6 +7,7 @@
    [compojure.response :as compojure.response]
    [metabase-enterprise.mcp.tools :as mcp.tools]
    [metabase.api.common :as api]
+   [metabase.api.open-api :as open-api]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
@@ -258,20 +259,23 @@
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
-(defn handler
-  "Ring async handler for the MCP endpoint."
-  [request respond raise]
-  (let [user-id (resolve-user-id)]
-    (if (nil? user-id)
-      (respond (json-response 500 (jsonrpc-error nil -32603 "No authenticated user and no superuser fallback available")))
-      (request/with-current-user user-id
-        (try
-          (case (:request-method request)
-            :post   (respond (handle-post request))
-            :get    (handle-get request respond raise)
-            :delete (respond (handle-delete request))
-            (respond {:status  405
-                      :headers {"Content-Type" "application/json"}
-                      :body    (json/encode {:error "Method not allowed"})}))
-          (catch Throwable e
-            (raise e)))))))
+(def ^{:arglists '([request respond raise])} handler
+  "Ring async handler for the MCP endpoint.
+   Uses JSON-RPC 2.0 over HTTP rather than REST, so the OpenAPI spec is empty."
+  (open-api/handler-with-open-api-spec
+   (fn [request respond raise]
+     (let [user-id (resolve-user-id)]
+       (if (nil? user-id)
+         (respond (json-response 500 (jsonrpc-error nil -32603 "No authenticated user and no superuser fallback available")))
+         (request/with-current-user user-id
+           (try
+             (case (:request-method request)
+               :post   (respond (handle-post request))
+               :get    (handle-get request respond raise)
+               :delete (respond (handle-delete request))
+               (respond {:status  405
+                         :headers {"Content-Type" "application/json"}
+                         :body    (json/encode {:error "Method not allowed"})}))
+             (catch Throwable e
+               (raise e)))))))
+   (constantly nil)))
