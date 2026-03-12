@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { Api, useGetCardQuery } from "metabase/api";
 import { useGetTableQuery } from "metabase/api/table";
+import type { TagType } from "metabase/api/tags";
 import { useDispatch } from "metabase/lib/redux";
 import StatusLarge from "metabase/status/components/StatusLarge";
 import StatusSmall from "metabase/status/components/StatusSmall";
@@ -26,6 +27,14 @@ import type {
 } from "metabase-types/api";
 
 const POLLING_INTERVAL = 2000;
+
+const INVALIDATION_TAGS: TagType[] = [
+  "table",
+  "card",
+  "segment",
+  "measure",
+  "transform",
+];
 
 export const SourceReplacementStatus = () => {
   const [runId, setRunId] = useState<SourceReplacementRunId | null>(null);
@@ -56,15 +65,7 @@ export const SourceReplacementStatus = () => {
 
   useEffect(() => {
     if (!isActive && isVisible) {
-      dispatch(
-        Api.util.invalidateTags([
-          "table",
-          "card",
-          "segment",
-          "measure",
-          "transform",
-        ]),
-      );
+      dispatch(Api.util.invalidateTags(INVALIDATION_TAGS));
     }
   }, [isActive, isVisible, dispatch]);
 
