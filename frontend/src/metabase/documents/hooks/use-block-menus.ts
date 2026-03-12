@@ -1,9 +1,10 @@
 import { autoUpdate, useFloating } from "@floating-ui/react";
 import type { Editor, NodeViewProps } from "@tiptap/core";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useListCommentsQuery } from "metabase/api";
 import { getTargetChildCommentThreads } from "metabase/comments/utils";
+import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
 import {
   getChildTargetId,
   getCurrentDocument,
@@ -38,21 +39,28 @@ export function useBlockMenus({
   const childTargetId = useSelector(getChildTargetId);
   const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
   const document = useSelector(getCurrentDocument);
-  const { data: commentsData } = useListCommentsQuery(
+  const { _id } = node.attrs;
+
+  const { unresolvedCommentsCount } = useListCommentsQuery(
     getListCommentsQuery(document),
+    {
+      selectFromResult: ({ data: commentsData }) => {
+        const threads = getTargetChildCommentThreads(
+          commentsData?.comments,
+          _id,
+        );
+        return {
+          unresolvedCommentsCount: getUnresolvedComments(threads).length,
+        };
+      },
+    },
   );
-  const comments = commentsData?.comments;
+
   const [hovered, setHovered] = useState(false);
   const [rendered, setRendered] = useState(false);
 
-  const { _id } = node.attrs;
   const isOpen = childTargetId === _id;
   const isHovered = hoveredChildTargetId === _id;
-
-  const threads = useMemo(
-    () => getTargetChildCommentThreads(comments, _id),
-    [comments, _id],
-  );
 
   const { refs: commentsRefs, floatingStyles: commentsFloatingStyles } =
     useFloating({
@@ -105,7 +113,7 @@ export function useBlockMenus({
     isHovered,
     hovered,
     setHovered,
-    threads,
+    unresolvedCommentsCount,
     document,
     shouldShowMenus,
     anchorUrl,

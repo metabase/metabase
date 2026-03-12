@@ -11,7 +11,6 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -142,20 +141,22 @@ const SupportingTextComponent = ({
 }: NodeViewProps) => {
   const childTargetId = useSelector(getChildTargetId);
   const document = useSelector(getCurrentDocument);
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(document),
-  );
-  const comments = commentsData?.comments;
   const { _id } = node.attrs;
+  const { unresolvedCommentsCount } = useListCommentsQuery(
+    getListCommentsQuery(document),
+    {
+      selectFromResult: ({ data: commentsData }) => {
+        const threads = getTargetChildCommentThreads(
+          commentsData?.comments,
+          _id,
+        );
+        return {
+          unresolvedCommentsCount: getUnresolvedComments(threads).length,
+        };
+      },
+    },
+  );
   const isOpen = childTargetId === _id;
-  const threads = useMemo(
-    () => getTargetChildCommentThreads(comments, _id),
-    [comments, _id],
-  );
-  const unresolvedCommentsCount = useMemo(
-    () => getUnresolvedComments(threads).length,
-    [threads],
-  );
   const commentsPath = document
     ? `/document/${document.id}/comments/${_id}`
     : "";

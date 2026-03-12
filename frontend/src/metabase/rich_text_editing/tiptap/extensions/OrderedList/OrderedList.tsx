@@ -52,7 +52,7 @@ export const OrderedListNodeView = ({
     isHovered,
     hovered,
     setHovered,
-    threads,
+    unresolvedCommentsCount,
     document,
     shouldShowMenus,
     setReferenceElement,
@@ -83,7 +83,7 @@ export const OrderedListNodeView = ({
           ref={commentsRefs.setFloating}
           show={isOpen || hovered}
           style={commentsFloatingStyles}
-          threads={threads}
+          unresolvedCommentsCount={unresolvedCommentsCount}
         />
       )}
     </>

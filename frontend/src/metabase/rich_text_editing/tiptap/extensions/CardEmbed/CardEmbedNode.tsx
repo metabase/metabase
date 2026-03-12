@@ -174,23 +174,25 @@ export const CardEmbedComponent = memo(
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
     const { publicDocumentUuid } = usePublicDocumentContext();
-    const { data: commentsData } = useListCommentsQuery(
+    const { _id } = node.attrs;
+    const { unresolvedCommentsCount } = useListCommentsQuery(
       getListCommentsQuery(document),
+      {
+        selectFromResult: ({ data: commentsData }) => {
+          const threads = getTargetChildCommentThreads(
+            commentsData?.comments,
+            _id,
+          );
+          return {
+            unresolvedCommentsCount: getUnresolvedComments(threads).length,
+          };
+        },
+      },
     );
 
-    const comments = commentsData?.comments;
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
-    const { _id } = node.attrs;
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
-    const threads = useMemo(
-      () => getTargetChildCommentThreads(comments, _id),
-      [comments, _id],
-    );
-    const unresolvedCommentsCount = useMemo(
-      () => getUnresolvedComments(threads).length,
-      [threads],
-    );
     const commentsPath = document
       ? `/document/${document.id}/comments/${_id}`
       : "";
