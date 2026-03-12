@@ -153,16 +153,17 @@
                           after-prefix
                           (subs conn-str (str/index-of conn-str "snowflake:")))
           uri (URI. after-prefix')]
-      (when-let [query-data (not-empty (.getRawQuery uri))]
-        (into {}
-              (keep (fn [param]
-                      (let [key-val (str/split param #"=")]
-                        (if-not (= 2 (count key-val))
-                          (log/warnf "Invalid Snowflake connection URI parameter: '%s'" param)
-                          (let [[k v] key-val]
-                            [(u/upper-case-en (URLDecoder/decode ^String k "UTF-8"))
-                             (URLDecoder/decode ^String v "UTF-8")]))))
-                    (str/split query-data #"&")))))))
+      (when-let [query-data (.getRawQuery uri)]
+        (->> (str/split query-data #"&")
+             (keep (fn [param]
+                     (let [key-val (str/split param #"=")]
+                       (if-not (= 2 (count key-val))
+                         (log/warnf "Invalid Snowflake connection URI parameter: '%s'" param)
+                         (let [[k v] key-val]
+                           [(u/upper-case-en (URLDecoder/decode ^String k "UTF-8"))
+                            (URLDecoder/decode ^String v "UTF-8")])))))
+             (into {})
+             not-empty)))))
 
 (defn- maybe-add-role-to-spec-url
   "Maybe add role to `spec`'s `:connection-uri`. This is necessary for rsa auth to work, because at the time of writing

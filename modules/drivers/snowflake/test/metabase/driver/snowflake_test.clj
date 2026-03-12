@@ -1026,7 +1026,8 @@
     (are [conn-str exp] (= exp (driver.snowflake/connection-str->parameters conn-str))
       "jdbc:snowflake://x.snowflakecomputing.com" nil
       "jdbc:snowflake://x.snowflakecomputing.com/" nil
-      "jdbc:snowflake://x.snowflakecomputing.com/?" nil)))
+      "jdbc:snowflake://x.snowflakecomputing.com/?" nil
+      "jdbc:snowflake://x.snowflakecomputing.com/?x" nil)))
 
 (deftest ^:parallel connection-str->parameters-test-3
   (testing "Returns decoded parameters"
