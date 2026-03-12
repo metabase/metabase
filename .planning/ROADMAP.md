@@ -53,10 +53,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. An "Analytics query logging" preset appears in the admin logging UI and, when enabled, activates DEBUG-level per-statement logging for user-facing database queries
   2. Admins can enable and disable the preset via the existing logging API without restarting Metabase
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md -- Analytics query logging preset in admin logging preset system
 
 ## Progress
 
