@@ -23,15 +23,7 @@ jobs:
       MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
     steps:
       - uses: actions/checkout@v4
-      - name: Prepare JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Setup Clojure
-        uses: DeLaGuardo/setup-clojure@13.3
-        with:
-          cli: latest
+      - uses: ./.github/actions/prepare-backend
       - name: Drop Snowflake dataset
         run: >-
           clojure -X:dev:drivers:drivers-dev
