@@ -46,7 +46,6 @@ export type Transform = {
   owner_email?: string | null;
   owner?: TransformOwner | null;
 
-  // checkpoint
   last_checkpoint_value?: string | null;
 
   // hydrated fields
@@ -132,7 +131,6 @@ export type TransformRun = {
   message: string | null;
   run_method: TransformRunMethod;
 
-  // checkpoint range
   checkpoint_filter_field_id?: number | null;
   checkpoint_lo_value?: string | null;
   checkpoint_hi_value?: string | null;

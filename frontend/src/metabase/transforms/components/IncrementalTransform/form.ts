@@ -93,7 +93,6 @@ export const buildIncrementalSource = (
       formValues.checkpointFilterFieldId != null
         ? {
             type: formValues.sourceStrategy,
-            // Convert string back to number for API
             "checkpoint-filter-field-id": Number(
               formValues.checkpointFilterFieldId,
             ),
