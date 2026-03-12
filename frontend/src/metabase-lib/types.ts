@@ -343,7 +343,7 @@ export type ExpressionOptions = {
   mode?: DatetimeMode;
 };
 
-export type FilterOperator = Metabase_Lib_Schema_Filter_Operator;
+export type FilterOperator = Metabase_Lib_Schema_Filter_Operator["short"];
 
 export type FilterOperatorName =
   | StringFilterOperator

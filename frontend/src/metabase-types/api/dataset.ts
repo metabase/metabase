@@ -225,6 +225,9 @@ export interface TemplateTag {
   "snippet-id"?: number;
   "snippet-name"?: string;
 
+  // Source table specific
+  "table-id"?: number;
+
   // Field filter and time grouping specific
   dimension?: LocalFieldReference;
   alias?: string;

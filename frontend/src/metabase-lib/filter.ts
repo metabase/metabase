@@ -30,6 +30,16 @@ export type FilterableColumnsOpts = {
   includeSensitiveFields?: boolean;
 };
 
+export function describeFilterOperator(
+  operator: string,
+  variant?: string,
+): string {
+  if (variant) {
+    return ML.describe_filter_operator(operator, variant);
+  }
+  return ML.describe_filter_operator(operator);
+}
+
 export function filterableColumns(
   query: Query,
   stageIndex: number,

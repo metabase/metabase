@@ -647,7 +647,9 @@
   "Cached compound filter conjunctions, keyed by locale."
   (memoize/lru (fn [_locale] (lib.filter/compound-filter-conjunctions)) :lru/threshold 2))
 
-(defn ^:export parse-column-display-name-parts
+(mu/defn ^:export parse-column-display-name-parts :- [:any {:ts/array-of [:map
+                                                                                              [:type [:enum "static" "translatable"]]
+                                                                                              [:value :string]]}]
   "Parse a column display name into a flat list of parts for translation.
 
   Returns an array of objects, each with:
@@ -659,7 +661,8 @@
   2. Concatenate all value strings together
 
   Patterns are cached per locale."
-  [display-name locale]
+  [display-name :- :string
+   locale       :- :string]
   (let [parts (lib.display-name/parse-column-display-name-parts
                display-name
                (aggregation-display-name-patterns-for-locale locale)
@@ -1139,16 +1142,17 @@
    stage-number :- :int]
   (to-array (lib.core/filters a-query stage-number)))
 
-(defn ^:export describe-filter-operator
+(mu/defn ^:export describe-filter-operator :- :string
   "Returns a human-readable display name for a filter operator.
 
   `operator` is a string like \"=\", \"!=\", \"contains\", etc.
-  `variant` is an optional string: \"default\" or \"equal-to\". Defaults to \"default\".
+  `variant` is an optional string: \"default\", \"number\", or \"temporal\". Defaults to \"default\".
 
   > **Code health:** Healthy"
-  ([operator]
+  ([operator :- :string]
    (lib.core/describe-filter-operator (keyword operator)))
-  ([operator variant]
+  ([operator :- :string
+    variant  :- :string]
    (lib.core/describe-filter-operator (keyword operator) (keyword variant))))
 
 ;; # Expressions

@@ -427,7 +427,7 @@ export type DimensionReference =
 
 export type TestTableSourceSpec = {
   type: "table";
-  id: TableId;
+  id: number;
 };
 
 export type TestCardSourceSpec = {
@@ -460,7 +460,7 @@ export type TestNamedExpressionSpec = {
 
 export type TestLiteralSpec = {
   type: "literal";
-  value: NumericLiteral | StringLiteral | BooleanLiteral | DatetimeLiteral;
+  value: string | number | boolean;
 };
 
 export type TestOperatorSpec = {
