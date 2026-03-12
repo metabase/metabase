@@ -89,14 +89,17 @@
     (->> handler
          (ee.api/+require-premium-feature required-feature (required-feature->message required-feature)))))
 
+(def ^:private top-level-routes
+  "These are routes that intentionally do not follow the /ee/<feature>/ convention."
+  {"/agent" (premium-handler metabase-enterprise.agent-api.api/routes :agent-api)
+   "/mcp"   (premium-handler metabase-enterprise.mcp.api/handler :agent-api)})
+
 (def ^:private naughty-routes-map
   "The following routes are NAUGHTY and do not follow the naming convention (i.e., they do not start with
   `/ee/<feature>/`).
 
   TODO -- Please fix them! See #22687"
-  {"/agent"             (premium-handler metabase-enterprise.agent-api.api/routes :agent-api)
-   "/mcp"               (premium-handler metabase-enterprise.mcp.api/handler :agent-api)
-   "/moderation-review" metabase-enterprise.content-verification.api.routes/routes
+  {"/moderation-review" metabase-enterprise.content-verification.api.routes/routes
    "/mt"                metabase-enterprise.sandbox.api.routes/sandbox-routes
    "/table"             metabase-enterprise.sandbox.api.routes/sandbox-table-routes})
 
@@ -149,6 +152,7 @@
 (def ^:private routes-map
   (merge
    naughty-routes-map
+   top-level-routes
    {"/ee" ee-routes-map}))
 
 (def ^{:arglists '([request respond raise])} routes
