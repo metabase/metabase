@@ -5,12 +5,12 @@
    [metabase.test :as mt]))
 
 (deftest cache-policy-on-read-only-remote-synced-dashboard-test
-  (testing "Setting a cache policy on a dashboard in a remote-synced collection should succeed even when remote-sync-type is read-only"
+  (testing "Setting a cache policy on a dashboard in a remote-synced collection should succeed even when remote-sync-type is production"
     (mt/with-model-cleanup [:model/CacheConfig]
       (mt/with-premium-features #{:cache-granular-controls}
-        (mt/with-temporary-setting-values [rs-settings/remote-sync-type :read-only]
+        (mt/with-temporary-setting-values [rs-settings/remote-sync-type :production]
           (mt/with-temp [:model/Collection {coll-id :id} {:name "Remote-Synced Collection"
-                                                          :is_remote_synced true}
+                                                          :type "remote-synced"}
                          :model/Dashboard  {dash-id :id} {:name          "Synced Dashboard"
                                                           :collection_id coll-id}]
             (is (=? {:id pos-int?}
@@ -27,10 +27,10 @@
       (let [response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id))]
         (is (contains? response :can_set_cache_policy))
         (is (true? (:can_set_cache_policy response))))))
-  (testing "can_set_cache_policy is true even when can_write is false (remote-synced, read-only)"
-    (mt/with-temporary-setting-values [rs-settings/remote-sync-type :read-only]
+  (testing "can_set_cache_policy is true even when can_write is false (remote-synced, production)"
+    (mt/with-temporary-setting-values [rs-settings/remote-sync-type :production]
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Remote-Synced Collection"
-                                                      :is_remote_synced true}
+                                                      :type "remote-synced"}
                      :model/Dashboard  {dash-id :id} {:name          "Synced Dashboard"
                                                       :collection_id coll-id}]
         (let [response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dash-id))]
