@@ -6,10 +6,12 @@
    [clojure.string :as str]
    [compojure.response :as compojure.response]
    [metabase-enterprise.mcp.tools :as mcp.tools]
+   [metabase.api.common :as api]
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
@@ -41,12 +43,27 @@
       true
       (do (delete-session! session-id) false))))
 
-;;; -------------------------------------------------- Auth Bypass --------------------------------------------------
+;;; -------------------------------------------------- Auth --------------------------------------------------------
 
+;; TODO: Remove this fallback once MCP authentication is fully implemented.
+;; This is a temporary measure so that unauthenticated MCP clients (e.g. local
+;; dev tools) can still function.  Once we support proper token/session auth on
+;; the MCP endpoint, every request should already carry a user identity and this
+;; superuser fallback should be deleted.
 (defn- first-superuser-id
-  "Return the ID of the first active superuser. Dev-only auth bypass."
+  "Return the ID of the first active superuser.
+   Temporary fallback for when no authenticated user is present on the request."
   []
   (:id (t2/select-one :model/User :is_superuser true :is_active true {:order-by [[:id :asc]]})))
+
+(defn- resolve-user-id
+  "Return the user ID for the current MCP request. Uses the authenticated user
+   from the request when available, falling back to the first active superuser
+   as a temporary measure."
+  []
+  (or api/*current-user-id*
+      (do (log/warn "MCP request has no authenticated user; falling back to first superuser (temporary)")
+          (first-superuser-id))))
 
 ;;; ------------------------------------------------- JSON-RPC 2.0 --------------------------------------------------
 
@@ -227,9 +244,9 @@
 (defn handler
   "Ring async handler for the MCP endpoint."
   [request respond raise]
-  (let [user-id (first-superuser-id)]
+  (let [user-id (resolve-user-id)]
     (if (nil? user-id)
-      (respond (json-response 500 (jsonrpc-error nil -32603 "No active superuser found")))
+      (respond (json-response 500 (jsonrpc-error nil -32603 "No authenticated user and no superuser fallback available")))
       (request/with-current-user user-id
         (try
           (case (:request-method request)
