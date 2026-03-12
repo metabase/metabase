@@ -66,8 +66,6 @@ function ResetCheckpointSection({ transform }: { transform: Transform }) {
         </Text>
       </Box>
       <Button
-        variant="subtle"
-        size="compact-sm"
         leftSection={<Icon name="revert" aria-hidden />}
         disabled={isTransformRunning(transform) || isLoading}
         onClick={openModal}
