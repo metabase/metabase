@@ -169,6 +169,28 @@
                               (mt/dbdef->connection-details :clickhouse :db {:database-name database}))]
            (is (true? (driver/can-connect? :clickhouse details)))))))))
 
+(deftest ^:parallel clickhouse-additional-options-test
+  (mt/test-driver :clickhouse
+    (let [details (assoc (:details (mt/db))
+                         :additional-options "clickhouse_setting_max_threads=5&max_block_size=50"
+                         :clickhouse-settings "max_result_rows=10,max_columns_to_read=20")
+          spec   (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+      (is (true? (driver/can-connect? :clickhouse details)))
+      (is (= "//localhost:8123/default?clickhouse_setting_max_threads=5"
+             (:subname spec)))
+      (is (= "select_sequential_consistency=1,max_result_rows=10,max_columns_to_read=20,max_block_size=50"
+             (:custom_http_params spec)))
+      (is (= {:max_threads 5
+              :max_block_size 50
+              :max_results_rows 10
+              :max_columns_to_read 20}
+             (->> ["SELECT getSetting('max_threads') as max_threads,
+                           getSetting('max_block_size') as max_block_size,
+                           getSetting('max_result_rows') as max_results_rows,
+                           getSetting('max_columns_to_read') as max_columns_to_read;"]
+                  (jdbc/query spec)
+                  first))))))
+
 (deftest clickhouse-qp-extract-datetime-timezone
   (mt/test-driver :clickhouse
     (is (= "utc" (#'clickhouse-qp/extract-datetime-timezone "datetime('utc')")))
