@@ -6,4 +6,10 @@ bun run precommit
 # ATM, you can manually run ./bin/cljfmt_staged.sh if you want to format locally staged files and inspect after.
 # ./bin/cljfmt_staged.sh
 
+# Re-generate CLJS type declarations if the compiled output exists
+if [ -d "target/cljs_dev" ]; then
+  ./scripts/generate-cljs-types.sh
+  git add frontend/src/types/cljs.d.ts
+fi
+
 ./hooks/pre-commit.nocommit
