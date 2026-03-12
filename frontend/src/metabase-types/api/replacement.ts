@@ -1,6 +1,7 @@
 import type { CardId } from "./card";
 import type { Field } from "./field";
 import type { ConcreteTableId } from "./table";
+import type { TransformTarget } from "./transform";
 
 export type SourceReplacementEntityId = ConcreteTableId | CardId;
 
@@ -97,13 +98,9 @@ export type ListSourceReplacementRunsRequest = {
 export type ConvertCardToTransformRequest = {
   card_id: CardId;
   transform_name: string;
-  transform_target: {
-    name: string;
-    schema: string | null;
-    database: number;
-  };
-  collection_id: number | null;
-  replace_dependents: boolean;
+  transform_target: TransformTarget;
+  transform_collection_id: number | null;
+  replace_source: boolean;
 };
 
 export type ConvertCardToTransformResponse = {

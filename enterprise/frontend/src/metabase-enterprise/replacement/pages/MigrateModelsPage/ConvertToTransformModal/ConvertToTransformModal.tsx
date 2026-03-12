@@ -29,7 +29,7 @@ const VALIDATION_SCHEMA = Yup.object({
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable().defined(),
   collection_id: Yup.number().nullable().defined(),
-  replace_dependents: Yup.boolean().defined(),
+  replace_source: Yup.boolean().defined(),
 });
 
 type ConvertToTransformValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
@@ -93,7 +93,7 @@ function ConvertToTransformForm({
       targetSchema: schemas[0] ?? null,
       targetName: slugify(result.name),
       collection_id: null,
-      replace_dependents: true,
+      replace_source: true,
     }),
     [result.name, schemas],
   );
@@ -105,12 +105,13 @@ function ConvertToTransformForm({
       card_id: Number(result.id),
       transform_name: result.name,
       transform_target: {
+        type: "table",
         name: values.targetName,
         schema: values.targetSchema,
         database: databaseId,
       },
-      collection_id: values.collection_id,
-      replace_dependents: values.replace_dependents,
+      transform_collection_id: values.collection_id,
+      replace_source: values.replace_source,
     }).unwrap();
     onClose();
   };
@@ -148,7 +149,7 @@ function ConvertToTransformForm({
             style={{ marginBottom: 0 }}
           />
           <FormSwitch
-            name="replace_dependents"
+            name="replace_source"
             label={t`Replace data source of all existing dependents`}
             description={t`All dependents of the original model will be updated to use the output table instead. If you don't want to do this now, you can do it later with the Data Replacement tool.`}
             size="sm"
