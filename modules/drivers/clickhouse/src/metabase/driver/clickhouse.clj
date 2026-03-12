@@ -106,11 +106,19 @@
         details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
                            default-connection-details
                            details)
-        {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
+        {:keys [user password dbname host port ssl
+                clickhouse-settings max-open-connections additional-options]} details
         host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
-                 :else host)]
+                 :else host)
+        additional-options-map (sql-jdbc.common/additional-options->map additional-options :url)
+        non-ch-setting-opts-str (->> additional-options-map
+                                     (remove (fn [[k _v]] (str/starts-with? k "clickhouse_setting_")))
+                                     (map (fn [[k v]] (str k "=" v)))
+                                     (str/join ","))
+        ch-setting-opts-map (into {} (filter (fn [[k _v]] (str/starts-with? k "clickhouse_setting_")) additional-options-map))
+        ch-setting-opts-str (sql-jdbc.common/additional-opts->string :url ch-setting-opts-map)]
     (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
          :subprotocol                    "clickhouse"
          :subname                        (str "//" host ":" port "/" dbname)
@@ -127,8 +135,11 @@
          ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
          :custom_http_params             (cond-> "select_sequential_consistency=1"
                                            (not (str/blank? clickhouse-settings))
-                                           (str "," clickhouse-settings))}
-        (sql-jdbc.common/handle-additional-options details :separator-style :url))))
+                                           (str "," clickhouse-settings)
+
+                                           (not (str/blank? non-ch-setting-opts-str))
+                                           (str "," non-ch-setting-opts-str))}
+        (sql-jdbc.common/handle-additional-options (assoc details :additional-options ch-setting-opts-str) :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
   (boolean (-> db clickhouse-version/dbms-version :cloud)))
