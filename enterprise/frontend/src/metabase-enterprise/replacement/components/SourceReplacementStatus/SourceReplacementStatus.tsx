@@ -41,12 +41,8 @@ export const SourceReplacementStatus = () => {
   const [isPolling, setIsPolling] = useState(false);
 
   const { data: runs = [] } = useListSourceReplacementRunsQuery(
-    {
-      "is-active": true,
-    },
-    {
-      pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
-    },
+    { "is-active": true },
+    { pollingInterval: isPolling ? POLLING_INTERVAL : undefined },
   );
   const dispatch = useDispatch();
   const activeRun = runs[0];
