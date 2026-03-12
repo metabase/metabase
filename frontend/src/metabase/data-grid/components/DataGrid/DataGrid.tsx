@@ -12,6 +12,7 @@ import _ from "underscore";
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 
 import {
+  ADD_COLUMN_BUTTON_WIDTH,
   DEFAULT_FONT_SIZE,
   PINNED_BORDER_SEPARATOR_WIDTH,
 } from "../../constants";
@@ -23,6 +24,7 @@ import type {
   DataGridTheme,
   MaybeVirtualRow,
 } from "../../types";
+import { AddColumnButton } from "../AddColumnButton/AddColumnButton";
 import { DataGridHeader } from "../DataGridHeader/DataGridHeader";
 import { DataGridRow } from "../DataGridRow/DataGridRow";
 import { Footer } from "../Footer/Footer";
@@ -64,6 +66,7 @@ export const DataGrid = function DataGrid<TData>({
   tableFooterExtraButtons,
   rowsTruncated,
   sorting,
+  onAddColumnClick,
   onHeaderCellClick,
   isColumnReorderingDisabled,
 }: DataGridProps<TData>) {
@@ -89,34 +92,11 @@ export const DataGrid = function DataGrid<TData>({
     return () => window.removeEventListener("resize", handleResize);
   }, [forceUpdate]);
 
-  // const isAddColumnButtonSticky =
-  //   table.getTotalSize() >=
-  //   (gridRef.current?.offsetWidth ?? Infinity) - ADD_COLUMN_BUTTON_WIDTH;
-
-  /*
-  const addColumnMarginRight =
-    getTotalHeight() >= (gridRef.current?.offsetHeight ?? Infinity)
-      ? getScrollBarSize()
-      : 0;
-*/
-
-  // const hasAddColumnButton = onAddColumnClick != null;
-  // const addColumnButton = useMemo(
-  //   () =>
-  //     hasAddColumnButton ? (
-  //       <AddColumnButton
-  //         marginRight={addColumnMarginRight}
-  //         isSticky={isAddColumnButtonSticky}
-  //         onClick={onAddColumnClick}
-  //       />
-  //     ) : null,
-  //   [
-  //     hasAddColumnButton,
-  //     isAddColumnButtonSticky,
-  //     onAddColumnClick,
-  //     addColumnMarginRight,
-  //   ],
-  // );
+  const hasAddColumnButton = onAddColumnClick != null;
+  const isAddColumnButtonSticky =
+    hasAddColumnButton &&
+    table.getTotalSize() >=
+      (gridRef.current?.offsetWidth ?? Infinity) - ADD_COLUMN_BUTTON_WIDTH;
 
   const rowsCount = table.getRowModel().rows.length;
   const backgroundColor =
@@ -241,6 +221,9 @@ export const DataGrid = function DataGrid<TData>({
             style={{
               backgroundColor,
               color: theme?.cell?.textColor,
+              paddingRight: isAddColumnButtonSticky
+                ? ADD_COLUMN_BUTTON_WIDTH
+                : undefined,
               ...styles?.tableGrid,
             }}
             onWheel={onWheel}
@@ -265,6 +248,9 @@ export const DataGrid = function DataGrid<TData>({
                   })}
                 </SortableContext>
               ))}
+              {hasAddColumnButton && !isAddColumnButtonSticky && (
+                <AddColumnButton onClick={onAddColumnClick} />
+              )}
             </div>
 
             {rowsCount === 0 && emptyState}
@@ -287,6 +273,9 @@ export const DataGrid = function DataGrid<TData>({
               })}
             </div>
           </div>
+          {isAddColumnButtonSticky && (
+            <AddColumnButton isSticky onClick={onAddColumnClick} />
+          )}
 
           <Footer
             table={table}
