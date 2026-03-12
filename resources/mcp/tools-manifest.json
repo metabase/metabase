@@ -1,0 +1,578 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "$defs": {
+    "TemporalBucket": {
+      "type": "string",
+      "enum": ["minute", "hour", "day", "week", "month", "quarter", "year"]
+    },
+    "SortOrder": {
+      "type": "string",
+      "enum": ["asc", "desc"]
+    },
+    "FieldType": {
+      "type": "string",
+      "enum": ["boolean", "date", "datetime", "time", "number", "string"],
+      "description": "A data type for a field derived from Metabase's type hierarchy"
+    },
+    "ResponseField": {
+      "type": "object",
+      "description": "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric).",
+      "properties": {
+        "field_id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "$ref": "#/$defs/FieldType" },
+        "description": { "type": ["string", "null"] },
+        "database_type": { "type": ["string", "null"] },
+        "semantic_type": { "type": ["string", "null"] },
+        "field_values": {
+          "type": ["array", "null"],
+          "items": {}
+        }
+      },
+      "required": ["field_id", "name"]
+    },
+    "Statistics": {
+      "type": "object",
+      "description": "Statistical summary of a field's values computed during database sync.",
+      "properties": {
+        "distinct_count": { "type": ["integer", "null"] },
+        "percent_null": { "type": ["number", "null"] },
+        "min": { "type": ["number", "null"] },
+        "max": { "type": ["number", "null"] },
+        "avg": { "type": ["number", "null"] },
+        "q1": { "type": ["number", "null"] },
+        "q3": { "type": ["number", "null"] },
+        "sd": { "type": ["number", "null"] },
+        "percent_json": { "type": ["number", "null"] },
+        "percent_url": { "type": ["number", "null"] },
+        "percent_email": { "type": ["number", "null"] },
+        "percent_state": { "type": ["number", "null"] },
+        "average_length": { "type": ["number", "null"] },
+        "earliest": { "type": ["string", "null"] },
+        "latest": { "type": ["string", "null"] }
+      }
+    },
+    "MetricSummary": {
+      "type": "object",
+      "description": "Summary of a metric associated with a table.",
+      "properties": {
+        "id": { "type": "integer" },
+        "type": { "type": "string", "const": "metric" },
+        "name": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "default_time_dimension_field_id": { "type": ["string", "null"] }
+      },
+      "required": ["id", "type", "name"]
+    },
+    "Segment": {
+      "type": "object",
+      "description": "A predefined filter condition that can be applied to queries via segment_id.",
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string" },
+        "display_name": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] }
+      },
+      "required": ["id", "name"]
+    },
+    "Measure": {
+      "type": "object",
+      "description": "A reusable aggregation expression. Reference via measure_id in the aggregations array.",
+      "properties": {
+        "id": { "type": "integer" },
+        "name": { "type": "string" },
+        "display_name": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] }
+      },
+      "required": ["id", "name"]
+    },
+    "RelatedTable": {
+      "type": "object",
+      "description": "A table related via foreign key. The related_by field indicates the FK field name.",
+      "properties": {
+        "id": { "type": "integer" },
+        "type": { "type": "string", "const": "table" },
+        "name": { "type": "string" },
+        "display_name": { "type": ["string", "null"] },
+        "database_id": { "type": ["integer", "null"] },
+        "database_engine": { "type": ["string", "null"] },
+        "database_schema": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "fields": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/ResponseField" }
+        },
+        "related_by": { "type": ["string", "null"] }
+      },
+      "required": ["id", "type", "name"]
+    },
+    "ColumnMetadata": {
+      "type": "object",
+      "description": "Metadata for a single result column.",
+      "properties": {
+        "name": { "type": "string" },
+        "base_type": { "type": "string" },
+        "effective_type": { "type": ["string", "null"] },
+        "display_name": { "type": "string" }
+      },
+      "required": ["name", "base_type", "display_name"]
+    },
+    "SearchResultItem": {
+      "type": "object",
+      "description": "A table or metric returned from search.",
+      "properties": {
+        "id": { "type": "integer" },
+        "type": { "type": "string", "enum": ["table", "metric"] },
+        "name": { "type": "string" },
+        "display_name": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "database_id": { "type": ["integer", "null"] },
+        "database_schema": { "type": ["string", "null"] },
+        "verified": { "type": ["boolean", "null"] },
+        "updated_at": {},
+        "created_at": {}
+      },
+      "required": ["id", "type", "name"]
+    },
+    "FilterOperation": {
+      "type": "string",
+      "enum": [
+        "is-null",
+        "is-not-null",
+        "string-is-empty",
+        "string-is-not-empty",
+        "is-true",
+        "is-false",
+        "equals",
+        "not-equals",
+        "greater-than",
+        "greater-than-or-equal",
+        "less-than",
+        "less-than-or-equal",
+        "string-contains",
+        "string-not-contains",
+        "string-starts-with",
+        "string-ends-with"
+      ]
+    },
+    "Filter": {
+      "type": "object",
+      "properties": {
+        "field_id": {
+          "type": "string",
+          "description": "The field ID (e.g., 't123-0')"
+        },
+        "operation": {
+          "$ref": "#/$defs/FilterOperation",
+          "description": "The filter operation"
+        },
+        "value": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "boolean" }
+          ],
+          "description": "The value to filter by (not required for existence filters)"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "oneOf": [{ "type": "string" }, { "type": "number" }]
+          },
+          "description": "Multiple values for disjunctive filters (equals/not-equals)"
+        },
+        "bucket": {
+          "$ref": "#/$defs/TemporalBucket",
+          "description": "Temporal bucket for date/time fields"
+        }
+      },
+      "required": ["field_id", "operation"]
+    },
+    "SegmentFilter": {
+      "type": "object",
+      "properties": {
+        "segment_id": {
+          "type": "number",
+          "description": "The ID of a predefined segment"
+        }
+      },
+      "required": ["segment_id"]
+    },
+    "Aggregation": {
+      "type": "object",
+      "properties": {
+        "function": {
+          "type": "string",
+          "enum": ["count", "sum", "avg", "min", "max", "count-distinct"],
+          "description": "The aggregation function"
+        },
+        "field_id": {
+          "type": "string",
+          "description": "The field ID to aggregate (not required for count)"
+        },
+        "measure_id": {
+          "type": "number",
+          "description": "The ID of a predefined measure (alternative to function/field_id)"
+        },
+        "sort_order": {
+          "$ref": "#/$defs/SortOrder",
+          "description": "Sort results by this aggregation"
+        },
+        "bucket": {
+          "$ref": "#/$defs/TemporalBucket",
+          "description": "Temporal bucket"
+        }
+      },
+      "required": ["function"]
+    },
+    "GroupBy": {
+      "type": "object",
+      "properties": {
+        "field_id": {
+          "type": "string",
+          "description": "The field ID to group by"
+        },
+        "field_granularity": {
+          "oneOf": [
+            { "$ref": "#/$defs/TemporalBucket" },
+            { "type": "string", "const": "day-of-week" }
+          ],
+          "description": "Temporal granularity for date/time fields"
+        }
+      },
+      "required": ["field_id"]
+    },
+    "Field": {
+      "type": "object",
+      "properties": {
+        "field_id": {
+          "type": "string",
+          "description": "The field ID"
+        },
+        "bucket": {
+          "$ref": "#/$defs/TemporalBucket",
+          "description": "Temporal bucket"
+        }
+      },
+      "required": ["field_id"]
+    },
+    "OrderBy": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "$ref": "#/$defs/Field",
+          "description": "The field to order by"
+        },
+        "direction": {
+          "$ref": "#/$defs/SortOrder",
+          "description": "Sort direction"
+        }
+      },
+      "required": ["field", "direction"]
+    }
+  },
+  "tools": [
+    {
+      "name": "construct_query",
+      "description": "Construct a query against a Metabase table or metric. Returns an opaque query string that can be executed with execute_query.",
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/agent/v1/construct-query"
+      },
+      "responseFormat": "json",
+      "validation": {
+        "oneOfRequired": ["table_id", "metric_id"]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "table_id": {
+            "type": "number",
+            "description": "The ID of the table to query"
+          },
+          "metric_id": {
+            "type": "number",
+            "description": "The ID of the metric to query"
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "$ref": "#/$defs/Filter" },
+                { "$ref": "#/$defs/SegmentFilter" }
+              ]
+            },
+            "description": "Filters to apply"
+          },
+          "fields": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/Field" },
+            "description": "Fields to select (defaults to all)"
+          },
+          "aggregations": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/Aggregation" },
+            "description": "Aggregations to perform (use sort_order on aggregation to order by it)"
+          },
+          "group_by": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/GroupBy" },
+            "description": "Fields to group by (for aggregations)"
+          },
+          "order_by": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/OrderBy" },
+            "description": "Order by fields (not aggregations - use sort_order on aggregation instead)"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Maximum number of rows to return"
+          }
+        }
+      },
+      "responseSchema": {
+        "type": "object",
+        "description": "Response containing a base64-encoded MBQL query for use with execute_query.",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Base64-encoded MBQL query"
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "execute_query",
+      "description": "Execute a previously constructed query and return the results as a markdown table with row count and execution time.",
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/agent/v1/execute"
+      },
+      "responseFormat": "query_result",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The opaque query string returned from construct_query"
+          }
+        },
+        "required": ["query"]
+      },
+      "responseSchema": {
+        "type": "object",
+        "description": "Query execution results. Check status field to determine success or failure.",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["completed", "failed"]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "cols": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/ColumnMetadata" }
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {}
+                }
+              }
+            },
+            "required": ["cols", "rows"]
+          },
+          "row_count": { "type": "integer" },
+          "running_time": { "type": "integer" },
+          "error": { "type": "string" }
+        },
+        "required": ["status"]
+      }
+    },
+    {
+      "name": "search",
+      "description": "Search for tables and metrics in Metabase. Use term_queries for keyword search or semantic_queries for natural language search.",
+      "endpoint": {
+        "method": "POST",
+        "path": "/api/agent/v1/search"
+      },
+      "responseFormat": "json",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "term_queries": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Keyword search terms (e.g., ['users', 'orders'])"
+          },
+          "semantic_queries": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Natural language queries (e.g., ['tables about customer data'])"
+          }
+        }
+      },
+      "responseSchema": {
+        "type": "object",
+        "description": "Search results containing tables and metrics matching the query.",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/SearchResultItem" }
+          },
+          "total_count": { "type": "integer" }
+        },
+        "required": ["data", "total_count"]
+      }
+    },
+    {
+      "name": "get_table",
+      "description": "Get details about a table including its fields, related tables, and metrics.",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/agent/v1/table/{table_id}"
+      },
+      "responseFormat": "json",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "table_id": {
+            "type": "number",
+            "description": "The ID of the table"
+          }
+        },
+        "required": ["table_id"]
+      },
+      "responseSchema": {
+        "type": "object",
+        "description": "Full details of a table including its fields, related tables, metrics, and segments.",
+        "properties": {
+          "id": { "type": "integer" },
+          "type": { "type": "string", "enum": ["table", "metric"] },
+          "name": { "type": "string" },
+          "display_name": { "type": "string" },
+          "database_id": { "type": "integer" },
+          "database_engine": { "type": "string" },
+          "database_schema": { "type": ["string", "null"] },
+          "description": { "type": ["string", "null"] },
+          "fields": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/ResponseField" }
+          },
+          "related_tables": {
+            "type": ["array", "null"],
+            "items": { "$ref": "#/$defs/RelatedTable" }
+          },
+          "metrics": {
+            "type": ["array", "null"],
+            "items": { "$ref": "#/$defs/MetricSummary" }
+          },
+          "measures": {
+            "type": ["array", "null"],
+            "items": { "$ref": "#/$defs/Measure" }
+          },
+          "segments": {
+            "type": ["array", "null"],
+            "items": { "$ref": "#/$defs/Segment" }
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "display_name",
+          "database_id",
+          "database_engine",
+          "fields"
+        ]
+      }
+    },
+    {
+      "name": "get_metric",
+      "description": "Get details about a metric including its queryable dimensions.",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/agent/v1/metric/{metric_id}"
+      },
+      "responseFormat": "json",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "metric_id": {
+            "type": "number",
+            "description": "The ID of the metric"
+          }
+        },
+        "required": ["metric_id"]
+      },
+      "responseSchema": {
+        "type": "object",
+        "description": "A metric with its queryable dimensions and segments.",
+        "properties": {
+          "id": { "type": "integer" },
+          "type": { "type": "string", "const": "metric" },
+          "name": { "type": "string" },
+          "description": { "type": ["string", "null"] },
+          "default_time_dimension_field_id": {
+            "type": ["string", "null"],
+            "description": "The field_id of the recommended time dimension for temporal breakouts"
+          },
+          "verified": { "type": ["boolean", "null"] },
+          "queryable_dimensions": {
+            "type": ["array", "null"],
+            "items": { "$ref": "#/$defs/ResponseField" }
+          },
+          "segments": {
+            "type": ["array", "null"],
+            "items": { "$ref": "#/$defs/Segment" }
+          }
+        },
+        "required": ["id", "type", "name"]
+      }
+    },
+    {
+      "name": "get_field_values",
+      "description": "Get sample values and statistics for a field in a table or metric.",
+      "endpoint": {
+        "method": "GET",
+        "path": "/api/agent/v1/{entity_type}/{entity_id}/field/{field_id}/values"
+      },
+      "responseFormat": "json",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "enum": ["table", "metric"],
+            "description": "Whether this is a table or metric field"
+          },
+          "entity_id": {
+            "type": "number",
+            "description": "The ID of the table or metric"
+          },
+          "field_id": {
+            "type": "string",
+            "description": "The field ID (e.g., 't123-0' for tables)"
+          }
+        },
+        "required": ["entity_type", "entity_id", "field_id"]
+      },
+      "responseSchema": {
+        "type": "object",
+        "description": "Statistics and sample values for a specific field.",
+        "properties": {
+          "field_id": { "type": ["string", "null"] },
+          "statistics": { "$ref": "#/$defs/Statistics" },
+          "values": {
+            "type": ["array", "null"],
+            "items": {}
+          }
+        }
+      }
+    }
+  ]
+}
