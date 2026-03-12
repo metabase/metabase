@@ -558,4 +558,25 @@
              [nil "--down" "Tear down all containers for this worktree"]
              [nil "--status" "Show current env status"]
              [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]]
-   :task (task! (dev-env/dev-env! parsed))}}}
+   :task (task! (dev-env/dev-env! parsed))}
+
+  -johnswanson-dev-env
+  {:doc "Stand up (or tear down) an isolated dev environment for this worktree. Interactive prompts when flags omitted."
+   :examples [["./bin/mage -johnswanson-dev-env" "Interactive TUI to configure infra (saves config)"]
+              ["./bin/mage -johnswanson-dev-env --run" "Configure + launch backend/frontend"]
+              ["./bin/mage -johnswanson-dev-env --run --no-frontend" "Configure + backend only"]
+              ["./bin/mage -johnswanson-dev-env --down" "Stop everything for this worktree"]
+              ["./bin/mage -johnswanson-dev-env --status" "Show running containers and processes"]]
+   :requires [[mage.johnswanson.dev-env :as jds-dev-env]]
+   :options [["-e" "--edition EDITION" "ee or oss (default: prompt)"]
+             ["-t" "--token TOKEN" "Token type: all-features, starter-cloud, pro-cloud, pro-self-hosted, none"]
+             [nil "--app-db DB" "App database: h2, postgres, mysql, mariadb (default: prompt)"]
+             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"
+              :multi true :default [] :update-fn conj]
+             [nil "--run" "Also launch backend + frontend in background"]
+             [nil "--no-frontend" "Skip frontend dev server (only with --run)"]
+             [nil "--down" "Stop everything for this worktree"]
+             [nil "--status" "Show current env status"]
+             [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]
+             [nil "--fresh" "Recreate containers from scratch"]]
+   :task (task! (jds-dev-env/dev-env! parsed))}}}
