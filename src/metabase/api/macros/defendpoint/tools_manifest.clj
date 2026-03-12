@@ -102,32 +102,6 @@
                  (merge existing sanitized)))))
     (walk-sanitize-refs (dissoc jss :definitions))))
 
-;;; ------------------------------------------------ Name inference --------------------------------------------------------
-
-(defn infer-tool-name
-  "Infer a tool name from HTTP method, API prefix, and route path.
-
-  Logic:
-  - Strip version prefix (e.g. `/v1/`)
-  - Strip path params (`:id`, `:field-id`)
-  - For GET: prefix with `get_` + remaining segments joined by `_`
-  - For DELETE: prefix with `delete_` + remaining segments joined by `_`
-  - For POST/PUT: just remaining segments joined by `_`
-  - Convert to snake_case"
-  [method prefix route-path]
-  (let [full-path    (str prefix route-path)
-        stripped     (str/replace full-path #".*/v\d+/" "")
-        segments     (->> (str/split stripped #"/")
-                          (remove str/blank?)
-                          (drop-while #(= % "api"))
-                          (remove #(str/starts-with? % ":")))
-        base         (str/join "_" segments)
-        with-prefix  (case method
-                       :get    (str "get_" base)
-                       :delete (str "delete_" base)
-                       base)]
-    (str/replace with-prefix #"-" "_")))
-
 ;;; ------------------------------------------------ Annotation inference --------------------------------------------------
 
 (def ^:private annotation-key-mapping
@@ -222,10 +196,9 @@
   [prefix {:keys [form]}]
   (let [method       (:method form)
         route-path   (get-in form [:route :path])
-        tool-md      (let [t (get-in form [:metadata :tool])]
-                       (if (map? t) t {}))
-        tool-name    (or (:name tool-md)
-                         (infer-tool-name method prefix route-path))
+        tool-md      (get-in form [:metadata :tool])
+        tool-name    (:name tool-md)
+        _            (assert tool-name "Tool defined without :name")
         description  (or (:description tool-md)
                          (:docstr form))
         full-path    (str prefix (route-path->endpoint-path route-path))

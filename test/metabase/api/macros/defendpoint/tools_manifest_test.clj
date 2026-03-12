@@ -5,29 +5,8 @@
    [malli.json-schema :as mjs]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
-   [metabase.util.malli.registry :as mr]))
-
-;;; --------------------------------------------------- Name inference ----------------------------------------------------
-
-(deftest ^:parallel infer-tool-name-test
-  (testing "GET endpoints get a get_ prefix"
-    (is (= "get_table"
-           (tools-manifest/infer-tool-name :get "/api/agent" "/v1/table/:id"))))
-  (testing "POST endpoints don't get a prefix"
-    (is (= "search"
-           (tools-manifest/infer-tool-name :post "/api/agent" "/v1/search"))))
-  (testing "Path params are stripped"
-    (is (= "get_table_field_values"
-           (tools-manifest/infer-tool-name :get "/api/agent" "/v1/table/:id/field/:field-id/values"))))
-  (testing "Hyphens are converted to underscores"
-    (is (= "construct_query"
-           (tools-manifest/infer-tool-name :post "/api/agent" "/v1/construct-query"))))
-  (testing "DELETE endpoints get a delete_ prefix"
-    (is (= "delete_table"
-           (tools-manifest/infer-tool-name :delete "/api/agent" "/v1/table/:id"))))
-  (testing "Non-versioned paths strip leading / and api segment"
-    (is (= "get_card_query"
-           (tools-manifest/infer-tool-name :get "/api" "/card/:id/query")))))
+   [metabase.util.malli.registry :as mr])
+  (:import (clojure.lang ExceptionInfo)))
 
 ;;; ------------------------------------------------- Annotation inference ------------------------------------------------
 
@@ -159,7 +138,7 @@
 ;; 3. DELETE with no explicit name — tests name inference + DELETE annotations
 (api.macros/defendpoint :delete "/v1/test/:id"
   "Delete a test resource."
-  {:tool {}}
+  {:tool {:name "delete_test"}}
   [#_{:clj-kondo/ignore [:unused-binding]}
    {:keys [id]} :- [:map [:id :int]]]
   nil)
@@ -193,7 +172,7 @@
 ;; 6. PUT with route + query + body params, no explicit name — tests PUT annotations + name inference + 3-way merge
 (api.macros/defendpoint :put "/v1/test-resource/:id"
   "Update a test resource."
-  {:tool {}}
+  {:tool {:name "test_resource"}}
   [{:keys [id]} :- [:map [:id :int]]
    #_{:clj-kondo/ignore [:unused-binding]}
    {:keys [dry-run]} :- [:map [:dry-run {:optional true} [:maybe :boolean]]]
@@ -207,7 +186,7 @@
                 {:name "bar" :endpoint {:method "POST" :path "/v1/bar"}}]))))
   (testing "Throws on duplicate tool names"
     (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
+         ExceptionInfo
          #"Duplicate tool names detected"
          (tools-manifest/check-tool-uniqueness
           [{:name "foo" :endpoint {:method "GET"  :path "/v1/foo"}}
