@@ -28,7 +28,7 @@
   :doc false)
 
 (defsetting ee-anthropic-api-base-url
-  (deferred-tru "The OpenAI embeddings base URL used in Metabase Enterprise.")
+  (deferred-tru "The Anthropic API base URL used in Metabase Enterprise.")
   :encryption :no
   :visibility :settings-manager
   :default "https://api.anthropic.com"
