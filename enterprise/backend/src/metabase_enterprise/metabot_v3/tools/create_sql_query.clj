@@ -4,6 +4,8 @@
    [metabase-enterprise.metabot-v3.tools.sql.common :as metabot-v3.tools.sql.common]
    [metabase-enterprise.metabot-v3.tools.sql.validation :as metabot-v3.tools.sql.validation]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -15,9 +17,11 @@
 (defn- create-native-query
   "Create a native (SQL) query structure."
   [database-id sql-content]
-  {:database database-id
-   :type     :native
-   :native   {:query sql-content}})
+  (let [mp (lib-be/application-database-metadata-provider database-id)]
+    (-> (lib/native-query mp sql-content)
+        ;; Going forward we should ensure consumers are fine processing MBQL 5.
+        ^{:clj-kondo/ignore [:discouraged-var]}
+        lib/->legacy-MBQL)))
 
 (defn- validate-database-access
   "Check if the current user has access to the database."
