@@ -157,7 +157,7 @@ migrate_down_step() {
     local work_dir="/tmp/metabase-head-jar"
     local modified_jar="$work_dir/metabase.jar"
 
-    log "Patching HEAD JAR with upcoming version: $upcoming_version"
+    log "HEAD JAR needs patching (version.properties says 'vUNKNOWN', setting to $upcoming_version)"
     rm -rf "$work_dir"
     mkdir -p "$work_dir"
 
@@ -172,7 +172,7 @@ migrate_down_step() {
     echo "date=$(date +%Y-%m-%d)" >> "$work_dir/version.properties"
     (cd "$work_dir" && zip -u metabase.jar version.properties >/dev/null)
 
-    log "JAR patched successfully"
+    log "HEAD JAR patched - proceeding with migrate down"
 
     output=$(METABASE_IMAGE="$image" docker compose run --rm \
       -v "$modified_jar:/app/metabase.jar:ro" \
@@ -222,14 +222,17 @@ cascading_migrate_down() {
   # Simple loop - each step handles its own image resolution
   local step=1
   for version in "${versions[@]}"; do
-    log "  Step $step/$steps: $version"
+    log "--------------------------------------------"
+    log "Cascade step $step/$steps: $version"
+    log "--------------------------------------------"
     if ! migrate_down_step "$version"; then
-      error "Migrate down failed at step $step"
+      error "Migrate down failed at step $step ($version)"
       return 1
     fi
     ((step++))
   done
 
+  log "--------------------------------------------"
   log "Cascading migrate down complete"
 }
 
@@ -314,15 +317,15 @@ main() {
   start_metabase "$source_image"
 
   if ! wait_for_health "$HEALTH_TIMEOUT"; then
-    error "❌ SOURCE version failed health check"
+    error "❌ SOURCE version ($SOURCE_VERSION) failed health check"
     docker compose logs metabase
     exit 1
   fi
 
-  log "✅ SOURCE version is healthy"
+  log "✅ SOURCE version ($SOURCE_VERSION) is healthy"
 
   log ""
-  log "Step 2: Stopping SOURCE version..."
+  log "Step 2: Stopping SOURCE version ($SOURCE_VERSION)..."
   stop_metabase
 
   log ""
@@ -332,16 +335,16 @@ main() {
   if [[ "$direction" == "upgrade" ]]; then
     # Upgrade: should migrate automatically and become healthy
     if ! wait_for_health "$HEALTH_TIMEOUT"; then
-      error "❌ TARGET version failed health check after upgrade"
+      error "❌ TARGET version ($TARGET_VERSION) failed health check after upgrade"
       docker compose logs metabase
       exit 1
     fi
-    log "✅ UPGRADE successful - TARGET version is healthy"
+    log "✅ UPGRADE successful - TARGET version ($TARGET_VERSION) is healthy"
 
   else
     # Downgrade: should refuse to start, then we run migrate down
     if ! check_downgrade_refused; then
-      error "❌ TARGET version did not properly detect downgrade"
+      error "❌ TARGET version ($TARGET_VERSION) did not properly detect downgrade"
       docker compose logs metabase
       exit 1
     fi
@@ -350,7 +353,9 @@ main() {
     stop_metabase
 
     log ""
-    log "Step 4: Rolling back database..."
+    log "============================================"
+    log "Step 4: Rolling back database ($SOURCE_VERSION → $TARGET_VERSION)..."
+    log "============================================"
     if ! cascading_migrate_down "$SOURCE_VERSION" "$TARGET_VERSION"; then
       error "❌ migrate down failed"
       exit 1
@@ -362,11 +367,11 @@ main() {
     start_metabase "$target_image"
 
     if ! wait_for_health "$HEALTH_TIMEOUT"; then
-      error "❌ TARGET version failed health check after migrate down"
+      error "❌ TARGET version ($TARGET_VERSION) failed health check after migrate down"
       docker compose logs metabase
       exit 1
     fi
-    log "✅ DOWNGRADE successful - TARGET version is healthy after migrate down"
+    log "✅ DOWNGRADE successful - TARGET version ($TARGET_VERSION) is healthy after migrate down"
   fi
 
   log ""
