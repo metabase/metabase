@@ -76,7 +76,7 @@ jobs:
       MB_DB_USER: circle_test
     services:
       postgres:
-        image: circleci/postgres:latest
+        image: cimg/postgres:latest
         ports:
           - "5432:5432"
         env:
@@ -150,7 +150,7 @@ jobs:
       MB_DB_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:10.6
+        image: cimg/mariadb:10.6
         ports:
           - "3306:3306"
     steps:
@@ -172,7 +172,7 @@ jobs:
       MB_DB_USER: root
     services:
       mariadb:
-        image: circleci/mariadb:latest
+        image: cimg/mariadb:latest
         ports:
           - "3306:3306"
     steps:

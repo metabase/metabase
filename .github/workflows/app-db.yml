@@ -22,12 +22,12 @@ jobs:
         version:
           - name: MariaDB 10.6
             junit-name: be-tests-mariadb-10-6-ee
-            image: circleci/mariadb:10.6
+            image: cimg/mariadb:10.6
             env:
               enable-ssl-tests: 'false'
           - name: MariaDB Latest
             junit-name: be-tests-mariadb-latest-ee
-            image: circleci/mariadb:latest
+            image: cimg/mariadb:latest
             env:
               enable-ssl-tests: 'false'
         job:

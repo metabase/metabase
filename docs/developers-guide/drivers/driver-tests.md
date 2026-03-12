@@ -220,7 +220,7 @@ be-tests-postgres-latest-ee:
     MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: "test-resources/certificates/us-east-2-bundle.pem"
   services:
     postgres:
-      image: circleci/postgres:latest
+      image: cimg/postgres:latest
       ports:
         - "5432:5432"
       env:

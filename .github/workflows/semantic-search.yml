@@ -77,11 +77,11 @@ jobs:
         version:
           - name: MariaDB 10.6 with pgvector pg17
             junit-name: semantic-search-tests-mariadb-10-6
-            mariadb-image: circleci/mariadb:10.6
+            mariadb-image: cimg/mariadb:10.6
             pgvector-image: pgvector/pgvector:pg17
           - name: MariaDB Latest with pgvector pg17
             junit-name: semantic-search-tests-mariadb-latest
-            mariadb-image: circleci/mariadb:latest
+            mariadb-image: cimg/mariadb:latest
             pgvector-image: pgvector/pgvector:pg17
         job:
           - name: Semantic Search Tests
