@@ -159,8 +159,9 @@ jobs:
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
-        options: >-
-          --collation-server=utf8mb4_unicode_ci
+        command:
+          - mariadbd
+          - "--collation-server=utf8mb4_unicode_ci"
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
@@ -186,8 +187,9 @@ jobs:
         env:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
-        options: >-
-          --collation-server=utf8mb4_unicode_ci
+        command:
+          - mariadbd
+          - "--collation-server=utf8mb4_unicode_ci"
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
