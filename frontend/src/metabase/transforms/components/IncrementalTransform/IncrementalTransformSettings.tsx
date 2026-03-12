@@ -142,7 +142,7 @@ export const IncrementalTransformSettings = ({
 
   const label = t`Incremental transformation`;
   const renderDescription = () => {
-    const description = t`If you don’t need to reprocess all the data, incremental transforms can be faster. To use this, your transform definition should have a stable schema. `;
+    const description = t`If you don’t need to reprocess all the data, incremental transforms can be faster. To use this, your transform definition should have a stable schema.`;
     return (
       <>
         {description}
