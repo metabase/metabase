@@ -41,7 +41,7 @@ export const SourceReplacementStatus = () => {
   );
   const dispatch = useDispatch();
   const activeRun = runs[0];
-  const isActive = runs.length > 0;
+  const isActive = activeRun != null;
   const isVisible = useStatusVisibility(isActive);
 
   useLayoutEffect(() => {
