@@ -31,11 +31,13 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { getMetadata } from "metabase/selectors/metadata";
 import { CreateTransformMenu } from "metabase/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase/transforms/components/ListEmptyState";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
 import {
+  Box,
   Card,
   EntityNameCell,
   Flex,
@@ -43,6 +45,7 @@ import {
   Icon,
   Stack,
   TextInput,
+  Tooltip,
   TreeTable,
   type TreeTableColumnDef,
   TreeTableSkeleton,
@@ -52,7 +55,11 @@ import {
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import S from "./TransformListPage.module.css";
 import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
-import { buildTreeData, getDefaultExpandedIds } from "./utils";
+import {
+  buildTreeData,
+  getDefaultExpandedIds,
+  getIncrementalWarning,
+} from "./utils";
 
 const getNodeId = (node: TreeNode) => node.id;
 const getSubRows = (node: TreeNode) => node.children;
@@ -137,9 +144,21 @@ export const TransformListPage = ({
   const isLoading =
     isLoadingCollections || isLoadingTransforms || isLoadingDatabases;
   const error = collectionsError ?? transformsError;
+  const metadata = useSelector(getMetadata);
   const shouldShowPythonTransformsUpsell = useSelector(
     getShouldShowPythonTransformsUpsell,
   );
+
+  const warningsByTransformId = useMemo(() => {
+    const warnings = new Map<number, string>();
+    for (const transform of transforms ?? []) {
+      const warning = getIncrementalWarning(transform, metadata);
+      if (warning) {
+        warnings.set(transform.id, warning);
+      }
+    }
+    return warnings;
+  }, [transforms, metadata]);
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
@@ -197,19 +216,33 @@ export const TransformListPage = ({
         cell: ({ row }) => {
           const isLibraryWithoutFeature =
             row.original.nodeType === "library" && !hasPythonTransformsFeature;
+          const warningTooltip = row.original.transformId
+            ? warningsByTransformId.get(row.original.transformId)
+            : undefined;
+          const nameCell = (
+            <EntityNameCell
+              data-testid="tree-node-name"
+              icon={warningTooltip ? "warning" : row.original.icon}
+              iconColor={
+                warningTooltip ? "warning" : getNodeIconColor(row.original)
+              }
+              name={row.original.name}
+              ellipsifiedProps={
+                isRowDisabled(row)
+                  ? unreadableTransformEllipsifiedProps
+                  : undefined
+              }
+            />
+          );
           return (
             <Group gap="sm" wrap="nowrap" miw={0}>
-              <EntityNameCell
-                data-testid="tree-node-name"
-                icon={row.original.icon}
-                iconColor={getNodeIconColor(row.original)}
-                name={row.original.name}
-                ellipsifiedProps={
-                  isRowDisabled(row)
-                    ? unreadableTransformEllipsifiedProps
-                    : undefined
-                }
-              />
+              {warningTooltip ? (
+                <Tooltip label={warningTooltip} maw={300} multiline>
+                  <Box>{nameCell}</Box>
+                </Tooltip>
+              ) : (
+                nameCell
+              )}
               {isLibraryWithoutFeature && <UpsellGem.New size={14} />}
             </Group>
           );
@@ -287,7 +320,7 @@ export const TransformListPage = ({
           ) : null,
       },
     ];
-  }, [hasPythonTransformsFeature]);
+  }, [hasPythonTransformsFeature, warningsByTransformId]);
 
   const getRowHref = useCallback((row: Row<TreeNode>) => {
     if (isRowDisabled(row)) {
