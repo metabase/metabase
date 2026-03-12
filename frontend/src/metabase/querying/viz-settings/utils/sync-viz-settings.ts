@@ -39,14 +39,14 @@ export function syncVizSettingsWithSeries(
   settings: VisualizationSettings,
   newQuery: Lib.Query,
   newSeries: Series,
-  oldSeries: Series,
+  oldSeries?: Series,
 ): VisualizationSettings {
   if (!isNativeQuery(newQuery)) {
     return settings;
   }
 
   const [newSingleSeries] = newSeries;
-  const [oldSingleSeries] = oldSeries;
+  const [oldSingleSeries] = oldSeries ?? [];
   if (!isValidSeries(newSingleSeries) || !isValidSeries(oldSingleSeries)) {
     return settings;
   }

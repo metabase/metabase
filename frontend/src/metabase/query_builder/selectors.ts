@@ -21,6 +21,8 @@ import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
+import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
+import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInterval,
   minTimeseriesUnit,
@@ -32,12 +34,23 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Table from "metabase-lib/v1/metadata/Table";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
   normalizeParameterValue,
   normalizeParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
+import type { TimelineEvent } from "metabase-types/analytics";
+import type {
+  Bookmark,
+  DatasetColumn,
+  DatasetQuery,
+  Field,
+  RowValue,
+  Timeline,
+} from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import type { State } from "metabase-types/store";
 
@@ -80,7 +93,7 @@ const SIDEBARS = [
   "isShowingDataReference",
   "isShowingTemplateTagsEditor",
   "isShowingSnippetSidebar",
-];
+] as const;
 
 export const getIsAnySidebarOpen = createSelector(
   [getUiControls],
@@ -96,8 +109,6 @@ export const getOriginalCard = (state: State) => state.qb.originalCard;
 export const getLastRunCard = (state: State) => state.qb.lastRunCard;
 
 export const getParameterValues = (state: State) => state.qb.parameterValues;
-export const getParameterValuesSearchCache = (state: State) =>
-  state.qb.parameterValuesSearchCache;
 
 export const getMetadataDiff = (state: State) => state.qb.metadataDiff;
 
@@ -109,8 +120,11 @@ export const getSelectedTimelineEventIds = (state: State) =>
 
 const getRawQueryResults = (state: State) => state.qb.queryResults;
 
-export const getIsBookmarked = (state: State, props) =>
-  props.bookmarks.some(
+export const getIsBookmarked = (
+  state: State,
+  { bookmarks }: { bookmarks: Bookmark[] },
+) =>
+  bookmarks.some(
     (bookmark) =>
       bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
   );
@@ -130,7 +144,7 @@ export const getDatabaseId = createSelector(
 export const getTableForeignKeyReferences = (state: State) =>
   state.qb.tableForeignKeyReferences;
 
-const getDatabasesListDefaultValue = [];
+const getDatabasesListDefaultValue: Database[] = [];
 export const getDatabasesList = (state: State) =>
   Databases.selectors.getList(state, {
     entityQuery: { include: "tables", saved: true },
@@ -147,7 +161,7 @@ export const getSampleDatabaseId = createSelector(
 export const getParameters = createSelector(
   [getCard, getMetadata, getParameterValues],
   (card, metadata, parameterValues) =>
-    getCardUiParameters(card, metadata, parameterValues),
+    card ? getCardUiParameters(card, metadata, parameterValues) : [],
 );
 
 const getLastRunDatasetQuery = createSelector(
@@ -167,7 +181,8 @@ export const getDatasetEditorTab = createSelector(
 
 export const getOriginalQuestion = createSelector(
   [getMetadata, getOriginalCard],
-  (metadata, card) => metadata && card && new Question(card, metadata),
+  (metadata, card) =>
+    (metadata && card && new Question(card, metadata)) ?? undefined,
 );
 
 export const getOriginalQuestionWithParameterValues = createSelector(
@@ -219,9 +234,8 @@ export const getQuestion = createSelector(
 /**
  * Returns whether the current question is a native query
  */
-export const getIsNative = createSelector(
-  [getQuestion],
-  (question) => question && Lib.queryDisplayInfo(question.query()).isNative,
+export const getIsNative = createSelector([getQuestion], (question) =>
+  question ? Lib.queryDisplayInfo(question.query()).isNative : false,
 );
 
 const getCardResultMetadata = createSelector(
@@ -264,7 +278,7 @@ export const getQueryResults = createSelector(
     }
     const { cols, results_metadata } = result.data;
 
-    function applyMetadataDiff(column) {
+    function applyMetadataDiff(column: Field | DatasetColumn) {
       const columnDiff = metadataDiff[column.name];
       return columnDiff ? merge(column, columnDiff) : column;
     }
@@ -348,7 +362,7 @@ export const getPKColumnIndex = createSelector(
   [getFirstQueryResult, getTableId],
   (result, tableId) => {
     if (!result || !result.data) {
-      return;
+      return -1;
     }
     const { cols } = result.data;
 
@@ -365,17 +379,17 @@ export const getPKColumnIndex = createSelector(
 export const getPKRowIndexMap = createSelector(
   [getFirstQueryResult, getPKColumnIndex],
   (result, PKColumnIndex) => {
+    const map = new Map<RowValue, number>();
     if (!result || !result.data || !Number.isSafeInteger(PKColumnIndex)) {
-      return {};
+      return map;
     }
     const { rows } = result.data;
     if (PKColumnIndex < 0) {
       return rows.map((_, index) => index);
     }
-    const map = {};
     rows.forEach((row, index) => {
       const PKValue = row[PKColumnIndex];
-      map[PKValue] = index;
+      map.set(PKValue, index);
     });
     return map;
   },
@@ -395,7 +409,7 @@ export const getRowIndexToPKMap = createSelector(
     if (PKColumnIndex < 0) {
       return rows.map((_, index) => index);
     }
-    const map = {};
+    const map: Record<number, ObjectId> = {};
     rows.forEach((row, index) => {
       const PKValue = row[PKColumnIndex];
       map[index] = PKValue;
@@ -404,11 +418,20 @@ export const getRowIndexToPKMap = createSelector(
   },
 );
 
-function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
+function areLegacyQueriesEqual(
+  queryA: DatasetQuery | undefined,
+  queryB: DatasetQuery | undefined,
+  tableMetadata: Table,
+) {
+  if (queryA == null || queryB == null) {
+    return false;
+  }
   return Lib.areLegacyQueriesEqual(
     queryA,
     queryB,
-    tableMetadata?.fields.map(({ id }) => id),
+    tableMetadata?.fields
+      ?.map(({ id }) => id)
+      ?.filter((id): id is number => typeof id === "number") ?? [],
   );
 }
 
@@ -421,6 +444,11 @@ function areComposedEntitiesEquivalent({
   lastRunQuestion,
   currentQuestion,
   tableMetadata,
+}: {
+  originalQuestion?: Question | null;
+  lastRunQuestion?: Question | null;
+  currentQuestion?: Question | null;
+  tableMetadata: Table;
 }) {
   const isQuestion = originalQuestion?.type() === "question";
   if (!originalQuestion || !lastRunQuestion || !currentQuestion || isQuestion) {
@@ -464,6 +492,11 @@ export function areQueriesEquivalent({
   lastRunQuestion,
   currentQuestion,
   tableMetadata,
+}: {
+  originalQuestion?: Question | null;
+  lastRunQuestion?: Question | null;
+  currentQuestion?: Question | null;
+  tableMetadata: Table;
 }) {
   return (
     areLegacyQueriesEqual(
@@ -522,14 +555,22 @@ export const getZoomedObjectRowIndex = createSelector(
     if (!PKRowIndexMap) {
       return;
     }
-    return PKRowIndexMap[objectId] ?? PKRowIndexMap[parseInt(objectId)];
+
+    if (PKRowIndexMap instanceof Map) {
+      return PKRowIndexMap.get(objectId);
+    }
+
+    const index =
+      typeof objectId === "string" ? parseInt(objectId) : (objectId ?? -1);
+
+    return PKRowIndexMap[index];
   },
 );
 
 export const getPreviousRowPKValue = createSelector(
   [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
   (result, PKColumnIndex, rowIndex) => {
-    if (!result) {
+    if (!result || rowIndex == null) {
       return;
     }
     if (PKColumnIndex === -1) {
@@ -543,7 +584,7 @@ export const getPreviousRowPKValue = createSelector(
 export const getNextRowPKValue = createSelector(
   [getFirstQueryResult, getPKColumnIndex, getZoomedObjectRowIndex],
   (result, PKColumnIndex, rowIndex) => {
-    if (!result) {
+    if (!result || rowIndex == null) {
       return;
     }
     if (PKColumnIndex === -1) {
@@ -573,7 +614,11 @@ export const getCanZoomNextRow = createSelector(
 export const getZoomRow = createSelector(
   [getQueryResults, getZoomedObjectRowIndex],
   (queryResults, rowIndex) => {
-    if (!Array.isArray(queryResults) || !queryResults.length) {
+    if (
+      !Array.isArray(queryResults) ||
+      !queryResults.length ||
+      rowIndex == null
+    ) {
       return;
     }
     return queryResults[0].data.rows[rowIndex];
@@ -729,12 +774,12 @@ export const getIsNativeEditorOpen = createSelector(
 
 export const getNativeEditorSelectedRange = createSelector(
   [getUiControls],
-  (uiControls) => uiControls && uiControls.nativeEditorSelectedRange?.[0],
+  (uiControls) => uiControls?.nativeEditorSelectedRange?.[0],
 );
 
 const getNativeEditorSelectedRanges = createSelector(
   [getUiControls],
-  (uiControls) => uiControls && uiControls.nativeEditorSelectedRange,
+  (uiControls) => uiControls?.nativeEditorSelectedRange,
 );
 
 export const getIsTimeseries = createSelector(
@@ -745,7 +790,9 @@ export const getIsTimeseries = createSelector(
 export const getTimeseriesXValues = createSelector(
   [getIsTimeseries, getTransformedSeries, getVisualizationSettings],
   (isTimeseries, series, settings) =>
-    isTimeseries && series && settings && getXValues({ series, settings }),
+    isTimeseries && series && settings
+      ? getXValues({ series, settings })
+      : null,
 );
 
 const getTimeseriesDataInterval = createSelector(
@@ -755,7 +802,7 @@ const getTimeseriesDataInterval = createSelector(
     getIsTimeseries,
     getTimeseriesXValues,
   ],
-  (series, settings, isTimeseries, xValues) => {
+  (series, settings, isTimeseries, xValues): TimeSeriesInterval | null => {
     if (!isTimeseries || !xValues) {
       return null;
     }
@@ -769,29 +816,32 @@ const getTimeseriesDataInterval = createSelector(
         isAbsoluteDateTimeUnit(column?.unit) ? column.unit : null,
       )
       .filter(isNotNull);
-    return computeTimeseriesDataInterval(
-      xValues,
-      minTimeseriesUnit(columnUnits),
+    return (
+      computeTimeseriesDataInterval(xValues, minTimeseriesUnit(columnUnits)) ??
+      null
     );
   },
 );
+
+type Domain = [number, number];
 
 export const getTimeseriesXDomain = createSelector(
   [getIsTimeseries, getTimeseriesXValues],
   (isTimeseries, xValues) => {
-    return (
-      isTimeseries &&
-      Array.isArray(xValues) &&
-      xValues.length > 0 &&
-      d3.extent(xValues)
-    );
+    if (isTimeseries && Array.isArray(xValues) && xValues.length > 0) {
+      return d3.extent(xValues) as Domain;
+    }
+    return null;
   },
 );
 
-export const getFetchedTimelines = createSelector([getEntities], (entities) => {
-  const entityQuery = { include: "events" };
-  return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
-});
+export const getFetchedTimelines = createSelector(
+  [getEntities],
+  (entities): Timeline[] => {
+    const entityQuery = { include: "events" };
+    return Timelines.selectors.getList({ entities }, { entityQuery }) ?? [];
+  },
+);
 
 export const getTransformedTimelines = createSelector(
   [getFetchedTimelines],
@@ -809,11 +859,14 @@ export const getTransformedTimelines = createSelector(
   },
 );
 
-function isEventWithinDomain(event, xDomain) {
+function isEventWithinDomain(event: TimelineEvent, xDomain: Domain) {
   return event.timestamp.isBetween(xDomain[0], xDomain[1], undefined, "[]");
 }
 
-function getXDomainForTimelines(xDomain, dataInterval) {
+function getXDomainForTimelines(
+  xDomain: Domain | null,
+  dataInterval: TimeSeriesInterval | null,
+): Domain | null {
   // When looking at, let's say, count of orders over years, last year value is Jan 1, 2024
   // If we filter timeline events up until Jan 1, 2024, we won't see any events from 2024,
   // so we need to extend xDomain by dataInterval.count * dataInterval.unit to include them
@@ -838,15 +891,17 @@ export const getFilteredTimelines = createSelector(
     const timelineXDomain = getXDomainForTimelines(xDomain, dataInterval);
     return timelines
       .map((timeline) =>
-        updateIn(timeline, ["events"], (events) =>
+        updateIn(timeline, ["events"], (events: TimelineEvent[]) =>
           xDomain
-            ? events.filter((event) =>
-                isEventWithinDomain(event, timelineXDomain),
+            ? events.filter(
+                (event) =>
+                  timelineXDomain &&
+                  isEventWithinDomain(event, timelineXDomain),
               )
             : events,
         ),
       )
-      .filter((timeline) => timeline.events.length > 0);
+      .filter((timeline) => (timeline.events ?? []).length > 0);
   },
 );
 
@@ -862,7 +917,10 @@ export const getVisibleTimelineEvents = createSelector(
       .value(),
 );
 
-export function getOffsetForQueryAndPosition(queryText, { row, column }) {
+export function getOffsetForQueryAndPosition(
+  queryText: string,
+  { row, column }: { row: number; column: number },
+) {
   const queryLines = queryText.split("\n");
   return (
     // the total length of the previous rows
@@ -927,12 +985,12 @@ export const getAllNativeEditorSelectedText = createSelector(
 
 export const getModalSnippet = createSelector(
   [getUiControls],
-  (uiControls) => uiControls && uiControls.modalSnippet,
+  (uiControls) => uiControls?.modalSnippet,
 );
 
 export const getSnippetCollectionId = createSelector(
   [getUiControls],
-  (uiControls) => uiControls && uiControls.snippetCollectionId,
+  (uiControls) => uiControls?.snippetCollectionId,
 );
 
 export const getIsVisualized = createSelector(
@@ -967,7 +1025,7 @@ export const getIsLiveResizable = createSelector(
 
 export const getQuestionDetailsTimelineDrawerState = createSelector(
   [getUiControls],
-  (uiControls) => uiControls && uiControls.questionDetailsTimelineDrawerState,
+  (uiControls) => uiControls?.questionDetailsTimelineDrawerState,
 );
 
 export const isBasedOnExistingQuestion = createSelector(
@@ -1056,8 +1114,13 @@ export function getEmbeddedParameterVisibility(state: State, slug: string) {
 }
 
 export const getSubmittableQuestion = (state: State, question: Question) => {
+  const card = getCard(state);
+  if (!card) {
+    return null;
+  }
+
   const rawSeries = createRawSeries({
-    card: getCard(state),
+    card,
     queryResult: getFirstQueryResult(state),
     datasetQuery: getLastRunDatasetQuery(state),
   });

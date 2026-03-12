@@ -7,7 +7,7 @@ import {
   listModelIndexes,
 } from "metabase/api";
 import type Question from "metabase-lib/v1/Question";
-import type { Field, FieldReference } from "metabase-types/api";
+import type { DatasetColumn, Field, FieldReference } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 import type { Dispatch } from "metabase-types/store";
 
@@ -125,14 +125,14 @@ function getIndexIdsToRemove(
   return indexIdsToRemove;
 }
 
-export function cleanIndexFlags(fields: Field[] = []) {
+export function cleanIndexFlags(fields: (DatasetColumn | Field)[] = []) {
   const indexesToClean = fields.reduce(
     (
       indexesToClean: number[],
-      field: FieldWithMaybeIndex,
+      field: FieldWithMaybeIndex | DatasetColumn,
       thisIndex: number,
     ) => {
-      if (field.should_index !== undefined) {
+      if ("should_index" in field && field.should_index !== undefined) {
         indexesToClean.push(thisIndex);
       }
       return indexesToClean;
