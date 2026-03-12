@@ -336,27 +336,17 @@ export const useDataGridInstance = <TData, TValue>({
   });
 
   useEffect(() => {
-    if (pinnedTopRowsCount === 0) {
-      if (topRowHeights.length > 0) {
-        setTopRowHeights([]);
-      }
-      return;
-    }
-
-    const virtualItems = virtualGrid.rowVirtualizer.getVirtualItems();
-    const heights = virtualItems
-      .filter((item) => item.index < pinnedTopRowsCount)
-      .map((item) => item.size);
-
+    const heights = Array.from({ length: pinnedTopRowsCount }, (_, i) =>
+      measureRowHeight(i),
+    );
     if (
       heights.length === topRowHeights.length &&
-      heights.every((h, i) => h === topRowHeights[i])
+      heights.every((height, i) => height === topRowHeights[i])
     ) {
       return;
     }
-
     setTopRowHeights(heights);
-  }, [pinnedTopRowsCount, virtualGrid.rowVirtualizer, topRowHeights]);
+  }, [pinnedTopRowsCount, measureRowHeight, topRowHeights]);
 
   const measureColumnWidths = useMeasureColumnWidths(
     table,
