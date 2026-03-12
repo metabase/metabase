@@ -129,6 +129,10 @@ const SparkleIcon = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
+// Strip markdown links `[text](url)` → `text`
+const stripMarkdownLinks = (text: string) =>
+  text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+
 // ============================================================================
 // Shared: message list renderer
 // ============================================================================
@@ -198,7 +202,7 @@ const MessageList = ({
 
       const content: ReactNode =
         "message" in msg && msg.message ? (
-          msg.message
+          stripMarkdownLinks(msg.message)
         ) : "payload" in msg && msg.payload ? (
           <pre
             style={{
@@ -1627,7 +1631,7 @@ const SlackDemo = () => {
 
             const content =
               "message" in msg && msg.message
-                ? msg.message
+                ? stripMarkdownLinks(msg.message)
                 : "payload" in msg && msg.payload
                   ? JSON.stringify(msg.payload, null, 2)
                   : null;
@@ -1691,6 +1695,8 @@ const SlackDemo = () => {
                       lineHeight: 1.5,
                       color: sl.text,
                       whiteSpace: "pre-wrap",
+                      overflowWrap: "break-word",
+                      wordBreak: "break-word",
                     }}
                   >
                     {content}
@@ -2255,7 +2261,7 @@ const TeamsDemo = () => {
 
             const content =
               "message" in msg && msg.message
-                ? msg.message
+                ? stripMarkdownLinks(msg.message)
                 : "payload" in msg && msg.payload
                   ? JSON.stringify(msg.payload, null, 2)
                   : null;
@@ -2313,6 +2319,8 @@ const TeamsDemo = () => {
                       lineHeight: 1.55,
                       color: tm.textSecondary,
                       whiteSpace: "pre-wrap",
+                      overflowWrap: "break-word",
+                      wordBreak: "break-word",
                     }}
                   >
                     {content}
