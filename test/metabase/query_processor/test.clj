@@ -6,7 +6,6 @@
   (:refer-clojure :exclude [compile])
   (:require
    [metabase.query-processor.core :as qp.core]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.util.namespaces :as shared.ns]))
 
@@ -20,7 +19,6 @@
   default-query-constraints
   default-query->remark
   internal-query?
-  legacy-result-metadata
   order-cols
   preprocess
   process-query
@@ -41,9 +39,6 @@
   userland-query
   userland-query-with-default-constraints
   userland-query?]
- ;; Store — metabase.query-processor.store
- [qp.store
-  with-metadata-provider]
  ;; Test utilities — metabase.query-processor.test-util
  [qp.test-util
   ;; Driver sets
@@ -76,5 +71,4 @@
   metadata-provider-with-cards-with-transformed-metadata-for-queries
   mock-fks-application-database-metadata-provider
   ;; Misc
-  field-values-from-def
-  nest-query])
+  field-values-from-def])

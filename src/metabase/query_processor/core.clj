@@ -43,7 +43,6 @@
   process-query-for-dashcard]
  ;; Metadata — metabase.query-processor.metadata
  [qp.metadata
-  legacy-result-metadata
   result-metadata]
  ;; Constraints — metabase.query-processor.middleware.constraints
  [qp.constraints
