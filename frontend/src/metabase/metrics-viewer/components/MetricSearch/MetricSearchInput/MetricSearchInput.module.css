@@ -65,6 +65,22 @@
   border-color: var(--mb-color-brand);
 }
 
+.constantPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.75rem;
+  padding: 0 0.5rem;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mb-color-background-hover);
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+  font-size: 0.875rem;
+  border: 1px solid var(--mb-color-border);
+  flex-shrink: 0;
+  user-select: none;
+}
+
 .parenToken {
   font-size: 1.25rem;
   font-weight: 700;

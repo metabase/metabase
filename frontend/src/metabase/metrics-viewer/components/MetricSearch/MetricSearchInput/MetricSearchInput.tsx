@@ -167,7 +167,9 @@ export function MetricSearchInput({
   const canCloseParen =
     hasUnclosedParen &&
     pendingOperator === null &&
-    (lastToken?.type === "metric" || lastToken?.type === "close-paren");
+    (lastToken?.type === "metric" ||
+      lastToken?.type === "constant" ||
+      lastToken?.type === "close-paren");
 
   // Whether we can insert an open-paren
   const canOpenParen =
@@ -246,13 +248,48 @@ export function MetricSearchInput({
     [onAddMetric, onTokensChange, pendingOperator, selectedMetrics, tokens],
   );
 
+  const commitConstant = useCallback(
+    (value: number) => {
+      onTokensChange([
+        ...tokens,
+        ...(pendingOperator !== null
+          ? [{ type: "operator" as const, op: pendingOperator }]
+          : []),
+        { type: "constant" as const, value },
+      ]);
+      setPendingOperator(null);
+      setSearchText("");
+      setIsOpen(false);
+    },
+    [onTokensChange, pendingOperator, tokens],
+  );
+
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
+      // Commit numeric constant when pressing Enter or an operator key
+      const numValue = searchText !== "" ? Number(searchText) : NaN;
+      if (searchText !== "" && !isNaN(numValue) && isFinite(numValue)) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          commitConstant(numValue);
+          return;
+        }
+        if (isMathOperator(event.key)) {
+          event.preventDefault();
+          commitConstant(numValue);
+          setPendingOperator(event.key);
+          setIsOpen(true);
+          return;
+        }
+      }
+
       if (searchText === "") {
         // Operator keys
         if (
           isMathOperator(event.key) &&
-          (lastToken?.type === "metric" || lastToken?.type === "close-paren")
+          (lastToken?.type === "metric" ||
+            lastToken?.type === "constant" ||
+            lastToken?.type === "close-paren")
         ) {
           event.preventDefault();
           setPendingOperator(event.key);
@@ -294,9 +331,17 @@ export function MetricSearchInput({
           if (
             lastToken.type === "close-paren" ||
             lastToken.type === "open-paren" ||
-            lastToken.type === "operator"
+            lastToken.type === "operator" ||
+            lastToken.type === "constant"
           ) {
-            onTokensChange(tokens.slice(0, -1));
+            let next = tokens.slice(0, -1);
+            if (
+              lastToken.type === "constant" &&
+              next[next.length - 1]?.type === "operator"
+            ) {
+              next = next.slice(0, -1);
+            }
+            onTokensChange(next);
             return;
           }
           if (lastToken.type === "metric") {
@@ -336,6 +381,7 @@ export function MetricSearchInput({
       lastToken,
       canOpenParen,
       canCloseParen,
+      commitConstant,
       onRemoveMetric,
       onTokensChange,
     ],
@@ -393,6 +439,13 @@ export function MetricSearchInput({
                 operator={token.op}
                 onChange={(op) => handleChangeOperator(i, op)}
               />
+            );
+          }
+          if (token.type === "constant") {
+            return (
+              <Box key={i} component="span" className={S.constantPill}>
+                {token.value}
+              </Box>
             );
           }
           if (token.type === "metric") {

@@ -55,6 +55,11 @@ function parseTerm(ctx: ParseCtx): unknown | null {
     return ctx.leafRefs.get(token.metricIndex) ?? null;
   }
 
+  if (token.type === "constant") {
+    ctx.pos++;
+    return token.value;
+  }
+
   if (token.type === "open-paren") {
     ctx.pos++;
     const expr = parseExpression(ctx);
@@ -236,18 +241,20 @@ export function useDefinitionQueries(
     return map;
   }, [datasetRequests]);
 
-  // Arithmetic mode: valid expression with ≥2 metrics, balanced parens
+  // Arithmetic mode: valid expression with ≥1 metric, ≥1 operator, balanced parens
   const arithmeticRequest = useMemo(() => {
     const metricCount = tokens.filter((t) => t.type === "metric").length;
+    const constantCount = tokens.filter((t) => t.type === "constant").length;
+    const operandCount = metricCount + constantCount;
     const opCount = tokens.filter((t) => t.type === "operator").length;
     const openParens = tokens.filter((t) => t.type === "open-paren").length;
     const closeParens = tokens.filter((t) => t.type === "close-paren").length;
 
     if (
-      metricCount < 2 ||
-      opCount !== metricCount - 1 ||
-      openParens !== closeParens ||
-      datasetRequests.length < 2
+      metricCount < 1 ||
+      opCount < 1 ||
+      opCount !== operandCount - 1 ||
+      openParens !== closeParens
     ) {
       return null;
     }

@@ -57,9 +57,11 @@ export function cleanupParens(tokens: ExpressionToken[]): ExpressionToken[] {
 
       const closeIdx = j - 1;
       const content = current.slice(i + 1, closeIdx);
-      const metricCount = content.filter((t) => t.type === "metric").length;
+      const operandCount = content.filter(
+        (t) => t.type === "metric" || t.type === "constant",
+      ).length;
 
-      if (metricCount <= 1) {
+      if (operandCount <= 1) {
         current = [
           ...current.slice(0, i),
           ...content,

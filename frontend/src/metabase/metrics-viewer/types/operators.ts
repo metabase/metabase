@@ -7,6 +7,7 @@ export function isMathOperator(key: string): key is MathOperator {
 
 export type ExpressionToken =
   | { type: "metric"; metricIndex: number }
+  | { type: "constant"; value: number }
   | { type: "operator"; op: MathOperator }
   | { type: "open-paren" }
   | { type: "close-paren" };

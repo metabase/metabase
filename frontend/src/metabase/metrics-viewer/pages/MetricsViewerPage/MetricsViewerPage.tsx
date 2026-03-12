@@ -59,7 +59,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
   const expressionName = useMemo(() => {
     const metricCount = tokens.filter((t) => t.type === "metric").length;
     const opCount = tokens.filter((t) => t.type === "operator").length;
-    if (metricCount < 2 || opCount === 0) {
+    if (metricCount < 1 || opCount === 0) {
       return null;
     }
     return tokens
@@ -72,6 +72,9 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
         }
         if (token.type === "operator") {
           return token.op;
+        }
+        if (token.type === "constant") {
+          return String(token.value);
         }
         return selectedMetrics[token.metricIndex]?.name ?? "...";
       })

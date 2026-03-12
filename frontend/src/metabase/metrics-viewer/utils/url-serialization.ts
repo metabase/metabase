@@ -40,9 +40,10 @@ function reviveFilter(filter: DimensionFilterValue): DimensionFilterValue {
 // ── Serialized types (internal, URL-facing) ──
 
 interface SerializedExpressionToken {
-  type: "metric" | "operator" | "open-paren" | "close-paren";
+  type: "metric" | "constant" | "operator" | "open-paren" | "close-paren";
   metricIndex?: number;
   op?: MathOperator;
+  value?: number;
 }
 
 interface SerializedUrlFilter {
@@ -92,6 +93,9 @@ function serializeToken(token: ExpressionToken): SerializedExpressionToken {
   if (token.type === "metric") {
     return { type: "metric", metricIndex: token.metricIndex };
   }
+  if (token.type === "constant") {
+    return { type: "constant", value: token.value };
+  }
   if (token.type === "operator") {
     return { type: "operator", op: token.op };
   }
@@ -105,6 +109,8 @@ export function deserializeExpression(
   for (const token of tokens) {
     if (token.type === "metric" && token.metricIndex !== undefined) {
       result.push({ type: "metric", metricIndex: token.metricIndex });
+    } else if (token.type === "constant" && token.value !== undefined) {
+      result.push({ type: "constant", value: token.value });
     } else if (token.type === "operator" && token.op) {
       result.push({ type: "operator", op: token.op });
     } else if (token.type === "open-paren") {
@@ -259,6 +265,7 @@ const expressionTokenSchema = defineCompactSchema<SerializedExpressionToken>({
   type: "t",
   metricIndex: { key: "i", optional: true },
   op: { key: "o", optional: true },
+  value: { key: "v", optional: true },
 });
 
 const sourceFilterSchema = defineCompactSchema<SerializedUrlFilter>({
