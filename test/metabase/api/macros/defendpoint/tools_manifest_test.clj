@@ -211,109 +211,79 @@
 
       (testing "GET endpoint with route params (test_get_thing)"
         (let [tool (get tools-by-name "test_get_thing")]
-          (is (some? tool))
-          (is (= "A test endpoint for tools manifest generation." (:description tool)))
-          (is (= {:method "GET" :path "/api/test/v1/test/{id}"}
-                 (:endpoint tool)))
-          (is (= {:type       "object"
-                  :properties {:id {:type "integer"}}
-                  :required   [:id]}
-                 (:inputSchema tool)))
-          (is (nil? (:responseSchema tool)))
-          (is (= {:readOnlyHint true :idempotentHint true}
-                 (:annotations tool)))
-          (is (nil? (:execution tool)))))
+          (is (= {:name           "test_get_thing"
+                  :description    "A test endpoint for tools manifest generation."
+                  :annotations    {:readOnlyHint true :idempotentHint true}
+                  :endpoint       {:method "GET" :path "/api/test/v1/test/{id}"}
+                  :inputSchema    {:type       "object"
+                                   :properties {:id {:type "integer"}}
+                                   :required   [:id]}}
+                 tool))))
 
       (testing "POST endpoint with body params and annotation override (test_action)"
         (let [tool (get tools-by-name "test_action")]
-          (is (some? tool))
-          (is (= "A test POST action." (:description tool)))
-          (is (= {:method "POST" :path "/api/test/v1/test-action"}
-                 (:endpoint tool)))
-          (is (= {:type       "object"
-                  :properties {:name {:type "string"}}
-                  :required   [:name]}
-                 (:inputSchema tool)))
-          (is (= {:readOnlyHint true}
-                 (:annotations tool)))))
+          (is (= {:name           "test_action"
+                  :description    "A test POST action."
+                  :annotations    {:readOnlyHint true}
+                  :endpoint       {:method "POST" :path "/api/test/v1/test-action"}
+                  :inputSchema    {:type       "object"
+                                   :properties {:name {:type "string"}}
+                                   :required   [:name]}}
+                 tool))))
 
       (testing "DELETE endpoint with inferred name (delete_test)"
         (let [tool (get tools-by-name "delete_test")]
-          (is (some? tool))
-          (is (= "Delete a test resource." (:description tool)))
-          (is (= {:method "DELETE" :path "/api/test/v1/test/{id}"}
-                 (:endpoint tool)))
-          (is (= {:type       "object"
-                  :properties {:id {:type "integer"}}
-                  :required   [:id]}
-                 (:inputSchema tool)))
-          (is (= {:destructiveHint true :idempotentHint true}
-                 (:annotations tool)))))
+          (is (= {:name           "delete_test"
+                  :description    "Delete a test resource."
+                  :annotations    {:destructiveHint true :idempotentHint true}
+                  :endpoint       {:method "DELETE" :path "/api/test/v1/test/{id}"}
+                  :inputSchema    {:type       "object"
+                                   :properties {:id {:type "integer"}}
+                                   :required   [:id]}}
+                 tool))))
 
       (testing "GET with query params, tool/description, and response schema (test_search)"
         (let [tool (get tools-by-name "test_search")]
-          (is (some? tool))
-          (is (= "Search for things." (:description tool)))
-          (is (= {:method "GET" :path "/api/test/v1/test-search"}
-                 (:endpoint tool)))
-          ;; inputSchema merges query params
-          (is (= "object" (get-in tool [:inputSchema :type])))
-          (is (contains? (get-in tool [:inputSchema :properties]) :q))
-          (is (contains? (get-in tool [:inputSchema :properties]) :limit))
-          (is (some #{:q} (get-in tool [:inputSchema :required])))
-          ;; limit is optional — should not appear in required
-          (is (not (some #{:limit} (get-in tool [:inputSchema :required]))))
-          ;; tool/description should override the original description
-          (is (= "Maximum number of results to return"
-                 (get-in tool [:inputSchema :properties :limit :description])))
-          ;; response schema
-          (is (= {:type       "object"
-                  :properties {:results {:type "array" :items {:type "string"}}}
-                  :required   [:results]}
-                 (:responseSchema tool)))
-          (is (= {:readOnlyHint true :idempotentHint true}
-                 (:annotations tool)))))
+          (is (= {:name           "test_search"
+                  :description    "Search for things."
+                  :annotations    {:readOnlyHint true :idempotentHint true}
+                  :endpoint       {:method "GET" :path "/api/test/v1/test-search"}
+                  :inputSchema    {:type       "object"
+                                   :properties {:q     {:type "string"}
+                                                :limit {:type        "integer"
+                                                        :description "Maximum number of results to return"}}
+                                   :required   [:q]}
+                  :responseSchema {:type       "object"
+                                   :properties {:results {:type "array" :items {:type "string"}}}
+                                   :required   [:results]}}
+                 tool))))
 
       (testing "POST with route+body, task-support, and registered schema in response (test_resource_action)"
         (let [tool (get tools-by-name "test_resource_action")]
-          (is (some? tool))
-          (is (= "Perform an action on a resource." (:description tool)))
-          (is (= {:method "POST" :path "/api/test/v1/test-resource/{id}/action"}
-                 (:endpoint tool)))
-          ;; inputSchema merges route id + body action
-          (is (= "object" (get-in tool [:inputSchema :type])))
-          (is (contains? (get-in tool [:inputSchema :properties]) :id))
-          (is (contains? (get-in tool [:inputSchema :properties]) :action))
-          (let [required (set (get-in tool [:inputSchema :required]))]
-            (is (contains? required :id))
-            (is (contains? required :action)))
-          ;; task-support → execution.taskSupport
-          (is (= {:taskSupport "parallel"} (:execution tool)))
-          ;; response schema with registered enum inlined
-          (is (some? (:responseSchema tool)))
-          (is (= "object" (get-in tool [:responseSchema :type])))
-          (is (contains? (get-in tool [:responseSchema :properties]) :id))
-          (is (= {:enum ["active" "inactive" "pending"] :type "string"}
-                 (get-in tool [:responseSchema :properties :status])))
-          ;; POST with no explicit annotations → empty map → annotations key omitted
-          (is (not (contains? tool :annotations)))))
+          (is (= {:name           "test_resource_action"
+                  :description    "Perform an action on a resource."
+                  :endpoint       {:method "POST" :path "/api/test/v1/test-resource/{id}/action"}
+                  :inputSchema    {:type       "object"
+                                   :properties {:id     {:type "integer"}
+                                                :action {:type "string"}}
+                                   :required   [:id :action]}
+                  :responseSchema {:type       "object"
+                                   :properties {:id     {:type "integer"}
+                                                :status {:type "string"
+                                                         :enum ["active" "inactive" "pending"]}}
+                                   :required   [:id :status]}
+                  :execution      {:taskSupport "parallel"}}
+                 tool))))
 
       (testing "PUT with route+query+body, inferred name (test_resource)"
         (let [tool (get tools-by-name "test_resource")]
-          (is (some? tool))
-          (is (= "Update a test resource." (:description tool)))
-          (is (= {:method "PUT" :path "/api/test/v1/test-resource/{id}"}
-                 (:endpoint tool)))
-          ;; inputSchema merges all three param sources
-          (is (= "object" (get-in tool [:inputSchema :type])))
-          (is (contains? (get-in tool [:inputSchema :properties]) :id))
-          (is (contains? (get-in tool [:inputSchema :properties]) :dry-run))
-          (is (contains? (get-in tool [:inputSchema :properties]) :name))
-          ;; id and name required; dry-run is optional
-          (let [required (set (get-in tool [:inputSchema :required]))]
-            (is (contains? required :id))
-            (is (contains? required :name))
-            (is (not (contains? required :dry-run))))
-          ;; PUT annotations
-          (is (= {:destructiveHint false :idempotentHint true}
-                 (:annotations tool))))))))
+          (is (= {:name           "test_resource"
+                  :description    "Update a test resource."
+                  :annotations    {:destructiveHint false :idempotentHint true}
+                  :endpoint       {:method "PUT" :path "/api/test/v1/test-resource/{id}"}
+                  :inputSchema    {:type       "object"
+                                   :properties {:id      {:type "integer"}
+                                                :dry-run {:oneOf [{:type "boolean"} {:type "null"}]}
+                                                :name    {:type "string"}}
+                                   :required   [:id :name]}}
+                 tool)))))))
