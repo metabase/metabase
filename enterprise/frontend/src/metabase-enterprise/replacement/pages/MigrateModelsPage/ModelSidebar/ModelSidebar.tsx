@@ -4,6 +4,7 @@ import { Stack } from "metabase/ui";
 import { SidebarResizableBox } from "metabase-enterprise/dependencies/components/DependencyDiagnostics/DiagnosticsSidebar/SidebarResizableBox";
 import type { SearchResult } from "metabase-types/api";
 
+import { ActionSection } from "./ActionSection";
 import { InfoSection } from "./InfoSection";
 import { LocationSection } from "./LocationSection";
 import S from "./ModelSidebar.module.css";
@@ -42,6 +43,7 @@ export const ModelSidebar = memo(function ModelSidebar({
           <LocationSection result={result} />
           <InfoSection result={result} />
         </Stack>
+        <ActionSection result={result} />
       </Stack>
     </SidebarResizableBox>
   );

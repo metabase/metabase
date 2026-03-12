@@ -93,3 +93,19 @@ export type ReplaceSourceResponse = {
 export type ListSourceReplacementRunsRequest = {
   "is-active"?: boolean;
 };
+
+export type ConvertCardToTransformRequest = {
+  card_id: CardId;
+  transform_name: string;
+  transform_target: {
+    name: string;
+    schema: string | null;
+    database: number;
+  };
+  collection_id: number | null;
+  replace_dependents: boolean;
+};
+
+export type ConvertCardToTransformResponse = {
+  run_id: SourceReplacementRunId;
+};
