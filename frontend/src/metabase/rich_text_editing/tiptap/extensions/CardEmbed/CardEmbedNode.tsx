@@ -13,7 +13,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useListCommentsQuery } from "metabase/api";
+import { skipToken, useListCommentsQuery } from "metabase/api";
 import { getTargetChildCommentThreads } from "metabase/comments/utils";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ExplicitSizeRefreshModeContext } from "metabase/common/components/ExplicitSize/ExplicitSize";
@@ -32,6 +32,7 @@ import {
   openVizSettingsSidebar,
 } from "metabase/documents/documents.slice";
 import { useCardData } from "metabase/documents/hooks/use-card-data";
+import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
 import {
   getChildTargetId,
   getCurrentDocument,
@@ -170,25 +171,26 @@ export const CardEmbedComponent = memo(
     getPos,
     deleteNode,
   }: NodeViewProps) => {
+    const { ref: viewportRef, isInViewport } = useNodeInViewport();
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
     const { publicDocumentUuid } = usePublicDocumentContext();
     const { _id } = node.attrs;
-    const { unresolvedCommentsCount } = useListCommentsQuery(
-      getListCommentsQuery(document),
-      {
-        selectFromResult: ({ data: commentsData }) => {
-          const threads = getTargetChildCommentThreads(
-            commentsData?.comments,
-            _id,
-          );
-          return {
-            unresolvedCommentsCount: getUnresolvedComments(threads).length,
-          };
-        },
+    const commentsQuery = isInViewport
+      ? getListCommentsQuery(document)
+      : skipToken;
+    const { unresolvedCommentsCount } = useListCommentsQuery(commentsQuery, {
+      selectFromResult: ({ data: commentsData }) => {
+        const threads = getTargetChildCommentThreads(
+          commentsData?.comments,
+          _id,
+        );
+        return {
+          unresolvedCommentsCount: getUnresolvedComments(threads).length,
+        };
       },
-    );
+    });
 
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
     const isOpen = childTargetId === _id;
@@ -230,6 +232,14 @@ export const CardEmbedComponent = memo(
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
     const [menuView, setMenuView] = useState<string | null>(null);
+
+    const setRef = useCallback(
+      (el: HTMLElement | null) => {
+        viewportRef(el);
+        cardEmbedRef.current = el as HTMLDivElement | null;
+      },
+      [viewportRef, cardEmbedRef],
+    );
 
     const shouldAllowAddingSupportingText = () => {
       const pos = getPos();
@@ -515,7 +525,7 @@ export const CardEmbedComponent = memo(
             </>
           )}
           <Box
-            ref={cardEmbedRef}
+            ref={setRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
@@ -657,7 +667,7 @@ export const CardEmbedComponent = memo(
                 </Flex>
               </Box>
             )}
-            {series ? (
+            {series && isInViewport ? (
               <>
                 <Box className={styles.questionResults}>
                   <ExplicitSizeRefreshModeContext.Provider value="layout">

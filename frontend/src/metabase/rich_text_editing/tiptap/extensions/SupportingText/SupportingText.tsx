@@ -14,9 +14,11 @@ import cx from "classnames";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { useListCommentsQuery } from "metabase/api/comment";
 import { getTargetChildCommentThreads } from "metabase/comments/utils";
 import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
+import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
 import {
   getChildTargetId,
   getCurrentDocument,
@@ -139,23 +141,21 @@ const SupportingTextComponent = ({
   node,
   selected,
 }: NodeViewProps) => {
+  const { ref: viewportRef, isInViewport } = useNodeInViewport();
   const childTargetId = useSelector(getChildTargetId);
   const document = useSelector(getCurrentDocument);
   const { _id } = node.attrs;
-  const { unresolvedCommentsCount } = useListCommentsQuery(
-    getListCommentsQuery(document),
-    {
-      selectFromResult: ({ data: commentsData }) => {
-        const threads = getTargetChildCommentThreads(
-          commentsData?.comments,
-          _id,
-        );
-        return {
-          unresolvedCommentsCount: getUnresolvedComments(threads).length,
-        };
-      },
+  const commentsQuery = isInViewport
+    ? getListCommentsQuery(document)
+    : skipToken;
+  const { unresolvedCommentsCount } = useListCommentsQuery(commentsQuery, {
+    selectFromResult: ({ data: commentsData }) => {
+      const threads = getTargetChildCommentThreads(commentsData?.comments, _id);
+      return {
+        unresolvedCommentsCount: getUnresolvedComments(threads).length,
+      };
     },
-  );
+  });
   const isOpen = childTargetId === _id;
   const commentsPath = document
     ? `/document/${document.id}/comments/${_id}`
@@ -176,6 +176,7 @@ const SupportingTextComponent = ({
 
   return (
     <NodeViewWrapper
+      ref={viewportRef}
       className={cx(S.wrapper, { [S.selected]: selected })}
       data-testid="document-card-supporting-text"
       data-type={SUPPORTING_TEXT_NODE_NAME}

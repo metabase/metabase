@@ -2,9 +2,10 @@ import { autoUpdate, useFloating } from "@floating-ui/react";
 import type { Editor, NodeViewProps } from "@tiptap/core";
 import { useCallback, useEffect, useState } from "react";
 
-import { useListCommentsQuery } from "metabase/api";
+import { skipToken, useListCommentsQuery } from "metabase/api";
 import { getTargetChildCommentThreads } from "metabase/comments/utils";
 import { getUnresolvedComments } from "metabase/documents/components/Editor/CommentsMenu";
+import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
 import {
   getChildTargetId,
   getCurrentDocument,
@@ -41,20 +42,19 @@ export function useBlockMenus({
   const document = useSelector(getCurrentDocument);
   const { _id } = node.attrs;
 
-  const { unresolvedCommentsCount } = useListCommentsQuery(
-    getListCommentsQuery(document),
-    {
-      selectFromResult: ({ data: commentsData }) => {
-        const threads = getTargetChildCommentThreads(
-          commentsData?.comments,
-          _id,
-        );
-        return {
-          unresolvedCommentsCount: getUnresolvedComments(threads).length,
-        };
-      },
+  const { ref: viewportRef, isInViewport } = useNodeInViewport();
+
+  const commentsQuery = isInViewport
+    ? getListCommentsQuery(document)
+    : skipToken;
+  const { unresolvedCommentsCount } = useListCommentsQuery(commentsQuery, {
+    selectFromResult: ({ data: commentsData }) => {
+      const threads = getTargetChildCommentThreads(commentsData?.comments, _id);
+      return {
+        unresolvedCommentsCount: getUnresolvedComments(threads).length,
+      };
     },
-  );
+  });
 
   const [hovered, setHovered] = useState(false);
   const [rendered, setRendered] = useState(false);
@@ -62,12 +62,14 @@ export function useBlockMenus({
   const isOpen = childTargetId === _id;
   const isHovered = hoveredChildTargetId === _id;
 
+  const floatingOpen = rendered && isInViewport;
+
   const { refs: commentsRefs, floatingStyles: commentsFloatingStyles } =
     useFloating({
       placement: "right-start",
       whileElementsMounted: autoUpdate,
       strategy: "fixed",
-      open: rendered,
+      open: floatingOpen,
     });
 
   const { refs: anchorRefs, floatingStyles: anchorFloatingStyles } =
@@ -75,7 +77,7 @@ export function useBlockMenus({
       placement: "left",
       whileElementsMounted: autoUpdate,
       strategy: "fixed",
-      open: rendered,
+      open: floatingOpen,
     });
 
   useEffect(() => {
@@ -89,22 +91,23 @@ export function useBlockMenus({
   const shouldShowMenus =
     document &&
     rendered &&
+    isInViewport &&
     !shouldHideMenus &&
     isTopLevelBlock &&
     !isWithinIframe() &&
     hasContent;
   const anchorUrl = document ? documentWithAnchor(document, _id) : "";
 
-  // Note: refs.setReference is stable (memoized internally by floating-ui),
-  // but the refs object itself is recreated each render. Depend on the
-  // stable setReference functions directly to avoid unnecessary re-renders.
+  // Merges the viewport IntersectionObserver ref with the floating-ui
+  // reference setters into a single stable callback ref.
   const setReferenceElement = useCallback(
     (el: HTMLElement | null) => {
+      viewportRef(el);
       commentsRefs.setReference(el);
       anchorRefs.setReference(el);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [commentsRefs.setReference, anchorRefs.setReference],
+    [viewportRef, commentsRefs.setReference, anchorRefs.setReference],
   );
 
   return {
