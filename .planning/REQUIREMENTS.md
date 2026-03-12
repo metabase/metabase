@@ -1,0 +1,96 @@
+# Requirements: Structured Query Logging
+
+**Defined:** 2026-03-12
+**Core Value:** Users can see exactly what SQL queries Metabase sends to their databases, filtered by request, without noise.
+
+## v1 Requirements
+
+Requirements for initial release. Each maps to roadmap phases.
+
+### Correlation
+
+- [ ] **CORR-01**: All log lines for a single request share a consistent correlation ID (request_id) that can be grepped to filter to exactly one request's logs
+- [ ] **CORR-02**: Correlation ID works correctly under concurrent request processing (no cross-request leakage)
+
+### Summary Logging
+
+- [ ] **SUMM-01**: At the end of each query execution, a single INFO-level log line is emitted containing: request ID, card ID (if applicable), dashboard ID (if applicable), database ID, number of SQL queries issued, total DB execution time, user ID, and query type
+- [ ] **SUMM-02**: Summary log line is cheap enough to leave always-on at INFO level
+- [ ] **SUMM-03**: Summary log line uses Metabase's existing standard log format
+
+### Detail Logging
+
+- [ ] **DETL-01**: For each SQL statement executed during a request, a DEBUG-level log line is emitted containing: request ID, full compiled SQL, parameter count and values, individual query execution time, and database ID
+- [ ] **DETL-02**: Detail log lines are only emitted when the analytics query logging preset is enabled
+- [ ] **DETL-03**: Detail log lines use Metabase's existing standard log format
+
+### Query Attribution
+
+- [ ] **ATTR-01**: Log lines include the card ID (saved question) that triggered the query, when applicable
+- [ ] **ATTR-02**: Log lines include the dashboard ID that triggered the query, when applicable
+- [ ] **ATTR-03**: Log lines classify the query type (user query vs sync/scan)
+
+### Logging Presets
+
+- [ ] **PRES-01**: An "Analytics query logging" preset is added to the existing preset system that enables detailed DEBUG logging for user-facing database queries
+- [ ] **PRES-02**: Users can enable/disable the analytics query logging preset without restart via the existing logging API
+
+## v2 Requirements
+
+Deferred to future release. Tracked but not in current roadmap.
+
+### App DB Logging
+
+- **APDB-01**: An "Application database logging" preset enables detailed logging for internal Metabase app DB queries
+- **APDB-02**: App DB detail log lines include full SQL, parameters, execution time
+
+### Enhanced Attribution
+
+- **EATR-01**: Row count included in summary log line
+- **EATR-02**: Combined "all query logging" preset enables both analytics and app DB logging
+- **EATR-03**: Non-HTTP entry points (scheduled pulses, subscriptions) generate synthetic correlation IDs
+
+### Extended Drivers
+
+- **EDRV-01**: Query logging works for non-JDBC drivers (BigQuery, MongoDB, etc.)
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Data masking/redaction | Can be layered on later; unclear user demand for self-hosted tool |
+| JSON/structured log format | Inconsistent with existing Metabase log format |
+| Query plan / EXPLAIN logging | Expensive, driver-specific; users can enable database-side |
+| Persistent query log storage | Metabase is a BI tool, not a proxy; rely on log infrastructure |
+| SQLCommenter query annotation | Modifies actual SQL; separate concern |
+| General API request/response logging | Different concern from query visibility |
+| Application database query logging | Deferred to v2 to reduce initial scope |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| CORR-01 | — | Pending |
+| CORR-02 | — | Pending |
+| SUMM-01 | — | Pending |
+| SUMM-02 | — | Pending |
+| SUMM-03 | — | Pending |
+| DETL-01 | — | Pending |
+| DETL-02 | — | Pending |
+| DETL-03 | — | Pending |
+| ATTR-01 | — | Pending |
+| ATTR-02 | — | Pending |
+| ATTR-03 | — | Pending |
+| PRES-01 | — | Pending |
+| PRES-02 | — | Pending |
+
+**Coverage:**
+- v1 requirements: 13 total
+- Mapped to phases: 0
+- Unmapped: 13 ⚠️
+
+---
+*Requirements defined: 2026-03-12*
+*Last updated: 2026-03-12 after initial definition*
