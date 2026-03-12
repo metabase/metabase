@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Api, useGetCardQuery } from "metabase/api";
+import { Api, skipToken, useGetCardQuery } from "metabase/api";
 import { useGetTableQuery } from "metabase/api/table";
 import type { TagType } from "metabase/api/tags";
 import { useDispatch } from "metabase/lib/redux";
@@ -37,27 +37,9 @@ const INVALIDATION_TAGS: TagType[] = [
 ];
 
 export const SourceReplacementStatus = () => {
-  const [runId, setRunId] = useState<SourceReplacementRunId | null>(null);
-  const [isPolling, setIsPolling] = useState(false);
-
-  const { data: runs = [] } = useListSourceReplacementRunsQuery(
-    { "is-active": true },
-    { pollingInterval: isPolling ? POLLING_INTERVAL : undefined },
-  );
+  const { currentRun, isActive } = useCurrentRun();
   const dispatch = useDispatch();
-  const activeRun = runs[0];
-  const isActive = activeRun != null;
   const isVisible = useStatusVisibility(isActive);
-
-  useLayoutEffect(() => {
-    if (activeRun != null) {
-      setRunId(activeRun.id);
-    }
-  }, [activeRun]);
-
-  useLayoutEffect(() => {
-    setIsPolling(isActive);
-  }, [isActive]);
 
   useEffect(() => {
     if (!isActive && isVisible) {
@@ -65,27 +47,49 @@ export const SourceReplacementStatus = () => {
     }
   }, [isActive, isVisible, dispatch]);
 
-  if (runId == null || !isVisible) {
+  if (currentRun == null || !isVisible) {
     return null;
   }
 
-  return <RunStatusContent runId={runId} activeRun={activeRun} />;
+  return <RunStatusContent run={currentRun} />;
 };
+
+function useCurrentRun() {
+  const [currentRunId, setCurrentRunId] =
+    useState<SourceReplacementRunId | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+
+  const { data: activeRuns = [] } = useListSourceReplacementRunsQuery(
+    { "is-active": true },
+    { pollingInterval: isPolling ? POLLING_INTERVAL : undefined },
+  );
+  const { data: currentRun } = useGetSourceReplacementRunQuery(
+    currentRunId ?? skipToken,
+    {
+      pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
+    },
+  );
+  const isActive = activeRuns.length > 0;
+
+  useLayoutEffect(() => {
+    if (isActive) {
+      setCurrentRunId(activeRuns[0].id);
+    }
+  }, [activeRuns, isActive]);
+
+  useLayoutEffect(() => {
+    setIsPolling(isActive);
+  }, [isActive]);
+
+  return { currentRun, isActive };
+}
 
 type RunStatusContentProps = {
-  runId: SourceReplacementRunId;
-  activeRun: SourceReplacementRun | undefined;
+  run: SourceReplacementRun;
 };
 
-const RunStatusContent = ({ runId, activeRun }: RunStatusContentProps) => {
-  const { data: run = activeRun } = useGetSourceReplacementRunQuery(runId, {
-    skip: activeRun != null,
-  });
+const RunStatusContent = ({ run }: RunStatusContentProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
-
-  if (run == null) {
-    return null;
-  }
 
   return isExpanded ? (
     <RunStatusLarge run={run} onCollapse={() => setIsExpanded(false)} />
