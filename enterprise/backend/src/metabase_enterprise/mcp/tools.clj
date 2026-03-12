@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [metabase-enterprise.agent-api.api :as agent-api]
    [metabase.api.common :as api]
+   [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
    (java.io ByteArrayOutputStream)
