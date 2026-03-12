@@ -177,9 +177,9 @@
                            :clickhouse-settings "max_result_rows=10,max_columns_to_read=20")
             spec   (sql-jdbc.conn/connection-details->spec :clickhouse details)]
         (is (true? (driver/can-connect? :clickhouse details)))
-        (is (= "//localhost:8123/default?clickhouse_setting_max_threads=5"
+        (is (= "//localhost:8123/default?clickhouse_setting_max_threads=5&clickhouse_setting_max_block_size=50"
                (:subname spec)))
-        (is (= "select_sequential_consistency=1,max_result_rows=10,max_columns_to_read=20,max_block_size=50"
+        (is (= "select_sequential_consistency=1,max_result_rows=10,max_columns_to_read=20"
                (:custom_http_params spec)))
         (is (= {:max_threads 5
                 :max_block_size 50
