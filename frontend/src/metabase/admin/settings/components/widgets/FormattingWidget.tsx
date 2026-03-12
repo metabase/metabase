@@ -40,13 +40,19 @@ export function FormattingWidget() {
   const {
     value: initialValue,
     updateSetting,
-    isLoading,
     settingDetails,
   } = useAdminSetting("custom-formatting");
   const [localValue, setLocalValue] = useState<FormattingSettings | undefined>({
     ...DEFAULT_FORMATTING_SETTINGS,
     ...initialValue,
   });
+
+  useEffect(() => {
+    setLocalValue({
+      ...DEFAULT_FORMATTING_SETTINGS,
+      ...initialValue,
+    });
+  }, [initialValue]);
 
   const {
     date_style: dateStyle,
@@ -70,10 +76,6 @@ export function FormattingWidget() {
     ).map(mapNameToLabel);
     return [currencyOptions, currencyStyleOptions];
   }, [currency, currencyStyle]);
-
-  if (isLoading) {
-    return null;
-  }
 
   const dateStyleOptions = getDateStyleOptionsForUnit("default", dateAbreviate);
 

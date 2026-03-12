@@ -17,18 +17,13 @@ import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getTokenFeature } from "metabase/setup";
 import type Schema from "metabase-lib/v1/metadata/Schema";
-import type {
-  Database,
-  DatabaseId,
-  Group,
-  GroupsPermissions,
-  TableId,
-} from "metabase-types/api";
+import type { Database, Group, GroupsPermissions } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type {
   DataRouteParams,
   EntityId,
+  PermissionEditorType,
   PermissionSectionConfig,
   PermissionSubject,
   RawGroupRouteParams,
@@ -42,7 +37,6 @@ import {
 } from "../../utils/data-entity-id";
 import { hasPermissionValueInEntityGraphs } from "../../utils/graph";
 
-import type { EditorBreadcrumb } from "./breadcrumbs";
 import {
   getDatabasesEditorBreadcrumbs,
   getGroupsDataEditorBreadcrumbs,
@@ -90,17 +84,18 @@ type RouteParamsSelectorParameters = {
   params: DataRouteParams;
 };
 
-const getRouteParams = (
-  _state: State,
-  props: RouteParamsSelectorParameters,
-) => {
-  const { databaseId, schemaName, tableId } = props.params;
-  return {
+const getRouteParams = createSelector(
+  (_state: State, props: RouteParamsSelectorParameters) =>
+    props.params.databaseId,
+  (_state: State, props: RouteParamsSelectorParameters) =>
+    props.params.schemaName,
+  (_state: State, props: RouteParamsSelectorParameters) => props.params.tableId,
+  (databaseId, schemaName, tableId) => ({
     databaseId,
     schemaName,
     tableId,
-  };
-};
+  }),
+);
 
 export const getDataPermissions = (state: State) =>
   state.admin.permissions.dataPermissions;
@@ -108,17 +103,19 @@ export const getDataPermissions = (state: State) =>
 const getOriginalDataPermissions = (state: State) =>
   state.admin.permissions.originalDataPermissions;
 
-const getGroupRouteParams = (
-  _state: State,
-  props: { params: RawGroupRouteParams },
-) => {
-  const { groupId, databaseId, schemaName } = props.params;
-  return {
+const getGroupRouteParams = createSelector(
+  (_state: State, props: { params: RawGroupRouteParams }) =>
+    props.params.groupId,
+  (_state: State, props: { params: RawGroupRouteParams }) =>
+    props.params.databaseId,
+  (_state: State, props: { params: RawGroupRouteParams }) =>
+    props.params.schemaName,
+  (groupId, databaseId, schemaName) => ({
     groupId: groupId != null ? parseInt(groupId) : undefined,
     databaseId: databaseId != null ? parseInt(databaseId) : undefined,
     schemaName,
-  };
-};
+  }),
+);
 
 const getEditorEntityName = (
   { databaseId, schemaName }: DataRouteParams,
@@ -181,7 +178,7 @@ export const getShouldShowTransformPermissions = createSelector(
   (state: State) => getPlan(getSetting(state, "token-features")),
   getIsHosted,
   (state: State) => getSetting(state, "transforms-enabled"),
-  (state: State) => getTokenFeature(state, "transforms"),
+  (state: State) => getTokenFeature(state, "transforms-basic"),
   (plan, isHosted, transformsSettingEnabled, transformsFeatureEnabled) => {
     // Never show in oss
     if (plan === "oss") {
@@ -220,7 +217,7 @@ export const getDatabasesPermissionEditor = createSelector(
     groups: Group[],
     isLoading,
     showTransformPermissions,
-  ) => {
+  ): PermissionEditorType | null => {
     const { groupId, databaseId, schemaName } = params;
 
     if (isLoading || !permissions || groupId == null || !group) {
@@ -383,26 +380,6 @@ export const getDatabasesPermissionEditor = createSelector(
   },
 );
 
-type DataPermissionEditorEntity = {
-  id: Group["id"];
-  name: Group["name"];
-  hint: React.ReactNode | string | null;
-  entityId: {
-    databaseId?: DatabaseId;
-    schemaName?: Schema["name"];
-    tableId?: TableId;
-  };
-  permissions?: PermissionSectionConfig[];
-};
-
-type DataPermissionEditorProps = {
-  title: string;
-  filterPlaceholder: string;
-  breadcrumbs: EditorBreadcrumb[] | null;
-  columns: { name: string }[];
-  entities: DataPermissionEditorEntity[];
-};
-
 type GetGroupsDataPermissionEditorSelectorParameters =
   RouteParamsSelectorParameters & {
     includeHiddenTables?: boolean;
@@ -410,7 +387,7 @@ type GetGroupsDataPermissionEditorSelectorParameters =
 
 type GetGroupsDataPermissionEditorSelector = Selector<
   State,
-  DataPermissionEditorProps | null,
+  PermissionEditorType | null,
   GetGroupsDataPermissionEditorSelectorParameters[]
 >;
 
@@ -522,7 +499,11 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             <PLUGIN_TENANTS.TenantGroupHintIcon />
           ) : undefined,
           hint: getGroupHint(groupType),
-          entityId: params,
+          entityId: {
+            databaseId,
+            schemaName,
+            tableId,
+          },
           permissions: groupPermissions,
         };
       });
