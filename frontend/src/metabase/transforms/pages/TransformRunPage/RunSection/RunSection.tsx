@@ -86,7 +86,7 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
     <Stack gap={0}>
       <RunStatus
         run={last_run ?? null}
-        neverRunMessage={t`This transform hasn’t been run before.`}
+        neverRunMessage={t`This transform hasn't been run before.`}
         runInfo={
           <Anchor
             key="link"

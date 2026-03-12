@@ -2847,3 +2847,90 @@
                :schema "db_foo"
                :active true
                :is_upload false} unrelated)))))))
+
+(deftest remove-legacy-incremental-strategies-test
+  (testing "v59.2026-03-13T00:00:00: migrate legacy checkpoint-filter to checkpoint-filter-field-id"
+    (impl/test-migrations ["v59.2026-03-13T00:00:00"] [migrate!]
+      (let [db-id    (:id (new-instance-with-default :metabase_database))
+            table-id (:id (new-instance-with-default :metabase_table {:db_id db-id}))
+            field-id (t2/insert-returning-pk! :metabase_field
+                                              {:name          "updated_at"
+                                               :table_id      table-id
+                                               :base_type     "type/DateTimeWithLocalTZ"
+                                               :database_type "timestamptz"
+                                               :active        true
+                                               :created_at    :%now
+                                               :updated_at    :%now})
+            target   (json/encode {:type "table" :schema "public" :name "out"})
+            insert-transform!
+            (fn [source]
+              (t2/insert-returning-pk!
+               :transform {:name               (mt/random-name)
+                           :source             source
+                           :target             target
+                           :source_type        "mbql"
+                           :source_database_id db-id
+                           :created_at         :%now
+                           :updated_at         :%now}))
+            ;; Transform with resolvable legacy checkpoint strategy
+            resolvable-source
+            (json/encode {:type  "query"
+                          :query {:stages [{:source-table table-id}]}
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$updated_at"
+                           :checkpoint-filter           {:some "filter"}}})
+            resolvable-id (insert-transform! resolvable-source)
+            ;; Transform with unresolvable legacy checkpoint strategy (no matching field)
+            unresolvable-source
+            (json/encode {:type  "query"
+                          :query {:stages [{:source-table table-id}]}
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$nonexistent_column"
+                           :checkpoint-filter           {:some "filter"}}})
+            unresolvable-id (insert-transform! unresolvable-source)
+            ;; Transform without any incremental strategy — should be untouched
+            no-strategy-source
+            (json/encode {:type  "query"
+                          :query {:stages [{:source-table table-id}]}})
+            no-strategy-id (insert-transform! no-strategy-source)
+            ;; Python transform with resolvable checkpoint strategy
+            python-resolvable-source
+            (json/encode {:type          "python"
+                          :body          "x=1"
+                          :source-tables [{"alias" "t" "table_id" table-id}]
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$updated_at"
+                           :checkpoint-filter           {:some "filter"}}})
+            python-resolvable-id (insert-transform! python-resolvable-source)
+            ;; Native transform — can't resolve source table, strategy stripped
+            native-source
+            (json/encode {:type "native"
+                          :source-incremental-strategy
+                          {:type                        "checkpoint"
+                           :checkpoint-filter-unique-key "column-unique-key-v1$updated_at"
+                           :checkpoint-filter           {:some "filter"}}})
+            native-id (insert-transform! native-source)
+            get-source (fn [id]
+                         (json/decode
+                          (t2/select-one-fn :source :transform :id id)
+                          keyword))]
+        (migrate!)
+        (testing "Resolvable legacy strategy is migrated to checkpoint-filter-field-id"
+          (let [strategy (:source-incremental-strategy (get-source resolvable-id))]
+            (is (= field-id (:checkpoint-filter-field-id strategy)))
+            (is (not (contains? strategy :checkpoint-filter-unique-key)))
+            (is (not (contains? strategy :checkpoint-filter)))))
+        (testing "Unresolvable legacy strategy is stripped entirely"
+          (is (not (contains? (get-source unresolvable-id) :source-incremental-strategy))))
+        (testing "Transform without strategy is untouched"
+          (is (not (contains? (get-source no-strategy-id) :source-incremental-strategy))))
+        (testing "Python transform with single source-table resolves correctly"
+          (let [strategy (:source-incremental-strategy (get-source python-resolvable-id))]
+            (is (= field-id (:checkpoint-filter-field-id strategy)))
+            (is (not (contains? strategy :checkpoint-filter-unique-key)))
+            (is (not (contains? strategy :checkpoint-filter)))))
+        (testing "Native transform strategy is stripped (can't resolve source table)"
+          (is (not (contains? (get-source native-id) :source-incremental-strategy))))))))

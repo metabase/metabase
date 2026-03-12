@@ -298,6 +298,7 @@ export type TransformCreateEvent = ValidateEvent<{
 export type TransformCreatedEvent = ValidateEvent<{
   event: "transform_created";
   target_id: number;
+  event_detail: "incremental" | undefined;
 }>;
 
 export type TransformRunTagsUpdated = ValidateEvent<{
