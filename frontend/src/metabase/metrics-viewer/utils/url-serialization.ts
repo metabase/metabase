@@ -40,7 +40,13 @@ function reviveFilter(filter: DimensionFilterValue): DimensionFilterValue {
 // ── Serialized types (internal, URL-facing) ──
 
 interface SerializedExpressionToken {
-  type: "metric" | "constant" | "operator" | "open-paren" | "close-paren";
+  type:
+    | "metric"
+    | "constant"
+    | "operator"
+    | "open-paren"
+    | "close-paren"
+    | "separator";
   metricIndex?: number;
   op?: MathOperator;
   value?: number;
@@ -117,6 +123,8 @@ export function deserializeExpression(
       result.push({ type: "open-paren" });
     } else if (token.type === "close-paren") {
       result.push({ type: "close-paren" });
+    } else if (token.type === "separator") {
+      result.push({ type: "separator" });
     }
   }
   return result;

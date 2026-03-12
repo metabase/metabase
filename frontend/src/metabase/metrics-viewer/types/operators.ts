@@ -10,4 +10,5 @@ export type ExpressionToken =
   | { type: "constant"; value: number }
   | { type: "operator"; op: MathOperator }
   | { type: "open-paren" }
-  | { type: "close-paren" };
+  | { type: "close-paren" }
+  | { type: "separator" };

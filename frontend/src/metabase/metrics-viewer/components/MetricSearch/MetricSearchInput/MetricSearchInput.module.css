@@ -14,77 +14,36 @@
   color: var(--mb-color-text-tertiary);
 }
 
-.operatorPill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: var(--mantine-radius-sm);
-  background: var(--mb-color-background-inverse);
-  color: var(--mb-color-text-white);
-  font-weight: 700;
-  font-size: 1rem;
-  border: none;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: opacity 0.1s ease;
-}
-
-.operatorPill:hover {
-  opacity: 0.8;
-}
-
-.operatorPillPending {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.operatorChoice {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--mantine-radius-sm);
-  background: var(--mb-color-background-secondary);
-  color: var(--mb-color-text-primary);
-  font-weight: 700;
-  font-size: 0.875rem;
-  border: 1px solid var(--mb-color-border);
-  cursor: pointer;
-  transition: background 0.1s ease;
-}
-
-.operatorChoice:hover {
-  background: var(--mb-color-background-hover);
-}
-
-.operatorChoiceActive {
-  background: var(--mb-color-background-hover);
-  border-color: var(--mb-color-brand);
-}
-
-.constantPill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 1.75rem;
-  padding: 0 0.5rem;
-  border-radius: var(--mantine-radius-sm);
-  background: var(--mb-color-background-hover);
-  color: var(--mb-color-text-primary);
-  font-weight: 700;
-  font-size: 0.875rem;
-  border: 1px solid var(--mb-color-border);
-  flex-shrink: 0;
-  user-select: none;
-}
-
 .parenToken {
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--mb-color-text-medium);
   line-height: 1;
+  user-select: none;
+}
+
+.operatorText {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--mb-color-text-medium);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.operatorTextPending {
+  opacity: 0.5;
+}
+
+.metricTokenText {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--mb-color-text-primary);
+  white-space: nowrap;
+}
+
+.separatorText {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--mb-color-text-medium);
   user-select: none;
 }

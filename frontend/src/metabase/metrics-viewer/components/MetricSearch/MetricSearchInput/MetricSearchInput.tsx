@@ -1,15 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Group, Popover, TextInput } from "metabase/ui";
+import { Flex, Popover, TextInput } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 
-import {
-  type ExpressionToken,
-  MATH_OPERATORS,
-  type MathOperator,
-  isMathOperator,
-} from "../../../types/operators";
+import type { ExpressionToken } from "../../../types/operators";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
@@ -20,69 +15,26 @@ import {
   createMeasureSourceId,
   createMetricSourceId,
 } from "../../../utils/source-ids";
+import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
 import {
+  buildExpressionText,
+  buildFullText,
   cleanupParens,
+  cleanupSeparators,
   getSelectedMeasureIds,
   getSelectedMetricIds,
+  getWordAtCursor,
+  parseFullText,
+  removeUnmatchedParens,
+  splitByItems,
 } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
 
 // Metrics in the expression input can be used multiple times, so nothing is filtered out
 const EMPTY_SET = new Set<number>();
-
-type OperatorPillProps = {
-  operator: MathOperator;
-  onChange: (op: MathOperator) => void;
-};
-
-function OperatorPill({ operator, onChange }: OperatorPillProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <Popover
-      opened={isOpen}
-      onChange={setIsOpen}
-      position="bottom"
-      shadow="md"
-      withinPortal
-    >
-      <Popover.Target>
-        <Box
-          component="button"
-          className={S.operatorPill}
-          onClick={(e: React.MouseEvent) => {
-            e.stopPropagation();
-            setIsOpen((o) => !o);
-          }}
-          aria-label={t`Change operator`}
-        >
-          {operator}
-        </Box>
-      </Popover.Target>
-      <Popover.Dropdown p="xs">
-        <Group gap="xs">
-          {MATH_OPERATORS.map((op) => (
-            <Box
-              key={op}
-              component="button"
-              className={`${S.operatorChoice} ${op === operator ? S.operatorChoiceActive : ""}`}
-              onClick={() => {
-                onChange(op);
-                setIsOpen(false);
-              }}
-              aria-label={op}
-            >
-              {op}
-            </Box>
-          ))}
-        </Group>
-      </Popover.Dropdown>
-    </Popover>
-  );
-}
 
 type MetricSearchInputProps = {
   tokens: ExpressionToken[];
@@ -110,23 +62,56 @@ export function MetricSearchInput({
   onSwapMetric,
   onSetBreakout,
 }: MetricSearchInputProps) {
-  const [searchText, setSearchText] = useState("");
+  // editText is the full expression as plain text — only meaningful while focused
+  const [editText, setEditText] = useState("");
+  // currentWord is the word under the cursor, used as the dropdown search query
+  const [currentWord, setCurrentWord] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [pendingOperator, setPendingOperator] = useState<MathOperator | null>(
-    null,
-  );
+  const [isFocused, setIsFocused] = useState(false);
+
   const inputRef = useRef<HTMLInputElement>(null);
+  const pendingFocusRef = useRef(false);
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Refs so blur timeout can read latest values without stale closures
+  const editTextRef = useRef(editText);
+  editTextRef.current = editText;
+  const selectedMetricsRef = useRef(selectedMetrics);
+  selectedMetricsRef.current = selectedMetrics;
 
-  // Remove unnecessary parentheses: empty parens or parens around a single metric
+  // Remove unnecessary parentheses per item (only when not actively editing)
   useEffect(() => {
-    const cleaned = cleanupParens(tokens);
-    if (cleaned !== tokens) {
-      onTokensChange(cleaned);
+    if (isFocused) {
+      return;
     }
-  }, [tokens, onTokensChange]);
+    const allItems = splitByItems(tokens);
+    const cleanedItems = allItems.map((item) =>
+      cleanupParens(removeUnmatchedParens(item)),
+    );
+    if (cleanedItems.some((item, i) => item !== allItems[i])) {
+      const newTokens = cleanedItems.flatMap((item, i) =>
+        i < cleanedItems.length - 1
+          ? [...item, { type: "separator" as const }]
+          : item,
+      );
+      onTokensChange(newTokens);
+    }
+  }, [isFocused, tokens, onTokensChange]);
 
-  // Safety net: drop any metric tokens whose index is out of range
+  // Remove empty items (trailing / consecutive separators) when not focused
   useEffect(() => {
+    if (!isFocused) {
+      const cleaned = cleanupSeparators(tokens);
+      if (cleaned.length !== tokens.length) {
+        onTokensChange(cleaned);
+      }
+    }
+  }, [isFocused, tokens, onTokensChange]);
+
+  // Safety net: drop out-of-range metric tokens (only when not editing)
+  useEffect(() => {
+    if (isFocused) {
+      return;
+    }
     const maxIdx = selectedMetrics.length - 1;
     const filtered = tokens.filter(
       (t) => t.type !== "metric" || t.metricIndex <= maxIdx,
@@ -134,7 +119,10 @@ export function MetricSearchInput({
     if (filtered.length !== tokens.length) {
       onTokensChange(filtered);
     }
-  }, [selectedMetrics.length, tokens, onTokensChange]);
+  }, [isFocused, selectedMetrics.length, tokens, onTokensChange]);
+
+  // Split tokens into items for the collapsed (pill) view
+  const items = useMemo(() => splitByItems(tokens), [tokens]);
 
   const selectedMetricIds = useMemo(
     () => getSelectedMetricIds(selectedMetrics),
@@ -151,260 +139,226 @@ export function MetricSearchInput({
     [definitions],
   );
 
-  // Derived state from tokens
-  const openParenCount = useMemo(
-    () => tokens.filter((t) => t.type === "open-paren").length,
-    [tokens],
-  );
-  const closeParenCount = useMemo(
-    () => tokens.filter((t) => t.type === "close-paren").length,
-    [tokens],
-  );
-  const hasUnclosedParen = openParenCount > closeParenCount;
-  const lastToken = tokens[tokens.length - 1] ?? null;
+  // Focus the input after transitioning from collapsed → expanded mode
+  useEffect(() => {
+    if (isFocused && pendingFocusRef.current) {
+      pendingFocusRef.current = false;
+      inputRef.current?.focus();
+    }
+  }, [isFocused]);
 
-  // Whether we can insert a close-paren
-  const canCloseParen =
-    hasUnclosedParen &&
-    pendingOperator === null &&
-    (lastToken?.type === "metric" ||
-      lastToken?.type === "constant" ||
-      lastToken?.type === "close-paren");
+  const handleInputFocus = useCallback(() => {
+    if (blurTimeoutRef.current !== null) {
+      // Re-focused before the blur timeout fired — cancel and keep current text
+      clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = null;
+      setIsFocused(true);
+      return;
+    }
+    setIsFocused(true);
+    setEditText(buildFullText(tokens, selectedMetrics));
+  }, [tokens, selectedMetrics]);
 
-  // Whether we can insert an open-paren
-  const canOpenParen =
-    pendingOperator !== null ||
-    tokens.length === 0 ||
-    lastToken?.type === "open-paren" ||
-    lastToken?.type === "operator";
+  const handleInputBlur = useCallback(() => {
+    blurTimeoutRef.current = setTimeout(() => {
+      blurTimeoutRef.current = null;
 
-  const handleRemoveMetric = useCallback(
-    (id: number, sourceType: "metric" | "measure") => {
-      const index = selectedMetrics.findIndex(
-        (m) => m.id === id && m.sourceType === sourceType,
+      // Parse the final text and sync tokens, removing unreferenced metrics
+      const finalTokens = parseFullText(
+        editTextRef.current,
+        selectedMetricsRef.current,
       );
-      if (index !== -1) {
-        // Only remove from selectedMetrics when this is the last token referencing it
-        const isLastReference =
-          tokens.filter((t) => t.type === "metric" && t.metricIndex === index)
-            .length <= 1;
 
-        const tokenIdx = tokens.findIndex(
-          (t) => t.type === "metric" && t.metricIndex === index,
+      const referencedIndices = new Set(
+        finalTokens
+          .filter(
+            (t): t is { type: "metric"; metricIndex: number } =>
+              t.type === "metric",
+          )
+          .map((t) => t.metricIndex),
+      );
+
+      // Remove unreferenced metrics, highest index first to keep indices valid
+      let remappedTokens = [...finalTokens];
+      const toRemove = selectedMetricsRef.current
+        .map((_, idx) => idx)
+        .filter((idx) => !referencedIndices.has(idx))
+        .sort((a, b) => b - a);
+
+      for (const removeIdx of toRemove) {
+        remappedTokens = remappedTokens.map((t) =>
+          t.type === "metric" && t.metricIndex > removeIdx
+            ? { ...t, metricIndex: t.metricIndex - 1 }
+            : t,
         );
-        if (tokenIdx !== -1) {
-          const next = [...tokens];
-          next.splice(tokenIdx, 1); // remove metric token
-
-          // Remove adjacent operator (prefer before, then after)
-          const before = next[tokenIdx - 1];
-          const after = next[tokenIdx];
-          if (before?.type === "operator") {
-            next.splice(tokenIdx - 1, 1);
-          } else if (after?.type === "operator") {
-            next.splice(tokenIdx, 1);
-          }
-
-          onTokensChange(
-            isLastReference
-              ? next.map((t) =>
-                  t.type === "metric" && t.metricIndex > index
-                    ? { ...t, metricIndex: t.metricIndex - 1 }
-                    : t,
-                )
-              : next,
-          );
-        }
-
-        if (isLastReference) {
-          onRemoveMetric(id, sourceType);
+        const metric = selectedMetricsRef.current[removeIdx];
+        if (metric) {
+          onRemoveMetric(metric.id, metric.sourceType);
         }
       }
+
+      onTokensChange(remappedTokens);
+      setIsFocused(false);
+      setIsOpen(false);
+      setCurrentWord("");
+      setEditText("");
+    }, 150);
+  }, [onRemoveMetric, onTokensChange]);
+
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const newText = event.target.value;
+      setEditText(newText);
+
+      // Re-parse tokens from the updated text
+      const newTokens = parseFullText(newText, selectedMetrics);
+      onTokensChange(newTokens);
+
+      // Extract the word at the cursor for the dropdown search
+      const cursorPos = event.target.selectionStart ?? newText.length;
+      const { word } = getWordAtCursor(newText, cursorPos);
+      setCurrentWord(word);
+      setIsOpen(true);
     },
-    [selectedMetrics, tokens, onRemoveMetric, onTokensChange],
+    [selectedMetrics, onTokensChange],
   );
 
   const handleSelect = useCallback(
     (metric: SelectedMetric) => {
-      // Reuse the existing index if this metric is already in selectedMetrics
-      // (addMetric is a no-op for duplicates, so length won't grow)
+      const cursorPos = inputRef.current?.selectionStart ?? editText.length;
+      const { start, end } = getWordAtCursor(editText, cursorPos);
+
+      const metricName = metric.name ?? "";
+
+      // Check if we need to auto-insert a separator before this metric.
+      // A comma is needed when the preceding content ends with something that
+      // is not an operator, open-paren, comma, or nothing — i.e. another metric
+      // name or a close-paren would make the new metric ambiguously part of the
+      // same expression without an operator.
+      const textBeforeWord = editText.slice(0, start).trimEnd();
+      const lastChar = textBeforeWord[textBeforeWord.length - 1];
+      const NO_COMMA_CHARS = new Set(["+", "-", "*", "/", "(", ","]);
+      const needsComma =
+        textBeforeWord.length > 0 && !NO_COMMA_CHARS.has(lastChar);
+
+      // Build the new text.
+      // • comma case: trim trailing whitespace from the text before the word,
+      //   then insert ", " so we don't get "Metric  , NewMetric".
+      // • no-comma case: use the original (untrimmed) slice so any deliberate
+      //   spacing between an operator and the metric is preserved (e.g. the " "
+      //   in "Revenue + " stays, giving "Revenue + Costs" not "Revenue +Costs").
+      let newText: string;
+      let newCursorPos: number;
+      if (needsComma) {
+        newText = textBeforeWord + ", " + metricName + editText.slice(end);
+        newCursorPos = textBeforeWord.length + 2 + metricName.length;
+      } else {
+        newText = editText.slice(0, start) + metricName + editText.slice(end);
+        newCursorPos = start + metricName.length;
+      }
+
+      setEditText(newText);
+
+      onAddMetric(metric);
+
+      // Compute the optimistic updated metrics list so we can parse immediately
       const existingIndex = selectedMetrics.findIndex(
         (m) => m.id === metric.id && m.sourceType === metric.sourceType,
       );
-      const metricIndex =
-        existingIndex !== -1 ? existingIndex : selectedMetrics.length;
-      onAddMetric(metric);
-      onTokensChange([
-        ...tokens,
-        ...(pendingOperator !== null
-          ? [{ type: "operator" as const, op: pendingOperator }]
-          : []),
-        { type: "metric" as const, metricIndex },
-      ]);
-      setPendingOperator(null);
-      setSearchText("");
-      setIsOpen(false);
-    },
-    [onAddMetric, onTokensChange, pendingOperator, selectedMetrics, tokens],
-  );
+      const updatedMetrics =
+        existingIndex !== -1 ? selectedMetrics : [...selectedMetrics, metric];
 
-  const commitConstant = useCallback(
-    (value: number) => {
-      onTokensChange([
-        ...tokens,
-        ...(pendingOperator !== null
-          ? [{ type: "operator" as const, op: pendingOperator }]
-          : []),
-        { type: "constant" as const, value },
-      ]);
-      setPendingOperator(null);
-      setSearchText("");
-      setIsOpen(false);
-    },
-    [onTokensChange, pendingOperator, tokens],
-  );
+      const newTokens = parseFullText(newText, updatedMetrics);
+      onTokensChange(newTokens);
 
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
-      // Commit numeric constant when pressing Enter or an operator key
-      const numValue = searchText !== "" ? Number(searchText) : NaN;
-      if (searchText !== "" && !isNaN(numValue) && isFinite(numValue)) {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          commitConstant(numValue);
-          return;
+      setCurrentWord("");
+      setIsOpen(false);
+
+      // Reposition cursor right after the inserted metric name
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+          inputRef.current.focus();
         }
-        if (isMathOperator(event.key)) {
-          event.preventDefault();
-          commitConstant(numValue);
-          setPendingOperator(event.key);
-          setIsOpen(true);
-          return;
+      }, 0);
+    },
+    [editText, selectedMetrics, onAddMetric, onTokensChange],
+  );
+
+  // Remove one item (pill) by index
+  const handleRemoveItem = useCallback(
+    (itemIndex: number) => {
+      const allItems = splitByItems(tokens);
+      const removedItemTokens = allItems[itemIndex];
+
+      const removedIndices = new Set(
+        removedItemTokens
+          .filter(
+            (t): t is { type: "metric"; metricIndex: number } =>
+              t.type === "metric",
+          )
+          .map((t) => t.metricIndex),
+      );
+
+      const remainingItems = allItems.filter((_, i) => i !== itemIndex);
+      let newTokens: ExpressionToken[] = remainingItems.flatMap((item, i) =>
+        i < remainingItems.length - 1
+          ? [...item, { type: "separator" as const }]
+          : item,
+      );
+
+      const stillReferenced = new Set(
+        newTokens
+          .filter(
+            (t): t is { type: "metric"; metricIndex: number } =>
+              t.type === "metric",
+          )
+          .map((t) => t.metricIndex),
+      );
+
+      const toRemove = [...removedIndices]
+        .filter((idx) => !stillReferenced.has(idx))
+        .sort((a, b) => b - a);
+
+      for (const removeIdx of toRemove) {
+        newTokens = newTokens.map((t) =>
+          t.type === "metric" && t.metricIndex > removeIdx
+            ? { ...t, metricIndex: t.metricIndex - 1 }
+            : t,
+        );
+        const metric = selectedMetrics[removeIdx];
+        if (metric) {
+          onRemoveMetric(metric.id, metric.sourceType);
         }
       }
 
-      if (searchText === "") {
-        // Operator keys
-        if (
-          isMathOperator(event.key) &&
-          (lastToken?.type === "metric" ||
-            lastToken?.type === "constant" ||
-            lastToken?.type === "close-paren")
-        ) {
-          event.preventDefault();
-          setPendingOperator(event.key);
-          setIsOpen(true);
-          return;
-        }
-
-        // Open paren
-        if (event.key === "(" && canOpenParen) {
-          event.preventDefault();
-          onTokensChange([
-            ...tokens,
-            ...(pendingOperator !== null
-              ? [{ type: "operator" as const, op: pendingOperator }]
-              : []),
-            { type: "open-paren" as const },
-          ]);
-          setPendingOperator(null);
-          setIsOpen(true);
-          return;
-        }
-
-        // Close paren
-        if (event.key === ")" && canCloseParen) {
-          event.preventDefault();
-          onTokensChange([...tokens, { type: "close-paren" as const }]);
-          return;
-        }
-
-        // Backspace
-        if (event.key === "Backspace") {
-          if (pendingOperator !== null) {
-            setPendingOperator(null);
-            return;
-          }
-          if (!lastToken) {
-            return;
-          }
-          if (
-            lastToken.type === "close-paren" ||
-            lastToken.type === "open-paren" ||
-            lastToken.type === "operator" ||
-            lastToken.type === "constant"
-          ) {
-            let next = tokens.slice(0, -1);
-            if (
-              lastToken.type === "constant" &&
-              next[next.length - 1]?.type === "operator"
-            ) {
-              next = next.slice(0, -1);
-            }
-            onTokensChange(next);
-            return;
-          }
-          if (lastToken.type === "metric") {
-            const metricIdx = lastToken.metricIndex;
-            const metric = selectedMetrics[metricIdx];
-            const isLastReference =
-              tokens.filter(
-                (t) => t.type === "metric" && t.metricIndex === metricIdx,
-              ).length <= 1;
-            let next = tokens.slice(0, -1);
-            const prevToken = next[next.length - 1];
-            if (prevToken?.type === "operator") {
-              next = next.slice(0, -1);
-            }
-            onTokensChange(
-              isLastReference
-                ? next.map((t) =>
-                    t.type === "metric" && t.metricIndex > metricIdx
-                      ? { ...t, metricIndex: t.metricIndex - 1 }
-                      : t,
-                  )
-                : next,
-            );
-            if (metric && isLastReference) {
-              onRemoveMetric(metric.id, metric.sourceType);
-            }
-            return;
-          }
-        }
-      }
+      onTokensChange(newTokens);
     },
-    [
-      searchText,
-      tokens,
-      selectedMetrics,
-      pendingOperator,
-      lastToken,
-      canOpenParen,
-      canCloseParen,
-      commitConstant,
-      onRemoveMetric,
-      onTokensChange,
-    ],
+    [tokens, selectedMetrics, onRemoveMetric, onTokensChange],
   );
 
   const handleContainerClick = useCallback(() => {
-    inputRef.current?.focus();
+    if (inputRef.current) {
+      inputRef.current.focus();
+    } else {
+      // TextInput not rendered yet (collapsed mode) — transition to expanded
+      pendingFocusRef.current = true;
+      setIsFocused(true);
+    }
   }, []);
 
   const handleInputClick = useCallback(() => {
+    if (!inputRef.current) {
+      return;
+    }
+    // Re-extract word at the new cursor position after a click
+    const cursorPos = inputRef.current.selectionStart ?? editText.length;
+    const { word } = getWordAtCursor(editText, cursorPos);
+    setCurrentWord(word);
     setIsOpen(true);
-  }, []);
+  }, [editText]);
 
-  const handleChangeOperator = useCallback(
-    (tokenIndex: number, newOp: MathOperator) => {
-      onTokensChange(
-        tokens.map((t, i) =>
-          i === tokenIndex && t.type === "operator" ? { ...t, op: newOp } : t,
-        ),
-      );
-    },
-    [tokens, onTokensChange],
-  );
+  const isCollapsed = !isFocused && tokens.length > 0;
 
   return (
     <Flex
@@ -416,115 +370,128 @@ export function MetricSearchInput({
       py="xs"
       onClick={handleContainerClick}
     >
-      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.25rem">
-        {tokens.map((token, i) => {
-          if (token.type === "open-paren") {
-            return (
-              <span key={i} className={S.parenToken}>
-                (
-              </span>
-            );
-          }
-          if (token.type === "close-paren") {
-            return (
-              <span key={i} className={S.parenToken}>
-                )
-              </span>
-            );
-          }
-          if (token.type === "operator") {
-            return (
-              <OperatorPill
-                key={i}
-                operator={token.op}
-                onChange={(op) => handleChangeOperator(i, op)}
-              />
-            );
-          }
-          if (token.type === "constant") {
-            return (
-              <Box key={i} component="span" className={S.constantPill}>
-                {token.value}
-              </Box>
-            );
-          }
-          if (token.type === "metric") {
-            const metric = selectedMetrics[token.metricIndex];
-            if (!metric) {
-              return null;
-            }
-            const sid =
-              metric.sourceType === "metric"
-                ? createMetricSourceId(metric.id)
-                : createMeasureSourceId(metric.id);
-            const entry = definitionsBySourceId.get(sid);
-            if (!entry) {
-              return null;
-            }
-            return (
-              <MetricPill
-                key={i}
-                metric={metric}
-                colors={metricColors[sid]}
-                definitionEntry={entry}
-                selectedMetricIds={selectedMetricIds}
-                selectedMeasureIds={selectedMeasureIds}
-                onSwap={onSwapMetric}
-                onRemove={handleRemoveMetric}
-                onSetBreakout={(dimension) => onSetBreakout(sid, dimension)}
-                onOpen={() => setIsOpen(false)}
-              />
-            );
-          }
-          return null;
-        })}
-        {pendingOperator !== null && (
-          <Box
-            component="span"
-            className={`${S.operatorPill} ${S.operatorPillPending}`}
+      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.375rem">
+        {isCollapsed ? (
+          // Unfocused: each item rendered as MetricPill or MetricExpressionPill
+          <>
+            {items.map((itemTokens, itemIndex) => {
+              const isSingleMetric =
+                itemTokens.length === 1 && itemTokens[0].type === "metric";
+
+              const pill = isSingleMetric
+                ? (() => {
+                    const token = itemTokens[0];
+                    if (token.type !== "metric") {
+                      return null;
+                    }
+                    const metric = selectedMetrics[token.metricIndex];
+                    if (!metric) {
+                      return null;
+                    }
+                    const sid =
+                      metric.sourceType === "metric"
+                        ? createMetricSourceId(metric.id)
+                        : createMeasureSourceId(metric.id);
+                    const entry = definitionsBySourceId.get(sid);
+                    if (!entry) {
+                      return null;
+                    }
+                    return (
+                      <MetricPill
+                        metric={metric}
+                        colors={metricColors[sid]}
+                        definitionEntry={entry}
+                        selectedMetricIds={selectedMetricIds}
+                        selectedMeasureIds={selectedMeasureIds}
+                        onSwap={onSwapMetric}
+                        onRemove={(_id, _sourceType) =>
+                          handleRemoveItem(itemIndex)
+                        }
+                        onSetBreakout={(dimension) =>
+                          onSetBreakout(sid, dimension)
+                        }
+                      />
+                    );
+                  })()
+                : (() => {
+                    // Use the first color of the first metric as the single
+                    // series color (the expression result is one chart series)
+                    const firstMetricToken = itemTokens.find(
+                      (t): t is { type: "metric"; metricIndex: number } =>
+                        t.type === "metric",
+                    );
+                    const firstMetric =
+                      firstMetricToken !== undefined
+                        ? selectedMetrics[firstMetricToken.metricIndex]
+                        : undefined;
+                    const expressionColor =
+                      firstMetric !== undefined
+                        ? metricColors[
+                            firstMetric.sourceType === "metric"
+                              ? createMetricSourceId(firstMetric.id)
+                              : createMeasureSourceId(firstMetric.id)
+                          ]?.[0]
+                        : undefined;
+
+                    return (
+                      <MetricExpressionPill
+                        expressionText={buildExpressionText(
+                          itemTokens,
+                          selectedMetrics,
+                        )}
+                        color={expressionColor}
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          pendingFocusRef.current = true;
+                          setIsFocused(true);
+                        }}
+                        onRemove={() => handleRemoveItem(itemIndex)}
+                      />
+                    );
+                  })();
+
+              return <span key={itemIndex}>{pill}</span>;
+            })}
+          </>
+        ) : (
+          // Focused: single text input showing the full expression
+          <Popover
+            opened={isOpen}
+            onChange={setIsOpen}
+            position="bottom-start"
+            shadow="md"
+            withinPortal
           >
-            {pendingOperator}
-          </Box>
-        )}
-        <Popover
-          opened={isOpen}
-          onChange={setIsOpen}
-          position="bottom-start"
-          shadow="md"
-          withinPortal
-        >
-          <Popover.Target>
-            <TextInput
-              ref={inputRef}
-              classNames={{ input: S.inputField }}
-              flex={1}
-              miw="7.5rem"
-              ml="xs"
-              variant="unstyled"
-              placeholder={
-                selectedMetrics.length === 0 ? t`Search for metrics...` : ""
-              }
-              value={searchText}
-              onChange={(event) => {
-                setSearchText(event.target.value);
-                setIsOpen(true);
-              }}
-              onClick={handleInputClick}
-              onKeyDown={handleKeyDown}
-              data-testid="metrics-viewer-search-input"
-            />
-          </Popover.Target>
-          <Popover.Dropdown p={0} miw="19rem" maw="25rem">
-            {isOpen && (
-              <MetricSearchDropdown
-                selectedMetricIds={EMPTY_SET}
-                selectedMeasureIds={EMPTY_SET}
-                onSelect={handleSelect}
-                externalSearchText={searchText}
+            <Popover.Target>
+              <TextInput
+                ref={inputRef}
+                classNames={{ input: S.inputField }}
+                flex={1}
+                miw="7.5rem"
+                variant="unstyled"
+                placeholder={
+                  tokens.length === 0 ? t`Search for metrics...` : ""
+                }
+                value={editText}
+                onChange={handleChange}
+                onClick={handleInputClick}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+                data-testid="metrics-viewer-search-input"
               />
-            )}
-          </Popover.Dropdown>
-        </Popover>
+            </Popover.Target>
+            <Popover.Dropdown p={0} miw="19rem" maw="25rem">
+              {isOpen && (
+                <MetricSearchDropdown
+                  selectedMetricIds={EMPTY_SET}
+                  selectedMeasureIds={EMPTY_SET}
+                  onSelect={handleSelect}
+                  externalSearchText={currentWord}
+                />
+              )}
+            </Popover.Dropdown>
+          </Popover>
+        )}
       </Flex>
     </Flex>
   );

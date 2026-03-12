@@ -1,0 +1,12 @@
+.metricExpressionPill {
+  background-color: var(--mb-color-background-primary);
+  border-radius: var(--mantine-radius-md);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+  box-shadow: var(--mantine-shadow-xs);
+  max-width: 100%;
+}
+
+.metricExpressionPill:hover {
+  background-color: var(--mb-color-background-brand);
+}

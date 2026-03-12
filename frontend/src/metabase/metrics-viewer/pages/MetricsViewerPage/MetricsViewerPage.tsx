@@ -73,6 +73,9 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
         if (token.type === "operator") {
           return token.op;
         }
+        if (token.type === "separator") {
+          return ",";
+        }
         if (token.type === "constant") {
           return String(token.value);
         }
