@@ -56,7 +56,7 @@ function ResetCheckpointSection({ transform }: { transform: Transform }) {
 
   return (
     <Group gap="md" align="center">
-      <Box c="text-secondary" fz="sm">
+      <Box c="text-secondary">
         {t`Current checkpoint`}:{" "}
         <Text component="span" fw="bold" c="text-primary">
           <CheckpointValue
