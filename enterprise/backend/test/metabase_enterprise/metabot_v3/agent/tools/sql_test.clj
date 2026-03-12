@@ -6,13 +6,14 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.agent.tools.shared :as shared]
    [metabase-enterprise.metabot-v3.agent.tools.sql :as agent-sql]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]))
 
 (deftest create-sql-query-output-test
   (testing "create_sql_query output includes preamble, query XML, and query-ID-aware instructions"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Database {db-id :id} {}]
+        (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
           (let [result (agent-sql/create-sql-query-tool
                         {:database_id db-id
                          :sql_query   "SELECT 1"})
@@ -47,90 +48,93 @@
   (testing "edit_sql_query output includes edit-specific instructions with query ID"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Database {db-id :id} {}]
-          (let [query-id "test-edit-q"
-                memory   (atom {:state {:queries {query-id {:database db-id
-                                                            :type     :native
-                                                            :native   {:query "SELECT * FROM t"}}}}})
-                result   (binding [shared/*memory-atom* memory]
-                           (agent-sql/edit-sql-query-tool
-                            {:query_id  query-id
-                             :checklist "- [x] checked"
-                             :edits     [{:old_string "SELECT *"
-                                          :new_string "SELECT id"}]}))
-                output   (:output result)]
-            (is (string? output))
-            (testing "includes query XML with edited content and correct attributes"
-              (is (str/includes? output "SELECT id"))
-              (is (str/includes? output "type=\"sql\""))
-              (is (str/includes? output (str "database_id=\"" db-id "\""))))
-            (testing "instructions reference the query ID"
-              (is (str/includes? output (str "metabase://query/" query-id))))
-            (testing "instructions mention error-analysis flow"
-              (is (str/includes? output "If the returned SQL query is NOT correct"))
-              (is (str/includes? output "Make further refinements using this tool again")))))))))
+        (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
+          (mt/with-db db
+            (let [mp (mt/metadata-provider)
+                  query-id "test-edit-q"
+                  memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT * FROM t")
+                                                                 lib/->legacy-MBQL)}}})
+                  result   (binding [shared/*memory-atom* memory]
+                             (agent-sql/edit-sql-query-tool
+                              {:query_id  query-id
+                               :checklist "- [x] checked"
+                               :edits     [{:old_string "SELECT *"
+                                            :new_string "SELECT id"}]}))
+                  output   (:output result)]
+              (is (string? output))
+              (testing "includes query XML with edited content and correct attributes"
+                (is (str/includes? output "SELECT id"))
+                (is (str/includes? output "type=\"sql\""))
+                (is (str/includes? output (str "database_id=\"" db-id "\""))))
+              (testing "instructions reference the query ID"
+                (is (str/includes? output (str "metabase://query/" query-id))))
+              (testing "instructions mention error-analysis flow"
+                (is (str/includes? output "If the returned SQL query is NOT correct"))
+                (is (str/includes? output "Make further refinements using this tool again"))))))))))
 
 (deftest edit-sql-query-validation-error-output-test
   (testing "edit_sql_query output contains appropriate info on validation failure"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
-          (let [query-id "test-edit-q-validation-failure"
-                memory   (atom {:state {:queries {query-id {:database db-id
-                                                            :type     :native
-                                                            :native   {:query "SELECT * FROM t"}}}}})
-                result   (binding [shared/*memory-atom* memory]
-                           (agent-sql/edit-sql-query-tool
-                            {:query_id  query-id
-                             :checklist "- [x] checked"
-                             :edits     [{:old_string "SELECT *"
-                                          :new_string "SELECT ="}]}))
-                output   (:output result)]
-            (is (string? output))
-            (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
-            (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error"))))))))
+        (mt/with-temp [:model/Database db {:engine :postgres}]
+          (mt/with-db db
+            (let [mp (mt/metadata-provider)
+                  query-id "test-edit-q-validation-failure"
+                  memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT * FROM t")
+                                                                 lib/->legacy-MBQL)}}})
+                  result   (binding [shared/*memory-atom* memory]
+                             (agent-sql/edit-sql-query-tool
+                              {:query_id  query-id
+                               :checklist "- [x] checked"
+                               :edits     [{:old_string "SELECT *"
+                                            :new_string "SELECT ="}]}))
+                  output   (:output result)]
+              (is (string? output))
+              (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
+              (is (str/starts-with? (:output result) "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
 
 (deftest replace-sql-query-output-test
   (testing "replace_sql_query output includes replace-specific instructions with query ID"
     (mt/test-drivers #{:h2}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Database {db-id :id} {}]
-          (let [query-id "test-replace-q"
-                memory   (atom {:state {:queries {query-id {:database db-id
-                                                            :type     :native
-                                                            :native   {:query "SELECT 1"}}}}})
-                result   (binding [shared/*memory-atom* memory]
-                           (agent-sql/replace-sql-query-tool
-                            {:query_id  query-id
-                             :checklist "- [x] checked"
-                             :new_query "SELECT 2"}))
-                output   (:output result)]
-            (is (string? output))
-            (testing "includes query XML with replaced content and correct attributes"
-              (is (str/includes? output "SELECT 2"))
-              (is (str/includes? output "type=\"sql\""))
-              (is (str/includes? output (str "database_id=\"" db-id "\""))))
-            (testing "instructions reference the query ID"
-              (is (str/includes? output (str "metabase://query/" query-id))))
-            (testing "instructions mention edit_sql_query as alternative"
-              (is (str/includes? output "this tool or edit_sql_query again")))))))))
+        (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
+          (mt/with-db db
+            (let [mp (mt/metadata-provider)
+                  query-id "test-replace-q"
+                  memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT 1")
+                                                                 lib/->legacy-MBQL)}}})
+                  result   (binding [shared/*memory-atom* memory]
+                             (agent-sql/replace-sql-query-tool
+                              {:query_id  query-id
+                               :checklist "- [x] checked"
+                               :new_query "SELECT 2"}))
+                  output   (:output result)]
+              (is (string? output))
+              (testing "includes query XML with replaced content and correct attributes"
+                (is (str/includes? output "SELECT 2"))
+                (is (str/includes? output "type=\"sql\""))
+                (is (str/includes? output (str "database_id=\"" db-id "\""))))
+              (testing "instructions reference the query ID"
+                (is (str/includes? output (str "metabase://query/" query-id))))
+              (testing "instructions mention edit_sql_query as alternative"
+                (is (str/includes? output "this tool or edit_sql_query again"))))))))))
 
-(deftest x-replace-sql-query-validtion-error-output-test
+(deftest replace-sql-query-validtion-error-output-test
   (testing "replace_sql_query output contains appropriate info on validation failure"
     (mt/test-drivers #{:postgres}
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
-          (let [query-id "test-replace-q"
-                memory   (atom {:state {:queries {query-id {:database db-id
-                                                            :type     :native
-                                                            :native   {:query "SELECT 1"}}}}})
+        (mt/with-temp [:model/Database db {:engine :postgres}]
+          (mt/with-db db
+            (let [mp (mt/metadata-provider)
+                  query-id "test-replace-q"
+                  memory   (atom {:state {:queries {query-id (-> (lib/native-query mp "SELECT 1")
+                                                                 lib/->legacy-MBQL)}}})
 
-                {:keys [output instructions]} (binding [shared/*memory-atom* memory]
-                                                (agent-sql/replace-sql-query-tool
-                                                 {:query_id  query-id
-                                                  :checklist "- [x] checked"
-                                                  :new_query "SELECT ="}))
-                output   output]
-            (is (string? output))
-            (is (str/starts-with? instructions "The SQL query has a syntax error"))
-            (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error"))))))))
+                  {:keys [output instructions]} (binding [shared/*memory-atom* memory]
+                                                  (agent-sql/replace-sql-query-tool
+                                                   {:query_id  query-id
+                                                    :checklist "- [x] checked"
+                                                    :new_query "SELECT ="}))]
+              (is (string? output))
+              (is (str/starts-with? instructions "The SQL query has a syntax error"))
+              (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
