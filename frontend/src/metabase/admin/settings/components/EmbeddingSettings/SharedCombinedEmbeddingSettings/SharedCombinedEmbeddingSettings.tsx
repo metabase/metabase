@@ -7,6 +7,7 @@ import { UpsellBanner } from "metabase/admin/upsells/components";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {
+  PLUGIN_ADMIN_SETTINGS,
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
 } from "metabase/plugins";
@@ -36,6 +37,11 @@ export function SharedCombinedEmbeddingSettings({
     getUpgradeUrl(state, { utm_content: "embedding-settings" }),
   );
 
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign: "enterprise",
+    location: "embedding-settings",
+  });
+
   return (
     <>
       <EmbeddingSettingsCard
@@ -50,10 +56,11 @@ export function SharedCombinedEmbeddingSettings({
       {!isSimpleEmbedFeatureAvailable && (
         <UpsellBanner
           title={t`Upgrade to Metabase Pro for more powerful embedding methods`}
-          campaign="embedded-analytics-js"
+          campaign="embedding-methods"
           location="embedding-page"
           buttonText={t`Upgrade`}
           buttonLink={upgradeUrl}
+          onClick={triggerUpsellFlow}
           dismissible
         >
           <Text c="text-secondary" lh="md">
