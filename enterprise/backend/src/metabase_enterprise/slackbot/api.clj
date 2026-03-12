@@ -171,27 +171,6 @@
                                                             (str/join ", " skipped-files))})))
       (slackbot.streaming/send-response client event extra-history))))
 
-(defn- with-processing-reaction
-  "Wrap work with a temporary :eyes: reaction on the triggering message for non-DMs."
-  [client event f]
-  (let [reaction-target (when-not (slackbot.events/dm? event)
-                          {:channel (:channel event)
-                           :ts      (:ts event)
-                           :name    "eyes"})]
-    (when reaction-target
-      (let [res (slackbot.client/add-reaction client reaction-target)]
-        (when-not (:ok res)
-          (log/warnf "[slackbot] Failed to add processing reaction: %s (channel=%s ts=%s name=%s)"
-                     (:error res) (:channel reaction-target) (:ts reaction-target) (:name reaction-target)))))
-    (try
-      (f)
-      (finally
-        (when reaction-target
-          (let [res (slackbot.client/remove-reaction client reaction-target)]
-            (when-not (:ok res)
-              (log/warnf "[slackbot] Failed to remove processing reaction: %s (channel=%s ts=%s name=%s)"
-                         (:error res) (:channel reaction-target) (:ts reaction-target) (:name reaction-target)))))))))
-
 (defmethod analytics/known-labels :metabase-slackbot/responses-generated [_]
   [{:source "dm"      :result "success"}
    {:source "dm"      :result "error"}
@@ -213,23 +192,21 @@
   (let [event-type (or (:subtype event) (:channel_type event) (:type event))]
     (log/debugf "[slackbot] Processing %s event" event-type)
     (future
-      (with-processing-reaction client event
-        (fn []
-          (try
-            (when-let [user-id (require-authenticated-slack-user! client event)]
-              (request/with-current-user user-id
-                (let [source (event-source event)
-                      timer  (u/start-timer)]
-                  (try
-                    (handler client event)
-                    (analytics/inc! :metabase-slackbot/responses-generated {:source source :result "success"})
-                    (catch Exception e
-                      (analytics/inc! :metabase-slackbot/responses-generated {:source source :result "error"})
-                      (throw e))
-                    (finally
-                      (analytics/observe! :metabase-slackbot/response-duration-ms {:source source} (u/since-ms timer)))))))
-            (catch Exception e
-              (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e)))))))))
+      (try
+        (when-let [user-id (require-authenticated-slack-user! client event)]
+          (request/with-current-user user-id
+            (let [source (event-source event)
+                  timer  (u/start-timer)]
+              (try
+                (handler client event)
+                (analytics/inc! :metabase-slackbot/responses-generated {:source source :result "success"})
+                (catch Exception e
+                  (analytics/inc! :metabase-slackbot/responses-generated {:source source :result "error"})
+                  (throw e))
+                (finally
+                  (analytics/observe! :metabase-slackbot/response-duration-ms {:source source} (u/since-ms timer)))))))
+        (catch Exception e
+          (log/errorf e "[slackbot] Error processing %s: %s" event-type (ex-message e)))))))
 
 (defn- ignore-event
   "Handle any event we don't care to process"

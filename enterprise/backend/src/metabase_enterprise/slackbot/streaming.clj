@@ -164,7 +164,7 @@
    - req-slack-msg-id: The Slack message ts for the user's incoming message
    - get-response-ts: Function that returns the Slack message ts for the bot's response"
   [conversation-id prompt thread bot-user-id channel-id extra-history
-   {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id request-prompt]}]
+   {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id request-prompt stored-msg-id]}]
   (let [data-idx        (volatile! -1)
         message         (metabot-v3.envelope/user-message prompt)
         request-message (metabot-v3.envelope/user-message (or request-prompt prompt))
@@ -215,13 +215,15 @@
                           :state           {}
                           :on-line         handle-line
                           :on-complete     (fn [lines]
-                                             (metabot-v3.persistence/store-message!
-                                              conversation-id profile-id
-                                              (metabot-v3.u/aisdk->messages :assistant lines)
-                                              :channel-id   channel-id
-                                              :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
-                                              :user-id      api/*current-user-id*)
-                                             :store-in-db)})]
+                                             (let [pk (metabot-v3.persistence/store-message!
+                                                       conversation-id profile-id
+                                                       (metabot-v3.u/aisdk->messages :assistant lines)
+                                                       :channel-id   channel-id
+                                                       :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
+                                                       :user-id      api/*current-user-id*)]
+                                               (when stored-msg-id
+                                                 (reset! stored-msg-id pk))
+                                               :store-in-db))})]
     (->> (metabot-v3.u/aisdk->messages :assistant lines)
          (filter #(= (:_type %) :DATA)))))
 
@@ -573,8 +575,7 @@
                                                event
                                                extra-history
                                                ctx
-                                               {:thinking-placeholder       thinking-placeholder
-                                                :tool-name->friendly        tool-friendly-names
+                                               {:tool-name->friendly        tool-friendly-names
                                                 :make-streaming-ai-request  make-streaming-ai-request
                                                 :collect-viz-blocks         collect-viz-blocks
                                                 :feedback-blocks            feedback-blocks

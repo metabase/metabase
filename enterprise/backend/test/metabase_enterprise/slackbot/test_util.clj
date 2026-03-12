@@ -101,7 +101,7 @@
    {:post-calls, :delete-calls, :update-calls, :image-calls, :generate-card-output-calls,
     :generate-adhoc-output-calls, :ephemeral-calls, :ai-request-calls, :fake-png-bytes,
     :stream-calls, :append-text-calls, :stop-stream-calls,
-    :add-reaction-calls, :remove-reaction-calls}"
+    :add-reaction-calls, :remove-reaction-calls, :set-status-calls}"
   [{:keys [ai-text data-parts user-id]
     :or   {data-parts []
            user-id    ::default}}
@@ -119,6 +119,7 @@
         stop-stream-calls           (atom [])
         add-reaction-calls          (atom [])
         remove-reaction-calls       (atom [])
+        set-status-calls            (atom [])
         fake-png-bytes              (byte-array [0x89 0x50 0x4E 0x47])
         file-counter                (atom 0)
         placeholder-counter         (atom 0)
@@ -163,6 +164,9 @@
        slackbot.client/remove-reaction (fn [_ msg]
                                          (swap! remove-reaction-calls conj msg)
                                          {:ok true})
+       slackbot.client/set-status (fn [_ opts]
+                                    (swap! set-status-calls conj opts)
+                                    {:ok true})
        channel.slack/upload-file! (fn [image-bytes filename]
                                     (let [file-id (format "FIMG-%d" (swap! file-counter inc))]
                                       (swap! image-calls conj {:image-bytes image-bytes
@@ -210,4 +214,5 @@
                 :stop-stream-calls           stop-stream-calls
                 :add-reaction-calls          add-reaction-calls
                 :remove-reaction-calls       remove-reaction-calls
+                :set-status-calls            set-status-calls
                 :fake-png-bytes              fake-png-bytes}))))

@@ -101,6 +101,14 @@
   [client args]
   (slack-post-form client "/files.getUploadURLExternal" args))
 
+(defn set-status
+  "Set the status for a Slack assistant thread."
+  [client {:keys [status channel-id thread-ts loading-messages]}]
+  (:body (slack-post-json client "/assistant.threads.setStatus" (cond-> {:status status
+                                                                         :channel_id channel-id
+                                                                         :thread_ts thread-ts}
+                                                                  loading-messages (assoc :loading_messages loading-messages)))))
+
 (defn post-message
   "Send a Slack message"
   [client message]
