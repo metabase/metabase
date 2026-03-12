@@ -54,7 +54,7 @@ export function InfoSection({ run }: InfoSectionProps) {
         <InfoSectionItem label={t`Checkpoint from`}>
           <CheckpointValue
             value={run.checkpoint_lo_value}
-            baseType={checkpointField?.base_type}
+            checkpointField={checkpointField}
           />
         </InfoSectionItem>
       )}
@@ -62,7 +62,7 @@ export function InfoSection({ run }: InfoSectionProps) {
         <InfoSectionItem label={t`Checkpoint to`}>
           <CheckpointValue
             value={run.checkpoint_hi_value}
-            baseType={checkpointField?.base_type}
+            checkpointField={checkpointField}
           />
         </InfoSectionItem>
       )}

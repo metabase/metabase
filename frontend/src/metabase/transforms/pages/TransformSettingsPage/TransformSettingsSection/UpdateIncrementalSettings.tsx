@@ -61,7 +61,7 @@ function ResetCheckpointSection({ transform }: { transform: Transform }) {
         <Text component="span" fw="bold" c="text-primary">
           <CheckpointValue
             value={transform.last_checkpoint_value}
-            baseType={checkpointField?.base_type}
+            checkpointField={checkpointField}
           />
         </Text>
       </Box>

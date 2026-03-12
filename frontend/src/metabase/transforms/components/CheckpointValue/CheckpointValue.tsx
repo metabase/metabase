@@ -1,28 +1,21 @@
 import { DateTime } from "metabase/common/components/DateTime";
 import { Tooltip } from "metabase/ui";
-import { isa } from "metabase-lib/v1/types/utils/isa";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
+import type { Field } from "metabase-types/api";
 
 type CheckpointValueProps = {
   value: string;
-  baseType?: string;
+  checkpointField?: Field;
 };
 
-/**
- * Strip Java's ZonedDateTime bracket suffix (e.g. `[UTC]`, `[Asia/Kolkata]`)
- * which isn't parseable by JS Date. The numeric offset in the ISO portion
- * (e.g. `Z`, `+05:30`) is preserved and sufficient.
- */
-function stripBracketZone(value: string): string {
-  const idx = value.indexOf("[");
-  return idx >= 0 ? value.slice(0, idx) : value;
-}
-
-export function CheckpointValue({ value, baseType }: CheckpointValueProps) {
-  if (baseType && isa(baseType, "type/Temporal")) {
-    const cleanValue = stripBracketZone(value);
+export function CheckpointValue({
+  value,
+  checkpointField,
+}: CheckpointValueProps) {
+  if (isDate(checkpointField)) {
     return (
-      <Tooltip label={cleanValue}>
-        <DateTime value={cleanValue} unit="minute" />
+      <Tooltip label={value}>
+        <DateTime value={value} unit="minute" />
       </Tooltip>
     );
   }
