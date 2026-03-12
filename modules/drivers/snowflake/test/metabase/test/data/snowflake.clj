@@ -220,25 +220,6 @@
                 ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?" database-name])
     (jdbc/execute! (no-db-connection-spec) [sql])))
 
-(defn drop-dataset!
-  "Drop a Snowflake test dataset by name. Resolves the dataset name to its definition,
-   drops the database, and removes the tracking entry.
-
-   Can be called from the REPL or via clojure -X:
-
-     clojure -X:dev:drivers:drivers-dev:test metabase.test.data.snowflake/drop-dataset! :dataset-name '\"test-data\"'"
-  [{:keys [dataset-name]}]
-  (let [dataset-def  (data.impl/resolve-dataset-definition
-                      'metabase.test.data.dataset-definitions
-                      (symbol dataset-name))
-        dbdef        (tx/get-dataset-definition dataset-def)]
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (println (format "[Snowflake] Dropping dataset '%s' (qualified: %s)..."
-                     dataset-name (qualified-db-name dbdef)))
-    (tx/destroy-db! :snowflake dbdef)
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (println "[Snowflake] Done.")))
-
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
 ;; INSERT statements, even though the documentation suggests it should. Just go ahead and deparameterize all the
 ;; statements for now.

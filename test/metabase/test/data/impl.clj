@@ -383,3 +383,22 @@
               *db-id-fn*                #(u/the-id (db-fn))
               *dbdef-used-to-create-db* dbdef]
       (f))))
+
+(defn drop-dataset!
+  "Drop a test dataset by driver and name. Resolves the dataset name to its definition
+   and calls [[metabase.test.data.interface/destroy-db!]].
+
+   Can be called from the REPL or via clojure -X:
+
+     clojure -X:dev:drivers:drivers-dev metabase.test.data.impl/drop-dataset! :driver '\"snowflake\"' :dataset-name '\"test-data\"'"
+  [{:keys [driver dataset-name]}]
+  (let [driver      (keyword driver)
+        dataset-def (resolve-dataset-definition
+                     'metabase.test.data.dataset-definitions
+                     (symbol dataset-name))
+        dbdef       (tx/get-dataset-definition dataset-def)]
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println (format "[%s] Dropping dataset '%s'..." (name driver) dataset-name))
+    (tx/destroy-db! driver dbdef)
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println (format "[%s] Done." (name driver)))))
