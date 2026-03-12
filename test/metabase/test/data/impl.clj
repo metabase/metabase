@@ -11,6 +11,7 @@
    [metabase.test.data.impl.verify :as verify]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -398,18 +399,12 @@
                      'metabase.test.data.dataset-definitions
                      (symbol dataset-name))
         dbdef       (tx/get-dataset-definition dataset-def)]
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (println (format "[%s] Checking if dataset '%s' exists..." (name driver) dataset-name))
+    (log/infof "[%s] Checking if dataset '%s' exists..." (name driver) dataset-name)
     (if-not (tx/dataset-already-loaded? driver dbdef)
+      (log/infof "[%s] Dataset '%s' does not exist, nothing to drop." (name driver) dataset-name)
       (do
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (println (format "[%s] Dataset '%s' does not exist, nothing to drop." (name driver) dataset-name)))
-      (do
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        (println (format "[%s] Dataset '%s' exists. Dropping..." (name driver) dataset-name))
+        (log/infof "[%s] Dataset '%s' exists. Dropping..." (name driver) dataset-name)
         (tx/destroy-db! driver dbdef)
         (if (tx/dataset-already-loaded? driver dbdef)
           (throw (ex-info (format "[%s] Dataset '%s' still exists after drop!" (name driver) dataset-name) {}))
-          (do
-            #_{:clj-kondo/ignore [:discouraged-var]}
-            (println (format "[%s] Verified: dataset '%s' has been deleted." (name driver) dataset-name))))))))
+          (log/infof "[%s] Verified: dataset '%s' has been deleted." (name driver) dataset-name))))))
