@@ -149,17 +149,17 @@
   (or (isa? base-type :type/Temporal)
       (isa? base-type :type/Number)))
 
+(defn- encode-checkpoint-value [v]
+  (if (number? v)
+    (str v)
+    (u.date/format v)))
+
 (defn save-watermark!
   "Commits the incremental transforms :hi watermark value to the appdb."
   [transform-id source-range-params]
   (t2/update! :model/Transform
               transform-id
-              {:last_checkpoint_value (some-> source-range-params :hi :value str)}))
-
-(defn- encode-checkpoint-value [v]
-  (if (number? v)
-    (str v)
-    (u.date/format v)))
+              {:last_checkpoint_value (some-> source-range-params :hi :value encode-checkpoint-value)}))
 
 (defn save-run-checkpoint-range!
   "Persist the checkpoint range (lo/hi) on a transform run record.
