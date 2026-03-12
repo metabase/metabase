@@ -14,6 +14,7 @@
    [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
+   [metabase.query-processor.middleware.query-log :as qp.middleware.query-log]
    [metabase.query-processor.postprocess :as qp.postprocess]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -38,6 +39,10 @@
   ;; ↓↓↓ POST-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'qp.middleware.enterprise/handle-audit-app-internal-queries-middleware
    #'qp.process-userland-query/process-userland-query-middleware
+   ;; query-log: pushes correlation metadata into Log4j2 ThreadContext and emits
+   ;; INFO summary line on completion. Positioned inside process-userland-query
+   ;; (needs :info metadata) and catch-exceptions (needs error handling).
+   #'qp.middleware.query-log/query-log-middleware
    ;; userland queries only: catch Exceptions and return a special error response
    #'qp.catch-exceptions/catch-exceptions])
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
