@@ -51,6 +51,7 @@ import {
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
 import S from "./TransformListPage.module.css";
+import { TransformToolsMenu } from "./TransformToolsMenu";
 import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import { buildTreeData, getDefaultExpandedIds } from "./utils";
 
@@ -363,7 +364,10 @@ export const TransformListPage = ({
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {!isRemoteSyncReadOnly && transformsDatabases.length > 0 && (
-            <CreateTransformMenu />
+            <>
+              <CreateTransformMenu />
+              <TransformToolsMenu />
+            </>
           )}
         </Flex>
 
