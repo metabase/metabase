@@ -623,8 +623,10 @@
   (format "'%s'" (t/format "HH:mm:ss.SSSZZZZZ" t)))
 
 (defmethod sql.qp/inline-value [:clickhouse LocalDateTime]
-  [_ t]
-  (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
+  [_ ^LocalDateTime t]
+  (if (zero? (.getNano t))
+    (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss" t))
+    (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t))))
 
 (defmethod sql.qp/inline-value [:clickhouse OffsetDateTime]
   [_ ^OffsetDateTime t]
@@ -635,6 +637,18 @@
 (defmethod sql.qp/inline-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
+
+(defmethod sql.qp/inline-value [:clickhouse (Class/forName "[Ljava.lang.String;")]
+  [driver arr]
+  (format "[%s]" (str/join ", " (map #(sql.qp/inline-value driver %) arr))))
+
+(defmethod sql.qp/inline-value [:clickhouse (Class/forName "[Ljava.lang.Long;")]
+  [driver arr]
+  (format "[%s]" (str/join ", " (map #(sql.qp/inline-value driver %) arr))))
+
+(defmethod sql.qp/inline-value [:clickhouse (Class/forName "[Ljava.lang.Object;")]
+  [driver arr]
+  (format "[%s]" (str/join ", " (map #(sql.qp/inline-value driver %) arr))))
 
 (defmethod sql.params.substitution/->replacement-snippet-info [:clickhouse UUID]
   [_driver this]
