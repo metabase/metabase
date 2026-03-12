@@ -162,6 +162,15 @@
              (p/shell "bin/pre-lint-migrations-file.sh")
              (lint-migrations-file/-main))}
 
+  new-migration
+  {:doc "Create a new directory-based migration file (v60+)"
+   :requires [[mage.new-migration :as new-migration]]
+   :examples [["./bin/mage new-migration 60 mq_indexes" "Create resources/migrations/060/20260905_mq_indexes.yaml"]]
+   :arg-schema [:tuple
+                [:int {:name "version" :description "Major version number (e.g., 60)"}]
+                [:string {:name "description" :description "Lowercase alphanumeric/underscore name (e.g., mq_indexes)"}]]
+   :task (task! (new-migration/new-migration parsed))}
+
   jar-download
   {:doc "Download (and optionally run) jar for a metabase version or branch"
    :examples [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
@@ -533,4 +542,41 @@
    :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
    :examples [["mage -escherize-fix-whitespace '**/*.clj{,c,s}'" "Removes all lines like '  ' from all clj files"]]
    :arg-schema [:sequential [:string {:name "glob-pattern" :description "Glob pattern to match files"}]]
-   :task (task! (fix-whitespace/run-clean parsed))}}}
+   :task (task! (fix-whitespace/run-clean parsed))}
+
+  -edpaget-dev-env
+  {:doc "Stand up (or tear down) an isolated dev environment for this worktree"
+   :examples [["./bin/mage -edpaget-dev-env --app-db postgres" "Postgres app-db with auto ports"]
+              ["./bin/mage -edpaget-dev-env --app-db postgres --with mysql --with mongo" "Full stack"]
+              ["./bin/mage -edpaget-dev-env" "Minimal: just port config (H2 app-db)"]
+              ["./bin/mage -edpaget-dev-env --down" "Tear down containers for this worktree"]
+              ["./bin/mage -edpaget-dev-env --status" "Show running containers and ports"]]
+   :requires [[mage.edpaget.dev-env :as dev-env]]
+   :options [[nil "--app-db DB" "App database: h2 (default), postgres, mysql" :default "h2"]
+             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"
+              :multi true :default [] :update-fn conj]
+             [nil "--down" "Tear down all containers for this worktree"]
+             [nil "--status" "Show current env status"]
+             [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]]
+   :task (task! (dev-env/dev-env! parsed))}
+
+  -johnswanson-dev-env
+  {:doc "Stand up (or tear down) an isolated dev environment for this worktree. Interactive prompts when flags omitted."
+   :examples [["./bin/mage -johnswanson-dev-env" "Interactive TUI to configure infra (saves config)"]
+              ["./bin/mage -johnswanson-dev-env --run" "Configure + launch backend/frontend"]
+              ["./bin/mage -johnswanson-dev-env --run --no-frontend" "Configure + backend only"]
+              ["./bin/mage -johnswanson-dev-env --down" "Stop everything for this worktree"]
+              ["./bin/mage -johnswanson-dev-env --status" "Show running containers and processes"]]
+   :requires [[mage.johnswanson.dev-env :as jds-dev-env]]
+   :options [["-e" "--edition EDITION" "ee or oss (default: prompt)"]
+             ["-t" "--token TOKEN" "Token type: all-features, starter-cloud, pro-cloud, pro-self-hosted, none"]
+             [nil "--app-db DB" "App database: h2, postgres, mysql, mariadb (default: prompt)"]
+             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"
+              :multi true :default [] :update-fn conj]
+             [nil "--run" "Also launch backend + frontend in background"]
+             [nil "--no-frontend" "Skip frontend dev server (only with --run)"]
+             [nil "--down" "Stop everything for this worktree"]
+             [nil "--status" "Show current env status"]
+             [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]
+             [nil "--fresh" "Recreate containers from scratch"]]
+   :task (task! (jds-dev-env/dev-env! parsed))}}}
