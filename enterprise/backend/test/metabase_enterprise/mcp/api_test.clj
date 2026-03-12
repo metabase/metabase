@@ -46,10 +46,15 @@
    {:jsonrpc "2.0" :method method :params params}))
 
 (defn- initialize!
-  "Perform the MCP initialize handshake. Returns [session-id response]."
+  "Perform the full MCP initialize handshake (initialize + notifications/initialized).
+   Returns [session-id init-response]."
   []
-  (let [response (mcp-request (jsonrpc-request "initialize"))]
-    [(get-in response [:headers "Mcp-Session-Id"]) response]))
+  (let [response   (mcp-request (jsonrpc-request "initialize"))
+        session-id (get-in response [:headers "Mcp-Session-Id"])]
+    ;; Complete the handshake so the session is marked initialized
+    (mcp-request (jsonrpc-notification "notifications/initialized")
+                 {"mcp-session-id" session-id})
+    [session-id response]))
 
 ;;; ---------------------------------------------------- Tests -----------------------------------------------------
 
@@ -99,7 +104,8 @@
     (let [[session-id _] (initialize!)]
       ;; Manually expire the session by backdating the timer (nanos) to 2 hours ago
       (swap! @#'mcp.api/sessions assoc session-id
-             {:timer (- (System/nanoTime) (long (* 2 60 60 1000 1e6)))})
+             {:timer (- (System/nanoTime) (long (* 2 60 60 1000 1e6)))
+              :initialized? true})
       (let [response (mcp-request (jsonrpc-request "tools/list")
                                   {"mcp-session-id" session-id})]
         (is (= 400 (:status response)))
@@ -241,19 +247,36 @@
         (is (some? (:database_id table-data)))
         (is (= "table" (:type table-data)))))))
 
+(deftest initialized-enforcement-test
+  (testing "requests before notifications/initialized are rejected"
+    (let [;; Only do initialize, not the full handshake
+          response   (mcp-request (jsonrpc-request "initialize"))
+          session-id (get-in response [:headers "Mcp-Session-Id"])
+          ;; Try tools/list without sending notifications/initialized
+          list-response (mcp-request (jsonrpc-request "tools/list")
+                                     {"mcp-session-id" session-id})]
+      (is (= 200 (:status list-response)))
+      (is (= -32600 (get-in list-response [:body :error :code])))
+      (is (str/includes? (get-in list-response [:body :error :message]) "not initialized"))))
+
+  (testing "requests after notifications/initialized succeed"
+    (let [response   (mcp-request (jsonrpc-request "initialize"))
+          session-id (get-in response [:headers "Mcp-Session-Id"])]
+      ;; Send notifications/initialized
+      (mcp-request (jsonrpc-notification "notifications/initialized")
+                   {"mcp-session-id" session-id})
+      ;; Now tools/list should work
+      (let [list-response (mcp-request (jsonrpc-request "tools/list")
+                                       {"mcp-session-id" session-id})]
+        (is (= 200 (:status list-response)))
+        (is (some? (get-in list-response [:body :result :tools])))))))
+
 (deftest full-handshake-test
   (testing "complete MCP handshake flow"
-    (let [;; Step 1: initialize
-          [session-id init-response] (initialize!)
+    (let [[session-id init-response] (initialize!)
           _ (is (= 200 (:status init-response)))
           _ (is (some? session-id))
-
-          ;; Step 2: notifications/initialized
-          notif-response (mcp-request (jsonrpc-notification "notifications/initialized")
-                                      {"mcp-session-id" session-id})
-          _ (is (= 202 (:status notif-response)))
-
-          ;; Step 3: list tools
+          ;; tools/list should work after full handshake
           list-response (mcp-request (jsonrpc-request "tools/list")
                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status list-response)))
