@@ -1,20 +1,46 @@
-import type { ColumnPinningState } from "@tanstack/react-table";
-import { useMemo } from "react";
+import type {
+  ColumnPinningState,
+  ColumnSizingState,
+} from "@tanstack/react-table";
+import { type RefObject, useMemo, useState } from "react";
+
+import { useItemsLimiter } from "./use-items-limiter";
 
 type UseColumnPinningByCountProps = {
-  pinnedLeftColumnsCount: number;
+  gridRef: RefObject<HTMLDivElement>;
+  pinnedColumnsCount: number;
+  columnSizingMap: ColumnSizingState;
   columnOrder: string[];
-  utilityColumnsCount: number;
 };
 
 export const useColumnPinningByCount = ({
-  pinnedLeftColumnsCount,
+  gridRef,
+  pinnedColumnsCount,
   columnOrder,
-  utilityColumnsCount,
-}: UseColumnPinningByCountProps): ColumnPinningState =>
-  useMemo(
+  columnSizingMap,
+}: UseColumnPinningByCountProps) => {
+  const [isEnabled, setIsEnabled] = useState<boolean>(false);
+
+  const pinnedColumnSizes = useMemo(() => {
+    return columnOrder
+      .slice(0, pinnedColumnsCount)
+      .map((id) => columnSizingMap[id] ?? 0);
+  }, [columnOrder, pinnedColumnsCount, columnSizingMap]);
+
+  const effectivePinnedColumnsCount = useItemsLimiter({
+    containerRef: gridRef,
+    dimension: "width",
+    sizes: pinnedColumnSizes,
+    maxRatio: 0.9,
+    isEnabled,
+  });
+
+  const columnPinning = useMemo<ColumnPinningState>(
     () => ({
-      left: columnOrder.slice(0, pinnedLeftColumnsCount + utilityColumnsCount),
+      left: columnOrder.slice(0, effectivePinnedColumnsCount),
     }),
-    [columnOrder, pinnedLeftColumnsCount, utilityColumnsCount],
+    [columnOrder, effectivePinnedColumnsCount],
   );
+
+  return { columnPinning, toggle: setIsEnabled };
+};

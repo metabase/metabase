@@ -203,8 +203,6 @@ export const useDataGridInstance = <TData, TValue>({
     [utilityColumns, dataColumns],
   );
 
-  const utilityColumnsCount = utilityColumns.length;
-
   const fixedWidthColumnIds = utilityColumnIds;
 
   // Columns that need text wrapping
@@ -243,11 +241,13 @@ export const useDataGridInstance = <TData, TValue>({
       : minGridWidthProp - getScrollBarSize();
   }, [enablePagination, minGridWidthProp]);
 
-  const columnPinning = useColumnPinningByCount({
-    columnOrder,
-    pinnedLeftColumnsCount,
-    utilityColumnsCount,
-  });
+  const { columnPinning, toggle: toggleColumnPinningLimiter } =
+    useColumnPinningByCount({
+      gridRef,
+      columnOrder,
+      columnSizingMap,
+      pinnedColumnsCount: pinnedLeftColumnsCount + utilityColumns.length,
+    });
 
   const rowPinning = useRowPinningByCount({
     top: pinnedTopRowsCount,
@@ -441,6 +441,12 @@ export const useDataGridInstance = <TData, TValue>({
     gridRef,
     onColumnReorder,
   );
+
+  const isResizingColumn = !!table.getState().columnSizingInfo.isResizingColumn;
+  const isNextInteracting = columnsReordering.isDragging || isResizingColumn;
+  useEffect(() => {
+    toggleColumnPinningLimiter(isNextInteracting);
+  }, [toggleColumnPinningLimiter, isNextInteracting]);
 
   const selection = useCellSelection({
     gridRef,
