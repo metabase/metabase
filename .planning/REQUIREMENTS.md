@@ -9,14 +9,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Correlation
 
-- [ ] **CORR-01**: All log lines for a single request share a consistent correlation ID (request_id) that can be grepped to filter to exactly one request's logs
-- [ ] **CORR-02**: Correlation ID works correctly under concurrent request processing (no cross-request leakage)
+- [x] **CORR-01**: All log lines for a single request share a consistent correlation ID (request_id) that can be grepped to filter to exactly one request's logs
+- [x] **CORR-02**: Correlation ID works correctly under concurrent request processing (no cross-request leakage)
 
 ### Summary Logging
 
-- [ ] **SUMM-01**: At the end of each query execution, a single INFO-level log line is emitted containing: request ID, card ID (if applicable), dashboard ID (if applicable), database ID, number of SQL queries issued, total DB execution time, user ID, and query type
-- [ ] **SUMM-02**: Summary log line is cheap enough to leave always-on at INFO level
-- [ ] **SUMM-03**: Summary log line uses Metabase's existing standard log format
+- [x] **SUMM-01**: At the end of each query execution, a single INFO-level log line is emitted containing: request ID, card ID (if applicable), dashboard ID (if applicable), database ID, number of SQL queries issued, total DB execution time, user ID, and query type
+- [x] **SUMM-02**: Summary log line is cheap enough to leave always-on at INFO level
+- [x] **SUMM-03**: Summary log line uses Metabase's existing standard log format
 
 ### Detail Logging
 
@@ -26,9 +26,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Query Attribution
 
-- [ ] **ATTR-01**: Log lines include the card ID (saved question) that triggered the query, when applicable
-- [ ] **ATTR-02**: Log lines include the dashboard ID that triggered the query, when applicable
-- [ ] **ATTR-03**: Log lines classify the query type (user query vs sync/scan)
+- [x] **ATTR-01**: Log lines include the card ID (saved question) that triggered the query, when applicable
+- [x] **ATTR-02**: Log lines include the dashboard ID that triggered the query, when applicable
+- [x] **ATTR-03**: Log lines classify the query type (user query vs sync/scan)
 
 ### Logging Presets
 
@@ -72,17 +72,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORR-01 | Phase 1 | Pending |
-| CORR-02 | Phase 1 | Pending |
-| SUMM-01 | Phase 1 | Pending |
-| SUMM-02 | Phase 1 | Pending |
-| SUMM-03 | Phase 1 | Pending |
+| CORR-01 | Phase 1 | Complete |
+| CORR-02 | Phase 1 | Complete |
+| SUMM-01 | Phase 1 | Complete |
+| SUMM-02 | Phase 1 | Complete |
+| SUMM-03 | Phase 1 | Complete |
 | DETL-01 | Phase 2 | Pending |
 | DETL-02 | Phase 2 | Pending |
 | DETL-03 | Phase 2 | Pending |
-| ATTR-01 | Phase 1 | Pending |
-| ATTR-02 | Phase 1 | Pending |
-| ATTR-03 | Phase 1 | Pending |
+| ATTR-01 | Phase 1 | Complete |
+| ATTR-02 | Phase 1 | Complete |
+| ATTR-03 | Phase 1 | Complete |
 | PRES-01 | Phase 3 | Pending |
 | PRES-02 | Phase 3 | Pending |
 

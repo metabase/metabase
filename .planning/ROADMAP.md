@@ -12,7 +12,7 @@ This roadmap delivers structured query logging for Metabase in three phases. Pha
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Correlation and Summary Logging** - Request correlation IDs and always-on INFO summary line with query attribution
+- [x] **Phase 1: Correlation and Summary Logging** - Request correlation IDs and always-on INFO summary line with query attribution
 - [ ] **Phase 2: Per-Statement Detail Logging** - DEBUG-level log lines with full SQL, parameters, and timing for each JDBC statement
 - [ ] **Phase 3: Logging Presets** - Runtime toggle of detail logging via the existing admin preset system
 
@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 1 plan
 
 Plans:
-- [ ] 01-01-PLAN.md -- Query-log middleware with ThreadContext correlation and INFO summary line
+- [x] 01-01-PLAN.md -- Query-log middleware with ThreadContext correlation and INFO summary line
 
 ### Phase 2: Per-Statement Detail Logging
 **Goal**: Users can see the exact SQL and parameters Metabase sends to their database for every statement in a request, correlated to the summary line
@@ -65,6 +65,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Correlation and Summary Logging | 0/1 | Not started | - |
+| 1. Correlation and Summary Logging | 1/1 | Complete | 2026-03-12 |
 | 2. Per-Statement Detail Logging | 0/1 | Not started | - |
 | 3. Logging Presets | 0/1 | Not started | - |
