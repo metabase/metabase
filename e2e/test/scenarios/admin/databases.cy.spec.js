@@ -702,8 +702,7 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.findByLabelText(/Choose when syncs and scans happen/).click({
       force: true,
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Hourly").click();
+    cy.findByDisplayValue("Hourly").click();
     H.popover().within(() => {
       cy.findByText("Daily").click({ force: true });
     });
@@ -714,10 +713,7 @@ describe("scenarios > admin > databases > sample database", () => {
       .click();
 
     H.popover().findByText("Regularly, on a schedule").click();
-    cy.findAllByRole("button", { name: /Daily/ })
-      .should("have.length", 2)
-      .eq(1)
-      .click();
+    cy.findAllByDisplayValue("Daily").should("have.length", 2).eq(1).click();
     H.popover().findByText("Weekly").click();
 
     cy.button("Save changes").click();
