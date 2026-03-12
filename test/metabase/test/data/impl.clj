@@ -406,8 +406,10 @@
     (tx/destroy-db! driver dbdef)
     (log! "[%s] Done." (name driver))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn test-drop-dataset
   "Like [[drop-dataset!]] but checks existence before and after, verifying deletion.
+   Name lacks `!` because clojure -X cannot resolve function names ending in `!`.
 
      clojure -X:dev:drivers:drivers-dev:test metabase.test.data.impl/test-drop-dataset :driver '\"snowflake\"' :dataset-name '\"test-data\"'"
   [{:keys [driver dataset-name] :as opts}]
