@@ -109,8 +109,8 @@
                            default-connection-details
                            details)
         {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
-        ;; Handling legacy `dbname` values here. `dbname` used to be a a space-separated string of
-        ;; the database names. These `dbname` values weren't migrated so they still need to be hanlded
+        ;; Handling legacy `dbname` values here. `dbname` used to be a space-separated string of
+        ;; the database names. These `dbname` values weren't migrated so they still need to be handled
         ;; here. This is the original version that takes the first db. This value is just the default
         ;; db, we hit other dbs by including the db in the queries (#70798).
         dbname (first (str/split (str/trim dbname) #" "))
