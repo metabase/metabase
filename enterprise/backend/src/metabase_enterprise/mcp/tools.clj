@@ -100,7 +100,7 @@
    and calls `invoke-agent-api`."
   [tool-def arguments]
   (let [{:keys [method path]} (:endpoint tool-def)
-        method                (keyword (str/lower-case method))
+        method                (keyword (u/lower-case-en method))
         [resolved-path
          remaining-args]      (interpolate-path path arguments)
         api-path              (strip-api-prefix resolved-path)]
@@ -121,8 +121,8 @@
   [tool-name arguments]
   (if-let [tool-def (get @tool-index tool-name)]
     (try
-      (case (:responseFormat tool-def)
-        "query_result" (execute-query arguments)
+      (if (:streaming tool-def)
+        (execute-query arguments)
         (dispatch-via-agent-api tool-def arguments))
       (catch Exception e
         (error-content (or (ex-message e) "Internal error"))))
