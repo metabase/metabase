@@ -15,6 +15,7 @@ on:
   pull_request:
     paths:
       - "cross-version/**"
+      - "resources/migrations/**"
       - ".github/workflows/cross-version.yml"
       - ".github/scripts/build-cross-version-matrix.js"
 
