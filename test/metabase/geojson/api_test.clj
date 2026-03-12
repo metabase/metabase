@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.geojson.api :as api.geojson]
    [metabase.geojson.settings :as geojson.settings]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -197,6 +198,21 @@
         (testing "fetching a broken URL should fail"
           (is (= "GeoJSON URL failed to load"
                  (mt/user-http-request :rasta :get 400 "geojson/middle-earth"))))))))
+
+(deftest pre-existing-classpath-resource-geojson-test
+  (testing "A classpath-resource-based GeoJSON saved before this changeset should still work after upgrade,
+            even without MB_ALLOW_CLASSPATH_GEOJSON set."
+    ;; Simulate a pre-existing DB entry by writing directly to the setting, bypassing validation.
+    ;; This is what the DB would look like for an instance that saved a classpath resource before the upgrade.
+    (let [legacy-resource-path "c3p0.properties"
+          legacy-geojson      {:legacy-map {:name        "Legacy Map"
+                                            :url         legacy-resource-path
+                                            :region_key  nil
+                                            :region_name nil}}]
+      (mt/with-temporary-setting-values [custom-geojson nil]
+        (setting/set-value-of-type! :json :custom-geojson legacy-geojson)
+        (testing "The key endpoint should serve the pre-existing classpath resource"
+          (is (some? (mt/user-http-request :rasta :get 200 "geojson/legacy-map"))))))))
 
 (deftest disable-custom-geojson-test
   (testing "Should be able to disable GeoJSON proxying endpoints by env var"
