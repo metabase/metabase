@@ -563,7 +563,7 @@ jobs:
         version:
           - name: MariaDB 10.6
             junit-name: be-tests-mariadb-10-6-ee
-            image: image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
+            image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
