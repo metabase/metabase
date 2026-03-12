@@ -57,9 +57,32 @@ export function metadataProvider(
   databaseId: DatabaseId | null,
   metadata: Metadata,
 ): MetadataProvider {
-  // MetadataProvider is an opaque type — the CLJS function returns an opaque
-  // provider object that has no structural type in TS. Cast is unavoidable.
-  return ML.metadataProvider(databaseId, metadata) as MetadataProvider;
+  const provider = ML.metadataProvider(databaseId, metadata);
+  if (!isMetadataProvider(provider)) {
+    throw new TypeError(
+      "Expected metadataProvider to return an opaque provider",
+    );
+  }
+  return provider;
+}
+
+function isMetadataProvider(provider: unknown): provider is MetadataProvider {
+  return typeof provider === "object" && provider != null;
+}
+
+function isColumnGroup(value: unknown): value is ColumnGroup {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    "type" in value &&
+    value.type === "column-group" &&
+    "columns" in value &&
+    Array.isArray(value.columns)
+  );
+}
+
+function isColumnGroupArray(value: unknown): value is ColumnGroup[] {
+  return Array.isArray(value) && value.every(isColumnGroup);
 }
 
 // displayInfo overloads — runtime type guards in the implementation
@@ -160,65 +183,15 @@ export function displayInfo(
   stageIndex: number,
   opaque: unknown,
 ): unknown {
-  const result = ML.display_info(query, stageIndex, opaque);
-  // Runtime type guards to narrow the return type.
-  // The `type` field on the input determines what display-info returns.
-  const typ = (opaque as Record<string, unknown>)?.type;
-  switch (typ) {
-    case "column-group":
-      return result as ColumnGroupDisplayInfo;
-    case "card":
-      return result as CardDisplayInfo;
-    case "table":
-      return result as TableDisplayInfo;
-    case "aggregation":
-      return result as AggregationOperatorDisplayInfo;
-    case "temporal-bucketing":
-      return result as BucketDisplayInfo;
-    case "metric":
-      return result as MetricDisplayInfo;
-    case "measure":
-      return result as MeasureDisplayInfo;
-    case "join.strategy":
-      return result as JoinStrategyDisplayInfo;
-    case "drill-thru":
-      return result as DrillThruDisplayInfo;
-    case "filter":
-      return result as FilterOperatorDisplayInfo;
-    case "segment":
-      return result as SegmentDisplayInfo;
-    case "extraction":
-      return result as ColumnExtractionInfo;
-    default:
-      break;
-  }
-  // Clauses are arrays — check first element for order-by
-  if (Array.isArray(opaque)) {
-    if (opaque[0] === "asc" || opaque[0] === "desc") {
-      return result as OrderByClauseDisplayInfo;
-    }
-    return result as ClauseDisplayInfo;
-  }
-  // Binning buckets have `strategy` but no `type`
-  if (
-    typeof opaque === "object" &&
-    opaque !== null &&
-    "strategy" in opaque &&
-    !("type" in opaque)
-  ) {
-    return result as BucketDisplayInfo;
-  }
-  // JoinStrategy plain strings
-  if (typeof opaque === "string") {
-    return result as JoinStrategyDisplayInfo;
-  }
-  return result as ColumnDisplayInfo;
+  return ML.display_info(query, stageIndex, opaque);
 }
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
-  // ColumnGroup schema is private in CLJS (not a registered mr/def), so the
-  // generated type is Record<string, unknown>. The runtime values match ColumnGroup.
-  return ML.group_columns(columns) as ColumnGroup[];
+  const columnGroups = ML.group_columns(columns);
+  if (!isColumnGroupArray(columnGroups)) {
+    throw new TypeError("Expected group_columns to return column groups");
+  }
+  return columnGroups;
 }
 
 export function getColumnsFromColumnGroup(

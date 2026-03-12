@@ -9,7 +9,6 @@ import type {
 import type {
   Bucket,
   CardMetadata,
-  Clause,
   ColumnMetadata,
   ExpressionClause,
   Join,
@@ -29,7 +28,27 @@ export type Joinable = TableMetadata | CardMetadata;
 
 export type JoinOrJoinable = Join | Joinable;
 
-type ColumnMetadataOrFieldRef = ColumnMetadata | Clause;
+type JoinConditionSide = Parameters<typeof ML.join_condition_rhs_columns>[3];
+type JoinConditionExpression = Extract<
+  Parameters<typeof ML.join_condition_clause>[1],
+  ColumnMetadata | ExpressionClause
+>;
+type JoinConditionTemporalBucket = Parameters<
+  typeof ML.join_condition_update_temporal_bucketing
+>[3];
+type JoinConditionTemporalBucketObject = Extract<
+  JoinConditionTemporalBucket,
+  { type: "temporal-bucketing" }
+>;
+
+function isJoinConditionExpression(
+  expression: ColumnMetadata | ExpressionClause,
+): expression is JoinConditionExpression {
+  return (
+    Array.isArray(expression) ||
+    (typeof expression === "object" && expression != null)
+  );
+}
 
 export function joins(query: Query, stageIndex: number): Join[] {
   return ML.joins(query, stageIndex) || [];
@@ -48,11 +67,13 @@ export function joinConditionClause(
   lhsExpression: ColumnMetadata | ExpressionClause,
   rhsExpression: ColumnMetadata | ExpressionClause,
 ): JoinCondition {
-  return ML.join_condition_clause(
-    operator,
-    lhsExpression as unknown as Parameters<typeof ML.join_condition_clause>[1],
-    rhsExpression as unknown as Parameters<typeof ML.join_condition_clause>[2],
-  );
+  if (!isJoinConditionExpression(lhsExpression)) {
+    throw new TypeError("Unexpected left join condition expression");
+  }
+  if (!isJoinConditionExpression(rhsExpression)) {
+    throw new TypeError("Unexpected right join condition expression");
+  }
+  return ML.join_condition_clause(operator, lhsExpression, rhsExpression);
 }
 
 export function joinConditionParts(
@@ -107,13 +128,36 @@ export function joinConditionUpdateTemporalBucketing(
   query: Query,
   stageIndex: number,
   condition: JoinCondition,
-  bucket: Bucket | null,
+  bucket: JoinConditionTemporalBucket | Bucket | null,
 ): JoinCondition {
   return ML.join_condition_update_temporal_bucketing(
     query,
     stageIndex,
     condition,
-    bucket as Parameters<typeof ML.join_condition_update_temporal_bucketing>[3],
+    normalizeJoinConditionTemporalBucket(bucket),
+  );
+}
+
+function normalizeJoinConditionTemporalBucket(
+  bucket: JoinConditionTemporalBucket | Bucket | null,
+): JoinConditionTemporalBucket {
+  if (bucket == null || typeof bucket === "string") {
+    return bucket;
+  }
+  if (isJoinConditionTemporalBucketObject(bucket)) {
+    return bucket;
+  }
+  return null;
+}
+
+function isJoinConditionTemporalBucketObject(
+  bucket: JoinConditionTemporalBucket | Bucket,
+): bucket is JoinConditionTemporalBucketObject {
+  return (
+    typeof bucket === "object" &&
+    bucket != null &&
+    "type" in bucket &&
+    bucket.type === "temporal-bucketing"
   );
 }
 
@@ -172,15 +216,15 @@ export function joinConditionRHSColumns(
   query: Query,
   stageIndex: number,
   joinOrJoinable?: JoinOrJoinable,
-  lhsColumn?: ColumnMetadataOrFieldRef,
-  rhsColumn?: ColumnMetadataOrFieldRef,
+  lhsColumn?: JoinConditionSide,
+  rhsColumn?: JoinConditionSide,
 ): ColumnMetadata[] {
   return ML.join_condition_rhs_columns(
     query,
     stageIndex,
     joinOrJoinable,
-    lhsColumn as Parameters<typeof ML.join_condition_rhs_columns>[3],
-    rhsColumn as Parameters<typeof ML.join_condition_rhs_columns>[4],
+    lhsColumn,
+    rhsColumn,
   );
 }
 
@@ -213,17 +257,14 @@ export function suggestedJoinConditions(
   return ML.suggested_join_conditions(query, stageIndex, joinable) || [];
 }
 
-export type JoinFields = ColumnMetadata[] | Clause[] | "all" | "none";
+export type JoinFields = Parameters<typeof ML.with_join_fields>[1];
 
 export function joinFields(join: Join): JoinFields {
   return ML.join_fields(join);
 }
 
 export function withJoinFields(join: Join, newFields: JoinFields): Join {
-  return ML.with_join_fields(
-    join,
-    newFields as Parameters<typeof ML.with_join_fields>[1],
-  );
+  return ML.with_join_fields(join, newFields);
 }
 
 export function renameJoin(

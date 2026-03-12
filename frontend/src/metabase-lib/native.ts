@@ -24,7 +24,27 @@ export function withTemplateTags(query: Query, tags: TemplateTags): Query {
 }
 
 export function templateTags(query: Query): TemplateTags | null {
-  return ML.template_tags(query) as TemplateTags | null;
+  const tags = ML.template_tags(query);
+  if (!isTemplateTags(tags)) {
+    return null;
+  }
+  return tags;
+}
+
+function isTemplateTags(tags: unknown): tags is TemplateTags {
+  if (typeof tags !== "object" || tags == null) {
+    return false;
+  }
+
+  return Object.values(tags).every(
+    (tag) =>
+      typeof tag === "object" &&
+      tag != null &&
+      "id" in tag &&
+      "name" in tag &&
+      "display-name" in tag &&
+      "type" in tag,
+  );
 }
 
 export function hasWritePermission(query: Query): boolean {

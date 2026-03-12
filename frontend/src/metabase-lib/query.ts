@@ -26,6 +26,24 @@ import type {
   TableMetadata,
 } from "./types";
 
+function isLegacyDatasetQuery(value: unknown): value is LegacyDatasetQuery {
+  if (typeof value !== "object" || value == null || !("type" in value)) {
+    return false;
+  }
+  const type = value.type;
+  if (type === "query") {
+    return "query" in value;
+  }
+  if (type === "native") {
+    return "native" in value;
+  }
+  return false;
+}
+
+function isOpaqueDatasetQuery(value: unknown): value is OpaqueDatasetQuery {
+  return typeof value === "object" && value != null && "database" in value;
+}
+
 /**
  * Use this in combination with Lib.metadataProvider(databaseId, legacyMetadata) and
  Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
@@ -38,8 +56,13 @@ export function queryFromTableOrCardMetadata(
 }
 
 export function toLegacyQuery(query: Query): LegacyDatasetQuery {
-  // CLJS returns Record<string, unknown> — the runtime value matches LegacyDatasetQuery
-  return ML.legacy_query(query) as unknown as LegacyDatasetQuery;
+  const legacyQuery = ML.legacy_query(query);
+  if (!isLegacyDatasetQuery(legacyQuery)) {
+    throw new TypeError(
+      "Expected legacy_query to return a legacy dataset query",
+    );
+  }
+  return legacyQuery;
 }
 
 export function withDifferentTable(query: Query, tableId: TableId): Query {
@@ -158,8 +181,13 @@ export function fromJsQueryAndMetadata(
 }
 
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
-  // CLJS returns Record<string, unknown> — the runtime value matches OpaqueDatasetQuery
-  return ML.to_js_query(query) as OpaqueDatasetQuery;
+  const jsQuery = ML.to_js_query(query);
+  if (!isOpaqueDatasetQuery(jsQuery)) {
+    throw new TypeError(
+      "Expected to_js_query to return an opaque dataset query",
+    );
+  }
+  return jsQuery;
 }
 
 export function createTestQuery(

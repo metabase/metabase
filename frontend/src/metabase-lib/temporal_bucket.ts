@@ -11,11 +11,27 @@ import type {
 } from "./types";
 
 type TemporalBucketTarget = Parameters<typeof ML.temporal_bucket>[0];
+type TemporalBucketOption = Parameters<typeof ML.with_temporal_bucket>[1];
+type TemporalBucketObjectOption = Extract<
+  TemporalBucketOption,
+  { type: "temporal-bucketing" | "binning" }
+>;
+
+function isTemporalBucketTarget(
+  column: ColumnMetadata | BreakoutClause,
+): column is TemporalBucketTarget {
+  return (
+    Array.isArray(column) || (typeof column === "object" && column != null)
+  );
+}
 
 export function temporalBucket(
   column: ColumnMetadata | BreakoutClause,
 ): Bucket | null {
-  return ML.temporal_bucket(column as TemporalBucketTarget);
+  if (!isTemporalBucketTarget(column)) {
+    return null;
+  }
+  return ML.temporal_bucket(column);
 }
 
 export function availableTemporalBuckets(
@@ -46,9 +62,35 @@ export function withTemporalBucket(
   column: ColumnMetadata | BreakoutClause,
   bucket: Bucket | BucketOption | null,
 ): ColumnMetadata | BreakoutClause {
-  return ML.with_temporal_bucket(
-    column as TemporalBucketTarget,
-    bucket as Bucket | null,
+  if (!isTemporalBucketTarget(column)) {
+    return column;
+  }
+  return ML.with_temporal_bucket(column, normalizeTemporalBucketOption(bucket));
+}
+
+function normalizeTemporalBucketOption(
+  bucket: Bucket | BucketOption | null,
+): TemporalBucketOption {
+  if (bucket == null) {
+    return null;
+  }
+  if (typeof bucket === "string") {
+    return bucket;
+  }
+  if (isTemporalBucketObjectOption(bucket)) {
+    return bucket;
+  }
+  return null;
+}
+
+function isTemporalBucketObjectOption(
+  bucket: Bucket | BucketOption,
+): bucket is TemporalBucketObjectOption {
+  return (
+    typeof bucket === "object" &&
+    bucket != null &&
+    "type" in bucket &&
+    (bucket.type === "temporal-bucketing" || bucket.type === "binning")
   );
 }
 
@@ -112,5 +154,5 @@ export function formatRelativeDateRange({
 }
 
 export function availableTemporalUnits(): TemporalUnit[] {
-  return ML.available_temporal_units() as TemporalUnit[];
+  return ML.available_temporal_units();
 }

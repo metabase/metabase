@@ -3,6 +3,17 @@ import * as ML from "cljs/metabase.lib.js";
 import { removeClause } from "./query";
 import type { BreakoutClause, ColumnMetadata, Query } from "./types";
 
+type BreakoutTarget = Parameters<typeof ML.breakout_column>[2];
+
+function isBreakoutTarget(
+  breakout: BreakoutClause,
+): breakout is BreakoutTarget {
+  return (
+    Array.isArray(breakout) ||
+    (typeof breakout === "object" && breakout != null)
+  );
+}
+
 export function breakoutableColumns(
   query: Query,
   stageIndex: number,
@@ -41,10 +52,8 @@ export function breakoutColumn(
   stageIndex: number,
   breakout: BreakoutClause,
 ): ColumnMetadata | null {
-  return ML.breakout_column(
-    query,
-    stageIndex,
-    // BreakoutClause (Expression) includes null/string/number but breakouts are always refs
-    breakout as unknown as Parameters<typeof ML.breakout_column>[2],
-  );
+  if (!isBreakoutTarget(breakout)) {
+    return null;
+  }
+  return ML.breakout_column(query, stageIndex, breakout);
 }

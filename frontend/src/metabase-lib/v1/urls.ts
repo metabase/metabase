@@ -8,7 +8,6 @@ import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
 import type Question from "./Question";
-import type NativeQuery from "./queries/NativeQuery";
 
 type UrlBuilderOpts = {
   originalQuestion?: Question;
@@ -16,6 +15,17 @@ type UrlBuilderOpts = {
   includeDisplayIsLocked?: boolean;
   creationType?: string;
 };
+
+function isNativeQueryLike(query: unknown): query is {
+  templateTags: () => Record<string, unknown>;
+} {
+  return (
+    typeof query === "object" &&
+    query != null &&
+    "templateTags" in query &&
+    typeof query.templateTags === "function"
+  );
+}
 
 export function getUrl(
   question: Question,
@@ -88,7 +98,10 @@ export function getUrlWithParameters(
     });
   }
 
-  const query = question.legacyNativeQuery() as NativeQuery;
+  const query = question.legacyNativeQuery();
+  if (!isNativeQueryLike(query)) {
+    return getUrl(question, { includeDisplayIsLocked });
+  }
   return getUrl(question, {
     query: remapParameterValuesToTemplateTags(
       query.templateTags(),

@@ -10,6 +10,15 @@ import type {
   SegmentMetadata,
 } from "./types";
 
+function isFieldReference(value: unknown): value is FieldReference {
+  if (!Array.isArray(value) || value.length < 2) {
+    return false;
+  }
+
+  const [tag] = value;
+  return typeof tag === "string";
+}
+
 export function fields(query: Query, stageIndex: number): Clause[] {
   return ML.fields(query, stageIndex);
 }
@@ -19,11 +28,7 @@ export function withFields(
   stageIndex: number,
   newFields: ColumnMetadata[],
 ): Query {
-  return ML.with_fields(
-    query,
-    stageIndex,
-    newFields as unknown as Parameters<typeof ML.with_fields>[2],
-  );
+  return ML.with_fields(query, stageIndex, newFields);
 }
 
 export function addField(
@@ -61,6 +66,11 @@ export function legacyRef(
   stageIndex: number,
   column: ColumnMetadata | MetricMetadata | SegmentMetadata,
 ): FieldReference {
-  // CLJS returns a generic array — the runtime value matches FieldReference structure
-  return ML.legacy_ref(query, stageIndex, column) as unknown as FieldReference;
+  const ref = ML.legacy_ref(query, stageIndex, column);
+  if (!isFieldReference(ref)) {
+    throw new TypeError(
+      "Expected legacy_ref to return a field reference tuple",
+    );
+  }
+  return ref;
 }

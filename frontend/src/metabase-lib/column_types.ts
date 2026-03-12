@@ -3,6 +3,7 @@ import * as TYPES from "cljs/metabase.lib.types.isa";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { Field as ApiField, DatasetColumn } from "metabase-types/api";
 
+import { isColumnMetadata } from "./metadata";
 import type { ColumnMetadata, ColumnTypeInfo } from "./types";
 
 type TypeFn = (column: ColumnMetadata | ColumnTypeInfo) => boolean;
@@ -51,7 +52,13 @@ export const isZipCode: TypeFn = TYPES.zip_code_QMARK_;
 export function legacyColumnTypeInfo(
   column: DatasetColumn | Field | ApiField,
 ): ColumnTypeInfo {
-  return ML.legacy_column__GT_type_info(column) as ColumnTypeInfo;
+  const typeInfo = ML.legacy_column__GT_type_info(column);
+  if (!isColumnMetadata(typeInfo)) {
+    throw new TypeError(
+      "Expected legacy_column__GT_type_info to return column metadata",
+    );
+  }
+  return typeInfo;
 }
 
 export function isAssignableType(

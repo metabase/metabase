@@ -27,21 +27,10 @@ export function expression(
   return ML.expression(query, stageIndex, expressionName, clause);
 }
 
-export function withExpressionName(
-  clause: AggregationClause,
-  newName: string,
-): AggregationClause;
-export function withExpressionName(
-  clause: ExpressionClause,
-  newName: string,
-): ExpressionClause;
-export function withExpressionName(
-  clause: AggregationClause | ExpressionClause,
-  newName: string,
-): AggregationClause | ExpressionClause {
-  return ML.with_expression_name(clause, newName) as
-    | AggregationClause
-    | ExpressionClause;
+export function withExpressionName<
+  T extends AggregationClause | ExpressionClause,
+>(clause: T, newName: string): T {
+  return ML.with_expression_name(clause, newName);
 }
 
 export function expressions(
@@ -64,8 +53,22 @@ export function expressionParts(
   stageIndex: number,
   clause: AggregationClause | ExpressionClause | FilterClause | JoinCondition,
 ): ExpressionParts {
-  // operator comes as string from CLJS, args as unknown[] — both are narrower at runtime
-  return ML.expression_parts(query, stageIndex, clause) as ExpressionParts;
+  const parts = ML.expression_parts(query, stageIndex, clause);
+  if (!isExpressionParts(parts)) {
+    throw new TypeError("Expected expression_parts to return expression parts");
+  }
+  return parts;
+}
+
+function isExpressionParts(parts: unknown): parts is ExpressionParts {
+  return (
+    typeof parts === "object" &&
+    parts != null &&
+    "operator" in parts &&
+    typeof parts.operator === "string" &&
+    "args" in parts &&
+    Array.isArray(parts.args)
+  );
 }
 
 export function expressionClause(

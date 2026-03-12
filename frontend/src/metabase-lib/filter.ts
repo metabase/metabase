@@ -29,6 +29,23 @@ export type FilterableColumnsOpts = {
   includeSensitiveFields?: boolean;
 };
 
+function normalizeNumberFilterValues(values: Array<number | bigint>): number[] {
+  return values.map((value) =>
+    typeof value === "bigint" ? Number(value) : value,
+  );
+}
+
+function isDateArray(values: unknown): values is Date[] {
+  return (
+    Array.isArray(values) &&
+    values.every((value) => value instanceof Date && !isNaN(value.getTime()))
+  );
+}
+
+function isDayjsArray(values: unknown): values is Dayjs[] {
+  return Array.isArray(values) && values.every((value) => dayjs.isDayjs(value));
+}
+
 export function describeFilterOperator(
   operator: string,
   variant?: string,
@@ -96,7 +113,11 @@ export function numberFilterClause({
   column,
   values,
 }: NumberFilterParts): ExpressionClause {
-  return ML.number_filter_clause(operator, column, values as number[]);
+  return ML.number_filter_clause(
+    operator,
+    column,
+    normalizeNumberFilterValues(values),
+  );
 }
 
 export function numberFilterParts(
@@ -117,7 +138,7 @@ export function coordinateFilterClause({
     operator,
     column,
     longitudeColumn,
-    values as number[],
+    normalizeNumberFilterValues(values),
   );
 }
 
@@ -159,12 +180,18 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): SpecificDateFilterParts | null {
-  // values contains JS Date objects which can't be expressed in Malli schemas
-  return ML.specific_date_filter_parts(
+  const filterParts = ML.specific_date_filter_parts(
     query,
     stageIndex,
     filterClause,
-  ) as SpecificDateFilterParts | null;
+  );
+  if (filterParts == null || !isDateArray(filterParts.values)) {
+    return null;
+  }
+  return {
+    ...filterParts,
+    values: filterParts.values,
+  };
 }
 
 export function relativeDateFilterClause({
@@ -231,11 +258,12 @@ export function timeFilterParts(
   if (!filterParts) {
     return null;
   }
-  // values contains Dayjs objects which can't be expressed in Malli schemas
-  const values = filterParts.values as Dayjs[];
+  if (!isDayjsArray(filterParts.values)) {
+    return null;
+  }
   return {
     ...filterParts,
-    values: values.map((value: Dayjs) => value.toDate()),
+    values: filterParts.values.map((value) => value.toDate()),
   };
 }
 

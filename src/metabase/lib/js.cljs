@@ -648,8 +648,8 @@
   (memoize/lru (fn [_locale] (lib.filter/compound-filter-conjunctions)) :lru/threshold 2))
 
 (mu/defn ^:export parse-column-display-name-parts :- [:any {:ts/array-of [:map
-                                                                                              [:type [:enum "static" "translatable"]]
-                                                                                              [:value :string]]}]
+                                                                          [:type [:enum "static" "translatable"]]
+                                                                          [:value :string]]}]
   "Parse a column display name into a flat list of parts for translation.
 
   Returns an array of objects, each with:
@@ -1592,7 +1592,7 @@
   [[remove-field]]."
   [a-query :- ::lib.schema/query
    stage-number :- :int
-   new-fields :- [:any {:ts/array-of ::lib.schema.ref/ref}]]
+   new-fields :- [:any {:ts/array-of [:or ::lib.schema.ref/ref ::lib.schema.metadata/column]}]]
   (lib.core/with-fields a-query stage-number new-fields))
 
 (mu/defn ^:export fieldable-columns :- [:sequential ::lib.schema.metadata/column]
@@ -2114,7 +2114,9 @@
     position :- :int]
    (to-array (lib.core/suggested-join-conditions a-query stage-number joinable position))))
 
-(mu/defn ^:export join-fields :- [:or [:enum "all" "none"] [:sequential ::lib.schema.ref/ref]]
+(mu/defn ^:export join-fields :- [:or
+                                  [:enum "all" "none"]
+                                  [:sequential [:or ::lib.schema.ref/ref ::lib.schema.metadata/column]]]
   "Get the fields list associated with `a-join`. That is, the set of fields from the *joinable* which are being joined
   into the query.
 
@@ -2134,7 +2136,9 @@
 
   > **Code health:** Healthy. This consumes field refs, but they're treated as opaque."
   [a-join :- ::lib.schema.join/join
-   new-fields :- [:or [:enum "all" "none"] [:any {:ts/array-of ::lib.schema.ref/ref}]]]
+   new-fields :- [:or
+                  [:enum "all" "none"]
+                  [:any {:ts/array-of [:or ::lib.schema.ref/ref ::lib.schema.metadata/column]}]]]
   (lib.core/with-join-fields a-join (cond-> new-fields
                                       (string? new-fields) keyword)))
 
