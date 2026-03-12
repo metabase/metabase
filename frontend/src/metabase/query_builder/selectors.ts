@@ -45,10 +45,12 @@ import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import type { TimelineEvent } from "metabase-types/analytics";
 import type {
   Bookmark,
+  Dataset,
   DatasetColumn,
   DatasetQuery,
   Field,
   RowValue,
+  Series,
   Timeline,
 } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
@@ -267,7 +269,7 @@ const getModelMetadataDiff = createSelector(
 
 export const getQueryResults = createSelector(
   [getRawQueryResults, getModelMetadataDiff],
-  (queryResults, metadataDiff) => {
+  (queryResults, metadataDiff): Dataset[] | null => {
     if (!Array.isArray(queryResults) || !queryResults.length) {
       return null;
     }
@@ -537,6 +539,7 @@ export const getIsResultDirty = createSelector(
     return (
       haveParametersChanged ||
       (isEditable &&
+        tableMetadata &&
         !areQueriesEquivalent({
           originalQuestion,
           lastRunQuestion,
@@ -708,9 +711,9 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
  */
 export const getRawSeries = createSelector(
   [getCard, getFirstQueryResult, getLastRunDatasetQuery, getIsShowingRawTable],
-  (card, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
+  (card, queryResult, lastRunDatasetQuery, isShowingRawTable): Series => {
     const rawSeries = createRawSeries({
-      card,
+      card: card!,
       queryResult,
       datasetQuery: lastRunDatasetQuery,
     });
@@ -748,12 +751,12 @@ const _getVisualizationTransformed = createSelector(
  */
 export const getTransformedSeries = createSelector(
   [_getVisualizationTransformed],
-  (transformed) => transformed && transformed.series,
+  (transformed) => transformed?.series,
 );
 
 export const getTransformedVisualization = createSelector(
   [_getVisualizationTransformed],
-  (transformed) => transformed && transformed.visualization,
+  (transformed) => transformed?.visualization,
 );
 
 /**
@@ -1074,11 +1077,8 @@ export const getIsAdditionalInfoVisible = createSelector(
 export const getDataReferenceStack = createSelector(
   [getUiControls, getDatabaseId],
   (uiControls, dbId) =>
-    uiControls.dataReferenceStack
-      ? uiControls.dataReferenceStack
-      : dbId
-        ? [{ type: "database", id: dbId }]
-        : [],
+    uiControls.dataReferenceStack ??
+    (dbId ? [{ type: "database", id: dbId }] : []),
 );
 
 export const getIsEditingInDashboard = (state: State) => {
@@ -1114,11 +1114,7 @@ export function getEmbeddedParameterVisibility(state: State, slug: string) {
 }
 
 export const getSubmittableQuestion = (state: State, question: Question) => {
-  const card = getCard(state);
-  if (!card) {
-    return null;
-  }
-
+  const card = getCard(state) ?? question.card();
   const rawSeries = createRawSeries({
     card,
     queryResult: getFirstQueryResult(state),

@@ -41,9 +41,12 @@ export function QueryBuilderBackButton({
     onClick?.();
   };
 
-  const url = Urls.modelToUrl(parent);
+  if (!parent.model) {
+    return null;
+  }
 
-  if (!parent.model || !url) {
+  const url = Urls.modelToUrl(parent as Urls.UrlableModel);
+  if (!url) {
     return null;
   }
 

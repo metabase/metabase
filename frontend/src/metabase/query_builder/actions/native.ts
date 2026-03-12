@@ -14,6 +14,7 @@ import type {
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
+import type { DataReferenceItem } from "../components/dataref/types";
 import {
   getDataReferenceStack,
   getNativeEditorCursorOffset,
@@ -44,11 +45,10 @@ export const PUSH_DATA_REFERENCE_STACK =
   "metabase/qb/PUSH_DATA_REFERENCE_STACK";
 export const pushDataReferenceStack = createThunkAction(
   PUSH_DATA_REFERENCE_STACK,
-  (item: { type: string; item: unknown }) =>
-    (dispatch: Dispatch, getState: GetState) => {
-      const stack = getDataReferenceStack(getState());
-      dispatch(setDataReferenceStack(stack.concat([item])));
-    },
+  (item: DataReferenceItem) => (dispatch: Dispatch, getState: GetState) => {
+    const stack = getDataReferenceStack(getState());
+    dispatch(setDataReferenceStack(stack.concat([item])));
+  },
 );
 
 export const OPEN_DATA_REFERENCE_AT_QUESTION =
@@ -143,14 +143,17 @@ export const insertSnippet =
       return;
     }
     const query = question.legacyNativeQuery() as NativeQuery;
-    const nativeEditorCursorOffset = getNativeEditorCursorOffset(getState());
-    const nativeEditorSelectedText = getNativeEditorSelectedText(getState());
+    const queryText = query.queryText();
+    const nativeEditorCursorOffset =
+      getNativeEditorCursorOffset(getState()) ?? queryText.length;
+    const nativeEditorSelectedText =
+      getNativeEditorSelectedText(getState()) ?? "";
     const selectionStart =
-      nativeEditorCursorOffset - (nativeEditorSelectedText || "").length;
+      nativeEditorCursorOffset - nativeEditorSelectedText.length;
     const newText =
-      query.queryText().slice(0, selectionStart) +
+      queryText.slice(0, selectionStart) +
       `{{snippet: ${name}}}` +
-      query.queryText().slice(nativeEditorCursorOffset);
+      queryText.slice(nativeEditorCursorOffset);
     const datasetQuery = query.setQueryText(newText).datasetQuery();
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
   };

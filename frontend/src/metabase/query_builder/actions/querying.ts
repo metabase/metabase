@@ -205,7 +205,9 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
 
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const { isEditable } = Lib.queryDisplayInfo(question.query());
-    const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
+    const isDirty =
+      isEditable &&
+      (!originalQuestion || question.isDirtyComparedTo(originalQuestion));
 
     if (isDirty) {
       const series = [{ card: question.card(), data, error }];

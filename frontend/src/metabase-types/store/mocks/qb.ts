@@ -24,7 +24,7 @@ export const createMockQueryBuilderUIControlsState = (
   isShowingRawTable: false,
   isNativeEditorOpen: false,
   queryBuilderMode: "view",
-  previousQueryBuilderMode: false,
+  previousQueryBuilderMode: null,
   snippetCollectionId: null,
   datasetEditorTab: "query",
   isShowingNotebookNativePreview: false,
@@ -35,6 +35,8 @@ export const createMockQueryBuilderUIControlsState = (
   dataReferenceStack: null,
   highlightedNativeQueryLineNumbers: [],
   isShowingListViewConfiguration: false,
+  questionDetailsTimelineDrawerState: null,
+  nativeEditorSelectedRange: [],
   ...opts,
 });
 
@@ -76,6 +78,7 @@ export const createMockQueryBuilderState = (
   selectedTimelineEventIds: [],
 
   metadataDiff: {},
+  visibleTimelineEventIds: [],
 
   currentState: null,
 

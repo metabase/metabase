@@ -16,6 +16,7 @@ export const ViewFooterDownloadWidget = () => {
 
   return (
     question &&
+    result &&
     QuestionDownloadPopover.shouldRender({ result }) && (
       <QuestionDownloadPopover
         className={cx(CS.hide, CS.smShow)}
