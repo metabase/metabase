@@ -1,5 +1,3 @@
-import type { Row } from "@tanstack/react-table";
-import type { VirtualItem } from "@tanstack/react-virtual";
 import type React from "react";
 
 import {
@@ -7,18 +5,17 @@ import {
   HEADER_HEIGHT,
   PINNED_ROW_Z_INDEX,
 } from "../constants";
-import type { DataGridColumn } from "../types";
+import type { DataGridColumnType, DataGridRowType } from "../types";
 
 const getActiveBackground = (base: string): string =>
   `color-mix(in srgb, var(--mb-color-brand) 10%, ${base})`;
 
 export const getRowPositionStyles = <TData>(
-  row: Row<TData>,
-  virtualRow: VirtualItem | undefined,
+  row: DataGridRowType<TData>,
   stickyElementsBackgroundColor: string,
   active: boolean,
 ): React.CSSProperties => {
-  const pinnedPosition = row.getIsPinned();
+  const pinnedPosition = row.origin.getIsPinned();
 
   const baseBackgroundColor = pinnedPosition
     ? stickyElementsBackgroundColor
@@ -28,17 +25,15 @@ export const getRowPositionStyles = <TData>(
     ? getActiveBackground(baseBackgroundColor)
     : baseBackgroundColor;
 
-  if (!virtualRow) {
-    return {
-      backgroundColor,
-    };
+  if (!row.virtualItem) {
+    return { backgroundColor };
   }
 
   if (pinnedPosition === "top") {
     return {
       position: "sticky",
-      top: `${HEADER_HEIGHT + virtualRow.start + HEADER_BORDER_SIZE}px`,
-      minHeight: `${virtualRow.size}px`,
+      top: `${HEADER_HEIGHT + row.virtualItem.start + HEADER_BORDER_SIZE}px`,
+      minHeight: `${row.virtualItem.size}px`,
       zIndex: PINNED_ROW_Z_INDEX,
       backgroundColor,
     };
@@ -47,16 +42,14 @@ export const getRowPositionStyles = <TData>(
     position: "absolute",
     top: 0,
     left: 0,
-    minHeight: `${virtualRow.size}px`,
-    transform: `translateY(${virtualRow.start}px)`,
+    minHeight: `${row.virtualItem.size}px`,
+    transform: `translateY(${row.virtualItem.start}px)`,
     backgroundColor,
   };
 };
 
 export const getColumnPositionStyles = <TData>(
-  column: DataGridColumn<TData>,
+  column: DataGridColumnType<TData>,
 ): React.CSSProperties => {
-  return {
-    width: column.origin.getSize(),
-  };
+  return { width: column.origin.getSize() };
 };

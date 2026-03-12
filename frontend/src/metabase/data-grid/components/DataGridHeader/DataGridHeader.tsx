@@ -5,14 +5,14 @@ import type React from "react";
 import { getColumnPositionStyles } from "metabase/data-grid/utils/stylings";
 
 import { HEADER_HEIGHT } from "../../constants";
-import type { DataGridColumn } from "../../types";
+import type { DataGridColumnType } from "../../types";
 import S from "../DataGrid/DataGrid.module.css";
 import type { DataGridStylesProps } from "../DataGrid/types";
 import { SortableHeader } from "../SortableHeader/SortableHeader";
 
 export interface DataGridHeaderProps<TData> extends DataGridStylesProps {
   headerGroup: HeaderGroup<TData>;
-  columns: DataGridColumn<TData>[];
+  columns: DataGridColumnType<TData>[];
   isColumnReorderingDisabled?: boolean;
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,

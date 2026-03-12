@@ -1,9 +1,7 @@
 import type { Table as ReactTable } from "@tanstack/react-table";
 import {
-  type Range,
   type VirtualItem,
   type Virtualizer,
-  defaultRangeExtractor,
   useVirtualizer,
 } from "@tanstack/react-virtual";
 import type React from "react";
@@ -35,14 +33,14 @@ export const useVirtualGrid = <TData,>({
   defaultRowHeight,
   enableRowVirtualization,
 }: VirtualGridOptions<TData>): VirtualGrid => {
-  const { rows: tableRows } = table.getRowModel();
-  const centralColumns = table.getCenterLeafColumns();
+  const centerColumns = table.getCenterLeafColumns();
+  const centerRows = table.getCenterRows();
 
   const columnVirtualizer = useVirtualizer({
-    count: centralColumns.length,
+    count: centerColumns.length,
     getScrollElement: () => gridRef.current,
     estimateSize: (index) => {
-      const column = centralColumns[index];
+      const column = centerColumns[index];
       const size = column.getSize();
       const actualSize = table.getState().columnSizing[column.id];
       return actualSize ?? size;
@@ -51,45 +49,23 @@ export const useVirtualGrid = <TData,>({
     overscan: 3,
   });
 
-  const centralColumnKey = useMemo(
-    () => centralColumns.map((c) => c.id).join(","),
-    [centralColumns],
+  const centerColumnKey = useMemo(
+    () => centerColumns.map((c) => c.id).join(","),
+    [centerColumns],
   );
 
-  const prevCentralColumnKey = useRef(centralColumnKey);
+  const prevCenterColumnKey = useRef(centerColumnKey);
   useLayoutEffect(() => {
-    if (prevCentralColumnKey.current !== centralColumnKey) {
-      prevCentralColumnKey.current = centralColumnKey;
+    if (prevCenterColumnKey.current !== centerColumnKey) {
+      prevCenterColumnKey.current = centerColumnKey;
       columnVirtualizer.measure();
     }
-  }, [centralColumnKey, columnVirtualizer]);
-
-  const rowPinning = table.getState().rowPinning;
-
-  const pinnedRowIndices = useMemo(
-    () =>
-      table
-        .getTopRows()
-        .concat(table.getBottomRows())
-        .map((row) => row.getPinnedIndex()),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [table, rowPinning],
-  );
+  }, [centerColumnKey, columnVirtualizer]);
 
   const rowVirtualizer = useVirtualizer({
-    count: tableRows.length,
+    count: centerRows.length,
     getScrollElement: () => gridRef.current,
     estimateSize: () => defaultRowHeight,
-    rangeExtractor: useCallback(
-      (range: Range) => {
-        const rowIndices = defaultRangeExtractor(range);
-        if (pinnedRowIndices.length === 0) {
-          return rowIndices;
-        }
-        return Array.from(new Set([...pinnedRowIndices, ...rowIndices]));
-      },
-      [pinnedRowIndices],
-    ),
     overscan: 3,
     enabled: enableRowVirtualization,
     measureElement: (element) => {

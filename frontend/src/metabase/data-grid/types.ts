@@ -305,10 +305,10 @@ export interface DataGridInstance<TData> {
   theme?: DataGridTheme;
   sorting: SortingState | undefined;
   getTotalHeight: () => number;
-  getVisibleRows: () => MaybeVirtualRow<TData>[];
-  getPinnedRows: () => Row<TData>[];
-  getPinnedColumns: () => DataGridColumn<TData>[];
-  getCentralColumns: () => DataGridColumn<TData>[];
+  getCenterRows: () => DataGridRowType<TData>[];
+  getPinnedRows: () => DataGridRowType<TData>[];
+  getPinnedColumns: () => DataGridColumnType<TData>[];
+  getCenterColumns: () => DataGridColumnType<TData>[];
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
     columnId?: string,
@@ -329,7 +329,12 @@ export type VirtualRow<TData> = {
 
 export type MaybeVirtualRow<TData> = Row<TData> | VirtualRow<TData>;
 
-export type DataGridColumn<TData, TValue = unknown> = {
+export type DataGridRowType<TData> = {
+  origin: Row<TData>;
+  virtualItem?: VirtualItem;
+};
+
+export type DataGridColumnType<TData, TValue = unknown> = {
   origin: Column<TData, TValue>;
   virtualItem?: VirtualItem;
   getCell: (row: Row<TData>) => Cell<TData, TValue>;

@@ -4,11 +4,10 @@ import type React from "react";
 
 import { hasModifierKeys } from "metabase/common/utils/keyboard";
 
-import { isVirtualRow } from "../../guards";
 import type {
-  DataGridColumn,
+  DataGridColumnType,
+  DataGridRowType,
   DataGridSelection,
-  MaybeVirtualRow,
 } from "../../types";
 import {
   getColumnPositionStyles,
@@ -18,8 +17,8 @@ import S from "../DataGrid/DataGrid.module.css";
 import type { DataGridStylesProps } from "../DataGrid/types";
 
 export interface DataGridRowProps<TData> extends DataGridStylesProps {
-  row: MaybeVirtualRow<TData>;
-  columns: DataGridColumn<TData>[];
+  row: DataGridRowType<TData>;
+  columns: DataGridColumnType<TData>[];
   rowMeasureRef?: ((element: HTMLElement | null) => void) | undefined;
   stickyElementsBackgroundColor: string;
   zoomedRowIndex: number | undefined;
@@ -33,7 +32,7 @@ export interface DataGridRowProps<TData> extends DataGridStylesProps {
 }
 
 export const DataGridRow = <TData,>({
-  row: maybeVirtualRow,
+  row,
   rowMeasureRef,
   columns,
   pinnedRowsCount,
@@ -44,16 +43,11 @@ export const DataGridRow = <TData,>({
   classNames,
   styles,
 }: DataGridRowProps<TData>) => {
-  const { row, virtualRow } = isVirtualRow(maybeVirtualRow)
-    ? maybeVirtualRow
-    : { row: maybeVirtualRow, virtualRow: undefined };
-
-  const dataIndex = virtualRow?.index ?? row.index;
+  const dataIndex = row.virtualItem?.index ?? row.origin.index;
   const active = zoomedRowIndex === dataIndex;
 
   const rowPositionStyles = getRowPositionStyles(
     row,
-    virtualRow,
     stickyElementsBackgroundColor,
     active,
   );
@@ -61,23 +55,23 @@ export const DataGridRow = <TData,>({
   return (
     <div
       role="row"
-      key={row.id}
+      key={row.origin.id}
       ref={rowMeasureRef}
-      data-dataset-index={row.index}
+      data-dataset-index={row.origin.index}
       data-index={dataIndex}
       data-allow-page-break-after="true"
-      data-row-selected={row.getIsSelected()}
+      data-row-selected={row.origin.getIsSelected()}
       className={cx(
         S.row,
         {
-          [S.withSeparator]: row.index === pinnedRowsCount - 1,
+          [S.withSeparator]: row.origin.index === pinnedRowsCount - 1,
         },
         classNames?.row,
       )}
       style={{ ...rowPositionStyles, ...styles?.row }}
     >
       {columns.map((column) => {
-        const cell = column.getCell(row);
+        const cell = column.getCell(row.origin);
         const columnDef = column.origin.columnDef;
         const isSelectable =
           selection.isEnabled && columnDef?.meta?.enableSelection;

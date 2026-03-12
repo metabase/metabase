@@ -2,13 +2,13 @@ import { pointerWithin } from "@dnd-kit/core";
 import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
 import { useCallback, useMemo } from "react";
 
-import type { DataGridColumn } from "../types";
+import type { DataGridColumnType } from "../types";
 
 import type { ColumnsReordering } from "./use-columns-reordering";
 
 export const useDataGridColumnsReordering = <TData,>(
   columnsReordering: ColumnsReordering,
-  pinnedColumns: DataGridColumn<TData>[],
+  pinnedColumns: DataGridColumnType<TData>[],
 ) => {
   const pinnedColumnIdSet = useMemo(
     () => new Set(pinnedColumns.map((c) => c.origin.id)),

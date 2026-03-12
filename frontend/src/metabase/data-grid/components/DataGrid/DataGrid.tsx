@@ -19,10 +19,10 @@ import {
 import { DataGridThemeProvider } from "../../hooks";
 import { useDataGridColumnsReordering } from "../../hooks/use-data-grid-columns-reordering";
 import type {
-  DataGridColumn,
+  DataGridColumnType,
   DataGridInstance,
+  DataGridRowType,
   DataGridTheme,
-  MaybeVirtualRow,
 } from "../../types";
 import { AddColumnButton } from "../AddColumnButton/AddColumnButton";
 import { DataGridHeader } from "../DataGridHeader/DataGridHeader";
@@ -56,10 +56,10 @@ export const DataGrid = function DataGrid<TData>({
   styles,
   enablePagination,
   showRowsCount,
-  getVisibleRows,
-  getPinnedColumns,
   getPinnedRows,
-  getCentralColumns,
+  getCenterRows,
+  getPinnedColumns,
+  getCenterColumns,
   emptyState,
   zoomedRowIndex,
   onBodyCellClick,
@@ -108,10 +108,10 @@ export const DataGrid = function DataGrid<TData>({
       ? "var(--mb-color-background-primary)"
       : backgroundColor);
 
-  const visibleRows = getVisibleRows();
+  const centerRows = getCenterRows();
   const pinnedRows = getPinnedRows();
   const pinnedColumns = getPinnedColumns();
-  const centralColumns = getCentralColumns();
+  const centerColumns = getCenterColumns();
   const hasPinnedColumns = pinnedColumns.length > 0;
   const lastPinnedColumn = pinnedColumns.at(-1);
   const isLastPinnedColumnSpecial =
@@ -131,8 +131,8 @@ export const DataGrid = function DataGrid<TData>({
   const totalHeight = rowVirtualizer.getTotalSize();
 
   const renderRow = (
-    row: MaybeVirtualRow<TData>,
-    columns: DataGridColumn<TData>[],
+    row: DataGridRowType<TData>,
+    columns: DataGridColumnType<TData>[],
     key: string,
   ) => (
     <DataGridRow
@@ -152,7 +152,7 @@ export const DataGrid = function DataGrid<TData>({
 
   const renderHeader = (
     headerGroup: HeaderGroup<TData>,
-    columns: DataGridColumn<TData>[],
+    columns: DataGridColumnType<TData>[],
   ) => (
     <DataGridHeader
       headerGroup={headerGroup}
@@ -164,11 +164,11 @@ export const DataGrid = function DataGrid<TData>({
 
   const renderGridPanels = ({
     pinnedContent,
-    centralContent,
+    centerContent,
     height,
   }: {
     pinnedContent: React.ReactNode;
-    centralContent: React.ReactNode;
+    centerContent: React.ReactNode;
     height?: string;
   }) => (
     <>
@@ -187,7 +187,7 @@ export const DataGrid = function DataGrid<TData>({
         </div>
       )}
       <div
-        className={S.centralSection}
+        className={S.centerSection}
         style={{
           height,
           width: `${columnVirtualizer.getTotalSize()}px`,
@@ -198,7 +198,7 @@ export const DataGrid = function DataGrid<TData>({
           } as React.CSSProperties),
         }}
       >
-        {centralContent}
+        {centerContent}
       </div>
     </>
   );
@@ -247,7 +247,7 @@ export const DataGrid = function DataGrid<TData>({
                 >
                   {renderGridPanels({
                     pinnedContent: renderHeader(headerGroup, pinnedColumns),
-                    centralContent: renderHeader(headerGroup, centralColumns),
+                    centerContent: renderHeader(headerGroup, centerColumns),
                   })}
                 </SortableContext>
               ))}
@@ -266,11 +266,11 @@ export const DataGrid = function DataGrid<TData>({
               style={styles?.bodyContainer}
             >
               {renderGridPanels({
-                pinnedContent: visibleRows.map((row, index) =>
+                pinnedContent: centerRows.map((row, index) =>
                   renderRow(row, pinnedColumns, `pinned-${index}`),
                 ),
-                centralContent: visibleRows.map((row, index) =>
-                  renderRow(row, centralColumns, `center-${index}`),
+                centerContent: centerRows.map((row, index) =>
+                  renderRow(row, centerColumns, `center-${index}`),
                 ),
                 height: `${totalHeight}px`,
               })}
