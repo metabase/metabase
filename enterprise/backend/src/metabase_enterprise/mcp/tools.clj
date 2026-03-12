@@ -2,13 +2,15 @@
   "MCP tool dispatch. Loads tool definitions from tools-manifest.json and delegates
    tool calls to existing agent API / metabot functions."
   (:require
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.agent-api.api :as agent-api]
    [metabase.api.common :as api]
-   [metabase.query-processor :as qp]
-   [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json])
+  (:import
+   (java.io ByteArrayOutputStream)
+   (metabase.server.streaming_response StreamingResponse)))
 
 (set! *warn-on-reflection* true)
 
@@ -40,6 +42,15 @@
   [message]
   {:content [{:type "text" :text message}] :isError true})
 
+(defn- capture-streaming-response
+  "Execute a StreamingResponse in-process by writing to a ByteArrayOutputStream,
+   then parse the JSON output and return it as MCP text content."
+  [^StreamingResponse response]
+  (let [baos (ByteArrayOutputStream.)
+        canceled-chan (a/promise-chan)]
+    (.f response baos canceled-chan)
+    (text-content (json/decode+kw (.toString baos "UTF-8")))))
+
 (defn- invoke-agent-api
   "Invoke an Agent API endpoint with a synthetic Ring request.
    Returns MCP content (text-content on success, error-content on failure)."
@@ -53,8 +64,14 @@
      (fn [response] (deliver result response))
      (fn [error] (deliver result {:status 500 :body {:message (ex-message error)}})))
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]
-      (if (= 200 (:status response))
+      (cond
+        (instance? StreamingResponse response)
+        (capture-streaming-response response)
+
+        (= 200 (:status response))
         (text-content (:body response))
+
+        :else
         (error-content (or (some-> response :body :message)
                            (some-> response :body :error)
                            (str "Agent API error: " (:status response))))))))
@@ -92,21 +109,11 @@
       (invoke-agent-api method api-path))))
 
 (defn- execute-query
-  "Specialized handler for execute_query — the agent API's `/v1/execute` endpoint
-   uses streaming responses incompatible with `invoke-agent-api`'s promise-based
-   synthetic request, so we call `qp/process-query` directly."
+  "Handler for execute_query — delegates to the Agent API's `/v1/execute` endpoint.
+   The endpoint returns a StreamingResponse which `invoke-agent-api` captures
+   in-process via `capture-streaming-response`."
   [arguments]
-  (let [query  (-> (:query arguments)
-                   u/decode-base64
-                   json/decode+kw)
-        info   {:executed-by api/*current-user-id*
-                :context     :agent}
-        result (qp/process-query
-                (-> query
-                    (update-in [:middleware :js-int-to-string?] (fnil identity true))
-                    qp/userland-query-with-default-constraints
-                    (update :info merge info)))]
-    (text-content result)))
+  (invoke-agent-api :post "/v1/execute" {:query (:query arguments)}))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.

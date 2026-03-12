@@ -351,6 +351,7 @@
         "path": "/api/agent/v1/execute"
       },
       "responseFormat": "query_result",
+      "streaming": true,
       "inputSchema": {
         "type": "object",
         "properties": {
