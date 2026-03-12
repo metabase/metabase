@@ -57,7 +57,7 @@ export const IncrementalTransformSettings = ({
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
-  const { hasCheckpointOptions, hasNativeCheckpointOptions, transformType } =
+  const { hasCheckpointOptions, transformType } =
     useHasCheckpointOptions(source);
 
   const isMultiTablePythonTransform =
@@ -66,11 +66,6 @@ export const IncrementalTransformSettings = ({
     libQuery,
     transformType,
   );
-  const isMissingCheckpointOptions =
-    (transformType === "mbql" || transformType === "python") &&
-    !hasCheckpointOptions;
-  const isMissingNativeCheckpointOptions =
-    transformType === "native" && !hasNativeCheckpointOptions;
 
   const { url: incrementalTransformsDocsUrl, showMetabaseLinks } = useDocsUrl(
     transformType === "python"
@@ -86,7 +81,7 @@ export const IncrementalTransformSettings = ({
       if (isNativeWithoutTableTags) {
         return t`Incremental transforms for native queries require at least one table variable.`;
       }
-      if (isMissingCheckpointOptions || isMissingNativeCheckpointOptions) {
+      if (!hasCheckpointOptions) {
         return t`Incremental transforms require at least one numeric or temporal source field.`;
       }
       return t`Only process new and changed data`;
@@ -94,8 +89,7 @@ export const IncrementalTransformSettings = ({
 
     const transformHasIssues =
       isNativeWithoutTableTags ||
-      isMissingCheckpointOptions ||
-      isMissingNativeCheckpointOptions ||
+      !hasCheckpointOptions ||
       isMultiTablePythonTransform;
 
     const switchContent = (

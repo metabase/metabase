@@ -72,7 +72,6 @@ export const useHasCheckpointOptions = (source: TransformSource) => {
 
   return {
     hasCheckpointOptions: getHasCheckpointOptions(),
-    hasNativeCheckpointOptions,
     transformType,
   };
 };
