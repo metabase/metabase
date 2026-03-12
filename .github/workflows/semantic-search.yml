@@ -101,12 +101,16 @@ jobs:
           POSTGRES_PASSWORD: postgres
       mysql:
         image: ${{ matrix.version.mariadb-image }}
+        options: >-
+          -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=true
+          -e MARIADB_DATABASE=mb_test
+          --entrypoint sh
         ports:
           - "3306:3306"
+        # with entrypoint `sh` we're effectively executing 'sh -c mariadbd $ARGS'
         env:
-          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
-          MARIADB_DATABASE: mb_test
-        command: '["mariadbd", "--collation-server=utf8mb4_unicode_ci"]'
+          ARGS: >-
+            --collation-server=utf8mb4_unicode_ci
     env:
       CI: 'true'
       DRIVERS: mysql
