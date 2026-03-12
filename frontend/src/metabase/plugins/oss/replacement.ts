@@ -16,12 +16,14 @@ type ReplacementPlugin = {
   isEnabled: boolean;
   canUserReplaceSources: (state: State) => boolean;
   ReplaceDataSourceModal: ComponentType<ReplaceDataSourceModalProps>;
+  SourceReplacementStatus: ComponentType;
 };
 
 const getDefaultReplacementPlugin = (): ReplacementPlugin => ({
   isEnabled: false,
   canUserReplaceSources: () => false,
   ReplaceDataSourceModal: PluginPlaceholder,
+  SourceReplacementStatus: PluginPlaceholder,
 });
 
 export const PLUGIN_REPLACEMENT = getDefaultReplacementPlugin();

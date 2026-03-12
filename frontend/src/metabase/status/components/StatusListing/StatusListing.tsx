@@ -2,7 +2,11 @@ import { useBeforeUnload } from "react-use";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
+import {
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_REPLACEMENT,
+  PLUGIN_UPLOAD_MANAGEMENT,
+} from "metabase/plugins";
 import { hasActiveUploads } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
@@ -31,6 +35,7 @@ export const StatusListing = () => {
     <>
       <StatusListingRoot data-testid="status-root-container">
         {isAdmin && <DatabaseStatus />}
+        {isAdmin && <PLUGIN_REPLACEMENT.SourceReplacementStatus />}
         <FileUploadStatus />
         <AnalyticsExportStatus />
         <DownloadsStatus />

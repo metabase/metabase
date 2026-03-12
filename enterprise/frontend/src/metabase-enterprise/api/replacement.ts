@@ -11,9 +11,9 @@ import { EnterpriseApi } from "./api";
 import {
   idTag,
   invalidateTags,
+  listTag,
   provideSourceReplacementRunListTags,
   provideSourceReplacementRunTags,
-  tag,
 } from "./tags";
 
 export const replacementApi = EnterpriseApi.injectEndpoints({
@@ -42,7 +42,7 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_response, error) =>
-        invalidateTags(error, [tag("table"), tag("card")]),
+        invalidateTags(error, [listTag("source-replacement-run")]),
     }),
     getSourceReplacementRun: builder.query<
       SourceReplacementRun,
