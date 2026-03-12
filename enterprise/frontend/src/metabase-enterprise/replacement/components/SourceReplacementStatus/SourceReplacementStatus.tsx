@@ -37,9 +37,30 @@ const INVALIDATION_TAGS: TagType[] = [
 ];
 
 export const SourceReplacementStatus = () => {
-  const { run, isActive } = useCurrentRun();
+  const [runId, setRunId] = useState<SourceReplacementRunId | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
   const dispatch = useDispatch();
+  const pollingInterval = isPolling ? POLLING_INTERVAL : undefined;
+
+  const { data: activeRuns = [] } = useListSourceReplacementRunsQuery(
+    { "is-active": true },
+    { pollingInterval },
+  );
+  const { data: run } = useGetSourceReplacementRunQuery(runId ?? skipToken, {
+    pollingInterval,
+  });
+  const isActive = activeRuns.length > 0;
   const isVisible = useStatusVisibility(isActive);
+
+  useLayoutEffect(() => {
+    if (isActive) {
+      setRunId(activeRuns[0].id);
+    }
+  }, [activeRuns, isActive]);
+
+  useLayoutEffect(() => {
+    setIsPolling(isActive);
+  }, [isActive]);
 
   useEffect(() => {
     if (!isActive && isVisible) {
@@ -53,34 +74,6 @@ export const SourceReplacementStatus = () => {
 
   return <RunStatusContent run={run} />;
 };
-
-function useCurrentRun() {
-  const [runId, setRunId] = useState<SourceReplacementRunId | null>(null);
-  const [isPolling, setIsPolling] = useState(false);
-  const pollingInterval = isPolling ? POLLING_INTERVAL : undefined;
-
-  const { data: activeRuns = [] } = useListSourceReplacementRunsQuery(
-    { "is-active": true },
-    { pollingInterval },
-  );
-  const { data: currentRun } = useGetSourceReplacementRunQuery(
-    runId ?? skipToken,
-    { pollingInterval },
-  );
-  const isActive = activeRuns.length > 0;
-
-  useLayoutEffect(() => {
-    if (isActive) {
-      setRunId(activeRuns[0].id);
-    }
-  }, [activeRuns, isActive]);
-
-  useLayoutEffect(() => {
-    setIsPolling(isActive);
-  }, [isActive]);
-
-  return { run: currentRun, isActive };
-}
 
 type RunStatusContentProps = {
   run: SourceReplacementRun;
