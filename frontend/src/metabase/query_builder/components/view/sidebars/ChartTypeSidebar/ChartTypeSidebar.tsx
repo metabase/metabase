@@ -69,10 +69,13 @@ export const ChartTypeSidebar = ({
   };
 
   const handleSelectCustomVizPlugin = useCallback(
-    (plugin: CustomVizPluginRuntime) => {
-      void loadCustomVizPlugin(plugin);
+    async (plugin: CustomVizPluginRuntime) => {
+      const identifier = await loadCustomVizPlugin(plugin);
+      if (identifier) {
+        updateQuestionVisualization(identifier as CardDisplayType);
+      }
     },
-    [],
+    [updateQuestionVisualization],
   );
 
   const onOpenVizSettings = () => {
