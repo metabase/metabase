@@ -57,7 +57,7 @@ jobs:
         ports:
           - "3306:3306"
         env:
-          MARIADB_ALLOW_EMPTY_PASSWORD: true
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
         options: >-
           --collation-server=utf8mb4_unicode_ci
