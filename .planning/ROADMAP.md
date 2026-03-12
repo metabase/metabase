@@ -28,11 +28,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Log lines from the same request share a single correlation ID that can be grepped to isolate that request's logs
   4. Two concurrent requests produce log lines with distinct correlation IDs (no cross-request leakage)
   5. Summary log lines use the standard Metabase log format and add negligible overhead (sub-0.1ms)
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md -- Query-log middleware with ThreadContext correlation and INFO summary line
 
 ### Phase 2: Per-Statement Detail Logging
 **Goal**: Users can see the exact SQL and parameters Metabase sends to their database for every statement in a request, correlated to the summary line
@@ -66,6 +65,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Correlation and Summary Logging | 0/2 | Not started | - |
+| 1. Correlation and Summary Logging | 0/1 | Not started | - |
 | 2. Per-Statement Detail Logging | 0/1 | Not started | - |
 | 3. Logging Presets | 0/1 | Not started | - |
