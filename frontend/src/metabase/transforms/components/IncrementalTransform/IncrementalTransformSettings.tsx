@@ -31,7 +31,7 @@ import {
   PythonKeysetColumnSelect,
 } from "./KeysetColumnSelect";
 import type { IncrementalSettingsFormValues } from "./form";
-import { useHasCheckpointOptions } from "./hooks";
+import { useHasCheckpointOptions } from "./useHasCheckpointOptions";
 
 type IncrementalTransformSettingsProps = {
   source: TransformSource;
