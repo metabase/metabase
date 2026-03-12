@@ -322,13 +322,6 @@ export interface DataGridInstance<TData> {
   onWheel?: React.UIEventHandler<HTMLDivElement>;
 }
 
-export type VirtualRow<TData> = {
-  row: Row<TData>;
-  virtualRow: VirtualItem;
-};
-
-export type MaybeVirtualRow<TData> = Row<TData> | VirtualRow<TData>;
-
 export type DataGridRowType<TData> = {
   origin: Row<TData>;
   virtualItem?: VirtualItem;
