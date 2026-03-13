@@ -258,7 +258,7 @@ function PluginListItem({
   return (
     <Flex
       justify="space-between"
-      align="flex-start"
+      align="center"
       p="md"
       style={{
         border: "1px solid var(--mb-color-border)",
