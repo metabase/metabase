@@ -31,7 +31,9 @@ For more, see [Encrypting your database connection](../databases/encrypting-deta
 
 ## Set up OIDC in Metabase
 
-To add an OIDC provider to your Metabase, go to **Admin settings** > **Authentication** > **OIDC**. You'll need to input the following:
+_Admin > Settings > Authentication > OIDC_
+
+To add an OIDC provider to your Metabase, go to **Admin > Settings > Authentication > OIDC**. You'll need to input the following:
 
 | Field             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
