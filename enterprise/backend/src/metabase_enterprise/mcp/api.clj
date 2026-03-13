@@ -127,14 +127,18 @@
   (let [id     (:id msg)
         method (:method msg)
         params (:params msg)]
-    (case method
-      "notifications/initialized" (do (mark-session-initialized! session-id) nil)
-      "tools/list"                (when-initialized id session-id (handle-tools-list id params))
-      "tools/call"                (when-initialized id session-id (handle-tools-call id params))
-      "ping"                      (when-initialized id session-id (handle-ping id params))
-      (if id
-        (jsonrpc-error id -32601 (str "Method not found: " method))
-        nil))))
+    (try
+      (case method
+        "notifications/initialized" (do (mark-session-initialized! session-id) nil)
+        "tools/list"                (when-initialized id session-id (handle-tools-list id params))
+        "tools/call"                (when-initialized id session-id (handle-tools-call id params))
+        "ping"                      (when-initialized id session-id (handle-ping id params))
+        (if id
+          (jsonrpc-error id -32601 (str "Method not found: " method))
+          nil))
+      (catch Throwable e
+        (log/error e "Error dispatching JSON-RPC method" method)
+        (jsonrpc-error id -32603 (or (ex-message e) "Internal error"))))))
 
 ;;; ----------------------------------------------------- SSE ------------------------------------------------------
 
@@ -179,6 +183,10 @@
 
       (and (not (map? body)) (not batch?))
       (json-response 400 (jsonrpc-error nil -32600 "Invalid request: expected object or array"))
+
+      ;; JSON-RPC 2.0: empty batch is invalid
+      (and batch? (empty? body))
+      (json-response 400 (jsonrpc-error nil -32600 "Invalid request: empty batch"))
 
       ;; MCP spec: "The initialize request MUST NOT be part of a JSON-RPC batch"
       (and batch? (some #(= "initialize" (:method %)) body))
