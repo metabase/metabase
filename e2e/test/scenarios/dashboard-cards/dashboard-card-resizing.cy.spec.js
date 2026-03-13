@@ -242,6 +242,70 @@ describe(
       });
     });
 
+    it("should keep the resize handle connected to the cursor while resizing (metabase#70451)", () => {
+      H.createDashboardWithQuestions({
+        dashboardDetails: {},
+        questions: [
+          {
+            display: "table",
+            query: {
+              "source-table": ORDERS_ID,
+              limit: 10,
+            },
+          },
+        ],
+      }).then(({ dashboard }) => {
+        H.visitDashboard(dashboard.id);
+      });
+
+      H.editDashboard();
+
+      let targetX, targetY;
+
+      H.getDashboardCard(0)
+        .find(".react-resizable-handle")
+        .then(($handle) => {
+          const rect = $handle[0].getBoundingClientRect();
+          const startX = Math.round(rect.left + rect.width / 2);
+          const startY = Math.round(rect.top + rect.height / 2);
+          targetX = startX + 200;
+          targetY = startY + 150;
+
+          // Not using the wrapper here because we want to avoid waits and we need the starting position for later
+          cy.wrap($handle)
+            .trigger("mousedown", {
+              button: 0,
+              clientX: startX,
+              clientY: startY,
+              force: true,
+            })
+            .trigger("mousemove", {
+              clientX: targetX,
+              clientY: targetY,
+              force: true,
+            });
+        });
+
+      // After dragging, the resize handle should still be near the cursor position.
+      H.getDashboardCard(0)
+        .find(".react-resizable-handle")
+        .then(($handle) => {
+          const rect = $handle[0].getBoundingClientRect();
+          const handleCenterX = Math.round(rect.left + rect.width / 2);
+          const handleCenterY = Math.round(rect.top + rect.height / 2);
+
+          const maxDrift = 50;
+          expect(
+            Math.abs(handleCenterX - targetX),
+            `Horizontal drift: handle at ${handleCenterX}, cursor at ${targetX}`,
+          ).to.be.lessThan(maxDrift);
+          expect(
+            Math.abs(handleCenterY - targetY),
+            `Vertical drift: handle at ${handleCenterY}, cursor at ${targetY}`,
+          ).to.be.lessThan(maxDrift);
+        });
+    });
+
     it("should not allow cards to be resized smaller than min height", () => {
       const cardIds = [];
       TEST_QUESTIONS.forEach((question) => {

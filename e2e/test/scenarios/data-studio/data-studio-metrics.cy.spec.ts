@@ -241,6 +241,9 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.log("Restore the metric");
     cy.findByRole("table").findByText("Trusted Orders Metric").click();
+
+    H.MetricsViewer.openMetricHomePage("Trusted Orders Metric");
+
     cy.findByTestId("archive-banner").should("be.visible");
     cy.findByTestId("archive-banner").findByText("Restore").click();
     cy.wait("@updateCard");
@@ -273,7 +276,7 @@ describe("scenarios > data studio > library > metrics", () => {
       .closest("a")
       .should("have.attr", "target", "_blank")
       .should("have.attr", "href")
-      .and("match", /\/metric\/\d+/);
+      .and("match", /\/explore\?metricId=\d+/);
   });
 
   it("should duplicate metric via more menu", () => {
