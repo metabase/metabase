@@ -96,13 +96,12 @@
 (defn- jsonrpc-error [id code message]
   {:jsonrpc "2.0" :id id :error {:code code :message message}})
 
-(defn- handle-initialize [id _params session-id]
-  {:response (jsonrpc-response
-              id
-              {:protocolVersion protocol-version
-               :capabilities    {:tools {}}
-               :serverInfo      server-info})
-   :headers  {"Mcp-Session-Id" session-id}})
+(defn- handle-initialize [id _params]
+  (jsonrpc-response
+   id
+   {:protocolVersion protocol-version
+    :capabilities    {:tools {}}
+    :serverInfo      server-info}))
 
 (defn- handle-tools-list [id _params]
   (jsonrpc-response id {:tools (mcp.tools/list-tools)}))
@@ -129,7 +128,6 @@
         method (:method msg)
         params (:params msg)]
     (case method
-      "initialize"                (handle-initialize id params session-id)
       "notifications/initialized" (do (mark-session-initialized! session-id) nil)
       "tools/list"                (when-initialized id session-id (handle-tools-list id params))
       "tools/call"                (when-initialized id session-id (handle-tools-call id params))
@@ -177,51 +175,42 @@
         session-id (get-in request [:headers "mcp-session-id"])
         batch?     (sequential? body)]
     (cond
-      ;; No body at all
       (nil? body)
       (json-response 400 (jsonrpc-error nil -32700 "Parse error: empty body"))
 
-      ;; Invalid JSON-RPC (not a map or array)
       (and (not (map? body)) (not batch?))
       (json-response 400 (jsonrpc-error nil -32600 "Invalid request: expected object or array"))
 
+      ;; MCP spec: "The initialize request MUST NOT be part of a JSON-RPC batch"
+      (and batch? (some #(= "initialize" (:method %)) body))
+      (json-response 400 (jsonrpc-error nil -32600 "initialize must not be batched"))
+
+      ;; Initialize: create session and return response with session header
+      (and (not batch?) (= "initialize" (:method body)))
+      (let [session-id (create-session!)]
+        (json-response 200 (handle-initialize (:id body) (:params body))
+                       {"Mcp-Session-Id" session-id}))
+
+      ;; All other requests require a valid session
+      (not (valid-session? session-id))
+      (json-response 400 (jsonrpc-error nil -32600 "Invalid or missing Mcp-Session-Id"))
+
       :else
-      (let [messages       (if batch? body [body])
-            ;; For initialize requests, create a new session
-            initializing?  (some #(= "initialize" (:method %)) messages)
-            session-id     (if initializing?
-                             (create-session!)
-                             session-id)]
-        ;; Validate session for non-initialize requests
-        (if (and (not initializing?) (not (valid-session? session-id)))
-          (json-response 400 (jsonrpc-error nil -32600 "Invalid or missing Mcp-Session-Id"))
-          (let [results       (mapv #(dispatch-request % session-id) messages)
-                ;; Collect extra headers from initialize responses
-                extra-headers (reduce (fn [h r] (merge h (when (map? r) (:headers r)))) {} results)
-                ;; Unwrap {response, headers} maps, keep plain responses and nils
-                responses     (mapv (fn [r]
-                                      (if (and (map? r) (:response r))
-                                        (:response r)
-                                        r))
-                                    results)
-                ;; Filter out nil (notification) responses
-                responses     (filterv some? responses)]
-            (cond
-              ;; All notifications — return 202
-              (empty? responses)
-              {:status 202 :headers (merge {"Content-Type" "application/json"} extra-headers) :body ""}
+      (let [messages  (if batch? body [body])
+            results   (mapv #(dispatch-request % session-id) messages)
+            responses (filterv some? results)]
+        (cond
+          (empty? responses)
+          {:status 202 :headers {"Content-Type" "application/json"} :body ""}
 
-              ;; SSE mode — return as event stream
-              (accepts-sse? request)
-              (sse-response responses extra-headers)
+          (accepts-sse? request)
+          (sse-response responses nil)
 
-              ;; Single request — return single response
-              (and (not batch?) (= 1 (count responses)))
-              (json-response 200 (first responses) extra-headers)
+          (and (not batch?) (= 1 (count responses)))
+          (json-response 200 (first responses))
 
-              ;; Batch — return array
-              :else
-              (json-response 200 responses extra-headers))))))))
+          :else
+          (json-response 200 responses))))))
 
 (defn- handle-get
   "Handle a GET request for SSE stream (keepalive for server-initiated notifications)."
