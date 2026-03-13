@@ -14,6 +14,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.search.models.search-index-metadata :as search-index-metadata]
    [metabase.search.spec :as search.spec]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
@@ -315,10 +316,11 @@
   "Indexes the documents. The context should be :search/updating or :search/reindexing.
    Context should be :search/updating or :search/reindexing to help control how to manage the updates"
   [context document-reducible]
-  (transduce (comp (partition-all insert-batch-size)
-                   (map (partial batch-update! context)))
-             (partial merge-with +)
-             document-reducible))
+  (tracing/with-span :search "search.appdb.index-docs" {:search/context (name context)}
+    (transduce (comp (partition-all insert-batch-size)
+                     (map (partial batch-update! context)))
+               (partial merge-with +)
+               document-reducible)))
 
 (defmethod search.engine/update! :search.engine/appdb [_engine document-reducible]
   (index-docs! :search/updating document-reducible))

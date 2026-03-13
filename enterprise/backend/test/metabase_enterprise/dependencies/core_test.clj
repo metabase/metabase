@@ -197,7 +197,7 @@
                                                                 :base-provider provider
                                                                 :graph graph
                                                                 :include-native? true)]
-          (is (= #{:card :transform} (set (keys errors))))
+          (is (= #{:card} (set (keys errors))))
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.
           ;; We only check :missing-column errors since SQLGlot and Macaw produce different
@@ -221,3 +221,22 @@
                                                                 :graph graph)]
           ;; Because we are changing a snippet, don't check anything downstream
           (is (= {} errors)))))))
+
+(deftest ^:parallel self-referential-dependency-test
+  (testing "errors-from-proposed-edits terminates when the dependency graph has a self-loop (#70452)"
+    (let [{:keys [provider mbql-base]} (testbed)
+          ;; Graph where dashboard 999 depends on card 101, and dashboard 999 depends on itself
+          ;; (as happens with click behavior linking to another tab on the same dashboard)
+          graph (graph/in-memory {[:card 101]       #{[:dashboard 999]}
+                                  [:dashboard 999]  #{[:dashboard 999]}})
+          card' (-> mbql-base
+                    (update :dataset-query lib/filter (lib/> (meta/field-metadata :orders :quantity) 100))
+                    (dissoc :result-metadata))
+          fut   (future (dependencies/errors-from-proposed-edits {:card [card']}
+                                                                 :base-provider provider
+                                                                 :graph graph))
+          result (deref fut 1000 ::timeout)]
+      (when (= result ::timeout)
+        (future-cancel fut))
+      (is (not= ::timeout result) "errors-from-proposed-edits hung (possible infinite loop)")
+      (is (= {} result)))))

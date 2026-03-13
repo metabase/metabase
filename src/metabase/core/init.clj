@@ -66,6 +66,7 @@
    [metabase.task-history.init]
    [metabase.testing-api.init]
    [metabase.tiles.init]
+   [metabase.tracing.init]
    [metabase.transforms-base.init]
    [metabase.transforms.init]
    [metabase.types.init]

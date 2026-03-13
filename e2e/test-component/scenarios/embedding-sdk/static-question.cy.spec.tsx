@@ -16,9 +16,6 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-//eslint-disable-next-line @typescript-eslint/no-restricted-imports
-import { ThemeProvider } from "metabase/ui";
-
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding-sdk > static-question", () => {
@@ -64,11 +61,9 @@ describe("scenarios > embedding-sdk > static-question", () => {
       const consoleErrorSpy = cy.spy(console, "error").as("consoleError");
 
       const renderQuestion = (props: Partial<StaticQuestionProps>) => (
-        <ThemeProvider>
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-            <StaticQuestion questionId={questionId} {...props} />
-          </MetabaseProvider>
-        </ThemeProvider>
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          <StaticQuestion questionId={questionId} {...props} />
+        </MetabaseProvider>
       );
 
       mountSdk(

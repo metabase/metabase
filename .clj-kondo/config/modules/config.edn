@@ -215,6 +215,7 @@
            settings
            task
            task-history
+           tracing
            util}}
 
   auth-identity
@@ -276,6 +277,7 @@
            config
            events
            models
+           permissions
            premium-features
            request
            settings
@@ -396,6 +398,7 @@
            request
            revisions
            settings
+           tracing
            transforms
            upload
            util}}
@@ -589,6 +592,7 @@
            settings
            sql-tools
            system
+           tracing
            util
            warehouse-schema
            warehouses}}
@@ -667,7 +671,8 @@
    :api  #{metabase.events.core
            metabase.events.init}
    :uses #{models
-           util}}
+           util}
+   :friends #{tracing}}
 
   formatter
   {:team "UX West"
@@ -749,6 +754,7 @@
            metabase.lib.schema.common
            metabase.lib.schema.expression
            metabase.lib.schema.expression.temporal
+           metabase.lib.schema.filter
            metabase.lib.schema.id
            metabase.lib.schema.info
            metabase.lib.schema.join
@@ -775,6 +781,7 @@
    :friends #{legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
+              source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
               enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
               }}
 
@@ -785,6 +792,16 @@
    :uses #{lib
            models
            settings
+           util}}
+
+  lib-metric
+  {:team "UX West"
+   :api  #{metabase.lib-metric.core
+           metabase.lib-metric.schema}
+   :uses #{lib
+           lib-be
+           settings
+           types
            util}}
 
   llm
@@ -836,10 +853,27 @@
            events
            lib
            lib-be
+           metrics
            models
            permissions
            remote-sync
            search
+           util}}
+
+  metrics
+  {:team "UX West"
+   :api  #{metabase.metrics.api
+           metabase.metrics.core}
+   :uses #{api
+           collections
+           lib
+           lib-be
+           lib-metric
+           models
+           parameters
+           query-processor
+           request
+           server
            util}}
 
   model-persistence
@@ -862,6 +896,7 @@
            system
            task
            task-history
+           tracing
            util}}
 
   models
@@ -946,6 +981,7 @@
            system
            task
            task-history
+           tracing
            users
            util}}
 
@@ -989,6 +1025,7 @@
            premium-features
            remote-sync
            settings
+           tracing
            util
            enterprise/advanced-permissions}}
 
@@ -1034,6 +1071,7 @@
            settings
            startup
            task
+           tracing
            util}}
 
   product-feedback
@@ -1101,6 +1139,7 @@
            request
            task
            task-history
+           tracing
            util
            enterprise/advanced-permissions
            enterprise/sandbox}}
@@ -1126,6 +1165,7 @@
            events
            lib
            lib-be
+           metrics
            models
            parameters
            permissions
@@ -1243,6 +1283,7 @@
            server
            settings
            system
+           tracing
            users
            util}}
 
@@ -1325,6 +1366,7 @@
            settings
            startup
            task
+           tracing
            transforms
            util}}
 
@@ -1371,6 +1413,7 @@
            session
            settings
            system
+           tracing
            users
            util
            enterprise/sso}}
@@ -1392,6 +1435,7 @@
            sso
            system
            task
+           tracing
            util}}
 
   settings
@@ -1437,6 +1481,15 @@
            settings
            setup
            system
+           util}}
+
+  source-swap
+  {:team "Graphy"
+   :api  #{metabase.source-swap.core
+           metabase.source-swap.schema}
+   :uses #{driver
+           lib
+           sql-tools
            util}}
 
   sql-parsing
@@ -1506,6 +1559,7 @@
            settings
            task
            task-history
+           tracing
            util
            warehouse-schema
            warehouses}}
@@ -1522,6 +1576,7 @@
            metabase.task.core}
    :uses #{app-db
            classloader
+           tracing
            util}}
 
   task-history
@@ -1538,6 +1593,7 @@
            query-processor
            request
            task
+           tracing
            util}}
 
   tenants
@@ -1585,6 +1641,15 @@
            models
            util}}
 
+  tracing
+  {:team "DevEx"
+   :api  #{metabase.tracing.core
+           metabase.tracing.init}
+   :uses #{events
+           settings
+           task
+           util}}
+
   transforms
   {:team "Querying"
    :api  #{metabase.transforms.core
@@ -1607,6 +1672,7 @@
            settings
            task
            task-history
+           tracing
            transforms-base
            util}
    :friends #{models
@@ -1953,7 +2019,9 @@
            request
            server
            util
-           enterprise/metabot-v3}}
+           enterprise/api
+           enterprise/metabot-v3
+           enterprise/workspaces}}
 
   enterprise/ai-entity-analysis
   {:team "Metabot"
@@ -2145,7 +2213,8 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.dependencies.api
            metabase-enterprise.dependencies.core
-           metabase-enterprise.dependencies.init}
+           metabase-enterprise.dependencies.init
+           metabase-enterprise.dependencies.models.dependency}
    :uses #{analyze
            api
            app-db
@@ -2166,6 +2235,7 @@
            request
            revisions
            settings
+           sql-tools
            task
            transforms
            transforms-base
@@ -2328,6 +2398,21 @@
            enterprise/serialization
            enterprise/transforms-python}}
 
+  enterprise/replacement
+  {:team "Graphy"
+   :api  #{metabase-enterprise.replacement.api}
+   :uses #{api
+           app-db
+           events
+           lib
+           lib-be
+           models
+           queries
+           source-swap
+           task
+           util
+           enterprise/dependencies}}
+
   enterprise/sandbox
   {:team "UX West"
    :api  #{metabase-enterprise.sandbox.api.routes
@@ -2391,6 +2476,7 @@
            search
            settings
            task
+           tracing
            util
            enterprise/llm
            enterprise/metabot-v3}}
@@ -2526,8 +2612,8 @@
   {:team "Metabot"
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.init}
+   :friends #{enterprise/agent-api}
    :uses #{api
-           api-keys
            app-db
            config
            database-routing
