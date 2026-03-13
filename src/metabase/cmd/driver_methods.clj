@@ -17,6 +17,7 @@
                         (find-ns ns-symb)))]
      ns-symb)))
 
+;; trigger driver tests
 (defn- available-multimethods
   ([]
    (for [ns-symb (driver-ns-symbs)
