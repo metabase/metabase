@@ -32,20 +32,6 @@
                                   :is_active          nil
                                   :progress           0.0}))
 
-(defn create-convert-run!
-  "Create a convert-to-transform run. Source and target start as the same entity
-   (target is updated mid-execution once the output table is known).
-   Progress starts as nil since the transform phase has no incremental progress."
-  [source-type source-id user-id]
-  (t2/insert-returning-instance! :model/ReplacementRun
-                                 {:source_entity_type source-type
-                                  :source_entity_id   source-id
-                                  :target_entity_type source-type
-                                  :target_entity_id   source-id
-                                  :user_id            user-id
-                                  :status             :pending
-                                  :is_active          nil}))
-
 (defn start-run!
   "Mark the active run as started."
   [run-id]
@@ -118,14 +104,6 @@
     (t2/select :model/ReplacementRun :is_active true {:order-by [[:id :desc]]})
     (t2/select :model/ReplacementRun {:order-by [[:id :desc]]})))
 
-(defn update-target!
-  "Update the target entity type and ID on a run (for convert runs where target is determined mid-execution)."
-  [run-id target-type target-id]
-  (t2/update! :model/ReplacementRun
-              :id run-id
-              {:target_entity_type target-type
-               :target_entity_id   target-id}))
-
 (def ^:private ^:const progress-batch-size
   "Write progress to DB every N items (and always on the final item)."
   50)
@@ -163,8 +141,6 @@
                  (when on-complete
                    (deliver on-complete :run/cancelled))
                  (throw (ex-info "Run canceled" {:run-id run-id})))))))
-       (update-target! [_ target-type target-id]
-         (update-target! run-id target-type target-id))
        (canceled? [_]
          (not (:is_active (t2/select-one [:model/ReplacementRun :is_active] :id run-id))))
        (start-run! [_]

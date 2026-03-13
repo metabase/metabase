@@ -2,56 +2,25 @@
   "Execute a transform and replace all usages of a source entity with the output table.
 
    The FE creates the transform via the transforms API. This module re-runs it,
-   finds the output table, and replaces all dependents of the source entity."
+   finds the output table, creates a ReplacementRun with the real target, and swaps
+   all dependents of the source entity."
   (:require
-   [metabase-enterprise.replacement.protocols :as replacement.protocols]
+   [metabase-enterprise.replacement.execute :as replacement.execute]
+   [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.runner :as replacement.runner]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms.core :as transforms]
+   [metabase.util.jvm :as u.jvm]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- check-canceled!
-  "Throw if the run has been canceled."
-  [progress]
-  (when (replacement.protocols/canceled? progress)
-    (throw (ex-info "Run canceled" {}))))
-
-(defn replace-source-with-transform!
-  "Execute a transform, find its output table, and replace all usages of the source
-   entity with that table.
-
-   Called as the work-fn inside execute-async!. Progress stays null during transform
-   execution/sync, then tracks 0→1 during source replacement.
-
-   Note: DB-polling cancellation differs from the transforms system's core.async
-   cancellation, so a cancelled run may produce a \"failed\" transform_run.
-
-   Options:
-   - `:unpersist-card?` — when true and source is a card, unpersist the model after
-     replacement (default false).
-   - `:archive-card?` — when true and source is a card, archive the card after all
-     steps are done (default false).
-   - `:user-id` — user ID to attribute on the TransformRun row.
-   - `:start-promise` — promise delivered with `[:started run-id]` when the TransformRun
-     is created, allowing the caller to know the run exists before execution completes."
-  [source-type source-id transform-id progress
-   {:keys [unpersist-card? archive-card? user-id start-promise]
-    :or   {unpersist-card? false archive-card? false}}]
-  (let [transform (t2/select-one :model/Transform :id transform-id)
-        _         (when-not transform
-                    (throw (ex-info "Transform not found" {:transform-id transform-id})))
-
-        ;; --- Phase 1: Execute transform (synchronous — also syncs the output table) ---
-        _         (transforms/execute! transform (cond-> {:run-method :manual}
-                                                   user-id       (assoc :user-id user-id)
-                                                   start-promise (assoc :start-promise start-promise)))
-        _         (check-canceled! progress)
-
-        ;; --- Phase 2: Find output table ---
-        target-db-id (transforms-base.i/target-db-id transform)
+(defn- find-output-table
+  "Look up the output table created by a transform execution."
+  [transform]
+  (let [target-db-id (transforms-base.i/target-db-id transform)
         target       (:target transform)
         table-name   (:name target)
         table-schema (or (:schema target) "transforms")
@@ -59,21 +28,62 @@
                                     :db_id target-db-id
                                     :schema table-schema
                                     :name table-name
-                                    :active true)
-        _            (when-not table
-                       (throw (ex-info "Output table not found after transform execution"
-                                       {:db-id target-db-id :schema table-schema :name table-name})))
-        _            (replacement.protocols/update-target! progress :table (:id table))
-        _            (check-canceled! progress)]
+                                    :active true)]
+    (when-not table
+      (throw (ex-info "Output table not found after transform execution"
+                      {:db-id target-db-id :schema table-schema :name table-name})))
+    table))
 
-    ;; --- Phase 3: Replace all usages (0 → 1) ---
-    (replacement.runner/run-swap [source-type source-id] [:table (:id table)] progress)
+(defn- run-swap-phase!
+  "Create a ReplacementRun with the real target table and execute the source swap.
+   Returns the run-id on success."
+  [source-type source-id table-id user-id]
+  (let [job-row  (replacement-run/create-run!
+                  source-type source-id
+                  :table table-id
+                  user-id)
+        progress (replacement-run/run-row->progress job-row)]
+    (replacement.execute/execute-swap! progress
+                                       (fn [progress]
+                                         (replacement.runner/run-swap
+                                          [source-type source-id]
+                                          [:table table-id]
+                                          progress)))
+    (:id job-row)))
 
-    ;; --- Phase 4: Unpersist model ---
-    (when unpersist-card?
-      (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id source-id)]
-        (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off")))
+(defn run-async!
+  "Kick off the full convert-to-transform flow in a virtual thread.
 
-    ;; --- Phase 5: Archive card ---
-    (when (and archive-card? (= source-type :card))
-      (t2/update! :model/Card source-id {:archived true}))))
+   Phase 1: Execute transform (creates TransformRun, syncs output table)
+   Phase 2: Create ReplacementRun with real target, run source swap
+   Phase 3: Optionally unpersist model and archive card
+
+   The start-promise is delivered once the TransformRun row exists."
+  [{:keys [source-type source-id transform-id user-id start-promise
+           unpersist-card? archive-card?]
+    :or   {unpersist-card? false archive-card? false}}]
+  (let [transform (t2/select-one :model/Transform :id transform-id)]
+    (when-not transform
+      (throw (ex-info "Transform not found" {:transform-id transform-id})))
+    (u.jvm/in-virtual-thread*
+     (try
+       ;; Phase 1: Execute transform
+       (transforms/execute! transform (cond-> {:run-method :manual}
+                                        user-id       (assoc :user-id user-id)
+                                        start-promise (assoc :start-promise start-promise)))
+
+       ;; Phase 2: Find output table and run swap
+       (let [table (find-output-table transform)]
+         (run-swap-phase! source-type source-id (:id table) user-id)
+
+         ;; Phase 3: Unpersist model
+         (when unpersist-card?
+           (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id source-id)]
+             (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off")))
+
+         ;; Phase 4: Archive card
+         (when (and archive-card? (= source-type :card))
+           (t2/update! :model/Card source-id {:archived true})))
+       (catch Throwable t
+         (log/errorf t "Convert-to-transform failed for source %s/%s transform %s"
+                     source-type source-id transform-id))))))

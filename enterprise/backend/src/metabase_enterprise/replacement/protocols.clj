@@ -11,8 +11,6 @@
     "Mark n items complete (default 1). Writes progress to DB periodically.")
   (canceled? [this]
     "Returns true if cancellation has been requested.")
-  (update-target! [this target-type target-id]
-    "Update the target entity type and ID on the run.")
   (start-run! [this])
   (succeed-run! [this])
   (fail-run! [this throwable]))

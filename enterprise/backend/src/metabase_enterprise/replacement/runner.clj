@@ -20,7 +20,6 @@
     (set-total! [_ _total])
     (advance! [_])
     (advance! [_ _n])
-    (update-target! [_ _target-type _target-id])
     (canceled? [_] false)
     (start-run! [_])
     (succeed-run! [_])

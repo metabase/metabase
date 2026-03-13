@@ -86,14 +86,12 @@
     {:success true}))
 
 (api.macros/defendpoint :post "/replace-source-with-transform"
-  :- [:map
-      [:status [:= 202]]
-      [:body [:map {:closed true}
-              [:run_id ::replacement.schema/run-id]]]]
+  :- [:map [:status [:= 202]]]
   "Re-run a transform and replace all usages of the source entity with the output
    table. The FE should create the transform first via the transforms API.
-   Returns 202 with a run_id for polling.
-   Returns 409 if another replacement or conversion is already running."
+   Returns 202 immediately after the TransformRun row is created.
+   The ReplacementRun is created later, once the transform finishes and the output
+   table is known. FE polls GET /transform/runs and GET /replacement/runs independently."
   [_route-params
    _query-params
    {:keys [source_entity_id source_entity_type transform_id unpersist_card archive_card]}
@@ -101,25 +99,20 @@
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/Transform :id transform_id))
   (let [user-id       api/*current-user-id*
-        start-promise (promise)
-        job-row       (replacement-run/create-convert-run!
-                       source_entity_type source_entity_id
-                       user-id)
-        progress      (replacement-run/run-row->progress job-row)
-        work-fn       (fn [progress]
-                        (convert/replace-source-with-transform!
-                         source_entity_type source_entity_id transform_id
-                         progress
-                         {:unpersist-card? unpersist_card
-                          :archive-card?   archive_card
-                          :user-id         user-id
-                          :start-promise   start-promise}))]
-    (replacement.execute/execute-async! work-fn progress)
+        start-promise (promise)]
+    (convert/run-async!
+     {:source-type    source_entity_type
+      :source-id      source_entity_id
+      :transform-id   transform_id
+      :user-id        user-id
+      :start-promise  start-promise
+      :unpersist-card? unpersist_card
+      :archive-card?   archive_card})
     ;; Wait for the TransformRun row to be created so FE can poll it immediately.
     (let [result (deref start-promise 30000 :timeout)]
       (when (instance? Throwable result)
         (throw result)))
-    (-> (response/response {:run_id (:id job-row)})
+    (-> (response/response {})
         (assoc :status 202))))
 
 (api.macros/defendpoint :get "/runs"
