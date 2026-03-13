@@ -12,11 +12,7 @@ export function availableBinningStrategies(
   stageIndex: number,
   column: ColumnMetadata,
 ): Bucket[] {
-  return ML.available_binning_strategies(
-    query,
-    stageIndex,
-    column,
-  ) as unknown as Bucket[];
+  return ML.available_binning_strategies(query, stageIndex, column);
 }
 
 export function isBinnable(

@@ -13,13 +13,12 @@
    [metabase.lib-metric.metadata.js :as lib-metric.metadata.js]
    [metabase.lib-metric.projection :as lib-metric.projection]
    [metabase.lib-metric.schema :as lib-metric.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as memoize]
@@ -484,61 +483,66 @@
 (mu/defn ^:export stringFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a string filter clause from parts.
    Parts: {operator, dimension, values, options}"
-  [parts]
+  [parts :- ::lib-metric.schema/string-filter-parts]
   (lib-metric.filter/string-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export stringFilterParts :- [:maybe [:any {:ts/object-of :map}]]
+(mu/defn ^:export stringFilterParts :- [:maybe ::lib-metric.schema/string-filter-parts]
   "Extract string filter parts from a clause.
    Returns {operator, dimension, values, options} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/string-filter-parts definition filter-clause)))
 
 (mu/defn ^:export numberFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a number filter clause from parts.
    Parts: {operator, dimension, values}"
-  [parts]
+  [parts :- ::lib-metric.schema/number-filter-parts]
   (lib-metric.filter/number-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export numberFilterParts :- [:maybe [:any {:ts/object-of :map}]]
+(mu/defn ^:export numberFilterParts :- [:maybe ::lib-metric.schema/number-filter-parts]
   "Extract number filter parts from a clause.
    Returns {operator, dimension, values} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/number-filter-parts definition filter-clause)))
 
 (mu/defn ^:export coordinateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a coordinate filter clause from parts.
    Parts: {operator, dimension, longitudeDimension, values}"
-  [parts]
+  [parts :- ::lib-metric.schema/coordinate-filter-parts]
   (lib-metric.filter/coordinate-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export coordinateFilterParts :- [:maybe [:any {:ts/object-of :map}]]
+(mu/defn ^:export coordinateFilterParts :- [:maybe ::lib-metric.schema/coordinate-filter-parts]
   "Extract coordinate filter parts from a clause.
    Returns {operator, dimension, longitudeDimension, values} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/coordinate-filter-parts definition filter-clause)))
 
 (mu/defn ^:export booleanFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a boolean filter clause from parts.
    Parts: {operator, dimension, values}"
-  [parts]
+  [parts :- ::lib-metric.schema/boolean-filter-parts]
   (lib-metric.filter/boolean-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export booleanFilterParts :- [:maybe [:any {:ts/object-of :map}]]
+(mu/defn ^:export booleanFilterParts :- [:maybe ::lib-metric.schema/boolean-filter-parts]
   "Extract boolean filter parts from a clause.
    Returns {operator, dimension, values} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/boolean-filter-parts definition filter-clause)))
 
 (mu/defn ^:export specificDateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a specific date filter clause from parts.
    Parts: {operator, dimension, values, hasTime}"
-  [parts]
+  [parts :- ::lib-metric.schema/specific-date-filter-parts]
   (lib-metric.filter/specific-date-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export specificDateFilterParts :- [:maybe [:any {:ts/object-of :map}]]
+(mu/defn ^:export specificDateFilterParts :- [:maybe ::lib-metric.schema/specific-date-filter-parts]
   "Extract specific date filter parts from a clause.
    Returns {operator, dimension, values, hasTime} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (some-> (lib-metric.filter/specific-date-filter-parts definition filter-clause)
           (update :values (fn [values] (mapv (comp u.time/dayjs-utc->local-date u.time/coerce-to-timestamp) values)))
           filter-parts-cljs->js))
@@ -546,49 +550,53 @@
 (mu/defn ^:export relativeDateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a relative date filter clause from parts.
    Parts: {dimension, unit, value, offsetUnit, offsetValue, options}"
-  [parts]
+  [parts :- ::lib-metric.schema/relative-date-filter-parts]
   (lib-metric.filter/relative-date-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export relativeDateFilterParts :- [:maybe [:any {:ts/object-of :map}]]
+(mu/defn ^:export relativeDateFilterParts :- [:maybe ::lib-metric.schema/relative-date-filter-parts]
   "Extract relative date filter parts from a clause.
    Returns {dimension, unit, value, offsetUnit, offsetValue, options} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/relative-date-filter-parts definition filter-clause)))
 
 (mu/defn ^:export excludeDateFilterClause :- ::lib.schema.mbql-clause/clause
   "Create an exclude date filter clause from parts.
    Parts: {operator, dimension, unit, values}"
-  [parts]
+  [parts :- ::lib-metric.schema/exclude-date-filter-parts]
   (lib-metric.filter/exclude-date-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export excludeDateFilterParts :- [:maybe [:any {:ts/object-of :map}]]
+(mu/defn ^:export excludeDateFilterParts :- [:maybe ::lib-metric.schema/exclude-date-filter-parts]
   "Extract exclude date filter parts from a clause.
    Returns {operator, dimension, unit, values} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/exclude-date-filter-parts definition filter-clause)))
 
 (mu/defn ^:export timeFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a time filter clause from parts.
    Parts: {operator, dimension, values}"
-  [parts]
+  [parts :- ::lib-metric.schema/time-filter-parts]
   (lib-metric.filter/time-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export timeFilterParts :- [:maybe [:any {:ts/object-of :map}]]
+(mu/defn ^:export timeFilterParts :- [:maybe ::lib-metric.schema/time-filter-parts]
   "Extract time filter parts from a clause.
    Returns {operator, dimension, values} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/time-filter-parts definition filter-clause)))
 
 (mu/defn ^:export defaultFilterClause :- ::lib.schema.mbql-clause/clause
   "Create a default filter clause from parts.
    Parts: {operator, dimension}"
-  [parts]
+  [parts :- ::lib-metric.schema/default-filter-parts]
   (lib-metric.filter/default-filter-clause (filter-parts-js->cljs parts)))
 
-(mu/defn ^:export defaultFilterParts :- [:maybe [:any {:ts/object-of :map}]]
+(mu/defn ^:export defaultFilterParts :- [:maybe ::lib-metric.schema/default-filter-parts]
   "Extract default filter parts from a clause.
    Returns {operator, dimension} or null."
-  [definition filter-clause]
+  [definition :- ::lib-metric.schema/metric-definition
+   filter-clause :- ::lib.schema.mbql-clause/clause]
   (filter-parts-cljs->js (lib-metric.filter/default-filter-parts definition filter-clause)))
 
 (mu/defn ^:export projectionableDimensions :- [:any {:ts/array-of ::lib-metric.schema/metadata-dimension}]

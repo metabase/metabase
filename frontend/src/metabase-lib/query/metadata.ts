@@ -85,93 +85,92 @@ function isColumnGroupArray(value: unknown): value is ColumnGroup[] {
   return Array.isArray(value) && value.every(isColumnGroup);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for types
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   columnMetadata: ColumnMetadata,
 ): ColumnDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   columnGroup: ColumnGroup,
 ): ColumnGroupDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   cardMetadata: CardMetadata,
 ): CardDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   tableMetadata: TableMetadata,
 ): TableDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   tableLike: CardMetadata | TableMetadata,
 ): CardDisplayInfo | TableDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   aggregationClause: AggregationClause,
 ): AggregationClauseDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   aggregationOperator: AggregationOperator,
 ): AggregationOperatorDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   breakoutClause: BreakoutClause,
 ): BreakoutClauseDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   orderByClause: OrderByClause,
 ): OrderByClauseDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   clause: Clause,
 ): ClauseDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   bucket: Bucket,
 ): BucketDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   metric: MetricMetadata,
 ): MetricDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   measure: MeasureMetadata,
 ): MeasureDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   joinStrategy: JoinStrategy,
 ): JoinStrategyDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   drillThru: DrillThru,
 ): DrillThruDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   filterOperator: FilterOperatorMetadata,
 ): FilterOperatorDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   segment: SegmentMetadata,
 ): SegmentDisplayInfo;
-declare function DisplayInfoFn(
+export function displayInfo(
   query: Query,
   stageIndex: number,
   extraction: ColumnExtraction,
@@ -179,7 +178,13 @@ declare function DisplayInfoFn(
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
-export const displayInfo = ML.display_info as unknown as typeof DisplayInfoFn;
+export function displayInfo(
+  query: Query,
+  stageIndex: number,
+  x: unknown,
+): unknown {
+  return ML.display_info(query, stageIndex, x);
+}
 
 export function groupColumns(columns: ColumnMetadata[]): ColumnGroup[] {
   const columnGroups = ML.group_columns(columns);

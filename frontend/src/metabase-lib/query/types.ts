@@ -139,6 +139,7 @@ export type ColumnGroup = ReturnType<
 
 export type Bucket =
   | Metabase_Lib_Schema_Binning_Binning
+  | Metabase_Lib_Schema_Binning_BinningOption
   | Metabase_Lib_Schema_TemporalBucketing_Option;
 export type BucketOption =
   | Metabase_Lib_Schema_Binning_BinningOption

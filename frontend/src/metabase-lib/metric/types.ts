@@ -1,10 +1,10 @@
 import type {
-  Metabase_LibMetric_Ast_Schema_FilterNode,
   Metabase_LibMetric_Schema_Binning,
   Metabase_LibMetric_Schema_DimensionReference,
   Metabase_LibMetric_Schema_MetadataDimension,
   Metabase_LibMetric_Schema_MetricDefinition,
   Metabase_Lib_Metadata_Protocols_MetadataProvider,
+  Metabase_Lib_Schema_MbqlClause_Clause,
   Metabase_Lib_Schema_Metadata_Measure,
   Metabase_Lib_Schema_Metadata_Metric,
   Metabase_Lib_Schema_TemporalBucketing_Option,
@@ -39,10 +39,7 @@ export type MetricDefinition = Metabase_LibMetric_Schema_MetricDefinition;
 
 export type DimensionMetadata = Metabase_LibMetric_Schema_MetadataDimension;
 
-export type FilterClause = Exclude<
-  Metabase_LibMetric_Ast_Schema_FilterNode,
-  null
->;
+export type FilterClause = Metabase_Lib_Schema_MbqlClause_Clause;
 
 export type ProjectionClause = Metabase_LibMetric_Schema_DimensionReference;
 

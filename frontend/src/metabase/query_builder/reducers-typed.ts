@@ -24,7 +24,7 @@ import {
 
 // the card that is actively being worked on
 export const card = createReducer<Card | null>(null, (builder) => {
-  // @ts-expect-error — Draft<Card> triggers TS2589 due to Card's recursive types (StructuredQuery, Field, etc.)
+  // @ts-expect-error -- Card typing triggers deep instantiation in chained builder cases.
   builder
     .addCase(RESET_QB, () => null)
     .addCase(CLOSE_QB, () => null)

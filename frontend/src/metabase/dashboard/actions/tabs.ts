@@ -22,7 +22,6 @@ import type {
   GetState,
   SelectedTabId,
   StoreDashboard,
-  StoreDashcard,
   TabDeletionId,
 } from "metabase-types/store";
 
@@ -32,7 +31,6 @@ import { getDashCardById } from "../selectors";
 import {
   calculateDashCardRowAfterUndo,
   generateTemporaryDashcardId,
-  isVirtualDashCard,
 } from "../utils";
 
 import { getDashCardMoveToTabUndoMessage, getExistingDashCards } from "./utils";
@@ -368,7 +366,12 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
-          if (isVirtualDashCard(sourceDashCard as unknown as StoreDashcard)) {
+          const virtualCard =
+            sourceDashCard.visualization_settings?.virtual_card;
+          if (
+            (typeof virtualCard === "object" && virtualCard != null) ||
+            typeof virtualCard === "function"
+          ) {
             return;
           }
 
