@@ -26,7 +26,8 @@ import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-pi
 export type SdkIframeEmbedTagMessage =
   | SdkIframeEmbedTagIframeReadyMessage
   | SdkIframeEmbedTagRequestSessionTokenMessage
-  | SdkIframeEmbedTagHandleLinkMessage;
+  | SdkIframeEmbedTagHandleLinkMessage
+  | SdkIframeEmbedTagRequestGuestTokenRefreshMessage;
 
 export type SdkIframeEmbedTagIframeReadyMessage = {
   type: "metabase.embed.iframeReady";
@@ -38,6 +39,12 @@ export type SdkIframeEmbedTagHandleLinkMessage = {
   type: "metabase.embed.handleLink";
   data: { url: string; requestId: string };
 };
+export type SdkIframeEmbedTagRequestGuestTokenRefreshMessage = {
+  type: "metabase.embed.requestGuestTokenRefresh";
+  data: {
+    expiredToken: string;
+  };
+};
 
 /** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
@@ -45,7 +52,8 @@ export type SdkIframeEmbedMessage =
   | SdkIframeEmbedSubmitSessionTokenMessage
   | SdkIframeEmbedReportAuthenticationError
   | SdkIframeEmbedReportAnalytics
-  | SdkIframeEmbedHandleLinkResponse;
+  | SdkIframeEmbedHandleLinkResponse
+  | SdkIframeEmbedSubmitRefreshedGuestTokenMessage;
 
 export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
@@ -74,6 +82,12 @@ export type SdkIframeEmbedReportAnalytics = {
 export type SdkIframeEmbedHandleLinkResponse = {
   type: "metabase.embed.handleLinkResponse";
   data: { requestId: string; handled: boolean };
+};
+export type SdkIframeEmbedSubmitRefreshedGuestTokenMessage = {
+  type: "metabase.embed.submitRefreshedGuestToken";
+  data: {
+    token: string;
+  };
 };
 
 // --- Embed Option Interfaces ---
@@ -212,6 +226,13 @@ export type SdkIframeEmbedBaseSettings = {
 
   /** Whether we should use the existing user session (i.e. admin user's cookie) */
   useExistingUserSession?: boolean;
+
+  /**
+   * URL endpoint for refreshing expired JWT tokens in guest embeds (iframe only, not applicable for SDK's guest mode).
+   *
+   * Expected response: { jwt: string }
+   */
+  guestEmbedJwtRefreshUrl?: string;
 
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;

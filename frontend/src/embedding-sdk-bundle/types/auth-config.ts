@@ -66,6 +66,15 @@ export type MetabaseIsGuestAuthConfig = BaseMetabaseAuthConfig & {
    * Defines if SDK should work in a Guest Embed mode
    */
   isGuest: true;
+
+  /**
+   * Optional URL endpoint that returns new JWT tokens for guest embeds.
+   * When configured, the SDK will automatically refresh expired tokens
+   * by POSTing the expired token to this endpoint.
+   * The endpoint should return { jwt: string } with the new token.
+   */
+  guestEmbedJwtRefreshUrl?: string;
+
   apiKey?: never;
   preferredAuthMethod?: never;
   fetchRequestToken?: never;
