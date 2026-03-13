@@ -3,6 +3,7 @@ import * as jsxRuntime from "react/jsx-runtime";
 
 import { useListCustomVizPluginsQuery } from "metabase/api";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
+import type { IconName } from "metabase/ui";
 import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,
@@ -107,6 +108,19 @@ export async function loadCustomVizPlugin(
 
     // Attach the required static properties onto the component function
     const Component = vizDef.VisualizationComponent as Visualization;
+    Object.assign(Component, {
+      identifier,
+      getUiName: () => plugin.display_name,
+      iconName: (plugin.icon ?? "area") as IconName,
+      minSize: vizDef.minSize ?? { width: 4, height: 3 },
+      defaultSize: vizDef.defaultSize ?? { width: 6, height: 4 },
+      isSensible: vizDef.isSensible ?? (() => false),
+      checkRenderable: vizDef.checkRenderable ?? (() => {}),
+      settings: vizDef.settings ?? {},
+      hidden: false,
+      noHeader: false,
+      canSavePng: false,
+    } satisfies Partial<Record<keyof Visualization, unknown>>);
 
     registerVisualization(Component);
     loadedPlugins.set(plugin.id, identifier);
