@@ -148,7 +148,7 @@
                                                     ["https://api.example.com"]))))
         (testing "get-authorization-code returns the saved code data"
           (let [fetched (proto/get-authorization-code acs code)]
-            (is (= user-id (:user-id fetched)))
+            (is (= (str user-id) (:user-id fetched)))
             (is (= client-id (:client-id fetched)))
             (is (= "https://example.com/callback" (:redirect-uri fetched)))
             (is (= ["openid" "profile"] (:scope fetched)))
@@ -197,7 +197,7 @@
                                               ["https://api.example.com"]))))
         (testing "get-access-token returns the saved token data"
           (let [fetched (proto/get-access-token ts token)]
-            (is (= user-id (:user-id fetched)))
+            (is (= (str user-id) (:user-id fetched)))
             (is (= client-id (:client-id fetched)))
             (is (= ["openid" "profile"] (:scope fetched)))
             (is (= expiry (:expiry fetched)))
@@ -215,7 +215,7 @@
                                                ["openid"] nil))))
         (testing "get-refresh-token returns the saved token data"
           (let [fetched (proto/get-refresh-token ts token)]
-            (is (= user-id (:user-id fetched)))
+            (is (= (str user-id) (:user-id fetched)))
             (is (= client-id (:client-id fetched)))
             (is (= ["openid"] (:scope fetched)))))))))
 
