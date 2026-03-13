@@ -2,6 +2,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { type ChangeEvent, useCallback, useState } from "react";
 import { t } from "ttag";
 
+import { color } from "metabase/lib/colors";
 import { MfaApi } from "metabase/services";
 import {
   Alert,
@@ -219,8 +220,22 @@ export const MfaSetup = ({
         <Text>
           {t`Scan this QR code with your authenticator app (such as Google Authenticator or Authy).`}
         </Text>
-        <Box style={{ display: "flex", justifyContent: "center" }}>
-          <QRCodeSVG value={setupData.otpauth_uri} size={200} />
+        <Box
+          style={{
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <Box
+            p="md"
+            style={{
+              backgroundColor: color("white"),
+              borderRadius: "var(--mantine-radius-sm)",
+              lineHeight: 0,
+            }}
+          >
+            <QRCodeSVG value={setupData.otpauth_uri} size={200} />
+          </Box>
         </Box>
         <Box>
           <Text fz="sm" c="text-secondary" mb="xs">
