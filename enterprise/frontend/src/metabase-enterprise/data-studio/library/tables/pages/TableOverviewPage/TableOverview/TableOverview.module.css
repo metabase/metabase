@@ -1,7 +1,3 @@
-.root {
-  overflow: auto;
-}
-
 .descriptionSection {
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
