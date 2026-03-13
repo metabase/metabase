@@ -6,12 +6,12 @@ import { useListCardsQuery } from "metabase/api";
 import { Flex, Stack } from "metabase/ui";
 import type { CardId } from "metabase-types/api";
 
-import S from "./MigratePersistedModelsPage.module.css";
+import S from "./MigrateModelsPage.module.css";
 import { ModelSidebar } from "./ModelSidebar";
 import { ModelTable } from "./ModelTable";
 import { PageHeader } from "./PageHeader";
 
-export function MigratePersistedModelsPage() {
+export function MigrateModelsPage() {
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();

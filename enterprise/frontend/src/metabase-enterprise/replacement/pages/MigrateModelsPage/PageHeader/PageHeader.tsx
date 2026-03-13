@@ -11,7 +11,7 @@ export function PageHeader() {
       breadcrumbs={
         <DataStudioBreadcrumbs>
           <Link to={Urls.transformList()}>{t`Transforms`}</Link>
-          {t`Migrate persisted models`}
+          {t`Migrate models`}
         </DataStudioBreadcrumbs>
       }
       py={0}
