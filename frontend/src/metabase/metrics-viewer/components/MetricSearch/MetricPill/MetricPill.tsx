@@ -34,7 +34,7 @@ type MetricPillProps = {
   selectedMetricIds: Set<number>;
   selectedMeasureIds: Set<number>;
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
-  onRemove: (metricId: number, sourceType: "metric" | "measure") => void;
+  onRemove: (metric: SelectedMetric) => void;
   onSetBreakout: (dimension: ProjectionClause | undefined) => void;
   onOpen?: () => void;
 };
@@ -147,7 +147,7 @@ export function MetricPill({
             fw={600}
             withRemoveButton
             onRemove={() => {
-              onRemove(metric.id, metric.sourceType);
+              onRemove(metric);
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -170,7 +170,11 @@ export function MetricPill({
                   <SourceColorIndicator
                     colors={colors}
                     fallbackIcon={
-                      metric.sourceType === "measure" ? "ruler" : "metric"
+                      metric.sourceType === "adhoc"
+                        ? "sum"
+                        : metric.sourceType === "measure"
+                          ? "ruler"
+                          : "metric"
                     }
                   />
                   <span>{metric.name}</span>
@@ -185,10 +189,11 @@ export function MetricPill({
             selectedMeasureIds={selectedMeasureIds}
             onSelect={handleSelect}
             onClose={handleClose}
-            excludeMetric={{
-              id: metric.id,
-              sourceType: metric.sourceType,
-            }}
+            excludeMetric={
+              metric.sourceType !== "adhoc"
+                ? { id: metric.id, sourceType: metric.sourceType }
+                : undefined
+            }
             showSearchInput
           />
         </Popover.Dropdown>
@@ -233,7 +238,7 @@ export function MetricPill({
               <Menu.Divider />
             </>
           )}
-          {hasDataStudioAccess && (
+          {hasDataStudioAccess && metric.sourceType !== "adhoc" && (
             <Menu.Item
               leftSection={<Icon name="pencil" />}
               rightSection={<Icon name="external" />}

@@ -16,6 +16,7 @@ import { FilterPopover } from "../FilterPopover";
 import type { DefinitionSource } from "../FilterPopover/FilterPopoverContent";
 import { MetricSearch } from "../MetricSearch";
 import { MetricsFilterPills } from "../MetricsFilterPills";
+import type { AdhocResult } from "../SummarizeTable";
 
 import S from "./MetricSearchPanel.module.css";
 
@@ -26,7 +27,7 @@ type MetricSearchPanelProps = {
   metricColors: SourceColorMap;
   definitions: MetricsViewerDefinitionEntry[];
   onAddMetric: (metric: SelectedMetric) => void;
-  onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
+  onRemoveMetric: (metric: SelectedMetric) => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onSetBreakout: (
     id: MetricSourceId,
@@ -36,6 +37,7 @@ type MetricSearchPanelProps = {
     id: MetricSourceId,
     definition: MetricDefinition,
   ) => void;
+  onAddAdhoc?: (result: AdhocResult) => void;
 };
 
 export function MetricSearchPanel({
@@ -49,6 +51,7 @@ export function MetricSearchPanel({
   onSwapMetric,
   onSetBreakout,
   onUpdateDefinition,
+  onAddAdhoc,
 }: MetricSearchPanelProps) {
   const [isFilterPillsExpanded, setIsFilterPillsExpanded] = useState(true);
 
@@ -136,6 +139,7 @@ export function MetricSearchPanel({
             onRemoveMetric={onRemoveMetric}
             onSwapMetric={onSwapMetric}
             onSetBreakout={onSetBreakout}
+            onAddAdhoc={onAddAdhoc}
           />
         </Box>
         {hasFilters && isFilterPillsExpanded && (

@@ -5,6 +5,10 @@
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.util.malli.registry :as mr]))
 
+(def ^:private uuid-a "550e8400-e29b-41d4-a716-446655440000")
+(def ^:private uuid-b "550e8400-e29b-41d4-a716-446655440001")
+(def ^:private uuid-c "550e8400-e29b-41d4-a716-446655440002")
+
 (deftest ^:parallel dimension-id-test
   (testing "dimension-id must be a valid UUID string"
     (are [id valid?] (= valid? (mr/validate ::lib-metric.schema/dimension-id id))
@@ -140,3 +144,135 @@
     (testing "wrong arity"
       (is (some? (me/humanize (mr/explain ::lib-metric.schema/dimension-reference
                                           [:dimension {} "550e8400-e29b-41d4-a716-446655440000" "extra"])))))))
+
+;;; -------------------------------------------------- Ad-hoc Schemas --------------------------------------------------
+
+(def ^:private sample-field-ref
+  [:field {:lib/uuid uuid-a :table-id 1} 42])
+
+(def ^:private sample-adhoc-dimension
+  {:id             uuid-a
+   :field-ref      sample-field-ref
+   :display-name   "Tax"
+   :effective-type :type/Float
+   :semantic-type  :type/Currency})
+
+(def ^:private sample-adhoc-definition
+  {:database-id 1
+   :table-id    10
+   :aggregation [:count {}]
+   :dimensions  [sample-adhoc-dimension]})
+
+(deftest ^:parallel adhoc-dimension-test
+  (testing "valid adhoc dimensions"
+    (are [dim] (nil? (me/humanize (mr/explain ::lib-metric.schema/adhoc-dimension dim)))
+      sample-adhoc-dimension
+      ;; minimal — only required fields
+      {:id        uuid-a
+       :field-ref sample-field-ref}
+      ;; optional fields explicitly nil
+      {:id             uuid-a
+       :field-ref      sample-field-ref
+       :display-name   nil
+       :effective-type nil
+       :semantic-type  nil}))
+  (testing "invalid adhoc dimensions"
+    (testing "missing id"
+      (is (some? (me/humanize (mr/explain ::lib-metric.schema/adhoc-dimension
+                                          {:field-ref sample-field-ref})))))
+    (testing "missing field-ref"
+      (is (some? (me/humanize (mr/explain ::lib-metric.schema/adhoc-dimension
+                                          {:id uuid-a})))))
+    (testing "invalid id (not UUID)"
+      (is (some? (me/humanize (mr/explain ::lib-metric.schema/adhoc-dimension
+                                          {:id "not-uuid" :field-ref sample-field-ref})))))))
+
+(deftest ^:parallel adhoc-definition-test
+  (testing "valid definitions"
+    (are [def-map] (nil? (me/humanize (mr/explain ::lib-metric.schema/adhoc-definition def-map)))
+      sample-adhoc-definition
+      ;; with filter
+      (assoc sample-adhoc-definition :filter [:= {} [:field {} 1] "foo"])
+      ;; empty dimensions
+      (assoc sample-adhoc-definition :dimensions [])
+      ;; aggregation with column
+      (assoc sample-adhoc-definition :aggregation [:sum {} [:field {:lib/uuid uuid-b :table-id 10} 5]])))
+  (testing "invalid definitions"
+    (testing "missing database-id"
+      (is (some? (me/humanize (mr/explain ::lib-metric.schema/adhoc-definition
+                                          (dissoc sample-adhoc-definition :database-id))))))
+    (testing "missing table-id"
+      (is (some? (me/humanize (mr/explain ::lib-metric.schema/adhoc-definition
+                                          (dissoc sample-adhoc-definition :table-id))))))
+    (testing "missing aggregation"
+      (is (some? (me/humanize (mr/explain ::lib-metric.schema/adhoc-definition
+                                          (dissoc sample-adhoc-definition :aggregation))))))
+    (testing "missing dimensions"
+      (is (some? (me/humanize (mr/explain ::lib-metric.schema/adhoc-definition
+                                          (dissoc sample-adhoc-definition :dimensions))))))))
+
+(deftest ^:parallel adhoc-expression-ref-test
+  (testing "valid adhoc expression refs"
+    (is (nil? (me/humanize (mr/explain ::lib-metric.schema/adhoc-expression-ref
+                                       [:adhoc {:lib/uuid uuid-a} sample-adhoc-definition])))))
+  (testing "invalid adhoc expression refs"
+    (testing "missing lib/uuid"
+      (is (some? (me/humanize (mr/explain ::lib-metric.schema/adhoc-expression-ref
+                                          [:adhoc {} sample-adhoc-definition])))))
+    (testing "wrong tag"
+      (is (some? (me/humanize (mr/explain ::lib-metric.schema/adhoc-expression-ref
+                                          [:metric {:lib/uuid uuid-a} sample-adhoc-definition])))))))
+
+(deftest ^:parallel expression-leaf-adhoc-test
+  (testing "adhoc refs are accepted by the expression-leaf union"
+    (is (nil? (me/humanize (mr/explain ::lib-metric.schema/expression-leaf
+                                       [:adhoc {:lib/uuid uuid-a} sample-adhoc-definition])))))
+  (testing "metric refs still validate"
+    (is (nil? (me/humanize (mr/explain ::lib-metric.schema/expression-leaf
+                                       [:metric {:lib/uuid uuid-a} 42])))))
+  (testing "measure refs still validate"
+    (is (nil? (me/humanize (mr/explain ::lib-metric.schema/expression-leaf
+                                       [:measure {:lib/uuid uuid-a} 99]))))))
+
+(deftest ^:parallel normalize-math-expression-adhoc-test
+  (testing "normalizes an adhoc leaf expression"
+    (let [raw     ["adhoc" {"lib/uuid" uuid-a}
+                   {:database-id 1 :table-id 10
+                    :aggregation [:count {}]
+                    :dimensions  [{:id        uuid-b
+                                   :field-ref [:field {"lib/uuid" uuid-c "table-id" 10} 42]
+                                   :effective-type "type/Integer"}]}]
+          result  (lib-metric.schema/normalize-math-expression raw)]
+      (is (= :adhoc (first result)))
+      (is (= uuid-a (get-in result [1 :lib/uuid])))
+      (is (= :type/Integer (get-in result [2 :dimensions 0 :effective-type])))))
+  (testing "adhoc leaf validates as metric-math-expression after normalization"
+    (is (mr/validate ::lib-metric.schema/metric-math-expression
+                     [:adhoc {:lib/uuid uuid-a} sample-adhoc-definition])))
+  (testing "arithmetic with adhoc + metric validates"
+    (is (mr/validate ::lib-metric.schema/metric-math-expression
+                     [:+ {}
+                      [:metric {:lib/uuid uuid-a} 1]
+                      [:adhoc {:lib/uuid uuid-b} sample-adhoc-definition]])))
+  (testing "arithmetic with adhoc + measure validates"
+    (is (mr/validate ::lib-metric.schema/metric-math-expression
+                     [:- {}
+                      [:measure {:lib/uuid uuid-a} 5]
+                      [:adhoc {:lib/uuid uuid-b} sample-adhoc-definition]]))))
+
+(deftest ^:parallel typed-projection-adhoc-test
+  (testing "adhoc typed projection with lib/uuid validates"
+    (is (nil? (me/humanize (mr/explain ::lib-metric.schema/typed-projection
+                                       {:type       :adhoc
+                                        :lib/uuid   uuid-a
+                                        :projection [[:dimension {} uuid-b]]})))))
+  (testing "metric typed projection still validates"
+    (is (nil? (me/humanize (mr/explain ::lib-metric.schema/typed-projection
+                                       {:type       :metric
+                                        :id         42
+                                        :projection [[:dimension {} uuid-a]]})))))
+  (testing "measure typed projection still validates"
+    (is (nil? (me/humanize (mr/explain ::lib-metric.schema/typed-projection
+                                       {:type       :measure
+                                        :id         99
+                                        :projection [[:dimension {} uuid-a]]}))))))

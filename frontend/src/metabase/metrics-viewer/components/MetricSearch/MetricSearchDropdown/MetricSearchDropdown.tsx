@@ -27,6 +27,7 @@ type MetricSearchDropdownProps = {
   excludeMetric?: ExcludeMetric;
   showSearchInput?: boolean;
   externalSearchText?: string;
+  onSummarizeTable?: () => void;
 };
 
 export function MetricSearchDropdown({
@@ -37,6 +38,7 @@ export function MetricSearchDropdown({
   excludeMetric,
   showSearchInput = false,
   externalSearchText,
+  onSummarizeTable,
 }: MetricSearchDropdownProps) {
   const [internalSearchText, setInternalSearchText] = useState("");
   const searchText = showSearchInput
@@ -122,6 +124,7 @@ export function MetricSearchDropdown({
             cursorIndex={cursorIndex}
             getRef={getRef}
             onSelectResult={handleSelectResult}
+            onSummarizeTable={onSummarizeTable}
           />
         </Box>
       </Flex>
@@ -135,6 +138,7 @@ export function MetricSearchDropdown({
       cursorIndex={cursorIndex}
       getRef={getRef}
       onSelectResult={handleSelectResult}
+      onSummarizeTable={onSummarizeTable}
     />
   );
 }

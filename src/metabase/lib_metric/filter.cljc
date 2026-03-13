@@ -82,10 +82,10 @@
   (let [provider    (:metadata-provider definition)
         expression  (:expression definition)
         leaf-type   (definition/expression-leaf-type expression)
-        leaf-id     (definition/expression-leaf-id expression)
         dimensions  (case leaf-type
-                      :metric  (dimension/dimensions-for-metric provider leaf-id)
-                      :measure (dimension/dimensions-for-measure provider leaf-id)
+                      :adhoc   []  ;; adhoc leaves don't support filtering yet
+                      :metric  (dimension/dimensions-for-metric provider (definition/expression-leaf-id expression))
+                      :measure (dimension/dimensions-for-measure provider (definition/expression-leaf-id expression))
                       [])
         inst-filters (definition/filters definition)
         flat-filters (perf/mapv :filter inst-filters)
@@ -103,11 +103,11 @@
   [definition source-instance]
   (let [provider      (:metadata-provider definition)
         leaf-type     (definition/expression-leaf-type source-instance)
-        leaf-id       (definition/expression-leaf-id source-instance)
         leaf-uuid     (definition/expression-leaf-uuid source-instance)
         dimensions    (case leaf-type
-                        :metric  (dimension/dimensions-for-metric provider leaf-id)
-                        :measure (dimension/dimensions-for-measure provider leaf-id)
+                        :adhoc   []  ;; adhoc leaves don't support filtering yet
+                        :metric  (dimension/dimensions-for-metric provider (definition/expression-leaf-id source-instance))
+                        :measure (dimension/dimensions-for-measure provider (definition/expression-leaf-id source-instance))
                         [])
         inst-filters  (filterv #(= (:lib/uuid %) leaf-uuid)
                                (definition/filters definition))
@@ -147,12 +147,14 @@
   (let [provider   (:metadata-provider definition)
         leaves     (definition/expression-leaves (:expression definition))]
     (perf/some (fn [leaf]
-                 (let [dims (case (definition/expression-leaf-type leaf)
-                              :metric  (dimension/dimensions-for-metric
-                                        provider (definition/expression-leaf-id leaf))
-                              :measure (dimension/dimensions-for-measure
-                                        provider (definition/expression-leaf-id leaf))
-                              [])]
+                 (let [leaf-type (definition/expression-leaf-type leaf)
+                       dims     (case leaf-type
+                                  :adhoc   []  ;; adhoc leaves don't support filtering yet
+                                  :metric  (dimension/dimensions-for-metric
+                                            provider (definition/expression-leaf-id leaf))
+                                  :measure (dimension/dimensions-for-measure
+                                            provider (definition/expression-leaf-id leaf))
+                                  [])]
                    (perf/some #(when (= (:id %) dimension-id) %) dims)))
                leaves)))
 

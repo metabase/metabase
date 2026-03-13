@@ -10,6 +10,10 @@ export function createMeasureSourceId(measureId: MeasureId): MetricSourceId {
   return `measure:${measureId}`;
 }
 
+export function createAdhocSourceId(uuid: string): MetricSourceId {
+  return `adhoc:${uuid}`;
+}
+
 export function createSourceId(
   id: number,
   sourceType: "metric" | "measure",
@@ -19,23 +23,45 @@ export function createSourceId(
     : createMeasureSourceId(id);
 }
 
-export function parseSourceId(sourceId: MetricSourceId): {
-  type: "metric" | "measure";
-  id: number;
-} {
-  const [type, idStr] = sourceId.split(":");
+export type ParsedSourceId =
+  | { type: "metric"; id: number }
+  | { type: "measure"; id: number }
+  | { type: "adhoc"; uuid: string };
+
+export function parseSourceId(sourceId: MetricSourceId): ParsedSourceId {
+  const colonIdx = sourceId.indexOf(":");
+  const type = sourceId.slice(0, colonIdx);
+  const rest = sourceId.slice(colonIdx + 1);
+
+  if (type === "adhoc") {
+    return { type: "adhoc", uuid: rest };
+  }
+
   if (type !== "metric" && type !== "measure") {
     throw new Error(`Invalid source ID format: ${sourceId}`);
   }
-  const id = Number(idStr);
+  const id = Number(rest);
   if (Number.isNaN(id)) {
     throw new Error(`Invalid source ID format: ${sourceId}`);
   }
   return { type, id };
 }
 
-export function getSourceIcon(sourceId: MetricSourceId): "metric" | "ruler" {
-  return parseSourceId(sourceId).type === "metric" ? "metric" : "ruler";
+export function isAdhocSourceId(sourceId: MetricSourceId): boolean {
+  return sourceId.startsWith("adhoc:");
+}
+
+export function getSourceIcon(
+  sourceId: MetricSourceId,
+): "metric" | "ruler" | "sum" {
+  const parsed = parseSourceId(sourceId);
+  if (parsed.type === "metric") {
+    return "metric";
+  }
+  if (parsed.type === "adhoc") {
+    return "sum";
+  }
+  return "ruler";
 }
 
 let syntheticCardIdCounter = -1;

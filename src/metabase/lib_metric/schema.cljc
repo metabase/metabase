@@ -8,7 +8,7 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some]]))
+   [metabase.util.performance :as perf :refer [some]]))
 
 (comment lib.schema.ref/keep-me)
 
@@ -222,9 +222,78 @@
     [:lib/uuid ::lib.schema.common/non-blank-string]]
    pos-int?])
 
+;;; ------------------------------------------------- Ad-hoc Aggregation -------------------------------------------------
+;;; Schemas for ad-hoc (inline) aggregation definitions that carry their own dimensions.
+
+(mr/def ::adhoc-dimension
+  "A dimension declared inline in an ad-hoc aggregation definition.
+   The frontend generates the UUID and field-ref from table metadata."
+  [:map
+   {:decode/normalize lib.schema.common/normalize-map}
+   [:id            ::dimension-id]
+   [:field-ref     [:ref :mbql.clause/field]]
+   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:display-name   {:optional true} [:maybe :string]]
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
+
+(mr/def ::adhoc-definition
+  "Inline definition for an ad-hoc aggregation.
+   Carries everything needed to build a query without referencing a persisted entity."
+  [:map
+   {:decode/normalize lib.schema.common/normalize-map}
+   [:database-id  pos-int?]
+   [:table-id     pos-int?]
+   [:aggregation  :any]
+   [:filter       {:optional true} [:maybe :any]]
+   [:dimensions   [:sequential ::adhoc-dimension]]])
+
+(defn- normalize-field-ref
+  "Normalize a field-ref clause: ensure opts map has normalized keys."
+  [field-ref]
+  (if (and (sequential? field-ref) (>= (count field-ref) 3))
+    (let [[tag opts & args] field-ref]
+      (into [(lib.schema.common/normalize-keyword tag)
+             (lib.schema.common/normalize-options-map (or opts {}))]
+            args))
+    field-ref))
+
+(defn- normalize-adhoc-dimension
+  "Normalize an adhoc dimension map, keywordizing type values."
+  [dim]
+  (cond-> dim
+    (string? (:effective-type dim))  (update :effective-type lib.schema.common/normalize-keyword)
+    (string? (:semantic-type dim))   (update :semantic-type lib.schema.common/normalize-keyword)
+    (:field-ref dim)                 (update :field-ref normalize-field-ref)))
+
+(defn- normalize-adhoc-definition
+  "Normalize the inline definition map inside an adhoc expression ref."
+  [definition]
+  (cond-> definition
+    (:dimensions definition) (update :dimensions #(perf/mapv normalize-adhoc-dimension %))))
+
+(defn- normalize-adhoc-ref
+  "Normalize an adhoc expression ref from API format."
+  [x]
+  (when (and (sequential? x)
+             (= 3 (count x)))
+    (let [[t opts definition] x]
+      (when (or (= t "adhoc") (= t :adhoc))
+        [:adhoc
+         (lib.schema.common/normalize-options-map (or opts {}))
+         (normalize-adhoc-definition definition)]))))
+
+(mr/def ::adhoc-expression-ref
+  "An ad-hoc aggregation reference in an expression: [:adhoc {:lib/uuid uuid} definition-map]."
+  [:tuple
+   {:decode/normalize normalize-adhoc-ref}
+   [:= {:decode/normalize lib.schema.common/normalize-keyword} :adhoc]
+   [:map {:decode/normalize lib.schema.common/normalize-options-map}
+    [:lib/uuid ::lib.schema.common/non-blank-string]]
+   ::adhoc-definition])
+
 (mr/def ::expression-leaf
-  "A leaf node in a metric math expression: either a metric or measure reference."
-  [:or ::metric-expression-ref ::measure-expression-ref])
+  "A leaf node in a metric math expression: a metric, measure, or ad-hoc aggregation reference."
+  [:or ::metric-expression-ref ::measure-expression-ref ::adhoc-expression-ref])
 
 (mr/def ::arithmetic-operator
   "Arithmetic operators for metric math."
@@ -238,18 +307,24 @@
   (cond
     (number? x) x
     (sequential? x)
-    (let [[first-el] x]
-      (if (and (>= (count x) 3)
-               (let [tag (lib.schema.common/normalize-keyword first-el)]
-                 (or (= tag :metric) (= tag :measure))))
-        ;; It's a leaf ref - normalize it
-        ((normalize-expression-ref (lib.schema.common/normalize-keyword first-el)) x)
-        ;; It's an arithmetic expression: [op opts & exprs]
-        (when (>= (count x) 4)
-          (let [[op opts & exprs] x]
-            (into [(lib.schema.common/normalize-keyword op)
-                   (lib.schema.common/normalize-options-map (or opts {}))]
-                  (map normalize-math-expression exprs))))))
+    (let [[first-el] x
+          tag (lib.schema.common/normalize-keyword first-el)]
+      (cond
+        ;; Metric or measure leaf ref
+        (and (>= (count x) 3)
+             (or (= tag :metric) (= tag :measure)))
+        ((normalize-expression-ref tag) x)
+
+        ;; Ad-hoc leaf ref
+        (and (= (count x) 3) (= tag :adhoc))
+        (normalize-adhoc-ref x)
+
+        ;; Arithmetic expression: [op opts & exprs]
+        (>= (count x) 4)
+        (let [[op opts & exprs] x]
+          (into [(lib.schema.common/normalize-keyword op)
+                 (lib.schema.common/normalize-options-map (or opts {}))]
+                (map normalize-math-expression exprs)))))
     :else nil))
 
 (mr/def ::metric-math-expression
@@ -288,11 +363,12 @@
 ;;; Projections keyed by source type and ID.
 
 (mr/def ::typed-projection
-  "A projection associated with a specific source type and ID."
+  "A projection associated with a specific source type and ID (or lib/uuid for adhoc)."
   [:map
    {:decode/normalize lib.schema.common/normalize-map}
-   [:type       [:enum {:decode/normalize lib.schema.common/normalize-keyword} :metric :measure]]
-   [:id         pos-int?]
+   [:type       [:enum {:decode/normalize lib.schema.common/normalize-keyword} :metric :measure :adhoc]]
+   [:id         {:optional true} [:maybe pos-int?]]
+   [:lib/uuid   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:projection [:sequential ::dimension-reference]]])
 
 (mr/def ::typed-projections
@@ -352,8 +428,8 @@
 ;;; fetchable through the MetricContextMetadataProvider.
 
 (mr/def ::dimension-source-type
-  "Source type indicating whether a dimension comes from a metric or measure."
-  [:enum :metric :measure])
+  "Source type indicating whether a dimension comes from a metric, measure, or adhoc aggregation."
+  [:enum :metric :measure :adhoc])
 
 (mr/def ::metadata-dimension
   "Schema for dimension metadata fetchable via metadata provider.
@@ -373,7 +449,7 @@
    [:group            {:optional true} [:maybe ::dimension-group]]
    ;; Source tracking
    [:source-type      ::dimension-source-type]
-   [:source-id        pos-int?]
+   [:source-id        [:or pos-int? ::lib.schema.common/non-blank-string]]
    ;; Optional mapping for field resolution
    [:dimension-mapping {:optional true} [:maybe ::dimension-mapping]]])
 

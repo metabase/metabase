@@ -194,7 +194,13 @@ function buildArithmeticRequest(
         measureId,
       ]);
     } else {
-      return null;
+      // Adhoc leaf: the expression from toJsDefinition is the full
+      // ["adhoc", {"lib/uuid": ...}, definition] ref
+      const jsdef = toJsDefinition(req.modifiedDefinition);
+      if (!jsdef.expression) {
+        return null;
+      }
+      leafRefs.set(token.metricIndex, jsdef.expression);
     }
 
     const jsdef = toJsDefinition(req.modifiedDefinition);

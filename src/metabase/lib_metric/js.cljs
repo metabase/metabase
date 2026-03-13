@@ -276,9 +276,11 @@
             ;; Normalize typed projections
             raw-projections (or (:projections definition) [])
             norm-projections (mapv (fn [tp]
-                                     {:type       (keyword (:type tp))
-                                      :id         (:id tp)
-                                      :projection (into [] (keep lib-metric.schema/normalize-dimension-ref) (:projection tp))})
+                                     (let [tp-type (keyword (:type tp))]
+                                       (cond-> {:type       tp-type
+                                                :projection (into [] (keep lib-metric.schema/normalize-dimension-ref) (:projection tp))}
+                                         (= :adhoc tp-type) (assoc :lib/uuid (:lib/uuid tp))
+                                         (not= :adhoc tp-type) (assoc :id (:id tp)))))
                                    raw-projections)]
         {:lib/type          :metric/definition
          :expression        norm-expression
@@ -329,10 +331,12 @@
 
 (defn- typed-projection->js
   "Convert a typed-projection map to JS."
-  [{:keys [type id projection]}]
+  [{:keys [type id projection] :as tp}]
   (let [obj #js {}]
     (gobject/set obj "type" (name type))
-    (gobject/set obj "id" id)
+    (if (= :adhoc type)
+      (gobject/set obj "lib/uuid" (:lib/uuid tp))
+      (gobject/set obj "id" id))
     (gobject/set obj "projection" (to-array (map expression->js projection)))
     obj))
 

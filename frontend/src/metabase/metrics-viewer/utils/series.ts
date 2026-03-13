@@ -110,16 +110,13 @@ export function buildArithmeticSeriesFromResult(
   ];
 }
 
-function getDefinitionCardId(def: MetricDefinition): number | null {
+function getDefinitionCardId(def: MetricDefinition): number {
   const metricId = LibMetric.sourceMetricId(def);
   if (metricId != null) {
     return metricId;
   }
-  const measureId = LibMetric.sourceMeasureId(def);
-  if (measureId != null) {
-    return nextSyntheticCardId();
-  }
-  return null;
+  // Measures and adhoc definitions use synthetic card IDs.
+  return nextSyntheticCardId();
 }
 
 /**
@@ -140,7 +137,8 @@ export function computeSourceColors(
     if (!entry.definition) {
       continue;
     }
-    const displayName = getDefinitionName(entry.definition);
+    const displayName =
+      entry.displayName ?? getDefinitionName(entry.definition);
     if (!displayName) {
       continue;
     }
@@ -342,11 +340,8 @@ export function buildRawSeriesFromDefinitions(
     }
 
     const cardId = getDefinitionCardId(entry.definition);
-    if (cardId == null) {
-      return [];
-    }
 
-    const name = getDefinitionName(entry.definition);
+    const name = entry.displayName ?? getDefinitionName(entry.definition);
 
     const seriesKey = getSeriesVizSettingsKey(
       result.data.cols[1], // metric API returns [projection_cols..., aggregation_col]
@@ -532,20 +527,44 @@ export function getSelectedMetricsInfo(
   return definitions.flatMap((entry): SelectedMetric[] => {
     const { definition } = entry;
     const isLoading = loadingIds.has(entry.id);
+    const parsed = parseSourceId(entry.id);
 
     if (!definition) {
-      const parsed = parseSourceId(entry.id);
+      if (parsed.type === "adhoc") {
+        return [
+          {
+            id: 0,
+            sourceType: "adhoc",
+            adhocUuid: parsed.uuid,
+            name: entry.displayName ?? null,
+            isLoading,
+          },
+        ];
+      }
       return [
         {
           id: parsed.id,
           sourceType: parsed.type,
-          name: null,
+          name: entry.displayName ?? null,
           isLoading,
         },
       ];
     }
 
-    const name = getDefinitionName(definition) ?? entry.id;
+    const name = entry.displayName ?? getDefinitionName(definition) ?? entry.id;
+
+    if (parsed.type === "adhoc") {
+      return [
+        {
+          id: 0,
+          sourceType: "adhoc",
+          adhocUuid: parsed.uuid,
+          name,
+          isLoading,
+        },
+      ];
+    }
+
     const metricId = LibMetric.sourceMetricId(definition);
     if (metricId != null) {
       return [

@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Box, Flex, Stack } from "metabase/ui";
 
@@ -13,6 +13,7 @@ import {
   MetricsViewerTabContent,
   MetricsViewerTabs,
 } from "../../components/MetricsViewerTabs";
+import type { AdhocResult } from "../../components/SummarizeTable";
 import { useMetricsViewer } from "../../hooks/use-metrics-viewer";
 import type { ExpressionToken } from "../../types/operators";
 
@@ -43,6 +44,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     expressionItems,
     standaloneSourceIds,
     addMetric,
+    addAdhocMetric,
     swapMetric,
     removeMetric,
     changeTab,
@@ -54,6 +56,34 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
     updateDefinition,
     setBreakoutDimension,
   } = useMetricsViewer(props, tokens, setTokens);
+
+  const handleAddAdhoc = useCallback(
+    (result: AdhocResult) => {
+      addAdhocMetric({
+        uuid: result.uuid,
+        databaseId: result.databaseId,
+        tableId: result.tableId,
+        tableName: result.tableName,
+        aggregationOperator: result.aggregationOperator,
+        column: result.column,
+        displayName: result.displayName,
+      });
+
+      // Append a token so the adhoc metric appears in the text box / as a pill.
+      // The new metric will be appended to selectedMetrics at this index.
+      const newIndex = selectedMetrics.length;
+      const metricToken: ExpressionToken = {
+        type: "metric",
+        metricIndex: newIndex,
+      };
+      setTokens((prev) =>
+        prev.length > 0
+          ? [...prev, { type: "separator" as const }, metricToken]
+          : [metricToken],
+      );
+    },
+    [addAdhocMetric, selectedMetrics.length, setTokens],
+  );
 
   const hasDefinitions = definitions.length > 0;
   const hasLoadedDefinitions = definitions.some(
@@ -74,6 +104,7 @@ export function MetricsViewerPage(props: MetricsViewerPageProps) {
           onSwapMetric={swapMetric}
           onSetBreakout={setBreakoutDimension}
           onUpdateDefinition={updateDefinition}
+          onAddAdhoc={handleAddAdhoc}
         />
       </Box>
       <Flex flex="1 1 auto" mih={0}>

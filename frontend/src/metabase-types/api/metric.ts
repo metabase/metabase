@@ -23,20 +23,43 @@ export type Metric = {
   result_column_name?: string;
 };
 
+export type AdhocDimension = {
+  id: string;
+  "field-ref": unknown;
+  "display-name": string;
+  "effective-type": string;
+  "semantic-type"?: string;
+};
+
+export type AdhocLeafDefinition = {
+  "database-id": number;
+  "table-id": number;
+  aggregation: unknown;
+  dimensions: AdhocDimension[];
+  filter?: unknown;
+};
+
 export type ExpressionRef =
   | ["metric", { "lib/uuid": string }, number]
-  | ["measure", { "lib/uuid": string }, number];
+  | ["measure", { "lib/uuid": string }, number]
+  | ["adhoc", { "lib/uuid": string }, AdhocLeafDefinition];
 
 export type InstanceFilter = {
   "lib/uuid": string;
   filter: unknown;
 };
 
-export type TypedProjection = {
-  type: "metric" | "measure";
-  id: number;
-  projection: unknown[];
-};
+export type TypedProjection =
+  | {
+      type: "metric" | "measure";
+      id: number;
+      projection: unknown[];
+    }
+  | {
+      type: "adhoc";
+      "lib/uuid": string;
+      projection: unknown[];
+    };
 
 export type JsMetricDefinition = {
   expression: ExpressionRef | unknown[];

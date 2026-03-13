@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-import { measureApi, metricApi } from "metabase/api";
+import { measureApi, metricApi, tableApi } from "metabase/api";
 import { getObjectEntries, objectFromEntries } from "metabase/lib/objects";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -22,8 +22,11 @@ import type {
   StoredMetricsViewerTab,
 } from "../types/viewer-state";
 import { getInitialMetricsViewerPageState } from "../types/viewer-state";
+import type { AdhocConfig } from "../utils/adhoc-definition";
+import { buildAdhocMetricDefinition } from "../utils/adhoc-definition";
 import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
 import {
+  createAdhocSourceId,
   createMeasureSourceId,
   createMetricSourceId,
 } from "../utils/source-ids";
@@ -167,6 +170,7 @@ export interface UseViewerStateResult {
     oldSourceId: MetricSourceId,
     measureId: MeasureId,
   ) => void;
+  addAdhocDefinition: (config: AdhocConfig) => void;
 }
 
 export function useViewerState(): UseViewerStateResult {
@@ -451,6 +455,7 @@ export function useViewerState(): UseViewerStateResult {
       id: MetricSourceId,
       loader: () => Promise<MetricDefinition>,
       transform?: (def: MetricDefinition) => MetricDefinition,
+      displayName?: string,
     ) => {
       if (loadingRef.current.has(id)) {
         return;
@@ -458,7 +463,7 @@ export function useViewerState(): UseViewerStateResult {
 
       loadingRef.current.add(id);
       setLoadingIds((prev) => new Set(prev).add(id));
-      addDefinition({ id, definition: null });
+      addDefinition({ id, definition: null, displayName });
 
       try {
         const rawDefinition = await loader();
@@ -563,6 +568,26 @@ export function useViewerState(): UseViewerStateResult {
     [loadAndReplace, dispatch, store],
   );
 
+  const addAdhocDefinition = useCallback(
+    (config: AdhocConfig) => {
+      const sourceId = createAdhocSourceId(config.uuid);
+      const loader = async () => {
+        const result = await dispatch(
+          tableApi.endpoints.getTableQueryMetadata.initiate({
+            id: config.tableId,
+          }),
+        );
+        const fields = result.data?.fields ?? [];
+        const provider = LibMetric.metadataProvider(
+          getMetadata(store.getState()),
+        );
+        return buildAdhocMetricDefinition(config, fields, provider);
+      };
+      loadDefinition(sourceId, loader, undefined, config.displayName);
+    },
+    [dispatch, store, loadDefinition],
+  );
+
   return {
     state,
     loadingIds,
@@ -583,5 +608,6 @@ export function useViewerState(): UseViewerStateResult {
     loadAndAddMeasure,
     loadAndReplaceMetric,
     loadAndReplaceMeasure,
+    addAdhocDefinition,
   };
 }

@@ -327,11 +327,11 @@
 ;;; -------------------- Main Construction --------------------
 
 (defn expression-leaf?
-  "Returns true if the expression is a single leaf node ([:metric opts id] or [:measure opts id])."
+  "Returns true if the expression is a single leaf node ([:metric opts id], [:measure opts id], or [:adhoc opts def])."
   [expression]
   (and (sequential? expression)
        (= 3 (count expression))
-       (#{:metric :measure} (first expression))))
+       (#{:metric :measure :adhoc} (first expression))))
 
 (defn arithmetic-expression?
   "Returns true if the expression is an arithmetic node [op opts expr expr ...]."
@@ -341,22 +341,96 @@
        (operators/arithmetic? (first expression))))
 
 (defn expression-leaf-type
-  "Returns :metric or :measure from an expression leaf."
+  "Returns :metric, :measure, or :adhoc from an expression leaf."
   [expression]
   (when (expression-leaf? expression)
     (first expression)))
 
 (defn expression-leaf-id
-  "Returns the source ID from an expression leaf."
+  "Returns the source ID from an expression leaf.
+   Throws if called on an :adhoc leaf — use [[expression-leaf-definition]] instead."
   [expression]
   (when (expression-leaf? expression)
-    (nth expression 2)))
+    (let [leaf-type (first expression)]
+      (when (= :adhoc leaf-type)
+        (throw (ex-info "expression-leaf-id called on :adhoc leaf; adhoc leaves have no persisted ID"
+                        {:expression expression})))
+      (nth expression 2))))
 
 (defn expression-leaf-uuid
   "Returns the :lib/uuid from an expression leaf."
   [expression]
   (when (expression-leaf? expression)
     (get (second expression) :lib/uuid)))
+
+(defn expression-leaf-definition
+  "Returns the inline definition map from an :adhoc expression leaf, or nil for other leaf types."
+  [expression]
+  (when (and (expression-leaf? expression)
+             (= :adhoc (first expression)))
+    (nth expression 2)))
+
+(defn- adhoc-dimension->dimension-node
+  "Convert an adhoc dimension declaration to a dimension AST node."
+  [{:keys [id display-name effective-type semantic-type]}]
+  (cond-> {:node/type :ast/dimension
+           :id        id}
+    display-name   (assoc :display-name display-name)
+    effective-type (assoc :effective-type effective-type)
+    semantic-type  (assoc :semantic-type semantic-type)
+    true           (assoc :status :status/active)))
+
+(defn- adhoc-dimension->mapping-node
+  "Convert an adhoc dimension declaration to a dimension mapping AST node."
+  [{:keys [id field-ref]}]
+  (let [[_field opts field-id] field-ref
+        source-field (:source-field opts)
+        table-id     (:table-id opts)]
+    {:node/type    :ast/dimension-mapping
+     :dimension-id id
+     :table-id     table-id
+     :column       (cond-> (column-node field-id nil table-id)
+                     source-field (assoc :source-field source-field))}))
+
+(defn- build-adhoc-leaf-ast
+  "Build a complete single-source AST for an ad-hoc aggregation leaf.
+   Unlike metric/measure leaves, the definition is inline — no metadata fetch needed."
+  [adhoc-def leaf-uuid _metadata-provider filters projections]
+  (let [{:keys [database-id table-id aggregation dimensions]} adhoc-def
+        baked-filter   (:filter adhoc-def)
+        ;; Parse aggregation clause
+        agg-node       (mbql-aggregation->node aggregation)
+        ;; Build source node directly (no pMBQL parsing needed)
+        source-node    (cond-> {:node/type   :source/adhoc
+                                :id          leaf-uuid
+                                :name        nil
+                                :aggregation (or agg-node {:node/type :aggregation/count})
+                                :base-table  (table-node table-id)
+                                :metadata    {:database-id database-id
+                                              :table-id    table-id
+                                              :definition  {:database database-id}}}
+                         baked-filter (assoc :filters (mbql-clause->filter-mbql-node baked-filter)))
+        ;; Convert inline dimensions to AST nodes
+        dim-nodes      (perf/mapv adhoc-dimension->dimension-node (or dimensions []))
+        mapping-nodes  (perf/mapv adhoc-dimension->mapping-node (or dimensions []))
+        ;; Extract instance-filters for this leaf's UUID
+        leaf-filters   (into []
+                             (comp (filter #(= leaf-uuid (:lib/uuid %)))
+                                   (map :filter))
+                             (or filters []))
+        ;; Extract projections for this adhoc leaf (keyed by :type :adhoc, :lib/uuid)
+        leaf-projections (perf/some #(when (and (= :adhoc (:type %)) (= leaf-uuid (:lib/uuid %)))
+                                       (:projection %))
+                                    (or projections []))
+        ;; Convert to AST nodes
+        ast-filter     (when (seq leaf-filters) (mbql-filters->ast-filter leaf-filters))
+        ast-group-by   (when (seq leaf-projections) (perf/mapv dimension-ref->ast-dimension-ref leaf-projections))]
+    {:node/type         :ast/source-query
+     :source            source-node
+     :dimensions        dim-nodes
+     :mappings          mapping-nodes
+     :filter            ast-filter
+     :group-by          (or ast-group-by [])}))
 
 (defn- build-leaf-ast
   "Build a complete single-source AST for one expression leaf.
@@ -401,7 +475,7 @@
 (defn- build-expression-ast
   "Recursively build expression AST from a metric-math expression tree.
    For numeric constants, produces :expression/constant.
-   For leaves, calls build-leaf-ast and wraps in :expression/leaf.
+   For leaves, calls build-leaf-ast (or build-adhoc-leaf-ast) and wraps in :expression/leaf.
    For arithmetic, recursively builds children and wraps in :expression/arithmetic."
   [expression metadata-provider filters projections]
   (cond
@@ -410,9 +484,12 @@
 
     (expression-leaf-type expression)
     (let [leaf-type (expression-leaf-type expression)
-          leaf-id   (expression-leaf-id expression)
           leaf-uuid (expression-leaf-uuid expression)
-          sub-ast   (build-leaf-ast leaf-type leaf-id leaf-uuid metadata-provider filters projections)]
+          sub-ast   (if (= :adhoc leaf-type)
+                      (build-adhoc-leaf-ast (expression-leaf-definition expression)
+                                            leaf-uuid metadata-provider filters projections)
+                      (let [leaf-id (expression-leaf-id expression)]
+                        (build-leaf-ast leaf-type leaf-id leaf-uuid metadata-provider filters projections)))]
       {:node/type :expression/leaf
        :uuid      leaf-uuid
        :ast       sub-ast})

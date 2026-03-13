@@ -242,9 +242,22 @@
   "Measure source - contains the measure's definition as AST."
   (source-node-schema :source/measure))
 
+(mr/def ::source-adhoc
+  "Ad-hoc aggregation source - inline definition, no persisted entity.
+   Uses the leaf UUID as :id to ensure uniqueness across multiple adhoc leaves."
+  [:map
+   [:node/type [:= :source/adhoc]]
+   [:id string?]
+   [:name {:optional true} [:maybe string?]]
+   [:aggregation ::aggregation-node]
+   [:base-table ::table-node]
+   [:metadata {:optional true} [:maybe :map]]
+   [:joins {:optional true} [:maybe [:sequential ::join-node]]]
+   [:filters {:optional true} [:maybe [:ref ::filter-node]]]])
+
 (mr/def ::source-node
   "Union of source node types."
-  [:or ::source-metric ::source-measure])
+  [:or ::source-metric ::source-measure ::source-adhoc])
 
 ;;; -------------------- Expression Nodes --------------------
 

@@ -157,6 +157,8 @@
      (perf/get-in metadata [:dataset-query :database])
      ;; From measure definition
      (perf/get-in metadata [:definition :database])
+     ;; From adhoc definition (stored directly)
+     (:database-id metadata)
      (throw (ex-info "Cannot determine database ID for metric source"
                      {:source-metadata metadata})))))
 

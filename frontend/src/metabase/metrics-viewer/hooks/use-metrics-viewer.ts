@@ -19,6 +19,7 @@ import type {
   SelectedMetric,
   SourceColorMap,
 } from "../types/viewer-state";
+import type { AdhocConfig } from "../utils/adhoc-definition";
 import {
   applyProjection,
   buildBinnedBreakoutDefinition,
@@ -38,6 +39,7 @@ import type {
 import { getAvailableDimensionsForPicker } from "../utils/dimension-picker";
 import { computeSourceColors, getSelectedMetricsInfo } from "../utils/series";
 import {
+  createAdhocSourceId,
   createMeasureSourceId,
   createMetricSourceId,
   createSourceId,
@@ -89,8 +91,9 @@ export interface UseMetricsViewerResult {
   availableDimensions: AvailableDimensionsResult;
 
   addMetric: (metric: SelectedMetric) => void;
+  addAdhocMetric: (config: AdhocConfig) => void;
   swapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
-  removeMetric: (id: number, sourceType: "metric" | "measure") => void;
+  removeMetric: (metric: SelectedMetric) => void;
   changeTab: (tabId: string) => void;
   addAndSelectTab: (dimensionId: string) => void;
   removeTab: (tabId: string) => void;
@@ -190,6 +193,7 @@ export function useMetricsViewer(
     loadAndAddMeasure,
     loadAndReplaceMetric,
     loadAndReplaceMeasure,
+    addAdhocDefinition,
   } = useViewerState();
 
   const handleLoadSources = useCallback(
@@ -285,13 +289,15 @@ export function useMetricsViewer(
       if (!definition) {
         continue;
       }
-      const name = getDefinitionName(definition);
+      const name = entry.displayName ?? getDefinitionName(definition);
       if (!name) {
         continue;
       }
       if (LibMetric.sourceMetricId(definition) != null) {
         result[entry.id] = { type: "metric", name };
       } else if (LibMetric.sourceMeasureId(definition) != null) {
+        result[entry.id] = { type: "measure", name };
+      } else if (entry.id.startsWith("adhoc:")) {
         result[entry.id] = { type: "measure", name };
       }
     }
@@ -344,6 +350,10 @@ export function useMetricsViewer(
 
   const addMetric = useCallback(
     (metric: SelectedMetric) => {
+      if (metric.sourceType === "adhoc") {
+        return; // adhoc metrics are added via addAdhocMetric
+      }
+
       const sourceId = createSourceId(metric.id, metric.sourceType);
 
       if (state.definitions.some((entry) => entry.id === sourceId)) {
@@ -359,13 +369,34 @@ export function useMetricsViewer(
     [state.definitions, loadAndAddMetric, loadAndAddMeasure],
   );
 
+  const addAdhocMetric = useCallback(
+    (config: AdhocConfig) => {
+      const sourceId = createAdhocSourceId(config.uuid);
+      if (state.definitions.some((entry) => entry.id === sourceId)) {
+        return;
+      }
+      addAdhocDefinition(config);
+    },
+    [state.definitions, addAdhocDefinition],
+  );
+
   const swapMetric = useCallback(
     (oldMetric: SelectedMetric, newMetric: SelectedMetric) => {
-      const oldSourceId = createSourceId(oldMetric.id, oldMetric.sourceType);
+      let oldSourceId: MetricSourceId;
+      if (oldMetric.sourceType === "adhoc" && oldMetric.adhocUuid) {
+        oldSourceId = createAdhocSourceId(oldMetric.adhocUuid);
+      } else if (
+        oldMetric.sourceType === "metric" ||
+        oldMetric.sourceType === "measure"
+      ) {
+        oldSourceId = createSourceId(oldMetric.id, oldMetric.sourceType);
+      } else {
+        return;
+      }
 
       if (newMetric.sourceType === "metric") {
         loadAndReplaceMetric(oldSourceId, newMetric.id);
-      } else {
+      } else if (newMetric.sourceType === "measure") {
         loadAndReplaceMeasure(oldSourceId, newMetric.id);
       }
     },
@@ -373,8 +404,15 @@ export function useMetricsViewer(
   );
 
   const removeMetric = useCallback(
-    (id: number, sourceType: "metric" | "measure") => {
-      removeDefinition(createSourceId(id, sourceType));
+    (metric: SelectedMetric) => {
+      if (metric.sourceType === "adhoc" && metric.adhocUuid) {
+        removeDefinition(createAdhocSourceId(metric.adhocUuid));
+      } else if (
+        metric.sourceType === "metric" ||
+        metric.sourceType === "measure"
+      ) {
+        removeDefinition(createSourceId(metric.id, metric.sourceType));
+      }
     },
     [removeDefinition],
   );
@@ -429,6 +467,7 @@ export function useMetricsViewer(
     availableDimensions,
 
     addMetric,
+    addAdhocMetric,
     swapMetric,
     removeMetric,
     changeTab,

@@ -12,9 +12,12 @@ import type {
   SourceColorMap,
 } from "../../../types/viewer-state";
 import {
+  createAdhocSourceId,
   createMeasureSourceId,
   createMetricSourceId,
 } from "../../../utils/source-ids";
+import type { AdhocResult } from "../../SummarizeTable";
+import { SummarizeTableDialog } from "../../SummarizeTable";
 import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
 import { MetricSearchDropdown } from "../MetricSearchDropdown";
@@ -43,12 +46,13 @@ type MetricSearchInputProps = {
   metricColors: SourceColorMap;
   definitions: MetricsViewerDefinitionEntry[];
   onAddMetric: (metric: SelectedMetric) => void;
-  onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
+  onRemoveMetric: (metric: SelectedMetric) => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onSetBreakout: (
     id: MetricSourceId,
     dimension: ProjectionClause | undefined,
   ) => void;
+  onAddAdhoc?: (result: AdhocResult) => void;
 };
 
 export function MetricSearchInput({
@@ -61,6 +65,7 @@ export function MetricSearchInput({
   onRemoveMetric,
   onSwapMetric,
   onSetBreakout,
+  onAddAdhoc,
 }: MetricSearchInputProps) {
   // editText is the full expression as plain text — only meaningful while focused
   const [editText, setEditText] = useState("");
@@ -68,6 +73,7 @@ export function MetricSearchInput({
   const [currentWord, setCurrentWord] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [showSummarizeDialog, setShowSummarizeDialog] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingFocusRef = useRef(false);
@@ -193,7 +199,7 @@ export function MetricSearchInput({
         );
         const metric = selectedMetricsRef.current[removeIdx];
         if (metric) {
-          onRemoveMetric(metric.id, metric.sourceType);
+          onRemoveMetric(metric);
         }
       }
 
@@ -328,13 +334,26 @@ export function MetricSearchInput({
         );
         const metric = selectedMetrics[removeIdx];
         if (metric) {
-          onRemoveMetric(metric.id, metric.sourceType);
+          onRemoveMetric(metric);
         }
       }
 
       onTokensChange(newTokens);
     },
     [tokens, selectedMetrics, onRemoveMetric, onTokensChange],
+  );
+
+  const handleSummarizeTable = useCallback(() => {
+    setIsOpen(false);
+    setShowSummarizeDialog(true);
+  }, []);
+
+  const handleAddAdhoc = useCallback(
+    (result: AdhocResult) => {
+      onAddAdhoc?.(result);
+      setShowSummarizeDialog(false);
+    },
+    [onAddAdhoc],
   );
 
   const handleContainerClick = useCallback(() => {
@@ -361,138 +380,153 @@ export function MetricSearchInput({
   const isCollapsed = !isFocused && tokens.length > 0;
 
   return (
-    <Flex
-      className={S.inputWrapper}
-      bg="background-secondary"
-      align="center"
-      gap="sm"
-      px="sm"
-      py="xs"
-      onClick={handleContainerClick}
-    >
-      <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.375rem">
-        {isCollapsed ? (
-          // Unfocused: each item rendered as MetricPill or MetricExpressionPill
-          <>
-            {items.map((itemTokens, itemIndex) => {
-              const isSingleMetric =
-                itemTokens.length === 1 && itemTokens[0].type === "metric";
+    <>
+      <Flex
+        className={S.inputWrapper}
+        bg="background-secondary"
+        align="center"
+        gap="sm"
+        px="sm"
+        py="xs"
+        onClick={handleContainerClick}
+      >
+        <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2.375rem">
+          {isCollapsed ? (
+            // Unfocused: each item rendered as MetricPill or MetricExpressionPill
+            <>
+              {items.map((itemTokens, itemIndex) => {
+                const isSingleMetric =
+                  itemTokens.length === 1 && itemTokens[0].type === "metric";
 
-              const pill = isSingleMetric
-                ? (() => {
-                    const token = itemTokens[0];
-                    if (token.type !== "metric") {
-                      return null;
-                    }
-                    const metric = selectedMetrics[token.metricIndex];
-                    if (!metric) {
-                      return null;
-                    }
-                    const sid =
-                      metric.sourceType === "metric"
-                        ? createMetricSourceId(metric.id)
-                        : createMeasureSourceId(metric.id);
-                    const entry = definitionsBySourceId.get(sid);
-                    if (!entry) {
-                      return null;
-                    }
-                    return (
-                      <MetricPill
-                        metric={metric}
-                        colors={metricColors[sid]}
-                        definitionEntry={entry}
-                        selectedMetricIds={selectedMetricIds}
-                        selectedMeasureIds={selectedMeasureIds}
-                        onSwap={onSwapMetric}
-                        onRemove={(_id, _sourceType) =>
-                          handleRemoveItem(itemIndex)
-                        }
-                        onSetBreakout={(dimension) =>
-                          onSetBreakout(sid, dimension)
-                        }
-                      />
-                    );
-                  })()
-                : (() => {
-                    // Use the first color of the first metric as the single
-                    // series color (the expression result is one chart series)
-                    const firstMetricToken = itemTokens.find(
-                      (t): t is { type: "metric"; metricIndex: number } =>
-                        t.type === "metric",
-                    );
-                    const firstMetric =
-                      firstMetricToken !== undefined
-                        ? selectedMetrics[firstMetricToken.metricIndex]
-                        : undefined;
-                    const expressionColor =
-                      firstMetric !== undefined
-                        ? metricColors[
-                            firstMetric.sourceType === "metric"
-                              ? createMetricSourceId(firstMetric.id)
-                              : createMeasureSourceId(firstMetric.id)
-                          ]?.[0]
-                        : undefined;
+                const pill = isSingleMetric
+                  ? (() => {
+                      const token = itemTokens[0];
+                      if (token.type !== "metric") {
+                        return null;
+                      }
+                      const metric = selectedMetrics[token.metricIndex];
+                      if (!metric) {
+                        return null;
+                      }
+                      const sid =
+                        metric.sourceType === "adhoc" && metric.adhocUuid
+                          ? createAdhocSourceId(metric.adhocUuid)
+                          : metric.sourceType === "metric"
+                            ? createMetricSourceId(metric.id)
+                            : createMeasureSourceId(metric.id);
+                      const entry = definitionsBySourceId.get(sid);
+                      if (!entry) {
+                        return null;
+                      }
+                      return (
+                        <MetricPill
+                          metric={metric}
+                          colors={metricColors[sid]}
+                          definitionEntry={entry}
+                          selectedMetricIds={selectedMetricIds}
+                          selectedMeasureIds={selectedMeasureIds}
+                          onSwap={onSwapMetric}
+                          onRemove={() => handleRemoveItem(itemIndex)}
+                          onSetBreakout={(dimension) =>
+                            onSetBreakout(sid, dimension)
+                          }
+                        />
+                      );
+                    })()
+                  : (() => {
+                      // Use the first color of the first metric as the single
+                      // series color (the expression result is one chart series)
+                      const firstMetricToken = itemTokens.find(
+                        (t): t is { type: "metric"; metricIndex: number } =>
+                          t.type === "metric",
+                      );
+                      const firstMetric =
+                        firstMetricToken !== undefined
+                          ? selectedMetrics[firstMetricToken.metricIndex]
+                          : undefined;
+                      const expressionColor =
+                        firstMetric !== undefined
+                          ? metricColors[
+                              firstMetric.sourceType === "adhoc" &&
+                              firstMetric.adhocUuid
+                                ? createAdhocSourceId(firstMetric.adhocUuid)
+                                : firstMetric.sourceType === "metric"
+                                  ? createMetricSourceId(firstMetric.id)
+                                  : createMeasureSourceId(firstMetric.id)
+                            ]?.[0]
+                          : undefined;
 
-                    return (
-                      <MetricExpressionPill
-                        expressionText={buildExpressionText(
-                          itemTokens,
-                          selectedMetrics,
-                        )}
-                        color={expressionColor}
-                        onClick={(e: React.MouseEvent) => {
-                          e.stopPropagation();
-                          pendingFocusRef.current = true;
-                          setIsFocused(true);
-                        }}
-                        onRemove={() => handleRemoveItem(itemIndex)}
-                      />
-                    );
-                  })();
+                      return (
+                        <MetricExpressionPill
+                          expressionText={buildExpressionText(
+                            itemTokens,
+                            selectedMetrics,
+                          )}
+                          color={expressionColor}
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            pendingFocusRef.current = true;
+                            setIsFocused(true);
+                          }}
+                          onRemove={() => handleRemoveItem(itemIndex)}
+                        />
+                      );
+                    })();
 
-              return <span key={itemIndex}>{pill}</span>;
-            })}
-          </>
-        ) : (
-          // Focused: single text input showing the full expression
-          <Popover
-            opened={isOpen}
-            onChange={setIsOpen}
-            position="bottom-start"
-            shadow="md"
-            withinPortal
-          >
-            <Popover.Target>
-              <TextInput
-                ref={inputRef}
-                classNames={{ input: S.inputField }}
-                flex={1}
-                miw="7.5rem"
-                variant="unstyled"
-                placeholder={
-                  tokens.length === 0 ? t`Search for metrics...` : ""
-                }
-                value={editText}
-                onChange={handleChange}
-                onClick={handleInputClick}
-                onFocus={handleInputFocus}
-                onBlur={handleInputBlur}
-                data-testid="metrics-viewer-search-input"
-              />
-            </Popover.Target>
-            <Popover.Dropdown p={0} miw="19rem" maw="25rem">
-              {isOpen && (
-                <MetricSearchDropdown
-                  selectedMetricIds={EMPTY_SET}
-                  selectedMeasureIds={EMPTY_SET}
-                  onSelect={handleSelect}
-                  externalSearchText={currentWord}
+                return <span key={itemIndex}>{pill}</span>;
+              })}
+            </>
+          ) : (
+            // Focused: single text input showing the full expression
+            <Popover
+              opened={isOpen}
+              onChange={setIsOpen}
+              position="bottom-start"
+              shadow="md"
+              withinPortal
+            >
+              <Popover.Target>
+                <TextInput
+                  ref={inputRef}
+                  classNames={{ input: S.inputField }}
+                  flex={1}
+                  miw="7.5rem"
+                  variant="unstyled"
+                  placeholder={
+                    tokens.length === 0 ? t`Search for metrics...` : ""
+                  }
+                  value={editText}
+                  onChange={handleChange}
+                  onClick={handleInputClick}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                  data-testid="metrics-viewer-search-input"
                 />
-              )}
-            </Popover.Dropdown>
-          </Popover>
-        )}
+              </Popover.Target>
+              <Popover.Dropdown p={0} miw="19rem" maw="25rem">
+                {isOpen && (
+                  <MetricSearchDropdown
+                    selectedMetricIds={EMPTY_SET}
+                    selectedMeasureIds={EMPTY_SET}
+                    onSelect={handleSelect}
+                    externalSearchText={currentWord}
+                    onSummarizeTable={
+                      onAddAdhoc ? handleSummarizeTable : undefined
+                    }
+                  />
+                )}
+              </Popover.Dropdown>
+            </Popover>
+          )}
+        </Flex>
       </Flex>
-    </Flex>
+      {onAddAdhoc && (
+        <SummarizeTableDialog
+          opened={showSummarizeDialog}
+          onClose={() => setShowSummarizeDialog(false)}
+          onAdd={handleAddAdhoc}
+        />
+      )}
+    </>
   );
 }
