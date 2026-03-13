@@ -86,7 +86,7 @@
               str-body (slurp (:body req))
               valid? (verify-slack-signature str-body timestamp signature)]
           (handler (-> req
-                       (assoc :body (java.io.StringBufferInputStream. str-body))
+                       (assoc :body (java.io.ByteArrayInputStream. (.getBytes ^String str-body "UTF-8")))
                        (assoc :slack/validated? valid?))
                    respond raise))
         (handler req respond raise)))))

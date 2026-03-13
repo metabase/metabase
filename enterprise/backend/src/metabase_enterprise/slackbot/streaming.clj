@@ -294,10 +294,9 @@
 (defn- ensure-stream-started!
   "Ensure the Slack stream has been started, attempting once if not already tried."
   [client stream-opts stream-attempted? stream-state]
-  (when-not @stream-attempted?
-    (vreset! stream-attempted? true)
+  (when (compare-and-set! stream-attempted? false true)
     (when-let [stream (slackbot.client/start-stream client stream-opts)]
-      (vreset! stream-state stream))))
+      (reset! stream-state stream))))
 
 (defn- dismiss-thinking-msg!
   "Delete the 'Thinking...' placeholder message. Idempotent via reset-vals!.
@@ -370,13 +369,13 @@
    - `:on-text`, `:on-tool-start`, `:on-tool-end`, `:on-data` — callbacks for [[make-streaming-ai-request]]
    - `:start-with-thinking!` — posts a 'Thinking...' placeholder in the thread
    - `:request-flush!` — schedules a drain of pending text to Slack
-   - `:stream-state` — volatile holding `{:stream_ts :channel}` once started, nil before
+   - `:stream-state` — atom holding `{:stream_ts :channel}` once started, nil before
    - `:slack-writer` — agent; callers should `(await slack-writer)` before stopping the stream
    - `:prefetched-viz` — atom holding `{index -> {:future Future :filename str :title str :link str}}` for in-flight visualizations"
   [client {:keys [channel thread-ts team-id user-id]}]
-  (let [stream-state      (volatile! nil)
-        stream-attempted? (volatile! false)
-        tool-id->name     (volatile! {})
+  (let [stream-state      (atom nil)
+        stream-attempted? (atom false)
+        tool-id->name     (atom {})
         ;; Text awaiting write to Slack. Callback thread appends here; agent thread drains.
         ;; An atom because it's shared across threads (callback thread writes, agent thread reads).
         pending-text      (atom "")
@@ -391,7 +390,7 @@
                            :user_id   user-id}
 
         ;; Nil means "no flush has happened yet", so the first flush should always pass.
-        last-flush-timer (volatile! nil)
+        last-flush-timer (atom nil)
 
         request-flush!  (fn do-request-flush
                           ([] (do-request-flush false))
@@ -401,7 +400,7 @@
                              (when (or force?
                                        (nil? @last-flush-timer)
                                        (>= (u/since-ms @last-flush-timer) min-flush-interval-ms))
-                               (vreset! last-flush-timer (u/start-timer))
+                               (reset! last-flush-timer (u/start-timer))
                                (send-off slack-writer
                                          (bound-fn* (fn [_] (drain-pending-text! client stream-state pending-text thinking-ts) nil)))))))
 
@@ -436,12 +435,12 @@
 
         on-tool-start (fn [{:keys [id tool-name]}]
                         (request-flush!)
-                        (vswap! tool-id->name assoc id tool-name)
+                        (swap! tool-id->name assoc id tool-name)
                         (send-task-update! id tool-name "in_progress"))
 
         on-tool-end (fn [{:keys [id]}]
                       (send-task-update! id (get @tool-id->name id) "complete")
-                      (vswap! tool-id->name dissoc id))
+                      (swap! tool-id->name dissoc id))
 
         prefetched-viz (atom {})
         on-data        (make-viz-prefetch-callback prefetched-viz)]
