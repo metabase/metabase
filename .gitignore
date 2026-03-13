@@ -81,7 +81,7 @@ cypress.env.json
 /resources/metabase/config/modules.edn
 /resources/namespaces.edn
 /resources/sample-dataset.db.trace.db
-/resources/version.properties
+/resources/metabase/version.properties
 /screenshots
 /sqlite.db
 /stats.json
