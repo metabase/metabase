@@ -92,7 +92,7 @@
       (every? looks-like-date-string? sample) :datetime
       :else :string)))
 
-(defn detect-chart-type
+(defn- detect-chart-type
   "Detect the chart type from chart configuration.
 
   Priority:
@@ -102,29 +102,36 @@
   4. Default to categorical"
   [{:keys [display_type series]}]
   (or
-   ;; 1. Check explicit display type
    (get explicit-display-types display_type)
 
-   ;; 2/3. Check first series x-column
    (when-let [[_ first-series] (first series)]
      (let [x-type (get-in first-series [:x :type])
-           x-values (:x_values first-series)]
+           x-values (:x_values first-series)
+           inferred-type (infer-type-from-sample x-values)]
        (cond
-         (temporal-column-type? x-type) :time-series
+         (temporal-column-type? x-type)
+         :time-series
+
          (and (numeric-column-type? x-type)
-              (= display_type "bar"))  :histogram
-         (numeric-column-type? x-type) :scatter
-         ;; 3. Heuristic from sample values
-         (= :datetime (infer-type-from-sample x-values)) :time-series
-         (and (= :number (infer-type-from-sample x-values))
-              (= display_type "bar"))  :histogram
-         (= :number (infer-type-from-sample x-values)) :scatter
+              (= display_type "bar"))
+         :histogram
+
+         (numeric-column-type? x-type)
+         :scatter
+
+         (= :datetime inferred-type)
+         :time-series
+
+         (and (= :number inferred-type)
+              (= display_type "bar"))
+         :histogram
+
+         (= :number inferred-type)
+         :scatter
+
          :else :categorical)))
 
-   ;; 4. Default
    :categorical))
-
-;;; ---------------------------------------------------- Routing -----------------------------------------------------
 
 (defn compute-chart-stats
   "Compute statistics for a chart based on its detected type.
@@ -138,24 +145,23 @@
     opts         - options map:
                    :deep? - compute additional statistics"
   [chart-config opts]
-  (let [chart-type (detect-chart-type chart-config)
+  (let [chart-type                   (detect-chart-type chart-config)
         [limited-series limits-info] (apply-data-limits (:series chart-config))
-        too-many-series? (> (count limited-series) max-series-for-correlations)
-        opts (if too-many-series?
-               (assoc opts :max-correlation-series max-series-for-correlations)
-               opts)
-        limits-info (if too-many-series?
-                      (assoc limits-info
-                             :correlations_capped {:total_series (count limited-series)
-                                                   :max_correlated max-series-for-correlations})
-                      limits-info)
-        stats (case chart-type
-                :time-series  (time-series/compute-time-series-stats limited-series opts)
-                :categorical  (categorical/compute-categorical-stats limited-series opts)
-                :scatter      (scatter/compute-scatter-stats limited-series opts)
-                :histogram    (histogram/compute-histogram-stats limited-series opts)
-                {:chart_type   chart-type
-                 :series_count (count limited-series)
-                 :message      (str "Statistics for " (name chart-type) " charts not yet implemented")})]
+        too-many-series?             (> (count limited-series) max-series-for-correlations)
+        opts                         (cond-> opts
+                                       too-many-series? (assoc :max-correlation-series max-series-for-correlations))
+        limits-info                  (cond-> limits-info
+                                       too-many-series? (assoc :correlations_capped
+                                                               {:total_series   (count limited-series)
+                                                                :max_correlated max-series-for-correlations}))
+        stats                        (case chart-type
+                                       :time-series (time-series/compute-time-series-stats limited-series opts)
+                                       :categorical (categorical/compute-categorical-stats limited-series opts)
+                                       :scatter     (scatter/compute-scatter-stats limited-series opts)
+                                       :histogram   (histogram/compute-histogram-stats limited-series opts)
+                                       {:chart_type   chart-type
+                                        :series_count (count limited-series)
+                                        :message      (str "Statistics for " (name chart-type)
+                                                           " charts not yet implemented")})]
     (cond-> stats
       limits-info (assoc :limits limits-info))))
