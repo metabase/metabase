@@ -7,7 +7,6 @@ on:
       - release-x.*
     tags:
       - v*
-      - latest-*
   workflow_dispatch:
     inputs:
       version:
