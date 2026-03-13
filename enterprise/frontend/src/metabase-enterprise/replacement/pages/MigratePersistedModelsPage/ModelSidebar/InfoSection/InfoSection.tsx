@@ -3,34 +3,35 @@ import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import CS from "metabase/css/core/index.css";
-import { Box, Card, Group, Stack } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import { Box, Group, Card as MantineCard, Stack } from "metabase/ui";
+import type { Card } from "metabase-types/api";
 
 import S from "./InfoSection.module.css";
 
 type InfoSectionProps = {
-  result: SearchResult;
+  card: Card;
 };
 
-export function InfoSection({ result }: InfoSectionProps) {
-  const {
-    description,
-    creator_common_name,
-    created_at,
-    last_editor_common_name,
-    last_edited_at,
-  } = result;
+export function InfoSection({ card }: InfoSectionProps) {
+  const { description, creator, created_at } = card;
+  const lastEditInfo = card["last-edit-info"];
 
   if (
     description == null &&
-    (created_at == null || creator_common_name == null) &&
-    (last_edited_at == null || last_editor_common_name == null)
+    (created_at == null || creator == null) &&
+    lastEditInfo == null
   ) {
     return null;
   }
 
   return (
-    <Card p={0} shadow="none" withBorder role="region" aria-label={t`Info`}>
+    <MantineCard
+      p={0}
+      shadow="none"
+      withBorder
+      role="region"
+      aria-label={t`Info`}
+    >
       {description != null && (
         <InfoSectionItem label={t`Description`}>
           {description.length > 0 ? (
@@ -40,17 +41,24 @@ export function InfoSection({ result }: InfoSectionProps) {
           )}
         </InfoSectionItem>
       )}
-      {creator_common_name != null && created_at != null && (
+      {creator != null && created_at != null && (
         <InfoSectionItem label={t`Created by`} date={created_at}>
-          <Box className={CS.textWrap}>{creator_common_name}</Box>
+          <Box className={CS.textWrap}>{creator.common_name}</Box>
         </InfoSectionItem>
       )}
-      {last_editor_common_name != null && last_edited_at != null && (
-        <InfoSectionItem label={t`Last edited by`} date={last_edited_at}>
-          <Box className={CS.textWrap}>{last_editor_common_name}</Box>
+      {lastEditInfo != null && (
+        <InfoSectionItem
+          label={t`Last edited by`}
+          date={lastEditInfo.timestamp}
+        >
+          <Box className={CS.textWrap}>
+            {[lastEditInfo.first_name, lastEditInfo.last_name]
+              .filter(Boolean)
+              .join(" ")}
+          </Box>
         </InfoSectionItem>
       )}
-    </Card>
+    </MantineCard>
   );
 }
 

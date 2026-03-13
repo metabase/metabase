@@ -5,18 +5,17 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import S from "./SidebarHeader.module.css";
 
 type SidebarHeaderProps = {
-  result: SearchResult;
+  card: Card;
   onClose: () => void;
 };
 
-export function SidebarHeader({ result, onClose }: SidebarHeaderProps) {
-  const id = Number(result.id);
-  const link = Urls.question({ id: id, name: result.name });
+export function SidebarHeader({ card, onClose }: SidebarHeaderProps) {
+  const link = Urls.question({ id: card.id, name: card.name });
 
   return (
     <Group
@@ -35,7 +34,7 @@ export function SidebarHeader({ result, onClose }: SidebarHeaderProps) {
         to={link}
         target="_blank"
       >
-        {result.name}
+        {card.name}
       </Anchor>
       <Group gap="xs" wrap="nowrap">
         <Tooltip label={t`Open in new tab`} openDelay={300}>
@@ -52,7 +51,7 @@ export function SidebarHeader({ result, onClose }: SidebarHeaderProps) {
           <ActionIcon
             component={ForwardRefLink}
             to={Urls.dependencyGraph({
-              entry: { id: id, type: "card" },
+              entry: { id: card.id, type: "card" },
             })}
             target="_blank"
             aria-label={t`View in dependency graph`}

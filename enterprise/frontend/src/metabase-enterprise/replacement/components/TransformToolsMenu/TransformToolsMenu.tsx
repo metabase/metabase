@@ -13,10 +13,10 @@ export function TransformToolsMenu() {
       <Menu.Dropdown>
         <Menu.Item
           component={Link}
-          to={Urls.transformMigrateModels()}
+          to={Urls.transformMigratePersistedModels()}
           leftSection={<Icon name="model" />}
         >
-          {t`Migrate models`}
+          {t`Migrate persisted models`}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

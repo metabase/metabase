@@ -2,23 +2,23 @@ import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { useState } from "react";
 
-import { useSearchQuery } from "metabase/api";
+import { useListCardsQuery } from "metabase/api";
 import { Flex, Stack } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
-import S from "./MigrateModelsPage.module.css";
+import S from "./MigratePersistedModelsPage.module.css";
 import { ModelSidebar } from "./ModelSidebar";
 import { ModelTable } from "./ModelTable";
 import { PageHeader } from "./PageHeader";
 
-export function MigrateModelsPage() {
+export function MigratePersistedModelsPage() {
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
-  const [selectedResult, setSelectedResult] = useState<SearchResult>();
+  const [selectedCard, setSelectedCard] = useState<Card>();
 
-  const { data, isLoading } = useSearchQuery({
-    models: ["dataset"],
+  const { data: cards = [], isLoading } = useListCardsQuery({
+    f: "persisted",
   });
 
   return (
@@ -31,18 +31,18 @@ export function MigrateModelsPage() {
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
         <PageHeader />
         <ModelTable
-          results={data?.data ?? []}
+          cards={cards}
           isLoading={isLoading}
-          onSelect={setSelectedResult}
+          onSelect={setSelectedCard}
         />
       </Stack>
-      {selectedResult != null && (
+      {selectedCard != null && (
         <ModelSidebar
-          result={selectedResult}
+          card={selectedCard}
           containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}
-          onClose={() => setSelectedResult(undefined)}
+          onClose={() => setSelectedCard(undefined)}
         />
       )}
     </Flex>

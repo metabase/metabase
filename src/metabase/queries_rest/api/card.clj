@@ -69,6 +69,15 @@
          (remove :archived)
          (sort-by :name))))
 
+;; return all Cards that are persisted (have active PersistedInfo).
+(defmethod cards-for-filter-option* :persisted
+  [_]
+  (let [persisted (t2/select [:model/PersistedInfo :card_id] :active true)]
+    (->> (t2/hydrate persisted :card)
+         (map :card)
+         (remove :archived)
+         (sort-by :name))))
+
 ;; Return all Cards belonging to Database with `database-id`.
 (defmethod cards-for-filter-option* :database
   [_ database-id]

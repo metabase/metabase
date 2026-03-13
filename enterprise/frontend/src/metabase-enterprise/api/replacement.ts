@@ -1,9 +1,9 @@
 import type {
-  ConvertCardToTransformRequest,
-  ConvertCardToTransformResponse,
   ListSourceReplacementRunsRequest,
   ReplaceSourceRequest,
   ReplaceSourceResponse,
+  ReplaceSourceWithTransformRequest,
+  ReplaceSourceWithTransformResponse,
   SourceReplacementCheckInfo,
   SourceReplacementRun,
   SourceReplacementRunId,
@@ -34,28 +34,6 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
         idTag(request.target_entity_type, request.target_entity_id),
       ],
     }),
-    replaceSource: builder.mutation<
-      ReplaceSourceResponse,
-      ReplaceSourceRequest
-    >({
-      query: (body) => ({
-        method: "POST",
-        url: "/api/ee/replacement/replace-source",
-        body,
-      }),
-      invalidatesTags: (_response, error) =>
-        invalidateTags(error, [listTag("source-replacement-run")]),
-    }),
-    getSourceReplacementRun: builder.query<
-      SourceReplacementRun,
-      SourceReplacementRunId
-    >({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/replacement/runs/${id}`,
-      }),
-      providesTags: (run) => (run ? provideSourceReplacementRunTags(run) : []),
-    }),
     listSourceReplacementRuns: builder.query<
       SourceReplacementRun[],
       ListSourceReplacementRunsRequest
@@ -68,13 +46,35 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
       providesTags: (runs) =>
         runs ? provideSourceReplacementRunListTags(runs) : [],
     }),
-    convertCardToTransform: builder.mutation<
-      ConvertCardToTransformResponse,
-      ConvertCardToTransformRequest
+    getSourceReplacementRun: builder.query<
+      SourceReplacementRun,
+      SourceReplacementRunId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/replacement/runs/${id}`,
+      }),
+      providesTags: (run) => (run ? provideSourceReplacementRunTags(run) : []),
+    }),
+    replaceSource: builder.mutation<
+      ReplaceSourceResponse,
+      ReplaceSourceRequest
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/replacement/convert-card-to-transform",
+        url: "/api/ee/replacement/replace-source",
+        body,
+      }),
+      invalidatesTags: (_response, error) =>
+        invalidateTags(error, [listTag("source-replacement-run")]),
+    }),
+    replaceSourceWithTransform: builder.mutation<
+      ReplaceSourceWithTransformResponse,
+      ReplaceSourceWithTransformRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/replacement/replace-source-with-transform",
         body,
       }),
       invalidatesTags: (_response, error) =>
@@ -85,8 +85,8 @@ export const replacementApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useCheckReplaceSourceQuery,
-  useReplaceSourceMutation,
-  useGetSourceReplacementRunQuery,
   useListSourceReplacementRunsQuery,
-  useConvertCardToTransformMutation,
+  useGetSourceReplacementRunQuery,
+  useReplaceSourceMutation,
+  useReplaceSourceWithTransformMutation,
 } = replacementApi;

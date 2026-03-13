@@ -1,11 +1,14 @@
 import { Route } from "react-router";
 
-import { MigrateModelsPage } from "./pages/MigrateModelsPage";
+import { MigratePersistedModelsPage } from "./pages/MigratePersistedModelsPage";
 
 export function getTransformToolsRoutes() {
   return (
     <Route path="tools">
-      <Route path="migrate-models" component={MigrateModelsPage} />
+      <Route
+        path="migrate-persisted-models"
+        component={MigratePersistedModelsPage}
+      />
     </Route>
   );
 }

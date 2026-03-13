@@ -1,31 +1,26 @@
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import { Anchor, FixedSizeIcon, Group, Stack } from "metabase/ui";
-import type { Database, SearchResult } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 type LocationSectionProps = {
-  result: SearchResult;
-  database: Database | undefined;
+  card: Card;
 };
 
-export function LocationSection({ result, database }: LocationSectionProps) {
+export function LocationSection({ card }: LocationSectionProps) {
+  if (card.collection == null) {
+    return null;
+  }
+
   return (
     <Stack role="region" aria-label={t`Location`} gap="sm">
-      {database != null && (
-        <LocationLink
-          label={database.name}
-          icon="database"
-          to={Urls.dataStudioData({ databaseId: database.id })}
-        />
-      )}
       <LocationLink
-        label={result.collection.name ?? ROOT_COLLECTION.name}
+        label={card.collection.name}
         icon="folder"
-        to={Urls.collection(result.collection)}
+        to={Urls.collection(card.collection)}
       />
     </Stack>
   );

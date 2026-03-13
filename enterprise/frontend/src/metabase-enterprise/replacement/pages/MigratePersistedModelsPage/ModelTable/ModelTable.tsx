@@ -3,43 +3,49 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import {
-  Card,
+  Card as MantineCard,
   Text,
   TreeTable,
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import type { SearchResult } from "metabase-types/api";
+import type { Card } from "metabase-types/api";
 
 import { getColumnWidths, getColumns } from "./utils";
 
 type ModelTableProps = {
-  results: SearchResult[];
+  cards: Card[];
   isLoading?: boolean;
-  onSelect: (result: SearchResult) => void;
+  onSelect: (card: Card) => void;
 };
 
 export function ModelTable({
-  results,
+  cards,
   isLoading = false,
   onSelect,
 }: ModelTableProps) {
   const columns = useMemo(() => getColumns(), []);
 
   const handleRowActivate = useCallback(
-    (row: Row<SearchResult>) => onSelect(row.original),
+    (row: Row<Card>) => onSelect(row.original),
     [onSelect],
   );
 
-  const treeTableInstance = useTreeTableInstance<SearchResult>({
-    data: results,
+  const treeTableInstance = useTreeTableInstance<Card>({
+    data: cards,
     columns,
-    getNodeId: (result) => String(result.id),
+    getNodeId: (card) => String(card.id),
     onRowActivate: handleRowActivate,
   });
 
   return (
-    <Card flex="0 1 auto" mih={0} p={0} withBorder data-testid="model-list">
+    <MantineCard
+      flex="0 1 auto"
+      mih={0}
+      p={0}
+      withBorder
+      data-testid="model-list"
+    >
       {isLoading ? (
         <TreeTableSkeleton columnWidths={getColumnWidths()} />
       ) : (
@@ -53,6 +59,6 @@ export function ModelTable({
           onRowClick={handleRowActivate}
         />
       )}
-    </Card>
+    </MantineCard>
   );
 }

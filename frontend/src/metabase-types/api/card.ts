@@ -384,6 +384,7 @@ export type CardFilterOption =
   | "all"
   | "mine"
   | "bookmarked"
+  | "persisted"
   | "database"
   | "table"
   | "recent"

@@ -4,6 +4,7 @@ import * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import {
+  useCreateTransformMutation,
   useGetDatabaseQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
@@ -21,27 +22,27 @@ import { slugify } from "metabase/lib/formatting/url";
 import { SchemaFormSelect } from "metabase/transforms/components/SchemaFormSelect";
 import { TargetNameInput } from "metabase/transforms/components/TargetNameInput";
 import { Box, Button, Group, Input, Modal, Stack, Text } from "metabase/ui";
-import { useConvertCardToTransformMutation } from "metabase-enterprise/api";
-import type { SearchResult } from "metabase-types/api";
+import { useReplaceSourceWithTransformMutation } from "metabase-enterprise/api";
+import type { Card } from "metabase-types/api";
 
 const VALIDATION_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable().defined(),
-  collection_id: Yup.number().nullable().defined(),
-  replace_source: Yup.boolean().defined(),
+  collectionId: Yup.number().nullable().defined(),
+  replaceSource: Yup.boolean().defined(),
 });
 
 type ConvertToTransformValues = Yup.InferType<typeof VALIDATION_SCHEMA>;
 
 type ConvertToTransformModalProps = {
-  result: SearchResult;
+  card: Card;
   opened: boolean;
   onClose: () => void;
 };
 
 export function ConvertToTransformModal({
-  result,
+  card,
   opened,
   onClose,
 }: ConvertToTransformModalProps) {
@@ -52,23 +53,23 @@ export function ConvertToTransformModal({
       padding="xl"
       onClose={onClose}
     >
-      <ConvertToTransformForm result={result} onClose={onClose} />
+      <ConvertToTransformForm card={card} onClose={onClose} />
     </Modal>
   );
 }
 
 type ConvertToTransformFormProps = {
-  result: SearchResult;
+  card: Card;
   onClose: () => void;
 };
 
 function ConvertToTransformForm({
-  result,
+  card,
   onClose,
 }: ConvertToTransformFormProps) {
-  const databaseId = result.database_id;
+  const databaseId = card.database_id;
   if (databaseId == null) {
-    throw new Error("database_id is required on the search result");
+    throw new Error("database_id is required on the card");
   }
 
   const {
@@ -89,30 +90,42 @@ function ConvertToTransformForm({
 
   const initialValues: ConvertToTransformValues = useMemo(
     () => ({
-      name: result.name,
+      name: card.name,
       targetSchema: schemas[0] ?? null,
-      targetName: slugify(result.name),
-      collection_id: null,
-      replace_source: true,
+      targetName: slugify(card.name),
+      collectionId: null,
+      replaceSource: true,
     }),
-    [result.name, schemas],
+    [card.name, schemas],
   );
 
-  const [convertCardToTransform] = useConvertCardToTransformMutation();
+  const [createTransform] = useCreateTransformMutation();
+  const [replaceSourceWithTransform] = useReplaceSourceWithTransformMutation();
 
   const handleSubmit = async (values: ConvertToTransformValues) => {
-    await convertCardToTransform({
-      card_id: Number(result.id),
-      transform_name: result.name,
-      transform_target: {
+    const transform = await createTransform({
+      name: card.name,
+      source: {
+        type: "query",
+        query: card.dataset_query,
+      },
+      target: {
         type: "table",
         name: values.targetName,
         schema: values.targetSchema,
         database: databaseId,
       },
-      transform_collection_id: values.collection_id,
-      replace_source: values.replace_source,
+      collection_id: values.collectionId,
     }).unwrap();
+
+    if (values.replaceSource) {
+      await replaceSourceWithTransform({
+        source_entity_id: card.id,
+        source_entity_type: "card",
+        transform_id: transform.id,
+      }).unwrap();
+    }
+
     onClose();
   };
 
@@ -143,13 +156,13 @@ function ConvertToTransformForm({
           )}
           <TargetNameInput />
           <FormCollectionPicker
-            name="collection_id"
+            name="collectionId"
             title={t`Collection`}
             collectionPickerModalProps={{ namespaces: ["transforms"] }}
             style={{ marginBottom: 0 }}
           />
           <FormSwitch
-            name="replace_source"
+            name="replaceSource"
             label={t`Replace data source of all existing dependents`}
             description={t`All dependents of the original model will be updated to use the output table instead. If you don't want to do this now, you can do it later with the Data Replacement tool.`}
             size="sm"

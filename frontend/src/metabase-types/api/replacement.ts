@@ -1,7 +1,7 @@
 import type { CardId } from "./card";
 import type { Field } from "./field";
 import type { ConcreteTableId } from "./table";
-import type { TransformTarget } from "./transform";
+import type { TransformId } from "./transform";
 
 export type SourceReplacementEntityId = ConcreteTableId | CardId;
 
@@ -55,7 +55,7 @@ export type SourceReplacementCheckInfo = {
 
 export type SourceReplacementRunId = number;
 
-export type SourceReplacementRunType = "replace" | "convert-to-transform";
+export type SourceReplacementRunType = "replace" | "replace-with-transform";
 
 export type SourceReplacementRunStatus =
   | "started"
@@ -95,14 +95,12 @@ export type ListSourceReplacementRunsRequest = {
   "is-active"?: boolean;
 };
 
-export type ConvertCardToTransformRequest = {
-  card_id: CardId;
-  transform_name: string;
-  transform_target: TransformTarget;
-  transform_collection_id: number | null;
-  replace_source: boolean;
+export type ReplaceSourceWithTransformRequest = {
+  source_entity_id: SourceReplacementEntityId;
+  source_entity_type: SourceReplacementEntityType;
+  transform_id: TransformId;
 };
 
-export type ConvertCardToTransformResponse = {
+export type ReplaceSourceWithTransformResponse = {
   run_id: SourceReplacementRunId;
 };
