@@ -52,10 +52,18 @@ function useInitPlugins() {
   );
 
   useEffect(() => {
-    // EAJS already initializes the plugins in its entrypoint, and this
-    // component is used by EAJS we have to make sure we don't re-initialize the
-    // sdk plugins as they could override some of plugins needed by EAJS
-    if (isEmbeddingEajs() || hasInitializedPlugins || !tokenFeatures) {
+    // Modular Embedding already initializes the plugins in its entrypoint.
+    // We have to avoid re-initializing SDK plugins as they could override
+    // some of plugins needed by EAJS
+    if (isEmbeddingEajs() || !tokenFeatures) {
+      return;
+    }
+
+    if (hasInitializedPlugins) {
+      // Plugins already initialized (e.g. a second ComponentProvider mounting,
+      // or a fresh store in tests). Don't re-run initializePlugins, but do
+      // mark this store instance as ready.
+      dispatch(setPluginsReady(true));
       return;
     }
 
