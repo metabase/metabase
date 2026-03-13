@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-restricted-imports -- We sometimes need css-in-js in the SDK
 import { Global } from "@emotion/react";
-import { type JSX, memo, useEffect, useId, useRef, useState } from "react";
+import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
@@ -13,6 +13,7 @@ import {
   setEventHandlers,
   setIsGuestEmbed,
   setPlugins,
+  setPluginsReady,
 } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
@@ -20,7 +21,11 @@ import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSing
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
-import { MetabaseReduxProvider, useSelector } from "metabase/lib/redux";
+import {
+  MetabaseReduxProvider,
+  useDispatch,
+  useSelector,
+} from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -40,11 +45,7 @@ export type ComponentProviderInternalProps = ComponentProviderProps & {
 let hasInitializedPlugins = false;
 
 function useInitPlugins() {
-  // If plugins are already initialized (e.g. EAJS, or a second SDK component
-  // mounting after the first), we are ready immediately.
-  const [pluginsReady, setPluginsReady] = useState(
-    () => isEmbeddingEajs() || hasInitializedPlugins,
-  );
+  const dispatch = useDispatch();
 
   const tokenFeatures = useSelector(
     (state) => state.settings.values["token-features"],
@@ -61,10 +62,8 @@ function useInitPlugins() {
     hasInitializedPlugins = true;
 
     initializePlugins();
-    setPluginsReady(true);
-  }, [tokenFeatures]);
-
-  return pluginsReady;
+    dispatch(setPluginsReady(true));
+  }, [tokenFeatures, dispatch]);
 }
 
 export const ComponentProviderInternal = (
@@ -97,7 +96,7 @@ export const ComponentProviderInternal = (
     isLocalHost,
   });
 
-  const pluginsReady = useInitPlugins();
+  useInitPlugins();
 
   useSdkCustomLoader();
 
@@ -137,7 +136,7 @@ export const ComponentProviderInternal = (
           {({ isInstanceToRender }) => (
             <>
               <LocaleProvider locale={locale || instanceLocale}>
-                {pluginsReady && children}
+                {children}
 
                 {isInstanceToRender && <ContentTranslationsProvider />}
               </LocaleProvider>
