@@ -24,7 +24,10 @@ import {
   buildMetricAxis,
 } from "metabase/visualizations/echarts/cartesian/option/axis";
 import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
-import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
+import {
+  type SplitPanelYExtent,
+  getTimelineEventsSeries,
+} from "metabase/visualizations/echarts/cartesian/timeline-events/option";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type {
   ComputedVisualizationSettings,
@@ -150,10 +153,9 @@ export const getCartesianChartOption = (
   const visibleSeries = chartModel.seriesModels.filter(
     (series) => series.visible,
   );
-  const isSplitPanels =
-    chartLayout.panelHeight != null && visibleSeries.length > 1;
-  const hasTimelineEvents = timelineEventsModel != null;
   const panelCount = visibleSeries.length;
+  const isSplitPanels = chartLayout.panelHeight != null && panelCount > 1;
+  const hasTimelineEvents = timelineEventsModel != null;
 
   // Series (shared — buildEChartsSeries handles split panels via chartLayout)
   const dataSeriesOptions = buildEChartsSeries(
@@ -170,25 +172,24 @@ export const getCartesianChartOption = (
     renderingContext,
   );
 
-  const goalSeriesOption =
-    isSplitPanels && baseGoalSeriesOption
-      ? visibleSeries.map((_, index) => ({
-          ...baseGoalSeriesOption,
-          id: `${baseGoalSeriesOption.id}_${index}`,
-          xAxisIndex: index,
-          yAxisIndex: index,
-        }))
-      : baseGoalSeriesOption;
+  const goalSeriesOption = isSplitPanels
+    ? buildSplitPanelGoalSeries(baseGoalSeriesOption, panelCount)
+    : baseGoalSeriesOption;
 
   const trendSeriesOption = isSplitPanels
     ? remapTrendLinesToPanels(chartModel, visibleSeries)
     : getTrendLinesOption(chartModel);
+
+  const splitPanelYExtent = isSplitPanels
+    ? getSplitPanelTimelineEventsYExtent(chartLayout, panelCount)
+    : undefined;
 
   const timelineEventsSeries = hasTimelineEvents
     ? getTimelineEventsSeries(
         timelineEventsModel,
         selectedTimelineEventsIds,
         renderingContext,
+        splitPanelYExtent,
       )
     : null;
 
@@ -207,14 +208,7 @@ export const getCartesianChartOption = (
 
   // Grid
   const grid: GridOption | GridOption[] = isSplitPanels
-    ? visibleSeries.map((_, index) => ({
-        left: chartLayout.padding.left,
-        right: chartLayout.padding.right,
-        top:
-          chartLayout.padding.top +
-          index * ((chartLayout.panelHeight ?? 0) + CHART_STYLE.splitPanel.gap),
-        height: chartLayout.panelHeight ?? 0,
-      }))
+    ? buildSplitPanelGrid(chartLayout, panelCount)
     : { ...chartLayout.padding, outerBoundsMode: "none" };
 
   // Axes
@@ -227,7 +221,7 @@ export const getCartesianChartOption = (
       chartWidth,
       settings,
       chartLayout,
-      false,
+      hasTimelineEvents,
       renderingContext,
     );
 
@@ -271,21 +265,18 @@ export const getCartesianChartOption = (
 
   const splitPanelOverrides = isSplitPanels
     ? {
-        axisPointer: {
-          link: [{ xAxisIndex: "all" as unknown as number }],
-        },
+        ...buildSplitPanelOverrides(
+          chartModel,
+          chartLayout,
+          panelCount,
+          renderingContext,
+        ),
         brush: {
           toolbox: ["lineX" as const],
           xAxisIndex: visibleSeries.map((_, index) => index),
           throttleType: "debounce" as const,
           throttleDelay: 200,
         },
-        graphic: buildSplitPanelYAxisLabel(
-          chartModel,
-          chartLayout,
-          panelCount,
-          renderingContext,
-        ),
       }
     : {};
 
@@ -299,6 +290,69 @@ export const getCartesianChartOption = (
     series: seriesOption,
   };
 };
+
+export function buildSplitPanelGrid(
+  chartLayout: ChartLayout,
+  panelCount: number,
+): GridOption[] {
+  return Array.from({ length: panelCount }, (_, index) => ({
+    left: chartLayout.padding.left,
+    right: chartLayout.padding.right,
+    top:
+      chartLayout.padding.top +
+      index * ((chartLayout.panelHeight ?? 0) + CHART_STYLE.splitPanel.gap),
+    height: chartLayout.panelHeight ?? 0,
+  }));
+}
+
+export function buildSplitPanelOverrides(
+  chartModel: BaseCartesianChartModel,
+  chartLayout: ChartLayout,
+  panelCount: number,
+  renderingContext: RenderingContext,
+) {
+  return {
+    axisPointer: {
+      link: [{ xAxisIndex: "all" as unknown as number }],
+    },
+    graphic: buildSplitPanelYAxisLabel(
+      chartModel,
+      chartLayout,
+      panelCount,
+      renderingContext,
+    ),
+  };
+}
+
+export function buildSplitPanelGoalSeries(
+  baseGoalSeriesOption: EChartsSeriesOption | null,
+  panelCount: number,
+): EChartsSeriesOption[] {
+  if (!baseGoalSeriesOption) {
+    return [];
+  }
+
+  return Array.from({ length: panelCount }, (_, index) => ({
+    ...baseGoalSeriesOption,
+    id: `${baseGoalSeriesOption.id}_${index}`,
+    xAxisIndex: index,
+    yAxisIndex: index,
+  }));
+}
+
+export function getSplitPanelTimelineEventsYExtent(
+  chartLayout: ChartLayout,
+  panelCount: number,
+): SplitPanelYExtent {
+  const panelHeight = chartLayout.panelHeight ?? 0;
+  return {
+    topY: chartLayout.padding.top,
+    bottomY:
+      chartLayout.padding.top +
+      (panelCount - 1) * (panelHeight + CHART_STYLE.splitPanel.gap) +
+      panelHeight,
+  };
+}
 
 export function buildSplitPanelYAxisLabel(
   chartModel: BaseCartesianChartModel,

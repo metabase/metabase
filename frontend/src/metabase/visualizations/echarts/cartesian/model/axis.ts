@@ -244,6 +244,13 @@ const getYAxisSplit = (
   settings: ComputedVisualizationSettings,
   isAutoSplitSupported: boolean,
 ) => {
+  if (settings["graph.split_panels"]) {
+    const allKeys = new Set(
+      seriesModels.map((seriesModel) => seriesModel.dataKey),
+    );
+    return [allKeys, new Set<DataKey>()];
+  }
+
   const stackedKeys = new Set(
     stackModels.flatMap((stackModel) => stackModel.seriesKeys),
   );
@@ -258,13 +265,6 @@ const getYAxisSplit = (
   )
     ? "right"
     : "left";
-
-  if (settings["graph.split_panels"]) {
-    const allKeys = new Set(
-      seriesModels.map((seriesModel) => seriesModel.dataKey),
-    );
-    return [allKeys, new Set<DataKey>()];
-  }
 
   if (settings["stackable.stack_type"] === "normalized") {
     return stackedSeriesAxis === "left"

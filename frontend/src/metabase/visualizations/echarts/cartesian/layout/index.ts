@@ -881,14 +881,6 @@ const computeSplitPanelLayout = (
     rightAxisModel: null,
   };
 
-  const overriddenTicksDimensions: TicksDimensions = {
-    yTicksWidthLeft: maxYTicksWidth,
-    yTicksWidthRight: 0,
-    xTicksHeight: 0,
-    firstXTickWidth: 0,
-    lastXTickWidth: 0,
-  };
-
   const { ticksDimensions: computedTicks, axisEnabledSetting } =
     getTicksDimensions(
       singleAxisInput,
@@ -899,9 +891,13 @@ const computeSplitPanelLayout = (
       renderingContext,
     );
 
-  overriddenTicksDimensions.xTicksHeight = computedTicks.xTicksHeight;
-  overriddenTicksDimensions.firstXTickWidth = computedTicks.firstXTickWidth;
-  overriddenTicksDimensions.lastXTickWidth = computedTicks.lastXTickWidth;
+  const ticksDimensions: TicksDimensions = {
+    yTicksWidthLeft: maxYTicksWidth,
+    yTicksWidthRight: 0,
+    xTicksHeight: computedTicks.xTicksHeight,
+    firstXTickWidth: computedTicks.firstXTickWidth,
+    lastXTickWidth: computedTicks.lastXTickWidth,
+  };
 
   const padding = getChartPadding(
     singleAxisInput,
@@ -909,25 +905,20 @@ const computeSplitPanelLayout = (
       ...settings,
       "graph.x_axis.axis_enabled": axisEnabledSetting,
     },
-    overriddenTicksDimensions,
+    ticksDimensions,
     axisEnabledSetting,
     width,
     renderingContext,
   );
 
-  const bounds = getChartBounds(
-    width,
-    height,
-    padding,
-    overriddenTicksDimensions,
-  );
+  const bounds = getChartBounds(width, height, padding, ticksDimensions);
 
   const boundaryWidth =
     width -
     padding.left -
     padding.right -
-    overriddenTicksDimensions.yTicksWidthLeft -
-    overriddenTicksDimensions.yTicksWidthRight;
+    ticksDimensions.yTicksWidthLeft -
+    ticksDimensions.yTicksWidthRight;
 
   const panelGap = CHART_STYLE.splitPanel.gap;
   const availableHeight = height - padding.top - padding.bottom;
@@ -935,7 +926,7 @@ const computeSplitPanelLayout = (
     (availableHeight - (panelCount - 1) * panelGap) / panelCount;
 
   return {
-    ticksDimensions: overriddenTicksDimensions,
+    ticksDimensions,
     padding,
     bounds,
     boundaryWidth,

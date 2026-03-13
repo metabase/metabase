@@ -13,14 +13,16 @@ import type {
 import type { TimelineEventId } from "metabase-types/api";
 
 import { X_AXIS_DATA_KEY } from "../../constants/dataset";
-import { CHART_STYLE } from "../../constants/style";
 import type { ChartLayout } from "../../layout/types";
 import type { ScatterPlotModel } from "../../model/types";
 import {
   buildPerPanelXAxes,
   buildPerPanelYAxes,
-  buildSplitPanelYAxisLabel,
+  buildSplitPanelGoalSeries,
+  buildSplitPanelGrid,
+  buildSplitPanelOverrides,
   getSharedEChartsOptions,
+  getSplitPanelTimelineEventsYExtent,
   remapTrendLinesToPanels,
 } from "../../option";
 import { buildAxes, buildDimensionAxis } from "../../option/axis";
@@ -72,25 +74,24 @@ export function getScatterPlotOption(
     renderingContext,
   );
 
-  const goalSeriesOption =
-    isSplitPanels && baseGoalSeriesOption
-      ? visibleSeries.map((_, index) => ({
-          ...baseGoalSeriesOption,
-          id: `${baseGoalSeriesOption.id}_${index}`,
-          xAxisIndex: index,
-          yAxisIndex: index,
-        }))
-      : baseGoalSeriesOption;
+  const goalSeriesOption = isSplitPanels
+    ? buildSplitPanelGoalSeries(baseGoalSeriesOption, panelCount)
+    : baseGoalSeriesOption;
 
   const trendSeriesOption = isSplitPanels
     ? remapTrendLinesToPanels(chartModel, visibleSeries)
     : getTrendLinesOption(chartModel);
+
+  const splitPanelYExtent = isSplitPanels
+    ? getSplitPanelTimelineEventsYExtent(chartLayout, panelCount)
+    : undefined;
 
   const timelineEventsSeries = hasTimelineEvents
     ? getTimelineEventsSeries(
         timelineEventsModel,
         selectedTimelineEventsIds,
         renderingContext,
+        splitPanelYExtent,
       )
     : null;
 
@@ -139,21 +140,14 @@ export function getScatterPlotOption(
   let yAxis: YAXisOption[];
 
   if (isSplitPanels) {
-    grid = visibleSeries.map((_, index) => ({
-      left: chartLayout.padding.left,
-      right: chartLayout.padding.right,
-      top:
-        chartLayout.padding.top +
-        index * ((chartLayout.panelHeight ?? 0) + CHART_STYLE.splitPanel.gap),
-      height: chartLayout.panelHeight ?? 0,
-    }));
+    grid = buildSplitPanelGrid(chartLayout, panelCount);
 
     const baseXAxis = buildDimensionAxis(
       chartModel,
       chartWidth,
       settings,
       chartLayout,
-      false,
+      hasTimelineEvents,
       renderingContext,
     );
 
@@ -180,17 +174,12 @@ export function getScatterPlotOption(
   }
 
   const splitPanelOverrides = isSplitPanels
-    ? {
-        axisPointer: {
-          link: [{ xAxisIndex: "all" as unknown as number }],
-        },
-        graphic: buildSplitPanelYAxisLabel(
-          chartModel,
-          chartLayout,
-          panelCount,
-          renderingContext,
-        ),
-      }
+    ? buildSplitPanelOverrides(
+        chartModel,
+        chartLayout,
+        panelCount,
+        renderingContext,
+      )
     : {};
 
   return {
