@@ -74,9 +74,9 @@
              commit-sha    (git/resolve-ref conn ref-to-use)
              _             (when-not commit-sha
                              (throw (ex-info (str "Cannot resolve ref: " ref-to-use) {:ref ref-to-use})))
-             content       (git/read-file conn commit-sha "index.js")
+             content       (git/read-file conn commit-sha "dist/index.js")
              _             (when-not content
-                             (throw (ex-info "index.js not found in repository" {:commit commit-sha})))
+                             (throw (ex-info "dist/index.js not found in repository" {:commit commit-sha})))
              hash          (content-hash content)
              cache-entry   {:content content :hash hash :commit commit-sha}]
          ;; update caches
