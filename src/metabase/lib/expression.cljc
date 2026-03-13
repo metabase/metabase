@@ -668,12 +668,23 @@
         (str (message-or-fn))
         (str message-or-fn)))))
 
+(defn- ordinal-str
+  "Returns a translated ordinal string"
+  [n]
+  (cond
+    (= n 1) (i18n/tru "1st")
+    (= n 2) (i18n/tru "2nd")
+    (= n 3) (i18n/tru "3rd")
+    (and (>= n 4) (<= n 20)) (i18n/tru "{0}th" n)
+    :else (str n)))
+
 (defn- type-error-message
   [explanation expr]
   (let [[type-desc in-path] (find-type-error explanation)
-        op-name (parent-operator-name expr in-path)]
+        op-name (parent-operator-name expr in-path)
+        param-pos (ordinal-str (dec (last in-path)))]
     (if (and op-name type-desc)
-      (i18n/tru "Types are incompatible: {0} expects {1}." op-name type-desc)
+      (i18n/tru "Types are incompatible: {0} expects {1} as the {2} parameter." op-name type-desc param-pos)
       (i18n/tru "Types are incompatible."))))
 
 (mu/defn diagnose-expression :- [:maybe [:map [:message :string]]]
