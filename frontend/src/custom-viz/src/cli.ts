@@ -27,10 +27,12 @@ program
   .command("init")
   .description("Scaffold a new custom visualization")
   .argument("<name>", "Name of the custom visualization")
-  .action(async (name: string) => {
-    if (!name || !/^[a-z0-9@][a-z0-9._\-/]*$/i.test(name)) {
+  .action(async (rawName: string) => {
+    const name = rawName.trim().replace(/\s+/g, "-").toLowerCase();
+
+    if (!name || !/^[a-z0-9@][a-z0-9._\-/]*$/.test(name)) {
       console.error(
-        `Error: "${name}" is not a valid project name. Use lowercase letters, numbers, hyphens, and dots.`,
+        `Error: "${rawName}" is not a valid project name. Use letters, numbers, hyphens, and dots.`,
       );
       process.exit(1);
     }
