@@ -95,7 +95,7 @@ describe("issue GDGT-1774", () => {
   it("should display field options in the incremental update field picker (GDGT-1774)", () => {
     H.getTableId({ name: SOURCE_TABLE })
       .then((tableId) =>
-        H.getFieldId({ tableId, name: "id" }).then((fieldId) =>
+        H.getFieldId({ tableId, name: "score" }).then((fieldId) =>
           H.createTransform({
             name: "Incremental MBQL transform",
             source: {
