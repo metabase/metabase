@@ -16,6 +16,19 @@ import {
   Title,
 } from "metabase/ui";
 
+function getApiError(e: unknown): string | undefined {
+  const err = e as {
+    data?: { message?: string; errors?: Record<string, string> };
+  };
+  if (err?.data?.errors) {
+    const firstError = Object.values(err.data.errors)[0];
+    if (firstError) {
+      return firstError;
+    }
+  }
+  return err?.data?.message;
+}
+
 interface MfaSetupProps {
   totpEnabled: boolean;
   onStatusChange: () => void;
@@ -53,12 +66,7 @@ export const MfaSetup = ({
       setSetupPassword("");
       setStep("qr");
     } catch (e: unknown) {
-      setError(
-        (e as { data?: { message?: string } })?.data?.message ??
-          (e as { data?: { errors?: { password?: string } } })?.data?.errors
-            ?.password ??
-          t`Failed to start setup`,
-      );
+      setError(getApiError(e) ?? t`Failed to start setup`);
     } finally {
       setIsLoading(false);
     }
@@ -72,11 +80,7 @@ export const MfaSetup = ({
       setStep("complete");
       onStatusChange();
     } catch (e: unknown) {
-      setError(
-        (e as { data?: { errors?: { "totp-code"?: string } } })?.data?.errors?.[
-          "totp-code"
-        ] ?? t`Invalid verification code`,
-      );
+      setError(getApiError(e) ?? t`Invalid verification code`);
     } finally {
       setIsLoading(false);
     }
@@ -90,8 +94,7 @@ export const MfaSetup = ({
       onStatusChange();
     } catch (e: unknown) {
       setError(
-        (e as { data?: { errors?: { password?: string } } })?.data?.errors
-          ?.password ?? t`Failed to disable two-factor authentication`,
+        getApiError(e) ?? t`Failed to disable two-factor authentication`,
       );
     } finally {
       setIsLoading(false);
@@ -109,10 +112,7 @@ export const MfaSetup = ({
       setShowRecoveryCodes(true);
       setRegenPassword("");
     } catch (e: unknown) {
-      setError(
-        (e as { data?: { errors?: { password?: string } } })?.data?.errors
-          ?.password ?? t`Failed to regenerate recovery codes`,
-      );
+      setError(getApiError(e) ?? t`Failed to regenerate recovery codes`);
     } finally {
       setIsLoading(false);
     }
