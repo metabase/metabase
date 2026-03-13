@@ -41,6 +41,7 @@ export const createMockReplaceSourceRun = (
 ): SourceReplacementRun => ({
   id: 1,
   status: "started",
+  run_type: "replace",
   is_active: true,
   source_entity_type: "card",
   source_entity_id: 1,

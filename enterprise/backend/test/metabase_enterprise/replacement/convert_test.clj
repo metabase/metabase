@@ -9,7 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.transforms.test-dataset :as transforms-dataset]
-   [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase.transforms.test-util :refer [with-transform-cleanup!]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

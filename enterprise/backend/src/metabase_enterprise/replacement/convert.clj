@@ -7,7 +7,7 @@
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
-   [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.model-persistence.core :as model-persistence]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms.core :as transforms]
    [toucan2.core :as t2]))
@@ -68,7 +68,7 @@
     ;; --- Phase 4: Unpersist model ---
     (when unpersist-card?
       (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id source-id)]
-        (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")))
+        (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off")))
 
     ;; --- Phase 5: Archive card ---
     (when (and archive-card? (= source-type :card))

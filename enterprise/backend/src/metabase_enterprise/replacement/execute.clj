@@ -25,7 +25,7 @@
     (catch Throwable t
       ;; The unique constraint on is_active catches the race between checking active-run
       ;; and calling start-run!. Surface it as a clean 409 instead of a 500.
-      (log/warnf t "Failed to start run (likely concurrent start)")
+      (log/warn t "Failed to start run (likely concurrent start)")
       (throw (ex-info "A source replacement is already running" {:status-code 409}))))
   (u.jvm/in-virtual-thread*
    (try
