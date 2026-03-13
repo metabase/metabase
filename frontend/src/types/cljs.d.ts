@@ -312,7 +312,7 @@ declare module "cljs/metabase.lib.types.isa" {
 
 declare module "cljs/metabase.parameters.shared" {
   export const substitute_tags: any;
-  export const tag_namesz: any;
+  export const tag_names: any;
 }
 
 declare module "cljs/metabase.pivot.js" {
