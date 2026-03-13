@@ -100,17 +100,25 @@
    :- ::replacement.schema/replace-source-with-transform-request]
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/Transform :id transform_id))
-  (let [job-row  (replacement-run/create-convert-run!
-                  source_entity_type source_entity_id
-                  api/*current-user-id*)
-        progress (replacement-run/run-row->progress job-row)
-        work-fn  (fn [progress]
-                   (convert/replace-source-with-transform!
-                    source_entity_type source_entity_id transform_id
-                    progress
-                    {:unpersist-card? unpersist_card
-                     :archive-card?   archive_card}))]
+  (let [user-id       api/*current-user-id*
+        start-promise (promise)
+        job-row       (replacement-run/create-convert-run!
+                       source_entity_type source_entity_id
+                       user-id)
+        progress      (replacement-run/run-row->progress job-row)
+        work-fn       (fn [progress]
+                        (convert/replace-source-with-transform!
+                         source_entity_type source_entity_id transform_id
+                         progress
+                         {:unpersist-card? unpersist_card
+                          :archive-card?   archive_card
+                          :user-id         user-id
+                          :start-promise   start-promise}))]
     (replacement.execute/execute-async! work-fn progress)
+    ;; Wait for the TransformRun row to be created so FE can poll it immediately.
+    (let [result (deref start-promise 30000 :timeout)]
+      (when (instance? Throwable result)
+        (throw result)))
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
 

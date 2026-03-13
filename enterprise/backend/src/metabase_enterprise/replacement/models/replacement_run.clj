@@ -17,30 +17,34 @@
 (t2/deftransforms :model/ReplacementRun
   {:status             mi/transform-keyword
    :source_entity_type mi/transform-keyword
-   :target_entity_type mi/transform-keyword
-   :run_type           mi/transform-keyword})
+   :target_entity_type mi/transform-keyword})
 
 (defn create-run!
   "Insert a new pending run. It becomes active when [[start-run!]] is called."
-  ([source-type source-id target-type target-id user-id]
-   (create-run! source-type source-id target-type target-id user-id :replace))
-  ([source-type source-id target-type target-id user-id run-type]
-   (t2/insert-returning-instance! :model/ReplacementRun
-                                  {:source_entity_type source-type
-                                   :source_entity_id   source-id
-                                   :target_entity_type target-type
-                                   :target_entity_id   target-id
-                                   :user_id            user-id
-                                   :run_type           run-type
-                                   :status             :pending
-                                   :is_active          nil
-                                   :progress           (when (= run-type :replace) 0.0)})))
+  [source-type source-id target-type target-id user-id]
+  (t2/insert-returning-instance! :model/ReplacementRun
+                                 {:source_entity_type source-type
+                                  :source_entity_id   source-id
+                                  :target_entity_type target-type
+                                  :target_entity_id   target-id
+                                  :user_id            user-id
+                                  :status             :pending
+                                  :is_active          nil
+                                  :progress           0.0}))
 
 (defn create-convert-run!
-  "Create a `:convert-to-transform` run. Source and target start as the same entity
-   (target is updated mid-execution once the output table is known)."
+  "Create a convert-to-transform run. Source and target start as the same entity
+   (target is updated mid-execution once the output table is known).
+   Progress starts as nil since the transform phase has no incremental progress."
   [source-type source-id user-id]
-  (create-run! source-type source-id source-type source-id user-id :convert-to-transform))
+  (t2/insert-returning-instance! :model/ReplacementRun
+                                 {:source_entity_type source-type
+                                  :source_entity_id   source-id
+                                  :target_entity_type source-type
+                                  :target_entity_id   source-id
+                                  :user_id            user-id
+                                  :status             :pending
+                                  :is_active          nil}))
 
 (defn start-run!
   "Mark the active run as started."

@@ -19,15 +19,11 @@
 (mr/def ::run-status
   [:enum :pending :started :succeeded :failed :canceled :timeout])
 
-(mr/def ::run-type
-  [:enum :replace :convert-to-transform])
-
 (mr/def ::run
   [:map
    [:id ::run-id]
    [:status ::run-status]
    [:is_active [:maybe :boolean]]
-   [:run_type ::run-type]
    [:source_entity_type ::source-entity-type]
    [:source_entity_id ::source-entity-id]
    [:target_entity_type ::source-entity-type]

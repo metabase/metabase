@@ -33,15 +33,21 @@
    - `:unpersist-card?` — when true and source is a card, unpersist the model after
      replacement (default false).
    - `:archive-card?` — when true and source is a card, archive the card after all
-     steps are done (default false)."
+     steps are done (default false).
+   - `:user-id` — user ID to attribute on the TransformRun row.
+   - `:start-promise` — promise delivered with `[:started run-id]` when the TransformRun
+     is created, allowing the caller to know the run exists before execution completes."
   [source-type source-id transform-id progress
-   {:keys [unpersist-card? archive-card?] :or {unpersist-card? false archive-card? false}}]
+   {:keys [unpersist-card? archive-card? user-id start-promise]
+    :or   {unpersist-card? false archive-card? false}}]
   (let [transform (t2/select-one :model/Transform :id transform-id)
         _         (when-not transform
                     (throw (ex-info "Transform not found" {:transform-id transform-id})))
 
         ;; --- Phase 1: Execute transform (synchronous — also syncs the output table) ---
-        _         (transforms/execute! transform {:run-method :manual})
+        _         (transforms/execute! transform (cond-> {:run-method :manual}
+                                                   user-id       (assoc :user-id user-id)
+                                                   start-promise (assoc :start-promise start-promise)))
         _         (check-canceled! progress)
 
         ;; --- Phase 2: Find output table ---
