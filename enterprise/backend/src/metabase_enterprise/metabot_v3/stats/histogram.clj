@@ -1,5 +1,5 @@
 (ns metabase-enterprise.metabot-v3.stats.histogram
-  "Histogram chart statistics computation."
+  "Histogram chart statistics."
   (:require
    [metabase-enterprise.metabot-v3.stats.util :as stats.u]
    [tech.v3.datatype.functional :as dfn]))
@@ -24,15 +24,15 @@
      :iqr    (- q3 q1)}))
 
 (defn- nan->nil
-  "Convert NaN to nil so cond-> predicates work correctly."
+  "Convert NaN to nil."
   [x]
-  (when-not (Double/isNaN (double x)) x))
+  (when-not (Double/isNaN (double x))
+    x))
 
 (defn compute-series-stats
-  "Compute histogram stats for a single series using its y_values (counts/frequencies)
-  and x_values (bin edges/centers) for display.
-
-  Single-arity form accepts only y_values and uses sequential indices as x_values."
+  "Compute histogram stats for a single series.
+  x_values are (bin edges/centers) and y_values are (counts/frequencies).
+  Single-arity form uses sequential indices as x_values."
   ([y-values]
    (compute-series-stats (range (count y-values)) y-values))
   ([x-values y-values]
@@ -61,8 +61,7 @@
                           kurtosis (assoc :kurtosis kurtosis))})))))
 
 (defn compute-histogram-stats
-  "Compute statistics for histogram data. Uses y_values (counts/frequencies per bin).
-  series-data: map of series-name -> {:x_values [...] :y_values [...] :x {:name ...} :y {:name ...}}"
+  "Compute statistics for histogram data."
   [series-data _opts]
   (let [series-stats (stats.u/compute-series-with-labels series-data compute-series-stats)]
     (stats.u/make-chart-result :histogram series-data series-stats nil)))
